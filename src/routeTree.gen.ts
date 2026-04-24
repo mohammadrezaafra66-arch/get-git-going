@@ -26,6 +26,7 @@ import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
 import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -111,11 +112,17 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/invoices': typeof AppInvoicesRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/unauthorized'
+    | '/audit-logs'
     | '/dashboard'
     | '/feedback'
     | '/invoices'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/unauthorized'
+    | '/audit-logs'
     | '/dashboard'
     | '/feedback'
     | '/invoices'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/unauthorized'
+    | '/_app/audit-logs'
     | '/_app/dashboard'
     | '/_app/feedback'
     | '/_app/invoices'
@@ -354,10 +366,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/audit-logs': {
+      id: '/_app/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/audit-logs'
+      preLoaderRoute: typeof AppAuditLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppInvoicesRoute: typeof AppInvoicesRoute
@@ -374,6 +394,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAuditLogsRoute: AppAuditLogsRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppInvoicesRoute: AppInvoicesRoute,

@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, DollarSign, ShoppingCart, ShoppingBag,
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
-  MessageSquare, Mail,
+  MessageSquare, Mail, ScrollText,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -24,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
   { to: "/users",       label: "کاربران",          icon: Users,           module: "users",       group: "admin" },
   { to: "/roles",       label: "نقش‌ها و دسترسی",  icon: ShieldCheck,     module: "roles",       group: "admin" },
+  { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
   { to: "/knowledge",   label: "دانش سازمانی",    icon: BookOpen,        module: "knowledge",   group: "comms" },
   { to: "/messages",    label: "پیام‌ها",          icon: Mail,            module: "messages",    group: "comms" },
   { to: "/feedback",    label: "بازخورد",          icon: MessageSquare,   module: "feedback",    group: "comms" },
