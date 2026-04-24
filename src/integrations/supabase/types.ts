@@ -44,6 +44,77 @@ export type Database = {
         }
         Relationships: []
       }
+      brands: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -394,44 +465,178 @@ export type Database = {
         }
         Relationships: []
       }
+      product_label_links: {
+        Row: {
+          created_at: string
+          label_id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          label_id: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          label_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_label_links_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "product_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_label_links_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_labels: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_owner_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_owner_assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
+          base_currency: Database["public"]["Enums"]["base_currency"]
+          brand_id: string | null
           category: string | null
+          category_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           is_active: boolean
           name: string
+          product_type: Database["public"]["Enums"]["product_type"]
           sku: string | null
+          status: Database["public"]["Enums"]["product_status"]
+          stock_status: Database["public"]["Enums"]["stock_status"]
+          technical_notes: string | null
           unit: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
+          base_currency?: Database["public"]["Enums"]["base_currency"]
+          brand_id?: string | null
           category?: string | null
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
           name: string
+          product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
+          status?: Database["public"]["Enums"]["product_status"]
+          stock_status?: Database["public"]["Enums"]["stock_status"]
+          technical_notes?: string | null
           unit?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
+          base_currency?: Database["public"]["Enums"]["base_currency"]
+          brand_id?: string | null
           category?: string | null
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
+          status?: Database["public"]["Enums"]["product_status"]
+          stock_status?: Database["public"]["Enums"]["stock_status"]
+          technical_notes?: string | null
           unit?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -648,6 +853,10 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
+      base_currency: "toman" | "usd" | "aed"
+      product_status: "active" | "inactive" | "discontinued"
+      product_type: "iranian" | "foreign"
+      stock_status: "available" | "unavailable" | "limited" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -776,6 +985,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "sales", "accountant", "viewer"],
+      base_currency: ["toman", "usd", "aed"],
+      product_status: ["active", "inactive", "discontinued"],
+      product_type: ["iranian", "foreign"],
+      stock_status: ["available", "unavailable", "limited", "unknown"],
     },
   },
 } as const
