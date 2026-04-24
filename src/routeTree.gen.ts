@@ -18,7 +18,6 @@ import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
-import { Route as AppPricingRouteImport } from './routes/_app.pricing'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
@@ -76,11 +75,6 @@ const AppReportsRoute = AppReportsRouteImport.update({
 const AppPurchasesRoute = AppPurchasesRouteImport.update({
   id: '/purchases',
   path: '/purchases',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPricingRoute = AppPricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
@@ -165,7 +159,6 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
   '/price-lists': typeof AppPriceListsRoute
-  '/pricing': typeof AppPricingRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
@@ -190,7 +183,6 @@ export interface FileRoutesByTo {
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
   '/price-lists': typeof AppPriceListsRoute
-  '/pricing': typeof AppPricingRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
@@ -217,7 +209,6 @@ export interface FileRoutesById {
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/price-lists': typeof AppPriceListsRoute
-  '/_app/pricing': typeof AppPricingRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
@@ -244,7 +235,6 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/messages'
     | '/price-lists'
-    | '/pricing'
     | '/purchases'
     | '/reports'
     | '/roles'
@@ -269,7 +259,6 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/messages'
     | '/price-lists'
-    | '/pricing'
     | '/purchases'
     | '/reports'
     | '/roles'
@@ -295,7 +284,6 @@ export interface FileRouteTypes {
     | '/_app/knowledge'
     | '/_app/messages'
     | '/_app/price-lists'
-    | '/_app/pricing'
     | '/_app/purchases'
     | '/_app/reports'
     | '/_app/roles'
@@ -380,13 +368,6 @@ declare module '@tanstack/react-router' {
       path: '/purchases'
       fullPath: '/purchases'
       preLoaderRoute: typeof AppPurchasesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/pricing': {
-      id: '/_app/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof AppPricingRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/price-lists': {
@@ -510,7 +491,6 @@ interface AppRouteChildren {
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
-  AppPricingRoute: typeof AppPricingRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
@@ -532,7 +512,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppPriceListsRoute: AppPriceListsRoute,
-  AppPricingRoute: AppPricingRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
