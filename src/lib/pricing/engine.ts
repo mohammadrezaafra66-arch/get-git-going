@@ -73,7 +73,8 @@ export async function calculateSalePrice(
   if (!product) throw new PricingError("PRODUCT_NOT_FOUND", "محصول مورد نظر یافت نشد.");
 
   // 1) قیمت خرید
-  let purchase: { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode } | null = null;
+  type PurchaseRec = { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode };
+  let purchase: PurchaseRec | null = null;
   if (options.purchase_price_id) {
     const { data, error } = await supabase
       .from("purchase_prices")
@@ -82,9 +83,24 @@ export async function calculateSalePrice(
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new PricingError("PURCHASE_NOT_FOUND", "قیمت خرید انتخاب‌شده یافت نشد.");
-    purchase = data as typeof purchase;
+    purchase = {
+      id: data.id,
+      product_id: data.product_id,
+      supplier_id: data.supplier_id,
+      purchase_price: Number(data.purchase_price),
+      currency: data.currency as CurrencyCode,
+    };
   } else {
-    purchase = (await fetchLatestPurchasePrice(productId)) as typeof purchase;
+    const latest = await fetchLatestPurchasePrice(productId);
+    if (latest) {
+      purchase = {
+        id: latest.id,
+        product_id: latest.product_id,
+        supplier_id: latest.supplier_id,
+        purchase_price: Number(latest.purchase_price),
+        currency: latest.currency as CurrencyCode,
+      };
+    }
   }
   if (!purchase) {
     throw new PricingError("NO_PURCHASE_PRICE", "برای این محصول هنوز قیمت خرید ثبت نشده است.");
