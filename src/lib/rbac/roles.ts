@@ -32,7 +32,7 @@ export type Action = "view" | "create" | "update" | "delete";
 export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   dashboard:    { view: ALL_ROLES, create: [], update: [], delete: [] },
   products:     { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
-  pricing:      { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
+  pricing:      { view: ["admin","manager","accountant"], create: ["admin","manager","accountant"], update: ["admin","manager","accountant"], delete: ["admin"] },
   purchases:    { view: ["admin","manager","accountant","viewer"], create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
   sales:        { view: ALL_ROLES, create: ["admin","manager","sales"], update: ["admin","manager","sales"], delete: ["admin"] },
   invoices:     { view: ALL_ROLES, create: ["admin","manager","sales"], update: ["admin","manager","sales"], delete: ["admin"] },
