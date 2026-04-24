@@ -608,6 +608,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user: string
+        }
+        Returns: undefined
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -621,6 +628,22 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_event: {
+        Args: {
+          _action: string
+          _diff?: Json
+          _entity_id: string
+          _entity_type: string
+        }
+        Returns: undefined
+      }
+      revoke_user_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

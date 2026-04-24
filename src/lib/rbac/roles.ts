@@ -23,7 +23,8 @@ export type ModuleKey =
   | "knowledge"
   | "feedback"
   | "messages"
-  | "dashboard";
+  | "dashboard"
+  | "audit-logs";
 
 export type Action = "view" | "create" | "update" | "delete";
 
@@ -42,6 +43,7 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   knowledge:    { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
   feedback:     { view: ALL_ROLES, create: ALL_ROLES, update: ["admin"], delete: ["admin"] },
   messages:     { view: ALL_ROLES, create: ALL_ROLES, update: ALL_ROLES, delete: ["admin"] },
+  "audit-logs": { view: ["admin"], create: [], update: [], delete: [] },
 };
 
 export function hasPermission(roles: AppRole[], module: ModuleKey, action: Action): boolean {
