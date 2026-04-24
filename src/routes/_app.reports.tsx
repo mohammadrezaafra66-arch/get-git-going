@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac/route-guards";
 import { BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export const Route = createFileRoute("/_app/reports")({
+  beforeLoad: async () => { await requirePermission("reports", "view"); },
   component: () => (
     <div className="space-y-6">
       <PageHeader title="گزارش‌ها" description="گزارش‌های فروش، مالی و عملیاتی" />
