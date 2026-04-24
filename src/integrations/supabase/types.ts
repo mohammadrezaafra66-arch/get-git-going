@@ -115,6 +115,42 @@ export type Database = {
           },
         ]
       }
+      currency_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
+          effective_at: string
+          id: string
+          is_active: boolean
+          rate_to_toman: number
+          source_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
+          effective_at?: string
+          id?: string
+          is_active?: boolean
+          rate_to_toman: number
+          source_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
+          effective_at?: string
+          id?: string
+          is_active?: boolean
+          rate_to_toman?: number
+          source_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -348,6 +384,119 @@ export type Database = {
         }
         Relationships: []
       }
+      price_calculation_snapshots: {
+        Row: {
+          calculated_at: string
+          calculated_by: string | null
+          calculation_details: Json | null
+          currency_rate: number
+          final_sale_price: number
+          id: string
+          input_currency: Database["public"]["Enums"]["currency_code"]
+          input_purchase_price: number
+          margin_amount: number
+          pricing_rule_id: string | null
+          product_id: string
+          purchase_price_id: string | null
+          purchase_price_toman: number
+          rounded_sale_price: number
+          settlement_type_id: string | null
+          shipping_cost: number
+        }
+        Insert: {
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json | null
+          currency_rate: number
+          final_sale_price: number
+          id?: string
+          input_currency: Database["public"]["Enums"]["currency_code"]
+          input_purchase_price: number
+          margin_amount?: number
+          pricing_rule_id?: string | null
+          product_id: string
+          purchase_price_id?: string | null
+          purchase_price_toman: number
+          rounded_sale_price: number
+          settlement_type_id?: string | null
+          shipping_cost?: number
+        }
+        Update: {
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_details?: Json | null
+          currency_rate?: number
+          final_sale_price?: number
+          id?: string
+          input_currency?: Database["public"]["Enums"]["currency_code"]
+          input_purchase_price?: number
+          margin_amount?: number
+          pricing_rule_id?: string | null
+          product_id?: string
+          purchase_price_id?: string | null
+          purchase_price_toman?: number
+          rounded_sale_price?: number
+          settlement_type_id?: string | null
+          shipping_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_calculation_snapshots_pricing_rule_id_fkey"
+            columns: ["pricing_rule_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_calculation_snapshots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_calculation_snapshots_purchase_price_id_fkey"
+            columns: ["purchase_price_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_calculation_snapshots_settlement_type_id_fkey"
+            columns: ["settlement_type_id"]
+            isOneToOne: false
+            referencedRelation: "settlement_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_change_reasons: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_list_items: {
         Row: {
           id: string
@@ -423,47 +572,95 @@ export type Database = {
       pricing_rules: {
         Row: {
           actions: Json
+          brand_id: string | null
+          category_id: string | null
           conditions: Json
           created_at: string
           created_by: string | null
           effective_from: string | null
           effective_to: string | null
+          fixed_margin_value: number | null
           id: string
           is_active: boolean
+          margin_type: Database["public"]["Enums"]["margin_type"] | null
+          margin_value: number | null
+          max_purchase_price_toman: number | null
+          min_purchase_price_toman: number | null
           name: string
           priority: number
+          product_type: Database["public"]["Enums"]["product_type"] | null
+          rule_name: string | null
+          settlement_type_id: string | null
+          shipping_cost_rule_id: string | null
           updated_at: string
           version: number
         }
         Insert: {
           actions?: Json
+          brand_id?: string | null
+          category_id?: string | null
           conditions?: Json
           created_at?: string
           created_by?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          fixed_margin_value?: number | null
           id?: string
           is_active?: boolean
+          margin_type?: Database["public"]["Enums"]["margin_type"] | null
+          margin_value?: number | null
+          max_purchase_price_toman?: number | null
+          min_purchase_price_toman?: number | null
           name: string
           priority?: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
+          rule_name?: string | null
+          settlement_type_id?: string | null
+          shipping_cost_rule_id?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           actions?: Json
+          brand_id?: string | null
+          category_id?: string | null
           conditions?: Json
           created_at?: string
           created_by?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          fixed_margin_value?: number | null
           id?: string
           is_active?: boolean
+          margin_type?: Database["public"]["Enums"]["margin_type"] | null
+          margin_value?: number | null
+          max_purchase_price_toman?: number | null
+          min_purchase_price_toman?: number | null
           name?: string
           priority?: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
+          rule_name?: string | null
+          settlement_type_id?: string | null
+          shipping_cost_rule_id?: string | null
           updated_at?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pricing_rules_settlement_type_id_fkey"
+            columns: ["settlement_type_id"]
+            isOneToOne: false
+            referencedRelation: "settlement_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_rules_shipping_cost_rule_id_fkey"
+            columns: ["shipping_cost_rule_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_cost_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_label_links: {
         Row: {
@@ -556,6 +753,57 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_sale_price_history: {
+        Row: {
+          change_amount: number | null
+          change_percent: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          new_sale_price: number
+          old_sale_price: number | null
+          product_id: string
+          snapshot_id: string | null
+        }
+        Insert: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_sale_price: number
+          old_sale_price?: number | null
+          product_id: string
+          snapshot_id?: string | null
+        }
+        Update: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_sale_price?: number
+          old_sale_price?: number | null
+          product_id?: string
+          snapshot_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_sale_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sale_price_history_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "price_calculation_snapshots"
             referencedColumns: ["id"]
           },
         ]
@@ -728,6 +976,76 @@ export type Database = {
           },
         ]
       }
+      purchase_prices: {
+        Row: {
+          created_at: string
+          currency: Database["public"]["Enums"]["currency_code"]
+          effective_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          private_note: string | null
+          product_id: string
+          purchase_price: number
+          reason_id: string | null
+          registered_by: string | null
+          supplier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency_code"]
+          effective_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          private_note?: string | null
+          product_id: string
+          purchase_price: number
+          reason_id?: string | null
+          registered_by?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency_code"]
+          effective_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          private_note?: string | null
+          product_id?: string
+          purchase_price?: number
+          reason_id?: string | null
+          registered_by?: string | null
+          supplier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_prices_reason_id_fkey"
+            columns: ["reason_id"]
+            isOneToOne: false
+            referencedRelation: "price_change_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_prices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchases: {
         Row: {
           created_at: string
@@ -772,32 +1090,122 @@ export type Database = {
           },
         ]
       }
+      settlement_types: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shipping_cost_rules: {
+        Row: {
+          category_id: string | null
+          cost_type: Database["public"]["Enums"]["shipping_cost_type"]
+          cost_value: number
+          created_at: string
+          id: string
+          is_active: boolean
+          max_purchase_price: number | null
+          min_purchase_price: number | null
+          priority: number
+          product_type: Database["public"]["Enums"]["product_type"] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          cost_type: Database["public"]["Enums"]["shipping_cost_type"]
+          cost_value: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_purchase_price?: number | null
+          min_purchase_price?: number | null
+          priority?: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          cost_type?: Database["public"]["Enums"]["shipping_cost_type"]
+          cost_value?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_purchase_price?: number | null
+          min_purchase_price?: number | null
+          priority?: number
+          product_type?: Database["public"]["Enums"]["product_type"] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null
+          city: string | null
+          contact_name: string | null
           created_at: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
+          notes: string | null
           phone: string | null
+          trust_level: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
+          contact_name?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name: string
+          notes?: string | null
           phone?: string | null
+          trust_level?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
+          contact_name?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string
+          notes?: string | null
           phone?: string | null
+          trust_level?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -873,8 +1281,11 @@ export type Database = {
     Enums: {
       app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
       base_currency: "toman" | "usd" | "aed"
+      currency_code: "toman" | "usd" | "aed"
+      margin_type: "fixed" | "percent" | "mixed"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
+      shipping_cost_type: "fixed" | "percent"
       stock_status: "available" | "unavailable" | "limited" | "unknown"
     }
     CompositeTypes: {
@@ -1005,8 +1416,11 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "manager", "sales", "accountant", "viewer"],
       base_currency: ["toman", "usd", "aed"],
+      currency_code: ["toman", "usd", "aed"],
+      margin_type: ["fixed", "percent", "mixed"],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
+      shipping_cost_type: ["fixed", "percent"],
       stock_status: ["available", "unavailable", "limited", "unknown"],
     },
   },
