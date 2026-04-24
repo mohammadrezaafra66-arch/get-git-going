@@ -53,6 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      // ثبت رخداد ورود موفق در audit_logs (best-effort؛ نباید جریان ورود را بشکند)
+      const { data: { user: u } } = await supabase.auth.getUser();
+      if (u) {
+        await supabase.rpc("log_event", {
+          _entity_type: "auth",
+          _entity_id: u.id,
+          _action: "login_success",
+          _diff: { email },
+        });
+      }
+    }
     return { error: error?.message ?? null };
   };
 
@@ -69,6 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    const uid = user?.id;
+    if (uid) {
+      await supabase.rpc("log_event", {
+        _entity_type: "auth",
+        _entity_id: uid,
+        _action: "logout",
+        _diff: null,
+      });
+    }
     await supabase.auth.signOut();
   };
 

@@ -40,10 +40,16 @@ function RolesPage() {
   const toggle = useMutation({
     mutationFn: async ({ userId, role, enabled }: { userId: string; role: AppRole; enabled: boolean }) => {
       if (enabled) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+        const { error } = await supabase.rpc("assign_user_role", {
+          _target_user: userId,
+          _role: role,
+        });
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
+        const { error } = await supabase.rpc("revoke_user_role", {
+          _target_user: userId,
+          _role: role,
+        });
         if (error) throw error;
       }
     },
