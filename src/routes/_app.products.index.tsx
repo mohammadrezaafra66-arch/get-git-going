@@ -19,7 +19,7 @@ import {
 } from "@/lib/products/constants";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
-export const Route = createFileRoute("/_app/products")({
+export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
   component: ProductsPage,
 });
