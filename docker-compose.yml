@@ -1,0 +1,33 @@
+# نمونه Docker Compose برای اجرای دستیار افراکالا به همراه Postgres self-host.
+# نکته: برای backend کامل، می‌توانید Supabase self-hosted (https://supabase.com/docs/guides/self-hosting)
+# را به‌صورت جداگانه راه‌اندازی کرده و VITE_SUPABASE_URL را به آن نشانه‌گذاری کنید.
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    image: afrakala-assistant:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: afrakala
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: afrakala
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
