@@ -25,7 +25,6 @@ interface Props {
 
 const DEFAULTS: ProductFormValues = {
   name: "",
-  sku: "",
   brand_id: null,
   category_id: null,
   product_type: "iranian",
@@ -79,8 +78,15 @@ export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSu
           <Field label="نام محصول" required error={errors.name}>
             <Input value={values.name} onChange={(e) => set("name", e.target.value)} placeholder="مثلاً: موتور القایی ۳ کیلووات" />
           </Field>
-          <Field label="کد محصول (SKU)" error={errors.sku}>
-            <Input value={values.sku ?? ""} onChange={(e) => set("sku", e.target.value)} dir="ltr" placeholder="مثل AFR-1001" />
+          <Field label="کد محصول (SKU)">
+            <Input
+              value={initial?.name ? "—" : ""}
+              dir="ltr"
+              readOnly
+              disabled
+              placeholder="کد محصول بعد از ذخیره به‌صورت خودکار ساخته می‌شود"
+            />
+            <p className="text-xs text-muted-foreground">کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.</p>
           </Field>
 
           <Field label="برند">
