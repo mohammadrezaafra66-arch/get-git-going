@@ -9,38 +9,218 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppUsersRouteImport } from './routes/_app.users'
+import { Route as AppSalesRouteImport } from './routes/_app.sales'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
+import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
+import { Route as AppProductsRouteImport } from './routes/_app.products'
+import { Route as AppPricingRouteImport } from './routes/_app.pricing'
+import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
+import { Route as AppMessagesRouteImport } from './routes/_app.messages'
+import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
+import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
+import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/_app/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppSalesRoute = AppSalesRouteImport.update({
+  id: '/_app/sales',
+  path: '/sales',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/_app/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppPurchasesRoute = AppPurchasesRouteImport.update({
+  id: '/_app/purchases',
+  path: '/purchases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppProductsRoute = AppProductsRouteImport.update({
+  id: '/_app/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppPricingRoute = AppPricingRouteImport.update({
+  id: '/_app/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppPriceListsRoute = AppPriceListsRouteImport.update({
+  id: '/_app/price-lists',
+  path: '/price-lists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppMessagesRoute = AppMessagesRouteImport.update({
+  id: '/_app/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppKnowledgeRoute = AppKnowledgeRouteImport.update({
+  id: '/_app/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppInvoicesRoute = AppInvoicesRouteImport.update({
+  id: '/_app/invoices',
+  path: '/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/_app/feedback',
+  path: '/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/_app/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/feedback': typeof AppFeedbackRoute
+  '/invoices': typeof AppInvoicesRoute
+  '/knowledge': typeof AppKnowledgeRoute
+  '/messages': typeof AppMessagesRoute
+  '/price-lists': typeof AppPriceListsRoute
+  '/pricing': typeof AppPricingRoute
+  '/products': typeof AppProductsRoute
+  '/purchases': typeof AppPurchasesRoute
+  '/reports': typeof AppReportsRoute
+  '/sales': typeof AppSalesRoute
+  '/users': typeof AppUsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/dashboard': typeof AppDashboardRoute
+  '/feedback': typeof AppFeedbackRoute
+  '/invoices': typeof AppInvoicesRoute
+  '/knowledge': typeof AppKnowledgeRoute
+  '/messages': typeof AppMessagesRoute
+  '/price-lists': typeof AppPriceListsRoute
+  '/pricing': typeof AppPricingRoute
+  '/products': typeof AppProductsRoute
+  '/purchases': typeof AppPurchasesRoute
+  '/reports': typeof AppReportsRoute
+  '/sales': typeof AppSalesRoute
+  '/users': typeof AppUsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/feedback': typeof AppFeedbackRoute
+  '/_app/invoices': typeof AppInvoicesRoute
+  '/_app/knowledge': typeof AppKnowledgeRoute
+  '/_app/messages': typeof AppMessagesRoute
+  '/_app/price-lists': typeof AppPriceListsRoute
+  '/_app/pricing': typeof AppPricingRoute
+  '/_app/products': typeof AppProductsRoute
+  '/_app/purchases': typeof AppPurchasesRoute
+  '/_app/reports': typeof AppReportsRoute
+  '/_app/sales': typeof AppSalesRoute
+  '/_app/users': typeof AppUsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/feedback'
+    | '/invoices'
+    | '/knowledge'
+    | '/messages'
+    | '/price-lists'
+    | '/pricing'
+    | '/products'
+    | '/purchases'
+    | '/reports'
+    | '/sales'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/feedback'
+    | '/invoices'
+    | '/knowledge'
+    | '/messages'
+    | '/price-lists'
+    | '/pricing'
+    | '/products'
+    | '/purchases'
+    | '/reports'
+    | '/sales'
+    | '/users'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/_app/dashboard'
+    | '/_app/feedback'
+    | '/_app/invoices'
+    | '/_app/knowledge'
+    | '/_app/messages'
+    | '/_app/price-lists'
+    | '/_app/pricing'
+    | '/_app/products'
+    | '/_app/purchases'
+    | '/_app/reports'
+    | '/_app/sales'
+    | '/_app/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppFeedbackRoute: typeof AppFeedbackRoute
+  AppInvoicesRoute: typeof AppInvoicesRoute
+  AppKnowledgeRoute: typeof AppKnowledgeRoute
+  AppMessagesRoute: typeof AppMessagesRoute
+  AppPriceListsRoute: typeof AppPriceListsRoute
+  AppPricingRoute: typeof AppPricingRoute
+  AppProductsRoute: typeof AppProductsRoute
+  AppPurchasesRoute: typeof AppPurchasesRoute
+  AppReportsRoute: typeof AppReportsRoute
+  AppSalesRoute: typeof AppSalesRoute
+  AppUsersRoute: typeof AppUsersRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +228,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/users': {
+      id: '/_app/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/sales': {
+      id: '/_app/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof AppSalesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/purchases': {
+      id: '/_app/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof AppPurchasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/products': {
+      id: '/_app/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AppProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/pricing': {
+      id: '/_app/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof AppPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/price-lists': {
+      id: '/_app/price-lists'
+      path: '/price-lists'
+      fullPath: '/price-lists'
+      preLoaderRoute: typeof AppPriceListsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/messages': {
+      id: '/_app/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AppMessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/knowledge': {
+      id: '/_app/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof AppKnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/invoices': {
+      id: '/_app/invoices'
+      path: '/invoices'
+      fullPath: '/invoices'
+      preLoaderRoute: typeof AppInvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/feedback': {
+      id: '/_app/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof AppFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppFeedbackRoute: AppFeedbackRoute,
+  AppInvoicesRoute: AppInvoicesRoute,
+  AppKnowledgeRoute: AppKnowledgeRoute,
+  AppMessagesRoute: AppMessagesRoute,
+  AppPriceListsRoute: AppPriceListsRoute,
+  AppPricingRoute: AppPricingRoute,
+  AppProductsRoute: AppProductsRoute,
+  AppPurchasesRoute: AppPurchasesRoute,
+  AppReportsRoute: AppReportsRoute,
+  AppSalesRoute: AppSalesRoute,
+  AppUsersRoute: AppUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
