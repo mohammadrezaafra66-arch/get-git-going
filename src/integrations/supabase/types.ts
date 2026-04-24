@@ -560,6 +560,24 @@ export type Database = {
           },
         ]
       }
+      product_sku_counters: {
+        Row: {
+          last_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          last_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           base_currency: Database["public"]["Enums"]["base_currency"]
@@ -843,6 +861,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      next_product_sku: { Args: { _year: number }; Returns: string }
       revoke_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

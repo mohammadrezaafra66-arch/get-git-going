@@ -23,7 +23,6 @@ function NewProductPage() {
         .from("products")
         .insert({
           name: v.name,
-          sku: v.sku || null,
           brand_id: v.brand_id || null,
           category_id: v.category_id || null,
           product_type: v.product_type,

@@ -17,6 +17,7 @@ import {
 
 interface Props {
   initial?: Partial<ProductFormValues>;
+  existingSku?: string | null;
   submitLabel?: string;
   loading?: boolean;
   onSubmit: (values: ProductFormValues) => Promise<void> | void;
@@ -25,7 +26,6 @@ interface Props {
 
 const DEFAULTS: ProductFormValues = {
   name: "",
-  sku: "",
   brand_id: null,
   category_id: null,
   product_type: "iranian",
@@ -38,7 +38,7 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
-export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -79,8 +79,17 @@ export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSu
           <Field label="نام محصول" required error={errors.name}>
             <Input value={values.name} onChange={(e) => set("name", e.target.value)} placeholder="مثلاً: موتور القایی ۳ کیلووات" />
           </Field>
-          <Field label="کد محصول (SKU)" error={errors.sku}>
-            <Input value={values.sku ?? ""} onChange={(e) => set("sku", e.target.value)} dir="ltr" placeholder="مثل AFR-1001" />
+          <Field label="کد محصول (SKU)">
+            <Input
+              value={existingSku ?? ""}
+              dir="ltr"
+              readOnly
+              disabled
+              placeholder="کد محصول بعد از ذخیره به‌صورت خودکار ساخته می‌شود"
+            />
+            {!existingSku && (
+              <p className="text-xs text-muted-foreground">کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.</p>
+            )}
           </Field>
 
           <Field label="برند">

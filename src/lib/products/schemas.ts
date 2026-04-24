@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const productSchema = z.object({
   name: z.string().trim().min(1, "نام محصول الزامی است").max(200, "نام نباید بیش از ۲۰۰ کاراکتر باشد"),
-  sku: z.string().trim().max(80, "SKU طولانی است").optional().or(z.literal("")),
+  // SKU توسط دیتابیس به‌صورت خودکار تولید می‌شود؛ در فرم وارد نمی‌شود
   brand_id: z.string().uuid().nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
   product_type: z.enum(["iranian", "foreign"]),

@@ -20,7 +20,7 @@ function EditProductPage() {
 
   const { data: initial, isLoading } = useQuery({
     queryKey: ["product-edit", id],
-    queryFn: async (): Promise<Partial<ProductFormValues> | null> => {
+    queryFn: async (): Promise<{ values: Partial<ProductFormValues>; sku: string | null } | null> => {
       const { data: p, error } = await supabase
         .from("products")
         .select("name, sku, brand_id, category_id, product_type, base_currency, stock_status, status, unit, description, technical_notes")
@@ -30,13 +30,16 @@ function EditProductPage() {
       if (!p) return null;
       const { data: links } = await supabase
         .from("product_label_links").select("label_id").eq("product_id", id);
+      const { sku, ...rest } = p;
       return {
-        ...p,
-        sku: p.sku ?? "",
-        unit: p.unit ?? "",
-        description: p.description ?? "",
-        technical_notes: p.technical_notes ?? "",
-        label_ids: (links ?? []).map((l) => l.label_id),
+        sku: sku ?? null,
+        values: {
+          ...rest,
+          unit: p.unit ?? "",
+          description: p.description ?? "",
+          technical_notes: p.technical_notes ?? "",
+          label_ids: (links ?? []).map((l) => l.label_id),
+        },
       };
     },
   });
@@ -46,7 +49,6 @@ function EditProductPage() {
     try {
       const { error } = await supabase.from("products").update({
         name: v.name,
-        sku: v.sku || null,
         brand_id: v.brand_id || null,
         category_id: v.category_id || null,
         product_type: v.product_type,
@@ -92,9 +94,10 @@ function EditProductPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="ویرایش محصول" description={initial.name} />
+      <PageHeader title="ویرایش محصول" description={initial.values.name} />
       <ProductForm
-        initial={initial}
+        initial={initial.values}
+        existingSku={initial.sku}
         onSubmit={handleSubmit}
         loading={loading}
         submitLabel="ذخیره تغییرات"
