@@ -27,10 +27,23 @@ update user_roles set role='admin' where user_id=(select id from auth.users wher
 از پنل Lovable → **Connectors → GitHub → Connect project** ریپازیتوری بسازید.
 سپس کد به‌صورت دو‌طرفه بین Lovable و GitHub همگام می‌شود.
 
-## Self-host (در آینده)
+## Self-host با Docker
 
-ساختار کد استاندارد است: React + Vite + TypeScript + PostgreSQL.
-دیتابیس قابل مهاجرت به Supabase self-hosted روی سرور لینوکس/Docker شخصی است.
+ساختار کد استاندارد است: React + Vite + TypeScript + TanStack Start + PostgreSQL.
+فایل‌های آماده: `Dockerfile`، `docker-compose.yml`، `.dockerignore`.
+
+```bash
+# 1) متغیرهای محیطی را در .env تنظیم کنید (VITE_SUPABASE_URL و ...)
+# 2) build و اجرا
+docker compose build
+docker compose up -d
+# اپ روی http://localhost:3000
+```
+
+برای backend کامل self-host می‌توانید [Supabase self-hosted](https://supabase.com/docs/guides/self-hosting)
+را روی همان سرور بالا آورده و `VITE_SUPABASE_URL` را به آن نشانه‌گذاری کنید.
+فایل‌های `supabase/migrations/` بدون تغییر روی نمونه self-hosted اجرا می‌شوند.
+
 هیچ وابستگی حیاتی به CDN خارجی، فونت آنلاین یا API بین‌المللی وجود ندارد.
 
 ## ساختار
