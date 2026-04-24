@@ -2,68 +2,55 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/lib/rbac/roles";
+import {
+  ensureAuthReady,
+  getAuthSnapshot,
+  initializeAuthSession,
+  refreshAuthIdentity,
+  subscribeAuthSnapshot,
+  type AuthProfile,
+} from "@/lib/auth/session";
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
+  profile: AuthProfile | null;
   roles: AppRole[];
   loading: boolean;
+  initialized: boolean;
+  profileLoading: boolean;
+  rolesLoading: boolean;
+  authError: string | null;
+  profileError: string | null;
+  rolesError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
+  retryAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadRoles = async (userId: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    setRoles((data ?? []).map((r) => r.role as AppRole));
-  };
+  const [state, setState] = useState(getAuthSnapshot());
 
   useEffect(() => {
-    // ابتدا listener
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (newSession?.user) {
-        // بدون await در callback
-        setTimeout(() => loadRoles(newSession.user.id), 0);
-      } else {
-        setRoles([]);
-      }
-    });
-
-    // سپس session فعلی
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) loadRoles(s.user.id).finally(() => setLoading(false));
-      else setLoading(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
+    initializeAuthSession();
+    const unsubscribe = subscribeAuthSnapshot(() => setState(getAuthSnapshot()));
+    void ensureAuthReady();
+    return unsubscribe;
   }, []);
 
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) {
-      // ثبت رخداد ورود موفق در audit_logs (best-effort؛ نباید جریان ورود را بشکند)
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (u) {
-        await supabase.rpc("log_event", {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error && data.user) {
+      void supabase.rpc("log_event", {
           _entity_type: "auth",
-          _entity_id: u.id,
+          _entity_id: data.user.id,
           _action: "login_success",
           _diff: { email },
-        });
-      }
+      });
     }
     return { error: error?.message ?? null };
   };
@@ -81,9 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    const uid = user?.id;
+    const uid = state.user?.id;
     if (uid) {
-      await supabase.rpc("log_event", {
+      void supabase.rpc("log_event", {
         _entity_type: "auth",
         _entity_id: uid,
         _action: "logout",
@@ -94,11 +81,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshRoles = async () => {
-    if (user) await loadRoles(user.id);
+    await refreshAuthIdentity();
+  };
+
+  const retryAuth = async () => {
+    await ensureAuthReady(true);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, signIn, signUp, signOut, refreshRoles }}>
+    <AuthContext.Provider
+      value={{
+        user: state.user,
+        session: state.session,
+        profile: state.profile,
+        roles: state.roles,
+        loading: state.loading,
+        initialized: state.initialized,
+        profileLoading: state.profileLoading,
+        rolesLoading: state.rolesLoading,
+        authError: state.authError,
+        profileError: state.profileError,
+        rolesError: state.rolesError,
+        signIn,
+        signUp,
+        signOut,
+        refreshRoles,
+        retryAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
