@@ -81,17 +81,17 @@ function ProductsPage() {
       const { data: rows, error, count } = await query;
       if (error) throw error;
 
-      let normalized: ProductRow[] = (rows ?? []).map((r) => ({
-        id: r.id, name: r.name, sku: r.sku,
-        product_type: r.product_type, base_currency: r.base_currency,
-        stock_status: r.stock_status, status: r.status, updated_at: r.updated_at,
-        // @ts-expect-error supabase relation typing
-        brand: r.brand,
-        // @ts-expect-error supabase relation typing
-        category: r.category,
-        // @ts-expect-error supabase relation typing
-        labels: (r.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
-      }));
+      let normalized: ProductRow[] = (rows ?? []).map((r) => {
+        const row = r as any;
+        return {
+          id: row.id, name: row.name, sku: row.sku,
+          product_type: row.product_type, base_currency: row.base_currency,
+          stock_status: row.stock_status, status: row.status, updated_at: row.updated_at,
+          brand: row.brand ?? null,
+          category: row.category ?? null,
+          labels: (row.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
+        };
+      });
 
       // فیلتر برچسب‌ها سمت کلاینت (چون m2m)
       if (stableFilters.label_ids.length > 0) {
