@@ -27,6 +27,12 @@ import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
+import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
+import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
+import { Route as AppProductsBrandsRouteImport } from './routes/_app.products.brands'
+import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
+import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -117,6 +123,36 @@ const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   path: '/audit-logs',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProductsNewRoute = AppProductsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppProductsLabelsRoute = AppProductsLabelsRouteImport.update({
+  id: '/labels',
+  path: '/labels',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppProductsCategoriesRoute = AppProductsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppProductsBrandsRoute = AppProductsBrandsRouteImport.update({
+  id: '/brands',
+  path: '/brands',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppProductsIdRoute = AppProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProductsRoute,
+} as any)
+const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AppProductsIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,12 +166,18 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AppMessagesRoute
   '/price-lists': typeof AppPriceListsRoute
   '/pricing': typeof AppPricingRoute
-  '/products': typeof AppProductsRoute
+  '/products': typeof AppProductsRouteWithChildren
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRoute
   '/users': typeof AppUsersRoute
+  '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/brands': typeof AppProductsBrandsRoute
+  '/products/categories': typeof AppProductsCategoriesRoute
+  '/products/labels': typeof AppProductsLabelsRoute
+  '/products/new': typeof AppProductsNewRoute
+  '/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -149,12 +191,18 @@ export interface FileRoutesByTo {
   '/messages': typeof AppMessagesRoute
   '/price-lists': typeof AppPriceListsRoute
   '/pricing': typeof AppPricingRoute
-  '/products': typeof AppProductsRoute
+  '/products': typeof AppProductsRouteWithChildren
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRoute
   '/users': typeof AppUsersRoute
+  '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/brands': typeof AppProductsBrandsRoute
+  '/products/categories': typeof AppProductsCategoriesRoute
+  '/products/labels': typeof AppProductsLabelsRoute
+  '/products/new': typeof AppProductsNewRoute
+  '/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,12 +218,18 @@ export interface FileRoutesById {
   '/_app/messages': typeof AppMessagesRoute
   '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/pricing': typeof AppPricingRoute
-  '/_app/products': typeof AppProductsRoute
+  '/_app/products': typeof AppProductsRouteWithChildren
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/products/$id': typeof AppProductsIdRouteWithChildren
+  '/_app/products/brands': typeof AppProductsBrandsRoute
+  '/_app/products/categories': typeof AppProductsCategoriesRoute
+  '/_app/products/labels': typeof AppProductsLabelsRoute
+  '/_app/products/new': typeof AppProductsNewRoute
+  '/_app/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -197,6 +251,12 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/products/$id'
+    | '/products/brands'
+    | '/products/categories'
+    | '/products/labels'
+    | '/products/new'
+    | '/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -216,6 +276,12 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/products/$id'
+    | '/products/brands'
+    | '/products/categories'
+    | '/products/labels'
+    | '/products/new'
+    | '/products/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -236,6 +302,12 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/products/$id'
+    | '/_app/products/brands'
+    | '/_app/products/categories'
+    | '/_app/products/labels'
+    | '/_app/products/new'
+    | '/_app/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -373,8 +445,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditLogsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/products/new': {
+      id: '/_app/products/new'
+      path: '/new'
+      fullPath: '/products/new'
+      preLoaderRoute: typeof AppProductsNewRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/products/labels': {
+      id: '/_app/products/labels'
+      path: '/labels'
+      fullPath: '/products/labels'
+      preLoaderRoute: typeof AppProductsLabelsRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/products/categories': {
+      id: '/_app/products/categories'
+      path: '/categories'
+      fullPath: '/products/categories'
+      preLoaderRoute: typeof AppProductsCategoriesRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/products/brands': {
+      id: '/_app/products/brands'
+      path: '/brands'
+      fullPath: '/products/brands'
+      preLoaderRoute: typeof AppProductsBrandsRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/products/$id': {
+      id: '/_app/products/$id'
+      path: '/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof AppProductsIdRouteImport
+      parentRoute: typeof AppProductsRoute
+    }
+    '/_app/products/$id/edit': {
+      id: '/_app/products/$id/edit'
+      path: '/edit'
+      fullPath: '/products/$id/edit'
+      preLoaderRoute: typeof AppProductsIdEditRouteImport
+      parentRoute: typeof AppProductsIdRoute
+    }
   }
 }
+
+interface AppProductsIdRouteChildren {
+  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
+}
+
+const AppProductsIdRouteChildren: AppProductsIdRouteChildren = {
+  AppProductsIdEditRoute: AppProductsIdEditRoute,
+}
+
+const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
+  AppProductsIdRouteChildren,
+)
+
+interface AppProductsRouteChildren {
+  AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
+  AppProductsBrandsRoute: typeof AppProductsBrandsRoute
+  AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
+  AppProductsLabelsRoute: typeof AppProductsLabelsRoute
+  AppProductsNewRoute: typeof AppProductsNewRoute
+}
+
+const AppProductsRouteChildren: AppProductsRouteChildren = {
+  AppProductsIdRoute: AppProductsIdRouteWithChildren,
+  AppProductsBrandsRoute: AppProductsBrandsRoute,
+  AppProductsCategoriesRoute: AppProductsCategoriesRoute,
+  AppProductsLabelsRoute: AppProductsLabelsRoute,
+  AppProductsNewRoute: AppProductsNewRoute,
+}
+
+const AppProductsRouteWithChildren = AppProductsRoute._addFileChildren(
+  AppProductsRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAuditLogsRoute: typeof AppAuditLogsRoute
@@ -385,7 +531,7 @@ interface AppRouteChildren {
   AppMessagesRoute: typeof AppMessagesRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
   AppPricingRoute: typeof AppPricingRoute
-  AppProductsRoute: typeof AppProductsRoute
+  AppProductsRoute: typeof AppProductsRouteWithChildren
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
@@ -402,7 +548,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMessagesRoute: AppMessagesRoute,
   AppPriceListsRoute: AppPriceListsRoute,
   AppPricingRoute: AppPricingRoute,
-  AppProductsRoute: AppProductsRoute,
+  AppProductsRoute: AppProductsRouteWithChildren,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
