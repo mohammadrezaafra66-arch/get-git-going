@@ -32,6 +32,7 @@ import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.la
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
 import { Route as AppProductsBrandsRouteImport } from './routes/_app.products.brands'
 import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
+import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
@@ -150,6 +151,11 @@ const AppProductsIdRoute = AppProductsIdRouteImport.update({
   path: '/products/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingShippingRulesRoute = AppPricingShippingRulesRouteImport.update({
+  id: '/pricing/shipping-rules',
+  path: '/pricing/shipping-rules',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingCurrencyRatesRoute = AppPricingCurrencyRatesRouteImport.update({
   id: '/pricing/currency-rates',
   path: '/pricing/currency-rates',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/users': typeof AppUsersRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/_app/users': typeof AppUsersRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
   '/_app/products/brands': typeof AppProductsBrandsRoute
   '/_app/products/categories': typeof AppProductsCategoriesRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
+    | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/brands'
     | '/products/categories'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
+    | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/brands'
     | '/products/categories'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/_app/users'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
+    | '/_app/pricing/shipping-rules'
     | '/_app/products/$id'
     | '/_app/products/brands'
     | '/_app/products/categories'
@@ -504,6 +516,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProductsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/shipping-rules': {
+      id: '/_app/pricing/shipping-rules'
+      path: '/pricing/shipping-rules'
+      fullPath: '/pricing/shipping-rules'
+      preLoaderRoute: typeof AppPricingShippingRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/currency-rates': {
       id: '/_app/pricing/currency-rates'
       path: '/pricing/currency-rates'
@@ -555,6 +574,7 @@ interface AppRouteChildren {
   AppUsersRoute: typeof AppUsersRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
+  AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
   AppProductsBrandsRoute: typeof AppProductsBrandsRoute
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
@@ -579,6 +599,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsersRoute: AppUsersRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
+  AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,
   AppProductsBrandsRoute: AppProductsBrandsRoute,
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
