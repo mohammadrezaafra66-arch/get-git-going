@@ -17,6 +17,7 @@ import {
 
 interface Props {
   initial?: Partial<ProductFormValues>;
+  existingSku?: string | null;
   submitLabel?: string;
   loading?: boolean;
   onSubmit: (values: ProductFormValues) => Promise<void> | void;
@@ -37,7 +38,7 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
-export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -80,13 +81,15 @@ export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSu
           </Field>
           <Field label="کد محصول (SKU)">
             <Input
-              value={initial?.name ? "—" : ""}
+              value={existingSku ?? ""}
               dir="ltr"
               readOnly
               disabled
               placeholder="کد محصول بعد از ذخیره به‌صورت خودکار ساخته می‌شود"
             />
-            <p className="text-xs text-muted-foreground">کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.</p>
+            {!existingSku && (
+              <p className="text-xs text-muted-foreground">کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.</p>
+            )}
           </Field>
 
           <Field label="برند">
