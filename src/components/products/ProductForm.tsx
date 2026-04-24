@@ -1,0 +1,219 @@
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, Save, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
+import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
+import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
+import {
+  PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
+} from "@/lib/products/constants";
+
+interface Props {
+  initial?: Partial<ProductFormValues>;
+  submitLabel?: string;
+  loading?: boolean;
+  onSubmit: (values: ProductFormValues) => Promise<void> | void;
+  onCancel?: () => void;
+}
+
+const DEFAULTS: ProductFormValues = {
+  name: "",
+  sku: "",
+  brand_id: null,
+  category_id: null,
+  product_type: "iranian",
+  base_currency: "toman",
+  stock_status: "unknown",
+  status: "active",
+  unit: "",
+  description: "",
+  technical_notes: "",
+  label_ids: [],
+};
+
+export function ProductForm({ initial, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
+  const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => { setValues({ ...DEFAULTS, ...initial }); }, [initial]);
+
+  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
+  const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
+  const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite });
+
+  const set = <K extends keyof ProductFormValues>(k: K, v: ProductFormValues[K]) =>
+    setValues((s) => ({ ...s, [k]: v }));
+
+  const toggleLabel = (id: string) => {
+    setValues((s) => ({
+      ...s,
+      label_ids: s.label_ids.includes(id) ? s.label_ids.filter((x) => x !== id) : [...s.label_ids, id],
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = productSchema.safeParse(values);
+    if (!parsed.success) {
+      const flat: Record<string, string> = {};
+      for (const issue of parsed.error.issues) flat[issue.path.join(".")] = issue.message;
+      setErrors(flat);
+      toast.error("لطفاً خطاهای فرم را اصلاح کنید");
+      return;
+    }
+    setErrors({});
+    await onSubmit(parsed.data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Card>
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <Field label="نام محصول" required error={errors.name}>
+            <Input value={values.name} onChange={(e) => set("name", e.target.value)} placeholder="مثلاً: موتور القایی ۳ کیلووات" />
+          </Field>
+          <Field label="کد محصول (SKU)" error={errors.sku}>
+            <Input value={values.sku ?? ""} onChange={(e) => set("sku", e.target.value)} dir="ltr" placeholder="مثل AFR-1001" />
+          </Field>
+
+          <Field label="برند">
+            <Select value={values.brand_id ?? "__none"} onValueChange={(v) => set("brand_id", v === "__none" ? null : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب برند" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون برند —</SelectItem>
+                {(brandsQ.data ?? []).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="دسته‌بندی">
+            <Select value={values.category_id ?? "__none"} onValueChange={(v) => set("category_id", v === "__none" ? null : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب دسته" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون دسته —</SelectItem>
+                {(catsQ.data ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="نوع محصول">
+            <Select value={values.product_type} onValueChange={(v) => set("product_type", v as ProductFormValues["product_type"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="ارز مبنا">
+            <Select value={values.base_currency} onValueChange={(v) => set("base_currency", v as ProductFormValues["base_currency"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(BASE_CURRENCY_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="وضعیت موجودی">
+            <Select value={values.stock_status} onValueChange={(v) => set("stock_status", v as ProductFormValues["stock_status"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(STOCK_STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="وضعیت محصول">
+            <Select value={values.status} onValueChange={(v) => set("status", v as ProductFormValues["status"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRODUCT_STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="واحد">
+            <Input value={values.unit ?? ""} onChange={(e) => set("unit", e.target.value)} placeholder="مثلاً: عدد، متر، کیلوگرم" />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <Field label="توضیحات">
+            <Textarea value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3} />
+          </Field>
+          <Field label="یادداشت فنی">
+            <Textarea value={values.technical_notes ?? ""} onChange={(e) => set("technical_notes", e.target.value)} rows={3} />
+          </Field>
+
+          <div>
+            <Label className="mb-2 block">برچسب‌ها</Label>
+            {labelsQ.isLoading ? (
+              <div className="text-sm text-muted-foreground">در حال بارگذاری برچسب‌ها...</div>
+            ) : (labelsQ.data ?? []).length === 0 ? (
+              <div className="text-sm text-muted-foreground">هنوز برچسبی تعریف نشده.</div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {(labelsQ.data ?? []).map((l) => (
+                  <label key={l.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <Checkbox
+                      checked={values.label_ids.includes(l.id)}
+                      onCheckedChange={() => toggleLabel(l.id)}
+                    />
+                    <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: l.color }} />
+                    <span>{l.title}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            <X className="ms-1 h-4 w-4" />انصراف
+          </Button>
+        )}
+        <Button type="submit" disabled={loading}>
+          {loading ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Save className="ms-1 h-4 w-4" />}
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="flex items-center gap-1">
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
+      {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
