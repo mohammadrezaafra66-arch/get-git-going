@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, FileText, Users, DollarSign } from "lucide-react";
@@ -6,6 +7,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/dashboard")({
+  beforeLoad: async () => { await requirePermission("dashboard", "view"); },
   component: DashboardPage,
 });
 

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -8,15 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Users, ShieldAlert } from "lucide-react";
 import { ROLE_LABELS, type AppRole } from "@/lib/rbac/roles";
 import { formatDateFa } from "@/lib/i18n/formatters";
+import { requireAdmin } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/users")({
-  beforeLoad: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/login" });
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-    const isAdmin = roles?.some((r) => r.role === "admin");
-    if (!isAdmin) throw redirect({ to: "/unauthorized" });
-  },
+  beforeLoad: async () => { await requireAdmin(); },
   component: UsersPage,
 });
 

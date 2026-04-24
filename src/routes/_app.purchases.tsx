@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requirePermission } from "@/lib/rbac/route-guards";
 import { ShoppingBag } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export const Route = createFileRoute("/_app/purchases")({
+  beforeLoad: async () => { await requirePermission("purchases", "view"); },
   component: () => (
     <div className="space-y-6">
       <PageHeader title="خرید" description="ثبت و مدیریت سفارش‌های خرید از تأمین‌کنندگان" />
