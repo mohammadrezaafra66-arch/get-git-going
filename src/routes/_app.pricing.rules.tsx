@@ -200,6 +200,21 @@ function PricingRulesPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs text-muted-foreground">نوع قیمت فروش</Label>
+            <Select
+              value={filters.saleType}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, saleType: v })); setPage(0); }}
+            >
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه</SelectItem>
+                {(saleTypesQ.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs text-muted-foreground">وضعیت</Label>
             <Select
               value={filters.status}
@@ -245,6 +260,7 @@ function PricingRulesPage() {
                         <div className="text-[11px] text-muted-foreground">
                           اولویت: {formatNumber(r.priority)}
                           {r.settlement_type_id && settlementMap[r.settlement_type_id] ? ` · تسویه: ${settlementMap[r.settlement_type_id]}` : ""}
+                          {r.sale_price_type_id && saleTypeMap[r.sale_price_type_id] ? ` · قیمت: ${saleTypeMap[r.sale_price_type_id]}` : ""}
                         </div>
                       </div>
                       {r.is_active
@@ -287,6 +303,7 @@ function PricingRulesPage() {
                   <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                     <tr>
                       <th className="p-3 font-medium">نام قانون</th>
+                      <th className="p-3 font-medium">نوع قیمت فروش</th>
                       <th className="p-3 font-medium">نوع تسویه</th>
                       <th className="p-3 font-medium">قانون حمل</th>
                       <th className="p-3 font-medium">حاشیه سود</th>
@@ -299,6 +316,9 @@ function PricingRulesPage() {
                     {rows.map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
                         <td className="p-3 font-medium">{r.rule_name ?? r.name}</td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {r.sale_price_type_id ? saleTypeMap[r.sale_price_type_id] ?? "—" : "—"}
+                        </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {r.settlement_type_id ? settlementMap[r.settlement_type_id] ?? "—" : "—"}
                         </td>
