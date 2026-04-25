@@ -33,6 +33,7 @@ import { Route as AppProductsCategoriesRouteImport } from './routes/_app.product
 import { Route as AppProductsBrandsRouteImport } from './routes/_app.products.brands'
 import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
+import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
@@ -157,6 +158,11 @@ const AppPricingShippingRulesRoute = AppPricingShippingRulesRouteImport.update({
   path: '/pricing/shipping-rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingRulesRoute = AppPricingRulesRouteImport.update({
+  id: '/pricing/rules',
+  path: '/pricing/rules',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingPurchasePricesRoute =
   AppPricingPurchasePricesRouteImport.update({
     id: '/pricing/purchase-prices',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/brands': typeof AppProductsBrandsRoute
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/brands': typeof AppProductsBrandsRoute
@@ -258,6 +266,7 @@ export interface FileRoutesById {
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/_app/pricing/rules': typeof AppPricingRulesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
   '/_app/products/brands': typeof AppProductsBrandsRoute
@@ -289,6 +298,7 @@ export interface FileRouteTypes {
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
     | '/pricing/purchase-prices'
+    | '/pricing/rules'
     | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/brands'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
     | '/pricing/purchase-prices'
+    | '/pricing/rules'
     | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/brands'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
     | '/_app/pricing/purchase-prices'
+    | '/_app/pricing/rules'
     | '/_app/pricing/shipping-rules'
     | '/_app/products/$id'
     | '/_app/products/brands'
@@ -536,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingShippingRulesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/rules': {
+      id: '/_app/pricing/rules'
+      path: '/pricing/rules'
+      fullPath: '/pricing/rules'
+      preLoaderRoute: typeof AppPricingRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/purchase-prices': {
       id: '/_app/pricing/purchase-prices'
       path: '/pricing/purchase-prices'
@@ -595,6 +614,7 @@ interface AppRouteChildren {
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
+  AppPricingRulesRoute: typeof AppPricingRulesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
   AppProductsBrandsRoute: typeof AppProductsBrandsRoute
@@ -621,6 +641,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
+  AppPricingRulesRoute: AppPricingRulesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,
   AppProductsBrandsRoute: AppProductsBrandsRoute,

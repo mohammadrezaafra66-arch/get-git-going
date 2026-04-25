@@ -431,7 +431,7 @@ function RuleDialog({
     setLoading(true);
     try {
       const d = parsed.data;
-      const payload: Record<string, unknown> = {
+      const payload = {
         rule_name: d.rule_name,
         name: d.rule_name, // ستون legacy NOT NULL
         settlement_type_id: d.settlement_type_id,
@@ -447,7 +447,7 @@ function RuleDialog({
         if (error) throw error;
         toast.success("قانون به‌روزرسانی شد");
       } else {
-        const { error } = await supabase.from("pricing_rules").insert(payload as never);
+        const { error } = await supabase.from("pricing_rules").insert(payload);
         if (error) throw error;
         toast.success("قانون ثبت شد");
       }
