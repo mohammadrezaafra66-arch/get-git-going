@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft } from "lucide-react";
+import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +40,7 @@ function PricingHubPage() {
   const tiles = [
     { to: "/pricing/currency-rates", label: "نرخ ارز", icon: TrendingUp, desc: "ثبت نرخ روز دلار و درهم", enabled: true },
     { to: "/pricing/purchase-prices", label: "قیمت خرید", icon: Tag, desc: "ثبت و مشاهده قیمت‌های خرید", enabled: true },
+    { to: "/pricing/sale-price-types", label: "انواع قیمت فروش", icon: Layers, desc: "تعریف نقدی، چکی، همکار و ...", enabled: true },
     { to: "/pricing/rules", label: "قوانین قیمت‌گذاری", icon: FileText, desc: "تعریف قوانین حاشیه سود", enabled: true },
     { to: "/pricing/shipping-rules", label: "قوانین حمل", icon: Truck, desc: "هزینه حمل بر اساس شرایط", enabled: true },
     { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: AlertCircle, desc: "مدیریت دلایل ثبت قیمت", enabled: true },
