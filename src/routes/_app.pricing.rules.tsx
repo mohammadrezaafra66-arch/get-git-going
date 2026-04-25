@@ -24,7 +24,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { pricingRuleSchema, type PricingRuleFormValues } from "@/lib/pricing/schemas";
-import { fetchSettlementTypes, fetchShippingRulesLite } from "@/lib/pricing/queries";
+import { fetchSettlementTypes, fetchShippingRulesLite, fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/rules")({
@@ -42,6 +42,7 @@ interface PRule {
   margin_value: number | null;
   fixed_margin_value: number | null;
   settlement_type_id: string | null;
+  sale_price_type_id: string | null;
   shipping_cost_rule_id: string | null;
   priority: number;
   is_active: boolean;
@@ -51,10 +52,11 @@ interface PRule {
 type Filters = {
   search: string;
   settlement: string;
+  saleType: string;
   status: "all" | "active" | "inactive";
 };
 
-const DEFAULT_FILTERS: Filters = { search: "", settlement: "all", status: "all" };
+const DEFAULT_FILTERS: Filters = { search: "", settlement: "all", saleType: "all", status: "all" };
 
 function PricingRulesPage() {
   const { roles } = useAuth();
@@ -77,6 +79,11 @@ function PricingRulesPage() {
     queryFn: fetchShippingRulesLite,
     staleTime: 60_000,
   });
+  const saleTypesQ = useQuery({
+    queryKey: ["sale-price-types", "active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 60_000,
+  });
 
   const settlementMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -88,14 +95,19 @@ function PricingRulesPage() {
     for (const s of shippingQ.data ?? []) m[s.id] = s.title;
     return m;
   }, [shippingQ.data]);
+  const saleTypeMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of saleTypesQ.data ?? []) m[s.id] = s.title;
+    return m;
+  }, [saleTypesQ.data]);
 
   const listQ = useQuery({
-    queryKey: ["pricing-rules", "list", search, filters.settlement, filters.status, page],
+    queryKey: ["pricing-rules", "list", search, filters.settlement, filters.saleType, filters.status, page],
     queryFn: async () => {
       let q = supabase
         .from("pricing_rules")
         .select(
-          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, shipping_cost_rule_id, priority, is_active, created_at",
+          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, shipping_cost_rule_id, priority, is_active, created_at",
           { count: "exact" },
         )
         .order("priority", { ascending: true })
@@ -106,6 +118,7 @@ function PricingRulesPage() {
         q = q.or(`rule_name.ilike.%${safe}%,name.ilike.%${safe}%`);
       }
       if (filters.settlement !== "all") q = q.eq("settlement_type_id", filters.settlement);
+      if (filters.saleType !== "all") q = q.eq("sale_price_type_id", filters.saleType);
       if (filters.status === "active") q = q.eq("is_active", true);
       if (filters.status === "inactive") q = q.eq("is_active", false);
       const { data, error, count } = await q;
