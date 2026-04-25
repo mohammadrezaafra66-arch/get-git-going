@@ -24,7 +24,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { pricingRuleSchema, type PricingRuleFormValues } from "@/lib/pricing/schemas";
-import { fetchSettlementTypes, fetchShippingRulesLite } from "@/lib/pricing/queries";
+import { fetchSettlementTypes, fetchShippingRulesLite, fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/rules")({
@@ -42,6 +42,7 @@ interface PRule {
   margin_value: number | null;
   fixed_margin_value: number | null;
   settlement_type_id: string | null;
+  sale_price_type_id: string | null;
   shipping_cost_rule_id: string | null;
   priority: number;
   is_active: boolean;
@@ -51,10 +52,11 @@ interface PRule {
 type Filters = {
   search: string;
   settlement: string;
+  saleType: string;
   status: "all" | "active" | "inactive";
 };
 
-const DEFAULT_FILTERS: Filters = { search: "", settlement: "all", status: "all" };
+const DEFAULT_FILTERS: Filters = { search: "", settlement: "all", saleType: "all", status: "all" };
 
 function PricingRulesPage() {
   const { roles } = useAuth();
@@ -77,6 +79,11 @@ function PricingRulesPage() {
     queryFn: fetchShippingRulesLite,
     staleTime: 60_000,
   });
+  const saleTypesQ = useQuery({
+    queryKey: ["sale-price-types", "active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 60_000,
+  });
 
   const settlementMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -88,14 +95,19 @@ function PricingRulesPage() {
     for (const s of shippingQ.data ?? []) m[s.id] = s.title;
     return m;
   }, [shippingQ.data]);
+  const saleTypeMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const s of saleTypesQ.data ?? []) m[s.id] = s.title;
+    return m;
+  }, [saleTypesQ.data]);
 
   const listQ = useQuery({
-    queryKey: ["pricing-rules", "list", search, filters.settlement, filters.status, page],
+    queryKey: ["pricing-rules", "list", search, filters.settlement, filters.saleType, filters.status, page],
     queryFn: async () => {
       let q = supabase
         .from("pricing_rules")
         .select(
-          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, shipping_cost_rule_id, priority, is_active, created_at",
+          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, shipping_cost_rule_id, priority, is_active, created_at",
           { count: "exact" },
         )
         .order("priority", { ascending: true })
@@ -106,6 +118,7 @@ function PricingRulesPage() {
         q = q.or(`rule_name.ilike.%${safe}%,name.ilike.%${safe}%`);
       }
       if (filters.settlement !== "all") q = q.eq("settlement_type_id", filters.settlement);
+      if (filters.saleType !== "all") q = q.eq("sale_price_type_id", filters.saleType);
       if (filters.status === "active") q = q.eq("is_active", true);
       if (filters.status === "inactive") q = q.eq("is_active", false);
       const { data, error, count } = await q;
@@ -187,6 +200,21 @@ function PricingRulesPage() {
             </Select>
           </div>
           <div>
+            <Label className="text-xs text-muted-foreground">نوع قیمت فروش</Label>
+            <Select
+              value={filters.saleType}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, saleType: v })); setPage(0); }}
+            >
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه</SelectItem>
+                {(saleTypesQ.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs text-muted-foreground">وضعیت</Label>
             <Select
               value={filters.status}
@@ -232,6 +260,7 @@ function PricingRulesPage() {
                         <div className="text-[11px] text-muted-foreground">
                           اولویت: {formatNumber(r.priority)}
                           {r.settlement_type_id && settlementMap[r.settlement_type_id] ? ` · تسویه: ${settlementMap[r.settlement_type_id]}` : ""}
+                          {r.sale_price_type_id && saleTypeMap[r.sale_price_type_id] ? ` · قیمت: ${saleTypeMap[r.sale_price_type_id]}` : ""}
                         </div>
                       </div>
                       {r.is_active
@@ -274,6 +303,7 @@ function PricingRulesPage() {
                   <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                     <tr>
                       <th className="p-3 font-medium">نام قانون</th>
+                      <th className="p-3 font-medium">نوع قیمت فروش</th>
                       <th className="p-3 font-medium">نوع تسویه</th>
                       <th className="p-3 font-medium">قانون حمل</th>
                       <th className="p-3 font-medium">حاشیه سود</th>
@@ -286,6 +316,9 @@ function PricingRulesPage() {
                     {rows.map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
                         <td className="p-3 font-medium">{r.rule_name ?? r.name}</td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {r.sale_price_type_id ? saleTypeMap[r.sale_price_type_id] ?? "—" : "—"}
+                        </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {r.settlement_type_id ? settlementMap[r.settlement_type_id] ?? "—" : "—"}
                         </td>
@@ -353,6 +386,7 @@ function PricingRulesPage() {
         editing={editing}
         settlements={settlementsQ.data ?? []}
         shippings={shippingQ.data ?? []}
+        saleTypes={saleTypesQ.data ?? []}
         onSaved={refresh}
       />
     </div>
@@ -369,13 +403,14 @@ function formatMargin(r: PRule): string {
 }
 
 function RuleDialog({
-  open, onOpenChange, editing, settlements, shippings, onSaved,
+  open, onOpenChange, editing, settlements, shippings, saleTypes, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: PRule | null;
   settlements: { id: string; title: string }[];
   shippings: { id: string; title: string }[];
+  saleTypes: { id: string; title: string }[];
   onSaved: () => void;
 }) {
   const emptyValues: PricingRuleFormValues = {
@@ -386,6 +421,7 @@ function RuleDialog({
     min_purchase_price_toman: null,
     max_purchase_price_toman: null,
     settlement_type_id: null,
+    sale_price_type_id: null,
     margin_type: "percent",
     margin_value: 0,
     fixed_margin_value: null,
@@ -407,6 +443,7 @@ function RuleDialog({
         min_purchase_price_toman: null,
         max_purchase_price_toman: null,
         settlement_type_id: editing.settlement_type_id,
+        sale_price_type_id: editing.sale_price_type_id,
         margin_type: editing.margin_type,
         margin_value: Number(editing.margin_value ?? 0),
         fixed_margin_value: editing.fixed_margin_value != null ? Number(editing.fixed_margin_value) : null,
@@ -435,6 +472,7 @@ function RuleDialog({
         rule_name: d.rule_name,
         name: d.rule_name, // ستون legacy NOT NULL
         settlement_type_id: d.settlement_type_id,
+        sale_price_type_id: d.sale_price_type_id,
         shipping_cost_rule_id: d.shipping_cost_rule_id,
         margin_type: d.margin_type,
         margin_value: d.margin_value,
@@ -486,6 +524,23 @@ function RuleDialog({
                 {settlements.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label>نوع قیمت فروش</Label>
+            <Select
+              value={values.sale_price_type_id ?? "none"}
+              onValueChange={(v) => setValues((s) => ({ ...s, sale_price_type_id: v === "none" ? null : v }))}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">—</SelectItem>
+                {saleTypes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              مشخص می‌کند این قانون برای کدام نوع قیمت فروش (نقدی/چکی/همکار/...) است.
+            </p>
           </div>
 
           <div>

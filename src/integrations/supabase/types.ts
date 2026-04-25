@@ -400,6 +400,7 @@ export type Database = {
           purchase_price_id: string | null
           purchase_price_toman: number
           rounded_sale_price: number
+          sale_price_type_id: string | null
           settlement_type_id: string | null
           shipping_cost: number
         }
@@ -418,6 +419,7 @@ export type Database = {
           purchase_price_id?: string | null
           purchase_price_toman: number
           rounded_sale_price: number
+          sale_price_type_id?: string | null
           settlement_type_id?: string | null
           shipping_cost?: number
         }
@@ -436,6 +438,7 @@ export type Database = {
           purchase_price_id?: string | null
           purchase_price_toman?: number
           rounded_sale_price?: number
+          sale_price_type_id?: string | null
           settlement_type_id?: string | null
           shipping_cost?: number
         }
@@ -459,6 +462,13 @@ export type Database = {
             columns: ["purchase_price_id"]
             isOneToOne: false
             referencedRelation: "purchase_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_calculation_snapshots_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
             referencedColumns: ["id"]
           },
           {
@@ -590,6 +600,7 @@ export type Database = {
           priority: number
           product_type: Database["public"]["Enums"]["product_type"] | null
           rule_name: string | null
+          sale_price_type_id: string | null
           settlement_type_id: string | null
           shipping_cost_rule_id: string | null
           updated_at: string
@@ -615,6 +626,7 @@ export type Database = {
           priority?: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
           rule_name?: string | null
+          sale_price_type_id?: string | null
           settlement_type_id?: string | null
           shipping_cost_rule_id?: string | null
           updated_at?: string
@@ -640,12 +652,20 @@ export type Database = {
           priority?: number
           product_type?: Database["public"]["Enums"]["product_type"] | null
           rule_name?: string | null
+          sale_price_type_id?: string | null
           settlement_type_id?: string | null
           shipping_cost_rule_id?: string | null
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pricing_rules_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pricing_rules_settlement_type_id_fkey"
             columns: ["settlement_type_id"]
@@ -767,6 +787,7 @@ export type Database = {
           new_sale_price: number
           old_sale_price: number | null
           product_id: string
+          sale_price_type_id: string | null
           snapshot_id: string | null
         }
         Insert: {
@@ -778,6 +799,7 @@ export type Database = {
           new_sale_price: number
           old_sale_price?: number | null
           product_id: string
+          sale_price_type_id?: string | null
           snapshot_id?: string | null
         }
         Update: {
@@ -789,6 +811,7 @@ export type Database = {
           new_sale_price?: number
           old_sale_price?: number | null
           product_id?: string
+          sale_price_type_id?: string | null
           snapshot_id?: string | null
         }
         Relationships: [
@@ -797,6 +820,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sale_price_history_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
             referencedColumns: ["id"]
           },
           {
@@ -1089,6 +1119,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sale_price_types: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       settlement_types: {
         Row: {

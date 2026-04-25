@@ -36,6 +36,7 @@ export const pricingRuleSchema = z
     min_purchase_price_toman: z.coerce.number().nonnegative().nullable().optional(),
     max_purchase_price_toman: z.coerce.number().nonnegative().nullable().optional(),
     settlement_type_id: z.string().uuid().nullable().optional(),
+    sale_price_type_id: z.string().uuid().nullable().optional(),
     margin_type: z.enum(["fixed", "percent", "mixed"]),
     margin_value: z.coerce.number().nonnegative("مقدار حاشیه نمی‌تواند منفی باشد"),
     fixed_margin_value: z.coerce.number().nonnegative().nullable().optional(),
@@ -51,6 +52,20 @@ export const pricingRuleSchema = z
     { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price_toman"] }
   );
 export type PricingRuleFormValues = z.infer<typeof pricingRuleSchema>;
+
+export const salePriceTypeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(2, "کد الزامی است")
+    .max(60)
+    .regex(/^[a-z0-9_]+$/i, "کد فقط شامل حروف انگلیسی، عدد و _ باشد"),
+  title: z.string().trim().min(1, "عنوان الزامی است").max(120),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+  sort_order: z.coerce.number().int().min(0).default(100),
+  is_active: z.boolean().default(true),
+});
+export type SalePriceTypeFormValues = z.infer<typeof salePriceTypeSchema>;
 
 export const shippingRuleSchema = z
   .object({
