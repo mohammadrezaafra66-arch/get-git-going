@@ -39,7 +39,7 @@ function PricingHubPage() {
 
   const tiles = [
     { to: "/pricing/currency-rates", label: "نرخ ارز", icon: TrendingUp, desc: "ثبت نرخ روز دلار و درهم", enabled: true },
-    { to: "/pricing/purchase-prices", label: "قیمت خرید", icon: Tag, desc: "ثبت و مشاهده قیمت‌های خرید", enabled: false },
+    { to: "/pricing/purchase-prices", label: "قیمت خرید", icon: Tag, desc: "ثبت و مشاهده قیمت‌های خرید", enabled: true },
     { to: "/pricing/rules", label: "قوانین قیمت‌گذاری", icon: FileText, desc: "تعریف قوانین حاشیه سود", enabled: false },
     { to: "/pricing/shipping-rules", label: "قوانین حمل", icon: Truck, desc: "هزینه حمل بر اساس شرایط", enabled: true },
     { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: AlertCircle, desc: "مدیریت دلایل ثبت قیمت", enabled: true },
