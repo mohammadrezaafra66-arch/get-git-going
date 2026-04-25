@@ -386,6 +386,7 @@ function PricingRulesPage() {
         editing={editing}
         settlements={settlementsQ.data ?? []}
         shippings={shippingQ.data ?? []}
+        saleTypes={saleTypesQ.data ?? []}
         onSaved={refresh}
       />
     </div>
@@ -402,13 +403,14 @@ function formatMargin(r: PRule): string {
 }
 
 function RuleDialog({
-  open, onOpenChange, editing, settlements, shippings, onSaved,
+  open, onOpenChange, editing, settlements, shippings, saleTypes, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: PRule | null;
   settlements: { id: string; title: string }[];
   shippings: { id: string; title: string }[];
+  saleTypes: { id: string; title: string }[];
   onSaved: () => void;
 }) {
   const emptyValues: PricingRuleFormValues = {
@@ -419,6 +421,7 @@ function RuleDialog({
     min_purchase_price_toman: null,
     max_purchase_price_toman: null,
     settlement_type_id: null,
+    sale_price_type_id: null,
     margin_type: "percent",
     margin_value: 0,
     fixed_margin_value: null,
@@ -440,6 +443,7 @@ function RuleDialog({
         min_purchase_price_toman: null,
         max_purchase_price_toman: null,
         settlement_type_id: editing.settlement_type_id,
+        sale_price_type_id: editing.sale_price_type_id,
         margin_type: editing.margin_type,
         margin_value: Number(editing.margin_value ?? 0),
         fixed_margin_value: editing.fixed_margin_value != null ? Number(editing.fixed_margin_value) : null,
@@ -468,6 +472,7 @@ function RuleDialog({
         rule_name: d.rule_name,
         name: d.rule_name, // ستون legacy NOT NULL
         settlement_type_id: d.settlement_type_id,
+        sale_price_type_id: d.sale_price_type_id,
         shipping_cost_rule_id: d.shipping_cost_rule_id,
         margin_type: d.margin_type,
         margin_value: d.margin_value,
@@ -519,6 +524,23 @@ function RuleDialog({
                 {settlements.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label>نوع قیمت فروش</Label>
+            <Select
+              value={values.sale_price_type_id ?? "none"}
+              onValueChange={(v) => setValues((s) => ({ ...s, sale_price_type_id: v === "none" ? null : v }))}
+            >
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">—</SelectItem>
+                {saleTypes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              مشخص می‌کند این قانون برای کدام نوع قیمت فروش (نقدی/چکی/همکار/...) است.
+            </p>
           </div>
 
           <div>
