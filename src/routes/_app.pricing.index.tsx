@@ -44,7 +44,7 @@ function PricingHubPage() {
     { to: "/pricing/rules", label: "قوانین قیمت‌گذاری", icon: FileText, desc: "تعریف قوانین حاشیه سود", enabled: true },
     { to: "/pricing/shipping-rules", label: "قوانین حمل", icon: Truck, desc: "هزینه حمل بر اساس شرایط", enabled: true },
     { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: AlertCircle, desc: "مدیریت دلایل ثبت قیمت", enabled: true },
-    { to: "/pricing/calculator", label: "تست محاسبه قیمت", icon: Calculator, desc: "اجرای موتور قیمت‌گذاری", enabled: false },
+    { to: "/pricing/calculator", label: "تست محاسبه قیمت", icon: Calculator, desc: "اجرای موتور قیمت‌گذاری", enabled: true },
   ] as const;
 
   return (

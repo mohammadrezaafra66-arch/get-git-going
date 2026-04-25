@@ -2,23 +2,27 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   fetchLatestCurrencyRate,
   fetchLatestPurchasePrice,
-  fetchLatestSalePrice,
   fetchProductLite,
 } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
 
-export interface PricingEngineOptions {
+export interface PricingEngineInput {
+  product_id: string;
+  sale_price_type_id: string;
   settlement_type_id?: string | null;
-  /** اگر مشخص شد، به جای آخرین قیمت خرید همین رکورد استفاده می‌شود. */
   purchase_price_id?: string | null;
-  /** ذخیره snapshot در دیتابیس. */
   force_snapshot?: boolean;
-  calculated_by?: string | null;
 }
 
 export interface PricingBreakdown {
-  product: { id: string; name: string; sku: string | null; product_type: "iranian" | "foreign" };
+  product_id: string;
+  product_name: string;
+  product_sku: string | null;
   purchase_price_id: string;
+  pricing_rule_id: string;
+  pricing_rule_name: string;
+  sale_price_type_id: string;
+  settlement_type_id: string | null;
   input_purchase_price: number;
   input_currency: CurrencyCode;
   currency_rate: number;
@@ -26,11 +30,11 @@ export interface PricingBreakdown {
   shipping_cost: number;
   shipping_rule: { id: string; title: string } | null;
   margin_amount: number;
-  pricing_rule: { id: string; rule_name: string; margin_type: string; margin_value: number; fixed_margin_value: number | null };
+  margin_type: "fixed" | "percent" | "mixed";
+  margin_value: number;
+  fixed_margin_value: number | null;
   final_sale_price: number;
   rounded_sale_price: number;
-  settlement_type_id: string | null;
-  /** توضیح قابل خواندن خط به خط. */
   steps: string[];
 }
 
@@ -39,6 +43,7 @@ export interface PricingEngineResult {
   breakdown: PricingBreakdown;
   snapshot_id: string | null;
   history_id: string | null;
+  old_sale_price: number | null;
 }
 
 export class PricingError extends Error {
@@ -46,40 +51,37 @@ export class PricingError extends Error {
   constructor(code: string, message: string) {
     super(message);
     this.code = code;
+    this.name = "PricingError";
   }
 }
 
-function fmt(n: number): string {
-  return n.toLocaleString("en-US");
-}
+const fmt = (n: number) => n.toLocaleString("en-US");
 
 /**
  * موتور قیمت‌گذاری افراکالا.
  * فرمول کلی:
  *   purchase_price_toman = input_purchase_price * currency_rate
- *   shipping_cost = (fixed) cost_value یا (percent) purchase_price_toman * cost_value/100
- *   margin_amount =
- *     fixed   → margin_value
- *     percent → purchase_price_toman * margin_value / 100
- *     mixed   → purchase_price_toman * margin_value / 100 + (fixed_margin_value ?? 0)
- *   final_sale_price = purchase_price_toman + shipping_cost + margin_amount
- *   rounded_sale_price = roundSalePrice(final_sale_price)
+ *   shipping_cost        = fixed | percent of purchase_price_toman
+ *   margin_amount        = fixed | percent | mixed
+ *   final_sale_price     = purchase_price_toman + shipping_cost + margin_amount
+ *   rounded_sale_price   = roundSalePrice(final_sale_price)
  */
-export async function calculateSalePrice(
-  productId: string,
-  options: PricingEngineOptions = {}
-): Promise<PricingEngineResult> {
-  const product = await fetchProductLite(productId);
+export async function calculateSalePrice(input: PricingEngineInput): Promise<PricingEngineResult> {
+  if (!input.product_id) throw new PricingError("PRODUCT_REQUIRED", "محصول الزامی است.");
+  if (!input.sale_price_type_id) throw new PricingError("SALE_PRICE_TYPE_REQUIRED", "نوع قیمت فروش الزامی است.");
+
+  // 1) محصول
+  const product = await fetchProductLite(input.product_id);
   if (!product) throw new PricingError("PRODUCT_NOT_FOUND", "محصول مورد نظر یافت نشد.");
 
-  // 1) قیمت خرید
-  type PurchaseRec = { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode };
-  let purchase: PurchaseRec | null = null;
-  if (options.purchase_price_id) {
+  // 2) قیمت خرید
+  type Purchase = { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode };
+  let purchase: Purchase | null = null;
+  if (input.purchase_price_id) {
     const { data, error } = await supabase
       .from("purchase_prices")
-      .select("id, product_id, supplier_id, purchase_price, currency, is_active")
-      .eq("id", options.purchase_price_id)
+      .select("id, product_id, supplier_id, purchase_price, currency, is_active, effective_at, expires_at")
+      .eq("id", input.purchase_price_id)
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new PricingError("PURCHASE_NOT_FOUND", "قیمت خرید انتخاب‌شده یافت نشد.");
@@ -91,7 +93,7 @@ export async function calculateSalePrice(
       currency: data.currency as CurrencyCode,
     };
   } else {
-    const latest = await fetchLatestPurchasePrice(productId);
+    const latest = await fetchLatestPurchasePrice(input.product_id);
     if (latest) {
       purchase = {
         id: latest.id,
@@ -103,10 +105,10 @@ export async function calculateSalePrice(
     }
   }
   if (!purchase) {
-    throw new PricingError("NO_PURCHASE_PRICE", "برای این محصول هنوز قیمت خرید ثبت نشده است.");
+    throw new PricingError("NO_PURCHASE_PRICE", "برای این محصول هنوز قیمت خرید معتبر ثبت نشده است.");
   }
 
-  // 2) نرخ ارز
+  // 3) نرخ ارز
   let currency_rate = 1;
   if (purchase.currency !== "toman") {
     const rate = await fetchLatestCurrencyRate(purchase.currency);
@@ -116,21 +118,25 @@ export async function calculateSalePrice(
   const input_purchase_price = Number(purchase.purchase_price);
   const purchase_price_toman = Math.round(input_purchase_price * currency_rate);
 
-  // 3) قانون قیمت‌گذاری مناسب (priority asc → کمتر = اولویت بیشتر)
+  // 4) قانون قیمت‌گذاری
   const { data: rules, error: rulesErr } = await supabase
     .from("pricing_rules")
-    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, margin_type, margin_value, fixed_margin_value, shipping_cost_rule_id, priority, is_active")
+    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, shipping_cost_rule_id, priority, created_at, is_active")
     .eq("is_active", true)
     .order("priority", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(500);
   if (rulesErr) throw rulesErr;
 
   const matchedRule = (rules ?? []).find((r: any) => {
+    if (r.sale_price_type_id && r.sale_price_type_id !== input.sale_price_type_id) return false;
+    if (r.settlement_type_id) {
+      if (!input.settlement_type_id) return false;
+      if (r.settlement_type_id !== input.settlement_type_id) return false;
+    }
     if (r.product_type && r.product_type !== product.product_type) return false;
     if (r.category_id && r.category_id !== product.category_id) return false;
     if (r.brand_id && r.brand_id !== product.brand_id) return false;
-    if (r.settlement_type_id && options.settlement_type_id && r.settlement_type_id !== options.settlement_type_id) return false;
-    if (r.settlement_type_id && !options.settlement_type_id) return false;
     if (r.min_purchase_price_toman != null && purchase_price_toman < Number(r.min_purchase_price_toman)) return false;
     if (r.max_purchase_price_toman != null && purchase_price_toman > Number(r.max_purchase_price_toman)) return false;
     if (!r.margin_type || r.margin_value == null) return false;
@@ -138,19 +144,20 @@ export async function calculateSalePrice(
   });
 
   if (!matchedRule) throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این محصول پیدا نشد.");
+  const m = matchedRule as any;
 
-  // 4) قانون هزینه حمل
+  // 5) قانون حمل
   let shipping_cost = 0;
   let shipping_rule_used: { id: string; title: string } | null = null;
-  let candidateShippingRules: any[] = [];
-  if ((matchedRule as any).shipping_cost_rule_id) {
+  let candidates: any[] = [];
+  if (m.shipping_cost_rule_id) {
     const { data, error } = await supabase
       .from("shipping_cost_rules")
       .select("id, title, cost_type, cost_value, product_type, category_id, min_purchase_price, max_purchase_price, is_active, priority")
-      .eq("id", (matchedRule as any).shipping_cost_rule_id)
+      .eq("id", m.shipping_cost_rule_id)
       .maybeSingle();
     if (error) throw error;
-    if (data && data.is_active) candidateShippingRules = [data];
+    if (data && data.is_active) candidates = [data];
   } else {
     const { data, error } = await supabase
       .from("shipping_cost_rules")
@@ -159,10 +166,9 @@ export async function calculateSalePrice(
       .order("priority", { ascending: true })
       .limit(200);
     if (error) throw error;
-    candidateShippingRules = data ?? [];
+    candidates = data ?? [];
   }
-
-  const sRule = candidateShippingRules.find((s: any) => {
+  const sRule = candidates.find((s: any) => {
     if (s.product_type && s.product_type !== product.product_type) return false;
     if (s.category_id && s.category_id !== product.category_id) return false;
     if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
@@ -176,8 +182,7 @@ export async function calculateSalePrice(
       : Math.round(Number(sRule.cost_value));
   }
 
-  // 5) margin
-  const m = matchedRule as any;
+  // 6) سود
   const margin_value = Number(m.margin_value);
   const fixed_margin_value = m.fixed_margin_value == null ? null : Number(m.fixed_margin_value);
   let margin_amount = 0;
@@ -189,29 +194,35 @@ export async function calculateSalePrice(
     margin_amount = Math.round((purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0));
   }
 
+  // 7) قیمت نهایی + گرد کردن
   const final_sale_price = purchase_price_toman + shipping_cost + margin_amount;
   const rounded_sale_price = roundSalePrice(final_sale_price);
 
-  const steps: string[] = [];
-  steps.push(`قیمت خرید ورودی: ${fmt(input_purchase_price)} ${purchase.currency}`);
-  steps.push(`نرخ ارز: ${fmt(currency_rate)} → قیمت خرید تومانی: ${fmt(purchase_price_toman)} تومان`);
-  steps.push(
+  const steps: string[] = [
+    `قیمت خرید ورودی: ${fmt(input_purchase_price)} ${purchase.currency}`,
+    purchase.currency === "toman"
+      ? `ارز پایه تومان است؛ نرخ ارز ۱`
+      : `نرخ ارز: ${fmt(currency_rate)} → قیمت خرید تومانی: ${fmt(purchase_price_toman)} تومان`,
     sRule
-      ? `هزینه حمل (${sRule.title} / ${sRule.cost_type === "percent" ? `%${margin_value}` : "ثابت"}): ${fmt(shipping_cost)} تومان`
-      : "هزینه حمل: ۰ (قانونی منطبق نشد)"
-  );
-  steps.push(
+      ? `هزینه حمل (${sRule.title}): ${fmt(shipping_cost)} تومان`
+      : "هزینه حمل: ۰ (قانون منطبق پیدا نشد)",
     m.margin_type === "fixed"
-      ? `حاشیه سود (مبلغ ثابت): ${fmt(margin_amount)} تومان`
+      ? `سود (مبلغ ثابت): ${fmt(margin_amount)} تومان`
       : m.margin_type === "percent"
-        ? `حاشیه سود (%${margin_value}): ${fmt(margin_amount)} تومان`
-        : `حاشیه سود (ترکیبی %${margin_value} + ${fmt(fixed_margin_value ?? 0)}): ${fmt(margin_amount)} تومان`
-  );
-  steps.push(`قیمت نهایی: ${fmt(final_sale_price)} → گرد شده: ${fmt(rounded_sale_price)} تومان`);
+        ? `سود (%${margin_value}): ${fmt(margin_amount)} تومان`
+        : `سود (ترکیبی %${margin_value} + ${fmt(fixed_margin_value ?? 0)}): ${fmt(margin_amount)} تومان`,
+    `قیمت نهایی: ${fmt(final_sale_price)} → گرد شده: ${fmt(rounded_sale_price)} تومان`,
+  ];
 
   const breakdown: PricingBreakdown = {
-    product: { id: product.id, name: product.name, sku: product.sku, product_type: product.product_type as "iranian" | "foreign" },
+    product_id: product.id,
+    product_name: product.name,
+    product_sku: product.sku,
     purchase_price_id: purchase.id,
+    pricing_rule_id: m.id,
+    pricing_rule_name: m.rule_name ?? m.name ?? "—",
+    sale_price_type_id: input.sale_price_type_id,
+    settlement_type_id: input.settlement_type_id ?? null,
     input_purchase_price,
     input_currency: purchase.currency,
     currency_rate,
@@ -219,30 +230,30 @@ export async function calculateSalePrice(
     shipping_cost,
     shipping_rule: shipping_rule_used,
     margin_amount,
-    pricing_rule: {
-      id: m.id,
-      rule_name: m.rule_name ?? m.name ?? "—",
-      margin_type: m.margin_type,
-      margin_value,
-      fixed_margin_value,
-    },
+    margin_type: m.margin_type,
+    margin_value,
+    fixed_margin_value,
     final_sale_price,
     rounded_sale_price,
-    settlement_type_id: options.settlement_type_id ?? null,
     steps,
   };
 
   let snapshot_id: string | null = null;
   let history_id: string | null = null;
+  let old_sale_price: number | null = null;
 
-  if (options.force_snapshot) {
+  if (input.force_snapshot) {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id ?? null;
+
     const { data: snap, error: snapErr } = await supabase
       .from("price_calculation_snapshots")
       .insert({
         product_id: product.id,
         purchase_price_id: purchase.id,
         pricing_rule_id: m.id,
-        settlement_type_id: options.settlement_type_id ?? null,
+        settlement_type_id: input.settlement_type_id ?? null,
+        sale_price_type_id: input.sale_price_type_id,
         input_purchase_price,
         input_currency: purchase.currency,
         currency_rate,
@@ -252,32 +263,43 @@ export async function calculateSalePrice(
         final_sale_price,
         rounded_sale_price,
         calculation_details: breakdown as any,
-        calculated_by: options.calculated_by ?? null,
+        calculated_by: uid,
       })
       .select("id")
       .single();
     if (snapErr) throw snapErr;
     snapshot_id = snap.id;
 
-    // اگر قیمت تغییر کرده، history ثبت کن
-    const last = await fetchLatestSalePrice(product.id);
-    // last == آخرین snapshot قبل از این یکی → چون snapshot جدید لحظاتی پیش ساخته شد،
-    // باید بررسی کنیم که snapshot قبلی متفاوت باشد. پس از last در میان snapshotهای قبل از این جدید استفاده می‌کنیم:
-    // برای سادگی: history را وقتی ثبت کن که rounded_sale_price با last فرق دارد یا last وجود ندارد.
-    const oldPrice = last && last.id !== snap.id ? Number(last.rounded_sale_price) : null;
-    if (oldPrice == null || oldPrice !== rounded_sale_price) {
-      const change_amount = oldPrice == null ? null : rounded_sale_price - oldPrice;
-      const change_percent = oldPrice == null || oldPrice === 0 ? null : Math.round(((rounded_sale_price - oldPrice) / oldPrice) * 10000) / 100;
+    // آخرین قیمت فروش ثبت‌شده برای همان محصول و همان sale_price_type
+    const { data: lastHist, error: lastErr } = await supabase
+      .from("product_sale_price_history")
+      .select("id, new_sale_price")
+      .eq("product_id", product.id)
+      .eq("sale_price_type_id", input.sale_price_type_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastErr) throw lastErr;
+
+    old_sale_price = lastHist ? Number(lastHist.new_sale_price) : null;
+
+    if (old_sale_price === null || old_sale_price !== rounded_sale_price) {
+      const change_amount = old_sale_price === null ? null : rounded_sale_price - old_sale_price;
+      const change_percent =
+        old_sale_price === null || old_sale_price === 0
+          ? null
+          : Math.round(((rounded_sale_price - old_sale_price) / old_sale_price) * 10000) / 100;
       const { data: hist, error: histErr } = await supabase
         .from("product_sale_price_history")
         .insert({
           product_id: product.id,
           snapshot_id: snap.id,
-          old_sale_price: oldPrice,
+          sale_price_type_id: input.sale_price_type_id,
+          old_sale_price,
           new_sale_price: rounded_sale_price,
           change_amount,
           change_percent,
-          created_by: options.calculated_by ?? null,
+          created_by: uid,
         })
         .select("id")
         .single();
@@ -286,5 +308,5 @@ export async function calculateSalePrice(
     }
   }
 
-  return { ok: true, breakdown, snapshot_id, history_id };
+  return { ok: true, breakdown, snapshot_id, history_id, old_sale_price };
 }
