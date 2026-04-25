@@ -38,6 +38,7 @@ import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
+import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -186,6 +187,11 @@ const AppPricingChangeReasonsRoute = AppPricingChangeReasonsRouteImport.update({
   path: '/pricing/change-reasons',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
+  id: '/pricing/calculator',
+  path: '/pricing/calculator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRoute
   '/users': typeof AppUsersRoute
+  '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRoute
   '/users': typeof AppUsersRoute
+  '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
     | '/pricing/purchase-prices'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
     | '/pricing/purchase-prices'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
     | '/_app/pricing/purchase-prices'
@@ -596,6 +608,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingChangeReasonsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/calculator': {
+      id: '/_app/pricing/calculator'
+      path: '/pricing/calculator'
+      fullPath: '/pricing/calculator'
+      preLoaderRoute: typeof AppPricingCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/products/$id/edit': {
       id: '/_app/products/$id/edit'
       path: '/edit'
@@ -631,6 +650,7 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
@@ -659,6 +679,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRoute,
   AppUsersRoute: AppUsersRoute,
+  AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
