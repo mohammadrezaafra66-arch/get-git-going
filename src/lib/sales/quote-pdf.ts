@@ -34,6 +34,13 @@ function fmtNum(n: number): string {
   const safe = Number.isFinite(n) ? n : 0;
   return toFaDigits(Math.round(safe).toLocaleString("en-US"));
 }
+// Money amounts must be LTR-safe English digits with comma grouping.
+// Do not apply Persian digit conversion here — mixing RTL digits with
+// commas and currency labels causes visual reordering in PDF viewers.
+function formatMoneyPdf(n: number): string {
+  const safe = Number.isFinite(n) ? n : 0;
+  return Math.round(safe).toLocaleString("en-US");
+}
 function fmtDate(iso?: string | null): string {
   if (!iso) return "—";
   try {
