@@ -80,38 +80,51 @@ export async function checkBotRateLimit(
 
 /** Map a postgres RPC error message to a Persian, status-coded response. */
 export function mapBotError(msg: string): { status: number; code: string; message: string } {
+  // Postgres RAISE EXCEPTION messages can come with extra context/whitespace.
+  // Normalize: take the first line and trim, then try direct lookups again.
+  const firstLine = (msg || "").split("\n")[0].trim();
   // Direct lookups
   if (ERR_PERSIAN[msg]) return { code: msg, ...ERR_PERSIAN[msg] };
+  if (ERR_PERSIAN[firstLine]) return { code: firstLine, ...ERR_PERSIAN[firstLine] };
+
+  // Sometimes the message is wrapped, e.g. 'invalid_key' inside a longer string.
+  for (const code of Object.keys(ERR_PERSIAN)) {
+    if (firstLine === code || msg.includes(code)) {
+      return { code, ...ERR_PERSIAN[code] };
+    }
+  }
 
   // Prefixed errors like "unknown_column:foo" or "invalid_number_for_column:bar"
-  if (msg.startsWith("unknown_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  const probe = firstLine || msg;
+  if (probe.startsWith("unknown_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "unknown_column", message: `ستون «${k}» در این جدول تعریف نشده است. لطفاً column_key را بررسی کنید.` };
   }
-  if (msg.startsWith("column_not_allowed:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("column_not_allowed:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 403, code: "column_not_allowed", message: `این کلید مجاز به تغییر ستون «${k}» نیست. ستون باید در «ستون‌های قابل به‌روزرسانی» این کلید فعال شود.` };
   }
-  if (msg.startsWith("invalid_number_for_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("invalid_number_for_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "invalid_number", message: `مقدار ارسال‌شده برای ستون «${k}» باید یک عدد معتبر باشد.` };
   }
-  if (msg.startsWith("invalid_boolean_for_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("invalid_boolean_for_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "invalid_boolean", message: `مقدار ستون «${k}» باید true یا false باشد.` };
   }
-  if (msg.startsWith("invalid_date_for_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("invalid_date_for_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "invalid_date", message: `مقدار ستون «${k}» باید تاریخ معتبر در قالب YYYY-MM-DD باشد.` };
   }
-  if (msg.startsWith("invalid_datetime_for_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("invalid_datetime_for_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "invalid_datetime", message: `مقدار ستون «${k}» باید تاریخ-زمان ISO معتبر باشد (مثل 2026-04-26T10:00:00Z).` };
   }
-  if (msg.startsWith("value_too_long_for_column:")) {
-    const k = msg.split(":")[1] ?? "";
+  if (probe.startsWith("value_too_long_for_column:")) {
+    const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "value_too_long", message: `مقدار ستون «${k}» از حد مجاز طول طولانی‌تر است.` };
   }
+  console.error("[bot-api] unmapped error message:", msg);
   return { status: 500, code: "server_error", message: "خطای داخلی سرور هنگام پردازش درخواست." };
 }
 
