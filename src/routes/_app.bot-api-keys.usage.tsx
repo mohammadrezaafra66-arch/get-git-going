@@ -159,6 +159,7 @@ function BotApiUsagePage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Bot API Usage</h1>
       <PageHeader
         title="گزارش استفاده ربات‌ها"
         description="مشاهده و فیلتر درخواست‌های API ربات‌ها، خطاها و IPهای مشکوک"

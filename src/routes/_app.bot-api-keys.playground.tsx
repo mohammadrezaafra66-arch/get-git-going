@@ -162,6 +162,7 @@ function ApiPlaygroundPage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Bot API Playground</h1>
       <PageHeader
         title="API Playground"
         description="انتخاب endpoint و تست زنده درخواست‌ها"

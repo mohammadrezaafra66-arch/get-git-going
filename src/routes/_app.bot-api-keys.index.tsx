@@ -145,6 +145,7 @@ function BotApiKeysPage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Bot API Keys</h1>
       <PageHeader
         title="کلیدهای API ربات"
         description="ساخت و مدیریت کلیدهای امن برای دسترسی ربات‌ها به جداول داده پویا"
