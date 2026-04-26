@@ -1227,6 +1227,63 @@ export type Database = {
           },
         ]
       }
+      sales_quote_share_logs: {
+        Row: {
+          attempted_at: string
+          attempted_by: string | null
+          channel: string
+          created_at: string
+          id: string
+          message_text: string | null
+          pdf_attached: boolean
+          quote_id: string
+          recipient: string
+          result_message: string | null
+          status: string
+        }
+        Insert: {
+          attempted_at?: string
+          attempted_by?: string | null
+          channel: string
+          created_at?: string
+          id?: string
+          message_text?: string | null
+          pdf_attached?: boolean
+          quote_id: string
+          recipient: string
+          result_message?: string | null
+          status?: string
+        }
+        Update: {
+          attempted_at?: string
+          attempted_by?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          message_text?: string | null
+          pdf_attached?: boolean
+          quote_id?: string
+          recipient?: string
+          result_message?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_share_logs_attempted_by_fkey"
+            columns: ["attempted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_quote_share_logs_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_quotes: {
         Row: {
           cancel_reason: string | null
