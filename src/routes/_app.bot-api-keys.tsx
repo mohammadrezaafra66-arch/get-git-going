@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity,
+  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -150,6 +150,11 @@ function BotApiKeysPage() {
         description="ساخت و مدیریت کلیدهای امن برای دسترسی ربات‌ها به جداول داده پویا"
         actions={
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/bot-api-keys/docs">
+                <BookOpen className="ml-2 h-4 w-4" />مستندات و تست API
+              </Link>
+            </Button>
             <Button asChild variant="outline">
               <Link to="/bot-api-keys/usage">
                 <Activity className="ml-2 h-4 w-4" />گزارش استفاده
