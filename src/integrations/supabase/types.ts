@@ -1228,6 +1228,54 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_alert_requests: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          note: string | null
+          priority: Database["public"]["Enums"]["stock_alert_priority"]
+          product_id: string
+          requested_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+          salesperson_id: string | null
+          status: Database["public"]["Enums"]["stock_alert_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          note?: string | null
+          priority?: Database["public"]["Enums"]["stock_alert_priority"]
+          product_id: string
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["stock_alert_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          note?: string | null
+          priority?: Database["public"]["Enums"]["stock_alert_priority"]
+          product_id?: string
+          requested_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["stock_alert_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -1349,6 +1397,8 @@ export type Database = {
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
       shipping_cost_type: "fixed" | "percent"
+      stock_alert_priority: "low" | "normal" | "high"
+      stock_alert_status: "open" | "contacted" | "closed" | "canceled"
       stock_status: "available" | "unavailable" | "limited" | "unknown"
     }
     CompositeTypes: {
@@ -1484,6 +1534,8 @@ export const Constants = {
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
       shipping_cost_type: ["fixed", "percent"],
+      stock_alert_priority: ["low", "normal", "high"],
+      stock_alert_status: ["open", "contacted", "closed", "canceled"],
       stock_status: ["available", "unavailable", "limited", "unknown"],
     },
   },
