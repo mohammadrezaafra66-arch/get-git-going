@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
+import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite, fetchAttributesLite } from "@/lib/products/queries";
 import {
   PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
   type ProductType, type BaseCurrency, type StockStatus, type ProductStatus,
@@ -19,11 +19,15 @@ export interface ProductFilterState {
   stock_status: StockStatus | null;
   status: ProductStatus | null;
   label_ids: string[];
+  color: string | null;
+  capacity: string | null;
+  model: string | null;
 }
 
 export const EMPTY_FILTERS: ProductFilterState = {
   q: "", brand_id: null, category_id: null, product_type: null,
   base_currency: null, stock_status: null, status: null, label_ids: [],
+  color: null, capacity: null, model: null,
 };
 
 interface Props {
@@ -35,6 +39,12 @@ export function ProductFilters({ value, onChange }: Props) {
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
   const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite });
+  const attrsQ = useQuery({ queryKey: ["product-attributes-lite"], queryFn: fetchAttributesLite });
+
+  const activeAttrs = (attrsQ.data ?? []).filter((a) => a.is_active);
+  const colorOpts = activeAttrs.filter((a) => a.type === "color").map((a) => ({ value: a.name, label: a.name }));
+  const capacityOpts = activeAttrs.filter((a) => a.type === "capacity").map((a) => ({ value: a.name, label: a.name }));
+  const modelOpts = activeAttrs.filter((a) => a.type === "model").map((a) => ({ value: a.name, label: a.name }));
 
   const set = <K extends keyof ProductFilterState>(k: K, v: ProductFilterState[K]) => onChange({ ...value, [k]: v });
 
@@ -67,13 +77,13 @@ export function ProductFilters({ value, onChange }: Props) {
           label="برند"
           value={value.brand_id}
           onChange={(v) => set("brand_id", v)}
-          options={(brandsQ.data ?? []).map((b) => ({ value: b.id, label: b.name }))}
+          options={(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => ({ value: b.id, label: b.name }))}
         />
         <FilterSelect
           label="دسته"
           value={value.category_id}
           onChange={(v) => set("category_id", v)}
-          options={(catsQ.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+          options={(catsQ.data ?? []).filter((c) => c.is_active).map((c) => ({ value: c.id, label: c.name }))}
         />
         <FilterSelect
           label="نوع"
@@ -98,6 +108,24 @@ export function ProductFilters({ value, onChange }: Props) {
           value={value.status}
           onChange={(v) => set("status", v as ProductStatus | null)}
           options={Object.entries(PRODUCT_STATUS_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+        />
+        <FilterSelect
+          label="رنگ"
+          value={value.color}
+          onChange={(v) => set("color", v)}
+          options={colorOpts}
+        />
+        <FilterSelect
+          label="ظرفیت"
+          value={value.capacity}
+          onChange={(v) => set("capacity", v)}
+          options={capacityOpts}
+        />
+        <FilterSelect
+          label="مدل"
+          value={value.model}
+          onChange={(v) => set("model", v)}
+          options={modelOpts}
         />
       </div>
 
