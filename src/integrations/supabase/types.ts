@@ -44,14 +44,64 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_api_key_table_access: {
+        Row: {
+          allowed_update_columns: string[]
+          api_key_id: string
+          can_read: boolean
+          can_update: boolean
+          created_at: string
+          id: string
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_update_columns?: string[]
+          api_key_id: string
+          can_read?: boolean
+          can_update?: boolean
+          created_at?: string
+          id?: string
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_update_columns?: string[]
+          api_key_id?: string
+          can_read?: boolean
+          can_update?: boolean
+          created_at?: string
+          id?: string
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_api_key_table_access_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "bot_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_api_key_table_access_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_api_keys: {
         Row: {
           allowed_table_ids: string[]
           created_at: string
           created_by: string | null
+          expires_at: string | null
           id: string
           is_active: boolean
           key_hash: string
+          key_prefix: string | null
           last_used_at: string | null
           name: string
         }
@@ -59,9 +109,11 @@ export type Database = {
           allowed_table_ids?: string[]
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           key_hash: string
+          key_prefix?: string | null
           last_used_at?: string | null
           name: string
         }
@@ -69,9 +121,11 @@ export type Database = {
           allowed_table_ids?: string[]
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           key_hash?: string
+          key_prefix?: string | null
           last_used_at?: string | null
           name?: string
         }
@@ -1947,6 +2001,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_bot_api_key: {
+        Args: { p_expires_at?: string; p_name: string }
+        Returns: {
+          id: string
+          key_prefix: string
+          raw_key: string
+        }[]
+      }
       create_dynamic_table_row: {
         Args: { p_table_id: string; p_values: Json }
         Returns: string
@@ -1963,6 +2025,10 @@ export type Database = {
           p_subtotal_amount: number
         }
         Returns: Json
+      }
+      delete_bot_api_key_table_access: {
+        Args: { p_key_id: string; p_table_id: string }
+        Returns: undefined
       }
       export_dynamic_table_rows: {
         Args: {
@@ -2066,6 +2132,20 @@ export type Database = {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _target_user: string
+        }
+        Returns: undefined
+      }
+      set_bot_api_key_active: {
+        Args: { p_is_active: boolean; p_key_id: string }
+        Returns: undefined
+      }
+      set_bot_api_key_table_access: {
+        Args: {
+          p_allowed_update_columns?: string[]
+          p_can_read: boolean
+          p_can_update: boolean
+          p_key_id: string
+          p_table_id: string
         }
         Returns: undefined
       }

@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, DollarSign, ShoppingCart, ShoppingBag,
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
-  MessageSquare, Mail, ScrollText, Database,
+  MessageSquare, Mail, ScrollText, Database, KeyRound,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -29,6 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/messages",    label: "پیام‌ها",          icon: Mail,            module: "messages",    group: "comms" },
   { to: "/feedback",    label: "بازخورد",          icon: MessageSquare,   module: "feedback",    group: "comms" },
   { to: "/data-tables", label: "جداول داده پویا", icon: Database,        module: "data-tables", group: "comms" },
+  { to: "/bot-api-keys", label: "کلیدهای API ربات", icon: KeyRound,      module: "bot-api-keys", group: "admin" },
 ];
 
 export const GROUP_LABELS: Record<NavItem["group"], string> = {
