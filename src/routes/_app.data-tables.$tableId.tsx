@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -68,6 +69,24 @@ function DataTableDetailPage() {
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
+
+  // Spreadsheet keyboard grid state
+  const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
+  const [editingPos, setEditingPos] = useState<{ row: number; col: number; initial?: string } | null>(null);
+  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+  const cellKey = (r: number, c: number) => `${r}:${c}`;
+  const setCellRef = useCallback((r: number, c: number) => (el: HTMLTableCellElement | null) => {
+    const k = cellKey(r, c);
+    if (el) cellRefs.current.set(k, el);
+    else cellRefs.current.delete(k);
+  }, []);
+  const focusCell = useCallback((r: number, c: number) => {
+    const el = cellRefs.current.get(cellKey(r, c));
+    if (el) {
+      el.focus({ preventScroll: false });
+      setFocused({ row: r, col: c });
+    }
+  }, []);
 
   const tableQuery = useQuery({
     enabled: !!user && !!tableId,
@@ -339,6 +358,9 @@ function DataTableDetailPage() {
           ) : (
             <>
             {/* Desktop table */}
+            <div className="px-3 pt-3 text-[11px] text-muted-foreground hidden md:block">
+              راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. با تایپ عدد یا Enter ویرایش شروع می‌شود. Enter ذخیره می‌کند، Esc لغو می‌کند.
+            </div>
             <div className="overflow-x-auto hidden md:block">
               <table className="w-full text-sm" style={{ minWidth: `${320 + columns.length * 160}px` }}>
                 <thead className="bg-muted/40 text-muted-foreground">
@@ -354,6 +376,7 @@ function DataTableDetailPage() {
                 <tbody>
                   {rowsQuery.data!.rows.map((r) => {
                     const inactive = !r.is_active;
+                    const rowIdx = rowsQuery.data!.rows.indexOf(r);
                     return (
                       <tr key={r.id} className={`border-t border-border ${inactive ? "bg-muted/30 text-muted-foreground" : ""}`}>
                         <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
@@ -364,18 +387,77 @@ function DataTableDetailPage() {
                             </Badge>
                           )}
                         </td>
-                        {columns.map((c) => (
-                          <td key={c.id} className="px-3 py-2">
-                            <CellEditor
+                        {columns.map((c, colIdx) => {
+                          const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
+                          const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
+                          const value = rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? "";
+                          return (
+                            <GridCell
+                              key={c.id}
+                              ref={setCellRef(rowIdx, colIdx)}
                               column={c}
-                              rowId={r.id}
-                              value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
+                              value={value}
                               canEdit={canEdit}
                               inactive={inactive}
-                              onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
+                              isFocused={isFocused}
+                              isEditing={isEditing}
+                              initialEditValue={isEditing ? editingPos?.initial : undefined}
+                              onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
+                              onRequestEdit={(initial) => {
+                                if (!canEdit) return;
+                                if (inactive) {
+                                  const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
+                                  if (!ok) return;
+                                }
+                                setEditingPos({ row: rowIdx, col: colIdx, initial });
+                              }}
+                              onClearCell={async () => {
+                                if (!canEdit) return;
+                                if (inactive) {
+                                  const ok = window.confirm("این ردیف غیرفعال است. مقدار سلول پاک شود؟");
+                                  if (!ok) return;
+                                }
+                                if (!value) return;
+                                await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
+                              }}
+                              onCancelEdit={() => {
+                                setEditingPos(null);
+                                requestAnimationFrame(() => focusCell(rowIdx, colIdx));
+                              }}
+                              onCommitEdit={async (val, moveDown) => {
+                                try {
+                                  if (val !== value) {
+                                    await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val });
+                                  }
+                                  setEditingPos(null);
+                                  requestAnimationFrame(() => {
+                                    const nextRow = moveDown && rowIdx + 1 < rowsQuery.data!.rows.length ? rowIdx + 1 : rowIdx;
+                                    focusCell(nextRow, colIdx);
+                                  });
+                                } catch {
+                                  // toast handled by mutation
+                                }
+                              }}
+                              onNavigate={(dir) => {
+                                const total = rowsQuery.data!.rows.length;
+                                const cols = columns.length;
+                                let nr = rowIdx, nc = colIdx;
+                                if (dir === "right") nc = Math.min(cols - 1, colIdx + 1);
+                                else if (dir === "left") nc = Math.max(0, colIdx - 1);
+                                else if (dir === "down") nr = Math.min(total - 1, rowIdx + 1);
+                                else if (dir === "up") nr = Math.max(0, rowIdx - 1);
+                                else if (dir === "tab-next") {
+                                  if (colIdx + 1 < cols) nc = colIdx + 1;
+                                  else if (rowIdx + 1 < total) { nr = rowIdx + 1; nc = 0; }
+                                } else if (dir === "tab-prev") {
+                                  if (colIdx - 1 >= 0) nc = colIdx - 1;
+                                  else if (rowIdx - 1 >= 0) { nr = rowIdx - 1; nc = cols - 1; }
+                                }
+                                if (nr !== rowIdx || nc !== colIdx) focusCell(nr, nc);
+                              }}
                             />
-                          </td>
-                        ))}
+                          );
+                        })}
                         <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDateTimeFa(r.created_at)}</td>
                         {canEdit && (
                           <td className="px-3 py-2">
@@ -512,7 +594,192 @@ function DataTableDetailPage() {
   );
 }
 
-// =============== Inline cell editor ===============
+// =============== Spreadsheet grid cell (desktop, keyboard-driven) ===============
+type NavDir = "left" | "right" | "up" | "down" | "tab-next" | "tab-prev";
+
+const GridCell = forwardRef<HTMLTableCellElement, {
+  column: ColumnRow;
+  value: string;
+  canEdit: boolean;
+  inactive: boolean;
+  isFocused: boolean;
+  isEditing: boolean;
+  initialEditValue?: string;
+  onFocusCell: () => void;
+  onRequestEdit: (initial?: string) => void;
+  onClearCell: () => Promise<void> | void;
+  onCancelEdit: () => void;
+  onCommitEdit: (value: string, moveDown: boolean) => Promise<void> | void;
+  onNavigate: (dir: NavDir) => void;
+}>(function GridCell(props, ref) {
+  const {
+    column, value, canEdit, inactive, isFocused, isEditing, initialEditValue,
+    onFocusCell, onRequestEdit, onClearCell, onCancelEdit, onCommitEdit, onNavigate,
+  } = props;
+
+  const display = useMemo(() => {
+    if (!value) return <span className="text-muted-foreground">—</span>;
+    if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
+    if (column.data_type === "datetime") return formatDateTimeFa(value);
+    if (column.data_type === "date") return formatDateFa(value);
+    if (column.data_type === "number") {
+      const n = Number(value);
+      return Number.isFinite(n) ? formatNumber(n) : value;
+    }
+    if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
+    return value;
+  }, [value, column.data_type]);
+
+  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLTableCellElement>) => {
+    if (isEditing) return; // editor handles its own keys
+    const k = e.key;
+
+    // Navigation — never page-scroll the browser
+    if (k === "ArrowRight") { e.preventDefault(); onNavigate("right"); return; }
+    if (k === "ArrowLeft")  { e.preventDefault(); onNavigate("left"); return; }
+    if (k === "ArrowUp")    { e.preventDefault(); onNavigate("up"); return; }
+    if (k === "ArrowDown")  { e.preventDefault(); onNavigate("down"); return; }
+    if (k === "Tab") {
+      e.preventDefault();
+      onNavigate(e.shiftKey ? "tab-prev" : "tab-next");
+      return;
+    }
+
+    if (!canEdit) return;
+
+    if (k === "Enter") { e.preventDefault(); onRequestEdit(); return; }
+
+    if (k === "Backspace" || k === "Delete") {
+      e.preventDefault();
+      void onClearCell();
+      return;
+    }
+
+    if (k === " " && column.data_type === "boolean") {
+      e.preventDefault();
+      const next = value === "true" ? "false" : value === "false" ? "" : "true";
+      void onCommitEdit(next, false);
+      return;
+    }
+
+    // Direct typing — start editing with the typed character
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (k.length !== 1) return;
+    if (column.data_type === "boolean") return; // handled by Space only
+
+    if (column.data_type === "number") {
+      if (!/[\d\-.,]/.test(k)) return;
+    }
+    e.preventDefault();
+    onRequestEdit(k);
+  };
+
+  const focusedClass = isFocused
+    ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5"
+    : "";
+
+  return (
+    <td
+      ref={ref}
+      tabIndex={0}
+      role="gridcell"
+      aria-readonly={!canEdit}
+      onFocus={onFocusCell}
+      onClick={() => {
+        // Single-click focuses; for number cells, single click is enough then keyboard-typing edits.
+      }}
+      onDoubleClick={() => canEdit && onRequestEdit()}
+      onKeyDown={handleCellKeyDown}
+      className={`px-3 py-2 align-middle focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"}`}
+      title={canEdit ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت" : undefined}
+    >
+      {isEditing ? (
+        <CellEditorInput
+          column={column}
+          initialValue={initialEditValue !== undefined ? initialEditValue : value}
+          onCancel={onCancelEdit}
+          onCommit={onCommitEdit}
+        />
+      ) : (
+        display
+      )}
+    </td>
+  );
+});
+
+// =============== Editor input used inside GridCell ===============
+function CellEditorInput({
+  column, initialValue, onCancel, onCommit,
+}: {
+  column: ColumnRow;
+  initialValue: string;
+  onCancel: () => void;
+  onCommit: (value: string, moveDown: boolean) => Promise<void> | void;
+}) {
+  const [draft, setDraft] = useState(initialValue);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    // place caret at end for text inputs
+    const el = inputRef.current;
+    if (el && (el.type === "text" || el.type === "number")) {
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* number type may throw */ }
+    }
+  }, []);
+
+  const commit = async (moveDown: boolean) => {
+    if (saving) return;
+    setSaving(true);
+    try { await onCommit(draft, moveDown); }
+    finally { setSaving(false); }
+  };
+
+  if (column.data_type === "boolean") {
+    return (
+      <div className="flex items-center gap-1">
+        <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
+          <SelectTrigger className="h-8 w-28"><SelectValue placeholder="—" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__empty__">—</SelectItem>
+            <SelectItem value="true">بله</SelectItem>
+            <SelectItem value="false">خیر</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" variant="ghost" disabled={saving} onClick={() => commit(false)}>ذخیره</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>لغو</Button>
+      </div>
+    );
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      className="h-8 w-40"
+      type={column.data_type === "number" ? "number" : column.data_type === "date" ? "date" : column.data_type === "datetime" ? "datetime-local" : "text"}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => { void commit(false); }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          void commit(!e.ctrlKey && !e.metaKey);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        } else if (e.key === "Tab") {
+          // let blur handler save; let parent handle navigation
+          // do not preventDefault so default tab works onto next focusable, but our cell tab handler will fire
+        }
+      }}
+      dir={column.data_type === "phone" || column.data_type === "number" ? "ltr" : undefined}
+      disabled={saving}
+    />
+  );
+}
+
+// =============== Inline cell editor (mobile card view) ===============
 function CellEditor({
   column, rowId, value, canEdit, inactive, onSave,
 }: {
