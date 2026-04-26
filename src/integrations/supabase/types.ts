@@ -1979,7 +1979,7 @@ export type Database = {
         Returns: boolean
       }
       import_dynamic_table_rows: {
-        Args: { p_rows: Json; p_table_id: string }
+        Args: { p_rows: Json; p_session_id?: string; p_table_id: string }
         Returns: Json
       }
       log_event: {

@@ -1,7 +1,7 @@
 import type { DynamicColumnDataType } from "./constants";
 
 export const CSV_IMPORT_MAX_ROWS = 5000;
-export const CSV_IMPORT_BATCH_SIZE = 400;
+/** Atomic mode: send all valid rows in a single RPC call (server enforces 5000 cap). */
 
 export interface CsvImportColumn {
   id: string;
@@ -11,9 +11,19 @@ export interface CsvImportColumn {
   is_required: boolean;
 }
 
+export type CsvDelimiter = "," | ";" | "\t";
+
+export const CSV_DELIMITER_LABELS: Record<CsvDelimiter, string> = {
+  ",": "ویرگول (,)",
+  ";": "نقطه‌ویرگول (;)",
+  "\t": "تب (Tab)",
+};
+
 export interface ParsedCsv {
   headers: string[];
   rows: string[][]; // raw text rows excluding header
+  delimiter: CsvDelimiter;
+  warnings: string[];
 }
 
 export interface RowError {
@@ -32,11 +42,57 @@ export interface ValidationResult {
 }
 
 /**
- * Minimal RFC 4180-ish CSV parser (handles quoted fields, escaped quotes, CRLF).
- * Pure JS, no deps. Strips UTF-8 BOM. Trims trailing empty line.
+ * Auto-detect CSV delimiter by scanning the first ~10 raw lines.
+ * Picks the candidate with the most consistent column count across lines.
  */
-export function parseCsv(text: string): ParsedCsv {
+export function detectDelimiter(text: string): CsvDelimiter | null {
+  const sample = text.slice(0, 64 * 1024);
+  const lines = sample.split(/\r?\n/).filter((l) => l.length > 0).slice(0, 10);
+  if (lines.length === 0) return null;
+  const candidates: CsvDelimiter[] = [",", ";", "\t"];
+  let best: { d: CsvDelimiter; score: number } | null = null;
+  for (const d of candidates) {
+    // count delimiter occurrences outside quotes per line
+    const counts = lines.map((line) => countOutsideQuotes(line, d));
+    const max = Math.max(...counts);
+    if (max === 0) continue;
+    // consistency: how many lines share the max count
+    const consistent = counts.filter((c) => c === max).length;
+    const score = max * 10 + consistent; // prefer many fields + consistency
+    if (!best || score > best.score) best = { d, score };
+  }
+  return best ? best.d : null;
+}
+
+function countOutsideQuotes(line: string, ch: string): number {
+  let count = 0;
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { i++; continue; }
+      inQ = !inQ;
+      continue;
+    }
+    if (!inQ && c === ch) count++;
+  }
+  return count;
+}
+
+/**
+ * Minimal RFC 4180-ish CSV parser (handles quoted fields, escaped quotes, CRLF).
+ * Pure JS, no deps. Strips UTF-8 BOM. Trims trailing empty lines.
+ * Supports comma, semicolon, or tab delimiters (auto-detected if not provided).
+ */
+export function parseCsv(text: string, delimiter?: CsvDelimiter): ParsedCsv {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  const warnings: string[] = [];
+  const detected = delimiter ?? detectDelimiter(text);
+  if (!detected) {
+    return { headers: [], rows: [], delimiter: ",", warnings: ["delimiter_unknown"] };
+  }
+  const delim = detected;
+
   const rows: string[][] = [];
   let cur: string[] = [];
   let field = "";
@@ -54,7 +110,7 @@ export function parseCsv(text: string): ParsedCsv {
       field += ch; i++; continue;
     }
     if (ch === '"') { inQuotes = true; i++; continue; }
-    if (ch === ",") { cur.push(field); field = ""; i++; continue; }
+    if (ch === delim) { cur.push(field); field = ""; i++; continue; }
     if (ch === "\r") {
       if (text[i + 1] === "\n") i++;
       cur.push(field); rows.push(cur); cur = []; field = ""; i++; continue;
@@ -72,10 +128,26 @@ export function parseCsv(text: string): ParsedCsv {
   while (rows.length > 0 && rows[rows.length - 1].every((c) => c === "")) {
     rows.pop();
   }
-  if (rows.length === 0) return { headers: [], rows: [] };
+  if (rows.length === 0) return { headers: [], rows: [], delimiter: delim, warnings };
   const headers = rows[0].map((h) => h.trim());
   const dataRows = rows.slice(1);
-  return { headers, rows: dataRows };
+
+  // Structural sanity: rows whose column count differs significantly from header
+  const expected = headers.length;
+  let mismatched = 0;
+  for (const r of dataRows) {
+    if (Math.abs(r.length - expected) > 0) mismatched++;
+  }
+  if (mismatched > 0 && dataRows.length > 0) {
+    const ratio = mismatched / dataRows.length;
+    if (ratio > 0.1) {
+      warnings.push(
+        `column_count_mismatch:${mismatched}/${dataRows.length}`,
+      );
+    }
+  }
+
+  return { headers, rows: dataRows, delimiter: delim, warnings };
 }
 
 /** Convert Persian/Arabic digits to ASCII digits. */
