@@ -150,16 +150,16 @@ function BotApiKeysPage() {
         description="ساخت و مدیریت کلیدهای امن برای دسترسی ربات‌ها به جداول داده پویا"
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
-              <Link to="/bot-api-keys/docs">
+            <Link to="/bot-api-keys/docs">
+              <Button variant="outline">
                 <BookOpen className="ml-2 h-4 w-4" />مستندات و تست API
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/bot-api-keys/usage">
+              </Button>
+            </Link>
+            <Link to="/bot-api-keys/usage">
+              <Button variant="outline">
                 <Activity className="ml-2 h-4 w-4" />گزارش استفاده
-              </Link>
-            </Button>
+              </Button>
+            </Link>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="ml-2 h-4 w-4" />کلید جدید
             </Button>
