@@ -1153,6 +1153,137 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_quote_counters: {
+        Row: {
+          last_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          last_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      sales_quote_items: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          free_item_name: string | null
+          id: string
+          line_total: number
+          product_id: string | null
+          quantity: number
+          quote_id: string
+          sale_price_type_id: string | null
+          sku_snapshot: string | null
+          source: Database["public"]["Enums"]["sales_quote_item_source"]
+          title_snapshot: string | null
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          free_item_name?: string | null
+          id?: string
+          line_total: number
+          product_id?: string | null
+          quantity: number
+          quote_id: string
+          sale_price_type_id?: string | null
+          sku_snapshot?: string | null
+          source: Database["public"]["Enums"]["sales_quote_item_source"]
+          title_snapshot?: string | null
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          free_item_name?: string | null
+          id?: string
+          line_total?: number
+          product_id?: string | null
+          quantity?: number
+          quote_id?: string
+          sale_price_type_id?: string | null
+          sku_snapshot?: string | null
+          source?: Database["public"]["Enums"]["sales_quote_item_source"]
+          title_snapshot?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_quotes: {
+        Row: {
+          cancel_reason: string | null
+          canceled_at: string | null
+          canceled_by: string | null
+          created_at: string
+          customer_name: string
+          customer_note: string | null
+          customer_phone: string
+          discount_amount: number
+          expires_at: string | null
+          final_amount: number
+          id: string
+          quote_number: string
+          salesperson_id: string | null
+          status: Database["public"]["Enums"]["sales_quote_status"]
+          subtotal_amount: number
+          updated_at: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string
+          customer_name: string
+          customer_note?: string | null
+          customer_phone: string
+          discount_amount?: number
+          expires_at?: string | null
+          final_amount?: number
+          id?: string
+          quote_number: string
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["sales_quote_status"]
+          subtotal_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          canceled_at?: string | null
+          canceled_by?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_note?: string | null
+          customer_phone?: string
+          discount_amount?: number
+          expires_at?: string | null
+          final_amount?: number
+          id?: string
+          quote_number?: string
+          salesperson_id?: string | null
+          status?: Database["public"]["Enums"]["sales_quote_status"]
+          subtotal_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       settlement_types: {
         Row: {
           code: string
@@ -1381,6 +1512,7 @@ export type Database = {
         Returns: undefined
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
+      next_sales_quote_number: { Args: { _year: number }; Returns: string }
       revoke_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1396,6 +1528,13 @@ export type Database = {
       margin_type: "fixed" | "percent" | "mixed"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
+      sales_quote_item_source: "product_price" | "quick_price" | "manual"
+      sales_quote_status:
+        | "draft"
+        | "sent"
+        | "accepted"
+        | "rejected"
+        | "canceled"
       shipping_cost_type: "fixed" | "percent"
       stock_alert_priority: "low" | "normal" | "high"
       stock_alert_status: "open" | "contacted" | "closed" | "canceled"
@@ -1533,6 +1672,8 @@ export const Constants = {
       margin_type: ["fixed", "percent", "mixed"],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
+      sales_quote_item_source: ["product_price", "quick_price", "manual"],
+      sales_quote_status: ["draft", "sent", "accepted", "rejected", "canceled"],
       shipping_cost_type: ["fixed", "percent"],
       stock_alert_priority: ["low", "normal", "high"],
       stock_alert_status: ["open", "contacted", "closed", "canceled"],
