@@ -130,6 +130,7 @@ function ProductsPage() {
         <Link to="/products/brands" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">برندها</Link>
         <Link to="/products/categories" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">دسته‌بندی‌ها</Link>
         <Link to="/products/labels" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">برچسب‌ها</Link>
+        <Link to="/products/attributes" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">ویژگی‌های محصول</Link>
       </div>
 
       <ProductFilters value={filters} onChange={onFiltersChange} />

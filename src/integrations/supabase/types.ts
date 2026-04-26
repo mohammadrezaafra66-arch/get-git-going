@@ -1027,6 +1027,36 @@ export type Database = {
           },
         ]
       }
+      product_attributes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_label_links: {
         Row: {
           created_at: string
@@ -1205,13 +1235,16 @@ export type Database = {
         Row: {
           base_currency: Database["public"]["Enums"]["base_currency"]
           brand_id: string | null
+          capacity: string | null
           category: string | null
           category_id: string | null
+          color: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
           is_active: boolean
+          model: string | null
           name: string
           product_type: Database["public"]["Enums"]["product_type"]
           sku: string | null
@@ -1225,13 +1258,16 @@ export type Database = {
         Insert: {
           base_currency?: Database["public"]["Enums"]["base_currency"]
           brand_id?: string | null
+          capacity?: string | null
           category?: string | null
           category_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
+          model?: string | null
           name: string
           product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
@@ -1245,13 +1281,16 @@ export type Database = {
         Update: {
           base_currency?: Database["public"]["Enums"]["base_currency"]
           brand_id?: string | null
+          capacity?: string | null
           category?: string | null
           category_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
+          model?: string | null
           name?: string
           product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
@@ -2297,6 +2336,12 @@ export type Database = {
         | "tag"
         | "status"
       margin_type: "fixed" | "percent" | "mixed"
+      product_attribute_type:
+        | "brand"
+        | "category"
+        | "color"
+        | "capacity"
+        | "model"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
       sales_quote_item_source: "product_price" | "quick_price" | "manual"
@@ -2451,6 +2496,13 @@ export const Constants = {
         "status",
       ],
       margin_type: ["fixed", "percent", "mixed"],
+      product_attribute_type: [
+        "brand",
+        "category",
+        "color",
+        "capacity",
+        "model",
+      ],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
       sales_quote_item_source: ["product_price", "quick_price", "manual"],

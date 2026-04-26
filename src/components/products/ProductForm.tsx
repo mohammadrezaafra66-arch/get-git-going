@@ -14,6 +14,7 @@ import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
 import {
   PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
 } from "@/lib/products/constants";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -33,6 +34,9 @@ const DEFAULTS: ProductFormValues = {
   stock_status: "unknown",
   status: "active",
   unit: "",
+  color: "",
+  capacity: "",
+  model: "",
   description: "",
   technical_notes: "",
   label_ids: [],
@@ -47,6 +51,20 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
   const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite });
+  const attrsQ = useQuery({
+    queryKey: ["product-attributes-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_attributes")
+        .select("id, type, name")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const attrsByType = (t: "color" | "capacity" | "model") =>
+    (attrsQ.data ?? []).filter((a) => a.type === t);
 
   const set = <K extends keyof ProductFormValues>(k: K, v: ProductFormValues[K]) =>
     setValues((s) => ({ ...s, [k]: v }));
@@ -162,6 +180,42 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
           <Field label="واحد">
             <Input value={values.unit ?? ""} onChange={(e) => set("unit", e.target.value)} placeholder="مثلاً: عدد، متر، کیلوگرم" />
+          </Field>
+
+          <Field label="رنگ">
+            <Select value={values.color || "__none"} onValueChange={(v) => set("color", v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب رنگ" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون رنگ —</SelectItem>
+                {attrsByType("color").map((a) => (
+                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="ظرفیت">
+            <Select value={values.capacity || "__none"} onValueChange={(v) => set("capacity", v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب ظرفیت" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون ظرفیت —</SelectItem>
+                {attrsByType("capacity").map((a) => (
+                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field label="مدل">
+            <Select value={values.model || "__none"} onValueChange={(v) => set("model", v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب مدل" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون مدل —</SelectItem>
+                {attrsByType("model").map((a) => (
+                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </CardContent>
       </Card>
