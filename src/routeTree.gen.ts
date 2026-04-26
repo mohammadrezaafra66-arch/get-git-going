@@ -52,6 +52,7 @@ import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
+import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -275,6 +276,11 @@ const AppBotApiKeysUsageRoute = AppBotApiKeysUsageRouteImport.update({
   path: '/usage',
   getParentRoute: () => AppBotApiKeysRoute,
 } as any)
+const AppBotApiKeysDocsRoute = AppBotApiKeysDocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => AppBotApiKeysRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -325,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/users': typeof AppUsersRoute
+  '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
@@ -374,6 +381,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/users': typeof AppUsersRoute
+  '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/users': typeof AppUsersRoute
+  '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
@@ -477,6 +486,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/bot-api-keys/docs'
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/users'
+    | '/bot-api-keys/docs'
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
@@ -576,6 +587,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/usage'
     | '/_app/data-tables/$tableId'
     | '/_app/data-tables/new'
@@ -921,6 +933,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBotApiKeysUsageRouteImport
       parentRoute: typeof AppBotApiKeysRoute
     }
+    '/_app/bot-api-keys/docs': {
+      id: '/_app/bot-api-keys/docs'
+      path: '/docs'
+      fullPath: '/bot-api-keys/docs'
+      preLoaderRoute: typeof AppBotApiKeysDocsRouteImport
+      parentRoute: typeof AppBotApiKeysRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -967,10 +986,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppBotApiKeysRouteChildren {
+  AppBotApiKeysDocsRoute: typeof AppBotApiKeysDocsRoute
   AppBotApiKeysUsageRoute: typeof AppBotApiKeysUsageRoute
 }
 
 const AppBotApiKeysRouteChildren: AppBotApiKeysRouteChildren = {
+  AppBotApiKeysDocsRoute: AppBotApiKeysDocsRoute,
   AppBotApiKeysUsageRoute: AppBotApiKeysUsageRoute,
 }
 
