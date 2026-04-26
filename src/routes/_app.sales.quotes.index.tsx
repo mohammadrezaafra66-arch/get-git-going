@@ -28,7 +28,7 @@ import {
   SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus,
 } from "@/lib/sales/quotes";
 
-export const Route = createFileRoute("/_app/sales/quotes")({
+export const Route = createFileRoute("/_app/sales/quotes/")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
   component: QuotesListPage,
 });
