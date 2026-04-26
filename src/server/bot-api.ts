@@ -52,9 +52,11 @@ export async function checkBotRateLimit(
   keyId: string | null,
   ip: string | null,
 ): Promise<RateLimitResult> {
+  // The Postgres function accepts NULL for either argument; the generated TS
+  // types narrow it to `string`, so cast through `unknown` to pass nulls.
   const { data, error } = await supabaseAdmin.rpc("bot_check_rate_limit", {
     p_key_id: keyId as unknown as string,
-    p_ip: (ip ?? "") as string,
+    p_ip: ip as unknown as string,
   });
   if (error) {
     console.error("[bot-api] rate-limit check failed:", error.message);
