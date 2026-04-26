@@ -121,6 +121,39 @@ function NewQuotePage() {
         await supabase.from("sales_quotes").delete().eq("id", quote.id);
         throw iErr;
       }
+
+      // Supplemental audit log: items added (header trigger fires before items exist).
+      // Failure here must NOT break quote creation.
+      try {
+        const sources_count = { product_price: 0, quick_price: 0, manual: 0 };
+        let subtotal_from_items = 0;
+        let discount_from_items = 0;
+        let final_from_items = 0;
+        for (const it of itemsPayload) {
+          sources_count[it.source as keyof typeof sources_count] += 1;
+          subtotal_from_items += (it.quantity || 0) * (it.unit_price || 0);
+          discount_from_items += it.discount_amount || 0;
+          final_from_items += it.line_total || 0;
+        }
+        const { error: aErr } = await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "sales_quotes",
+          entity_id: quote.id,
+          action: "sales_quote_items_added",
+          diff: {
+            quote_id: quote.id,
+            item_count: itemsPayload.length,
+            subtotal_from_items: Math.round(subtotal_from_items),
+            discount_from_items: Math.round(discount_from_items),
+            final_from_items: Math.round(final_from_items),
+            sources_count,
+          },
+        });
+        if (aErr) console.warn("audit sales_quote_items_added failed:", aErr.message);
+      } catch (err) {
+        console.warn("audit sales_quote_items_added threw:", err);
+      }
+
       return quote;
     },
     onSuccess: (quote) => {
