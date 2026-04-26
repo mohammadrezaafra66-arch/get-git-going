@@ -22,21 +22,23 @@ export type BotAuthResult =
   | BotErrorResult;
 
 const ERR_PERSIAN: Record<string, { status: number; message: string }> = {
-  invalid_key:        { status: 401, message: "کلید API نامعتبر است." },
-  inactive_key:       { status: 401, message: "این کلید API غیرفعال است." },
-  expired_key:        { status: 401, message: "این کلید API منقضی شده است." },
-  forbidden_table:    { status: 403, message: "این کلید به جدول درخواست‌شده دسترسی ندارد." },
+  invalid_key:        { status: 401, message: "کلید API نامعتبر است یا با هیچ کلید فعالی مطابقت ندارد." },
+  inactive_key:       { status: 401, message: "این کلید API غیرفعال شده است. مدیر باید آن را دوباره فعال کند." },
+  expired_key:        { status: 401, message: "تاریخ انقضای این کلید API گذشته است." },
+  missing_key:        { status: 401, message: "هدر «Authorization: Bearer <API_KEY>» الزامی است." },
+  forbidden_table:    { status: 403, message: "این کلید به جدول درخواست‌شده دسترسی ندارد. لطفاً جدول را در صفحه «دسترسی جداول» به این کلید متصل کنید." },
   forbidden_read:     { status: 403, message: "این کلید مجوز خواندن این جدول را ندارد." },
   forbidden_update:   { status: 403, message: "این کلید مجوز به‌روزرسانی این جدول را ندارد." },
-  row_not_found:      { status: 404, message: "ردیف مورد نظر یافت نشد." },
-  row_table_mismatch: { status: 400, message: "ردیف به این جدول تعلق ندارد." },
-  invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر باشد." },
+  row_not_found:      { status: 404, message: "ردیفی با این شناسه در این جدول یافت نشد." },
+  row_table_mismatch: { status: 400, message: "این ردیف به جدول مشخص‌شده تعلق ندارد." },
+  invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر شامل فیلد values باشد." },
+  no_updatable_values:{ status: 400, message: "هیچ مقداری برای به‌روزرسانی ارسال نشده است." },
 };
 
 const RATE_LIMIT_PERSIAN: Record<string, string> = {
-  rate_limit_per_minute:  "تعداد درخواست‌های این کلید در دقیقه از حد مجاز عبور کرد.",
-  rate_limit_per_day:     "تعداد درخواست‌های این کلید در روز از حد مجاز عبور کرد.",
-  rate_limit_ip_failures: "تعداد درخواست‌های ناموفق از این IP بیش از حد مجاز است.",
+  rate_limit_per_minute:  "تعداد درخواست‌های این کلید در دقیقه از حد مجاز (۱۲۰) عبور کرد. لطفاً ۶۰ ثانیه بعد دوباره تلاش کنید.",
+  rate_limit_per_day:     "تعداد درخواست‌های این کلید در روز از حد مجاز (۵۰۰۰) عبور کرد. تا فردا منتظر بمانید یا کلید دیگری استفاده کنید.",
+  rate_limit_ip_failures: "تعداد درخواست‌های ناموفق از این IP بیش از حد مجاز (۳۰ در ۱۰ دقیقه) است. کمی صبر کنید و دوباره تلاش کنید.",
 };
 
 export type RateLimitResult =
@@ -84,33 +86,33 @@ export function mapBotError(msg: string): { status: number; code: string; messag
   // Prefixed errors like "unknown_column:foo" or "invalid_number_for_column:bar"
   if (msg.startsWith("unknown_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "unknown_column", message: `ستون «${k}» در این جدول وجود ندارد.` };
+    return { status: 400, code: "unknown_column", message: `ستون «${k}» در این جدول تعریف نشده است. لطفاً column_key را بررسی کنید.` };
   }
   if (msg.startsWith("column_not_allowed:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 403, code: "column_not_allowed", message: `این کلید مجاز به تغییر ستون «${k}» نیست.` };
+    return { status: 403, code: "column_not_allowed", message: `این کلید مجاز به تغییر ستون «${k}» نیست. ستون باید در «ستون‌های قابل به‌روزرسانی» این کلید فعال شود.` };
   }
   if (msg.startsWith("invalid_number_for_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "invalid_number", message: `مقدار ستون «${k}» باید عدد باشد.` };
+    return { status: 400, code: "invalid_number", message: `مقدار ارسال‌شده برای ستون «${k}» باید یک عدد معتبر باشد.` };
   }
   if (msg.startsWith("invalid_boolean_for_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "invalid_boolean", message: `مقدار ستون «${k}» باید true/false باشد.` };
+    return { status: 400, code: "invalid_boolean", message: `مقدار ستون «${k}» باید true یا false باشد.` };
   }
   if (msg.startsWith("invalid_date_for_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "invalid_date", message: `مقدار ستون «${k}» باید تاریخ معتبر باشد (YYYY-MM-DD).` };
+    return { status: 400, code: "invalid_date", message: `مقدار ستون «${k}» باید تاریخ معتبر در قالب YYYY-MM-DD باشد.` };
   }
   if (msg.startsWith("invalid_datetime_for_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "invalid_datetime", message: `مقدار ستون «${k}» باید تاریخ-زمان ISO معتبر باشد.` };
+    return { status: 400, code: "invalid_datetime", message: `مقدار ستون «${k}» باید تاریخ-زمان ISO معتبر باشد (مثل 2026-04-26T10:00:00Z).` };
   }
   if (msg.startsWith("value_too_long_for_column:")) {
     const k = msg.split(":")[1] ?? "";
-    return { status: 400, code: "value_too_long", message: `مقدار ستون «${k}» بیش از حد طولانی است.` };
+    return { status: 400, code: "value_too_long", message: `مقدار ستون «${k}» از حد مجاز طول طولانی‌تر است.` };
   }
-  return { status: 500, code: "server_error", message: "خطای داخلی سرور." };
+  return { status: 500, code: "server_error", message: "خطای داخلی سرور هنگام پردازش درخواست." };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
