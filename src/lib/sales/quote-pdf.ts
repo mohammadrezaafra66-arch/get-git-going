@@ -34,6 +34,13 @@ function fmtNum(n: number): string {
   const safe = Number.isFinite(n) ? n : 0;
   return toFaDigits(Math.round(safe).toLocaleString("en-US"));
 }
+// Money amounts must be LTR-safe English digits with comma grouping.
+// Do not apply Persian digit conversion here — mixing RTL digits with
+// commas and currency labels causes visual reordering in PDF viewers.
+function formatMoneyPdf(n: number): string {
+  const safe = Number.isFinite(n) ? n : 0;
+  return Math.round(safe).toLocaleString("en-US");
+}
 function fmtDate(iso?: string | null): string {
   if (!iso) return "—";
   try {
@@ -134,9 +141,9 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
     { text: it.title || "—", style: "td" },
     { text: it.sku ? it.sku : "—", style: "tdSku" },
     { text: fmtNum(it.quantity), style: "td" },
-    { text: fmtNum(it.unit_price), style: "td" },
-    { text: fmtNum(it.discount_amount), style: "td" },
-    { text: fmtNum(it.line_total), style: "tdStrong" },
+    { text: formatMoneyPdf(it.unit_price), style: "tdMoney" },
+    { text: formatMoneyPdf(it.discount_amount), style: "tdMoney" },
+    { text: formatMoneyPdf(it.line_total), style: "tdMoneyStrong" },
   ]);
 
   const infoLine = (label: string, value: string) => ({
@@ -216,19 +223,22 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
       {
         margin: [0, 14, 0, 0] as [number, number, number, number],
         table: {
-          widths: ["*", 140],
+          widths: ["*", 110, 30],
           body: [
             [
               { text: "جمع جزء", style: "totalLabel" },
-              { text: `${fmtNum(payload.subtotal_amount)} تومان`, style: "totalValue" },
+              { text: formatMoneyPdf(payload.subtotal_amount), style: "totalValue" },
+              { text: "تومان", style: "totalCurrency" },
             ],
             [
               { text: "تخفیف", style: "totalLabel" },
-              { text: `${fmtNum(payload.discount_amount)} تومان`, style: "totalValue" },
+              { text: formatMoneyPdf(payload.discount_amount), style: "totalValue" },
+              { text: "تومان", style: "totalCurrency" },
             ],
             [
               { text: "مبلغ نهایی قابل پرداخت", style: "grandLabel" },
-              { text: `${fmtNum(payload.final_amount)} تومان`, style: "grandValue" },
+              { text: formatMoneyPdf(payload.final_amount), style: "grandValue" },
+              { text: "تومان", style: "grandCurrency" },
             ],
           ],
         },
@@ -283,10 +293,14 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
       td: { fontSize: 10, color: "#111827", alignment: "right" as const },
       tdSku: { fontSize: 9, color: "#374151", alignment: "right" as const },
       tdStrong: { fontSize: 10, bold: true, color: "#111827", alignment: "right" as const },
+      tdMoney: { fontSize: 10, color: "#111827", alignment: "left" as const },
+      tdMoneyStrong: { fontSize: 10, bold: true, color: "#111827", alignment: "left" as const },
       totalLabel: { fontSize: 10, color: "#374151", alignment: "right" as const },
-      totalValue: { fontSize: 10, bold: true, color: "#111827", alignment: "right" as const },
+      totalValue: { fontSize: 10, bold: true, color: "#111827", alignment: "left" as const },
+      totalCurrency: { fontSize: 10, color: "#374151", alignment: "right" as const },
       grandLabel: { fontSize: 12, bold: true, color: "#111827", alignment: "right" as const },
-      grandValue: { fontSize: 13, bold: true, color: "#111827", alignment: "right" as const },
+      grandValue: { fontSize: 13, bold: true, color: "#111827", alignment: "left" as const },
+      grandCurrency: { fontSize: 11, bold: true, color: "#111827", alignment: "right" as const },
     },
   };
 
