@@ -679,13 +679,16 @@ function KpiCard({
 function KpiCards() {
   const todayIso = useMemo(() => startOfTodayIso(), []);
 
+  type CountBuilder = ReturnType<
+    ReturnType<typeof supabase.from<"sales_quote_send_queue">>["select"]
+  >;
   const headCount = async (
-    builder: (q: ReturnType<typeof supabase.from<"sales_quote_send_queue", any>>) => any,
+    refine: (q: CountBuilder) => CountBuilder,
   ): Promise<number> => {
     const base = supabase
       .from("sales_quote_send_queue")
       .select("id", { count: "exact", head: true });
-    const { count, error } = await builder(base);
+    const { count, error } = await refine(base);
     if (error) throw error;
     return count ?? 0;
   };
