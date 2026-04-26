@@ -48,6 +48,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -249,6 +250,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDataTablesNewRoute = AppDataTablesNewRouteImport.update({
+  id: '/data-tables/new',
+  path: '/data-tables/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/users': typeof AppUsersRoute
+  '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/users': typeof AppUsersRoute
+  '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -374,6 +382,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/users': typeof AppUsersRoute
+  '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/data-tables/new'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/users'
+    | '/data-tables/new'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/data-tables/new'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
@@ -818,6 +830,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/data-tables/new': {
+      id: '/_app/data-tables/new'
+      path: '/data-tables/new'
+      fullPath: '/data-tables/new'
+      preLoaderRoute: typeof AppDataTablesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -912,6 +931,7 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppUsersRoute: typeof AppUsersRoute
+  AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
@@ -944,6 +964,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
   AppUsersRoute: AppUsersRoute,
+  AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
