@@ -6,7 +6,6 @@ import {
   Search, Filter, Loader2, FileText, ChevronRight, ChevronLeft, Plus,
   Send, CheckCircle2, XCircle, Ban,
 } from "lucide-react";
-import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
