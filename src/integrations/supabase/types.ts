@@ -1854,6 +1854,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_dynamic_table_column: {
+        Args: {
+          p_column_key: string
+          p_data_type: string
+          p_is_editable_by_bot?: boolean
+          p_is_filterable?: boolean
+          p_is_required?: boolean
+          p_label: string
+          p_table_id: string
+        }
+        Returns: string
+      }
       api_dynamic_table_query_rows: {
         Args: {
           p_filters?: Json
@@ -1978,6 +1990,10 @@ export type Database = {
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
       release_stale_quote_send_locks: { Args: never; Returns: number }
+      reorder_dynamic_table_columns: {
+        Args: { p_ordered_ids: string[]; p_table_id: string }
+        Returns: undefined
+      }
       requeue_failed_quote_send_item: {
         Args: { p_queue_id: string }
         Returns: {
@@ -2010,6 +2026,24 @@ export type Database = {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _target_user: string
+        }
+        Returns: undefined
+      }
+      set_dynamic_table_row_active: {
+        Args: { p_is_active: boolean; p_row_id: string }
+        Returns: undefined
+      }
+      update_dynamic_table_cell: {
+        Args: { p_column_id: string; p_row_id: string; p_value: string }
+        Returns: undefined
+      }
+      update_dynamic_table_column: {
+        Args: {
+          p_column_id: string
+          p_is_editable_by_bot: boolean
+          p_is_filterable: boolean
+          p_is_required: boolean
+          p_label: string
         }
         Returns: undefined
       }
