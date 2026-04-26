@@ -53,8 +53,8 @@ export async function checkBotRateLimit(
   ip: string | null,
 ): Promise<RateLimitResult> {
   const { data, error } = await supabaseAdmin.rpc("bot_check_rate_limit", {
-    p_key_id: keyId ?? undefined,
-    p_ip: ip ?? undefined,
+    p_key_id: keyId as unknown as string,
+    p_ip: (ip ?? "") as string,
   });
   if (error) {
     console.error("[bot-api] rate-limit check failed:", error.message);
