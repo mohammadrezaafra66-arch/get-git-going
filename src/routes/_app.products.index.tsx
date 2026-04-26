@@ -33,6 +33,9 @@ interface ProductRow {
   stock_status: "available" | "unavailable" | "limited" | "unknown";
   status: "active" | "inactive" | "discontinued";
   updated_at: string;
+  color: string | null;
+  capacity: string | null;
+  model: string | null;
   brand: { id: string; name: string } | null;
   category: { id: string; name: string } | null;
   labels: { id: string; title: string; color: string }[];
@@ -59,7 +62,7 @@ function ProductsPage() {
       let query = supabase
         .from("products")
         .select(
-          `id, name, sku, product_type, base_currency, stock_status, status, updated_at,
+          `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
            brand:brands(id,name), category:categories(id,name),
            product_label_links(label:product_labels(id,title,color))`,
           { count: "exact" }
@@ -77,6 +80,9 @@ function ProductsPage() {
       if (stableFilters.base_currency) query = query.eq("base_currency", stableFilters.base_currency);
       if (stableFilters.stock_status) query = query.eq("stock_status", stableFilters.stock_status);
       if (stableFilters.status) query = query.eq("status", stableFilters.status);
+      if (stableFilters.color) query = query.eq("color", stableFilters.color);
+      if (stableFilters.capacity) query = query.eq("capacity", stableFilters.capacity);
+      if (stableFilters.model) query = query.eq("model", stableFilters.model);
 
       const { data: rows, error, count } = await query;
       if (error) throw error;
@@ -87,6 +93,9 @@ function ProductsPage() {
           id: row.id, name: row.name, sku: row.sku,
           product_type: row.product_type, base_currency: row.base_currency,
           stock_status: row.stock_status, status: row.status, updated_at: row.updated_at,
+          color: row.color ?? null,
+          capacity: row.capacity ?? null,
+          model: row.model ?? null,
           brand: row.brand ?? null,
           category: row.category ?? null,
           labels: (row.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
@@ -152,6 +161,9 @@ function ProductsPage() {
                       <th className="p-3 font-medium">SKU</th>
                       <th className="p-3 font-medium">برند</th>
                       <th className="p-3 font-medium">دسته</th>
+                      <th className="p-3 font-medium">رنگ</th>
+                      <th className="p-3 font-medium">ظرفیت</th>
+                      <th className="p-3 font-medium">مدل</th>
                       <th className="p-3 font-medium">نوع / ارز</th>
                       <th className="p-3 font-medium">موجودی</th>
                       <th className="p-3 font-medium">وضعیت</th>
@@ -179,6 +191,9 @@ function ProductsPage() {
                         <td className="p-3 text-muted-foreground" dir="ltr">{p.sku ?? "—"}</td>
                         <td className="p-3">{p.brand?.name ?? "—"}</td>
                         <td className="p-3">{p.category?.name ?? "—"}</td>
+                        <td className="p-3 text-muted-foreground">{p.color ?? "—"}</td>
+                        <td className="p-3 text-muted-foreground">{p.capacity ?? "—"}</td>
+                        <td className="p-3 text-muted-foreground">{p.model ?? "—"}</td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {PRODUCT_TYPE_LABELS[p.product_type]} / {BASE_CURRENCY_LABELS[p.base_currency]}
                         </td>
@@ -222,6 +237,9 @@ function ProductsPage() {
                     <div>SKU: <span dir="ltr">{p.sku ?? "—"}</span></div>
                     <div>برند: {p.brand?.name ?? "—"}</div>
                     <div>دسته: {p.category?.name ?? "—"}</div>
+                    <div>رنگ: {p.color ?? "—"}</div>
+                    <div>ظرفیت: {p.capacity ?? "—"}</div>
+                    <div>مدل: {p.model ?? "—"}</div>
                     <div>{PRODUCT_TYPE_LABELS[p.product_type]} / {BASE_CURRENCY_LABELS[p.base_currency]}</div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
