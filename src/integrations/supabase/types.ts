@@ -1620,6 +1620,62 @@ export type Database = {
         }
         Returns: undefined
       }
+      claim_next_quote_send_queue_item: {
+        Args: never
+        Returns: {
+          attempts: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          message_text: string | null
+          pdf_attached: boolean
+          processed_at: string | null
+          quote_id: string
+          recipient: string
+          scheduled_at: string
+          share_log_id: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales_quote_send_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      complete_quote_send_queue_item: {
+        Args: { p_error?: string; p_queue_id: string; p_success: boolean }
+        Returns: {
+          attempts: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          message_text: string | null
+          pdf_attached: boolean
+          processed_at: string | null
+          quote_id: string
+          recipient: string
+          scheduled_at: string
+          share_log_id: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales_quote_send_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_sales_quote_with_items: {
         Args: {
           p_customer_name: string
@@ -1658,6 +1714,7 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      release_stale_quote_send_locks: { Args: never; Returns: number }
       revoke_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
