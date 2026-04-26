@@ -62,6 +62,9 @@ function DataTableDetailPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 350);
+  useEffect(() => { setPage(1); }, [search, showInactive]);
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
@@ -98,7 +101,7 @@ function DataTableDetailPage() {
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: ["dynamic-table-rows", tableId, page, showInactive],
+    queryKey: ["dynamic-table-rows", tableId, page, showInactive, search],
     staleTime: 15_000,
     queryFn: async () => {
       const from = (page - 1) * DYNAMIC_TABLE_ROWS_PAGE_SIZE;
@@ -109,6 +112,10 @@ function DataTableDetailPage() {
         .select("id", { count: "exact", head: true })
         .eq("table_id", tableId);
       if (!showInactive) headQ = headQ.eq("is_active", true);
+      const searchNum = Number(search.trim());
+      if (search.trim() && Number.isFinite(searchNum)) {
+        headQ = headQ.eq("row_number", searchNum);
+      }
       const head = await headQ;
       if (head.error) throw head.error;
       const total = head.count ?? 0;
@@ -120,6 +127,9 @@ function DataTableDetailPage() {
         .order("row_number", { ascending: true })
         .range(from, to);
       if (!showInactive) listQ = listQ.eq("is_active", true);
+      if (search.trim() && Number.isFinite(searchNum)) {
+        listQ = listQ.eq("row_number", searchNum);
+      }
       const { data: rows, error: e1 } = await listQ;
       if (e1) throw e1;
       const rowIds = (rows ?? []).map((r) => r.id as string);
