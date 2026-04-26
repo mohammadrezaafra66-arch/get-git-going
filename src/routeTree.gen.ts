@@ -25,6 +25,7 @@ import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -121,6 +122,11 @@ const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
   getParentRoute: () => AppRoute,
+} as any)
+const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSalesRoute,
 } as any)
 const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
   id: '/products/',
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
+  '/sales/': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -258,7 +265,6 @@ export interface FileRoutesByTo {
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
-  '/sales': typeof AppSalesRouteWithChildren
   '/users': typeof AppUsersRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -276,6 +282,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
+  '/sales': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRoutesById {
@@ -312,6 +319,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
+  '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -348,6 +356,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/pricing/'
     | '/products/'
+    | '/sales/'
     | '/products/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -364,7 +373,6 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/reports'
     | '/roles'
-    | '/sales'
     | '/users'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
@@ -382,6 +390,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/pricing'
     | '/products'
+    | '/sales'
     | '/products/$id/edit'
   id:
     | '__root__'
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/pricing/'
     | '/_app/products/'
+    | '/_app/sales/'
     | '/_app/products/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -540,6 +550,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/audit-logs'
       preLoaderRoute: typeof AppAuditLogsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/sales/': {
+      id: '/_app/sales/'
+      path: '/'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof AppSalesIndexRouteImport
+      parentRoute: typeof AppSalesRoute
     }
     '/_app/products/': {
       id: '/_app/products/'
@@ -665,10 +682,12 @@ declare module '@tanstack/react-router' {
 
 interface AppSalesRouteChildren {
   AppSalesSearchRoute: typeof AppSalesSearchRoute
+  AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesSearchRoute: AppSalesSearchRoute,
+  AppSalesIndexRoute: AppSalesIndexRoute,
 }
 
 const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
