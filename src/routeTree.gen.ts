@@ -28,6 +28,7 @@ import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
+import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
@@ -138,6 +139,11 @@ const AppPricingIndexRoute = AppPricingIndexRouteImport.update({
   path: '/pricing/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
+  id: '/stock-alerts',
+  path: '/stock-alerts',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppSalesSearchRoute = AppSalesSearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/sales/search': typeof AppSalesSearchRoute
+  '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
@@ -280,6 +287,7 @@ export interface FileRoutesByTo {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/sales/search': typeof AppSalesSearchRoute
+  '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
@@ -317,6 +325,7 @@ export interface FileRoutesById {
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
   '/_app/sales/search': typeof AppSalesSearchRoute
+  '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/sales/search'
+    | '/sales/stock-alerts'
     | '/pricing/'
     | '/products/'
     | '/sales/'
@@ -388,6 +398,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/sales/search'
+    | '/sales/stock-alerts'
     | '/pricing'
     | '/products'
     | '/sales'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/_app/products/labels'
     | '/_app/products/new'
     | '/_app/sales/search'
+    | '/_app/sales/stock-alerts'
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
@@ -572,6 +584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/stock-alerts': {
+      id: '/_app/sales/stock-alerts'
+      path: '/stock-alerts'
+      fullPath: '/sales/stock-alerts'
+      preLoaderRoute: typeof AppSalesStockAlertsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/sales/search': {
       id: '/_app/sales/search'
       path: '/search'
@@ -682,11 +701,13 @@ declare module '@tanstack/react-router' {
 
 interface AppSalesRouteChildren {
   AppSalesSearchRoute: typeof AppSalesSearchRoute
+  AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesSearchRoute: AppSalesSearchRoute,
+  AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
 }
 

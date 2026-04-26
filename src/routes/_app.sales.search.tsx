@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { StockAlertButton } from "@/components/sales/StockAlertButton";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -333,6 +334,15 @@ function ProductCard({ product, history, isPrivileged }: ProductCardProps) {
               )}
             </div>
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <StockAlertButton
+            productId={product.id}
+            productName={product.name}
+            productSku={product.sku}
+            stockStatus={stockKey}
+          />
         </div>
       </CardContent>
     </Card>
