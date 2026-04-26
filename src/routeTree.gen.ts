@@ -28,6 +28,7 @@ import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
+import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -47,6 +48,8 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
+import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -146,6 +149,11 @@ const AppPricingIndexRoute = AppPricingIndexRouteImport.update({
   path: '/pricing/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDataTablesIndexRoute = AppDataTablesIndexRouteImport.update({
+  id: '/data-tables/',
+  path: '/data-tables/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
   path: '/stock-alerts',
@@ -243,6 +251,16 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDataTablesNewRoute = AppDataTablesNewRouteImport.update({
+  id: '/data-tables/new',
+  path: '/data-tables/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDataTablesTableIdRoute = AppDataTablesTableIdRouteImport.update({
+  id: '/data-tables/$tableId',
+  path: '/data-tables/$tableId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -280,6 +298,8 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/users': typeof AppUsersRoute
+  '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
+  '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -299,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/data-tables/': typeof AppDataTablesIndexRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
@@ -322,6 +343,8 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/users': typeof AppUsersRoute
+  '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
+  '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -340,6 +363,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/data-tables': typeof AppDataTablesIndexRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
@@ -366,6 +390,8 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/users': typeof AppUsersRoute
+  '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
+  '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -385,6 +411,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/_app/data-tables/': typeof AppDataTablesIndexRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
@@ -411,6 +438,8 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/data-tables/$tableId'
+    | '/data-tables/new'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -430,6 +459,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/data-tables/'
     | '/pricing/'
     | '/products/'
     | '/sales/'
@@ -453,6 +483,8 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/users'
+    | '/data-tables/$tableId'
+    | '/data-tables/new'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -471,6 +503,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/data-tables'
     | '/pricing'
     | '/products'
     | '/sales'
@@ -496,6 +529,8 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/data-tables/$tableId'
+    | '/_app/data-tables/new'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
@@ -515,6 +550,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/_app/data-tables/'
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
@@ -666,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/data-tables/': {
+      id: '/_app/data-tables/'
+      path: '/data-tables'
+      fullPath: '/data-tables/'
+      preLoaderRoute: typeof AppDataTablesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/stock-alerts': {
       id: '/_app/sales/stock-alerts'
       path: '/stock-alerts'
@@ -799,6 +842,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/data-tables/new': {
+      id: '/_app/data-tables/new'
+      path: '/data-tables/new'
+      fullPath: '/data-tables/new'
+      preLoaderRoute: typeof AppDataTablesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/data-tables/$tableId': {
+      id: '/_app/data-tables/$tableId'
+      path: '/data-tables/$tableId'
+      fullPath: '/data-tables/$tableId'
+      preLoaderRoute: typeof AppDataTablesTableIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -893,6 +950,8 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppUsersRoute: typeof AppUsersRoute
+  AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
+  AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
@@ -907,6 +966,7 @@ interface AppRouteChildren {
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
+  AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
 }
@@ -924,6 +984,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
   AppUsersRoute: AppUsersRoute,
+  AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
+  AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
@@ -938,6 +1000,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
   AppProductsLabelsRoute: AppProductsLabelsRoute,
   AppProductsNewRoute: AppProductsNewRoute,
+  AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
 }
@@ -953,3 +1016,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
