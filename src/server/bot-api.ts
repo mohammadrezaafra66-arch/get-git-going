@@ -80,22 +80,45 @@ export async function checkBotRateLimit(
 
 /** Map a postgres RPC error message to a Persian, status-coded response. */
 export function mapBotError(msg: string): { status: number; code: string; message: string } {
-  // Postgres RAISE EXCEPTION messages can come with extra context/whitespace.
-  // Normalize: take the first line and trim, then try direct lookups again.
-  const firstLine = (msg || "").split("\n")[0].trim();
-  // Direct lookups
-  if (ERR_PERSIAN[msg]) return { code: msg, ...ERR_PERSIAN[msg] };
-  if (ERR_PERSIAN[firstLine]) return { code: firstLine, ...ERR_PERSIAN[firstLine] };
+  // PostgREST/Supabase often prefix or append context to raised messages.
+  // Normalize aggressively: trim, take first line, strip leading "ERROR:" markers.
+  const raw = (msg || "").toString();
+  const firstLine = raw.split("\n")[0].trim();
+  const stripped = firstLine.replace(/^(?:ERROR|FATAL|PANIC)\s*:\s*/i, "").trim();
+  const probe = stripped || firstLine || raw;
 
-  // Sometimes the message is wrapped, e.g. 'invalid_key' inside a longer string.
+  // 1) Direct lookups (exact match) on multiple normalized forms
+  for (const candidate of [raw, firstLine, stripped, probe]) {
+    if (candidate && ERR_PERSIAN[candidate]) {
+      return { code: candidate, ...ERR_PERSIAN[candidate] };
+    }
+  }
+
+  // 2) Substring/word-boundary matching for known plain codes
   for (const code of Object.keys(ERR_PERSIAN)) {
-    if (firstLine === code || msg.includes(code)) {
+    const re = new RegExp(`(^|[^a-zA-Z0-9_])${code}([^a-zA-Z0-9_]|$)`);
+    if (re.test(raw)) {
       return { code, ...ERR_PERSIAN[code] };
     }
   }
 
-  // Prefixed errors like "unknown_column:foo" or "invalid_number_for_column:bar"
-  const probe = firstLine || msg;
+  // 3) Prefixed errors like "unknown_column:foo" or "invalid_number_for_column:bar"
+  //    The colon-prefixed token may appear anywhere in the message.
+  const prefixes: Array<{ key: string; code: string; status: number; msg: (k: string) => string }> = [
+    { key: "unknown_column",            code: "unknown_column",   status: 400, msg: (k) => `ستون «${k}» در این جدول تعریف نشده است. لطفاً column_key را بررسی کنید.` },
+    { key: "column_not_allowed",        code: "column_not_allowed", status: 403, msg: (k) => `این کلید مجاز به تغییر ستون «${k}» نیست. ستون باید در «ستون‌های قابل به‌روزرسانی» این کلید فعال شود.` },
+    { key: "invalid_number_for_column", code: "invalid_number",   status: 400, msg: (k) => `مقدار ارسال‌شده برای ستون «${k}» باید یک عدد معتبر باشد.` },
+    { key: "invalid_boolean_for_column",code: "invalid_boolean",  status: 400, msg: (k) => `مقدار ستون «${k}» باید true یا false باشد.` },
+    { key: "invalid_date_for_column",   code: "invalid_date",     status: 400, msg: (k) => `مقدار ستون «${k}» باید تاریخ معتبر در قالب YYYY-MM-DD باشد.` },
+    { key: "invalid_datetime_for_column",code: "invalid_datetime",status: 400, msg: (k) => `مقدار ستون «${k}» باید تاریخ-زمان ISO معتبر باشد (مثل 2026-04-26T10:00:00Z).` },
+    { key: "value_too_long_for_column", code: "value_too_long",   status: 400, msg: (k) => `مقدار ستون «${k}» از حد مجاز طول طولانی‌تر است.` },
+  ];
+  for (const p of prefixes) {
+    const m = new RegExp(`${p.key}:([^\\s"',}\\]]+)`).exec(raw);
+    if (m) return { status: p.status, code: p.code, message: p.msg(m[1]) };
+  }
+
+  // Legacy startsWith fallbacks (kept for safety)
   if (probe.startsWith("unknown_column:")) {
     const k = probe.split(":")[1] ?? "";
     return { status: 400, code: "unknown_column", message: `ستون «${k}» در این جدول تعریف نشده است. لطفاً column_key را بررسی کنید.` };
