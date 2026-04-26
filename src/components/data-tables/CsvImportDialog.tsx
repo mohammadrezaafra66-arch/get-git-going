@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   parseCsv, validateRows, suggestMapping,
-  CSV_IMPORT_BATCH_SIZE, CSV_IMPORT_MAX_ROWS,
+  CSV_IMPORT_MAX_ROWS, CSV_DELIMITER_LABELS,
   type CsvImportColumn, type ParsedCsv, type ValidationResult,
 } from "@/lib/data-tables/csv-import";
 import { DYNAMIC_COLUMN_DATA_TYPE_LABELS } from "@/lib/data-tables/constants";
@@ -33,6 +32,17 @@ interface Props {
 
 const NONE = "__none__";
 
+interface ImportSummary {
+  inserted: number;
+  skipped: number;
+  total: number;
+  validCount: number;
+  errorCount: number;
+  sessionId: string;
+  delimiterLabel: string;
+  atomic: boolean;
+}
+
 export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -41,13 +51,12 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [skipErrors, setSkipErrors] = useState(false);
-  const [progress, setProgress] = useState<{ batch: number; totalBatches: number } | null>(null);
-  const [summary, setSummary] = useState<{ inserted: number; skipped: number } | null>(null);
+  const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reset = () => {
     setStep("file"); setParsed(null); setMapping({});
-    setValidation(null); setSkipErrors(false); setProgress(null);
+    setValidation(null); setSkipErrors(false);
     setSummary(null); setBusy(false);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -68,8 +77,12 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
       setBusy(true);
       const text = await file.text();
       const p = parseCsv(text);
+      if (p.warnings.includes("delimiter_unknown")) {
+        toast.error("ساختار فایل قابل تشخیص نیست؛ لطفاً CSV را با comma یا semicolon خروجی بگیرید.");
+        return;
+      }
       if (p.headers.length === 0) {
-        toast.error("فایل CSV خالی است یا سرستون ندارد.");
+        toast.error("ردیف اول فایل باید شامل نام ستون‌ها باشد.");
         return;
       }
       if (p.rows.length === 0) {
@@ -83,7 +96,7 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
       setParsed(p);
       setMapping(suggestMapping(columns, p.headers));
       setStep("preview");
-    } catch (e) {
+    } catch {
       toast.error("خواندن فایل با خطا مواجه شد.");
     } finally {
       setBusy(false);
@@ -111,7 +124,7 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
   };
 
   const runImport = async () => {
-    if (!validation) return;
+    if (!validation || !parsed) return;
     const rowsToImport = validation.valid;
     if (rowsToImport.length === 0) {
       toast.error("هیچ ردیف معتبری برای واردسازی وجود ندارد.");
@@ -119,36 +132,43 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
     }
     setBusy(true);
     setStep("import");
-    const totalBatches = Math.ceil(rowsToImport.length / CSV_IMPORT_BATCH_SIZE);
-    let inserted = 0;
+    // Atomic mode: single RPC call wraps everything in one DB transaction.
+    const sessionId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
-      for (let i = 0; i < totalBatches; i++) {
-        setProgress({ batch: i + 1, totalBatches });
-        const slice = rowsToImport.slice(
-          i * CSV_IMPORT_BATCH_SIZE,
-          (i + 1) * CSV_IMPORT_BATCH_SIZE,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase as any).rpc("import_dynamic_table_rows", {
-          p_table_id: tableId,
-          p_rows: slice,
-        });
-        if (error) throw error;
-        const ins = (data && typeof data === "object" && "inserted" in data) ? Number((data as { inserted: number }).inserted) : slice.length;
-        inserted += ins;
-      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("import_dynamic_table_rows", {
+        p_table_id: tableId,
+        p_rows: rowsToImport,
+        p_session_id: sessionId,
+      });
+      if (error) throw error;
+      const result = (data ?? {}) as {
+        inserted?: number; total?: number; session_id?: string; atomic?: boolean;
+      };
+      const inserted = Number(result.inserted ?? rowsToImport.length);
       const skipped = validation.totalRows - inserted;
-      setSummary({ inserted, skipped });
+      setSummary({
+        inserted,
+        skipped,
+        total: validation.totalRows,
+        validCount: validation.validCount,
+        errorCount: validation.errorRowCount,
+        sessionId: result.session_id ?? sessionId,
+        delimiterLabel: CSV_DELIMITER_LABELS[parsed.delimiter],
+        atomic: result.atomic ?? true,
+      });
       setStep("done");
       toast.success(`واردسازی موفق: ${toFaDigits(String(inserted))} ردیف اضافه شد.`);
       qc.invalidateQueries({ queryKey: ["dynamic-table-rows", tableId] });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "خطای ناشناخته";
-      toast.error(`خطا در واردسازی: ${msg}`);
+      toast.error(`خطا در واردسازی (هیچ ردیفی ذخیره نشد): ${msg}`);
       setStep("validate");
     } finally {
       setBusy(false);
-      setProgress(null);
     }
   };
 
@@ -191,9 +211,20 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
         {/* Step: Preview */}
         {step === "preview" && parsed && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              پیش‌نمایش {toFaDigits(String(previewRows.length))} ردیف اول از مجموع {toFaDigits(String(parsed.rows.length))} ردیف.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted-foreground">
+                پیش‌نمایش {toFaDigits(String(previewRows.length))} ردیف اول از مجموع {toFaDigits(String(parsed.rows.length))} ردیف.
+              </span>
+              <Badge variant="outline" className="text-[10px]">
+                جداکننده: {CSV_DELIMITER_LABELS[parsed.delimiter]}
+              </Badge>
+            </div>
+            {parsed.warnings.some((w) => w.startsWith("column_count_mismatch")) && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                برخی ردیف‌ها تعداد ستون متفاوتی با سرستون دارند؛ احتمال خطا در اعتبارسنجی هست.
+              </p>
+            )}
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-xs">
                 <thead className="bg-muted/40">
