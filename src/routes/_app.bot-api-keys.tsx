@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2,
+  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -86,6 +87,26 @@ function BotApiKeysPage() {
     },
   });
 
+  const statsQuery = useQuery({
+    enabled: !!user,
+    queryKey: ["bot-api-key-stats-today"],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("bot_key_stats_today");
+      if (error) throw error;
+      const map = new Map<string, { requests_today: number; errors_today: number; last_used_at: string | null }>();
+      for (const r of (data ?? [])) {
+        map.set(r.api_key_id, {
+          requests_today: Number(r.requests_today ?? 0),
+          errors_today: Number(r.errors_today ?? 0),
+          last_used_at: r.last_used_at ?? null,
+        });
+      }
+      return map;
+    },
+  });
+
   const createMut = useMutation({
     mutationFn: async () => {
       const expIso = newExpires ? new Date(newExpires).toISOString() : null;
@@ -128,9 +149,16 @@ function BotApiKeysPage() {
         title="کلیدهای API ربات"
         description="ساخت و مدیریت کلیدهای امن برای دسترسی ربات‌ها به جداول داده پویا"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="ml-2 h-4 w-4" />کلید جدید
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/bot-api-keys/usage">
+                <Activity className="ml-2 h-4 w-4" />گزارش استفاده
+              </Link>
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="ml-2 h-4 w-4" />کلید جدید
+            </Button>
+          </div>
         }
       />
 
@@ -152,6 +180,8 @@ function BotApiKeysPage() {
             <div className="divide-y divide-border">
               {(keysQuery.data ?? []).map((k) => {
                 const expired = k.expires_at ? new Date(k.expires_at).getTime() < Date.now() : false;
+                const stat = statsQuery.data?.get(k.id);
+                const lastUsed = stat?.last_used_at ?? k.last_used_at;
                 return (
                   <div key={k.id} className="flex flex-wrap items-center gap-3 p-4">
                     <div className="flex-1 min-w-0">
@@ -162,11 +192,19 @@ function BotApiKeysPage() {
                         </span>
                         {!k.is_active && <Badge variant="secondary">غیرفعال</Badge>}
                         {expired && <Badge variant="destructive">منقضی</Badge>}
+                        <Badge variant="outline" className="text-xs">
+                          امروز: {stat?.requests_today ?? 0}
+                        </Badge>
+                        {(stat?.errors_today ?? 0) > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            خطا: {stat?.errors_today}
+                          </Badge>
+                        )}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
                         <span>ساخت: {formatDateTimeFa(k.created_at)}</span>
                         {k.expires_at && <span>انقضا: {formatDateTimeFa(k.expires_at)}</span>}
-                        <span>آخرین استفاده: {k.last_used_at ? formatDateTimeFa(k.last_used_at) : "—"}</span>
+                        <span>آخرین استفاده: {lastUsed ? formatDateTimeFa(lastUsed) : "—"}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
