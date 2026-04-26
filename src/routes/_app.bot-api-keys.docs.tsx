@@ -119,6 +119,39 @@ function BotApiDocsPage() {
 
         <TabsContent value="docs" className="space-y-4">
           <Card>
+            <CardHeader><CardTitle className="text-base">معرفی Bot API</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <p>
+                Bot API یک رابط امن و عمومی برای اتصال ربات‌ها (مانند ربات‌های تلگرام، اسکریپت‌های
+                خودکار یا سرویس‌های خارجی) به «جداول داده پویا» این سامانه است.
+              </p>
+              <p>
+                با این API می‌توان ردیف‌های یک جدول مشخص را خواند یا مقدار ستون‌های مجاز را
+                به‌روزرسانی کرد. هر کلید API فقط به جداول و ستون‌هایی دسترسی دارد که مدیر صریحاً به
+                آن داده باشد.
+              </p>
+              <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
+                <li>دو endpoint عمومی: GET برای خواندن، PATCH برای به‌روزرسانی</li>
+                <li>احراز هویت با هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code></li>
+                <li>کنترل دسترسی در سطح جدول و ستون، با Rate Limit و ثبت Usage Log</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">ساخت کلید API</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <ol className="list-decimal pr-5 space-y-1">
+                <li>به صفحه <Link to="/bot-api-keys" className="underline">کلیدهای API</Link> بروید و «کلید جدید» بسازید.</li>
+                <li>کلید خام فقط یک‌بار نمایش داده می‌شود؛ آن را در محل امنی ذخیره کنید.</li>
+                <li>از بخش «دسترسی جداول» کلید را به جدول مورد نظر متصل کنید.</li>
+                <li>برای هر جدول، گزینه‌های <strong>read</strong> و در صورت نیاز <strong>update</strong> را فعال کنید.</li>
+                <li>اگر update فعال است، ستون‌های مجاز برای تغییر را در «ستون‌های قابل به‌روزرسانی» انتخاب کنید.</li>
+              </ol>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle className="text-base">احراز هویت</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p>
@@ -200,6 +233,50 @@ function BotApiDocsPage() {
                 <ErrorRow status={429} code="rate_limit_per_minute | rate_limit_per_day | rate_limit_ip_failures"
                   desc="از حد مجاز درخواست‌ها عبور کرده‌اید. هدر Retry-After را بررسی کنید." />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">محدودیت نرخ (Rate Limit)</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <ul className="list-disc pr-5 space-y-1">
+                <li>حداکثر <strong>۱۲۰ درخواست در دقیقه</strong> برای هر کلید.</li>
+                <li>حداکثر <strong>۵۰۰۰ درخواست در روز</strong> برای هر کلید.</li>
+                <li>حداکثر <strong>۳۰ درخواست ناموفق در ۱۰ دقیقه</strong> برای هر IP (برای جلوگیری از حملات brute-force).</li>
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                در صورت عبور از سقف، پاسخ <code dir="ltr">HTTP 429</code> همراه با هدر
+                <code dir="ltr"> Retry-After</code> برمی‌گردد. مقدار این هدر به ثانیه است و نشان می‌دهد
+                ربات باید پیش از ارسال درخواست بعدی چقدر صبر کند.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">نمونه درخواست با curl</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium mb-1">GET — خواندن ردیف‌ها</p>
+                <CodeBlock lang="bash" code={docCurlGet} />
+              </div>
+              <div>
+                <p className="font-medium mb-1">PATCH — به‌روزرسانی یک ردیف</p>
+                <CodeBlock lang="bash" code={docCurlPatch} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">چک‌لیست اتصال ربات</CardTitle></CardHeader>
+            <CardContent className="text-sm leading-7">
+              <ol className="list-decimal pr-5 space-y-1">
+                <li>یک کلید API بسازید و کلید خام را ذخیره کنید.</li>
+                <li>کلید را به جدول هدف متصل کرده و سطح دسترسی (read / update) را تعیین کنید.</li>
+                <li>اگر نیاز به تغییر ستون‌ها هست، ستون‌های قابل update را مشخص کنید.</li>
+                <li>درخواست را در «<Link to="/bot-api-keys/playground" className="underline">API Playground</Link>» تست کنید.</li>
+                <li>کلید را در ربات/سرویس خود تنظیم کرده و درخواست‌ها را ارسال کنید.</li>
+                <li>مصرف و خطاها را در «<Link to="/bot-api-keys/usage" className="underline">گزارش استفاده</Link>» پایش کنید.</li>
+              </ol>
             </CardContent>
           </Card>
         </TabsContent>
