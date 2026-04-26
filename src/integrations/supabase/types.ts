@@ -1227,6 +1227,81 @@ export type Database = {
           },
         ]
       }
+      sales_quote_send_queue: {
+        Row: {
+          attempts: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          message_text: string | null
+          pdf_attached: boolean
+          processed_at: string | null
+          quote_id: string
+          recipient: string
+          scheduled_at: string
+          share_log_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          message_text?: string | null
+          pdf_attached?: boolean
+          processed_at?: string | null
+          quote_id: string
+          recipient: string
+          scheduled_at?: string
+          share_log_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          message_text?: string | null
+          pdf_attached?: boolean
+          processed_at?: string | null
+          quote_id?: string
+          recipient?: string
+          scheduled_at?: string
+          share_log_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_send_queue_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_quote_send_queue_share_log_id_fkey"
+            columns: ["share_log_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quote_share_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_quote_share_logs: {
         Row: {
           attempted_at: string
