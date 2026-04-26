@@ -30,6 +30,7 @@ import {
   SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus,
 } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -418,7 +419,7 @@ function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
 
 function ShareQuoteMenu({ row }: { row: QuoteRow }) {
   const [pdfLoading, setPdfLoading] = useState(false);
-  const notReady = () => toast.info("این قابلیت در نسخه بعدی فعال می‌شود");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleDownloadPdf = async () => {
     if (pdfLoading) return;
@@ -482,6 +483,7 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
   };
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" variant="outline" disabled={pdfLoading}>
@@ -513,12 +515,20 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
             <span className="text-[10px] text-muted-foreground">در حال آماده‌سازی…</span>
           )}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setShareOpen(true); }}>
           <MessageCircle className="ml-2 h-4 w-4" />
           <span className="flex-1">ارسال در پیام‌رسان</span>
-          <span className="text-[10px] text-muted-foreground">به زودی</span>
+          <span className="text-[10px] text-muted-foreground">پیش‌نویس</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ShareQuoteDialog
+      open={shareOpen}
+      onOpenChange={setShareOpen}
+      quoteId={row.id}
+      quoteNumber={row.quote_number}
+      defaultRecipient={row.customer_phone}
+    />
+    </>
   );
 }
