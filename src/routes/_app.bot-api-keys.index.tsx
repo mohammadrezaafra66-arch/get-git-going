@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -26,19 +26,10 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
-export const Route = createFileRoute("/_app/bot-api-keys")({
+export const Route = createFileRoute("/_app/bot-api-keys/")({
   beforeLoad: async () => { await requirePermission("bot-api-keys", "view"); },
-  component: BotApiKeysLayout,
+  component: BotApiKeysPage,
 });
-
-function BotApiKeysLayout() {
-  const location = useLocation();
-  // Render child routes (docs/usage/playground) when nested; otherwise the index page.
-  if (location.pathname !== "/bot-api-keys" && location.pathname !== "/bot-api-keys/") {
-    return <Outlet />;
-  }
-  return <BotApiKeysPage />;
-}
 
 interface BotKey {
   id: string;
