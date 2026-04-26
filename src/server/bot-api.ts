@@ -33,6 +33,47 @@ const ERR_PERSIAN: Record<string, { status: number; message: string }> = {
   invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر باشد." },
 };
 
+const RATE_LIMIT_PERSIAN: Record<string, string> = {
+  rate_limit_per_minute:  "تعداد درخواست‌های این کلید در دقیقه از حد مجاز عبور کرد.",
+  rate_limit_per_day:     "تعداد درخواست‌های این کلید در روز از حد مجاز عبور کرد.",
+  rate_limit_ip_failures: "تعداد درخواست‌های ناموفق از این IP بیش از حد مجاز است.",
+};
+
+export type RateLimitResult =
+  | { ok: true }
+  | { ok: false; status: 429; code: string; message: string; retryAfter: number };
+
+/**
+ * Apply simple usage-log–based rate limits.
+ *  - Per key: 120 req/min, 5000 req/day
+ *  - Unauthenticated IP: 30 failed req / 10 minutes
+ */
+export async function checkBotRateLimit(
+  keyId: string | null,
+  ip: string | null,
+): Promise<RateLimitResult> {
+  const { data, error } = await supabaseAdmin.rpc("bot_check_rate_limit", {
+    p_key_id: keyId ?? undefined,
+    p_ip: ip ?? undefined,
+  });
+  if (error) {
+    console.error("[bot-api] rate-limit check failed:", error.message);
+    return { ok: true }; // fail open: never block legitimate traffic on infra error
+  }
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { ok: boolean; retry_after_seconds: number | null; reason: string | null }
+    | null;
+  if (!row || row.ok) return { ok: true };
+  const code = row.reason || "rate_limited";
+  return {
+    ok: false,
+    status: 429,
+    code,
+    message: RATE_LIMIT_PERSIAN[code] ?? "محدودیت نرخ درخواست اعمال شد.",
+    retryAfter: Math.max(1, row.retry_after_seconds ?? 60),
+  };
+}
+
 /** Map a postgres RPC error message to a Persian, status-coded response. */
 export function mapBotError(msg: string): { status: number; code: string; message: string } {
   // Direct lookups
