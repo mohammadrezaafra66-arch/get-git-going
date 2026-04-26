@@ -12,9 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { ensureAuthReady } from "@/lib/auth/session";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const r = typeof search.redirect === "string" ? search.redirect : undefined;
+    return r ? { redirect: r } : {};
+  },
   beforeLoad: async ({ search }) => {
     const auth = await ensureAuthReady();
     if (auth.user) {
