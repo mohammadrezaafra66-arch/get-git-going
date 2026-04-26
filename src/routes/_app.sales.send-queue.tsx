@@ -171,6 +171,9 @@ function SendQueuePage() {
       />
 
       <StatusSummaryCard />
+      <KpiCards />
+      <ChannelStatusCard />
+      <RecentErrorsCard />
       {isManagerial && <WorkerControlsCard />}
 
       <Card>
@@ -178,6 +181,7 @@ function SendQueuePage() {
           <div className="flex items-center gap-2 text-sm font-medium">
             <Filter className="h-4 w-4" /> فیلترها
           </div>
+          <QuickFilterChips value={quickFilter} onChange={setQuickFilter} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="relative sm:col-span-2 lg:col-span-2">
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
