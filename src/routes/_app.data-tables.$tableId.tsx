@@ -23,7 +23,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useUserRoles } from "@/lib/rbac/useUserRoles";
 import { toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
@@ -57,9 +56,8 @@ interface RowItem {
 
 function DataTableDetailPage() {
   const { tableId } = Route.useParams();
-  const { user } = useAuth();
-  const { roles } = useUserRoles();
-  const canEdit = roles.includes("admin") || roles.includes("manager");
+  const { user, roles } = useAuth();
+  const canEdit = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
