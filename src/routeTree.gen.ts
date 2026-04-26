@@ -41,6 +41,7 @@ import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
 import { Route as AppProductsBrandsRouteImport } from './routes/_app.products.brands'
+import { Route as AppProductsAttributesRouteImport } from './routes/_app.products.attributes'
 import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
@@ -222,6 +223,11 @@ const AppProductsBrandsRoute = AppProductsBrandsRouteImport.update({
   path: '/products/brands',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProductsAttributesRoute = AppProductsAttributesRouteImport.update({
+  id: '/products/attributes',
+  path: '/products/attributes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProductsIdRoute = AppProductsIdRouteImport.update({
   id: '/products/$id',
   path: '/products/$id',
@@ -365,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/attributes': typeof AppProductsAttributesRoute
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
@@ -417,6 +424,7 @@ export interface FileRoutesByTo {
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/attributes': typeof AppProductsAttributesRoute
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
+  '/_app/products/attributes': typeof AppProductsAttributesRoute
   '/_app/products/brands': typeof AppProductsBrandsRoute
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
@@ -528,6 +537,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
+    | '/products/attributes'
     | '/products/brands'
     | '/products/categories'
     | '/products/labels'
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
+    | '/products/attributes'
     | '/products/brands'
     | '/products/categories'
     | '/products/labels'
@@ -634,6 +645,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/sale-price-types'
     | '/_app/pricing/shipping-rules'
     | '/_app/products/$id'
+    | '/_app/products/attributes'
     | '/_app/products/brands'
     | '/_app/products/categories'
     | '/_app/products/labels'
@@ -891,6 +903,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProductsBrandsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/products/attributes': {
+      id: '/_app/products/attributes'
+      path: '/products/attributes'
+      fullPath: '/products/attributes'
+      preLoaderRoute: typeof AppProductsAttributesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/products/$id': {
       id: '/_app/products/$id'
       path: '/products/$id'
@@ -1135,6 +1154,7 @@ interface AppRouteChildren {
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
+  AppProductsAttributesRoute: typeof AppProductsAttributesRoute
   AppProductsBrandsRoute: typeof AppProductsBrandsRoute
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
@@ -1170,6 +1190,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,
+  AppProductsAttributesRoute: AppProductsAttributesRoute,
   AppProductsBrandsRoute: AppProductsBrandsRoute,
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
   AppProductsLabelsRoute: AppProductsLabelsRoute,
