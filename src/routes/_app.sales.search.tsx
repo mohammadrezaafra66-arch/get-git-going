@@ -245,11 +245,22 @@ function SalesSearchPage() {
           <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال جستجو...
         </div>
       ) : products.length === 0 ? (
-        <EmptyState
-          icon={PackageX}
-          title="محصولی پیدا نشد"
-          description="محصولی با این عبارت پیدا نشد."
-        />
+        <div className="space-y-3">
+          <EmptyState
+            icon={PackageX}
+            title="محصولی پیدا نشد"
+            description="محصولی با این عبارت پیدا نشد."
+          />
+          <div className="flex justify-center">
+            <Link
+              to="/pricing/quick-price"
+              className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-sm text-primary hover:bg-primary/10"
+            >
+              <Calculator className="h-4 w-4" />
+              محاسبه سریع قیمت برای کالای خارج از لیست
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {

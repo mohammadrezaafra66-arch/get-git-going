@@ -38,6 +38,7 @@ import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
 import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
+import { Route as AppPricingQuickPriceRouteImport } from './routes/_app.pricing.quick-price'
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
 import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.pricing.live-price-list'
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
@@ -190,6 +191,11 @@ const AppPricingRulesRoute = AppPricingRulesRouteImport.update({
   path: '/pricing/rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingQuickPriceRoute = AppPricingQuickPriceRouteImport.update({
+  id: '/pricing/quick-price',
+  path: '/pricing/quick-price',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingPurchasePricesRoute =
   AppPricingPurchasePricesRouteImport.update({
     id: '/pricing/purchase-prices',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
   '/_app/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
+  '/_app/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/_app/pricing/rules': typeof AppPricingRulesRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
     | '/pricing/currency-rates'
     | '/pricing/live-price-list'
     | '/pricing/purchase-prices'
+    | '/pricing/quick-price'
     | '/pricing/rules'
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/pricing/currency-rates'
     | '/pricing/live-price-list'
     | '/pricing/purchase-prices'
+    | '/pricing/quick-price'
     | '/pricing/rules'
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/currency-rates'
     | '/_app/pricing/live-price-list'
     | '/_app/pricing/purchase-prices'
+    | '/_app/pricing/quick-price'
     | '/_app/pricing/rules'
     | '/_app/pricing/sale-price-types'
     | '/_app/pricing/shipping-rules'
@@ -654,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingRulesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/quick-price': {
+      id: '/_app/pricing/quick-price'
+      path: '/pricing/quick-price'
+      fullPath: '/pricing/quick-price'
+      preLoaderRoute: typeof AppPricingQuickPriceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/purchase-prices': {
       id: '/_app/pricing/purchase-prices'
       path: '/pricing/purchase-prices'
@@ -745,6 +764,7 @@ interface AppRouteChildren {
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
   AppPricingLivePriceListRoute: typeof AppPricingLivePriceListRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
+  AppPricingQuickPriceRoute: typeof AppPricingQuickPriceRoute
   AppPricingRulesRoute: typeof AppPricingRulesRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
@@ -775,6 +795,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
   AppPricingLivePriceListRoute: AppPricingLivePriceListRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
+  AppPricingQuickPriceRoute: AppPricingQuickPriceRoute,
   AppPricingRulesRoute: AppPricingRulesRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
