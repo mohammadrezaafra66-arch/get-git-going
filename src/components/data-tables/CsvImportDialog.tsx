@@ -429,3 +429,12 @@ function stepLabel(s: Step): string {
     case "done": return "پایان";
   }
 }
+
+function SummaryRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between rounded-md border border-border px-3 py-2 ${highlight ? "bg-emerald-500/10" : "bg-muted/30"}`}>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`font-semibold ${highlight ? "text-emerald-600" : ""}`}>{value}</span>
+    </div>
+  );
+}
