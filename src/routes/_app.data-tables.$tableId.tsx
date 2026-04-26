@@ -405,18 +405,10 @@ function DataTableDetailPage() {
                               onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
                               onRequestEdit={(initial) => {
                                 if (!canEdit) return;
-                                if (inactive) {
-                                  const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
-                                  if (!ok) return;
-                                }
                                 setEditingPos({ row: rowIdx, col: colIdx, initial });
                               }}
                               onClearCell={async () => {
                                 if (!canEdit) return;
-                                if (inactive) {
-                                  const ok = window.confirm("این ردیف غیرفعال است. مقدار سلول پاک شود؟");
-                                  if (!ok) return;
-                                }
                                 if (!value) return;
                                 await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
                               }}
@@ -814,17 +806,13 @@ function CellEditor({
   if (!editing) {
     const handleStartEdit = () => {
       if (!canEdit) return;
-      if (inactive) {
-        const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
-        if (!ok) return;
-      }
       setEditing(true);
     };
     return (
       <div
         className={canEdit ? "cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 -mx-1" : ""}
         onDoubleClick={handleStartEdit}
-        title={canEdit ? (inactive ? "ردیف غیرفعال — دابل‌کلیک برای ویرایش با هشدار" : "دابل‌کلیک برای ویرایش") : undefined}
+        title={canEdit ? (inactive ? "ردیف غیرفعال — قابل ویرایش توسط مدیر" : "دابل‌کلیک برای ویرایش") : undefined}
       >
         {display}
       </div>
