@@ -87,7 +87,7 @@ function NewQuotePage() {
 
       const { data: quote, error: qErr } = await supabase
         .from("sales_quotes")
-        .insert({
+        .insert([{
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
           customer_note: customerNote.trim() || null,
@@ -96,7 +96,8 @@ function NewQuotePage() {
           discount_amount: totals.discount_amount,
           final_amount: totals.final_amount,
           salesperson_id: user.id,
-        })
+          quote_number: "",
+        }])
         .select("id, quote_number")
         .single();
       if (qErr) throw qErr;

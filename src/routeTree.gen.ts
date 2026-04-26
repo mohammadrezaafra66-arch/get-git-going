@@ -45,6 +45,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -228,6 +229,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppSalesQuotesRoute,
+} as any)
 const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -264,13 +270,14 @@ export interface FileRoutesByFullPath {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
-  '/sales/quotes': typeof AppSalesQuotesRoute
+  '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
+  '/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -301,13 +308,14 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
-  '/sales/quotes': typeof AppSalesQuotesRoute
+  '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
+  '/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -341,13 +349,14 @@ export interface FileRoutesById {
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
-  '/_app/sales/quotes': typeof AppSalesQuotesRoute
+  '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
+  '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/sales/'
     | '/products/$id/edit'
+    | '/sales/quotes/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -425,6 +435,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/products/$id/edit'
+    | '/sales/quotes/new'
   id:
     | '__root__'
     | '/'
@@ -464,6 +475,7 @@ export interface FileRouteTypes {
     | '/_app/products/'
     | '/_app/sales/'
     | '/_app/products/$id/edit'
+    | '/_app/sales/quotes/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -727,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/quotes/new': {
+      id: '/_app/sales/quotes/new'
+      path: '/new'
+      fullPath: '/sales/quotes/new'
+      preLoaderRoute: typeof AppSalesQuotesNewRouteImport
+      parentRoute: typeof AppSalesQuotesRoute
+    }
     '/_app/products/$id/edit': {
       id: '/_app/products/$id/edit'
       path: '/edit'
@@ -737,15 +756,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSalesQuotesRouteChildren {
+  AppSalesQuotesNewRoute: typeof AppSalesQuotesNewRoute
+}
+
+const AppSalesQuotesRouteChildren: AppSalesQuotesRouteChildren = {
+  AppSalesQuotesNewRoute: AppSalesQuotesNewRoute,
+}
+
+const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
+  AppSalesQuotesRouteChildren,
+)
+
 interface AppSalesRouteChildren {
-  AppSalesQuotesRoute: typeof AppSalesQuotesRoute
+  AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
-  AppSalesQuotesRoute: AppSalesQuotesRoute,
+  AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
