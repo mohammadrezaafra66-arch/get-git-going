@@ -28,6 +28,7 @@ import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
+import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -144,6 +145,11 @@ const AppProductsIndexRoute = AppProductsIndexRouteImport.update({
 const AppPricingIndexRoute = AppPricingIndexRouteImport.update({
   id: '/pricing/',
   path: '/pricing/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDataTablesIndexRoute = AppDataTablesIndexRouteImport.update({
+  id: '/data-tables/',
+  path: '/data-tables/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/data-tables/': typeof AppDataTablesIndexRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
@@ -340,6 +347,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/data-tables': typeof AppDataTablesIndexRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/_app/data-tables/': typeof AppDataTablesIndexRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
@@ -430,6 +439,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/data-tables/'
     | '/pricing/'
     | '/products/'
     | '/sales/'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/data-tables'
     | '/pricing'
     | '/products'
     | '/sales'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/_app/data-tables/'
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
@@ -664,6 +676,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing/'
       preLoaderRoute: typeof AppPricingIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/data-tables/': {
+      id: '/_app/data-tables/'
+      path: '/data-tables'
+      fullPath: '/data-tables/'
+      preLoaderRoute: typeof AppDataTablesIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales/stock-alerts': {
@@ -907,6 +926,7 @@ interface AppRouteChildren {
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
+  AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
 }
@@ -938,6 +958,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
   AppProductsLabelsRoute: AppProductsLabelsRoute,
   AppProductsNewRoute: AppProductsNewRoute,
+  AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
 }
@@ -953,3 +974,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
