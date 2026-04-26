@@ -162,7 +162,7 @@ function DataTableDetailPage() {
       const { data, error } = await supabase.rpc("query_dynamic_table_rows", {
         p_table_id: tableId,
         p_filters: serverFilters as unknown as never,
-        p_search: search.trim() ? search.trim() : null,
+        p_search: search.trim() ? search.trim() : undefined,
         p_show_inactive: showInactive,
         p_limit: PAGE_SIZE * pageCount,
         p_offset: 0,
