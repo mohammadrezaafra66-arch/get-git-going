@@ -544,6 +544,14 @@ function ProductCell({ product }: { product: ProductRow }) {
     <div className="min-w-0">
       <div className="truncate text-sm font-medium text-foreground">{product.name}</div>
       <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
+      <div className="mt-1">
+        <StockAlertButton
+          productId={product.id}
+          productName={product.name}
+          productSku={product.sku}
+          stockStatus={product.stock_status}
+        />
+      </div>
     </div>
   );
 }
