@@ -170,6 +170,12 @@ function BotApiUsagePage() {
         }
       />
 
+      <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-6">
+        در این صفحه تمام درخواست‌های Bot API ثبت می‌شود؛ شامل درخواست‌های موفق، خطاها، کد خطا،
+        کلید مصرف‌کننده، جدول هدف و IP درخواست‌دهنده. می‌توانید با فیلترها به‌سرعت درخواست‌های
+        مشکوک یا پرتکرار را پیدا کنید.
+      </div>
+
       {/* Suspicious IPs and error keys */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
