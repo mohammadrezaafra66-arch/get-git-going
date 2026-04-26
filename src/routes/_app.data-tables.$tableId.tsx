@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox,
+  ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox, Search, AlertTriangle,
   Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -23,7 +23,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { useDebounce } from "@/hooks/use-debounce";
+import { toFaDigits, formatDateTimeFa, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
   DYNAMIC_TABLE_ROWS_PAGE_SIZE, COLUMN_KEY_REGEX,
