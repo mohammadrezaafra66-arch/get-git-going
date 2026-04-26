@@ -333,8 +333,19 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
       const res = await fetch(url, init);
       setResStatus(res.status);
       const text = await res.text();
-      try { setResBody(JSON.stringify(JSON.parse(text), null, 2)); }
-      catch { setResBody(text); }
+      const ct = res.headers.get("content-type") ?? "";
+      if (ct.includes("application/json")) {
+        try { setResBody(JSON.stringify(JSON.parse(text), null, 2)); }
+        catch { setResBody(text); }
+      } else if (text.trimStart().startsWith("<!DOCTYPE") || text.trimStart().startsWith("<html")) {
+        setResBody(
+          "⚠️ سرور به‌جای JSON، صفحه HTML برگرداند.\n" +
+          "این معمولاً یعنی نسخه فعلی برنامه هنوز publish نشده و endpoint روی production در دسترس نیست.\n" +
+          "برای رفع: روی دکمه Publish کلیک کنید و چند لحظه بعد دوباره تست کنید.",
+        );
+      } else {
+        setResBody(text || "(پاسخ خالی)");
+      }
     } catch (e: unknown) {
       setResStatus(0);
       setResBody(`خطای شبکه: ${(e as Error)?.message ?? "نامشخص"}`);
