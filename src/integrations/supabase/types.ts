@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_api_keys: {
+        Row: {
+          allowed_table_ids: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          key_hash: string
+          last_used_at: string | null
+          name: string
+        }
+        Insert: {
+          allowed_table_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          last_used_at?: string | null
+          name: string
+        }
+        Update: {
+          allowed_table_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          last_used_at?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       brands: {
         Row: {
           created_at: string
@@ -180,6 +213,214 @@ export type Database = {
           name?: string
           phone?: string | null
           tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dynamic_table_cells: {
+        Row: {
+          column_id: string
+          id: string
+          row_id: string
+          table_id: string
+          updated_at: string
+          value_boolean: boolean | null
+          value_date: string | null
+          value_datetime: string | null
+          value_number: number | null
+          value_text: string | null
+        }
+        Insert: {
+          column_id: string
+          id?: string
+          row_id: string
+          table_id: string
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_date?: string | null
+          value_datetime?: string | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          column_id?: string
+          id?: string
+          row_id?: string
+          table_id?: string
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_date?: string | null
+          value_datetime?: string | null
+          value_number?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_table_cells_column_id_fkey"
+            columns: ["column_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_table_columns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_table_cells_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_table_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dynamic_table_cells_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_table_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          data_type: Database["public"]["Enums"]["dynamic_column_data_type"]
+          id: string
+          is_editable_by_bot: boolean
+          is_filterable: boolean
+          is_required: boolean
+          label: string
+          sort_order: number
+          table_id: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          data_type: Database["public"]["Enums"]["dynamic_column_data_type"]
+          id?: string
+          is_editable_by_bot?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          label: string
+          sort_order?: number
+          table_id: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          data_type?: Database["public"]["Enums"]["dynamic_column_data_type"]
+          id?: string
+          is_editable_by_bot?: boolean
+          is_filterable?: boolean
+          is_required?: boolean
+          label?: string
+          sort_order?: number
+          table_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_table_columns_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_table_row_counters: {
+        Row: {
+          last_value: number
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          last_value?: number
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          last_value?: number
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_table_row_counters_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: true
+            referencedRelation: "dynamic_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_table_rows: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          row_number: number
+          table_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          row_number: number
+          table_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          row_number?: number
+          table_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_table_rows_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_tables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_tables: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          owner_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          owner_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          owner_id?: string | null
+          slug?: string
           updated_at?: string
         }
         Relationships: []
@@ -1613,6 +1854,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      api_dynamic_table_query_rows: {
+        Args: {
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_table_slug: string
+        }
+        Returns: Json
+      }
+      api_dynamic_table_update_cell: {
+        Args: {
+          p_column_key: string
+          p_row_id: string
+          p_table_slug: string
+          p_value: string
+        }
+        Returns: Json
+      }
       assign_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1675,6 +1934,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_dynamic_table_row: {
+        Args: { p_table_id: string; p_values: Json }
+        Returns: string
       }
       create_sales_quote_with_items: {
         Args: {
@@ -1755,6 +2018,15 @@ export type Database = {
       app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
       base_currency: "toman" | "usd" | "aed"
       currency_code: "toman" | "usd" | "aed"
+      dynamic_column_data_type:
+        | "text"
+        | "number"
+        | "boolean"
+        | "date"
+        | "datetime"
+        | "phone"
+        | "tag"
+        | "status"
       margin_type: "fixed" | "percent" | "mixed"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
@@ -1899,6 +2171,16 @@ export const Constants = {
       app_role: ["admin", "manager", "sales", "accountant", "viewer"],
       base_currency: ["toman", "usd", "aed"],
       currency_code: ["toman", "usd", "aed"],
+      dynamic_column_data_type: [
+        "text",
+        "number",
+        "boolean",
+        "date",
+        "datetime",
+        "phone",
+        "tag",
+        "status",
+      ],
       margin_type: ["fixed", "percent", "mixed"],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
