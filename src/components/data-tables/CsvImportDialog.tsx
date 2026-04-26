@@ -356,20 +356,32 @@ export function CsvImportDialog({ open, onOpenChange, tableId, columns }: Props)
         {step === "import" && (
           <div className="space-y-3 py-6 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-            <p className="text-sm">
-              در حال واردسازی batch {toFaDigits(String(progress?.batch ?? 0))} از {toFaDigits(String(progress?.totalBatches ?? 0))}…
+            <p className="text-sm">در حال واردسازی اتمیک… لطفاً صفحه را نبندید.</p>
+            <p className="text-xs text-muted-foreground">
+              کل {toFaDigits(String(validation?.validCount ?? 0))} ردیف در یک تراکنش ذخیره می‌شود.
             </p>
           </div>
         )}
 
         {/* Step: Done */}
         {step === "done" && summary && (
-          <div className="space-y-2 py-4 text-center">
+          <div className="space-y-3 py-4">
+            <div className="text-center space-y-1">
             <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
             <p className="font-semibold">واردسازی انجام شد.</p>
-            <p className="text-sm text-muted-foreground">
-              {toFaDigits(String(summary.inserted))} ردیف اضافه شد، {toFaDigits(String(summary.skipped))} ردیف رد شد.
-            </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <SummaryRow label="کل ردیف‌های فایل" value={toFaDigits(String(summary.total))} />
+              <SummaryRow label="ردیف معتبر" value={toFaDigits(String(summary.validCount))} />
+              <SummaryRow label="ردیف خطادار" value={toFaDigits(String(summary.errorCount))} />
+              <SummaryRow label="واردشده" value={toFaDigits(String(summary.inserted))} highlight />
+              <SummaryRow label="جداکننده تشخیص‌داده‌شده" value={summary.delimiterLabel} />
+              <SummaryRow label="حالت" value={summary.atomic ? "اتمیک (تک‌تراکنش)" : "Batch"} />
+              <div className="col-span-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
+                <span className="text-muted-foreground">شناسه نشست واردسازی: </span>
+                <span className="font-mono break-all" dir="ltr">{summary.sessionId}</span>
+              </div>
+            </div>
           </div>
         )}
 
