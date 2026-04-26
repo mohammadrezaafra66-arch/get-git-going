@@ -124,7 +124,9 @@ function NewQuotePage() {
       return quote;
     },
     onSuccess: (quote) => {
-      toast.success(`پیش‌فاکتور ${quote.quote_number} با موفقیت ثبت شد.`);
+      toast.success(`پیش‌فاکتور ${quote.quote_number} با موفقیت ثبت شد.`, {
+        description: "برای ارسال پیش‌فاکتور می‌توانید از دکمه «ارسال پیش‌فاکتور» استفاده کنید.",
+      });
       navigate({ to: "/sales/quotes" });
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور."),
