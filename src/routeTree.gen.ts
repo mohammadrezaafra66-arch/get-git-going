@@ -30,6 +30,7 @@ import { Route as AppProductsIndexRouteImport } from './routes/_app.products.ind
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
+import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
@@ -150,6 +151,11 @@ const AppSalesSearchRoute = AppSalesSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesQuotesRoute = AppSalesQuotesRouteImport.update({
+  id: '/quotes',
+  path: '/quotes',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppProductsNewRoute = AppProductsNewRouteImport.update({
   id: '/products/new',
   path: '/products/new',
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quotes': typeof AppSalesQuotesRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing/': typeof AppPricingIndexRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quotes': typeof AppSalesQuotesRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
+  '/_app/sales/quotes': typeof AppSalesQuotesRoute
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
@@ -372,6 +381,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing/'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing'
@@ -446,6 +457,7 @@ export interface FileRouteTypes {
     | '/_app/products/categories'
     | '/_app/products/labels'
     | '/_app/products/new'
+    | '/_app/sales/quotes'
     | '/_app/sales/search'
     | '/_app/sales/stock-alerts'
     | '/_app/pricing/'
@@ -610,6 +622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesSearchRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/quotes': {
+      id: '/_app/sales/quotes'
+      path: '/quotes'
+      fullPath: '/sales/quotes'
+      preLoaderRoute: typeof AppSalesQuotesRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/products/new': {
       id: '/_app/products/new'
       path: '/products/new'
@@ -719,12 +738,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppSalesRouteChildren {
+  AppSalesQuotesRoute: typeof AppSalesQuotesRoute
   AppSalesSearchRoute: typeof AppSalesSearchRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
+  AppSalesQuotesRoute: AppSalesQuotesRoute,
   AppSalesSearchRoute: AppSalesSearchRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
