@@ -80,11 +80,23 @@ export async function checkBotRateLimit(
 
 /** Map a postgres RPC error message to a Persian, status-coded response. */
 export function mapBotError(msg: string): { status: number; code: string; message: string } {
+  // Postgres RAISE EXCEPTION messages can come with extra context/whitespace.
+  // Normalize: take the first line and trim, then try direct lookups again.
+  const firstLine = (msg || "").split("\n")[0].trim();
   // Direct lookups
   if (ERR_PERSIAN[msg]) return { code: msg, ...ERR_PERSIAN[msg] };
+  if (ERR_PERSIAN[firstLine]) return { code: firstLine, ...ERR_PERSIAN[firstLine] };
+
+  // Sometimes the message is wrapped, e.g. 'invalid_key' inside a longer string.
+  for (const code of Object.keys(ERR_PERSIAN)) {
+    if (firstLine === code || msg.includes(code)) {
+      return { code, ...ERR_PERSIAN[code] };
+    }
+  }
 
   // Prefixed errors like "unknown_column:foo" or "invalid_number_for_column:bar"
-  if (msg.startsWith("unknown_column:")) {
+  const probe = firstLine || msg;
+  if (probe.startsWith("unknown_column:")) {
     const k = msg.split(":")[1] ?? "";
     return { status: 400, code: "unknown_column", message: `ستون «${k}» در این جدول تعریف نشده است. لطفاً column_key را بررسی کنید.` };
   }
