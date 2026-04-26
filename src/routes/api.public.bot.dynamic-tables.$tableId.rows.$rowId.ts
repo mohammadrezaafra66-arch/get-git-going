@@ -67,7 +67,7 @@ export const Route = createFileRoute("/api/public/bot/dynamic-tables/$tableId/ro
           p_key_id: auth.keyId,
           p_table_id: tableId,
           p_row_id: rowId,
-          p_values: values as Record<string, unknown>,
+          p_values: values as unknown as never,
         });
 
         if (error) {
