@@ -85,25 +85,7 @@ function NewQuotePage() {
         throw new Error(errs[0].message);
       }
 
-      const { data: quote, error: qErr } = await supabase
-        .from("sales_quotes")
-        .insert([{
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone.trim(),
-          customer_note: customerNote.trim() || null,
-          expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-          subtotal_amount: totals.subtotal_amount,
-          discount_amount: totals.discount_amount,
-          final_amount: totals.final_amount,
-          salesperson_id: user.id,
-          quote_number: "",
-        }])
-        .select("id, quote_number")
-        .single();
-      if (qErr) throw qErr;
-
       const itemsPayload = items.map((it) => ({
-        quote_id: quote.id,
         product_id: it.product_id,
         free_item_name: it.free_item_name,
         sku_snapshot: it.sku_snapshot,
@@ -115,46 +97,28 @@ function NewQuotePage() {
         line_total: lineTotal(it),
         source: it.source,
       }));
-      const { error: iErr } = await supabase.from("sales_quote_items").insert(itemsPayload);
-      if (iErr) {
-        // rollback quote to keep things clean
-        await supabase.from("sales_quotes").delete().eq("id", quote.id);
-        throw iErr;
-      }
 
-      // Supplemental audit log: items added (header trigger fires before items exist).
-      // Failure here must NOT break quote creation.
-      try {
-        const sources_count = { product_price: 0, quick_price: 0, manual: 0 };
-        let subtotal_from_items = 0;
-        let discount_from_items = 0;
-        let final_from_items = 0;
-        for (const it of itemsPayload) {
-          sources_count[it.source as keyof typeof sources_count] += 1;
-          subtotal_from_items += (it.quantity || 0) * (it.unit_price || 0);
-          discount_from_items += it.discount_amount || 0;
-          final_from_items += it.line_total || 0;
-        }
-        const { error: aErr } = await supabase.from("audit_logs").insert({
-          actor_id: user.id,
-          entity_type: "sales_quotes",
-          entity_id: quote.id,
-          action: "sales_quote_items_added",
-          diff: {
-            quote_id: quote.id,
-            item_count: itemsPayload.length,
-            subtotal_from_items: Math.round(subtotal_from_items),
-            discount_from_items: Math.round(discount_from_items),
-            final_from_items: Math.round(final_from_items),
-            sources_count,
-          },
-        });
-        if (aErr) console.warn("audit sales_quote_items_added failed:", aErr.message);
-      } catch (err) {
-        console.warn("audit sales_quote_items_added threw:", err);
-      }
-
-      return quote;
+      // Atomic RPC: creates quote + items + audit in a single DB transaction.
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "create_sales_quote_with_items",
+        {
+          p_customer_name: customerName.trim(),
+          p_customer_phone: customerPhone.trim(),
+          p_customer_note: customerNote.trim() || null,
+          p_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+          p_subtotal_amount: totals.subtotal_amount,
+          p_discount_amount: totals.discount_amount,
+          p_final_amount: totals.final_amount,
+          p_items: itemsPayload,
+        },
+      );
+      if (error) throw new Error(error.message);
+      const result = data as { id: string; quote_number: string } | null;
+      if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
+      return result;
     },
     onSuccess: (quote) => {
       toast.success(`پیش‌فاکتور ${quote.quote_number} با موفقیت ثبت شد.`, {
