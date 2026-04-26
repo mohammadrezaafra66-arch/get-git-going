@@ -24,6 +24,7 @@ import {
   type SalesQuoteItemSource,
 } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -316,6 +317,7 @@ function QuoteActionButtons({
   const [confirm, setConfirm] = useState<null | { next: SalesQuoteStatus; label: string; needsReason?: boolean }>(null);
   const [reason, setReason] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
@@ -340,8 +342,6 @@ function QuoteActionButtons({
   const canAccept = isManagerial && quote.status === "sent";
   const canReject = (isManagerial || isOwner) && quote.status === "sent";
   const canCancel = (isManagerial || isOwner) && (quote.status === "draft" || quote.status === "sent");
-
-  const notReady = () => toast.info("این قابلیت در نسخه بعدی فعال می‌شود");
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
@@ -407,9 +407,16 @@ function QuoteActionButtons({
         {pdfLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <FileDown className="ml-1 h-3.5 w-3.5" />}
         دانلود PDF
       </Button>
-      <Button size="sm" variant="outline" onClick={notReady}>
-        <MessageCircle className="ml-1 h-3.5 w-3.5" /> ارسال در پیام‌رسان <span className="text-[10px] text-muted-foreground mr-1">(به زودی)</span>
+      <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+        <MessageCircle className="ml-1 h-3.5 w-3.5" /> ارسال در پیام‌رسان
       </Button>
+      <ShareQuoteDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        quoteId={quote.id}
+        quoteNumber={quote.quote_number}
+        defaultRecipient={quote.customer_phone}
+      />
 
       <AlertDialog open={!!confirm} onOpenChange={(o) => { if (!o) setConfirm(null); }}>
         <AlertDialogContent>

@@ -31,6 +31,7 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
+import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.quote-share-logs'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
@@ -159,6 +160,11 @@ const AppSalesQuotesRoute = AppSalesQuotesRouteImport.update({
   path: '/quotes',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesQuoteShareLogsRoute = AppSalesQuoteShareLogsRouteImport.update({
+  id: '/quote-share-logs',
+  path: '/quote-share-logs',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppProductsNewRoute = AppProductsNewRouteImport.update({
   id: '/products/new',
   path: '/products/new',
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
+  '/_app/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
@@ -407,6 +416,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quote-share-logs'
     | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quote-share-logs'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/_app/products/categories'
     | '/_app/products/labels'
     | '/_app/products/new'
+    | '/_app/sales/quote-share-logs'
     | '/_app/sales/quotes'
     | '/_app/sales/search'
     | '/_app/sales/stock-alerts'
@@ -663,6 +675,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/quote-share-logs': {
+      id: '/_app/sales/quote-share-logs'
+      path: '/quote-share-logs'
+      fullPath: '/sales/quote-share-logs'
+      preLoaderRoute: typeof AppSalesQuoteShareLogsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/products/new': {
       id: '/_app/products/new'
       path: '/products/new'
@@ -809,6 +828,7 @@ const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
 )
 
 interface AppSalesRouteChildren {
+  AppSalesQuoteShareLogsRoute: typeof AppSalesQuoteShareLogsRoute
   AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
@@ -816,6 +836,7 @@ interface AppSalesRouteChildren {
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
+  AppSalesQuoteShareLogsRoute: AppSalesQuoteShareLogsRoute,
   AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
