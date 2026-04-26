@@ -1,0 +1,594 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Search, Filter, ArrowUpRight, ArrowDownRight, Tag,
+  PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles,
+} from "lucide-react";
+import { requirePermission } from "@/lib/rbac/route-guards";
+import { PageHeader } from "@/components/common/PageHeader";
+import { EmptyState } from "@/components/common/EmptyState";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import type { AppRole } from "@/lib/rbac/roles";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+
+export const Route = createFileRoute("/_app/pricing/live-price-list")({
+  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  component: LivePriceListPage,
+});
+
+const PAGE_SIZE = 20;
+
+type PriceFilter = "all" | "with" | "without";
+
+interface ProductRow {
+  id: string;
+  name: string;
+  sku: string | null;
+  product_type: "iranian" | "foreign" | string;
+  stock_status: string;
+  status: string;
+  brand?: { id: string; name: string } | null;
+  category?: { id: string; name: string } | null;
+}
+
+interface HistoryRow {
+  id: string;
+  product_id: string;
+  sale_price_type_id: string | null;
+  old_sale_price: number | null;
+  new_sale_price: number;
+  change_amount: number | null;
+  change_percent: number | null;
+  created_at: string;
+  snapshot_id: string | null;
+}
+
+interface SnapshotLite {
+  id: string;
+  pricing_rule_id: string | null;
+  rounded_sale_price: number | null;
+  calculated_at: string;
+}
+
+function LivePriceListPage() {
+  const { roles } = useAuth();
+  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const isSalesOnly = !isPrivileged && roles.includes("sales");
+
+  // ---------- filters ----------
+  const [search, setSearch] = useState("");
+  const dSearch = useDebounce(search, 350);
+  const [brandId, setBrandId] = useState<string>("__all");
+  const [categoryId, setCategoryId] = useState<string>("__all");
+  const [productType, setProductType] = useState<string>("__all");
+  const [stockStatus, setStockStatus] = useState<string>("__all");
+  const [salePriceTypeId, setSalePriceTypeId] = useState<string>("__all");
+  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+  const [page, setPage] = useState(1);
+
+  const minNum = minPrice.trim() ? Number(minPrice) : null;
+  const maxNum = maxPrice.trim() ? Number(maxPrice) : null;
+  const priceRangeError =
+    (minNum !== null && (Number.isNaN(minNum) || minNum < 0)) ||
+    (maxNum !== null && (Number.isNaN(maxNum) || maxNum < 0))
+      ? "قیمت باید عدد مثبت باشد."
+      : minNum !== null && maxNum !== null && minNum > maxNum
+        ? "حداقل قیمت نمی‌تواند بیشتر از حداکثر باشد."
+        : null;
+
+  const effectiveSearch = dSearch.trim().length >= 2 ? dSearch.trim() : "";
+
+  // reset page when filters change
+  useMemo(() => { setPage(1); }, [effectiveSearch, brandId, categoryId, productType, stockStatus, salePriceTypeId, priceFilter, minPrice, maxPrice]);
+
+  // ---------- reference data ----------
+  const { data: brands = [] } = useQuery({
+    queryKey: ["brands-lite"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("brands").select("id, name").eq("is_active", true).order("name").limit(500);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories-lite"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("id, name").eq("is_active", true).order("name").limit(500);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const { data: salePriceTypes = [] } = useQuery({
+    queryKey: ["sale-price-types-active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 5 * 60_000,
+  });
+
+  // ---------- products query (paginated) ----------
+  const productsQuery = useQuery({
+    queryKey: ["live-price-products", { effectiveSearch, brandId, categoryId, productType, stockStatus, page }],
+    queryFn: async () => {
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let q = supabase
+        .from("products")
+        .select("id, name, sku, product_type, stock_status, status, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .eq("is_active", true)
+        .order("name", { ascending: true })
+        .range(from, to);
+      if (effectiveSearch) {
+        const safe = effectiveSearch.replace(/[%_]/g, "");
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+      }
+      if (brandId !== "__all") q = q.eq("brand_id", brandId);
+      if (categoryId !== "__all") q = q.eq("category_id", categoryId);
+      if (productType !== "__all") q = q.eq("product_type", productType);
+      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus);
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return { rows: (data ?? []) as ProductRow[], total: count ?? 0 };
+    },
+    staleTime: 30_000,
+  });
+
+  const productIds = useMemo(() => (productsQuery.data?.rows ?? []).map((p) => p.id), [productsQuery.data]);
+
+  // ---------- history (latest per product+sale_price_type) ----------
+  const historyQuery = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["live-price-history", productIds, salePriceTypeId],
+    queryFn: async () => {
+      let q = supabase
+        .from("product_sale_price_history")
+        .select("id, product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at, snapshot_id")
+        .in("product_id", productIds)
+        .order("created_at", { ascending: false })
+        .limit(productIds.length * 50);
+      if (salePriceTypeId !== "__all") q = q.eq("sale_price_type_id", salePriceTypeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      // dedupe latest by (product_id, sale_price_type_id)
+      const seen = new Set<string>();
+      const latest: HistoryRow[] = [];
+      for (const r of (data ?? []) as HistoryRow[]) {
+        const k = `${r.product_id}::${r.sale_price_type_id ?? "_"}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        latest.push(r);
+      }
+      return latest;
+    },
+    staleTime: 30_000,
+  });
+
+  // ---------- snapshots (only for privileged users) ----------
+  const snapshotIds = useMemo(
+    () => isPrivileged
+      ? Array.from(new Set((historyQuery.data ?? []).map((h) => h.snapshot_id).filter((x): x is string => !!x)))
+      : [],
+    [historyQuery.data, isPrivileged],
+  );
+  const snapshotsQuery = useQuery({
+    enabled: isPrivileged && snapshotIds.length > 0,
+    queryKey: ["live-price-snapshots", snapshotIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("price_calculation_snapshots")
+        .select("id, pricing_rule_id, rounded_sale_price, calculated_at")
+        .in("id", snapshotIds);
+      if (error) throw error;
+      return (data ?? []) as SnapshotLite[];
+    },
+    staleTime: 60_000,
+  });
+
+  // ---------- merge ----------
+  type MergedRow = {
+    product: ProductRow;
+    histories: Array<HistoryRow & { snapshot?: SnapshotLite | null; sale_price_type_title?: string }>;
+    hasPrice: boolean;
+  };
+  const merged: MergedRow[] = useMemo(() => {
+    const byProduct = new Map<string, MergedRow>();
+    const products = productsQuery.data?.rows ?? [];
+    for (const p of products) byProduct.set(p.id, { product: p, histories: [], hasPrice: false });
+    const snapMap = new Map((snapshotsQuery.data ?? []).map((s) => [s.id, s]));
+    const typeMap = new Map(salePriceTypes.map((t: any) => [t.id, t.title as string]));
+    for (const h of historyQuery.data ?? []) {
+      const m = byProduct.get(h.product_id);
+      if (!m) continue;
+      m.histories.push({
+        ...h,
+        snapshot: h.snapshot_id ? snapMap.get(h.snapshot_id) ?? null : null,
+        sale_price_type_title: h.sale_price_type_id ? typeMap.get(h.sale_price_type_id) : "—",
+      });
+      m.hasPrice = true;
+    }
+    let result = Array.from(byProduct.values());
+    // price filter
+    if (priceFilter === "with") result = result.filter((r) => r.hasPrice);
+    else if (priceFilter === "without") result = result.filter((r) => !r.hasPrice);
+    // price range filter — applied to ANY history row of the product
+    if (!priceRangeError && (minNum !== null || maxNum !== null)) {
+      result = result.filter((r) => {
+        if (!r.hasPrice) return false;
+        return r.histories.some((h) => {
+          const v = Number(h.new_sale_price);
+          if (minNum !== null && v < minNum) return false;
+          if (maxNum !== null && v > maxNum) return false;
+          return true;
+        });
+      });
+    }
+    return result;
+  }, [productsQuery.data, historyQuery.data, snapshotsQuery.data, salePriceTypes, priceFilter, minNum, maxNum, priceRangeError]);
+
+  const total = productsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isLoading = productsQuery.isLoading || (productIds.length > 0 && historyQuery.isLoading);
+
+  // ---------- summary ----------
+  const summaryQuery = useQuery({
+    queryKey: ["live-price-summary"],
+    queryFn: async () => {
+      const [{ count: totalProducts }, distinctRes] = await Promise.all([
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("product_sale_price_history").select("product_id").limit(5000),
+      ]);
+      const distinct = new Set((distinctRes.data ?? []).map((r: any) => r.product_id));
+      return {
+        total: totalProducts ?? 0,
+        withPrice: distinct.size,
+        withoutPrice: Math.max(0, (totalProducts ?? 0) - distinct.size),
+      };
+    },
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="لیست قیمت زنده محصولات"
+        description="آخرین قیمت فروش ثبت‌شده هر محصول بر اساس تاریخچه قیمت فروش"
+      />
+
+      {/* summary */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <SummaryCard label="کل محصولات فعال" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.total ?? 0)} />
+        <SummaryCard label="دارای قیمت فروش" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withPrice ?? 0)} />
+        <SummaryCard label="بدون قیمت فروش" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withoutPrice ?? 0)} variant={(summaryQuery.data?.withoutPrice ?? 0) > 0 ? "warning" : "default"} />
+      </div>
+
+      {/* filters */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Filter className="h-4 w-4" /> فیلترها
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="relative sm:col-span-2 lg:col-span-2">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجو بر اساس نام محصول یا SKU (حداقل ۲ کاراکتر)"
+                className="pr-9"
+              />
+            </div>
+            <Select value={brandId} onValueChange={setBrandId}>
+              <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه برندها</SelectItem>
+                {brands.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger><SelectValue placeholder="دسته‌بندی" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه دسته‌ها</SelectItem>
+                {categories.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={productType} onValueChange={setProductType}>
+              <SelectTrigger><SelectValue placeholder="نوع کالا" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه</SelectItem>
+                <SelectItem value="iranian">ایرانی</SelectItem>
+                <SelectItem value="foreign">خارجی</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={stockStatus} onValueChange={setStockStatus}>
+              <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه</SelectItem>
+                <SelectItem value="in_stock">موجود</SelectItem>
+                <SelectItem value="out_of_stock">ناموجود</SelectItem>
+                <SelectItem value="limited">محدود</SelectItem>
+                <SelectItem value="unknown">نامشخص</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
+              <SelectTrigger><SelectValue placeholder="نوع قیمت فروش" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه انواع</SelectItem>
+                {salePriceTypes.map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={priceFilter} onValueChange={(v) => setPriceFilter(v as PriceFilter)}>
+              <SelectTrigger><SelectValue placeholder="وضعیت قیمت" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه محصولات</SelectItem>
+                <SelectItem value="with">فقط دارای قیمت</SelectItem>
+                <SelectItem value="without">فقط بدون قیمت</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="حداقل قیمت (تومان)"
+              inputMode="numeric"
+            />
+            <Input
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="حداکثر قیمت (تومان)"
+              inputMode="numeric"
+            />
+          </div>
+          {priceRangeError && (
+            <p className="text-xs text-destructive">{priceRangeError}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* content */}
+      {isLoading ? (
+        <div className="flex min-h-[30vh] items-center justify-center text-sm text-muted-foreground">
+          <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری لیست قیمت...
+        </div>
+      ) : merged.length === 0 ? (
+        <EmptyState
+          icon={PackageX}
+          title="نتیجه‌ای پیدا نشد"
+          description="هنوز قیمت فروشی برای این فیلتر ثبت نشده است یا محصولی با این مشخصات وجود ندارد."
+        />
+      ) : (
+        <>
+          {/* desktop table */}
+          <div className="hidden md:block">
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-xs text-muted-foreground">
+                      <tr>
+                        <th className="p-3 text-right font-medium">محصول</th>
+                        <th className="p-3 text-right font-medium">برند / دسته</th>
+                        {!isSalesOnly && <th className="p-3 text-right font-medium">نوع کالا</th>}
+                        <th className="p-3 text-right font-medium">موجودی</th>
+                        <th className="p-3 text-right font-medium">نوع قیمت</th>
+                        <th className="p-3 text-right font-medium">قیمت فعلی</th>
+                        <th className="p-3 text-right font-medium">تغییر</th>
+                        <th className="p-3 text-right font-medium">آخرین بروزرسانی</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {merged.flatMap((row) => renderProductRows(row, { isSalesOnly, isPrivileged }))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* mobile cards */}
+          <div className="space-y-3 md:hidden">
+            {merged.map((row) => (
+              <MobileProductCard key={row.product.id} row={row} isSalesOnly={isSalesOnly} isPrivileged={isPrivileged} />
+            ))}
+          </div>
+
+          {/* pagination */}
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <div className="text-xs text-muted-foreground">
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} محصول
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+                <ChevronRight className="h-4 w-4" /> قبلی
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                بعدی <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function renderProductRows(
+  row: { product: ProductRow; histories: any[]; hasPrice: boolean },
+  ctx: { isSalesOnly: boolean; isPrivileged: boolean },
+) {
+  const colSpan = ctx.isSalesOnly ? 7 : 8;
+  if (!row.hasPrice) {
+    return [(
+      <tr key={row.product.id} className="bg-muted/20">
+        <td className="p-3 align-top">
+          <ProductCell product={row.product} />
+        </td>
+        <td className="p-3 align-top text-xs text-muted-foreground">
+          {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
+        </td>
+        {!ctx.isSalesOnly && <td className="p-3 align-top"><ProductTypeBadge t={row.product.product_type} /></td>}
+        <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
+        <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span>برای این محصول هنوز قیمت فروش ثبت نشده است.</span>
+            {ctx.isPrivileged && (
+              <Link to="/pricing/calculator" className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-1">
+                <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
+              </Link>
+            )}
+          </div>
+        </td>
+      </tr>
+    )];
+  }
+  return row.histories.map((h, idx) => (
+    <tr key={`${row.product.id}-${h.id}`} className="hover:bg-muted/30">
+      {idx === 0 ? (
+        <>
+          <td className="p-3 align-top" rowSpan={row.histories.length}><ProductCell product={row.product} /></td>
+          <td className="p-3 align-top text-xs text-muted-foreground" rowSpan={row.histories.length}>
+            {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
+          </td>
+          {!ctx.isSalesOnly && (
+            <td className="p-3 align-top" rowSpan={row.histories.length}><ProductTypeBadge t={row.product.product_type} /></td>
+          )}
+          <td className="p-3 align-top" rowSpan={row.histories.length}><StockBadge s={row.product.stock_status} /></td>
+        </>
+      ) : null}
+      <td className="p-3 align-top text-xs">
+        <Badge variant="secondary" className="font-normal">{h.sale_price_type_title ?? "—"}</Badge>
+      </td>
+      <td className="p-3 align-top">
+        <div className="text-base font-bold text-foreground">{formatNumber(Number(h.new_sale_price))} <span className="text-xs font-normal text-muted-foreground">ت</span></div>
+        {h.old_sale_price !== null && h.old_sale_price !== undefined && (
+          <div className="text-[11px] text-muted-foreground line-through">{formatNumber(Number(h.old_sale_price))}</div>
+        )}
+      </td>
+      <td className="p-3 align-top"><ChangeCell h={h} /></td>
+      <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</td>
+    </tr>
+  ));
+}
+
+function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product: ProductRow; histories: any[]; hasPrice: boolean }; isSalesOnly: boolean; isPrivileged: boolean }) {
+  return (
+    <Card>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <ProductCell product={row.product} />
+          <StockBadge s={row.product.stock_status} />
+        </div>
+        <div className="text-[11px] text-muted-foreground">
+          {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
+          {!isSalesOnly && <> • <ProductTypeBadge t={row.product.product_type} inline /></>}
+        </div>
+        {!row.hasPrice ? (
+          <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            برای این محصول هنوز قیمت فروش ثبت نشده است.
+            {isPrivileged && (
+              <div className="mt-2">
+                <Link to="/pricing/calculator" className="text-primary inline-flex items-center gap-1">
+                  <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {row.histories.map((h) => (
+              <div key={h.id} className="rounded-md border border-border p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="secondary" className="text-[10px] font-normal">{h.sale_price_type_title ?? "—"}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</span>
+                </div>
+                <div className="mt-1 flex items-end justify-between">
+                  <div>
+                    <div className="text-base font-bold text-foreground">{formatNumber(Number(h.new_sale_price))} <span className="text-xs font-normal text-muted-foreground">ت</span></div>
+                    {h.old_sale_price !== null && h.old_sale_price !== undefined && (
+                      <div className="text-[11px] text-muted-foreground line-through">{formatNumber(Number(h.old_sale_price))}</div>
+                    )}
+                  </div>
+                  <ChangeCell h={h} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProductCell({ product }: { product: ProductRow }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-sm font-medium text-foreground">{product.name}</div>
+      <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
+    </div>
+  );
+}
+
+function ProductTypeBadge({ t, inline = false }: { t: string; inline?: boolean }) {
+  const label = t === "iranian" ? "ایرانی" : t === "foreign" ? "خارجی" : t;
+  if (inline) return <span className="text-[11px]">{label}</span>;
+  return <Badge variant="outline" className="font-normal">{label}</Badge>;
+}
+
+function StockBadge({ s }: { s: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    in_stock: { label: "موجود", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+    out_of_stock: { label: "ناموجود", cls: "bg-red-500/10 text-red-600 border-red-500/30" },
+    limited: { label: "محدود", cls: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
+    unknown: { label: "نامشخص", cls: "bg-muted text-muted-foreground border-border" },
+  };
+  const v = map[s] ?? map.unknown;
+  return <Badge variant="outline" className={`font-normal ${v.cls}`}>{v.label}</Badge>;
+}
+
+function ChangeCell({ h }: { h: HistoryRow }) {
+  if (h.old_sale_price === null || h.old_sale_price === undefined) {
+    return <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary font-normal"><Sparkles className="ml-1 h-3 w-3" /> قیمت اولیه</Badge>;
+  }
+  const amt = Number(h.change_amount ?? 0);
+  const pct = h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
+  if (amt === 0) {
+    return <span className="text-[11px] text-muted-foreground">بدون تغییر</span>;
+  }
+  const up = amt > 0;
+  const Icon = up ? ArrowUpRight : ArrowDownRight;
+  const cls = up ? "text-red-600" : "text-emerald-600";
+  return (
+    <div className={`flex flex-col text-xs ${cls}`}>
+      <span className="inline-flex items-center gap-1 font-medium">
+        <Icon className="h-3.5 w-3.5" />
+        {up ? "افزایش" : "کاهش"} {formatNumber(Math.abs(amt))}
+      </span>
+      {pct !== null && <span className="text-[11px] opacity-80">{toFaDigits(Math.abs(pct).toString())}٪</span>}
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, variant = "default" }: { label: string; value: string; variant?: "default" | "warning" }) {
+  return (
+    <Card className={variant === "warning" ? "border-amber-500/40" : undefined}>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Tag className="h-3.5 w-3.5" />
+          <span>{label}</span>
+        </div>
+        <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
