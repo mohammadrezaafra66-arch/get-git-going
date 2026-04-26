@@ -131,6 +131,56 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_api_usage_logs: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          endpoint: string
+          error_code: string | null
+          id: number
+          ip: string | null
+          method: string
+          request_size: number | null
+          response_count: number | null
+          status_code: number
+          table_id: string | null
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint: string
+          error_code?: string | null
+          id?: number
+          ip?: string | null
+          method: string
+          request_size?: number | null
+          response_count?: number | null
+          status_code: number
+          table_id?: string | null
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          endpoint?: string
+          error_code?: string | null
+          id?: number
+          ip?: string | null
+          method?: string
+          request_size?: number | null
+          response_count?: number | null
+          status_code?: number
+          table_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_api_usage_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "bot_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string
@@ -1944,6 +1994,43 @@ export type Database = {
           _target_user: string
         }
         Returns: undefined
+      }
+      bot_authenticate_key: {
+        Args: { p_raw_key: string }
+        Returns: {
+          key_id: string
+          name: string
+        }[]
+      }
+      bot_query_table_rows: {
+        Args: {
+          p_key_id: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_table_id: string
+        }
+        Returns: {
+          out_created_at: string
+          out_is_active: boolean
+          out_row_id: string
+          out_row_number: number
+          out_updated_at: string
+          out_values: Json
+          total_count: number
+        }[]
+      }
+      bot_update_table_row: {
+        Args: {
+          p_key_id: string
+          p_row_id: string
+          p_table_id: string
+          p_values: Json
+        }
+        Returns: {
+          applied_keys: string[]
+          updated_count: number
+        }[]
       }
       claim_next_quote_send_queue_item: {
         Args: never

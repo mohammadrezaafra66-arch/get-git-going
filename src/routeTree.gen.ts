@@ -55,6 +55,8 @@ import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quo
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
+import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
+import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
@@ -287,6 +289,18 @@ const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AppProductsIdRoute,
 } as any)
+const ApiPublicBotDynamicTablesTableIdRowsRoute =
+  ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
+    id: '/api/public/bot/dynamic-tables/$tableId/rows',
+    path: '/api/public/bot/dynamic-tables/$tableId/rows',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBotDynamicTablesTableIdRowsRowIdRoute =
+  ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport.update({
+    id: '/$rowId',
+    path: '/$rowId',
+    getParentRoute: () => ApiPublicBotDynamicTablesTableIdRowsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -334,6 +348,8 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -379,6 +395,8 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -428,6 +446,8 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -477,6 +497,8 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/quotes/'
+    | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -522,6 +544,8 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/quotes'
+    | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   id:
     | '__root__'
     | '/'
@@ -570,6 +594,8 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales/quotes/'
+    | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -577,6 +603,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -903,6 +930,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProductsIdEditRouteImport
       parentRoute: typeof AppProductsIdRoute
     }
+    '/api/public/bot/dynamic-tables/$tableId/rows': {
+      id: '/api/public/bot/dynamic-tables/$tableId/rows'
+      path: '/api/public/bot/dynamic-tables/$tableId/rows'
+      fullPath: '/api/public/bot/dynamic-tables/$tableId/rows'
+      preLoaderRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': {
+      id: '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
+      path: '/$rowId'
+      fullPath: '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
+      preLoaderRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport
+      parentRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRoute
+    }
   }
 }
 
@@ -1028,11 +1069,28 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiPublicBotDynamicTablesTableIdRowsRouteChildren {
+  ApiPublicBotDynamicTablesTableIdRowsRowIdRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
+}
+
+const ApiPublicBotDynamicTablesTableIdRowsRouteChildren: ApiPublicBotDynamicTablesTableIdRowsRouteChildren =
+  {
+    ApiPublicBotDynamicTablesTableIdRowsRowIdRoute:
+      ApiPublicBotDynamicTablesTableIdRowsRowIdRoute,
+  }
+
+const ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren =
+  ApiPublicBotDynamicTablesTableIdRowsRoute._addFileChildren(
+    ApiPublicBotDynamicTablesTableIdRowsRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  ApiPublicBotDynamicTablesTableIdRowsRoute:
+    ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
