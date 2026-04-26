@@ -24,6 +24,7 @@ import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
 import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
@@ -127,6 +128,11 @@ const AppFeedbackRoute = AppFeedbackRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
+  id: '/bot-api-keys',
+  path: '/bot-api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
@@ -287,6 +293,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/audit-logs': typeof AppAuditLogsRoute
+  '/bot-api-keys': typeof AppBotApiKeysRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/audit-logs': typeof AppAuditLogsRoute
+  '/bot-api-keys': typeof AppBotApiKeysRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -379,6 +387,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
+  '/_app/bot-api-keys': typeof AppBotApiKeysRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/invoices': typeof AppInvoicesRoute
@@ -427,6 +436,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/audit-logs'
+    | '/bot-api-keys'
     | '/dashboard'
     | '/feedback'
     | '/invoices'
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/audit-logs'
+    | '/bot-api-keys'
     | '/dashboard'
     | '/feedback'
     | '/invoices'
@@ -518,6 +529,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/unauthorized'
     | '/_app/audit-logs'
+    | '/_app/bot-api-keys'
     | '/_app/dashboard'
     | '/_app/feedback'
     | '/_app/invoices'
@@ -672,6 +684,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/bot-api-keys': {
+      id: '/_app/bot-api-keys'
+      path: '/bot-api-keys'
+      fullPath: '/bot-api-keys'
+      preLoaderRoute: typeof AppBotApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/audit-logs': {
@@ -939,6 +958,7 @@ const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAuditLogsRoute: typeof AppAuditLogsRoute
+  AppBotApiKeysRoute: typeof AppBotApiKeysRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppInvoicesRoute: typeof AppInvoicesRoute
@@ -973,6 +993,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditLogsRoute: AppAuditLogsRoute,
+  AppBotApiKeysRoute: AppBotApiKeysRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppInvoicesRoute: AppInvoicesRoute,

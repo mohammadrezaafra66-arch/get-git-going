@@ -91,7 +91,7 @@ function BotApiKeysPage() {
       const expIso = newExpires ? new Date(newExpires).toISOString() : null;
       const { data, error } = await supabase.rpc("create_bot_api_key", {
         p_name: newName.trim(),
-        p_expires_at: expIso,
+        p_expires_at: expIso ?? undefined,
       });
       if (error) throw error;
       const row = (Array.isArray(data) ? data[0] : data) as { id: string; raw_key: string; key_prefix: string } | null;
