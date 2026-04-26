@@ -2002,6 +2002,23 @@ export type Database = {
           name: string
         }[]
       }
+      bot_check_rate_limit: {
+        Args: { p_ip: string; p_key_id: string }
+        Returns: {
+          ok: boolean
+          reason: string
+          retry_after_seconds: number
+        }[]
+      }
+      bot_key_stats_today: {
+        Args: never
+        Returns: {
+          api_key_id: string
+          errors_today: number
+          last_used_at: string
+          requests_today: number
+        }[]
+      }
       bot_query_table_rows: {
         Args: {
           p_key_id: string
@@ -2018,6 +2035,15 @@ export type Database = {
           out_updated_at: string
           out_values: Json
           total_count: number
+        }[]
+      }
+      bot_suspicious_ips: {
+        Args: { p_limit?: number }
+        Returns: {
+          distinct_endpoints: number
+          failed_count: number
+          ip: string
+          last_attempt_at: string
         }[]
       }
       bot_update_table_row: {

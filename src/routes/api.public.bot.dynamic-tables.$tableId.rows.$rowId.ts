@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  authenticateBot, clientIp, extractBearer, isUuid, jsonResponse,
+  authenticateBot, checkBotRateLimit, clientIp, extractBearer, isUuid, jsonResponse,
   logBotUsage, mapBotError,
 } from "@/server/bot-api";
 
@@ -26,7 +26,21 @@ export const Route = createFileRoute("/api/public/bot/dynamic-tables/$tableId/ro
         if (!auth.ok) {
           logBotUsage({ api_key_id: null, table_id: tableId, endpoint, method: "PATCH",
             status_code: auth.status, error_code: auth.code, ip });
+          await checkBotRateLimit(null, ip);
           return jsonResponse(auth.status, { error: auth.code, message: auth.message });
+        }
+
+        const rl = await checkBotRateLimit(auth.keyId, ip);
+        if (!rl.ok) {
+          logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "PATCH",
+            status_code: 429, error_code: rl.code, ip });
+          return new Response(JSON.stringify({ error: rl.code, message: rl.message }), {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              "Retry-After": String(rl.retryAfter),
+            },
+          });
         }
 
         // Read & size-limit body
