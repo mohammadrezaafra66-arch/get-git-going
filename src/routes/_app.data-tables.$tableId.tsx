@@ -307,12 +307,25 @@ function DataTableDetailPage() {
       {/* Rows */}
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border p-3">
-            <span className="text-xs text-muted-foreground">
-              مجموع: {toFaDigits(String(rowsQuery.data?.total ?? 0))}
-            </span>
+          <div className="flex flex-col gap-3 border-b border-border p-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2 flex-1 max-w-xs">
+              <div className="relative flex-1">
+                <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="جستجو با شماره ردیف…"
+                  className="pr-8 h-9"
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                مجموع: {toFaDigits(String(rowsQuery.data?.total ?? 0))}
+              </span>
+            </div>
             <label className="flex items-center gap-2 text-xs">
-              <Switch checked={showInactive} onCheckedChange={(v) => { setShowInactive(v); setPage(1); }} />
+              <Switch checked={showInactive} onCheckedChange={setShowInactive} />
               نمایش غیرفعال‌ها
             </label>
           </div>
@@ -324,16 +337,18 @@ function DataTableDetailPage() {
               <EmptyState icon={Inbox} title="ردیفی ثبت نشده" description="با دکمه افزودن ردیف، اولین رکورد را وارد کنید." />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <>
+            {/* Desktop table */}
+            <div className="overflow-x-auto hidden md:block">
+              <table className="w-full text-sm" style={{ minWidth: `${320 + columns.length * 160}px` }}>
                 <thead className="bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-right font-medium">#</th>
+                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">#</th>
                     {columns.map((c) => (
-                      <th key={c.id} className="px-3 py-2 text-right font-medium">{c.label}</th>
+                      <th key={c.id} className="px-3 py-2 text-right font-medium whitespace-nowrap">{c.label}</th>
                     ))}
-                    <th className="px-3 py-2 text-right font-medium">ایجاد</th>
-                    {canEdit && <th className="px-3 py-2 text-right font-medium">عملیات</th>}
+                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">ایجاد</th>
+                    {canEdit && <th className="px-3 py-2 text-right font-medium whitespace-nowrap">عملیات</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -341,19 +356,27 @@ function DataTableDetailPage() {
                     const inactive = !r.is_active;
                     return (
                       <tr key={r.id} className={`border-t border-border ${inactive ? "bg-muted/30 text-muted-foreground" : ""}`}>
-                        <td className="px-3 py-2 font-mono text-xs">{toFaDigits(String(r.row_number))}</td>
+                        <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                          {toFaDigits(String(r.row_number))}
+                          {inactive && (
+                            <Badge variant="outline" className="ms-2 text-[10px] gap-1">
+                              <AlertTriangle className="h-3 w-3" />غیرفعال
+                            </Badge>
+                          )}
+                        </td>
                         {columns.map((c) => (
                           <td key={c.id} className="px-3 py-2">
                             <CellEditor
                               column={c}
                               rowId={r.id}
                               value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
-                              canEdit={canEdit && !inactive}
+                              canEdit={canEdit}
+                              inactive={inactive}
                               onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                             />
                           </td>
                         ))}
-                        <td className="px-3 py-2 text-xs">{formatDateTimeFa(r.created_at)}</td>
+                        <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDateTimeFa(r.created_at)}</td>
                         {canEdit && (
                           <td className="px-3 py-2">
                             <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
@@ -369,6 +392,53 @@ function DataTableDetailPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile card view */}
+            <div className="md:hidden divide-y divide-border">
+              {rowsQuery.data!.rows.map((r) => {
+                const inactive = !r.is_active;
+                return (
+                  <div key={r.id} className={`p-3 space-y-2 ${inactive ? "bg-muted/30" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs">#{toFaDigits(String(r.row_number))}</span>
+                        {inactive && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <AlertTriangle className="h-3 w-3" />غیرفعال
+                          </Badge>
+                        )}
+                      </div>
+                      {canEdit && (
+                        <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                          disabled={toggleRowMut.isPending}
+                          onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
+                          {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {columns.map((c) => (
+                        <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
+                          <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
+                          <div className="text-end min-w-0">
+                            <CellEditor
+                              column={c}
+                              rowId={r.id}
+                              value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
+                              canEdit={canEdit}
+                              inactive={inactive}
+                              onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(r.created_at)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
 
           <div className="flex items-center justify-end border-t border-border p-3 gap-2">
