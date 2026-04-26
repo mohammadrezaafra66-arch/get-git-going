@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft,
-  Ban, CheckCircle2, AlertTriangle,
+  Ban, CheckCircle2, AlertTriangle, Play, Unlock,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -44,6 +44,8 @@ interface QueueRow {
   max_attempts: number;
   last_error: string | null;
   scheduled_at: string;
+  locked_at: string | null;
+  processed_at: string | null;
   created_by: string | null;
   created_at: string;
   quote_number?: string | null;
@@ -87,7 +89,7 @@ function SendQueuePage() {
       let q = supabase
         .from("sales_quote_send_queue")
         .select(
-          "id, quote_id, channel, recipient, status, attempts, max_attempts, last_error, scheduled_at, created_by, created_at",
+          "id, quote_id, channel, recipient, status, attempts, max_attempts, last_error, scheduled_at, locked_at, processed_at, created_by, created_at",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -142,6 +144,9 @@ function SendQueuePage() {
         title="صف ارسال پیش‌فاکتور"
         description="مدیریت داخلی صف ارسال (بدون اتصال واقعی به پیام‌رسان‌ها)"
       />
+
+      <StatusSummaryCard />
+      {isManagerial && <WorkerControlsCard />}
 
       <Card>
         <CardContent className="p-4 space-y-3">
