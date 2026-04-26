@@ -26,3 +26,12 @@ export async function fetchLabelsLite() {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function fetchAttributesLite() {
+  const { data, error } = await supabase
+    .from("product_attributes")
+    .select("id, type, name, is_active")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
