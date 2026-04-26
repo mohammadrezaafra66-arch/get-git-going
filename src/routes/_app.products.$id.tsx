@@ -43,7 +43,7 @@ function ProductDetailPage() {
       const { data: p, error } = await supabase
         .from("products")
         .select(`
-          id, name, sku, description, technical_notes, unit,
+          id, name, sku, description, technical_notes, unit, color, capacity, model,
           product_type, base_currency, stock_status, status,
           created_at, updated_at,
           brand:brands(id,name), category:categories(id,name),
@@ -124,6 +124,10 @@ function ProductDetailPage() {
           <CardContent className="grid gap-3 p-4 md:grid-cols-2">
             <Info label="برند" value={p.brand?.name ?? "—"} />
             <Info label="دسته" value={p.category?.name ?? "—"} />
+            <Info label="SKU" value={p.sku ?? "—"} />
+            <Info label="رنگ" value={p.color ?? "—"} />
+            <Info label="ظرفیت" value={p.capacity ?? "—"} />
+            <Info label="مدل" value={p.model ?? "—"} />
             <Info label="نوع" value={PRODUCT_TYPE_LABELS[p.product_type as keyof typeof PRODUCT_TYPE_LABELS]} />
             <Info label="ارز مبنا" value={BASE_CURRENCY_LABELS[p.base_currency as keyof typeof BASE_CURRENCY_LABELS]} />
             <Info label="وضعیت موجودی">
