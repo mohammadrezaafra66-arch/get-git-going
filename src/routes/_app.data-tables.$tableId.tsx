@@ -514,12 +514,13 @@ function DataTableDetailPage() {
 
 // =============== Inline cell editor ===============
 function CellEditor({
-  column, rowId, value, canEdit, onSave,
+  column, rowId, value, canEdit, inactive, onSave,
 }: {
   column: ColumnRow;
   rowId: string;
   value: string;
   canEdit: boolean;
+  inactive?: boolean;
   onSave: (val: string) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -532,17 +533,31 @@ function CellEditor({
 
   const display = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
-    if (column.data_type === "boolean") return value === "true" ? "بله" : "خیر";
-    if (column.data_type === "datetime" || column.data_type === "date") return formatDateTimeFa(value);
+    if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
+    if (column.data_type === "datetime") return formatDateTimeFa(value);
+    if (column.data_type === "date") return formatDateFa(value);
+    if (column.data_type === "number") {
+      const n = Number(value);
+      return Number.isFinite(n) ? formatNumber(n) : value;
+    }
+    if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
 
   if (!editing) {
+    const handleStartEdit = () => {
+      if (!canEdit) return;
+      if (inactive) {
+        const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
+        if (!ok) return;
+      }
+      setEditing(true);
+    };
     return (
       <div
         className={canEdit ? "cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 -mx-1" : ""}
-        onDoubleClick={() => canEdit && setEditing(true)}
-        title={canEdit ? "دابل‌کلیک برای ویرایش" : undefined}
+        onDoubleClick={handleStartEdit}
+        title={canEdit ? (inactive ? "ردیف غیرفعال — دابل‌کلیک برای ویرایش با هشدار" : "دابل‌کلیک برای ویرایش") : undefined}
       >
         {display}
       </div>
@@ -561,9 +576,10 @@ function CellEditor({
   if (column.data_type === "boolean") {
     return (
       <div className="flex items-center gap-1">
-        <Select value={draft} onValueChange={setDraft}>
+        <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
           <SelectTrigger className="h-8 w-28"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="__empty__">—</SelectItem>
             <SelectItem value="true">بله</SelectItem>
             <SelectItem value="false">خیر</SelectItem>
           </SelectContent>
