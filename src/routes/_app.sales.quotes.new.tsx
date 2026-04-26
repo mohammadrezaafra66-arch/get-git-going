@@ -1,0 +1,550 @@
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Loader2, Plus, Trash2, Search, Save, Package, FileText, Sparkles } from "lucide-react";
+import { ensureAuthReady } from "@/lib/auth/session";
+import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs, TabsList, TabsTrigger, TabsContent,
+} from "@/components/ui/tabs";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { formatNumber } from "@/lib/i18n/formatters";
+import {
+  computeTotals, lineTotal, validateQuote,
+  type DraftQuoteItem,
+} from "@/lib/sales/quotes";
+
+const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
+
+export const Route = createFileRoute("/_app/sales/quotes/new")({
+  beforeLoad: async () => {
+    const auth = await ensureAuthReady();
+    if (!auth.user) throw redirect({ to: "/login" });
+    const roles = auth.roles as AppRole[];
+    if (!hasAnyRole(roles, ALLOWED_ROLES)) throw redirect({ to: "/unauthorized" });
+  },
+  component: NewQuotePage,
+});
+
+function NewQuotePage() {
+  const navigate = useNavigate();
+  const { user, roles } = useAuth();
+  const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [items, setItems] = useState<DraftQuoteItem[]>([]);
+
+  const totals = useMemo(() => computeTotals(items), [items]);
+
+  // sale price types (cached)
+  const { data: priceTypes = [] } = useQuery({
+    queryKey: ["sale-price-types-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sale_price_types")
+        .select("id, code, title")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 10 * 60_000,
+  });
+
+  // ----- product picker -----
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const addItem = (it: DraftQuoteItem) => setItems((prev) => [...prev, it]);
+  const updateItem = (key: string, patch: Partial<DraftQuoteItem>) =>
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+  const removeItem = (key: string) => setItems((prev) => prev.filter((it) => it.key !== key));
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("کاربر معتبر نیست.");
+      const errs = validateQuote(
+        { customer_name: customerName, customer_phone: customerPhone, customer_note: customerNote, expires_at: expiresAt || null },
+        items,
+      );
+      if (errs.length > 0) {
+        throw new Error(errs[0].message);
+      }
+
+      const { data: quote, error: qErr } = await supabase
+        .from("sales_quotes")
+        .insert([{
+          customer_name: customerName.trim(),
+          customer_phone: customerPhone.trim(),
+          customer_note: customerNote.trim() || null,
+          expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+          subtotal_amount: totals.subtotal_amount,
+          discount_amount: totals.discount_amount,
+          final_amount: totals.final_amount,
+          salesperson_id: user.id,
+          quote_number: "",
+        }])
+        .select("id, quote_number")
+        .single();
+      if (qErr) throw qErr;
+
+      const itemsPayload = items.map((it) => ({
+        quote_id: quote.id,
+        product_id: it.product_id,
+        free_item_name: it.free_item_name,
+        sku_snapshot: it.sku_snapshot,
+        title_snapshot: it.title_snapshot,
+        sale_price_type_id: it.sale_price_type_id,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        discount_amount: it.discount_amount,
+        line_total: lineTotal(it),
+        source: it.source,
+      }));
+      const { error: iErr } = await supabase.from("sales_quote_items").insert(itemsPayload);
+      if (iErr) {
+        // rollback quote to keep things clean
+        await supabase.from("sales_quotes").delete().eq("id", quote.id);
+        throw iErr;
+      }
+      return quote;
+    },
+    onSuccess: (quote) => {
+      toast.success(`پیش‌فاکتور ${quote.quote_number} با موفقیت ثبت شد.`);
+      navigate({ to: "/sales/quotes" });
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور."),
+  });
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="پیش‌فاکتور جدید"
+        description="ثبت پیش‌فاکتور داخلی فروش — این سند رسمی و مالیاتی نیست."
+      />
+
+      {/* header */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="customer_name">نام مشتری *</Label>
+              <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} maxLength={200} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="customer_phone">شماره تماس *</Label>
+              <Input id="customer_phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} dir="ltr" placeholder="09xxxxxxxxx" />
+            </div>
+            <div className="space-y-1.5 md:col-span-1">
+              <Label htmlFor="expires_at">تاریخ اعتبار</Label>
+              <Input id="expires_at" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-1">
+              <Label htmlFor="customer_note">توضیحات مشتری</Label>
+              <Textarea id="customer_note" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} maxLength={500} rows={2} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* items */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="font-medium">آیتم‌ها</div>
+            <Button size="sm" onClick={() => setPickerOpen(true)}>
+              <Plus className="ml-1 h-4 w-4" /> افزودن آیتم
+            </Button>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              هنوز آیتمی اضافه نشده است.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr>
+                    <th className="p-2 text-right font-medium">کالا</th>
+                    <th className="p-2 text-right font-medium">منبع</th>
+                    <th className="p-2 text-right font-medium">تعداد</th>
+                    <th className="p-2 text-right font-medium">قیمت واحد</th>
+                    <th className="p-2 text-right font-medium">تخفیف</th>
+                    <th className="p-2 text-right font-medium">جمع</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {items.map((it) => (
+                    <tr key={it.key}>
+                      <td className="p-2 align-top">
+                        <div className="font-medium">{it.title_snapshot}</div>
+                        {it.sku_snapshot && (
+                          <div className="text-[11px] text-muted-foreground font-mono">{it.sku_snapshot}</div>
+                        )}
+                      </td>
+                      <td className="p-2 align-top text-[11px] text-muted-foreground">
+                        {it.source === "product_price" ? "از قیمت محصول" : it.source === "quick_price" ? "محاسبه سریع" : "آیتم آزاد"}
+                      </td>
+                      <td className="p-2 align-top">
+                        <Input
+                          type="number" min={0} className="w-24"
+                          value={it.quantity}
+                          onChange={(e) => updateItem(it.key, { quantity: Number(e.target.value) || 0 })}
+                        />
+                      </td>
+                      <td className="p-2 align-top">
+                        <Input
+                          type="number" min={0} className="w-32"
+                          value={it.unit_price}
+                          disabled={it.source === "product_price" && !canEditPriceFreely}
+                          onChange={(e) => updateItem(it.key, { unit_price: Number(e.target.value) || 0 })}
+                        />
+                      </td>
+                      <td className="p-2 align-top">
+                        <Input
+                          type="number" min={0} className="w-28"
+                          value={it.discount_amount}
+                          onChange={(e) => updateItem(it.key, { discount_amount: Number(e.target.value) || 0 })}
+                        />
+                      </td>
+                      <td className="p-2 align-top font-medium">
+                        {formatNumber(lineTotal(it))} <span className="text-[11px] text-muted-foreground">تومان</span>
+                      </td>
+                      <td className="p-2 align-top">
+                        <Button size="sm" variant="ghost" onClick={() => removeItem(it.key)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* totals + save */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-muted-foreground">جمع کل</span>
+                <span>{formatNumber(totals.subtotal_amount)} تومان</span>
+              </div>
+              <div className="flex items-center justify-between gap-6">
+                <span className="text-muted-foreground">مجموع تخفیف</span>
+                <span>{formatNumber(totals.discount_amount)} تومان</span>
+              </div>
+              <div className="flex items-center justify-between gap-6 text-base font-semibold">
+                <span>مبلغ نهایی</span>
+                <span>{formatNumber(totals.final_amount)} تومان</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate({ to: "/sales/quotes" })}>انصراف</Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || items.length === 0}>
+                {saveMutation.isPending ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}
+                ذخیره پیش‌نویس
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {pickerOpen && (
+        <AddItemPanel
+          priceTypes={priceTypes as Array<{ id: string; code: string; title: string }>}
+          canEditPriceFreely={canEditPriceFreely}
+          onClose={() => setPickerOpen(false)}
+          onAdd={(it) => { addItem(it); setPickerOpen(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Add-Item panel (modal-like card)
+   ============================================================ */
+function AddItemPanel(props: {
+  priceTypes: Array<{ id: string; code: string; title: string }>;
+  canEditPriceFreely: boolean;
+  onClose: () => void;
+  onAdd: (it: DraftQuoteItem) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+      <Card className="m-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold">افزودن آیتم به پیش‌فاکتور</h3>
+            <Button variant="ghost" size="sm" onClick={props.onClose}>بستن</Button>
+          </div>
+          <Tabs defaultValue="product">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="product"><Package className="ml-1 h-4 w-4" /> از محصول ثبت‌شده</TabsTrigger>
+              <TabsTrigger value="manual"><FileText className="ml-1 h-4 w-4" /> آیتم آزاد</TabsTrigger>
+              <TabsTrigger value="quick"><Sparkles className="ml-1 h-4 w-4" /> از محاسبه سریع</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="product" className="pt-3">
+              <ProductTab priceTypes={props.priceTypes} onAdd={props.onAdd} />
+            </TabsContent>
+            <TabsContent value="manual" className="pt-3">
+              <FreeItemTab source="manual" onAdd={props.onAdd} />
+            </TabsContent>
+            <TabsContent value="quick" className="pt-3">
+              <FreeItemTab source="quick_price" onAdd={props.onAdd}
+                hint="نتیجه ابزار «محاسبه سریع قیمت» را به‌عنوان آیتم آزاد وارد کنید." />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ---- Product tab ---- */
+function ProductTab(props: {
+  priceTypes: Array<{ id: string; code: string; title: string }>;
+  onAdd: (it: DraftQuoteItem) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const dSearch = useDebounce(search, 350);
+  const [selected, setSelected] = useState<{ id: string; name: string; sku: string | null } | null>(null);
+  const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
+  const [quantity, setQuantity] = useState<number>(1);
+  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [priceMissing, setPriceMissing] = useState<string | null>(null);
+
+  const term = dSearch.trim();
+  const productsQuery = useQuery({
+    enabled: term.length >= 2 && !selected,
+    queryKey: ["quote-product-search", term],
+    queryFn: async () => {
+      const safe = term.replace(/[%_]/g, "");
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, sku")
+        .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
+        .eq("is_active", true)
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  // load latest sale price when product + price type are selected
+  useEffect(() => {
+    let cancelled = false;
+    setPriceMissing(null);
+    if (!selected || !salePriceTypeId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("product_sale_price_history")
+        .select("new_sale_price, created_at")
+        .eq("product_id", selected.id)
+        .eq("sale_price_type_id", salePriceTypeId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      if (error) {
+        setPriceMissing("خطا در دریافت قیمت فروش.");
+        return;
+      }
+      if (!data || data.length === 0) {
+        setUnitPrice(0);
+        setPriceMissing("برای این محصول و نوع قیمت، قیمت فروش ثبت نشده است.");
+      } else {
+        setUnitPrice(Number(data[0].new_sale_price) || 0);
+        setPriceMissing(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selected, salePriceTypeId]);
+
+  const canSubmit = !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0;
+
+  return (
+    <div className="space-y-3">
+      {!selected ? (
+        <>
+          <div className="relative">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجوی نام محصول یا SKU (حداقل ۲ حرف)"
+              className="pr-9"
+            />
+          </div>
+          {term.length >= 2 && (
+            productsQuery.isLoading ? (
+              <div className="text-xs text-muted-foreground">در حال جستجو...</div>
+            ) : (productsQuery.data ?? []).length === 0 ? (
+              <div className="text-xs text-muted-foreground">محصولی پیدا نشد.</div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {(productsQuery.data ?? []).map((p: { id: string; name: string; sku: string | null }) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
+                    className="flex w-full items-center justify-between gap-2 p-2 text-right hover:bg-muted/40"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{p.name}</div>
+                      <div className="text-[11px] text-muted-foreground font-mono">{p.sku ?? "—"}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )
+          )}
+        </>
+      ) : (
+        <>
+          <div className="rounded-md border border-border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-medium truncate">{selected.name}</div>
+                <div className="text-[11px] text-muted-foreground font-mono">{selected.sku ?? "—"}</div>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => { setSelected(null); setSalePriceTypeId(""); setUnitPrice(0); setPriceMissing(null); }}>
+                تغییر محصول
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>نوع قیمت فروش</Label>
+              <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
+                <SelectTrigger><SelectValue placeholder="انتخاب نوع قیمت" /></SelectTrigger>
+                <SelectContent>
+                  {props.priceTypes.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>تعداد</Label>
+              <Input type="number" min={0} value={quantity} onChange={(e) => setQuantity(Number(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>قیمت واحد (تومان)</Label>
+              <Input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(Number(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>تخفیف خط (تومان)</Label>
+              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
+            </div>
+          </div>
+          {priceMissing && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              {priceMissing}
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button
+              disabled={!canSubmit}
+              onClick={() => {
+                if (!selected || !salePriceTypeId) return;
+                props.onAdd({
+                  key: crypto.randomUUID(),
+                  source: "product_price",
+                  product_id: selected.id,
+                  free_item_name: null,
+                  sku_snapshot: selected.sku,
+                  title_snapshot: selected.name,
+                  sale_price_type_id: salePriceTypeId,
+                  quantity,
+                  unit_price: unitPrice,
+                  discount_amount: discount,
+                });
+              }}
+            >افزودن به پیش‌فاکتور</Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---- Free / Quick item tab ---- */
+function FreeItemTab(props: {
+  source: "manual" | "quick_price";
+  onAdd: (it: DraftQuoteItem) => void;
+  hint?: string;
+}) {
+  const [name, setName] = useState("");
+  const [quantity, setQuantity] = useState<number>(1);
+  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const canSubmit = name.trim().length > 0 && quantity > 0 && unitPrice > 0;
+
+  return (
+    <div className="space-y-3">
+      {props.hint && (
+        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">{props.hint}</div>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>نام کالا *</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>تعداد</Label>
+          <Input type="number" min={0} value={quantity} onChange={(e) => setQuantity(Number(e.target.value) || 0)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>قیمت واحد (تومان)</Label>
+          <Input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(Number(e.target.value) || 0)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>تخفیف خط (تومان)</Label>
+          <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          disabled={!canSubmit}
+          onClick={() => {
+            props.onAdd({
+              key: crypto.randomUUID(),
+              source: props.source,
+              product_id: null,
+              free_item_name: name.trim(),
+              sku_snapshot: null,
+              title_snapshot: name.trim(),
+              sale_price_type_id: null,
+              quantity,
+              unit_price: unitPrice,
+              discount_amount: discount,
+            });
+          }}
+        >افزودن به پیش‌فاکتور</Button>
+      </div>
+    </div>
+  );
+}

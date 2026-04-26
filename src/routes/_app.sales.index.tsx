@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac/route-guards";
-import { Search, BellRing } from "lucide-react";
+import { Search, BellRing, FileText } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -36,6 +36,19 @@ function SalesHub() {
               <h3 className="font-semibold text-foreground">درخواست‌های موجودی</h3>
               <p className="text-sm text-muted-foreground">
                 پیگیری مشتریانی که منتظر موجود شدن کالا هستند
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/sales/quotes" className="block">
+          <Card className="h-full transition-colors hover:bg-muted/40">
+            <CardContent className="p-5 space-y-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <FileText className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold text-foreground">پیش‌فاکتورها</h3>
+              <p className="text-sm text-muted-foreground">
+                ثبت و پیگیری پیش‌فاکتورهای فروش
               </p>
             </CardContent>
           </Card>

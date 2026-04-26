@@ -30,6 +30,7 @@ import { Route as AppProductsIndexRouteImport } from './routes/_app.products.ind
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
+import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
@@ -44,6 +45,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -150,6 +152,11 @@ const AppSalesSearchRoute = AppSalesSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesQuotesRoute = AppSalesQuotesRouteImport.update({
+  id: '/quotes',
+  path: '/quotes',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppProductsNewRoute = AppProductsNewRouteImport.update({
   id: '/products/new',
   path: '/products/new',
@@ -222,6 +229,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppSalesQuotesRoute,
+} as any)
 const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -258,12 +270,14 @@ export interface FileRoutesByFullPath {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
+  '/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -294,12 +308,14 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
+  '/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -333,12 +349,14 @@ export interface FileRoutesById {
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
+  '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
+  '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -372,12 +390,14 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing/'
     | '/products/'
     | '/sales/'
     | '/products/$id/edit'
+    | '/sales/quotes/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -408,12 +428,14 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing'
     | '/products'
     | '/sales'
     | '/products/$id/edit'
+    | '/sales/quotes/new'
   id:
     | '__root__'
     | '/'
@@ -446,12 +468,14 @@ export interface FileRouteTypes {
     | '/_app/products/categories'
     | '/_app/products/labels'
     | '/_app/products/new'
+    | '/_app/sales/quotes'
     | '/_app/sales/search'
     | '/_app/sales/stock-alerts'
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
     | '/_app/products/$id/edit'
+    | '/_app/sales/quotes/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -610,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesSearchRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/quotes': {
+      id: '/_app/sales/quotes'
+      path: '/quotes'
+      fullPath: '/sales/quotes'
+      preLoaderRoute: typeof AppSalesQuotesRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/products/new': {
       id: '/_app/products/new'
       path: '/products/new'
@@ -708,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/quotes/new': {
+      id: '/_app/sales/quotes/new'
+      path: '/new'
+      fullPath: '/sales/quotes/new'
+      preLoaderRoute: typeof AppSalesQuotesNewRouteImport
+      parentRoute: typeof AppSalesQuotesRoute
+    }
     '/_app/products/$id/edit': {
       id: '/_app/products/$id/edit'
       path: '/edit'
@@ -718,13 +756,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSalesQuotesRouteChildren {
+  AppSalesQuotesNewRoute: typeof AppSalesQuotesNewRoute
+}
+
+const AppSalesQuotesRouteChildren: AppSalesQuotesRouteChildren = {
+  AppSalesQuotesNewRoute: AppSalesQuotesNewRoute,
+}
+
+const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
+  AppSalesQuotesRouteChildren,
+)
+
 interface AppSalesRouteChildren {
+  AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
+  AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
