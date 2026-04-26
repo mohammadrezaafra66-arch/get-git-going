@@ -23,6 +23,15 @@ import {
   type SalesQuoteStatus,
   type SalesQuoteItemSource,
 } from "@/lib/sales/quotes";
+import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+
+const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
+  draft: "پیش‌نویس",
+  sent: "ارسال‌شده",
+  accepted: "پذیرفته‌شده",
+  rejected: "رد شده",
+  canceled: "لغو شده",
+};
 
 export const Route = createFileRoute("/_app/sales/quotes/$quoteId")({
   component: QuoteDetailPage,
@@ -306,6 +315,7 @@ function QuoteActionButtons({
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<null | { next: SalesQuoteStatus; label: string; needsReason?: boolean }>(null);
   const [reason, setReason] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
@@ -333,6 +343,44 @@ function QuoteActionButtons({
 
   const notReady = () => toast.info("این قابلیت در نسخه بعدی فعال می‌شود");
 
+  const handleDownloadPdf = async () => {
+    setPdfLoading(true);
+    try {
+      const { data: itemRows, error } = await supabase
+        .from("sales_quote_items")
+        .select("title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at")
+        .eq("quote_id", quote.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const items = (itemRows ?? []).map((it) => ({
+        title: (it.title_snapshot as string | null) ?? (it.free_item_name as string | null) ?? "—",
+        sku: (it.sku_snapshot as string | null) ?? null,
+        quantity: Number(it.quantity ?? 0),
+        unit_price: Number(it.unit_price ?? 0),
+        discount_amount: Number(it.discount_amount ?? 0),
+        line_total: Number(it.line_total ?? 0),
+      }));
+      await downloadQuotePdf({
+        quote_number: quote.quote_number,
+        customer_name: quote.customer_name,
+        customer_phone: quote.customer_phone,
+        salesperson_name: quote.salesperson_name,
+        created_at: quote.created_at,
+        expires_at: quote.expires_at,
+        status_label: STATUS_LABELS_FA[quote.status] ?? quote.status,
+        customer_note: quote.customer_note,
+        items,
+        subtotal_amount: Number(quote.subtotal_amount ?? 0),
+        discount_amount: Number(quote.discount_amount ?? 0),
+        final_amount: Number(quote.final_amount ?? 0),
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ساخت PDF پیش‌فاکتور");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <>
       {canSend && (
@@ -355,8 +403,9 @@ function QuoteActionButtons({
           <Ban className="ml-1 h-3.5 w-3.5" /> لغو
         </Button>
       )}
-      <Button size="sm" variant="outline" onClick={notReady}>
-        <FileDown className="ml-1 h-3.5 w-3.5" /> دانلود PDF <span className="text-[10px] text-muted-foreground mr-1">(به زودی)</span>
+      <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading}>
+        {pdfLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <FileDown className="ml-1 h-3.5 w-3.5" />}
+        دانلود PDF
       </Button>
       <Button size="sm" variant="outline" onClick={notReady}>
         <MessageCircle className="ml-1 h-3.5 w-3.5" /> ارسال در پیام‌رسان <span className="text-[10px] text-muted-foreground mr-1">(به زودی)</span>
