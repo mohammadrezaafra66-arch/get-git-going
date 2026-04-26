@@ -100,6 +100,7 @@ function BotApiDocsPage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Bot API Docs</h1>
       <PageHeader
         title="مستندات و تست API ربات"
         description="راهنمای استفاده از endpointهای عمومی ربات و ابزار تست داخلی"

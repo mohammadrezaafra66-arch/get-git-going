@@ -31,6 +31,7 @@ import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
+import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -170,6 +171,11 @@ const AppDataTablesIndexRoute = AppDataTablesIndexRouteImport.update({
   id: '/data-tables/',
   path: '/data-tables/',
   getParentRoute: () => AppRoute,
+} as any)
+const AppBotApiKeysIndexRoute = AppBotApiKeysIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppBotApiKeysRoute,
 } as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
@@ -385,7 +392,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/audit-logs': typeof AppAuditLogsRoute
-  '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -419,6 +425,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
@@ -474,6 +481,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
@@ -529,6 +537,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/bot-api-keys/'
     | '/data-tables/'
     | '/pricing/'
     | '/products/'
@@ -546,7 +555,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/unauthorized'
     | '/audit-logs'
-    | '/bot-api-keys'
     | '/dashboard'
     | '/feedback'
     | '/invoices'
@@ -580,6 +588,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/bot-api-keys'
     | '/data-tables'
     | '/pricing'
     | '/products'
@@ -634,6 +643,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
     | '/_app/pricing/'
     | '/_app/products/'
@@ -810,6 +820,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/data-tables/'
       preLoaderRoute: typeof AppDataTablesIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/bot-api-keys/': {
+      id: '/_app/bot-api-keys/'
+      path: '/'
+      fullPath: '/bot-api-keys/'
+      preLoaderRoute: typeof AppBotApiKeysIndexRouteImport
+      parentRoute: typeof AppBotApiKeysRoute
     }
     '/_app/sales/stock-alerts': {
       id: '/_app/sales/stock-alerts'
@@ -1028,12 +1045,14 @@ interface AppBotApiKeysRouteChildren {
   AppBotApiKeysDocsRoute: typeof AppBotApiKeysDocsRoute
   AppBotApiKeysPlaygroundRoute: typeof AppBotApiKeysPlaygroundRoute
   AppBotApiKeysUsageRoute: typeof AppBotApiKeysUsageRoute
+  AppBotApiKeysIndexRoute: typeof AppBotApiKeysIndexRoute
 }
 
 const AppBotApiKeysRouteChildren: AppBotApiKeysRouteChildren = {
   AppBotApiKeysDocsRoute: AppBotApiKeysDocsRoute,
   AppBotApiKeysPlaygroundRoute: AppBotApiKeysPlaygroundRoute,
   AppBotApiKeysUsageRoute: AppBotApiKeysUsageRoute,
+  AppBotApiKeysIndexRoute: AppBotApiKeysIndexRoute,
 }
 
 const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
