@@ -45,6 +45,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 
@@ -229,6 +230,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSalesQuotesRoute,
+} as any)
 const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/sales/': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/quotes/': typeof AppSalesQuotesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -308,7 +315,6 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
-  '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
@@ -316,6 +322,7 @@ export interface FileRoutesByTo {
   '/sales': typeof AppSalesIndexRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/quotes': typeof AppSalesQuotesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -357,6 +364,7 @@ export interface FileRoutesById {
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -398,6 +406,7 @@ export interface FileRouteTypes {
     | '/sales/'
     | '/products/$id/edit'
     | '/sales/quotes/new'
+    | '/sales/quotes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -428,7 +437,6 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
-    | '/sales/quotes'
     | '/sales/search'
     | '/sales/stock-alerts'
     | '/pricing'
@@ -436,6 +444,7 @@ export interface FileRouteTypes {
     | '/sales'
     | '/products/$id/edit'
     | '/sales/quotes/new'
+    | '/sales/quotes'
   id:
     | '__root__'
     | '/'
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/_app/sales/'
     | '/_app/products/$id/edit'
     | '/_app/sales/quotes/new'
+    | '/_app/sales/quotes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -739,6 +749,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/quotes/': {
+      id: '/_app/sales/quotes/'
+      path: '/'
+      fullPath: '/sales/quotes/'
+      preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
+      parentRoute: typeof AppSalesQuotesRoute
+    }
     '/_app/sales/quotes/new': {
       id: '/_app/sales/quotes/new'
       path: '/new'
@@ -758,10 +775,12 @@ declare module '@tanstack/react-router' {
 
 interface AppSalesQuotesRouteChildren {
   AppSalesQuotesNewRoute: typeof AppSalesQuotesNewRoute
+  AppSalesQuotesIndexRoute: typeof AppSalesQuotesIndexRoute
 }
 
 const AppSalesQuotesRouteChildren: AppSalesQuotesRouteChildren = {
   AppSalesQuotesNewRoute: AppSalesQuotesNewRoute,
+  AppSalesQuotesIndexRoute: AppSalesQuotesIndexRoute,
 }
 
 const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
