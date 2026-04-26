@@ -6,7 +6,7 @@ import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Loader2, Inbox, Search, AlertTriangle,
-  Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
+  Pencil, ArrowUp, ArrowDown, Eye, EyeOff, Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -32,6 +32,7 @@ import {
   COLUMN_KEY_REGEX, type DynamicColumnDataType,
 } from "@/lib/data-tables/constants";
 import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
+import { buildCsv, downloadCsv, buildExportFilename, type ExportColumnDef, type ExportRow } from "@/lib/data-tables/csv-export";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
