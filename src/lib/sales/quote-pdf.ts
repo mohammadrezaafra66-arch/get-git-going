@@ -118,148 +118,243 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
 
   const pdfMake = await loadPdfMake();
 
+  // RTL-friendly column order: amounts on the LEFT, identifiers on the RIGHT.
+  // pdfmake itself does not flip RTL, so we order columns visually for Persian readers.
   const itemsHeader = [
-    { text: "ردیف", style: "th", alignment: "right" },
-    { text: "عنوان", style: "th", alignment: "right" },
-    { text: "SKU", style: "th", alignment: "right" },
-    { text: "تعداد", style: "th", alignment: "right" },
-    { text: "قیمت واحد (تومان)", style: "th", alignment: "right" },
-    { text: "تخفیف (تومان)", style: "th", alignment: "right" },
-    { text: "جمع خط (تومان)", style: "th", alignment: "right" },
+    { text: "ردیف", style: "th", alignment: "center" },
+    { text: "شرح کالا", style: "th", alignment: "right" },
+    { text: "کد (SKU)", style: "th", alignment: "right" },
+    { text: "تعداد", style: "th", alignment: "center" },
+    { text: "قیمت واحد\n(تومان)", style: "th", alignment: "left" },
+    { text: "تخفیف\n(تومان)", style: "th", alignment: "left" },
+    { text: "جمع خط\n(تومان)", style: "th", alignment: "left" },
   ];
   const itemRows = payload.items.map((it, idx) => [
-    { text: toFaDigits(idx + 1), alignment: "right" },
-    { text: it.title || "—", alignment: "right" },
-    { text: it.sku ? it.sku : "—", alignment: "right" },
-    { text: fmtNum(it.quantity), alignment: "right" },
-    { text: fmtNum(it.unit_price), alignment: "right" },
-    { text: fmtNum(it.discount_amount), alignment: "right" },
-    { text: fmtNum(it.line_total), alignment: "right", bold: true },
+    { text: toFaDigits(idx + 1), alignment: "center", style: "td" },
+    { text: it.title || "—", alignment: "right", style: "td", noWrap: false },
+    { text: it.sku ? it.sku : "—", alignment: "right", style: "tdMono", noWrap: false },
+    { text: fmtNum(it.quantity), alignment: "center", style: "td" },
+    { text: fmtNum(it.unit_price), alignment: "left", style: "td" },
+    { text: fmtNum(it.discount_amount), alignment: "left", style: "td" },
+    { text: fmtNum(it.line_total), alignment: "left", style: "tdStrong" },
   ]);
 
   const docDefinition = {
     pageSize: "A4",
-    pageMargins: [32, 40, 32, 50] as [number, number, number, number],
-    defaultStyle: { font: "Vazirmatn", fontSize: 10, alignment: "right" as const },
+    pageMargins: [36, 48, 36, 60] as [number, number, number, number],
+    defaultStyle: { font: "Vazirmatn", fontSize: 10, alignment: "right" as const, lineHeight: 1.35 },
     info: {
       title: `Quote ${payload.quote_number}`,
       author: "AFK",
       creator: "AFK",
     },
     content: [
+      // Header band — title on the right, document number on the left.
       {
-        columns: [
-          { text: "پیش‌فاکتور فروش", style: "title", alignment: "right" },
-          { text: `شماره: ${toFaDigits(payload.quote_number)}`, style: "subtitle", alignment: "left" },
-        ],
-        margin: [0, 0, 0, 8] as [number, number, number, number],
+        table: {
+          widths: ["*", "auto"],
+          body: [[
+            {
+              stack: [
+                { text: "پیش‌فاکتور فروش", style: "title", alignment: "right" },
+                { text: "Sales Quote", style: "titleEn", alignment: "right" },
+              ],
+              border: [false, false, false, false],
+              margin: [8, 6, 8, 6] as [number, number, number, number],
+            },
+            {
+              stack: [
+                { text: "شماره سند", style: "muted", alignment: "left" },
+                { text: toFaDigits(payload.quote_number), style: "quoteNo", alignment: "left" },
+              ],
+              border: [false, false, false, false],
+              margin: [8, 6, 8, 6] as [number, number, number, number],
+            },
+          ]],
+        },
+        layout: {
+          fillColor: () => "#f8fafc",
+          hLineColor: () => "#e5e7eb",
+          vLineColor: () => "#e5e7eb",
+          hLineWidth: () => 0.6,
+          vLineWidth: () => 0,
+        },
+        margin: [0, 0, 0, 14] as [number, number, number, number],
       },
-      {
-        canvas: [{ type: "line", x1: 0, y1: 0, x2: 530, y2: 0, lineWidth: 0.7, lineColor: "#cccccc" }],
-        margin: [0, 0, 0, 10] as [number, number, number, number],
-      },
+      // Customer + document info in a clean two-column card grid
       {
         columns: [
           {
-            width: "50%",
-            stack: [
-              { text: "اطلاعات مشتری", style: "sectionTitle" },
-              { text: `نام: ${payload.customer_name}` },
-              { text: `تماس: ${toFaDigits(payload.customer_phone)}` },
-            ],
+            width: "*",
+            table: {
+              widths: ["*"],
+              body: [
+                [{ text: "اطلاعات مشتری", style: "cardTitle", alignment: "right", fillColor: "#f1f5f9" }],
+                [{
+                  alignment: "right",
+                  stack: [
+                    { text: [{ text: "نام: ", style: "label" }, { text: payload.customer_name || "—" }] },
+                    { text: [{ text: "تماس: ", style: "label" }, { text: toFaDigits(payload.customer_phone || "—") }], margin: [0, 4, 0, 0] as [number, number, number, number] },
+                  ],
+                }],
+              ],
+            },
+            layout: cardLayout,
           },
+          { width: 14, text: "" },
           {
-            width: "50%",
-            stack: [
-              { text: "اطلاعات سند", style: "sectionTitle" },
-              { text: `تاریخ صدور: ${fmtDateTime(payload.created_at)}` },
-              { text: `اعتبار تا: ${fmtDate(payload.expires_at)}` },
-              { text: `وضعیت: ${payload.status_label}` },
-              { text: `فروشنده: ${payload.salesperson_name || "—"}` },
-            ],
+            width: "*",
+            table: {
+              widths: ["*"],
+              body: [
+                [{ text: "اطلاعات سند", style: "cardTitle", alignment: "right", fillColor: "#f1f5f9" }],
+                [{
+                  alignment: "right",
+                  stack: [
+                    { text: [{ text: "تاریخ صدور: ", style: "label" }, { text: fmtDateTime(payload.created_at) }] },
+                    { text: [{ text: "اعتبار تا: ", style: "label" }, { text: fmtDate(payload.expires_at) }], margin: [0, 4, 0, 0] as [number, number, number, number] },
+                    { text: [{ text: "وضعیت: ", style: "label" }, { text: payload.status_label }], margin: [0, 4, 0, 0] as [number, number, number, number] },
+                    { text: [{ text: "فروشنده: ", style: "label" }, { text: payload.salesperson_name || "—" }], margin: [0, 4, 0, 0] as [number, number, number, number] },
+                  ],
+                }],
+              ],
+            },
+            layout: cardLayout,
           },
         ],
-        columnGap: 16,
-        margin: [0, 0, 0, 12] as [number, number, number, number],
+        margin: [0, 0, 0, 14] as [number, number, number, number],
       },
       {
         text: "اقلام پیش‌فاکتور",
         style: "sectionTitle",
-        margin: [0, 4, 0, 4] as [number, number, number, number],
+        alignment: "right",
+        margin: [0, 0, 0, 6] as [number, number, number, number],
       },
       {
         table: {
           headerRows: 1,
-          widths: [22, "*", 60, 35, 70, 60, 70],
+          dontBreakRows: true,
+          // Tuned widths: row no + small numeric cols fixed, title flexes,
+          // amount columns are wider to fit "تومان" totals comfortably.
+          widths: [24, "*", 70, 38, 72, 62, 78],
           body: [itemsHeader, ...itemRows],
         },
         layout: {
-          fillColor: (rowIndex: number) => (rowIndex === 0 ? "#f3f4f6" : null),
+          fillColor: (rowIndex: number) => {
+            if (rowIndex === 0) return "#1f2937";
+            return rowIndex % 2 === 0 ? "#f9fafb" : null;
+          },
           hLineColor: () => "#e5e7eb",
           vLineColor: () => "#e5e7eb",
           hLineWidth: () => 0.5,
           vLineWidth: () => 0.5,
+          paddingLeft: () => 6,
+          paddingRight: () => 6,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
         },
       },
+      // Totals card aligned to the LEFT (where amounts sit), with stronger final row
       {
-        margin: [0, 12, 0, 0] as [number, number, number, number],
+        margin: [0, 14, 0, 0] as [number, number, number, number],
         columns: [
-          { width: "*", text: "" },
           {
-            width: 240,
+            width: 260,
             table: {
               widths: ["*", "auto"],
               body: [
                 [
-                  { text: "جمع جزء", alignment: "right" },
-                  { text: `${fmtNum(payload.subtotal_amount)} تومان`, alignment: "left" },
+                  { text: "جمع جزء", alignment: "right", style: "totalLabel", fillColor: "#f8fafc" },
+                  { text: `${fmtNum(payload.subtotal_amount)} تومان`, alignment: "left", style: "totalValue", fillColor: "#f8fafc" },
                 ],
                 [
-                  { text: "تخفیف", alignment: "right" },
-                  { text: `${fmtNum(payload.discount_amount)} تومان`, alignment: "left" },
+                  { text: "تخفیف", alignment: "right", style: "totalLabel" },
+                  { text: `${fmtNum(payload.discount_amount)} تومان`, alignment: "left", style: "totalValue" },
                 ],
                 [
-                  { text: "مبلغ نهایی", alignment: "right", bold: true, fontSize: 12 },
-                  { text: `${fmtNum(payload.final_amount)} تومان`, alignment: "left", bold: true, fontSize: 12 },
+                  { text: "مبلغ نهایی قابل پرداخت", alignment: "right", style: "grandLabel", fillColor: "#1f2937" },
+                  { text: `${fmtNum(payload.final_amount)} تومان`, alignment: "left", style: "grandValue", fillColor: "#1f2937" },
                 ],
               ],
             },
             layout: {
               hLineColor: () => "#e5e7eb",
               vLineColor: () => "#e5e7eb",
-              hLineWidth: (i: number, node: { table: { body: unknown[] } }) =>
-                i === 0 || i === node.table.body.length ? 0.5 : 0.3,
-              vLineWidth: () => 0.3,
+              hLineWidth: () => 0.5,
+              vLineWidth: () => 0.5,
+              paddingLeft: () => 8,
+              paddingRight: () => 8,
+              paddingTop: () => 6,
+              paddingBottom: () => 6,
             },
           },
+          { width: "*", text: "" },
         ],
       },
       ...(payload.customer_note
         ? [
             {
-              margin: [0, 14, 0, 0] as [number, number, number, number],
-              stack: [
-                { text: "یادداشت مشتری", style: "sectionTitle" },
-                { text: payload.customer_note, alignment: "right" },
-              ],
+              margin: [0, 16, 0, 0] as [number, number, number, number],
+              table: {
+                widths: ["*"],
+                body: [
+                  [{ text: "یادداشت مشتری", style: "cardTitle", alignment: "right", fillColor: "#f1f5f9" }],
+                  [{ text: payload.customer_note, alignment: "right" }],
+                ],
+              },
+              layout: cardLayout,
             },
           ]
         : []),
     ],
-    footer: () => ({
-      text: "این سند پیش‌فاکتور است و فاکتور رسمی محسوب نمی‌شود.",
-      alignment: "center",
-      fontSize: 8,
-      color: "#6b7280",
-      margin: [0, 14, 0, 0],
+    footer: (currentPage: number, pageCount: number) => ({
+      columns: [
+        {
+          text: "این سند پیش‌فاکتور است و فاکتور رسمی محسوب نمی‌شود.",
+          alignment: "right",
+          fontSize: 8,
+          color: "#6b7280",
+          margin: [36, 18, 0, 0],
+        },
+        {
+          text: `صفحه ${toFaDigits(currentPage)} از ${toFaDigits(pageCount)}`,
+          alignment: "left",
+          fontSize: 8,
+          color: "#6b7280",
+          margin: [0, 18, 36, 0],
+        },
+      ],
     }),
     styles: {
-      title: { fontSize: 16, bold: true },
-      subtitle: { fontSize: 11, color: "#374151" },
-      sectionTitle: { fontSize: 11, bold: true, color: "#111827", margin: [0, 0, 0, 4] },
-      th: { bold: true, fontSize: 10, color: "#111827" },
+      title: { fontSize: 18, bold: true, color: "#0f172a" },
+      titleEn: { fontSize: 9, color: "#64748b", margin: [0, 2, 0, 0] as [number, number, number, number] },
+      muted: { fontSize: 8, color: "#64748b" },
+      quoteNo: { fontSize: 14, bold: true, color: "#0f172a" },
+      sectionTitle: { fontSize: 12, bold: true, color: "#0f172a", margin: [0, 0, 0, 4] as [number, number, number, number] },
+      cardTitle: { fontSize: 10, bold: true, color: "#0f172a", margin: [0, 0, 0, 0] as [number, number, number, number] },
+      label: { color: "#475569", bold: true },
+      th: { bold: true, fontSize: 10, color: "#ffffff" },
+      td: { fontSize: 10, color: "#0f172a" },
+      tdMono: { fontSize: 9, color: "#334155" },
+      tdStrong: { fontSize: 10, color: "#0f172a", bold: true },
+      totalLabel: { fontSize: 10, color: "#334155" },
+      totalValue: { fontSize: 10, color: "#0f172a", bold: true },
+      grandLabel: { fontSize: 11, color: "#ffffff", bold: true },
+      grandValue: { fontSize: 12, color: "#ffffff", bold: true },
     },
   };
 
   pdfMake.createPdf(docDefinition).download(`quote-${payload.quote_number}.pdf`);
 }
+
+const cardLayout = {
+  fillColor: () => null as string | null,
+  hLineColor: () => "#e5e7eb",
+  vLineColor: () => "#e5e7eb",
+  hLineWidth: () => 0.5,
+  vLineWidth: () => 0.5,
+  paddingLeft: () => 8,
+  paddingRight: () => 8,
+  paddingTop: () => 6,
+  paddingBottom: () => 6,
+};
