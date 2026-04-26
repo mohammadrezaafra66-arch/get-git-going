@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft, CheckCircle2, XCircle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Send,
+} from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +38,7 @@ interface ShareLogRow {
   recipient: string;
   status: string;
   pdf_attached: boolean;
+  message_text: string | null;
   attempted_by: string | null;
   attempted_at: string;
   quote_number?: string | null;
@@ -78,7 +82,7 @@ function QuoteShareLogsPage() {
       let q = supabase
         .from("sales_quote_share_logs")
         .select(
-          "id, quote_id, channel, recipient, status, pdf_attached, attempted_by, attempted_at",
+          "id, quote_id, channel, recipient, status, pdf_attached, message_text, attempted_by, attempted_at",
           { count: "exact" },
         )
         .order("attempted_at", { ascending: false })
@@ -214,6 +218,7 @@ function QuoteShareLogsPage() {
                         <th className="p-3 text-right font-medium">PDF</th>
                         <th className="p-3 text-right font-medium">ثبت‌کننده</th>
                         <th className="p-3 text-right font-medium">زمان</th>
+                        <th className="p-3 text-right font-medium">عملیات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -238,6 +243,9 @@ function QuoteShareLogsPage() {
                           </td>
                           <td className="p-3 align-top text-xs text-muted-foreground">{r.attempted_by_name ?? "—"}</td>
                           <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(r.attempted_at)}</td>
+                          <td className="p-3 align-top">
+                            <EnqueueButton row={r} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -272,6 +280,7 @@ function QuoteShareLogsPage() {
                     <span>{r.attempted_by_name ?? "—"}</span>
                     <span>{formatDateTimeFa(r.attempted_at)}</span>
                   </div>
+                  <EnqueueButton row={r} />
                 </CardContent>
               </Card>
             ))}
@@ -293,5 +302,63 @@ function QuoteShareLogsPage() {
         </>
       )}
     </div>
+  );
+}
+
+function EnqueueButton({ row }: { row: ShareLogRow }) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("ابتدا وارد حساب شوید.");
+      // Check duplicate pending/processing
+      const dup = await supabase
+        .from("sales_quote_send_queue")
+        .select("id, status")
+        .eq("share_log_id", row.id)
+        .in("status", ["pending", "processing"])
+        .limit(1);
+      if (dup.error) throw dup.error;
+      if ((dup.data ?? []).length > 0) {
+        throw new Error("این پیش‌نویس قبلاً در صف ارسال قرار گرفته است.");
+      }
+      const { error } = await supabase.from("sales_quote_send_queue").insert({
+        share_log_id: row.id,
+        quote_id: row.quote_id,
+        channel: row.channel,
+        recipient: row.recipient,
+        message_text: row.message_text,
+        pdf_attached: row.pdf_attached,
+        status: "pending",
+        created_by: user.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("به صف ارسال اضافه شد.");
+      qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "خطا در افزودن به صف."),
+  });
+
+  if (row.status !== "draft") {
+    return <span className="text-[11px] text-muted-foreground">—</span>;
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={mutation.isPending}
+      onClick={() => mutation.mutate()}
+    >
+      {mutation.isPending ? (
+        <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Send className="ml-1 h-3.5 w-3.5" />
+      )}
+      افزودن به صف ارسال
+    </Button>
   );
 }
