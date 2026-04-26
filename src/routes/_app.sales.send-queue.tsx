@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Send,
+  Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft,
+  Ban, CheckCircle2, AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -20,33 +21,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import {
-  QUOTE_SHARE_CHANNELS, QUOTE_SHARE_CHANNEL_LABELS,
-  QUOTE_SHARE_STATUSES, QUOTE_SHARE_STATUS_LABELS,
-  QUOTE_SHARE_LOGS_PAGE_SIZE,
-  type QuoteShareChannel, type QuoteShareStatus,
+  QUOTE_SHARE_CHANNELS, QUOTE_SHARE_CHANNEL_LABELS, type QuoteShareChannel,
 } from "@/lib/sales/quote-share";
+import {
+  QUOTE_SEND_QUEUE_STATUSES, QUOTE_SEND_QUEUE_STATUS_LABELS,
+  QUOTE_SEND_QUEUE_PAGE_SIZE, SIMULATED_ERROR_MESSAGE,
+  type QuoteSendQueueStatus,
+} from "@/lib/sales/quote-send-queue";
 
-export const Route = createFileRoute("/_app/sales/quote-share-logs")({
+export const Route = createFileRoute("/_app/sales/send-queue")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
-  component: QuoteShareLogsPage,
+  component: SendQueuePage,
 });
 
-interface ShareLogRow {
+interface QueueRow {
   id: string;
   quote_id: string;
   channel: string;
   recipient: string;
-  status: string;
-  pdf_attached: boolean;
-  message_text: string | null;
-  attempted_by: string | null;
-  attempted_at: string;
+  status: QuoteSendQueueStatus;
+  attempts: number;
+  max_attempts: number;
+  last_error: string | null;
+  scheduled_at: string;
+  created_by: string | null;
+  created_at: string;
   quote_number?: string | null;
-  attempted_by_name?: string | null;
 }
 
-function QuoteShareLogsPage() {
-  const { user } = useAuth();
+function SendQueuePage() {
+  const { user, roles } = useAuth();
+  const isManagerial = roles.includes("admin") || roles.includes("manager");
+
   const [search, setSearch] = useState("");
   const dSearch = useDebounce(search, 350);
   const [channel, setChannel] = useState<string>("__all");
@@ -59,13 +65,12 @@ function QuoteShareLogsPage() {
 
   const listQuery = useQuery({
     enabled: !!user,
-    queryKey: ["sales-quote-share-logs", { dSearch, channel, status, dateFrom, dateTo, page }],
+    queryKey: ["sales-quote-send-queue", { dSearch, channel, status, dateFrom, dateTo, page }],
     staleTime: 30_000,
     queryFn: async () => {
-      const from = (page - 1) * QUOTE_SHARE_LOGS_PAGE_SIZE;
-      const to = from + QUOTE_SHARE_LOGS_PAGE_SIZE - 1;
+      const from = (page - 1) * QUOTE_SEND_QUEUE_PAGE_SIZE;
+      const to = from + QUOTE_SEND_QUEUE_PAGE_SIZE - 1;
 
-      // If searching by quote number, resolve matching quote IDs first
       let quoteIdsFilter: string[] | null = null;
       const term = dSearch.trim();
       if (term.length >= 2) {
@@ -80,25 +85,24 @@ function QuoteShareLogsPage() {
       }
 
       let q = supabase
-        .from("sales_quote_share_logs")
+        .from("sales_quote_send_queue")
         .select(
-          "id, quote_id, channel, recipient, status, pdf_attached, message_text, attempted_by, attempted_at",
+          "id, quote_id, channel, recipient, status, attempts, max_attempts, last_error, scheduled_at, created_by, created_at",
           { count: "exact" },
         )
-        .order("attempted_at", { ascending: false })
+        .order("created_at", { ascending: false })
         .range(from, to);
 
       if (channel !== "__all") q = q.eq("channel", channel);
       if (status !== "__all") q = q.eq("status", status);
-      if (dateFrom) q = q.gte("attempted_at", new Date(dateFrom).toISOString());
+      if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
         const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
-        q = q.lte("attempted_at", d.toISOString());
+        q = q.lte("created_at", d.toISOString());
       }
       if (term.length >= 2) {
         const safe = term.replace(/[%_]/g, "");
         if (quoteIdsFilter && quoteIdsFilter.length > 0) {
-          // Match recipient OR matching quote IDs
           q = q.or(`recipient.ilike.%${safe}%,quote_id.in.(${quoteIdsFilter.join(",")})`);
         } else {
           q = q.ilike("recipient", `%${safe}%`);
@@ -107,9 +111,8 @@ function QuoteShareLogsPage() {
 
       const { data, error, count } = await q;
       if (error) throw error;
-      const baseRows = (data ?? []) as Array<Omit<ShareLogRow, "quote_number" | "attempted_by_name">>;
+      const baseRows = (data ?? []) as Array<Omit<QueueRow, "quote_number">>;
 
-      // Hydrate quote numbers
       const quoteIds = Array.from(new Set(baseRows.map((r) => r.quote_id).filter(Boolean)));
       const quoteMap = new Map<string, string | null>();
       if (quoteIds.length > 0) {
@@ -121,36 +124,23 @@ function QuoteShareLogsPage() {
         }
       }
 
-      // Hydrate attempted_by names
-      const userIds = Array.from(new Set(baseRows.map((r) => r.attempted_by).filter((x): x is string => !!x)));
-      const userMap = new Map<string, string | null>();
-      if (userIds.length > 0) {
-        const pr = await supabase.from("profiles").select("id, full_name").in("id", userIds);
-        if (!pr.error) {
-          for (const p of pr.data ?? []) {
-            userMap.set(p.id as string, (p.full_name as string | null) ?? null);
-          }
-        }
-      }
-
-      const rows: ShareLogRow[] = baseRows.map((r) => ({
+      const rows: QueueRow[] = baseRows.map((r) => ({
         ...r,
         quote_number: quoteMap.get(r.quote_id) ?? null,
-        attempted_by_name: r.attempted_by ? (userMap.get(r.attempted_by) ?? null) : null,
       }));
       return { rows, total: count ?? 0 };
     },
   });
 
   const total = listQuery.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / QUOTE_SHARE_LOGS_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / QUOTE_SEND_QUEUE_PAGE_SIZE));
   const rows = listQuery.data?.rows ?? [];
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="سوابق ارسال پیش‌فاکتور"
-        description="پیش‌نویس‌ها و سوابق آماده‌سازی ارسال پیش‌فاکتورها در پیام‌رسان‌ها"
+        title="صف ارسال پیش‌فاکتور"
+        description="مدیریت داخلی صف ارسال (بدون اتصال واقعی به پیام‌رسان‌ها)"
       />
 
       <Card>
@@ -181,8 +171,8 @@ function QuoteShareLogsPage() {
               <SelectTrigger><SelectValue placeholder="وضعیت" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه وضعیت‌ها</SelectItem>
-                {QUOTE_SHARE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{QUOTE_SHARE_STATUS_LABELS[s]}</SelectItem>
+                {QUOTE_SEND_QUEUE_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{QUOTE_SEND_QUEUE_STATUS_LABELS[s]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -199,8 +189,8 @@ function QuoteShareLogsPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="سابقه‌ای یافت نشد."
-          description="با ثبت پیش‌نویس ارسال از صفحه پیش‌فاکتور، اولین سابقه ایجاد می‌شود."
+          title="صف ارسال خالی است."
+          description="از صفحه «سوابق ارسال پیش‌فاکتور» می‌توانید پیش‌نویس‌ها را به صف اضافه کنید."
         />
       ) : (
         <>
@@ -215,9 +205,9 @@ function QuoteShareLogsPage() {
                         <th className="p-3 text-right font-medium">کانال</th>
                         <th className="p-3 text-right font-medium">گیرنده</th>
                         <th className="p-3 text-right font-medium">وضعیت</th>
-                        <th className="p-3 text-right font-medium">PDF</th>
-                        <th className="p-3 text-right font-medium">ثبت‌کننده</th>
-                        <th className="p-3 text-right font-medium">زمان</th>
+                        <th className="p-3 text-right font-medium">تلاش‌ها</th>
+                        <th className="p-3 text-right font-medium">زمان برنامه‌ریزی</th>
+                        <th className="p-3 text-right font-medium">آخرین خطا</th>
                         <th className="p-3 text-right font-medium">عملیات</th>
                       </tr>
                     </thead>
@@ -231,20 +221,24 @@ function QuoteShareLogsPage() {
                           <td className="p-3 align-top" dir="ltr">{r.recipient}</td>
                           <td className="p-3 align-top">
                             <Badge variant="outline">
-                              {QUOTE_SHARE_STATUS_LABELS[r.status as QuoteShareStatus] ?? r.status}
+                              {QUOTE_SEND_QUEUE_STATUS_LABELS[r.status] ?? r.status}
                             </Badge>
                           </td>
-                          <td className="p-3 align-top">
-                            {r.pdf_attached ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-muted-foreground" />
-                            )}
+                          <td className="p-3 align-top text-xs">
+                            {toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}
                           </td>
-                          <td className="p-3 align-top text-xs text-muted-foreground">{r.attempted_by_name ?? "—"}</td>
-                          <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(r.attempted_at)}</td>
+                          <td className="p-3 align-top text-[11px] text-muted-foreground">
+                            {formatDateTimeFa(r.scheduled_at)}
+                          </td>
+                          <td className="p-3 align-top text-[11px] text-destructive max-w-[180px] truncate" title={r.last_error ?? ""}>
+                            {r.last_error ?? "—"}
+                          </td>
                           <td className="p-3 align-top">
-                            <EnqueueButton row={r} />
+                            <QueueRowActions
+                              row={r}
+                              isManagerial={isManagerial}
+                              isOwner={r.created_by === user?.id}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -254,6 +248,7 @@ function QuoteShareLogsPage() {
               </CardContent>
             </Card>
           </div>
+
           <div className="space-y-3 md:hidden">
             {rows.map((r) => (
               <Card key={r.id}>
@@ -261,7 +256,7 @@ function QuoteShareLogsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-mono text-xs text-muted-foreground">{r.quote_number ?? "—"}</div>
                     <Badge variant="outline">
-                      {QUOTE_SHARE_STATUS_LABELS[r.status as QuoteShareStatus] ?? r.status}
+                      {QUOTE_SEND_QUEUE_STATUS_LABELS[r.status] ?? r.status}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-xs">
@@ -273,14 +268,22 @@ function QuoteShareLogsPage() {
                     <span dir="ltr">{r.recipient}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">PDF</span>
-                    <span>{r.pdf_attached ? "بله" : "خیر"}</span>
+                    <span className="text-muted-foreground">تلاش‌ها</span>
+                    <span>{toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>{r.attempted_by_name ?? "—"}</span>
-                    <span>{formatDateTimeFa(r.attempted_at)}</span>
+                    <span>{formatDateTimeFa(r.scheduled_at)}</span>
                   </div>
-                  <EnqueueButton row={r} />
+                  {r.last_error && (
+                    <div className="rounded border border-destructive/30 bg-destructive/5 p-2 text-[11px] text-destructive">
+                      {r.last_error}
+                    </div>
+                  )}
+                  <QueueRowActions
+                    row={r}
+                    isManagerial={isManagerial}
+                    isOwner={r.created_by === user?.id}
+                  />
                 </CardContent>
               </Card>
             ))}
@@ -288,7 +291,7 @@ function QuoteShareLogsPage() {
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} سابقه
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} رکورد
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
@@ -305,60 +308,90 @@ function QuoteShareLogsPage() {
   );
 }
 
-function EnqueueButton({ row }: { row: ShareLogRow }) {
-  const { user } = useAuth();
+function QueueRowActions({
+  row, isManagerial, isOwner,
+}: { row: QueueRow; isManagerial: boolean; isOwner: boolean }) {
   const qc = useQueryClient();
-  const mutation = useMutation({
+
+  const cancelMut = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("ابتدا وارد حساب شوید.");
-      // Check duplicate pending/processing
-      const dup = await supabase
+      const { error } = await supabase
         .from("sales_quote_send_queue")
-        .select("id, status")
-        .eq("share_log_id", row.id)
-        .in("status", ["pending", "processing"])
-        .limit(1);
-      if (dup.error) throw dup.error;
-      if ((dup.data ?? []).length > 0) {
-        throw new Error("این پیش‌نویس قبلاً در صف ارسال قرار گرفته است.");
-      }
-      const { error } = await supabase.from("sales_quote_send_queue").insert({
-        share_log_id: row.id,
-        quote_id: row.quote_id,
-        channel: row.channel,
-        recipient: row.recipient,
-        message_text: row.message_text,
-        pdf_attached: row.pdf_attached,
-        status: "pending",
-        created_by: user.id,
-      });
+        .update({ status: "canceled" })
+        .eq("id", row.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("به صف ارسال اضافه شد.");
+      toast.success("رکورد صف لغو شد.");
       qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "خطا در افزودن به صف."),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در لغو."),
   });
 
-  if (row.status !== "draft") {
+  const successMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("sales_quote_send_queue")
+        .update({ status: "sent", processed_at: new Date().toISOString(), last_error: null })
+        .eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("ارسال موفق شبیه‌سازی شد.");
+      qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در شبیه‌سازی."),
+  });
+
+  const failureMut = useMutation({
+    mutationFn: async () => {
+      const newAttempts = row.attempts + 1;
+      const reachedMax = newAttempts >= row.max_attempts;
+      const { error } = await supabase
+        .from("sales_quote_send_queue")
+        .update({
+          attempts: newAttempts,
+          last_error: SIMULATED_ERROR_MESSAGE,
+          status: reachedMax ? "failed" : "pending",
+          processed_at: reachedMax ? new Date().toISOString() : null,
+        })
+        .eq("id", row.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("خطای ارسال شبیه‌سازی شد.");
+      qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در شبیه‌سازی."),
+  });
+
+  const isPending = row.status === "pending";
+  const canCancel = isPending && (isManagerial || isOwner);
+  const showSimulate = isPending && isManagerial;
+
+  if (!canCancel && !showSimulate) {
     return <span className="text-[11px] text-muted-foreground">—</span>;
   }
 
+  const busy = cancelMut.isPending || successMut.isPending || failureMut.isPending;
+
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={mutation.isPending}
-      onClick={() => mutation.mutate()}
-    >
-      {mutation.isPending ? (
-        <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Send className="ml-1 h-3.5 w-3.5" />
+    <div className="flex flex-wrap gap-1">
+      {showSimulate && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => successMut.mutate()}>
+          <CheckCircle2 className="ml-1 h-3.5 w-3.5" /> شبیه‌سازی موفق
+        </Button>
       )}
-      افزودن به صف ارسال
-    </Button>
+      {showSimulate && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => failureMut.mutate()}>
+          <AlertTriangle className="ml-1 h-3.5 w-3.5" /> شبیه‌سازی خطا
+        </Button>
+      )}
+      {canCancel && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => cancelMut.mutate()}>
+          <Ban className="ml-1 h-3.5 w-3.5" /> لغو
+        </Button>
+      )}
+    </div>
   );
 }

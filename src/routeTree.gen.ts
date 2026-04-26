@@ -29,6 +29,7 @@ import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
+import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.quote-share-logs'
@@ -148,6 +149,11 @@ const AppPricingIndexRoute = AppPricingIndexRouteImport.update({
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
   path: '/stock-alerts',
+  getParentRoute: () => AppSalesRoute,
+} as any)
+const AppSalesSendQueueRoute = AppSalesSendQueueRouteImport.update({
+  id: '/send-queue',
+  path: '/send-queue',
   getParentRoute: () => AppSalesRoute,
 } as any)
 const AppSalesSearchRoute = AppSalesSearchRouteImport.update({
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
+  '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/products/new': typeof AppProductsNewRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/search': typeof AppSalesSearchRoute
+  '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/_app/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
+  '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/sales/quote-share-logs'
     | '/sales/quotes'
     | '/sales/search'
+    | '/sales/send-queue'
     | '/sales/stock-alerts'
     | '/pricing/'
     | '/products/'
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/products/new'
     | '/sales/quote-share-logs'
     | '/sales/search'
+    | '/sales/send-queue'
     | '/sales/stock-alerts'
     | '/pricing'
     | '/products'
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quote-share-logs'
     | '/_app/sales/quotes'
     | '/_app/sales/search'
+    | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
     | '/_app/pricing/'
     | '/_app/products/'
@@ -659,6 +671,13 @@ declare module '@tanstack/react-router' {
       path: '/stock-alerts'
       fullPath: '/sales/stock-alerts'
       preLoaderRoute: typeof AppSalesStockAlertsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
+    '/_app/sales/send-queue': {
+      id: '/_app/sales/send-queue'
+      path: '/send-queue'
+      fullPath: '/sales/send-queue'
+      preLoaderRoute: typeof AppSalesSendQueueRouteImport
       parentRoute: typeof AppSalesRoute
     }
     '/_app/sales/search': {
@@ -831,6 +850,7 @@ interface AppSalesRouteChildren {
   AppSalesQuoteShareLogsRoute: typeof AppSalesQuoteShareLogsRoute
   AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
+  AppSalesSendQueueRoute: typeof AppSalesSendQueueRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
 }
@@ -839,6 +859,7 @@ const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesQuoteShareLogsRoute: AppSalesQuoteShareLogsRoute,
   AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
+  AppSalesSendQueueRoute: AppSalesSendQueueRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
 }
