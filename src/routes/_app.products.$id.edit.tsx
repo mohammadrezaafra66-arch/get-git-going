@@ -23,7 +23,7 @@ function EditProductPage() {
     queryFn: async (): Promise<{ values: Partial<ProductFormValues>; sku: string | null } | null> => {
       const { data: p, error } = await supabase
         .from("products")
-        .select("name, sku, brand_id, category_id, product_type, base_currency, stock_status, status, unit, description, technical_notes")
+        .select("name, sku, brand_id, category_id, product_type, base_currency, stock_status, status, unit, color, capacity, model, description, technical_notes")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -36,6 +36,9 @@ function EditProductPage() {
         values: {
           ...rest,
           unit: p.unit ?? "",
+          color: p.color ?? "",
+          capacity: p.capacity ?? "",
+          model: p.model ?? "",
           description: p.description ?? "",
           technical_notes: p.technical_notes ?? "",
           label_ids: (links ?? []).map((l) => l.label_id),
@@ -56,6 +59,9 @@ function EditProductPage() {
         stock_status: v.stock_status,
         status: v.status,
         unit: v.unit || null,
+        color: v.color || null,
+        capacity: v.capacity || null,
+        model: v.model || null,
         description: v.description || null,
         technical_notes: v.technical_notes || null,
       }).eq("id", id);
