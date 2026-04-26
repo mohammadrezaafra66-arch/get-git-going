@@ -28,7 +28,6 @@ import {
 } from "@/lib/sales/quotes";
 
 export const Route = createFileRoute("/_app/sales/quotes/")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
   component: QuotesListPage,
 });
 
