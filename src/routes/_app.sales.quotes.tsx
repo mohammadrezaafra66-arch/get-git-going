@@ -270,12 +270,15 @@ function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean
   const qc = useQueryClient();
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
-      const patch: Record<string, unknown> = { status: payload.next };
-      if (payload.next === "canceled" && payload.reason) patch.cancel_reason = payload.reason;
-      const { error } = await supabase
-        .from("sales_quotes")
-        .update(patch)
-        .eq("id", row.id);
+      const { error } = payload.next === "canceled"
+        ? await supabase
+            .from("sales_quotes")
+            .update({ status: payload.next, cancel_reason: payload.reason ?? null })
+            .eq("id", row.id)
+        : await supabase
+            .from("sales_quotes")
+            .update({ status: payload.next })
+            .eq("id", row.id);
       if (error) throw error;
     },
     onSuccess: () => {
