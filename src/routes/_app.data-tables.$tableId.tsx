@@ -357,6 +357,9 @@ function DataTableDetailPage() {
           ) : (
             <>
             {/* Desktop table */}
+            <div className="px-3 pt-3 text-[11px] text-muted-foreground hidden md:block">
+              راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. با تایپ عدد یا Enter ویرایش شروع می‌شود. Enter ذخیره می‌کند، Esc لغو می‌کند.
+            </div>
             <div className="overflow-x-auto hidden md:block">
               <table className="w-full text-sm" style={{ minWidth: `${320 + columns.length * 160}px` }}>
                 <thead className="bg-muted/40 text-muted-foreground">
@@ -372,6 +375,7 @@ function DataTableDetailPage() {
                 <tbody>
                   {rowsQuery.data!.rows.map((r) => {
                     const inactive = !r.is_active;
+                    const rowIdx = rowsQuery.data!.rows.indexOf(r);
                     return (
                       <tr key={r.id} className={`border-t border-border ${inactive ? "bg-muted/30 text-muted-foreground" : ""}`}>
                         <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
@@ -382,18 +386,77 @@ function DataTableDetailPage() {
                             </Badge>
                           )}
                         </td>
-                        {columns.map((c) => (
-                          <td key={c.id} className="px-3 py-2">
-                            <CellEditor
+                        {columns.map((c, colIdx) => {
+                          const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
+                          const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
+                          const value = rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? "";
+                          return (
+                            <GridCell
+                              key={c.id}
+                              ref={setCellRef(rowIdx, colIdx)}
                               column={c}
-                              rowId={r.id}
-                              value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
+                              value={value}
                               canEdit={canEdit}
                               inactive={inactive}
-                              onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
+                              isFocused={isFocused}
+                              isEditing={isEditing}
+                              initialEditValue={isEditing ? editingPos?.initial : undefined}
+                              onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
+                              onRequestEdit={(initial) => {
+                                if (!canEdit) return;
+                                if (inactive) {
+                                  const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
+                                  if (!ok) return;
+                                }
+                                setEditingPos({ row: rowIdx, col: colIdx, initial });
+                              }}
+                              onClearCell={async () => {
+                                if (!canEdit) return;
+                                if (inactive) {
+                                  const ok = window.confirm("این ردیف غیرفعال است. مقدار سلول پاک شود؟");
+                                  if (!ok) return;
+                                }
+                                if (!value) return;
+                                await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
+                              }}
+                              onCancelEdit={() => {
+                                setEditingPos(null);
+                                requestAnimationFrame(() => focusCell(rowIdx, colIdx));
+                              }}
+                              onCommitEdit={async (val, moveDown) => {
+                                try {
+                                  if (val !== value) {
+                                    await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val });
+                                  }
+                                  setEditingPos(null);
+                                  requestAnimationFrame(() => {
+                                    const nextRow = moveDown && rowIdx + 1 < rowsQuery.data!.rows.length ? rowIdx + 1 : rowIdx;
+                                    focusCell(nextRow, colIdx);
+                                  });
+                                } catch {
+                                  // toast handled by mutation
+                                }
+                              }}
+                              onNavigate={(dir) => {
+                                const total = rowsQuery.data!.rows.length;
+                                const cols = columns.length;
+                                let nr = rowIdx, nc = colIdx;
+                                if (dir === "right") nc = Math.min(cols - 1, colIdx + 1);
+                                else if (dir === "left") nc = Math.max(0, colIdx - 1);
+                                else if (dir === "down") nr = Math.min(total - 1, rowIdx + 1);
+                                else if (dir === "up") nr = Math.max(0, rowIdx - 1);
+                                else if (dir === "tab-next") {
+                                  if (colIdx + 1 < cols) nc = colIdx + 1;
+                                  else if (rowIdx + 1 < total) { nr = rowIdx + 1; nc = 0; }
+                                } else if (dir === "tab-prev") {
+                                  if (colIdx - 1 >= 0) nc = colIdx - 1;
+                                  else if (rowIdx - 1 >= 0) { nr = rowIdx - 1; nc = cols - 1; }
+                                }
+                                if (nr !== rowIdx || nc !== colIdx) focusCell(nr, nc);
+                              }}
                             />
-                          </td>
-                        ))}
+                          );
+                        })}
                         <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDateTimeFa(r.created_at)}</td>
                         {canEdit && (
                           <td className="px-3 py-2">
