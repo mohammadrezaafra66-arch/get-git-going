@@ -1993,6 +1993,24 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      query_dynamic_table_rows: {
+        Args: {
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_show_inactive?: boolean
+          p_table_id: string
+        }
+        Returns: {
+          out_created_at: string
+          out_is_active: boolean
+          out_row_id: string
+          out_row_number: number
+          out_values: Json
+          total_count: number
+        }[]
+      }
       release_stale_quote_send_locks: { Args: never; Returns: number }
       reorder_dynamic_table_columns: {
         Args: { p_ordered_ids: string[]; p_table_id: string }
@@ -2037,6 +2055,8 @@ export type Database = {
         Args: { p_is_active: boolean; p_row_id: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       update_dynamic_table_cell: {
         Args: { p_column_id: string; p_row_id: string; p_value: string }
         Returns: undefined

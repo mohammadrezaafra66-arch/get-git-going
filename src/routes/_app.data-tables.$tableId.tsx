@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import {
-  ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox, Search, AlertTriangle,
-  Pencil, ArrowUp, ArrowDown, Eye, EyeOff, Upload,
+  ArrowRight, Plus, Loader2, Inbox, Search, AlertTriangle,
+  Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -28,15 +29,17 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { toFaDigits, formatDateTimeFa, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
-  DYNAMIC_TABLE_ROWS_PAGE_SIZE, COLUMN_KEY_REGEX,
-  type DynamicColumnDataType,
+  COLUMN_KEY_REGEX, type DynamicColumnDataType,
 } from "@/lib/data-tables/constants";
-import { CsvImportDialog } from "@/components/data-tables/CsvImportDialog";
+import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
   component: DataTableDetailPage,
 });
+
+const PAGE_SIZE = 200;
+const ROW_H = 40;
 
 interface ColumnRow {
   id: string;
@@ -52,9 +55,10 @@ interface ColumnRow {
 
 interface RowItem {
   id: string;
-  row_number: number | string;
-  created_at: string;
+  row_number: number;
   is_active: boolean;
+  created_at: string;
+  values: Record<string, unknown>;
 }
 
 function DataTableDetailPage() {
@@ -62,22 +66,23 @@ function DataTableDetailPage() {
   const { user, roles } = useAuth();
   const canEdit = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
   const qc = useQueryClient();
-  const [page, setPage] = useState(1);
+
   const [showInactive, setShowInactive] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounce(searchInput, 350);
-  useEffect(() => { setPage(1); }, [search, showInactive]);
+  const [rules, setRules] = useState<FilterRule[]>([]);
+  const debouncedRules = useDebounce(rules, 350);
+
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
-  const [csvOpen, setCsvOpen] = useState(false);
 
   // Spreadsheet keyboard grid state
   const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
   const [editingPos, setEditingPos] = useState<{ row: number; col: number; initial?: string } | null>(null);
-  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+  const cellRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const cellKey = (r: number, c: number) => `${r}:${c}`;
-  const setCellRef = useCallback((r: number, c: number) => (el: HTMLTableCellElement | null) => {
+  const setCellRef = useCallback((r: number, c: number) => (el: HTMLDivElement | null) => {
     const k = cellKey(r, c);
     if (el) cellRefs.current.set(k, el);
     else cellRefs.current.delete(k);
@@ -119,73 +124,71 @@ function DataTableDetailPage() {
     },
   });
   const columns = colsQuery.data ?? [];
+  const filterableColumns: FilterColumn[] = useMemo(
+    () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
+    [columns]
+  );
+
+  // Sanitize rules sent to server (drop incomplete ones)
+  const serverFilters = useMemo(() => {
+    return debouncedRules
+      .filter((r) => {
+        if (!r.column_id || !r.op) return false;
+        const col = columns.find((c) => c.id === r.column_id);
+        if (!col) return false;
+        if (col.data_type === "boolean") return true; // value not required
+        if (col.data_type === "date" || col.data_type === "datetime") {
+          return Boolean((r.value && r.value.length) || (r.value2 && r.value2.length));
+        }
+        return Boolean(r.value && r.value.length);
+      })
+      .map((r) => ({
+        column_id: r.column_id,
+        op: r.op,
+        value: r.value ?? null,
+        value2: r.value2 ?? null,
+      }));
+  }, [debouncedRules, columns]);
+
+  // Infinite paged window via offset (single window of PAGE_SIZE for now; "load more" appends)
+  const [pageCount, setPageCount] = useState(1);
+  useEffect(() => { setPageCount(1); }, [tableId, search, showInactive, JSON.stringify(serverFilters)]);
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: ["dynamic-table-rows", tableId, page, showInactive, search],
-    staleTime: 15_000,
+    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount],
+    staleTime: 10_000,
     queryFn: async () => {
-      const from = (page - 1) * DYNAMIC_TABLE_ROWS_PAGE_SIZE;
-      const to = from + DYNAMIC_TABLE_ROWS_PAGE_SIZE - 1;
-
-      let headQ = supabase
-        .from("dynamic_table_rows")
-        .select("id", { count: "exact", head: true })
-        .eq("table_id", tableId);
-      if (!showInactive) headQ = headQ.eq("is_active", true);
-      const searchNum = Number(search.trim());
-      if (search.trim() && Number.isFinite(searchNum)) {
-        headQ = headQ.eq("row_number", searchNum);
-      }
-      const head = await headQ;
-      if (head.error) throw head.error;
-      const total = head.count ?? 0;
-
-      let listQ = supabase
-        .from("dynamic_table_rows")
-        .select("id, row_number, created_at, is_active")
-        .eq("table_id", tableId)
-        .order("row_number", { ascending: true })
-        .range(from, to);
-      if (!showInactive) listQ = listQ.eq("is_active", true);
-      if (search.trim() && Number.isFinite(searchNum)) {
-        listQ = listQ.eq("row_number", searchNum);
-      }
-      const { data: rows, error: e1 } = await listQ;
-      if (e1) throw e1;
-      const rowIds = (rows ?? []).map((r) => r.id as string);
-
-      const cellsByRow: Record<string, Record<string, string>> = {};
-      if (rowIds.length) {
-        const { data: cells, error: e2 } = await supabase
-          .from("dynamic_table_cells")
-          .select("row_id, column_id, value_text, value_number, value_boolean, value_date, value_datetime")
-          .in("row_id", rowIds);
-        if (e2) throw e2;
-        const colTypes: Record<string, DynamicColumnDataType> = {};
-        for (const c of columns) colTypes[c.id] = c.data_type;
-        for (const c of cells ?? []) {
-          const rid = c.row_id as string;
-          const cid = c.column_id as string;
-          const t = colTypes[cid];
-          let v: any = "";
-          if (t === "number") v = c.value_number ?? "";
-          else if (t === "boolean") v = c.value_boolean === true ? "true" : c.value_boolean === false ? "false" : "";
-          else if (t === "date") v = c.value_date ?? "";
-          else if (t === "datetime") v = c.value_datetime ?? "";
-          else v = c.value_text ?? "";
-          if (!cellsByRow[rid]) cellsByRow[rid] = {};
-          cellsByRow[rid][cid] = String(v);
-        }
-      }
-
-      return { rows: (rows ?? []) as unknown as RowItem[], cellsByRow, total };
+      const { data, error } = await supabase.rpc("query_dynamic_table_rows", {
+        p_table_id: tableId,
+        p_filters: serverFilters as unknown as never,
+        p_search: search.trim() ? search.trim() : undefined,
+        p_show_inactive: showInactive,
+        p_limit: PAGE_SIZE * pageCount,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      const rows: RowItem[] = (data ?? []).map((r: any) => ({
+        id: r.out_row_id as string,
+        row_number: Number(r.out_row_number),
+        is_active: !!r.out_is_active,
+        created_at: (r.out_created_at as string) ?? "",
+        values: (r.out_values ?? {}) as Record<string, unknown>,
+      }));
+      const total = data && data.length ? Number((data[0] as any).total_count ?? 0) : 0;
+      return { rows, total };
     },
   });
 
-  const totalPages = Math.max(1, Math.ceil((rowsQuery.data?.total ?? 0) / DYNAMIC_TABLE_ROWS_PAGE_SIZE));
+  const totalRows = rowsQuery.data?.total ?? 0;
+  const loadedRows = rowsQuery.data?.rows ?? [];
+  const canLoadMore = loadedRows.length < totalRows;
 
   // ---------- Mutations ----------
+  const invalidateRows = () => {
+    qc.invalidateQueries({ queryKey: ["dynamic-table-rows-v2", tableId] });
+  };
+
   const addRowMut = useMutation({
     mutationFn: async () => {
       const payload: Record<string, string> = {};
@@ -202,7 +205,7 @@ function DataTableDetailPage() {
     onSuccess: () => {
       toast.success("ردیف افزوده شد.");
       setAddRowOpen(false); setValues({});
-      qc.invalidateQueries({ queryKey: ["dynamic-table-rows", tableId] });
+      invalidateRows();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا در افزودن ردیف"),
   });
@@ -214,10 +217,7 @@ function DataTableDetailPage() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("سلول به‌روزرسانی شد.");
-      qc.invalidateQueries({ queryKey: ["dynamic-table-rows", tableId] });
-    },
+    onSuccess: () => { invalidateRows(); },
     onError: (e: any) => toast.error(e?.message ?? "خطا در ذخیره سلول"),
   });
 
@@ -230,7 +230,7 @@ function DataTableDetailPage() {
     },
     onSuccess: (_d, v) => {
       toast.success(v.isActive ? "ردیف فعال شد." : "ردیف غیرفعال شد.");
-      qc.invalidateQueries({ queryKey: ["dynamic-table-rows", tableId] });
+      invalidateRows();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
@@ -258,6 +258,32 @@ function DataTableDetailPage() {
 
   const t = tableQuery.data;
 
+  // ---------- Virtualizer ----------
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: loadedRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 8,
+  });
+
+  // Auto-load more when nearing the end
+  useEffect(() => {
+    const items = rowVirtualizer.getVirtualItems();
+    if (!items.length) return;
+    const last = items[items.length - 1];
+    if (canLoadMore && !rowsQuery.isFetching && last.index >= loadedRows.length - 20) {
+      setPageCount((p) => p + 1);
+    }
+  }, [rowVirtualizer.getVirtualItems(), canLoadMore, rowsQuery.isFetching, loadedRows.length]);
+
+  // Helper: stringify a pivoted value for editor input
+  const stringifyValue = (col: ColumnRow, raw: unknown): string => {
+    if (raw === null || raw === undefined) return "";
+    if (col.data_type === "boolean") return raw === true ? "true" : raw === false ? "false" : "";
+    return String(raw);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -268,32 +294,12 @@ function DataTableDetailPage() {
             <Button asChild variant="outline">
               <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
-            {canEdit && (
-              <Button variant="outline" onClick={() => setCsvOpen(true)} disabled={!columns.length}>
-                <Upload className="ml-2 h-4 w-4" />واردسازی CSV
-              </Button>
-            )}
             <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
               <Plus className="ml-2 h-4 w-4" />افزودن ردیف
             </Button>
           </div>
         }
       />
-
-      {canEdit && (
-        <CsvImportDialog
-          open={csvOpen}
-          onOpenChange={setCsvOpen}
-          tableId={tableId}
-          columns={columns.map((c) => ({
-            id: c.id,
-            column_key: c.column_key,
-            label: c.label,
-            data_type: c.data_type,
-            is_required: c.is_required,
-          }))}
-        />
-      )}
 
       {/* Columns management */}
       <Card>
@@ -345,25 +351,20 @@ function DataTableDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Rows */}
+      {/* Search + filters + toggles */}
       <Card>
-        <CardContent className="p-0">
-          <div className="flex flex-col gap-3 border-b border-border p-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-2 flex-1 max-w-xs">
+        <CardContent className="p-3 space-y-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2 flex-1 max-w-md">
               <div className="relative flex-1">
                 <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="جستجو با شماره ردیف…"
+                  placeholder="جستجو در شماره ردیف یا متن سلول‌ها…"
                   className="pr-8 h-9"
-                  inputMode="numeric"
-                  dir="ltr"
                 />
               </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                مجموع: {toFaDigits(String(rowsQuery.data?.total ?? 0))}
-              </span>
             </div>
             <label className="flex items-center gap-2 text-xs">
               <Switch checked={showInactive} onCheckedChange={setShowInactive} />
@@ -371,181 +372,105 @@ function DataTableDetailPage() {
             </label>
           </div>
 
+          <FiltersBar columns={filterableColumns} rules={rules} onChange={setRules} />
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>کل نتایج: {toFaDigits(String(totalRows))}</span>
+              <span>•</span>
+              <span>نمایش: {toFaDigits(String(loadedRows.length))}</span>
+              {rowsQuery.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            </div>
+            {canLoadMore && (
+              <Button size="sm" variant="ghost" onClick={() => setPageCount((p) => p + 1)} disabled={rowsQuery.isFetching}>
+                بارگذاری بیشتر
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Rows */}
+      <Card>
+        <CardContent className="p-0">
           {rowsQuery.isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-          ) : (rowsQuery.data?.rows ?? []).length === 0 ? (
+          ) : loadedRows.length === 0 ? (
             <div className="py-10">
-              <EmptyState icon={Inbox} title="ردیفی ثبت نشده" description="با دکمه افزودن ردیف، اولین رکورد را وارد کنید." />
+              <EmptyState icon={Inbox} title="ردیفی یافت نشد"
+                description={search || serverFilters.length ? "با فیلتر یا جستجوی فعلی نتیجه‌ای نیست." : "با دکمه افزودن ردیف، اولین رکورد را وارد کنید."} />
             </div>
           ) : (
             <>
-            {/* Desktop table */}
-            <div className="px-3 pt-3 text-[11px] text-muted-foreground hidden md:block">
-              راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. با تایپ عدد یا Enter ویرایش شروع می‌شود. Enter ذخیره می‌کند، Esc لغو می‌کند.
-            </div>
-            <div className="overflow-x-auto hidden md:block">
-              <table className="w-full text-sm" style={{ minWidth: `${320 + columns.length * 160}px` }}>
-                <thead className="bg-muted/40 text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">#</th>
-                    {columns.map((c) => (
-                      <th key={c.id} className="px-3 py-2 text-right font-medium whitespace-nowrap">{c.label}</th>
-                    ))}
-                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">ایجاد</th>
-                    {canEdit && <th className="px-3 py-2 text-right font-medium whitespace-nowrap">عملیات</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowsQuery.data!.rows.map((r) => {
-                    const inactive = !r.is_active;
-                    const rowIdx = rowsQuery.data!.rows.indexOf(r);
-                    return (
-                      <tr key={r.id} className={`border-t border-border ${inactive ? "bg-muted/30 text-muted-foreground" : ""}`}>
-                        <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
-                          {toFaDigits(String(r.row_number))}
+              {/* Desktop virtualized grid */}
+              <div className="hidden md:block">
+                <div className="px-3 pt-3 text-[11px] text-muted-foreground">
+                  راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. تایپ یا Enter برای ویرایش، Esc برای لغو، Backspace برای پاک‌کردن.
+                </div>
+                <VirtualizedGrid
+                  scrollRef={scrollRef}
+                  virtualizer={rowVirtualizer}
+                  columns={columns}
+                  rows={loadedRows}
+                  canEdit={canEdit}
+                  focused={focused}
+                  setFocused={setFocused}
+                  editingPos={editingPos}
+                  setEditingPos={setEditingPos}
+                  setCellRef={setCellRef}
+                  focusCell={focusCell}
+                  cellMut={cellMut}
+                  toggleRowMut={toggleRowMut}
+                  stringifyValue={stringifyValue}
+                />
+              </div>
+
+              {/* Mobile card view */}
+              <div className="md:hidden divide-y divide-border">
+                {loadedRows.map((r) => {
+                  const inactive = !r.is_active;
+                  return (
+                    <div key={r.id} className={`p-3 space-y-2 ${inactive ? "bg-muted/30" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs">#{toFaDigits(String(r.row_number))}</span>
                           {inactive && (
-                            <Badge variant="outline" className="ms-2 text-[10px] gap-1">
+                            <Badge variant="outline" className="text-[10px] gap-1">
                               <AlertTriangle className="h-3 w-3" />غیرفعال
                             </Badge>
                           )}
-                        </td>
-                        {columns.map((c, colIdx) => {
-                          const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
-                          const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
-                          const value = rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? "";
-                          return (
-                            <GridCell
-                              key={c.id}
-                              ref={setCellRef(rowIdx, colIdx)}
-                              column={c}
-                              value={value}
-                              canEdit={canEdit}
-                              inactive={inactive}
-                              isFocused={isFocused}
-                              isEditing={isEditing}
-                              initialEditValue={isEditing ? editingPos?.initial : undefined}
-                              onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
-                              onRequestEdit={(initial) => {
-                                if (!canEdit) return;
-                                setEditingPos({ row: rowIdx, col: colIdx, initial });
-                              }}
-                              onClearCell={async () => {
-                                if (!canEdit) return;
-                                if (!value) return;
-                                await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
-                              }}
-                              onCancelEdit={() => {
-                                setEditingPos(null);
-                                requestAnimationFrame(() => focusCell(rowIdx, colIdx));
-                              }}
-                              onCommitEdit={async (val, moveDown) => {
-                                try {
-                                  if (val !== value) {
-                                    await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val });
-                                  }
-                                  setEditingPos(null);
-                                  requestAnimationFrame(() => {
-                                    const nextRow = moveDown && rowIdx + 1 < rowsQuery.data!.rows.length ? rowIdx + 1 : rowIdx;
-                                    focusCell(nextRow, colIdx);
-                                  });
-                                } catch {
-                                  // toast handled by mutation
-                                }
-                              }}
-                              onNavigate={(dir) => {
-                                const total = rowsQuery.data!.rows.length;
-                                const cols = columns.length;
-                                let nr = rowIdx, nc = colIdx;
-                                if (dir === "right") nc = Math.min(cols - 1, colIdx + 1);
-                                else if (dir === "left") nc = Math.max(0, colIdx - 1);
-                                else if (dir === "down") nr = Math.min(total - 1, rowIdx + 1);
-                                else if (dir === "up") nr = Math.max(0, rowIdx - 1);
-                                else if (dir === "tab-next") {
-                                  if (colIdx + 1 < cols) nc = colIdx + 1;
-                                  else if (rowIdx + 1 < total) { nr = rowIdx + 1; nc = 0; }
-                                } else if (dir === "tab-prev") {
-                                  if (colIdx - 1 >= 0) nc = colIdx - 1;
-                                  else if (rowIdx - 1 >= 0) { nr = rowIdx - 1; nc = cols - 1; }
-                                }
-                                if (nr !== rowIdx || nc !== colIdx) focusCell(nr, nc);
-                              }}
-                            />
-                          );
-                        })}
-                        <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDateTimeFa(r.created_at)}</td>
+                        </div>
                         {canEdit && (
-                          <td className="px-3 py-2">
-                            <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
-                              disabled={toggleRowMut.isPending}
-                              onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
-                              {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                            </Button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile card view */}
-            <div className="md:hidden divide-y divide-border">
-              {rowsQuery.data!.rows.map((r) => {
-                const inactive = !r.is_active;
-                return (
-                  <div key={r.id} className={`p-3 space-y-2 ${inactive ? "bg-muted/30" : ""}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">#{toFaDigits(String(r.row_number))}</span>
-                        {inactive && (
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <AlertTriangle className="h-3 w-3" />غیرفعال
-                          </Badge>
+                          <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                            disabled={toggleRowMut.isPending}
+                            onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
+                            {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
                         )}
                       </div>
-                      {canEdit && (
-                        <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
-                          disabled={toggleRowMut.isPending}
-                          onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
-                          {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                        </Button>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      {columns.map((c) => (
-                        <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
-                          <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
-                          <div className="text-end min-w-0">
-                            <CellEditor
-                              column={c}
-                              rowId={r.id}
-                              value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
-                              canEdit={canEdit}
-                              inactive={inactive}
-                              onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
-                            />
+                      <div className="space-y-1.5">
+                        {columns.map((c) => (
+                          <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
+                            <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
+                            <div className="text-end min-w-0">
+                              <CellEditor
+                                column={c}
+                                value={stringifyValue(c, r.values[c.column_key])}
+                                canEdit={canEdit}
+                                inactive={inactive}
+                                onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(r.created_at)}</div>
                     </div>
-                    <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(r.created_at)}</div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
             </>
           )}
-
-          <div className="flex items-center justify-end border-t border-border p-3 gap-2">
-            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <span className="text-xs">{toFaDigits(String(page))} / {toFaDigits(String(totalPages))}</span>
-            <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
         </CardContent>
       </Card>
 
@@ -608,12 +533,168 @@ function DataTableDetailPage() {
   );
 }
 
-// =============== Spreadsheet grid cell (desktop, keyboard-driven) ===============
+// =============== Virtualized Grid ===============
 type NavDir = "left" | "right" | "up" | "down" | "tab-next" | "tab-prev";
+const COL_W = 160;
+const ROWNUM_W = 90;
+const ACT_W = 60;
 
-const GridCell = forwardRef<HTMLTableCellElement, {
+function VirtualizedGrid({
+  scrollRef, virtualizer, columns, rows, canEdit,
+  focused, setFocused, editingPos, setEditingPos,
+  setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
+}: {
+  scrollRef: React.MutableRefObject<HTMLDivElement | null>;
+  virtualizer: Virtualizer<HTMLDivElement, Element>;
+  columns: ColumnRow[];
+  rows: RowItem[];
+  canEdit: boolean;
+  focused: { row: number; col: number } | null;
+  setFocused: (v: { row: number; col: number } | null) => void;
+  editingPos: { row: number; col: number; initial?: string } | null;
+  setEditingPos: (v: { row: number; col: number; initial?: string } | null) => void;
+  setCellRef: (r: number, c: number) => (el: HTMLDivElement | null) => void;
+  focusCell: (r: number, c: number) => void;
+  cellMut: { mutateAsync: (v: { rowId: string; columnId: string; value: string }) => Promise<void> };
+  toggleRowMut: { isPending: boolean; mutate: (v: { rowId: string; isActive: boolean }) => void };
+  stringifyValue: (col: ColumnRow, raw: unknown) => string;
+}) {
+  const totalWidth = ROWNUM_W + columns.length * COL_W + 130 + ACT_W; // created col ~130
+  const items = virtualizer.getVirtualItems();
+  const totalHeight = virtualizer.getTotalSize();
+
+  return (
+    <div
+      ref={scrollRef}
+      className="relative overflow-auto"
+      style={{ height: 540 }}
+    >
+      <div style={{ width: totalWidth, position: "relative" }}>
+        {/* Header */}
+        <div
+          className="sticky top-0 z-20 flex bg-muted text-muted-foreground text-xs font-medium border-b border-border"
+          style={{ height: 36 }}
+        >
+          <div className="sticky right-0 z-30 bg-muted px-3 py-2 border-l border-border" style={{ width: ROWNUM_W }}>#</div>
+          {columns.map((c) => (
+            <div key={c.id} className="px-3 py-2 truncate" style={{ width: COL_W }}>{c.label}</div>
+          ))}
+          <div className="px-3 py-2" style={{ width: 130 }}>ایجاد</div>
+          {canEdit && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
+        </div>
+
+        {/* Body (virtualized) */}
+        <div style={{ height: totalHeight, position: "relative" }}>
+          {items.map((vi) => {
+            const r = rows[vi.index];
+            if (!r) return null;
+            const inactive = !r.is_active;
+            const rowIdx = vi.index;
+            return (
+              <div
+                key={r.id}
+                className={`absolute left-0 right-0 flex border-b border-border text-sm ${inactive ? "bg-muted/30 text-muted-foreground" : "bg-card"}`}
+                style={{ transform: `translateY(${vi.start}px)`, height: ROW_H }}
+              >
+                <div
+                  className={`sticky right-0 z-10 px-3 py-2 font-mono text-xs whitespace-nowrap border-l border-border ${inactive ? "bg-muted/60" : "bg-card"}`}
+                  style={{ width: ROWNUM_W }}
+                >
+                  {toFaDigits(String(r.row_number))}
+                  {inactive && <AlertTriangle className="inline h-3 w-3 ms-1" />}
+                </div>
+                {columns.map((c, colIdx) => {
+                  const raw = r.values[c.column_key];
+                  const value = stringifyValue(c, raw);
+                  const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
+                  const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
+                  return (
+                    <GridCell
+                      key={c.id}
+                      ref={setCellRef(rowIdx, colIdx)}
+                      column={c}
+                      value={value}
+                      width={COL_W}
+                      canEdit={canEdit}
+                      inactive={inactive}
+                      isFocused={isFocused}
+                      isEditing={isEditing}
+                      initialEditValue={isEditing ? editingPos?.initial : undefined}
+                      onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
+                      onRequestEdit={(initial) => {
+                        if (!canEdit) return;
+                        setEditingPos({ row: rowIdx, col: colIdx, initial });
+                      }}
+                      onClearCell={async () => {
+                        if (!canEdit || !value) return;
+                        await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
+                      }}
+                      onCancelEdit={() => {
+                        setEditingPos(null);
+                        requestAnimationFrame(() => focusCell(rowIdx, colIdx));
+                      }}
+                      onCommitEdit={async (val, moveDown) => {
+                        try {
+                          if (val !== value) {
+                            await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val });
+                          }
+                          setEditingPos(null);
+                          requestAnimationFrame(() => {
+                            const nextRow = moveDown && rowIdx + 1 < rows.length ? rowIdx + 1 : rowIdx;
+                            focusCell(nextRow, colIdx);
+                          });
+                        } catch { /* toast handled */ }
+                      }}
+                      onNavigate={(dir) => {
+                        const total = rows.length;
+                        const cols = columns.length;
+                        let nr = rowIdx, nc = colIdx;
+                        if (dir === "right") nc = Math.min(cols - 1, colIdx + 1);
+                        else if (dir === "left") nc = Math.max(0, colIdx - 1);
+                        else if (dir === "down") nr = Math.min(total - 1, rowIdx + 1);
+                        else if (dir === "up") nr = Math.max(0, rowIdx - 1);
+                        else if (dir === "tab-next") {
+                          if (colIdx + 1 < cols) nc = colIdx + 1;
+                          else if (rowIdx + 1 < total) { nr = rowIdx + 1; nc = 0; }
+                        } else if (dir === "tab-prev") {
+                          if (colIdx - 1 >= 0) nc = colIdx - 1;
+                          else if (rowIdx - 1 >= 0) { nr = rowIdx - 1; nc = cols - 1; }
+                        }
+                        if (nr !== rowIdx || nc !== colIdx) {
+                          // ensure target row is rendered: scroll into view
+                          virtualizer.scrollToIndex(nr, { align: "auto" });
+                          requestAnimationFrame(() => focusCell(nr, nc));
+                        }
+                      }}
+                    />
+                  );
+                })}
+                <div className="px-3 py-2 text-xs whitespace-nowrap" style={{ width: 130 }}>
+                  {formatDateTimeFa(r.created_at)}
+                </div>
+                {canEdit && (
+                  <div className="px-1 py-1 flex items-center" style={{ width: ACT_W }}>
+                    <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                      disabled={toggleRowMut.isPending}
+                      onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
+                      {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============== Spreadsheet grid cell (desktop, keyboard-driven) ===============
+const GridCell = forwardRef<HTMLDivElement, {
   column: ColumnRow;
   value: string;
+  width: number;
   canEdit: boolean;
   inactive: boolean;
   isFocused: boolean;
@@ -627,7 +708,7 @@ const GridCell = forwardRef<HTMLTableCellElement, {
   onNavigate: (dir: NavDir) => void;
 }>(function GridCell(props, ref) {
   const {
-    column, value, canEdit, inactive, isFocused, isEditing, initialEditValue,
+    column, value, width, canEdit, inactive, isFocused, isEditing, initialEditValue,
     onFocusCell, onRequestEdit, onClearCell, onCancelEdit, onCommitEdit, onNavigate,
   } = props;
 
@@ -644,67 +725,43 @@ const GridCell = forwardRef<HTMLTableCellElement, {
     return value;
   }, [value, column.data_type]);
 
-  const handleCellKeyDown = (e: React.KeyboardEvent<HTMLTableCellElement>) => {
-    if (isEditing) return; // editor handles its own keys
+  const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isEditing) return;
     const k = e.key;
-
-    // Navigation — never page-scroll the browser
     if (k === "ArrowRight") { e.preventDefault(); onNavigate("right"); return; }
     if (k === "ArrowLeft")  { e.preventDefault(); onNavigate("left"); return; }
     if (k === "ArrowUp")    { e.preventDefault(); onNavigate("up"); return; }
     if (k === "ArrowDown")  { e.preventDefault(); onNavigate("down"); return; }
-    if (k === "Tab") {
-      e.preventDefault();
-      onNavigate(e.shiftKey ? "tab-prev" : "tab-next");
-      return;
-    }
-
+    if (k === "Tab") { e.preventDefault(); onNavigate(e.shiftKey ? "tab-prev" : "tab-next"); return; }
     if (!canEdit) return;
-
     if (k === "Enter") { e.preventDefault(); onRequestEdit(); return; }
-
-    if (k === "Backspace" || k === "Delete") {
-      e.preventDefault();
-      void onClearCell();
-      return;
-    }
-
+    if (k === "Backspace" || k === "Delete") { e.preventDefault(); void onClearCell(); return; }
     if (k === " " && column.data_type === "boolean") {
       e.preventDefault();
       const next = value === "true" ? "false" : value === "false" ? "" : "true";
       void onCommitEdit(next, false);
       return;
     }
-
-    // Direct typing — start editing with the typed character
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (k.length !== 1) return;
-    if (column.data_type === "boolean") return; // handled by Space only
-
-    if (column.data_type === "number") {
-      if (!/[\d\-.,]/.test(k)) return;
-    }
+    if (column.data_type === "boolean") return;
+    if (column.data_type === "number" && !/[\d\-.,]/.test(k)) return;
     e.preventDefault();
     onRequestEdit(k);
   };
 
-  const focusedClass = isFocused
-    ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5"
-    : "";
-
+  const focusedClass = isFocused ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5" : "";
   return (
-    <td
+    <div
       ref={ref}
       tabIndex={0}
       role="gridcell"
       aria-readonly={!canEdit}
       onFocus={onFocusCell}
-      onClick={() => {
-        // Single-click focuses; for number cells, single click is enough then keyboard-typing edits.
-      }}
       onDoubleClick={() => canEdit && onRequestEdit()}
-      onKeyDown={handleCellKeyDown}
-      className={`px-3 py-2 align-middle focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"}`}
+      onKeyDown={handleKey}
+      className={`px-3 py-2 align-middle truncate focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"}`}
+      style={{ width }}
       title={canEdit ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت" : undefined}
     >
       {isEditing ? (
@@ -714,14 +771,11 @@ const GridCell = forwardRef<HTMLTableCellElement, {
           onCancel={onCancelEdit}
           onCommit={onCommitEdit}
         />
-      ) : (
-        display
-      )}
-    </td>
+      ) : display}
+    </div>
   );
 });
 
-// =============== Editor input used inside GridCell ===============
 function CellEditorInput({
   column, initialValue, onCancel, onCommit,
 }: {
@@ -736,25 +790,23 @@ function CellEditorInput({
 
   useEffect(() => {
     inputRef.current?.focus();
-    // place caret at end for text inputs
     const el = inputRef.current;
     if (el && (el.type === "text" || el.type === "number")) {
-      try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* number type may throw */ }
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* */ }
     }
   }, []);
 
   const commit = async (moveDown: boolean) => {
     if (saving) return;
     setSaving(true);
-    try { await onCommit(draft, moveDown); }
-    finally { setSaving(false); }
+    try { await onCommit(draft, moveDown); } finally { setSaving(false); }
   };
 
   if (column.data_type === "boolean") {
     return (
       <div className="flex items-center gap-1">
         <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
-          <SelectTrigger className="h-8 w-28"><SelectValue placeholder="—" /></SelectTrigger>
+          <SelectTrigger className="h-7 w-24 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__empty__">—</SelectItem>
             <SelectItem value="true">بله</SelectItem>
@@ -770,22 +822,14 @@ function CellEditorInput({
   return (
     <Input
       ref={inputRef}
-      className="h-8 w-40"
+      className="h-7 w-full text-sm"
       type={column.data_type === "number" ? "number" : column.data_type === "date" ? "date" : column.data_type === "datetime" ? "datetime-local" : "text"}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => { void commit(false); }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          void commit(!e.ctrlKey && !e.metaKey);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          onCancel();
-        } else if (e.key === "Tab") {
-          // let blur handler save; let parent handle navigation
-          // do not preventDefault so default tab works onto next focusable, but our cell tab handler will fire
-        }
+        if (e.key === "Enter") { e.preventDefault(); void commit(!e.ctrlKey && !e.metaKey); }
+        else if (e.key === "Escape") { e.preventDefault(); onCancel(); }
       }}
       dir={column.data_type === "phone" || column.data_type === "number" ? "ltr" : undefined}
       disabled={saving}
@@ -795,10 +839,9 @@ function CellEditorInput({
 
 // =============== Inline cell editor (mobile card view) ===============
 function CellEditor({
-  column, rowId, value, canEdit, inactive, onSave,
+  column, value, canEdit, inactive, onSave,
 }: {
   column: ColumnRow;
-  rowId: string;
   value: string;
   canEdit: boolean;
   inactive?: boolean;
@@ -826,15 +869,11 @@ function CellEditor({
   }, [value, column.data_type]);
 
   if (!editing) {
-    const handleStartEdit = () => {
-      if (!canEdit) return;
-      setEditing(true);
-    };
     return (
       <div
         className={canEdit ? "cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 -mx-1" : ""}
-        onDoubleClick={handleStartEdit}
-        title={canEdit ? (inactive ? "ردیف غیرفعال — قابل ویرایش توسط مدیر" : "دابل‌کلیک برای ویرایش") : undefined}
+        onDoubleClick={() => { if (canEdit) setEditing(true); }}
+        title={canEdit ? (inactive ? "ردیف غیرفعال — قابل ویرایش" : "دابل‌کلیک برای ویرایش") : undefined}
       >
         {display}
       </div>
@@ -845,8 +884,7 @@ function CellEditor({
     if (draft === value) { setEditing(false); return; }
     setSaving(true);
     try { await onSave(draft); setEditing(false); }
-    catch { /* toast handled by mutation */ }
-    finally { setSaving(false); }
+    catch { /* */ } finally { setSaving(false); }
   };
   const cancel = () => { setDraft(value); setEditing(false); };
 
@@ -875,10 +913,7 @@ function CellEditor({
         type={column.data_type === "number" ? "number" : column.data_type === "date" ? "date" : column.data_type === "datetime" ? "datetime-local" : "text"}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          else if (e.key === "Escape") cancel();
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); else if (e.key === "Escape") cancel(); }}
         dir={column.data_type === "phone" || column.data_type === "number" ? "ltr" : undefined}
         disabled={saving}
       />
