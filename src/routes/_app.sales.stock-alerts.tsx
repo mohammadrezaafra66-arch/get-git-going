@@ -123,7 +123,7 @@ function StockAlertsPage() {
       let q = supabase
         .from("stock_alert_requests")
         .select(
-          "id, product_id, customer_name, customer_phone, salesperson_id, note, status, priority, requested_at, resolved_at, resolved_by, product:products(id, name, sku), salesperson:profiles!stock_alert_requests_salesperson_id_fkey(id, full_name)",
+          "id, product_id, customer_name, customer_phone, salesperson_id, note, status, priority, requested_at, resolved_at, resolved_by",
           { count: "exact" },
         )
         .order("requested_at", { ascending: false })
@@ -148,48 +148,31 @@ function StockAlertsPage() {
           q = q.or(`customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%`);
         }
       }
-      // try with profiles join; if fails (no FK relationship), fallback
       const { data, error, count } = await q;
-      if (error) {
-        // fallback without profile join
-        let q2 = supabase
-          .from("stock_alert_requests")
-          .select(
-            "id, product_id, customer_name, customer_phone, salesperson_id, note, status, priority, requested_at, resolved_at, resolved_by, product:products(id, name, sku)",
-            { count: "exact" },
-          )
-          .order("requested_at", { ascending: false })
-          .range(from, to);
-        if (isSalesOnly && user) q2 = q2.eq("salesperson_id", user.id);
-        if (status !== "__all") q2 = q2.eq("status", status as StockAlertStatus);
-        if (priority !== "__all") q2 = q2.eq("priority", priority as StockAlertPriority);
-        if (isPrivileged && salespersonId !== "__all") q2 = q2.eq("salesperson_id", salespersonId);
-        if (dateFrom) q2 = q2.gte("requested_at", new Date(dateFrom).toISOString());
-        if (dateTo) { const d = new Date(dateTo); d.setHours(23, 59, 59, 999); q2 = q2.lte("requested_at", d.toISOString()); }
-        if (term.length >= 2) {
-          const safe = term.replace(/[%_]/g, "");
-          if (matchedProductIds.length > 0) {
-            q2 = q2.or(`customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%,product_id.in.(${matchedProductIds.join(",")})`);
-          } else {
-            q2 = q2.or(`customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%`);
-          }
+      if (error) throw error;
+      const baseRows = (data ?? []) as Array<Omit<AlertRow, "product" | "salesperson">>;
+      // hydrate products
+      const pIds = Array.from(new Set(baseRows.map((r) => r.product_id)));
+      let pMap = new Map<string, { id: string; name: string; sku: string | null }>();
+      if (pIds.length > 0) {
+        const pr = await supabase.from("products").select("id, name, sku").in("id", pIds);
+        if (!pr.error) {
+          pMap = new Map((pr.data ?? []).map((p) => [p.id as string, { id: p.id as string, name: p.name as string, sku: (p.sku as string | null) ?? null }]));
         }
-        const r2 = await q2;
-        if (r2.error) throw r2.error;
-        // hydrate salesperson names separately
-        const ids = Array.from(new Set((r2.data ?? []).map((r) => r.salesperson_id).filter((x): x is string => !!x)));
-        let nameMap = new Map<string, string | null>();
-        if (ids.length > 0) {
-          const pr = await supabase.from("profiles").select("id, full_name").in("id", ids);
-          if (!pr.error) nameMap = new Map((pr.data ?? []).map((p) => [p.id as string, p.full_name as string | null]));
-        }
-        const rows = (r2.data ?? []).map((r) => ({
-          ...r,
-          salesperson: r.salesperson_id ? { id: r.salesperson_id, full_name: nameMap.get(r.salesperson_id) ?? null } : null,
-        })) as AlertRow[];
-        return { rows, total: r2.count ?? 0 };
       }
-      return { rows: (data ?? []) as AlertRow[], total: count ?? 0 };
+      // hydrate salespeople
+      const sIds = Array.from(new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)));
+      let sMap = new Map<string, string | null>();
+      if (sIds.length > 0) {
+        const sr = await supabase.from("profiles").select("id, full_name").in("id", sIds);
+        if (!sr.error) sMap = new Map((sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]));
+      }
+      const rows: AlertRow[] = baseRows.map((r) => ({
+        ...r,
+        product: pMap.get(r.product_id) ?? null,
+        salesperson: r.salesperson_id ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null } : null,
+      }));
+      return { rows, total: count ?? 0 };
     },
     staleTime: 30_000,
   });
