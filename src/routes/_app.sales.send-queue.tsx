@@ -679,54 +679,94 @@ function KpiCard({
 function KpiCards() {
   const todayIso = useMemo(() => startOfTodayIso(), []);
 
-  type CountBuilder = ReturnType<
-    ReturnType<typeof supabase.from<"sales_quote_send_queue">>["select"]
-  >;
-  const headCount = async (
-    refine: (q: CountBuilder) => CountBuilder,
-  ): Promise<number> => {
-    const base = supabase
-      .from("sales_quote_send_queue")
-      .select("id", { count: "exact", head: true });
-    const { count, error } = await refine(base);
-    if (error) throw error;
-    return count ?? 0;
-  };
-
   const totalToday = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "total-today", todayIso],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.gte("created_at", todayIso)),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", todayIso);
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const pendingToday = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "pending-today", todayIso],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "pending").gte("created_at", todayIso)),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .gte("created_at", todayIso);
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const processingNow = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "processing-now"],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "processing")),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "processing");
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const sentToday = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "sent-today", todayIso],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "sent").gte("created_at", todayIso)),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "sent")
+        .gte("created_at", todayIso);
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const failedToday = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "failed-today", todayIso],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "failed").gte("created_at", todayIso)),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed")
+        .gte("created_at", todayIso);
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const retryPending = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "retry-pending"],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "pending").gt("attempts", 0)),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
+        .gt("attempts", 0);
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
   const staleProcessing = useQuery({
     queryKey: ["sales-quote-send-queue", "kpi", "stale-processing"],
     staleTime: 30_000,
-    queryFn: () => headCount((q) => q.eq("status", "processing").lt("locked_at", staleCutoffIso())),
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("sales_quote_send_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "processing")
+        .lt("locked_at", staleCutoffIso());
+      if (error) throw error;
+      return count ?? 0;
+    },
   });
 
   const kpis: Array<{ label: string; q: typeof totalToday; tone?: "default" | "warning" | "danger" | "success" }> = [
