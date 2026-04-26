@@ -417,8 +417,10 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[200px]">
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); toast.info(`پیش‌فاکتور ${row.quote_number}`); }}>
-          <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
+        <DropdownMenuItem asChild>
+          <Link to="/sales/quotes/$quoteId" params={{ quoteId: row.id }}>
+            <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
           <FileDown className="ml-2 h-4 w-4" />
