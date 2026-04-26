@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox, Search, AlertTriangle,
-  Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
+  Pencil, ArrowUp, ArrowDown, Eye, EyeOff, Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -31,6 +31,7 @@ import {
   DYNAMIC_TABLE_ROWS_PAGE_SIZE, COLUMN_KEY_REGEX,
   type DynamicColumnDataType,
 } from "@/lib/data-tables/constants";
+import { CsvImportDialog } from "@/components/data-tables/CsvImportDialog";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -69,6 +70,7 @@ function DataTableDetailPage() {
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
+  const [csvOpen, setCsvOpen] = useState(false);
 
   // Spreadsheet keyboard grid state
   const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
@@ -266,12 +268,32 @@ function DataTableDetailPage() {
             <Button asChild variant="outline">
               <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
+            {canEdit && (
+              <Button variant="outline" onClick={() => setCsvOpen(true)} disabled={!columns.length}>
+                <Upload className="ml-2 h-4 w-4" />واردسازی CSV
+              </Button>
+            )}
             <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
               <Plus className="ml-2 h-4 w-4" />افزودن ردیف
             </Button>
           </div>
         }
       />
+
+      {canEdit && (
+        <CsvImportDialog
+          open={csvOpen}
+          onOpenChange={setCsvOpen}
+          tableId={tableId}
+          columns={columns.map((c) => ({
+            id: c.id,
+            column_key: c.column_key,
+            label: c.label,
+            data_type: c.data_type,
+            is_required: c.is_required,
+          }))}
+        />
+      )}
 
       {/* Columns management */}
       <Card>
