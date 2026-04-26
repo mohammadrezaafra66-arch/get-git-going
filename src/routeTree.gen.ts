@@ -51,6 +51,7 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
+import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -269,6 +270,11 @@ const AppDataTablesTableIdRoute = AppDataTablesTableIdRouteImport.update({
   path: '/data-tables/$tableId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBotApiKeysUsageRoute = AppBotApiKeysUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => AppBotApiKeysRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -307,7 +313,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/audit-logs': typeof AppAuditLogsRoute
-  '/bot-api-keys': typeof AppBotApiKeysRoute
+  '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/users': typeof AppUsersRoute
+  '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -356,7 +363,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/audit-logs': typeof AppAuditLogsRoute
-  '/bot-api-keys': typeof AppBotApiKeysRoute
+  '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
   '/invoices': typeof AppInvoicesRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/users': typeof AppUsersRoute
+  '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -405,7 +413,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
-  '/_app/bot-api-keys': typeof AppBotApiKeysRoute
+  '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/invoices': typeof AppInvoicesRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/users': typeof AppUsersRoute
+  '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/users'
+    | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
     | '/pricing/calculator'
@@ -516,6 +526,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/users'
+    | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
     | '/pricing/calculator'
@@ -565,6 +576,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/users'
+    | '/_app/bot-api-keys/usage'
     | '/_app/data-tables/$tableId'
     | '/_app/data-tables/new'
     | '/_app/pricing/calculator'
@@ -902,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDataTablesTableIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/bot-api-keys/usage': {
+      id: '/_app/bot-api-keys/usage'
+      path: '/usage'
+      fullPath: '/bot-api-keys/usage'
+      preLoaderRoute: typeof AppBotApiKeysUsageRouteImport
+      parentRoute: typeof AppBotApiKeysRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -946,6 +965,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppBotApiKeysRouteChildren {
+  AppBotApiKeysUsageRoute: typeof AppBotApiKeysUsageRoute
+}
+
+const AppBotApiKeysRouteChildren: AppBotApiKeysRouteChildren = {
+  AppBotApiKeysUsageRoute: AppBotApiKeysUsageRoute,
+}
+
+const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
+  AppBotApiKeysRouteChildren,
+)
 
 interface AppSalesQuotesRouteChildren {
   AppSalesQuotesQuoteIdRoute: typeof AppSalesQuotesQuoteIdRoute
@@ -999,7 +1030,7 @@ const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAuditLogsRoute: typeof AppAuditLogsRoute
-  AppBotApiKeysRoute: typeof AppBotApiKeysRoute
+  AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppInvoicesRoute: typeof AppInvoicesRoute
@@ -1034,7 +1065,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditLogsRoute: AppAuditLogsRoute,
-  AppBotApiKeysRoute: AppBotApiKeysRoute,
+  AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppInvoicesRoute: AppInvoicesRoute,
