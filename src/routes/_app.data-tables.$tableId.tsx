@@ -69,6 +69,24 @@ function DataTableDetailPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
 
+  // Spreadsheet keyboard grid state
+  const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
+  const [editingPos, setEditingPos] = useState<{ row: number; col: number; initial?: string } | null>(null);
+  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+  const cellKey = (r: number, c: number) => `${r}:${c}`;
+  const setCellRef = useCallback((r: number, c: number) => (el: HTMLTableCellElement | null) => {
+    const k = cellKey(r, c);
+    if (el) cellRefs.current.set(k, el);
+    else cellRefs.current.delete(k);
+  }, []);
+  const focusCell = useCallback((r: number, c: number) => {
+    const el = cellRefs.current.get(cellKey(r, c));
+    if (el) {
+      el.focus({ preventScroll: false });
+      setFocused({ row: r, col: c });
+    }
+  }, []);
+
   const tableQuery = useQuery({
     enabled: !!user && !!tableId,
     queryKey: ["dynamic-table", tableId],
