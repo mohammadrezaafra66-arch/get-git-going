@@ -406,12 +406,25 @@ function QueueRowActions({
   const isPending = row.status === "pending";
   const canCancel = isPending && (isManagerial || isOwner);
   const showSimulate = isPending && isManagerial;
+  const canRequeue = row.status === "failed" && isManagerial;
 
-  if (!canCancel && !showSimulate) {
+  const requeueMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("requeue_failed_quote_send_item", { p_queue_id: row.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("رکورد به صف بازگردانده شد.");
+      qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در بازگردانی."),
+  });
+
+  if (!canCancel && !showSimulate && !canRequeue) {
     return <span className="text-[11px] text-muted-foreground">—</span>;
   }
 
-  const busy = cancelMut.isPending || successMut.isPending || failureMut.isPending;
+  const busy = cancelMut.isPending || successMut.isPending || failureMut.isPending || requeueMut.isPending;
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -428,6 +441,11 @@ function QueueRowActions({
       {canCancel && (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => cancelMut.mutate()}>
           <Ban className="ml-1 h-3.5 w-3.5" /> لغو
+        </Button>
+      )}
+      {canRequeue && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => requeueMut.mutate()}>
+          <RotateCcw className="ml-1 h-3.5 w-3.5" /> بازگرداندن به pending
         </Button>
       )}
     </div>
