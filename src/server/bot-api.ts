@@ -22,21 +22,23 @@ export type BotAuthResult =
   | BotErrorResult;
 
 const ERR_PERSIAN: Record<string, { status: number; message: string }> = {
-  invalid_key:        { status: 401, message: "کلید API نامعتبر است." },
-  inactive_key:       { status: 401, message: "این کلید API غیرفعال است." },
-  expired_key:        { status: 401, message: "این کلید API منقضی شده است." },
-  forbidden_table:    { status: 403, message: "این کلید به جدول درخواست‌شده دسترسی ندارد." },
+  invalid_key:        { status: 401, message: "کلید API نامعتبر است یا با هیچ کلید فعالی مطابقت ندارد." },
+  inactive_key:       { status: 401, message: "این کلید API غیرفعال شده است. مدیر باید آن را دوباره فعال کند." },
+  expired_key:        { status: 401, message: "تاریخ انقضای این کلید API گذشته است." },
+  missing_key:        { status: 401, message: "هدر «Authorization: Bearer <API_KEY>» الزامی است." },
+  forbidden_table:    { status: 403, message: "این کلید به جدول درخواست‌شده دسترسی ندارد. لطفاً جدول را در صفحه «دسترسی جداول» به این کلید متصل کنید." },
   forbidden_read:     { status: 403, message: "این کلید مجوز خواندن این جدول را ندارد." },
   forbidden_update:   { status: 403, message: "این کلید مجوز به‌روزرسانی این جدول را ندارد." },
-  row_not_found:      { status: 404, message: "ردیف مورد نظر یافت نشد." },
-  row_table_mismatch: { status: 400, message: "ردیف به این جدول تعلق ندارد." },
-  invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر باشد." },
+  row_not_found:      { status: 404, message: "ردیفی با این شناسه در این جدول یافت نشد." },
+  row_table_mismatch: { status: 400, message: "این ردیف به جدول مشخص‌شده تعلق ندارد." },
+  invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر شامل فیلد values باشد." },
+  no_updatable_values:{ status: 400, message: "هیچ مقداری برای به‌روزرسانی ارسال نشده است." },
 };
 
 const RATE_LIMIT_PERSIAN: Record<string, string> = {
-  rate_limit_per_minute:  "تعداد درخواست‌های این کلید در دقیقه از حد مجاز عبور کرد.",
-  rate_limit_per_day:     "تعداد درخواست‌های این کلید در روز از حد مجاز عبور کرد.",
-  rate_limit_ip_failures: "تعداد درخواست‌های ناموفق از این IP بیش از حد مجاز است.",
+  rate_limit_per_minute:  "تعداد درخواست‌های این کلید در دقیقه از حد مجاز (۱۲۰) عبور کرد. لطفاً ۶۰ ثانیه بعد دوباره تلاش کنید.",
+  rate_limit_per_day:     "تعداد درخواست‌های این کلید در روز از حد مجاز (۵۰۰۰) عبور کرد. تا فردا منتظر بمانید یا کلید دیگری استفاده کنید.",
+  rate_limit_ip_failures: "تعداد درخواست‌های ناموفق از این IP بیش از حد مجاز (۳۰ در ۱۰ دقیقه) است. کمی صبر کنید و دوباره تلاش کنید.",
 };
 
 export type RateLimitResult =
