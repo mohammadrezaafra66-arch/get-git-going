@@ -137,8 +137,8 @@ function LivePriceListPage() {
       }
       if (brandId !== "__all") q = q.eq("brand_id", brandId);
       if (categoryId !== "__all") q = q.eq("category_id", categoryId);
-      if (productType !== "__all") q = q.eq("product_type", productType);
-      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus);
+      if (productType !== "__all") q = q.eq("product_type", productType as "iranian" | "foreign");
+      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
       const { data, error, count } = await q;
       if (error) throw error;
       return { rows: (data ?? []) as ProductRow[], total: count ?? 0 };
@@ -316,8 +316,8 @@ function LivePriceListPage() {
               <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه</SelectItem>
-                <SelectItem value="in_stock">موجود</SelectItem>
-                <SelectItem value="out_of_stock">ناموجود</SelectItem>
+                <SelectItem value="available">موجود</SelectItem>
+                <SelectItem value="unavailable">ناموجود</SelectItem>
                 <SelectItem value="limited">محدود</SelectItem>
                 <SelectItem value="unknown">نامشخص</SelectItem>
               </SelectContent>
@@ -547,8 +547,8 @@ function ProductTypeBadge({ t, inline = false }: { t: string; inline?: boolean }
 
 function StockBadge({ s }: { s: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    in_stock: { label: "موجود", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
-    out_of_stock: { label: "ناموجود", cls: "bg-red-500/10 text-red-600 border-red-500/30" },
+    available: { label: "موجود", cls: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+    unavailable: { label: "ناموجود", cls: "bg-red-500/10 text-red-600 border-red-500/30" },
     limited: { label: "محدود", cls: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
     unknown: { label: "نامشخص", cls: "bg-muted text-muted-foreground border-border" },
   };

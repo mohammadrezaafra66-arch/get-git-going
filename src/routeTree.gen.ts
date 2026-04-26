@@ -36,6 +36,7 @@ import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.prici
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
 import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
+import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.pricing.live-price-list'
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
@@ -177,6 +178,11 @@ const AppPricingPurchasePricesRoute =
     path: '/pricing/purchase-prices',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPricingLivePriceListRoute = AppPricingLivePriceListRouteImport.update({
+  id: '/pricing/live-price-list',
+  path: '/pricing/live-price-list',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingCurrencyRatesRoute = AppPricingCurrencyRatesRouteImport.update({
   id: '/pricing/currency-rates',
   path: '/pricing/currency-rates',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
+  '/_app/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/_app/pricing/rules': typeof AppPricingRulesRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
+    | '/pricing/live-price-list'
     | '/pricing/purchase-prices'
     | '/pricing/rules'
     | '/pricing/sale-price-types'
@@ -349,6 +359,7 @@ export interface FileRouteTypes {
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
+    | '/pricing/live-price-list'
     | '/pricing/purchase-prices'
     | '/pricing/rules'
     | '/pricing/sale-price-types'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
+    | '/_app/pricing/live-price-list'
     | '/_app/pricing/purchase-prices'
     | '/_app/pricing/rules'
     | '/_app/pricing/sale-price-types'
@@ -594,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingPurchasePricesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/live-price-list': {
+      id: '/_app/pricing/live-price-list'
+      path: '/pricing/live-price-list'
+      fullPath: '/pricing/live-price-list'
+      preLoaderRoute: typeof AppPricingLivePriceListRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/currency-rates': {
       id: '/_app/pricing/currency-rates'
       path: '/pricing/currency-rates'
@@ -653,6 +672,7 @@ interface AppRouteChildren {
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
+  AppPricingLivePriceListRoute: typeof AppPricingLivePriceListRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
   AppPricingRulesRoute: typeof AppPricingRulesRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
@@ -682,6 +702,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
+  AppPricingLivePriceListRoute: AppPricingLivePriceListRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
   AppPricingRulesRoute: AppPricingRulesRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
