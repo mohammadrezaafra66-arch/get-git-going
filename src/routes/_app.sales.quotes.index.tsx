@@ -302,10 +302,6 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
   const [confirm, setConfirm] = useState<null | { next: SalesQuoteStatus; label: string; needsReason?: boolean }>(null);
   const [reason, setReason] = useState("");
 
-  if (!canSend && !canAccept && !canReject && !canCancel) {
-    return <span className="text-[11px] text-muted-foreground">—</span>;
-  }
-
   return (
     <>
       <div className="flex flex-wrap gap-1">
@@ -333,6 +329,7 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
             <Ban className="ml-1 h-3.5 w-3.5" /> لغو
           </Button>
         )}
+        <ShareQuoteMenu row={row} />
       </div>
       <AlertDialog open={!!confirm} onOpenChange={(o) => { if (!o) setConfirm(null); }}>
         <AlertDialogContent>
@@ -407,5 +404,33 @@ function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
         <RowActions row={row} isManagerial={isManagerial} isOwner={isOwner} />
       </CardContent>
     </Card>
+  );
+}
+
+function ShareQuoteMenu({ row }: { row: QuoteRow }) {
+  const notReady = () => toast.info("این قابلیت در نسخه بعدی فعال می‌شود");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Send className="ml-1 h-3.5 w-3.5" /> ارسال پیش‌فاکتور
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px]">
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); toast.info(`پیش‌فاکتور ${row.quote_number}`); }}>
+          <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
+          <FileDown className="ml-2 h-4 w-4" />
+          <span className="flex-1">دانلود PDF</span>
+          <span className="text-[10px] text-muted-foreground">به زودی</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
+          <MessageCircle className="ml-2 h-4 w-4" />
+          <span className="flex-1">ارسال در پیام‌رسان</span>
+          <span className="text-[10px] text-muted-foreground">به زودی</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
