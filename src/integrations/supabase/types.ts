@@ -1027,6 +1027,36 @@ export type Database = {
           },
         ]
       }
+      product_attributes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["product_attribute_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_label_links: {
         Row: {
           created_at: string
@@ -2297,6 +2327,12 @@ export type Database = {
         | "tag"
         | "status"
       margin_type: "fixed" | "percent" | "mixed"
+      product_attribute_type:
+        | "brand"
+        | "category"
+        | "color"
+        | "capacity"
+        | "model"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
       sales_quote_item_source: "product_price" | "quick_price" | "manual"
@@ -2451,6 +2487,13 @@ export const Constants = {
         "status",
       ],
       margin_type: ["fixed", "percent", "mixed"],
+      product_attribute_type: [
+        "brand",
+        "category",
+        "color",
+        "capacity",
+        "model",
+      ],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
       sales_quote_item_source: ["product_price", "quick_price", "manual"],
