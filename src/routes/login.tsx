@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,14 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, refreshRoles } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [signupSubmitting, setSignupSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const loginInFlight = useRef(false);
+  const signupInFlight = useRef(false);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -30,29 +35,93 @@ function LoginPage() {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
 
-  const handleLogin = async (e: FormEvent) => {
+  const translateAuthError = (msg: string | null | undefined): string => {
+    if (!msg) return "خطای نامشخص در ورود";
+    const m = msg.toLowerCase();
+    if (m.includes("invalid login") || m.includes("invalid credentials")) {
+      return "ایمیل یا رمز عبور اشتباه است.";
+    }
+    if (m.includes("email not confirmed")) return "ایمیل شما هنوز تأیید نشده است.";
+    if (m.includes("rate limit") || m.includes("too many")) {
+      return "تعداد تلاش‌ها زیاد است. لحظاتی بعد دوباره تلاش کنید.";
+    }
+    if (m.includes("network") || m.includes("fetch")) {
+      return "خطای شبکه. اتصال اینترنت را بررسی کنید.";
+    }
+    return msg;
+  };
+
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
-    setLoading(false);
-    if (error) toast.error("ورود ناموفق", { description: error });
-    else {
+    if (loginInFlight.current) return;
+
+    // Read directly from the form to capture browser autofill values reliably.
+    const formEl = e.currentTarget;
+    const fd = new FormData(formEl);
+    const email = ((fd.get("email") as string | null) ?? loginEmail).trim();
+    const password = (fd.get("password") as string | null) ?? loginPassword;
+
+    setLoginError(null);
+
+    if (!email || !password) {
+      setLoginError("لطفاً ایمیل و رمز عبور را وارد کنید.");
+      return;
+    }
+
+    loginInFlight.current = true;
+    setLoginSubmitting(true);
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        const fa = translateAuthError(error);
+        setLoginError(fa);
+        toast.error("ورود ناموفق", { description: fa });
+        return;
+      }
+      // Refresh identity so profile/roles are loaded before redirect.
+      try { await refreshRoles(); } catch { /* non-blocking */ }
       toast.success("خوش آمدید");
       navigate({ to: "/dashboard" });
+    } catch (err) {
+      const fa = translateAuthError(err instanceof Error ? err.message : null);
+      setLoginError(fa);
+      toast.error("ورود ناموفق", { description: fa });
+    } finally {
+      loginInFlight.current = false;
+      setLoginSubmitting(false);
     }
   };
 
-  const handleSignup = async (e: FormEvent) => {
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (signupPassword.length < 6) {
-      toast.error("رمز عبور باید حداقل ۶ کاراکتر باشد");
+    if (signupInFlight.current) return;
+
+    const fd = new FormData(e.currentTarget);
+    const email = ((fd.get("email") as string | null) ?? signupEmail).trim();
+    const password = (fd.get("password") as string | null) ?? signupPassword;
+    const fullName = ((fd.get("full_name") as string | null) ?? signupName).trim();
+
+    setSignupError(null);
+    if (password.length < 6) {
+      setSignupError("رمز عبور باید حداقل ۶ کاراکتر باشد");
       return;
     }
-    setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
-    setLoading(false);
-    if (error) toast.error("ثبت‌نام ناموفق", { description: error });
-    else toast.success("ثبت‌نام انجام شد", { description: "اکنون می‌توانید وارد شوید." });
+
+    signupInFlight.current = true;
+    setSignupSubmitting(true);
+    try {
+      const { error } = await signUp(email, password, fullName);
+      if (error) {
+        const fa = translateAuthError(error);
+        setSignupError(fa);
+        toast.error("ثبت‌نام ناموفق", { description: fa });
+        return;
+      }
+      toast.success("ثبت‌نام انجام شد", { description: "اکنون می‌توانید وارد شوید." });
+    } finally {
+      signupInFlight.current = false;
+      setSignupSubmitting(false);
+    }
   };
 
   return (
@@ -79,42 +148,53 @@ function LoginPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="login-email">ایمیل</Label>
-                    <Input id="login-email" type="email" required dir="ltr"
+                    <Input id="login-email" name="email" type="email" required dir="ltr"
+                      autoComplete="email"
                       value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">رمز عبور</Label>
-                    <Input id="login-password" type="password" required dir="ltr"
+                    <Input id="login-password" name="password" type="password" required dir="ltr"
+                      autoComplete="current-password"
                       value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "در حال ورود..." : "ورود"}
+                  {loginError && (
+                    <p className="text-sm text-destructive" role="alert">{loginError}</p>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loginSubmitting} aria-busy={loginSubmitting}>
+                    {loginSubmitting ? "در حال ورود..." : "ورود"}
                   </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">نام و نام خانوادگی</Label>
-                    <Input id="signup-name" required maxLength={100}
+                    <Input id="signup-name" name="full_name" required maxLength={100}
+                      autoComplete="name"
                       value={signupName} onChange={(e) => setSignupName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">ایمیل</Label>
-                    <Input id="signup-email" type="email" required dir="ltr"
+                    <Input id="signup-email" name="email" type="email" required dir="ltr"
+                      autoComplete="email"
                       value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">رمز عبور (حداقل ۶ کاراکتر)</Label>
-                    <Input id="signup-password" type="password" required minLength={6} dir="ltr"
+                    <Input id="signup-password" name="password" type="password" required minLength={6} dir="ltr"
+                      autoComplete="new-password"
                       value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "در حال ثبت‌نام..." : "ایجاد حساب"}
+                  {signupError && (
+                    <p className="text-sm text-destructive" role="alert">{signupError}</p>
+                  )}
+                  <Button type="submit" className="w-full" disabled={signupSubmitting} aria-busy={signupSubmitting}>
+                    {signupSubmitting ? "در حال ثبت‌نام..." : "ایجاد حساب"}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
                     کاربران جدید با نقش «بیننده» ثبت می‌شوند. مدیر می‌تواند بعداً نقش‌ها را تغییر دهد.
