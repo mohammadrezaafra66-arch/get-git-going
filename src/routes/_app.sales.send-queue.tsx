@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft,
-  Ban, CheckCircle2, AlertTriangle, Play, Unlock,
+  Ban, CheckCircle2, AlertTriangle, Play, Unlock, RotateCcw, ExternalLink,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -34,6 +34,19 @@ export const Route = createFileRoute("/_app/sales/send-queue")({
   component: SendQueuePage,
 });
 
+const STALE_LOCK_MINUTES = 10;
+
+type QuickFilter = "none" | "pending" | "failed" | "processing" | "retry" | "stale";
+
+function startOfTodayIso(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+function staleCutoffIso(): string {
+  return new Date(Date.now() - STALE_LOCK_MINUTES * 60_000).toISOString();
+}
+
 interface QueueRow {
   id: string;
   quote_id: string;
@@ -61,13 +74,14 @@ function SendQueuePage() {
   const [status, setStatus] = useState<string>("__all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("none");
   const [page, setPage] = useState(1);
 
-  useMemo(() => { setPage(1); }, [dSearch, channel, status, dateFrom, dateTo]);
+  useMemo(() => { setPage(1); }, [dSearch, channel, status, dateFrom, dateTo, quickFilter]);
 
   const listQuery = useQuery({
     enabled: !!user,
-    queryKey: ["sales-quote-send-queue", { dSearch, channel, status, dateFrom, dateTo, page }],
+    queryKey: ["sales-quote-send-queue", { dSearch, channel, status, dateFrom, dateTo, quickFilter, page }],
     staleTime: 30_000,
     queryFn: async () => {
       const from = (page - 1) * QUOTE_SEND_QUEUE_PAGE_SIZE;
@@ -97,6 +111,17 @@ function SendQueuePage() {
 
       if (channel !== "__all") q = q.eq("channel", channel);
       if (status !== "__all") q = q.eq("status", status);
+
+      // Quick filters override / refine the status/attempts/lock filters
+      if (quickFilter === "pending") q = q.eq("status", "pending");
+      else if (quickFilter === "failed") q = q.eq("status", "failed");
+      else if (quickFilter === "processing") q = q.eq("status", "processing");
+      else if (quickFilter === "retry") {
+        q = q.eq("status", "pending").gt("attempts", 0);
+      } else if (quickFilter === "stale") {
+        q = q.eq("status", "processing").lt("locked_at", staleCutoffIso());
+      }
+
       if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
         const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
