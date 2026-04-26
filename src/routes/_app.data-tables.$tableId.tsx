@@ -6,7 +6,7 @@ import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Loader2, Inbox, Search, AlertTriangle,
-  Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
+  Pencil, ArrowUp, ArrowDown, Eye, EyeOff, Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -32,6 +32,7 @@ import {
   COLUMN_KEY_REGEX, type DynamicColumnDataType,
 } from "@/lib/data-tables/constants";
 import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
+import { buildCsv, downloadCsv, buildExportFilename, type ExportColumnDef, type ExportRow } from "@/lib/data-tables/csv-export";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -248,6 +249,55 @@ function DataTableDetailPage() {
     onError: (e: any) => toast.error(e?.message ?? "خطا در تغییر ترتیب"),
   });
 
+  const exportMut = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("export_dynamic_table_rows", {
+        p_table_id: tableId,
+        p_filters: serverFilters as unknown as never,
+        p_search: search.trim() ? search.trim() : undefined,
+        p_show_inactive: showInactive,
+        p_limit: 5000,
+      });
+      if (error) throw error;
+      const list = (data ?? []) as Array<{
+        total_count: number | string;
+        exported_count: number | string;
+        out_row_id: string;
+        out_row_number: number | string;
+        out_is_active: boolean;
+        out_created_at: string;
+        out_values: Record<string, unknown>;
+      }>;
+      const total = list.length ? Number(list[0].total_count ?? 0) : 0;
+      const exported = list.length ? Number(list[0].exported_count ?? 0) : 0;
+      const rows: ExportRow[] = list.map((r) => ({
+        row_number: Number(r.out_row_number),
+        is_active: !!r.out_is_active,
+        values: (r.out_values ?? {}) as Record<string, unknown>,
+      }));
+      const cols: ExportColumnDef[] = columns.map((c) => ({
+        column_key: c.column_key,
+        label: c.label,
+        data_type: c.data_type,
+        sort_order: c.sort_order,
+      }));
+      const csv = buildCsv(cols, rows);
+      const filename = buildExportFilename(tableQuery.data?.slug ?? null);
+      downloadCsv(filename, csv);
+      return { total, exported };
+    },
+    onSuccess: ({ total, exported }) => {
+      if (total > exported) {
+        toast.warning(
+          `فقط ${toFaDigits(String(exported))} ردیف از ${toFaDigits(String(total))} ردیف خروجی گرفته شد. ابتدا با فیلتر، نتایج را محدود کنید.`,
+        );
+      } else {
+        toast.success(`خروجی CSV آماده شد (${toFaDigits(String(exported))} ردیف).`);
+      }
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا در ساخت خروجی"),
+  });
+
   const moveColumn = (idx: number, dir: -1 | 1) => {
     const arr = [...columns];
     const j = idx + dir;
@@ -294,6 +344,21 @@ function DataTableDetailPage() {
             <Button asChild variant="outline">
               <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => exportMut.mutate()}
+                disabled={exportMut.isPending || !columns.length}
+                title="خروجی CSV بر اساس فیلتر و جستجوی فعلی"
+              >
+                {exportMut.isPending ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="ml-2 h-4 w-4" />
+                )}
+                خروجی CSV
+              </Button>
+            )}
             <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
               <Plus className="ml-2 h-4 w-4" />افزودن ردیف
             </Button>

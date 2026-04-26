@@ -1964,6 +1964,24 @@ export type Database = {
         }
         Returns: Json
       }
+      export_dynamic_table_rows: {
+        Args: {
+          p_filters?: Json
+          p_limit?: number
+          p_search?: string
+          p_show_inactive?: boolean
+          p_table_id: string
+        }
+        Returns: {
+          exported_count: number
+          out_created_at: string
+          out_is_active: boolean
+          out_row_id: string
+          out_row_number: number
+          out_values: Json
+          total_count: number
+        }[]
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
