@@ -30,6 +30,9 @@ function NewProductPage() {
           stock_status: v.stock_status,
           status: v.status,
           unit: v.unit || null,
+          color: v.color || null,
+          capacity: v.capacity || null,
+          model: v.model || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
         })
