@@ -172,7 +172,7 @@ function DataTableDetailPage() {
         id: r.out_row_id as string,
         row_number: Number(r.out_row_number),
         is_active: !!r.out_is_active,
-        created_at: r.out_created_at as string,
+        created_at: (r.out_created_at as string) ?? "",
         values: (r.out_values ?? {}) as Record<string, unknown>,
       }));
       const total = data && data.length ? Number((data[0] as any).total_count ?? 0) : 0;
