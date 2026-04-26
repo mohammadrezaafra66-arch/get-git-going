@@ -408,3 +408,147 @@ function QueueRowActions({
     </div>
   );
 }
+
+const SUMMARY_STATUSES: QuoteSendQueueStatus[] = [
+  "pending", "processing", "sent", "failed", "canceled",
+];
+
+function StatusSummaryCard() {
+  const summaryQuery = useQuery({
+    queryKey: ["sales-quote-send-queue", "status-summary"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const out: Record<QuoteSendQueueStatus, number> = {
+        pending: 0, processing: 0, sent: 0, failed: 0, canceled: 0,
+      };
+      await Promise.all(SUMMARY_STATUSES.map(async (s) => {
+        const { count, error } = await supabase
+          .from("sales_quote_send_queue")
+          .select("id", { count: "exact", head: true })
+          .eq("status", s);
+        if (error) throw error;
+        out[s] = count ?? 0;
+      }));
+      return out;
+    },
+  });
+
+  const data = summaryQuery.data;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {SUMMARY_STATUSES.map((s) => (
+            <div key={s} className="rounded-md border bg-muted/30 p-3">
+              <div className="text-[11px] text-muted-foreground">
+                {QUOTE_SEND_QUEUE_STATUS_LABELS[s]}
+              </div>
+              <div className="mt-1 text-lg font-semibold">
+                {data ? toFaDigits(data[s]) : "…"}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WorkerControlsCard() {
+  const qc = useQueryClient();
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
+  };
+
+  const processNextMut = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("claim_next_quote_send_queue_item");
+      if (error) throw error;
+      const claimed = (data ?? null) as null | {
+        id: string; attempts: number; max_attempts: number;
+      };
+      if (!claimed || !claimed.id) {
+        return { kind: "none" as const };
+      }
+      // Simulate processing delay
+      await new Promise((res) => setTimeout(res, 800));
+      const success = Math.random() < 0.8;
+      const { data: completed, error: cErr } = await supabase.rpc(
+        "complete_quote_send_queue_item",
+        {
+          p_queue_id: claimed.id,
+          p_success: success,
+          p_error: success ? undefined : "Simulated send failure",
+        },
+      );
+      if (cErr) throw cErr;
+      const row = completed as { status: string } | null;
+      return { kind: "done" as const, success, finalStatus: row?.status ?? null };
+    },
+    onSuccess: (res) => {
+      if (res.kind === "none") {
+        toast.info("موردی برای پردازش وجود ندارد.");
+      } else if (res.success) {
+        toast.success("ارسال شبیه‌سازی‌شده با موفقیت انجام شد.");
+      } else if (res.finalStatus === "failed") {
+        toast.error("ارسال پس از رسیدن به سقف تلاش‌ها ناموفق شد.");
+      } else {
+        toast.warning("خطای شبیه‌سازی‌شده ثبت شد و برای تلاش بعدی زمان‌بندی شد.");
+      }
+      invalidateAll();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در پردازش."),
+  });
+
+  const releaseStaleMut = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("release_stale_quote_send_locks");
+      if (error) throw error;
+      return (data ?? 0) as number;
+    },
+    onSuccess: (count) => {
+      toast.success(`${toFaDigits(count)} رکورد قفل‌شده آزاد شد.`);
+      invalidateAll();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در آزادسازی قفل‌ها."),
+  });
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="text-sm font-medium">پردازشگر صف (شبیه‌سازی)</div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            onClick={() => processNextMut.mutate()}
+            disabled={processNextMut.isPending}
+          >
+            {processNextMut.isPending ? (
+              <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="ml-1 h-4 w-4" />
+            )}
+            پردازش یک مورد بعدی
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => releaseStaleMut.mutate()}
+            disabled={releaseStaleMut.isPending}
+          >
+            {releaseStaleMut.isPending ? (
+              <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Unlock className="ml-1 h-4 w-4" />
+            )}
+            آزادسازی قفل‌های قدیمی
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          این پردازشگر داخلی است و هیچ پیام واقعی به پیام‌رسان‌ها ارسال نمی‌کند.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
