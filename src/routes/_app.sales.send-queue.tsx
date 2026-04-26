@@ -212,6 +212,8 @@ function SendQueuePage() {
                         <th className="p-3 text-right font-medium">وضعیت</th>
                         <th className="p-3 text-right font-medium">تلاش‌ها</th>
                         <th className="p-3 text-right font-medium">زمان برنامه‌ریزی</th>
+                        <th className="p-3 text-right font-medium">قفل شده در</th>
+                        <th className="p-3 text-right font-medium">پردازش شده در</th>
                         <th className="p-3 text-right font-medium">آخرین خطا</th>
                         <th className="p-3 text-right font-medium">عملیات</th>
                       </tr>
@@ -225,7 +227,7 @@ function SendQueuePage() {
                           </td>
                           <td className="p-3 align-top" dir="ltr">{r.recipient}</td>
                           <td className="p-3 align-top">
-                            <Badge variant="outline">
+                            <Badge variant={r.status === "processing" ? "default" : "outline"}>
                               {QUOTE_SEND_QUEUE_STATUS_LABELS[r.status] ?? r.status}
                             </Badge>
                           </td>
@@ -234,6 +236,12 @@ function SendQueuePage() {
                           </td>
                           <td className="p-3 align-top text-[11px] text-muted-foreground">
                             {formatDateTimeFa(r.scheduled_at)}
+                          </td>
+                          <td className="p-3 align-top text-[11px] text-muted-foreground">
+                            {r.locked_at ? formatDateTimeFa(r.locked_at) : "—"}
+                          </td>
+                          <td className="p-3 align-top text-[11px] text-muted-foreground">
+                            {r.processed_at ? formatDateTimeFa(r.processed_at) : "—"}
                           </td>
                           <td className="p-3 align-top text-[11px] text-destructive max-w-[180px] truncate" title={r.last_error ?? ""}>
                             {r.last_error ?? "—"}
