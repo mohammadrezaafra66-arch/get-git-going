@@ -1715,6 +1715,34 @@ export type Database = {
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
       release_stale_quote_send_locks: { Args: never; Returns: number }
+      requeue_failed_quote_send_item: {
+        Args: { p_queue_id: string }
+        Returns: {
+          attempts: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          message_text: string | null
+          pdf_attached: boolean
+          processed_at: string | null
+          quote_id: string
+          recipient: string
+          scheduled_at: string
+          share_log_id: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sales_quote_send_queue"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       revoke_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
