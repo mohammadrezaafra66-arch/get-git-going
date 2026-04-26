@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen,
+  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen, FlaskConical,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -153,6 +153,11 @@ function BotApiKeysPage() {
             <Link to="/bot-api-keys/docs">
               <Button variant="outline">
                 <BookOpen className="ml-2 h-4 w-4" />مستندات و تست API
+              </Button>
+            </Link>
+            <Link to="/bot-api-keys/playground">
+              <Button variant="outline">
+                <FlaskConical className="ml-2 h-4 w-4" />API Playground
               </Button>
             </Link>
             <Link to="/bot-api-keys/usage">
