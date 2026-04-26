@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import {
   ArrowRight, Plus, Loader2, Inbox, Search, AlertTriangle,
@@ -545,7 +545,7 @@ function VirtualizedGrid({
   setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
 }: {
   scrollRef: React.MutableRefObject<HTMLDivElement | null>;
-  virtualizer: ReturnType<typeof useVirtualizer>;
+  virtualizer: Virtualizer<HTMLDivElement, Element>;
   columns: ColumnRow[];
   rows: RowItem[];
   canEdit: boolean;
