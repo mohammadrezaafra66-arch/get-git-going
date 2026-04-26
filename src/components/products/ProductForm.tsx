@@ -115,7 +115,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
               <SelectTrigger><SelectValue placeholder="انتخاب برند" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— بدون برند —</SelectItem>
-                {(brandsQ.data ?? []).map((b) => (
+                {(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -127,7 +127,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
               <SelectTrigger><SelectValue placeholder="انتخاب دسته" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— بدون دسته —</SelectItem>
-                {(catsQ.data ?? []).map((c) => (
+                {(catsQ.data ?? []).filter((c) => c.is_active).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>

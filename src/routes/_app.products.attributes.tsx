@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, ArrowRight, Loader2, Pencil, Search, Tag } from "lucide-react";
@@ -38,13 +38,22 @@ const TYPE_LABELS: Record<AttrType, string> = {
 };
 
 const TYPES: AttrType[] = ["brand", "category", "color", "capacity", "model"];
+const DYN_TYPES: Exclude<AttrType, "brand" | "category">[] = ["color", "capacity", "model"];
 
-interface AttrRow {
+interface UnifiedRow {
   id: string;
   type: AttrType;
   name: string;
   is_active: boolean;
-  created_at: string;
+  source: "brands" | "categories" | "product_attributes";
+}
+
+function slugify(s: string) {
+  return s.trim().toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "") || `item-${Date.now().toString(36)}`;
 }
 
 function ProductAttributesPage() {
@@ -54,50 +63,93 @@ function ProductAttributesPage() {
 
   const [filterType, setFilterType] = useState<AttrType | "all">("all");
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<AttrRow | null>(null);
+  const [editing, setEditing] = useState<UnifiedRow | null>(null);
   const [createType, setCreateType] = useState<AttrType | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const brandsQ = useQuery({
+    queryKey: ["attr-brands"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brands").select("id, name, is_active").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const catsQ = useQuery({
+    queryKey: ["attr-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories").select("id, name, is_active").order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const dynQ = useQuery({
     queryKey: ["product-attributes-all"],
-    queryFn: async (): Promise<AttrRow[]> => {
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("product_attributes")
-        .select("id, type, name, is_active, created_at")
-        .order("type", { ascending: true })
-        .order("name", { ascending: true });
+        .select("id, type, name, is_active")
+        .order("type").order("name");
       if (error) throw error;
-      return (data ?? []) as AttrRow[];
+      return data ?? [];
     },
   });
 
+  const isLoading = brandsQ.isLoading || catsQ.isLoading || dynQ.isLoading;
+
+  const allRows: UnifiedRow[] = useMemo(() => {
+    const rows: UnifiedRow[] = [];
+    for (const b of brandsQ.data ?? []) {
+      rows.push({ id: b.id, type: "brand", name: b.name, is_active: b.is_active, source: "brands" });
+    }
+    for (const c of catsQ.data ?? []) {
+      rows.push({ id: c.id, type: "category", name: c.name, is_active: c.is_active, source: "categories" });
+    }
+    for (const a of dynQ.data ?? []) {
+      rows.push({ id: a.id, type: a.type as AttrType, name: a.name, is_active: a.is_active, source: "product_attributes" });
+    }
+    return rows;
+  }, [brandsQ.data, catsQ.data, dynQ.data]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return (data ?? []).filter((r) => {
+    return allRows.filter((r) => {
       if (filterType !== "all" && r.type !== filterType) return false;
       if (term && !r.name.toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [data, filterType, search]);
+  }, [allRows, filterType, search]);
 
   const grouped = useMemo(() => {
-    const map = new Map<AttrType, AttrRow[]>();
+    const map = new Map<AttrType, UnifiedRow[]>();
     for (const t of TYPES) map.set(t, []);
     for (const r of filtered) map.get(r.type)?.push(r);
     return map;
   }, [filtered]);
 
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["attr-brands"] });
+    qc.invalidateQueries({ queryKey: ["attr-categories"] });
+    qc.invalidateQueries({ queryKey: ["product-attributes-all"] });
+    qc.invalidateQueries({ queryKey: ["product-attributes-active"] });
+    qc.invalidateQueries({ queryKey: ["brands-lite"] });
+    qc.invalidateQueries({ queryKey: ["categories-lite"] });
+    qc.invalidateQueries({ queryKey: ["brands"] });
+    qc.invalidateQueries({ queryKey: ["categories"] });
+  };
+
   const toggleMut = useMutation({
-    mutationFn: async (vars: { id: string; is_active: boolean }) => {
+    mutationFn: async (vars: { row: UnifiedRow; is_active: boolean }) => {
       const { error } = await supabase
-        .from("product_attributes")
+        .from(vars.row.source)
         .update({ is_active: vars.is_active })
-        .eq("id", vars.id);
+        .eq("id", vars.row.id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
       toast.success(v.is_active ? "فعال شد" : "غیرفعال شد");
-      qc.invalidateQueries({ queryKey: ["product-attributes-all"] });
-      qc.invalidateQueries({ queryKey: ["product-attributes-active"] });
+      invalidateAll();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
@@ -106,7 +158,7 @@ function ProductAttributesPage() {
     <div className="space-y-5">
       <PageHeader
         title="ویژگی‌های محصول"
-        description="مدیریت مقادیر برند، دسته‌بندی، رنگ، ظرفیت و مدل برای فرم محصولات"
+        description="مدیریت برند، دسته‌بندی، رنگ، ظرفیت و مدل برای فرم محصولات"
         actions={
           <>
             <Button asChild variant="outline" size="sm">
@@ -152,18 +204,13 @@ function ProductAttributesPage() {
 
       {isLoading ? (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Tag}
-          title="ویژگی‌ای یافت نشد"
-          description={canWrite ? "با دکمه «ویژگی جدید» اولین مقدار را ایجاد کنید." : "هنوز ویژگی‌ای ثبت نشده است."}
-        />
+      ) : filtered.length === 0 && !canWrite ? (
+        <EmptyState icon={Tag} title="ویژگی‌ای یافت نشد" description="هنوز ویژگی‌ای ثبت نشده است." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {TYPES.map((t) => {
             const rows = grouped.get(t) ?? [];
             if (filterType !== "all" && filterType !== t) return null;
-            if (rows.length === 0 && search.trim()) return null;
             return (
               <Card key={t}>
                 <CardContent className="space-y-3 p-4">
@@ -184,7 +231,7 @@ function ProductAttributesPage() {
                   ) : (
                     <ul className="divide-y divide-border">
                       {rows.map((r) => (
-                        <li key={r.id} className="flex items-center justify-between gap-2 py-2">
+                        <li key={`${r.source}-${r.id}`} className="flex items-center justify-between gap-2 py-2">
                           <div className="min-w-0 flex-1">
                             <span className={`text-sm ${r.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
                               {r.name}
@@ -195,7 +242,7 @@ function ProductAttributesPage() {
                               <>
                                 <Switch
                                   checked={r.is_active}
-                                  onCheckedChange={(v) => toggleMut.mutate({ id: r.id, is_active: v })}
+                                  onCheckedChange={(v) => toggleMut.mutate({ row: r, is_active: v })}
                                   disabled={toggleMut.isPending}
                                 />
                                 <Button size="icon" variant="ghost" onClick={() => setEditing(r)} aria-label="ویرایش">
@@ -221,6 +268,7 @@ function ProductAttributesPage() {
           initial={editing}
           defaultType={createType ?? undefined}
           onClose={() => { setCreateType(null); setEditing(null); }}
+          onSaved={invalidateAll}
         />
       )}
     </div>
@@ -228,35 +276,50 @@ function ProductAttributesPage() {
 }
 
 function AttrDialog({
-  mode, initial, defaultType, onClose,
+  mode, initial, defaultType, onClose, onSaved,
 }: {
   mode: "create" | "edit" | null;
-  initial: AttrRow | null;
+  initial: UnifiedRow | null;
   defaultType?: AttrType;
   onClose: () => void;
+  onSaved: () => void;
 }) {
-  const qc = useQueryClient();
   const open = mode !== null;
-  const [name, setName] = useState(initial?.name ?? "");
-  const [type, setType] = useState<AttrType>(initial?.type ?? defaultType ?? "color");
-  const [isActive, setIsActive] = useState<boolean>(initial?.is_active ?? true);
+  const [name, setName] = useState("");
+  const [type, setType] = useState<AttrType>("color");
+  const [isActive, setIsActive] = useState<boolean>(true);
 
-  // reset when dialog opens with new data
-  useMemo(() => {
+  useEffect(() => {
+    if (!open) return;
     setName(initial?.name ?? "");
     setType(initial?.type ?? defaultType ?? "color");
     setIsActive(initial?.is_active ?? true);
-  }, [initial, defaultType, mode]);
+  }, [initial, defaultType, mode, open]);
 
   const saveMut = useMutation({
     mutationFn: async () => {
       const trimmed = name.trim();
       if (!trimmed) throw new Error("نام الزامی است");
+
       if (mode === "edit" && initial) {
         const { error } = await supabase
-          .from("product_attributes")
+          .from(initial.source)
           .update({ name: trimmed, is_active: isActive })
           .eq("id", initial.id);
+        if (error) throw error;
+        return;
+      }
+
+      // create
+      if (type === "brand") {
+        const { error } = await supabase
+          .from("brands")
+          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
+        if (error) throw error;
+      } else if (type === "category") {
+        const { error } = await supabase
+          .from("categories")
+          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -267,12 +330,14 @@ function AttrDialog({
     },
     onSuccess: () => {
       toast.success(mode === "edit" ? "ذخیره شد" : "ویژگی جدید ساخته شد");
-      qc.invalidateQueries({ queryKey: ["product-attributes-all"] });
-      qc.invalidateQueries({ queryKey: ["product-attributes-active"] });
+      onSaved();
       onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
+
+  // when editing, type is fixed; when creating, allow choosing among all 5
+  const typeOptions: AttrType[] = mode === "edit" ? [type] : TYPES;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -280,7 +345,9 @@ function AttrDialog({
         <DialogHeader>
           <DialogTitle>{mode === "edit" ? "ویرایش ویژگی" : "ویژگی جدید"}</DialogTitle>
           <DialogDescription>
-            مقدار جدیدی برای استفاده در فرم محصولات تعریف کنید.
+            {type === "brand" || type === "category"
+              ? "این مقدار در جدول مرجع ذخیره می‌شود."
+              : "مقدار جدیدی برای استفاده در فرم محصولات تعریف کنید."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -289,7 +356,7 @@ function AttrDialog({
             <Select value={type} onValueChange={(v) => setType(v as AttrType)} disabled={mode === "edit"}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {TYPES.map((t) => (
+                {typeOptions.map((t) => (
                   <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
                 ))}
               </SelectContent>
@@ -315,3 +382,6 @@ function AttrDialog({
     </Dialog>
   );
 }
+
+// keep DYN_TYPES referenced (used implicitly via TYPES filtering)
+void DYN_TYPES;
