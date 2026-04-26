@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox,
+  ArrowRight, Plus, Loader2, ChevronLeft, ChevronRight, Inbox, Search, AlertTriangle,
   Pencil, ArrowUp, ArrowDown, Eye, EyeOff,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -23,7 +23,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { useDebounce } from "@/hooks/use-debounce";
+import { toFaDigits, formatDateTimeFa, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
   DYNAMIC_TABLE_ROWS_PAGE_SIZE, COLUMN_KEY_REGEX,
@@ -61,6 +62,9 @@ function DataTableDetailPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput, 350);
+  useEffect(() => { setPage(1); }, [search, showInactive]);
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
@@ -97,7 +101,7 @@ function DataTableDetailPage() {
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: ["dynamic-table-rows", tableId, page, showInactive],
+    queryKey: ["dynamic-table-rows", tableId, page, showInactive, search],
     staleTime: 15_000,
     queryFn: async () => {
       const from = (page - 1) * DYNAMIC_TABLE_ROWS_PAGE_SIZE;
@@ -108,6 +112,10 @@ function DataTableDetailPage() {
         .select("id", { count: "exact", head: true })
         .eq("table_id", tableId);
       if (!showInactive) headQ = headQ.eq("is_active", true);
+      const searchNum = Number(search.trim());
+      if (search.trim() && Number.isFinite(searchNum)) {
+        headQ = headQ.eq("row_number", searchNum);
+      }
       const head = await headQ;
       if (head.error) throw head.error;
       const total = head.count ?? 0;
@@ -119,6 +127,9 @@ function DataTableDetailPage() {
         .order("row_number", { ascending: true })
         .range(from, to);
       if (!showInactive) listQ = listQ.eq("is_active", true);
+      if (search.trim() && Number.isFinite(searchNum)) {
+        listQ = listQ.eq("row_number", searchNum);
+      }
       const { data: rows, error: e1 } = await listQ;
       if (e1) throw e1;
       const rowIds = (rows ?? []).map((r) => r.id as string);
@@ -296,12 +307,25 @@ function DataTableDetailPage() {
       {/* Rows */}
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-border p-3">
-            <span className="text-xs text-muted-foreground">
-              مجموع: {toFaDigits(String(rowsQuery.data?.total ?? 0))}
-            </span>
+          <div className="flex flex-col gap-3 border-b border-border p-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2 flex-1 max-w-xs">
+              <div className="relative flex-1">
+                <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="جستجو با شماره ردیف…"
+                  className="pr-8 h-9"
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                مجموع: {toFaDigits(String(rowsQuery.data?.total ?? 0))}
+              </span>
+            </div>
             <label className="flex items-center gap-2 text-xs">
-              <Switch checked={showInactive} onCheckedChange={(v) => { setShowInactive(v); setPage(1); }} />
+              <Switch checked={showInactive} onCheckedChange={setShowInactive} />
               نمایش غیرفعال‌ها
             </label>
           </div>
@@ -313,16 +337,18 @@ function DataTableDetailPage() {
               <EmptyState icon={Inbox} title="ردیفی ثبت نشده" description="با دکمه افزودن ردیف، اولین رکورد را وارد کنید." />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <>
+            {/* Desktop table */}
+            <div className="overflow-x-auto hidden md:block">
+              <table className="w-full text-sm" style={{ minWidth: `${320 + columns.length * 160}px` }}>
                 <thead className="bg-muted/40 text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-right font-medium">#</th>
+                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">#</th>
                     {columns.map((c) => (
-                      <th key={c.id} className="px-3 py-2 text-right font-medium">{c.label}</th>
+                      <th key={c.id} className="px-3 py-2 text-right font-medium whitespace-nowrap">{c.label}</th>
                     ))}
-                    <th className="px-3 py-2 text-right font-medium">ایجاد</th>
-                    {canEdit && <th className="px-3 py-2 text-right font-medium">عملیات</th>}
+                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">ایجاد</th>
+                    {canEdit && <th className="px-3 py-2 text-right font-medium whitespace-nowrap">عملیات</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -330,19 +356,27 @@ function DataTableDetailPage() {
                     const inactive = !r.is_active;
                     return (
                       <tr key={r.id} className={`border-t border-border ${inactive ? "bg-muted/30 text-muted-foreground" : ""}`}>
-                        <td className="px-3 py-2 font-mono text-xs">{toFaDigits(String(r.row_number))}</td>
+                        <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                          {toFaDigits(String(r.row_number))}
+                          {inactive && (
+                            <Badge variant="outline" className="ms-2 text-[10px] gap-1">
+                              <AlertTriangle className="h-3 w-3" />غیرفعال
+                            </Badge>
+                          )}
+                        </td>
                         {columns.map((c) => (
                           <td key={c.id} className="px-3 py-2">
                             <CellEditor
                               column={c}
                               rowId={r.id}
                               value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
-                              canEdit={canEdit && !inactive}
+                              canEdit={canEdit}
+                              inactive={inactive}
                               onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                             />
                           </td>
                         ))}
-                        <td className="px-3 py-2 text-xs">{formatDateTimeFa(r.created_at)}</td>
+                        <td className="px-3 py-2 text-xs whitespace-nowrap">{formatDateTimeFa(r.created_at)}</td>
                         {canEdit && (
                           <td className="px-3 py-2">
                             <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
@@ -358,6 +392,53 @@ function DataTableDetailPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile card view */}
+            <div className="md:hidden divide-y divide-border">
+              {rowsQuery.data!.rows.map((r) => {
+                const inactive = !r.is_active;
+                return (
+                  <div key={r.id} className={`p-3 space-y-2 ${inactive ? "bg-muted/30" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs">#{toFaDigits(String(r.row_number))}</span>
+                        {inactive && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <AlertTriangle className="h-3 w-3" />غیرفعال
+                          </Badge>
+                        )}
+                      </div>
+                      {canEdit && (
+                        <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                          disabled={toggleRowMut.isPending}
+                          onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
+                          {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {columns.map((c) => (
+                        <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
+                          <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
+                          <div className="text-end min-w-0">
+                            <CellEditor
+                              column={c}
+                              rowId={r.id}
+                              value={rowsQuery.data!.cellsByRow[r.id]?.[c.id] ?? ""}
+                              canEdit={canEdit}
+                              inactive={inactive}
+                              onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(r.created_at)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            </>
           )}
 
           <div className="flex items-center justify-end border-t border-border p-3 gap-2">
@@ -433,12 +514,13 @@ function DataTableDetailPage() {
 
 // =============== Inline cell editor ===============
 function CellEditor({
-  column, rowId, value, canEdit, onSave,
+  column, rowId, value, canEdit, inactive, onSave,
 }: {
   column: ColumnRow;
   rowId: string;
   value: string;
   canEdit: boolean;
+  inactive?: boolean;
   onSave: (val: string) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -451,17 +533,31 @@ function CellEditor({
 
   const display = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
-    if (column.data_type === "boolean") return value === "true" ? "بله" : "خیر";
-    if (column.data_type === "datetime" || column.data_type === "date") return formatDateTimeFa(value);
+    if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
+    if (column.data_type === "datetime") return formatDateTimeFa(value);
+    if (column.data_type === "date") return formatDateFa(value);
+    if (column.data_type === "number") {
+      const n = Number(value);
+      return Number.isFinite(n) ? formatNumber(n) : value;
+    }
+    if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
 
   if (!editing) {
+    const handleStartEdit = () => {
+      if (!canEdit) return;
+      if (inactive) {
+        const ok = window.confirm("این ردیف غیرفعال است. آیا واقعاً می‌خواهید سلولی از آن را ویرایش کنید؟");
+        if (!ok) return;
+      }
+      setEditing(true);
+    };
     return (
       <div
         className={canEdit ? "cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 -mx-1" : ""}
-        onDoubleClick={() => canEdit && setEditing(true)}
-        title={canEdit ? "دابل‌کلیک برای ویرایش" : undefined}
+        onDoubleClick={handleStartEdit}
+        title={canEdit ? (inactive ? "ردیف غیرفعال — دابل‌کلیک برای ویرایش با هشدار" : "دابل‌کلیک برای ویرایش") : undefined}
       >
         {display}
       </div>
@@ -480,9 +576,10 @@ function CellEditor({
   if (column.data_type === "boolean") {
     return (
       <div className="flex items-center gap-1">
-        <Select value={draft} onValueChange={setDraft}>
+        <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
           <SelectTrigger className="h-8 w-28"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="__empty__">—</SelectItem>
             <SelectItem value="true">بله</SelectItem>
             <SelectItem value="false">خیر</SelectItem>
           </SelectContent>
