@@ -417,12 +417,80 @@ function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
 }
 
 function ShareQuoteMenu({ row }: { row: QuoteRow }) {
+  const [pdfLoading, setPdfLoading] = useState(false);
   const notReady = () => toast.info("این قابلیت در نسخه بعدی فعال می‌شود");
+
+  const handleDownloadPdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const { data: quote, error: qErr } = await supabase
+        .from("sales_quotes")
+        .select(
+          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, created_at",
+        )
+        .eq("id", row.id)
+        .maybeSingle();
+      if (qErr) throw qErr;
+      if (!quote) throw new Error("پیش‌فاکتور یافت نشد.");
+
+      let salespersonName: string | null = row.salesperson?.full_name ?? null;
+      if (!salespersonName && quote.salesperson_id) {
+        const { data: sp } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", quote.salesperson_id)
+          .maybeSingle();
+        salespersonName = (sp?.full_name as string | null) ?? null;
+      }
+
+      const { data: itemRows, error: iErr } = await supabase
+        .from("sales_quote_items")
+        .select("title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at")
+        .eq("quote_id", row.id)
+        .order("created_at", { ascending: true });
+      if (iErr) throw iErr;
+
+      const items = (itemRows ?? []).map((it) => ({
+        title: (it.title_snapshot as string | null) ?? (it.free_item_name as string | null) ?? "—",
+        sku: (it.sku_snapshot as string | null) ?? null,
+        quantity: Number(it.quantity ?? 0),
+        unit_price: Number(it.unit_price ?? 0),
+        discount_amount: Number(it.discount_amount ?? 0),
+        line_total: Number(it.line_total ?? 0),
+      }));
+
+      await downloadQuotePdf({
+        quote_number: quote.quote_number as string,
+        customer_name: quote.customer_name as string,
+        customer_phone: quote.customer_phone as string,
+        salesperson_name: salespersonName,
+        created_at: quote.created_at as string,
+        expires_at: (quote.expires_at as string | null) ?? null,
+        status_label: STATUS_LABELS_FA[quote.status as SalesQuoteStatus] ?? (quote.status as string),
+        customer_note: (quote.customer_note as string | null) ?? null,
+        items,
+        subtotal_amount: Number(quote.subtotal_amount ?? 0),
+        discount_amount: Number(quote.discount_amount ?? 0),
+        final_amount: Number(quote.final_amount ?? 0),
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ساخت PDF پیش‌فاکتور");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Send className="ml-1 h-3.5 w-3.5" /> ارسال پیش‌فاکتور
+        <Button size="sm" variant="outline" disabled={pdfLoading}>
+          {pdfLoading ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="ml-1 h-3.5 w-3.5" />
+          )}
+          ارسال پیش‌فاکتور
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[200px]">
@@ -431,10 +499,19 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
             <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
-          <FileDown className="ml-2 h-4 w-4" />
+        <DropdownMenuItem
+          disabled={pdfLoading}
+          onSelect={(e) => { e.preventDefault(); void handleDownloadPdf(); }}
+        >
+          {pdfLoading ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="ml-2 h-4 w-4" />
+          )}
           <span className="flex-1">دانلود PDF</span>
-          <span className="text-[10px] text-muted-foreground">به زودی</span>
+          {pdfLoading && (
+            <span className="text-[10px] text-muted-foreground">در حال آماده‌سازی…</span>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={(e) => { e.preventDefault(); notReady(); }}>
           <MessageCircle className="ml-2 h-4 w-4" />
