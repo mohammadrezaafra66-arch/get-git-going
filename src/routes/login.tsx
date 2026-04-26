@@ -9,11 +9,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureAuthReady } from "@/lib/auth/session";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) throw redirect({ to: "/dashboard" });
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const r = typeof search.redirect === "string" ? search.redirect : undefined;
+    return r ? { redirect: r } : {};
+  },
+  beforeLoad: async ({ search }) => {
+    const auth = await ensureAuthReady();
+    if (auth.user) {
+      // Never redirect back to login itself — fall back to dashboard.
+      const target =
+        search.redirect && !search.redirect.startsWith("/login")
+          ? search.redirect
+          : "/dashboard";
+      throw redirect({ to: target });
+    }
   },
   component: LoginPage,
 });
