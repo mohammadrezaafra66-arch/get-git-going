@@ -1488,6 +1488,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_sales_quote_with_items: {
+        Args: {
+          p_customer_name: string
+          p_customer_note: string
+          p_customer_phone: string
+          p_discount_amount: number
+          p_expires_at: string
+          p_final_amount: number
+          p_items: Json
+          p_subtotal_amount: number
+        }
+        Returns: Json
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
