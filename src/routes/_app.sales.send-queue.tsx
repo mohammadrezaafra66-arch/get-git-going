@@ -256,9 +256,7 @@ function SendQueuePage() {
                           </td>
                           <td className="p-3 align-top" dir="ltr">{r.recipient}</td>
                           <td className="p-3 align-top">
-                            <Badge variant={r.status === "processing" ? "default" : "outline"}>
-                              {QUOTE_SEND_QUEUE_STATUS_LABELS[r.status] ?? r.status}
-                            </Badge>
+                            <StatusBadges row={r} />
                           </td>
                           <td className="p-3 align-top text-xs">
                             {toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}
@@ -297,9 +295,7 @@ function SendQueuePage() {
                 <CardContent className="p-3 space-y-1.5 text-sm">
                   <div className="flex items-start justify-between gap-2">
                     <div className="font-mono text-xs text-muted-foreground">{r.quote_number ?? "—"}</div>
-                    <Badge variant="outline">
-                      {QUOTE_SEND_QUEUE_STATUS_LABELS[r.status] ?? r.status}
-                    </Badge>
+                    <StatusBadges row={r} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">کانال</span>
