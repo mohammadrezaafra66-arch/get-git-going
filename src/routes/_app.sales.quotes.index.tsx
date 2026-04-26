@@ -29,6 +29,15 @@ import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import {
   SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus,
 } from "@/lib/sales/quotes";
+import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+
+const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
+  draft: "پیش‌نویس",
+  sent: "ارسال‌شده",
+  accepted: "پذیرفته‌شده",
+  rejected: "رد شده",
+  canceled: "لغو شده",
+};
 
 export const Route = createFileRoute("/_app/sales/quotes/")({
   component: QuotesListPage,
