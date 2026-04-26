@@ -21,6 +21,7 @@ import type { AppRole } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import { StockAlertButton } from "@/components/sales/StockAlertButton";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -492,6 +493,14 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
         <div className="text-[11px] text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
           {!isSalesOnly && <> • <ProductTypeBadge t={row.product.product_type} inline /></>}
+        </div>
+        <div className="flex justify-end">
+          <StockAlertButton
+            productId={row.product.id}
+            productName={row.product.name}
+            productSku={row.product.sku}
+            stockStatus={row.product.stock_status}
+          />
         </div>
         {!row.hasPrice ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
