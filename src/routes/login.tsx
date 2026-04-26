@@ -25,8 +25,11 @@ function LoginPage() {
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
   const loginInFlight = useRef(false);
   const signupInFlight = useRef(false);
+  const resetInFlight = useRef(false);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -34,6 +37,8 @@ function LoginPage() {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+
+  const [resetEmail, setResetEmail] = useState("");
 
   const translateAuthError = (msg: string | null | undefined): string => {
     if (!msg) return "خطای نامشخص در ورود";
@@ -124,6 +129,38 @@ function LoginPage() {
     }
   };
 
+  const handlePasswordReset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (resetInFlight.current) return;
+
+    const fd = new FormData(e.currentTarget);
+    const email = ((fd.get("email") as string | null) ?? resetEmail).trim();
+    setResetError(null);
+    setResetSent(false);
+
+    if (!email) {
+      setResetError("لطفاً ایمیل حساب مدیر را وارد کنید.");
+      return;
+    }
+
+    resetInFlight.current = true;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        const fa = translateAuthError(error.message);
+        setResetError(fa);
+        toast.error("ارسال لینک بازیابی ناموفق بود", { description: fa });
+        return;
+      }
+      setResetSent(true);
+      toast.success("لینک بازیابی ارسال شد", { description: "ایمیل خود و پوشه Spam را بررسی کنید." });
+    } finally {
+      resetInFlight.current = false;
+    }
+  };
+
   return (
     <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
@@ -142,9 +179,10 @@ function LoginPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" dir="rtl">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="login">ورود</TabsTrigger>
                 <TabsTrigger value="signup">ثبت‌نام</TabsTrigger>
+                <TabsTrigger value="reset">بازیابی رمز</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
@@ -199,6 +237,35 @@ function LoginPage() {
                   <p className="text-center text-xs text-muted-foreground">
                     کاربران جدید با نقش «بیننده» ثبت می‌شوند. مدیر می‌تواند بعداً نقش‌ها را تغییر دهد.
                   </p>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="reset">
+                <form onSubmit={handlePasswordReset} className="space-y-4" noValidate>
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">ایمیل حساب مدیر</Label>
+                    <Input
+                      id="reset-email"
+                      name="email"
+                      type="email"
+                      required
+                      dir="ltr"
+                      autoComplete="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                  </div>
+                  {resetError && (
+                    <p className="text-sm text-destructive" role="alert">{resetError}</p>
+                  )}
+                  {resetSent && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      لینک تنظیم رمز جدید ارسال شد. بعد از باز کردن لینک، رمز جدید را در صفحه بعد وارد کنید.
+                    </p>
+                  )}
+                  <Button type="submit" className="w-full" aria-busy={resetInFlight.current}>
+                    {resetInFlight.current ? "در حال ارسال..." : "ارسال لینک تنظیم رمز"}
+                  </Button>
                 </form>
               </TabsContent>
             </Tabs>
