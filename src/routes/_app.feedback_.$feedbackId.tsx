@@ -26,7 +26,7 @@ import {
   FEEDBACK_TYPE_LABELS, type FeedbackStatus, type FeedbackType,
 } from "@/lib/feedback/constants";
 
-export const Route = createFileRoute("/_app/feedback_/")({
+export const Route = createFileRoute("/_app/feedback_/$feedbackId")({
   beforeLoad: async () => { await requirePermission("feedback", "view"); },
   component: FeedbackDetailPage,
 });

@@ -64,6 +64,7 @@ import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
+import { Route as AppFeedbackFeedbackIdRouteImport } from './routes/_app.feedback_.$feedbackId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
@@ -71,7 +72,6 @@ import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-a
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
-import { Route as AppFeedbackRouteImport } from './routes/_app.feedback_.'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -364,6 +364,11 @@ const AppFeedbackCreateRoute = AppFeedbackCreateRouteImport.update({
   path: '/feedback/create',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFeedbackFeedbackIdRoute = AppFeedbackFeedbackIdRouteImport.update({
+  id: '/feedback_/$feedbackId',
+  path: '/feedback/$feedbackId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDataTablesNewRoute = AppDataTablesNewRouteImport.update({
   id: '/data-tables/new',
   path: '/data-tables/new',
@@ -397,11 +402,6 @@ const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
 const AppAcademyCourseIdRoute = AppAcademyCourseIdRouteImport.update({
   id: '/academy_/$courseId',
   path: '/academy/$courseId',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFeedbackRoute = AppFeedbackRouteImport.update({
-  id: '/feedback_/',
-  path: '/feedback/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
@@ -508,7 +508,6 @@ export interface FileRoutesByFullPath {
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
-  '/feedback/': typeof AppFeedbackRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -516,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -592,6 +592,7 @@ export interface FileRoutesByTo {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -664,7 +665,6 @@ export interface FileRoutesById {
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
-  '/_app/feedback_/': typeof AppFeedbackRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -672,6 +672,7 @@ export interface FileRoutesById {
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
+  '/_app/feedback_/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
@@ -745,7 +746,6 @@ export interface FileRouteTypes {
     | '/sales'
     | '/suppliers'
     | '/users'
-    | '/feedback/'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/bot-api-keys/docs'
@@ -753,6 +753,7 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/feedback/$feedbackId'
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -829,6 +830,7 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/feedback/$feedbackId'
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -900,7 +902,6 @@ export interface FileRouteTypes {
     | '/_app/sales'
     | '/_app/suppliers'
     | '/_app/users'
-    | '/_app/feedback_/'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/bot-api-keys/docs'
@@ -908,6 +909,7 @@ export interface FileRouteTypes {
     | '/_app/bot-api-keys/usage'
     | '/_app/data-tables/$tableId'
     | '/_app/data-tables/new'
+    | '/_app/feedback_/$feedbackId'
     | '/_app/feedback_/create'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
@@ -1357,6 +1359,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFeedbackCreateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/feedback_/$feedbackId': {
+      id: '/_app/feedback_/$feedbackId'
+      path: '/feedback/$feedbackId'
+      fullPath: '/feedback/$feedbackId'
+      preLoaderRoute: typeof AppFeedbackFeedbackIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/data-tables/new': {
       id: '/_app/data-tables/new'
       path: '/data-tables/new'
@@ -1404,13 +1413,6 @@ declare module '@tanstack/react-router' {
       path: '/academy/$courseId'
       fullPath: '/academy/$courseId'
       preLoaderRoute: typeof AppAcademyCourseIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/feedback_/': {
-      id: '/_app/feedback_/'
-      path: '/feedback'
-      fullPath: '/feedback/'
-      preLoaderRoute: typeof AppFeedbackRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales/quotes/': {
@@ -1635,11 +1637,11 @@ interface AppRouteChildren {
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
-  AppFeedbackRoute: typeof AppFeedbackRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
+  AppFeedbackFeedbackIdRoute: typeof AppFeedbackFeedbackIdRoute
   AppFeedbackCreateRoute: typeof AppFeedbackCreateRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
@@ -1690,11 +1692,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
-  AppFeedbackRoute: AppFeedbackRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
+  AppFeedbackFeedbackIdRoute: AppFeedbackFeedbackIdRoute,
   AppFeedbackCreateRoute: AppFeedbackCreateRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
@@ -1760,3 +1762,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
