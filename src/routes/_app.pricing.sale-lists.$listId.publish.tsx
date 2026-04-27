@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Send, Loader2, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -11,6 +11,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber } from "@/lib/i18n/formatters";
@@ -23,22 +33,21 @@ export const Route = createFileRoute("/_app/pricing/sale-lists/$listId/publish")
   component: PublishSaleListPage,
 });
 
-const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "accountant", "sales"];
-
 interface RecipientRow {
   id: string;
   full_name: string | null;
-  is_active: boolean;
   roles: AppRole[];
 }
 
 function PublishSaleListPage() {
   const { listId } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const search = useDebounce(searchInput.trim(), 350);
   const [publishing, setPublishing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const listQ = useQuery({
     queryKey: ["sale-list-publish", listId],
@@ -56,34 +65,16 @@ function PublishSaleListPage() {
   const recipientsQ = useQuery({
     queryKey: ["publish-recipients"],
     queryFn: async () => {
-      // Fetch user_roles + profiles, group roles per user
-      const { data: rolesData, error: rErr } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("role", ALLOWED_ROLES);
-      if (rErr) throw rErr;
-      const userIds = Array.from(new Set((rolesData ?? []).map((r: any) => r.user_id)));
-      if (userIds.length === 0) return [] as RecipientRow[];
-
-      const { data: profiles, error: pErr } = await supabase
-        .from("profiles")
-        .select("id, full_name, is_active")
-        .in("id", userIds);
-      if (pErr) throw pErr;
-
-      const rolesMap = new Map<string, AppRole[]>();
-      for (const r of rolesData ?? []) {
-        const arr = rolesMap.get(r.user_id) ?? [];
-        arr.push(r.role as AppRole);
-        rolesMap.set(r.user_id, arr);
-      }
-      return (profiles ?? [])
-        .filter((p: any) => p.is_active)
-        .map<RecipientRow>((p: any) => ({
-          id: p.id,
-          full_name: p.full_name,
-          is_active: p.is_active,
-          roles: rolesMap.get(p.id) ?? [],
+      // Single query against the publish_recipients_view
+      const { data, error } = await supabase
+        .from("publish_recipients_view" as any)
+        .select("id, full_name, roles");
+      if (error) throw error;
+      return ((data ?? []) as Array<{ id: string; full_name: string | null; roles: string[] }>)
+        .map<RecipientRow>((r) => ({
+          id: r.id,
+          full_name: r.full_name,
+          roles: (r.roles ?? []) as AppRole[],
         }))
         .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "", "fa"));
     },
@@ -108,7 +99,7 @@ function PublishSaleListPage() {
   const toggleOne = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  const handlePublish = async () => {
+  const doPublish = async () => {
     if (selected.length === 0) {
       toast.error("حداقل یک مخاطب انتخاب کنید.");
       return;
@@ -142,12 +133,28 @@ function PublishSaleListPage() {
       if (aErr) console.warn("audit insert failed:", aErr);
 
       toast.success("لیست با موفقیت منتشر شد.");
+      // Invalidate the details cache so the status badge updates immediately
+      await queryClient.invalidateQueries({ queryKey: ["sale-list", listId] });
+      await queryClient.invalidateQueries({ queryKey: ["sale-list-publish", listId] });
       navigate({ to: "/pricing/sale-lists/$listId", params: { listId } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "خطا در انتشار لیست.";
       toast.error(msg);
     } finally {
       setPublishing(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const handlePublishClick = () => {
+    if (selected.length === 0) {
+      toast.error("حداقل یک مخاطب انتخاب کنید.");
+      return;
+    }
+    if (listQ.data?.status === "published") {
+      setConfirmOpen(true);
+    } else {
+      void doPublish();
     }
   };
 
@@ -252,11 +259,35 @@ function PublishSaleListPage() {
         <Button asChild variant="outline" disabled={publishing}>
           <Link to="/pricing/sale-lists/$listId" params={{ listId }}>انصراف</Link>
         </Button>
-        <Button onClick={handlePublish} disabled={publishing || selected.length === 0} className="gap-2">
+        <Button onClick={handlePublishClick} disabled={publishing || selected.length === 0} className="gap-2">
           {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {isRepublish ? "بازنشر لیست" : "انتشار لیست"}
         </Button>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأیید بازنشر لیست</AlertDialogTitle>
+            <AlertDialogDescription>
+              این لیست قبلاً منتشر شده است. آیا مطمئن هستید که می‌خواهید دوباره آن را منتشر کنید؟
+              یک رکورد جدید در گزارش‌های ممیزی ثبت خواهد شد.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={publishing}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={publishing}
+              onClick={(e) => {
+                e.preventDefault();
+                void doPublish();
+              }}
+            >
+              {publishing ? "در حال بازنشر..." : "بازنشر"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
