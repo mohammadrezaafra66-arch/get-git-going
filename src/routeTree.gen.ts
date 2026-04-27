@@ -40,6 +40,7 @@ import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.quote-share-logs'
+import { Route as AppSalesCreditRulesRouteImport } from './routes/_app.sales.credit-rules'
 import { Route as AppPurchasesCreateRouteImport } from './routes/_app.purchases_.create'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
@@ -228,6 +229,11 @@ const AppSalesQuotesRoute = AppSalesQuotesRouteImport.update({
 const AppSalesQuoteShareLogsRoute = AppSalesQuoteShareLogsRouteImport.update({
   id: '/quote-share-logs',
   path: '/quote-share-logs',
+  getParentRoute: () => AppSalesRoute,
+} as any)
+const AppSalesCreditRulesRoute = AppSalesCreditRulesRouteImport.update({
+  id: '/credit-rules',
+  path: '/credit-rules',
   getParentRoute: () => AppSalesRoute,
 } as any)
 const AppPurchasesCreateRoute = AppPurchasesCreateRouteImport.update({
@@ -454,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
+  '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
@@ -519,6 +526,7 @@ export interface FileRoutesByTo {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
+  '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
@@ -587,6 +595,7 @@ export interface FileRoutesById {
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
   '/_app/purchases_/create': typeof AppPurchasesCreateRoute
+  '/_app/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/_app/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
@@ -656,6 +665,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/purchases/create'
+    | '/sales/credit-rules'
     | '/sales/quote-share-logs'
     | '/sales/quotes'
     | '/sales/search'
@@ -721,6 +731,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/purchases/create'
+    | '/sales/credit-rules'
     | '/sales/quote-share-logs'
     | '/sales/search'
     | '/sales/send-queue'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/_app/products/labels'
     | '/_app/products/new'
     | '/_app/purchases_/create'
+    | '/_app/sales/credit-rules'
     | '/_app/sales/quote-share-logs'
     | '/_app/sales/quotes'
     | '/_app/sales/search'
@@ -1043,6 +1055,13 @@ declare module '@tanstack/react-router' {
       path: '/quote-share-logs'
       fullPath: '/sales/quote-share-logs'
       preLoaderRoute: typeof AppSalesQuoteShareLogsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
+    '/_app/sales/credit-rules': {
+      id: '/_app/sales/credit-rules'
+      path: '/credit-rules'
+      fullPath: '/sales/credit-rules'
+      preLoaderRoute: typeof AppSalesCreditRulesRouteImport
       parentRoute: typeof AppSalesRoute
     }
     '/_app/purchases_/create': {
@@ -1328,6 +1347,7 @@ const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
 )
 
 interface AppSalesRouteChildren {
+  AppSalesCreditRulesRoute: typeof AppSalesCreditRulesRoute
   AppSalesQuoteShareLogsRoute: typeof AppSalesQuoteShareLogsRoute
   AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
@@ -1337,6 +1357,7 @@ interface AppSalesRouteChildren {
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
+  AppSalesCreditRulesRoute: AppSalesCreditRulesRoute,
   AppSalesQuoteShareLogsRoute: AppSalesQuoteShareLogsRoute,
   AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
