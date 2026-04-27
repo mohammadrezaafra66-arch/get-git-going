@@ -33,6 +33,7 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -188,6 +189,11 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSalesCustomersRoute = AppSalesCustomersRouteImport.update({
+  id: '/sales_/customers',
+  path: '/sales/customers',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
@@ -421,6 +427,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/sales/customers': typeof AppSalesCustomersRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -479,6 +486,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/sales/customers': typeof AppSalesCustomersRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -542,6 +550,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -605,6 +614,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/sales/customers'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -663,6 +673,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/sales/customers'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -725,6 +736,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/_app/sales_/customers'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -921,6 +933,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/sales_/customers': {
+      id: '/_app/sales_/customers'
+      path: '/sales/customers'
+      fullPath: '/sales/customers'
+      preLoaderRoute: typeof AppSalesCustomersRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/sales/stock-alerts': {
       id: '/_app/sales/stock-alerts'
@@ -1306,6 +1325,7 @@ interface AppRouteChildren {
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
+  AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
@@ -1344,6 +1364,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsLabelsRoute: AppProductsLabelsRoute,
   AppProductsNewRoute: AppProductsNewRoute,
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
+  AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
