@@ -21,6 +21,7 @@ import {
 } from "@/lib/products/constants";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
+import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -205,6 +206,8 @@ function ProductDetailPage() {
         existingUserIds={data.owners.map((o) => o.user_id)}
         onAssigned={refetch}
       />
+
+      <ProductSupplierManager productId={id} />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
