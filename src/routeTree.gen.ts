@@ -60,6 +60,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
@@ -335,6 +336,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppKnowledgeDocumentIdRoute = AppKnowledgeDocumentIdRouteImport.update({
+  id: '/knowledge_/$documentId',
+  path: '/knowledge/$documentId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDataTablesNewRoute = AppDataTablesNewRouteImport.update({
   id: '/data-tables/new',
   path: '/data-tables/new',
@@ -456,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -524,6 +531,7 @@ export interface FileRoutesByTo {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -595,6 +603,7 @@ export interface FileRoutesById {
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
+  '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -667,6 +676,7 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/knowledge/$documentId'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -735,6 +745,7 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/knowledge/$documentId'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -805,6 +816,7 @@ export interface FileRouteTypes {
     | '/_app/bot-api-keys/usage'
     | '/_app/data-tables/$tableId'
     | '/_app/data-tables/new'
+    | '/_app/knowledge_/$documentId'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
@@ -1221,6 +1233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/knowledge_/$documentId': {
+      id: '/_app/knowledge_/$documentId'
+      path: '/knowledge/$documentId'
+      fullPath: '/knowledge/$documentId'
+      preLoaderRoute: typeof AppKnowledgeDocumentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/data-tables/new': {
       id: '/_app/data-tables/new'
       path: '/data-tables/new'
@@ -1465,6 +1484,7 @@ interface AppRouteChildren {
   AppUsersRoute: typeof AppUsersRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
+  AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
@@ -1511,6 +1531,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsersRoute: AppUsersRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
+  AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
