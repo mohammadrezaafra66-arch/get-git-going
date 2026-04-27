@@ -68,6 +68,7 @@ import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tab
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
+import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
@@ -381,6 +382,11 @@ const AppBotApiKeysDocsRoute = AppBotApiKeysDocsRouteImport.update({
   path: '/docs',
   getParentRoute: () => AppBotApiKeysRoute,
 } as any)
+const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
+  id: '/academy_/manage',
+  path: '/academy/manage',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAcademyCourseIdRoute = AppAcademyCourseIdRouteImport.update({
   id: '/academy_/$courseId',
   path: '/academy/$courseId',
@@ -491,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
+  '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -565,6 +572,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
+  '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -642,6 +650,7 @@ export interface FileRoutesById {
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
+  '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -720,6 +729,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/academy/$courseId'
+    | '/academy/manage'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -794,6 +804,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/academy/$courseId'
+    | '/academy/manage'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -870,6 +881,7 @@ export interface FileRouteTypes {
     | '/_app/suppliers'
     | '/_app/users'
     | '/_app/academy_/$courseId'
+    | '/_app/academy_/manage'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
     | '/_app/bot-api-keys/usage'
@@ -1351,6 +1363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBotApiKeysDocsRouteImport
       parentRoute: typeof AppBotApiKeysRoute
     }
+    '/_app/academy_/manage': {
+      id: '/_app/academy_/manage'
+      path: '/academy/manage'
+      fullPath: '/academy/manage'
+      preLoaderRoute: typeof AppAcademyManageRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/$courseId': {
       id: '/_app/academy_/$courseId'
       path: '/academy/$courseId'
@@ -1581,6 +1600,7 @@ interface AppRouteChildren {
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
+  AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
@@ -1633,6 +1653,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
+  AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
