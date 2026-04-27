@@ -64,6 +64,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
@@ -344,6 +345,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/$listId',
     getParentRoute: () => AppPricingSaleListsRoute,
   } as any)
+const AppPricingSaleListsListIdPublishRoute =
+  AppPricingSaleListsListIdPublishRouteImport.update({
+    id: '/publish',
+    path: '/publish',
+    getParentRoute: () => AppPricingSaleListsListIdRoute,
+  } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRoute =
   ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
     id: '/api/public/bot/dynamic-tables/$tableId/rows',
@@ -406,12 +413,13 @@ export interface FileRoutesByFullPath {
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
-  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
+  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -461,12 +469,13 @@ export interface FileRoutesByTo {
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
-  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
+  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
+  '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -521,12 +530,13 @@ export interface FileRoutesById {
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
-  '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
+  '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/quotes/'
+    | '/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesByTo: FileRoutesByTo
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/quotes'
+    | '/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   id:
@@ -701,6 +713,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales/quotes/'
+    | '/_app/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesById: FileRoutesById
@@ -1101,6 +1114,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
     }
+    '/_app/pricing/sale-lists/$listId/publish': {
+      id: '/_app/pricing/sale-lists/$listId/publish'
+      path: '/publish'
+      fullPath: '/pricing/sale-lists/$listId/publish'
+      preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
+      parentRoute: typeof AppPricingSaleListsListIdRoute
+    }
     '/api/public/bot/dynamic-tables/$tableId/rows': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows'
       path: '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1174,13 +1194,28 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
   AppSalesRouteChildren,
 )
 
+interface AppPricingSaleListsListIdRouteChildren {
+  AppPricingSaleListsListIdPublishRoute: typeof AppPricingSaleListsListIdPublishRoute
+}
+
+const AppPricingSaleListsListIdRouteChildren: AppPricingSaleListsListIdRouteChildren =
+  {
+    AppPricingSaleListsListIdPublishRoute:
+      AppPricingSaleListsListIdPublishRoute,
+  }
+
+const AppPricingSaleListsListIdRouteWithChildren =
+  AppPricingSaleListsListIdRoute._addFileChildren(
+    AppPricingSaleListsListIdRouteChildren,
+  )
+
 interface AppPricingSaleListsRouteChildren {
-  AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRoute
+  AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
 }
 
 const AppPricingSaleListsRouteChildren: AppPricingSaleListsRouteChildren = {
-  AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRoute,
+  AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
 }
 
