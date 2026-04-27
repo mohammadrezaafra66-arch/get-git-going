@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -60,7 +60,7 @@ export function InvoiceForm() {
     mode: "onBlur",
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items",
   });
@@ -276,7 +276,6 @@ export function InvoiceForm() {
                 key={field.id}
                 index={idx}
                 form={form}
-                update={update}
                 remove={remove}
                 salePriceTypeId={salePriceTypeId}
               />
@@ -321,7 +320,6 @@ export function InvoiceForm() {
 interface ItemRowProps {
   index: number;
   form: ReturnType<typeof useForm<FormValues>>;
-  update: (i: number, v: FormValues["items"][number]) => void;
   remove: (i: number) => void;
   salePriceTypeId: string;
 }
