@@ -77,6 +77,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
@@ -425,6 +426,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/$listId',
     getParentRoute: () => AppPricingSaleListsRoute,
   } as any)
+const AppAcademyCourseIdLessonIdRoute =
+  AppAcademyCourseIdLessonIdRouteImport.update({
+    id: '/academy_/$courseId_/$lessonId',
+    path: '/academy/$courseId/$lessonId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCustomerIdEditRoute =
   AppSalesCustomersCustomerIdEditRouteImport.update({
     id: '/sales_/customers_/$customerId/edit',
@@ -516,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
+  '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -587,6 +595,7 @@ export interface FileRoutesByTo {
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
+  '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -663,6 +672,7 @@ export interface FileRoutesById {
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
+  '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
@@ -739,6 +749,7 @@ export interface FileRouteTypes {
     | '/pricing/'
     | '/products/'
     | '/sales/'
+    | '/academy/$courseId/$lessonId'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -810,6 +821,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/products'
     | '/sales'
+    | '/academy/$courseId/$lessonId'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -885,6 +897,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
+    | '/_app/academy_/$courseId_/$lessonId'
     | '/_app/pricing/sale-lists/$listId'
     | '/_app/pricing/sale-lists/new'
     | '/_app/products/$id/edit'
@@ -1388,6 +1401,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
     }
+    '/_app/academy_/$courseId_/$lessonId': {
+      id: '/_app/academy_/$courseId_/$lessonId'
+      path: '/academy/$courseId/$lessonId'
+      fullPath: '/academy/$courseId/$lessonId'
+      preLoaderRoute: typeof AppAcademyCourseIdLessonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/$customerId/edit': {
       id: '/_app/sales_/customers_/$customerId/edit'
       path: '/sales/customers/$customerId/edit'
@@ -1568,6 +1588,7 @@ interface AppRouteChildren {
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
+  AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
@@ -1618,6 +1639,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
+  AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppSalesCustomersCustomerIdCreditRoute:
