@@ -291,30 +291,39 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          city: string | null
           created_at: string
           email: string | null
           id: string
+          is_active: boolean
           name: string
+          notes: string | null
           phone: string | null
           tax_id: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name: string
+          notes?: string | null
           phone?: string | null
           tax_id?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean
           name?: string
+          notes?: string | null
           phone?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -615,10 +624,12 @@ export type Database = {
           issue_date: string
           notes: string | null
           number: string | null
+          sale_price_type_id: string | null
           status: string
           subtotal: number
           tax_amount: number
           total_amount: number
+          type: string
           updated_at: string
         }
         Insert: {
@@ -631,10 +642,12 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           number?: string | null
+          sale_price_type_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
           total_amount?: number
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -647,10 +660,12 @@ export type Database = {
           issue_date?: string
           notes?: string | null
           number?: string | null
+          sale_price_type_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
           total_amount?: number
+          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -659,6 +674,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
             referencedColumns: ["id"]
           },
         ]
@@ -2405,6 +2427,10 @@ export type Database = {
           out_values: Json
           total_count: number
         }[]
+      }
+      get_product_sale_price: {
+        Args: { _product_id: string; _sale_price_type_id?: string }
+        Returns: number
       }
       has_any_role: {
         Args: {

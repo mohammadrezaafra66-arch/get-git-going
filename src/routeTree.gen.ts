@@ -33,6 +33,8 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as AppSalesInvoicesRouteImport } from './routes/_app.sales_.invoices'
+import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -61,11 +63,14 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
+import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
@@ -188,6 +193,16 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSalesInvoicesRoute = AppSalesInvoicesRouteImport.update({
+  id: '/sales_/invoices',
+  path: '/sales/invoices',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSalesCustomersRoute = AppSalesCustomersRouteImport.update({
+  id: '/sales_/customers',
+  path: '/sales/customers',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
@@ -331,6 +346,16 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const AppSalesInvoicesCreateRoute = AppSalesInvoicesCreateRouteImport.update({
+  id: '/sales_/invoices_/create',
+  path: '/sales/invoices/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
+  id: '/sales_/customers_/create',
+  path: '/sales/customers/create',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -356,6 +381,12 @@ const AppPricingSaleListsListIdRoute =
     id: '/$listId',
     path: '/$listId',
     getParentRoute: () => AppPricingSaleListsRoute,
+  } as any)
+const AppSalesCustomersCustomerIdEditRoute =
+  AppSalesCustomersCustomerIdEditRouteImport.update({
+    id: '/sales_/customers_/$customerId/edit',
+    path: '/sales/customers/$customerId/edit',
+    getParentRoute: () => AppRoute,
   } as any)
 const AppPricingSaleListsListIdPublishRoute =
   AppPricingSaleListsListIdPublishRouteImport.update({
@@ -421,6 +452,8 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/sales/customers': typeof AppSalesCustomersRoute
+  '/sales/invoices': typeof AppSalesInvoicesRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -432,8 +465,11 @@ export interface FileRoutesByFullPath {
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -479,6 +515,8 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/sales/customers': typeof AppSalesCustomersRoute
+  '/sales/invoices': typeof AppSalesInvoicesRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -490,8 +528,11 @@ export interface FileRoutesByTo {
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -542,6 +583,8 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/_app/sales_/customers': typeof AppSalesCustomersRoute
+  '/_app/sales_/invoices': typeof AppSalesInvoicesRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -553,8 +596,11 @@ export interface FileRoutesById {
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
+  '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -605,6 +651,8 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/sales/customers'
+    | '/sales/invoices'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -616,8 +664,11 @@ export interface FileRouteTypes {
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/customers/create'
+    | '/sales/invoices/create'
     | '/sales/quotes/'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesByTo: FileRoutesByTo
@@ -663,6 +714,8 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/sales/customers'
+    | '/sales/invoices'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -674,8 +727,11 @@ export interface FileRouteTypes {
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/customers/create'
+    | '/sales/invoices/create'
     | '/sales/quotes'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   id:
@@ -725,6 +781,8 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/_app/sales_/customers'
+    | '/_app/sales_/invoices'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -736,8 +794,11 @@ export interface FileRouteTypes {
     | '/_app/products/$id/edit'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
+    | '/_app/sales_/customers_/create'
+    | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
     | '/_app/pricing/sale-lists/$listId/publish'
+    | '/_app/sales_/customers_/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesById: FileRoutesById
@@ -921,6 +982,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/sales_/invoices': {
+      id: '/_app/sales_/invoices'
+      path: '/sales/invoices'
+      fullPath: '/sales/invoices'
+      preLoaderRoute: typeof AppSalesInvoicesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sales_/customers': {
+      id: '/_app/sales_/customers'
+      path: '/sales/customers'
+      fullPath: '/sales/customers'
+      preLoaderRoute: typeof AppSalesCustomersRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/sales/stock-alerts': {
       id: '/_app/sales/stock-alerts'
@@ -1118,6 +1193,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/_app/sales_/invoices_/create': {
+      id: '/_app/sales_/invoices_/create'
+      path: '/sales/invoices/create'
+      fullPath: '/sales/invoices/create'
+      preLoaderRoute: typeof AppSalesInvoicesCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sales_/customers_/create': {
+      id: '/_app/sales_/customers_/create'
+      path: '/sales/customers/create'
+      fullPath: '/sales/customers/create'
+      preLoaderRoute: typeof AppSalesCustomersCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/new': {
       id: '/_app/sales/quotes/new'
       path: '/new'
@@ -1152,6 +1241,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pricing/sale-lists/$listId'
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
+    }
+    '/_app/sales_/customers_/$customerId/edit': {
+      id: '/_app/sales_/customers_/$customerId/edit'
+      path: '/sales/customers/$customerId/edit'
+      fullPath: '/sales/customers/$customerId/edit'
+      preLoaderRoute: typeof AppSalesCustomersCustomerIdEditRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/pricing/sale-lists/$listId/publish': {
       id: '/_app/pricing/sale-lists/$listId/publish'
@@ -1306,9 +1402,14 @@ interface AppRouteChildren {
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
+  AppSalesCustomersRoute: typeof AppSalesCustomersRoute
+  AppSalesInvoicesRoute: typeof AppSalesInvoicesRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
+  AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
+  AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1344,9 +1445,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsLabelsRoute: AppProductsLabelsRoute,
   AppProductsNewRoute: AppProductsNewRoute,
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
+  AppSalesCustomersRoute: AppSalesCustomersRoute,
+  AppSalesInvoicesRoute: AppSalesInvoicesRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
+  AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
+  AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
