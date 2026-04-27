@@ -28,6 +28,7 @@ import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppAcademyRouteImport } from './routes/_app.academy'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
@@ -173,6 +174,11 @@ const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
 const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAcademyRoute = AppAcademyRouteImport.update({
+  id: '/academy',
+  path: '/academy',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
@@ -521,6 +528,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
@@ -592,6 +600,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/_app/academy': typeof AppAcademyRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
@@ -666,6 +675,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/academy'
     | '/audit-logs'
     | '/bot-api-keys'
     | '/dashboard'
@@ -738,6 +748,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/academy'
     | '/audit-logs'
     | '/dashboard'
     | '/feedback'
@@ -808,6 +819,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/_app/academy'
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
     | '/_app/dashboard'
@@ -1019,6 +1031,13 @@ declare module '@tanstack/react-router' {
       path: '/audit-logs'
       fullPath: '/audit-logs'
       preLoaderRoute: typeof AppAuditLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/academy': {
+      id: '/_app/academy'
+      path: '/academy'
+      fullPath: '/academy'
+      preLoaderRoute: typeof AppAcademyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales/': {
@@ -1487,6 +1506,7 @@ const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAcademyRoute: typeof AppAcademyRoute
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
@@ -1535,6 +1555,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAcademyRoute: AppAcademyRoute,
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
