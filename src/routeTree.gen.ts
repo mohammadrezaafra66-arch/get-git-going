@@ -81,6 +81,7 @@ import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.ac
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
+import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
@@ -450,6 +451,12 @@ const AppPricingSaleListsListIdPublishRoute =
     path: '/publish',
     getParentRoute: () => AppPricingSaleListsListIdRoute,
   } as any)
+const AppAcademyCourseIdLessonIdQuizRoute =
+  AppAcademyCourseIdLessonIdQuizRouteImport.update({
+    id: '/academy_/$courseId_/$lessonId_/quiz',
+    path: '/academy/$courseId/$lessonId/quiz',
+    getParentRoute: () => AppRoute,
+  } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRoute =
   ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
     id: '/api/public/bot/dynamic-tables/$tableId/rows',
@@ -532,6 +539,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -604,6 +612,7 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
+  '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -681,6 +690,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -758,6 +768,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/create'
     | '/sales/quotes/'
+    | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -830,6 +841,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/create'
     | '/sales/quotes'
+    | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -906,6 +918,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
+    | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/pricing/sale-lists/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
@@ -1429,6 +1442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
       parentRoute: typeof AppPricingSaleListsListIdRoute
     }
+    '/_app/academy_/$courseId_/$lessonId_/quiz': {
+      id: '/_app/academy_/$courseId_/$lessonId_/quiz'
+      path: '/academy/$courseId/$lessonId/quiz'
+      fullPath: '/academy/$courseId/$lessonId/quiz'
+      preLoaderRoute: typeof AppAcademyCourseIdLessonIdQuizRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/bot/dynamic-tables/$tableId/rows': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows'
       path: '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1591,6 +1611,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
+  AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
@@ -1642,6 +1663,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
+  AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
