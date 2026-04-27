@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
+import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -62,6 +65,7 @@ function SalesSearchPage() {
   const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
 
   const [search, setSearch] = useState("");
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
   const [brandId, setBrandId] = useState<string>("__all");
   const [stockStatus, setStockStatus] = useState<string>("__all");
@@ -172,7 +176,16 @@ function SalesSearchPage() {
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
+        actions={
+          <RoleGuard roles={["admin", "manager", "sales", "accountant"]}>
+            <Button variant="outline" size="sm" onClick={() => setSupplierModalOpen(true)}>
+              <UserPlus className="ml-2 h-4 w-4" />
+              معرفی تأمین‌کننده جدید
+            </Button>
+          </RoleGuard>
+        }
       />
+      <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
 
       {/* search & price type */}
       <Card>
