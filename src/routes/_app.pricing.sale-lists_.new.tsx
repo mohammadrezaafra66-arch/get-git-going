@@ -51,7 +51,7 @@ import {
 
 const PAGE_SIZE = 20;
 
-export const Route = createFileRoute("/_app/pricing/sale-lists/new")({
+export const Route = createFileRoute("/_app/pricing/sale-lists_/new")({
   beforeLoad: async () => {
     await requirePermission("pricing", "create");
   },
