@@ -1592,6 +1592,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sale_list_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sale_list_versions_sale_list_id_fkey"
             columns: ["sale_list_id"]
             isOneToOne: false
@@ -1649,6 +1656,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_lists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
             referencedColumns: ["id"]
           },
           {
@@ -1888,6 +1902,13 @@ export type Database = {
             columns: ["attempted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_quote_share_logs_attempted_by_fkey"
+            columns: ["attempted_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
             referencedColumns: ["id"]
           },
           {
@@ -2150,7 +2171,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      publish_recipients_view: {
+        Row: {
+          full_name: string | null
+          id: string | null
+          roles: string[] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_dynamic_table_column: {
