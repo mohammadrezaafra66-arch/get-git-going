@@ -1,0 +1,1 @@
+ALTER TABLE public.sale_lists ADD COLUMN IF NOT EXISTS selected_columns jsonb;

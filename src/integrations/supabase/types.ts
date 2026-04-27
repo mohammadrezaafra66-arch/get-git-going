@@ -1608,6 +1608,7 @@ export type Database = {
           id: string
           name: string
           sale_price_type_id: string
+          selected_columns: Json | null
           status: string
           terms_text: string | null
           updated_at: string
@@ -1620,6 +1621,7 @@ export type Database = {
           id?: string
           name: string
           sale_price_type_id: string
+          selected_columns?: Json | null
           status?: string
           terms_text?: string | null
           updated_at?: string
@@ -1632,6 +1634,7 @@ export type Database = {
           id?: string
           name?: string
           sale_price_type_id?: string
+          selected_columns?: Json | null
           status?: string
           terms_text?: string | null
           updated_at?: string

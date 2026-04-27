@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { FileText, Plus, Search, ChevronRight, ChevronLeft } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -11,7 +11,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -73,19 +72,12 @@ function SaleListsPage() {
         title="لیست‌های فروش"
         description="مدیریت و انتشار لیست‌های رسمی فروش"
         actions={
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-block">
-                  <Button disabled className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    ایجاد لیست جدید
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>این بخش به‌زودی در دسترس خواهد بود.</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button asChild className="gap-2">
+            <Link to="/pricing/sale-lists/new">
+              <Plus className="h-4 w-4" />
+              ایجاد لیست جدید
+            </Link>
+          </Button>
         }
       />
 
