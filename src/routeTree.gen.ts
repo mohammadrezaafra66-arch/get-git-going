@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
+import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
@@ -104,6 +105,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSuppliersRoute = AppSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesRoute = AppSalesRouteImport.update({
@@ -437,6 +443,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
+  '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -503,6 +510,7 @@ export interface FileRoutesByTo {
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
+  '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -572,6 +580,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
+  '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -642,6 +651,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/sales'
+    | '/suppliers'
     | '/users'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/reports'
     | '/roles'
+    | '/suppliers'
     | '/users'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -776,6 +787,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/roles'
     | '/_app/sales'
+    | '/_app/suppliers'
     | '/_app/users'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -880,6 +892,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/suppliers': {
+      id: '/_app/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AppSuppliersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales': {
@@ -1423,6 +1442,7 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
+  AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
@@ -1467,6 +1487,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
+  AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
@@ -1529,3 +1550,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
