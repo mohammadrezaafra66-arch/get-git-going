@@ -13,7 +13,7 @@ const schema = z.object({
   content: z.string().trim().optional().or(z.literal("")),
   video_url: z.string().trim().max(500).optional().or(z.literal("")),
   attachment_url: z.string().trim().max(500).optional().or(z.literal("")),
-  order_index: z.coerce.number().int().min(0).default(0),
+  order_index: z.number().int().min(0),
 }).refine((d) => (d.content?.trim().length ?? 0) >= 10 || (d.video_url?.trim().length ?? 0) > 0, {
   message: "حداقل محتوا (۱۰ کاراکتر) یا آدرس ویدئو الزامی است",
   path: ["content"],
@@ -64,7 +64,12 @@ export function LessonForm({ defaultValues, onSubmit, submitting, submitLabel = 
         </div>
         <div className="space-y-1.5">
           <Label>ترتیب</Label>
-          <Input type="number" min={0} {...form.register("order_index")} />
+          <Input
+            type="number"
+            min={0}
+            value={form.watch("order_index")}
+            onChange={(e) => form.setValue("order_index", Number(e.target.value) || 0, { shouldDirty: true })}
+          />
         </div>
       </div>
       <div className="space-y-1.5">
