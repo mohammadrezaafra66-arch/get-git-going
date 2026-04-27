@@ -63,6 +63,7 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -345,6 +346,11 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const AppSalesInvoicesCreateRoute = AppSalesInvoicesCreateRouteImport.update({
+  id: '/sales_/invoices_/create',
+  path: '/sales/invoices/create',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   id: '/sales_/customers_/create',
   path: '/sales/customers/create',
@@ -460,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -589,6 +597,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
+  '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -656,6 +665,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/invoices/create'
     | '/sales/quotes/'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/edit'
@@ -718,6 +728,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/invoices/create'
     | '/sales/quotes'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/edit'
@@ -784,6 +795,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales_/customers_/create'
+    | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
     | '/_app/pricing/sale-lists/$listId/publish'
     | '/_app/sales_/customers_/$customerId/edit'
@@ -1181,6 +1193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/_app/sales_/invoices_/create': {
+      id: '/_app/sales_/invoices_/create'
+      path: '/sales/invoices/create'
+      fullPath: '/sales/invoices/create'
+      preLoaderRoute: typeof AppSalesInvoicesCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/create': {
       id: '/_app/sales_/customers_/create'
       path: '/sales/customers/create'
@@ -1389,6 +1408,7 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
@@ -1431,6 +1451,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
 }
 
