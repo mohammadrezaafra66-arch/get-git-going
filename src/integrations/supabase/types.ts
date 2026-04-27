@@ -952,6 +952,103 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_confirmations: {
+        Row: {
+          confirmed_at: string
+          document_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          document_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          document_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_confirmations_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_confirmations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_confirmations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_documents: {
+        Row: {
+          access_level: string
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_published: boolean
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          access_level?: string
+          category: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_published?: boolean
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          access_level?: string
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_published?: boolean
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string
@@ -2751,6 +2848,10 @@ export type Database = {
       import_dynamic_table_rows: {
         Args: { p_rows: Json; p_session_id?: string; p_table_id: string }
         Returns: Json
+      }
+      kd_role_can_view: {
+        Args: { _access_level: string; _uid: string }
+        Returns: boolean
       }
       log_event: {
         Args: {
