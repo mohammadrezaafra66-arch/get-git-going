@@ -199,7 +199,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
 export function previewSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
   const doc = pdfMake.createPdf(buildDocDefinition(input));
-  doc.getBlob((blob) => {
+  (doc as any).getBlob((blob: Blob) => {
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
