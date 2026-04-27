@@ -63,6 +63,8 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
+import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
+import { Route as AppFeedbackFeedbackIdRouteImport } from './routes/_app.feedback_.$feedbackId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
 import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tables.$tableId'
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
@@ -357,6 +359,16 @@ const AppKnowledgeDocumentIdRoute = AppKnowledgeDocumentIdRouteImport.update({
   path: '/knowledge/$documentId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFeedbackCreateRoute = AppFeedbackCreateRouteImport.update({
+  id: '/feedback_/create',
+  path: '/feedback/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeedbackFeedbackIdRoute = AppFeedbackFeedbackIdRouteImport.update({
+  id: '/feedback_/$feedbackId',
+  path: '/feedback/$feedbackId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDataTablesNewRoute = AppDataTablesNewRouteImport.update({
   id: '/data-tables/new',
   path: '/data-tables/new',
@@ -503,6 +515,8 @@ export interface FileRoutesByFullPath {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
+  '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -578,6 +592,8 @@ export interface FileRoutesByTo {
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/data-tables/new': typeof AppDataTablesNewRoute
+  '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
+  '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -656,6 +672,8 @@ export interface FileRoutesById {
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
   '/_app/data-tables/$tableId': typeof AppDataTablesTableIdRoute
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
+  '/_app/feedback_/$feedbackId': typeof AppFeedbackFeedbackIdRoute
+  '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -735,6 +753,8 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/feedback/$feedbackId'
+    | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/pricing/calculator'
@@ -810,6 +830,8 @@ export interface FileRouteTypes {
     | '/bot-api-keys/usage'
     | '/data-tables/$tableId'
     | '/data-tables/new'
+    | '/feedback/$feedbackId'
+    | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/pricing/calculator'
@@ -887,6 +909,8 @@ export interface FileRouteTypes {
     | '/_app/bot-api-keys/usage'
     | '/_app/data-tables/$tableId'
     | '/_app/data-tables/new'
+    | '/_app/feedback_/$feedbackId'
+    | '/_app/feedback_/create'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
     | '/_app/pricing/calculator'
@@ -1328,6 +1352,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKnowledgeDocumentIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/feedback_/create': {
+      id: '/_app/feedback_/create'
+      path: '/feedback/create'
+      fullPath: '/feedback/create'
+      preLoaderRoute: typeof AppFeedbackCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/feedback_/$feedbackId': {
+      id: '/_app/feedback_/$feedbackId'
+      path: '/feedback/$feedbackId'
+      fullPath: '/feedback/$feedbackId'
+      preLoaderRoute: typeof AppFeedbackFeedbackIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/data-tables/new': {
       id: '/_app/data-tables/new'
       path: '/data-tables/new'
@@ -1603,6 +1641,8 @@ interface AppRouteChildren {
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
+  AppFeedbackFeedbackIdRoute: typeof AppFeedbackFeedbackIdRoute
+  AppFeedbackCreateRoute: typeof AppFeedbackCreateRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -1656,6 +1696,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
+  AppFeedbackFeedbackIdRoute: AppFeedbackFeedbackIdRoute,
+  AppFeedbackCreateRoute: AppFeedbackCreateRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
@@ -1720,12 +1762,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
