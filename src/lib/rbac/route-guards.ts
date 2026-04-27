@@ -30,3 +30,15 @@ export async function requireAdmin() {
   if (!roles.includes("admin")) throw redirect({ to: "/unauthorized" });
   return { user, roles };
 }
+
+/** بررسی اینکه کاربر یکی از نقش‌های مجاز را داشته باشد. */
+export async function requireAnyRole(allowed: AppRole[]) {
+  const auth = await ensureAuthReady();
+  const user = auth.user;
+  if (!user) throw redirect({ to: "/login" });
+  if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
+  if (auth.rolesError) throw new Error(`بارگذاری نقش‌های کاربر ناموفق بود: ${auth.rolesError}`);
+  const roles = auth.roles as AppRole[];
+  if (!roles.some((r) => allowed.includes(r))) throw redirect({ to: "/unauthorized" });
+  return { user, roles };
+}
