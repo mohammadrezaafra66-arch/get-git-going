@@ -17,6 +17,7 @@ import {
   FileText,
   Download,
   Send,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -277,6 +278,35 @@ function SaleListDetailPage() {
                   {list.status === "published" ? "بازنشر" : "انتشار"}
                 </Link>
               </Button>
+            )}
+            {list.status === "published" && (
+              <>
+                <Button asChild variant="outline" size="sm" className="gap-1">
+                  <a
+                    href={`/public/sale-lists/${list.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Link2 className="h-4 w-4" /> مشاهده نسخه عمومی
+                  </a>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={async () => {
+                    const url = `${window.location.origin}/public/sale-lists/${list.id}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast.success("لینک عمومی کپی شد.");
+                    } catch {
+                      toast.error("کپی لینک ناموفق بود.");
+                    }
+                  }}
+                >
+                  کپی لینک عمومی
+                </Button>
+              </>
             )}
             <Button asChild variant="outline" size="sm" className="gap-1">
               <Link to="/pricing/sale-lists">
