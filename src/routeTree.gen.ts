@@ -32,6 +32,7 @@ import { Route as AppProductsIndexRouteImport } from './routes/_app.products.ind
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
+import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
@@ -181,6 +182,11 @@ const AppBotApiKeysIndexRoute = AppBotApiKeysIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppBotApiKeysRoute,
+} as any)
+const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
+  id: '/public/sale-lists/$listId',
+  path: '/public/sale-lists/$listId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppSalesStockAlertsRoute = AppSalesStockAlertsRouteImport.update({
   id: '/stock-alerts',
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
   '/pricing/': typeof AppPricingIndexRoute
@@ -464,6 +471,7 @@ export interface FileRoutesByTo {
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
   '/pricing': typeof AppPricingIndexRoute
@@ -525,6 +533,7 @@ export interface FileRoutesById {
   '/_app/sales/search': typeof AppSalesSearchRoute
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
+  '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
   '/_app/pricing/': typeof AppPricingIndexRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
     | '/pricing/'
@@ -642,6 +652,7 @@ export interface FileRouteTypes {
     | '/sales/search'
     | '/sales/send-queue'
     | '/sales/stock-alerts'
+    | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
     | '/pricing'
@@ -702,6 +713,7 @@ export interface FileRouteTypes {
     | '/_app/sales/search'
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
+    | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
     | '/_app/pricing/'
@@ -724,6 +736,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
 }
 
@@ -889,6 +902,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/bot-api-keys/'
       preLoaderRoute: typeof AppBotApiKeysIndexRouteImport
       parentRoute: typeof AppBotApiKeysRoute
+    }
+    '/public/sale-lists/$listId': {
+      id: '/public/sale-lists/$listId'
+      path: '/public/sale-lists/$listId'
+      fullPath: '/public/sale-lists/$listId'
+      preLoaderRoute: typeof PublicSaleListsListIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/sales/stock-alerts': {
       id: '/_app/sales/stock-alerts'
@@ -1331,6 +1351,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
 }
