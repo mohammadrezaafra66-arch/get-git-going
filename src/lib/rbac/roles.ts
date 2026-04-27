@@ -27,7 +27,8 @@ export type ModuleKey =
   | "audit-logs"
   | "data-tables"
   | "bot-api-keys"
-  | "suppliers";
+  | "suppliers"
+  | "academy";
 
 export type Action = "view" | "create" | "update" | "delete";
 
@@ -64,6 +65,12 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     create: ["admin","accountant"],
     update: ["admin","accountant"],
     delete: ["admin"],
+  },
+  academy: {
+    view: ALL_ROLES,
+    create: ["admin","manager"],
+    update: ["admin","manager"],
+    delete: ["admin","manager"],
   },
 };
 

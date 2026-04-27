@@ -28,6 +28,7 @@ import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppAcademyRouteImport } from './routes/_app.academy'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
@@ -67,6 +68,8 @@ import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tab
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
+import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
+import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -75,9 +78,11 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
+import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
@@ -173,6 +178,11 @@ const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
 const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAcademyRoute = AppAcademyRouteImport.update({
+  id: '/academy',
+  path: '/academy',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
@@ -372,6 +382,16 @@ const AppBotApiKeysDocsRoute = AppBotApiKeysDocsRouteImport.update({
   path: '/docs',
   getParentRoute: () => AppBotApiKeysRoute,
 } as any)
+const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
+  id: '/academy_/manage',
+  path: '/academy/manage',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAcademyCourseIdRoute = AppAcademyCourseIdRouteImport.update({
+  id: '/academy_/$courseId',
+  path: '/academy/$courseId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -413,6 +433,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/$listId',
     getParentRoute: () => AppPricingSaleListsRoute,
   } as any)
+const AppAcademyCourseIdLessonIdRoute =
+  AppAcademyCourseIdLessonIdRouteImport.update({
+    id: '/academy_/$courseId_/$lessonId',
+    path: '/academy/$courseId/$lessonId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCustomerIdEditRoute =
   AppSalesCustomersCustomerIdEditRouteImport.update({
     id: '/sales_/customers_/$customerId/edit',
@@ -430,6 +456,12 @@ const AppPricingSaleListsListIdPublishRoute =
     id: '/publish',
     path: '/publish',
     getParentRoute: () => AppPricingSaleListsListIdRoute,
+  } as any)
+const AppAcademyCourseIdLessonIdQuizRoute =
+  AppAcademyCourseIdLessonIdQuizRouteImport.update({
+    id: '/academy_/$courseId_/$lessonId_/quiz',
+    path: '/academy/$courseId/$lessonId/quiz',
+    getParentRoute: () => AppRoute,
   } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRoute =
   ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
@@ -449,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
@@ -463,6 +496,8 @@ export interface FileRoutesByFullPath {
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
+  '/academy/$courseId': typeof AppAcademyCourseIdRoute
+  '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -502,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
+  '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -510,6 +546,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -521,6 +558,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
@@ -533,6 +571,8 @@ export interface FileRoutesByTo {
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
+  '/academy/$courseId': typeof AppAcademyCourseIdRoute
+  '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -571,6 +611,7 @@ export interface FileRoutesByTo {
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
+  '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -579,6 +620,7 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
+  '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -592,6 +634,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/_app/academy': typeof AppAcademyRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
@@ -606,6 +649,8 @@ export interface FileRoutesById {
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
+  '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -645,6 +690,7 @@ export interface FileRoutesById {
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
+  '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
@@ -653,6 +699,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
+  '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -666,6 +713,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/academy'
     | '/audit-logs'
     | '/bot-api-keys'
     | '/dashboard'
@@ -680,6 +728,8 @@ export interface FileRouteTypes {
     | '/sales'
     | '/suppliers'
     | '/users'
+    | '/academy/$courseId'
+    | '/academy/manage'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -719,6 +769,7 @@ export interface FileRouteTypes {
     | '/pricing/'
     | '/products/'
     | '/sales/'
+    | '/academy/$courseId/$lessonId'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -727,6 +778,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/create'
     | '/sales/quotes/'
+    | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -738,6 +790,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/academy'
     | '/audit-logs'
     | '/dashboard'
     | '/feedback'
@@ -750,6 +803,8 @@ export interface FileRouteTypes {
     | '/roles'
     | '/suppliers'
     | '/users'
+    | '/academy/$courseId'
+    | '/academy/manage'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -788,6 +843,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/products'
     | '/sales'
+    | '/academy/$courseId/$lessonId'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -796,6 +852,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/create'
     | '/sales/quotes'
+    | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -808,6 +865,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/reset-password'
     | '/unauthorized'
+    | '/_app/academy'
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
     | '/_app/dashboard'
@@ -822,6 +880,8 @@ export interface FileRouteTypes {
     | '/_app/sales'
     | '/_app/suppliers'
     | '/_app/users'
+    | '/_app/academy_/$courseId'
+    | '/_app/academy_/manage'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
     | '/_app/bot-api-keys/usage'
@@ -861,6 +921,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
+    | '/_app/academy_/$courseId_/$lessonId'
     | '/_app/pricing/sale-lists/$listId'
     | '/_app/pricing/sale-lists/new'
     | '/_app/products/$id/edit'
@@ -869,6 +930,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
+    | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/pricing/sale-lists/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
@@ -1019,6 +1081,13 @@ declare module '@tanstack/react-router' {
       path: '/audit-logs'
       fullPath: '/audit-logs'
       preLoaderRoute: typeof AppAuditLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/academy': {
+      id: '/_app/academy'
+      path: '/academy'
+      fullPath: '/academy'
+      preLoaderRoute: typeof AppAcademyRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales/': {
@@ -1294,6 +1363,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBotApiKeysDocsRouteImport
       parentRoute: typeof AppBotApiKeysRoute
     }
+    '/_app/academy_/manage': {
+      id: '/_app/academy_/manage'
+      path: '/academy/manage'
+      fullPath: '/academy/manage'
+      preLoaderRoute: typeof AppAcademyManageRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/academy_/$courseId': {
+      id: '/_app/academy_/$courseId'
+      path: '/academy/$courseId'
+      fullPath: '/academy/$courseId'
+      preLoaderRoute: typeof AppAcademyCourseIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -1350,6 +1433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
     }
+    '/_app/academy_/$courseId_/$lessonId': {
+      id: '/_app/academy_/$courseId_/$lessonId'
+      path: '/academy/$courseId/$lessonId'
+      fullPath: '/academy/$courseId/$lessonId'
+      preLoaderRoute: typeof AppAcademyCourseIdLessonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/$customerId/edit': {
       id: '/_app/sales_/customers_/$customerId/edit'
       path: '/sales/customers/$customerId/edit'
@@ -1370,6 +1460,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pricing/sale-lists/$listId/publish'
       preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
       parentRoute: typeof AppPricingSaleListsListIdRoute
+    }
+    '/_app/academy_/$courseId_/$lessonId_/quiz': {
+      id: '/_app/academy_/$courseId_/$lessonId_/quiz'
+      path: '/academy/$courseId/$lessonId/quiz'
+      fullPath: '/academy/$courseId/$lessonId/quiz'
+      preLoaderRoute: typeof AppAcademyCourseIdLessonIdQuizRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/public/bot/dynamic-tables/$tableId/rows': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1487,6 +1584,7 @@ const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAcademyRoute: typeof AppAcademyRoute
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
@@ -1501,6 +1599,8 @@ interface AppRouteChildren {
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
+  AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
@@ -1528,13 +1628,16 @@ interface AppRouteChildren {
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
+  AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
+  AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAcademyRoute: AppAcademyRoute,
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
@@ -1549,6 +1652,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
+  AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
+  AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
@@ -1576,8 +1681,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
+  AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
+  AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
@@ -1613,3 +1720,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
