@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, DollarSign, ShoppingCart, ShoppingBag,
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
-  MessageSquare, Mail, ScrollText, Database, KeyRound,
+  MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -20,6 +20,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing",     label: "قیمت‌گذاری",       icon: DollarSign,      module: "pricing",     group: "operations" },
   { to: "/purchases",   label: "خرید",            icon: ShoppingBag,     module: "purchases",   group: "finance" },
   { to: "/sales",       label: "فروش",            icon: ShoppingCart,    module: "sales",       group: "finance" },
+  { to: "/sales/customers", label: "مشتریان",      icon: UserSquare2,    module: "sales",       group: "finance" },
+  { to: "/sales/invoices",  label: "پیش‌فاکتورها", icon: FileText,       module: "invoices",    group: "finance" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
   { to: "/users",       label: "کاربران",          icon: Users,           module: "users",       group: "admin" },
