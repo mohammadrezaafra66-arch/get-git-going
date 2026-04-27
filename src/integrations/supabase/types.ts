@@ -1484,6 +1484,48 @@ export type Database = {
         }
         Relationships: []
       }
+      product_suppliers: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean
+          notes: string | null
+          product_id: string
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          product_id: string
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          product_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_suppliers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_suppliers_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           base_currency: Database["public"]["Enums"]["base_currency"]
@@ -2381,12 +2423,14 @@ export type Database = {
           city: string | null
           contact_name: string | null
           created_at: string
+          created_by: string | null
           email: string | null
           id: string
           is_active: boolean
           name: string
           notes: string | null
           phone: string | null
+          status: string
           trust_level: string | null
           updated_at: string
         }
@@ -2395,12 +2439,14 @@ export type Database = {
           city?: string | null
           contact_name?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
           phone?: string | null
+          status?: string
           trust_level?: string | null
           updated_at?: string
         }
@@ -2409,16 +2455,33 @@ export type Database = {
           city?: string | null
           contact_name?: string | null
           created_at?: string
+          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
           name?: string
           notes?: string | null
           phone?: string | null
+          status?: string
           trust_level?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
