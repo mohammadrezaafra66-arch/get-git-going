@@ -45,6 +45,7 @@ import { Route as AppProductsAttributesRouteImport } from './routes/_app.product
 import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
+import { Route as AppPricingSaleListsRouteImport } from './routes/_app.pricing.sale-lists'
 import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
 import { Route as AppPricingQuickPriceRouteImport } from './routes/_app.pricing.quick-price'
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
@@ -244,6 +245,11 @@ const AppPricingSalePriceTypesRoute =
     path: '/pricing/sale-price-types',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPricingSaleListsRoute = AppPricingSaleListsRouteImport.update({
+  id: '/pricing/sale-lists',
+  path: '/pricing/sale-lists',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPricingRulesRoute = AppPricingRulesRouteImport.update({
   id: '/pricing/rules',
   path: '/pricing/rules',
@@ -368,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
+  '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
@@ -421,6 +428,7 @@ export interface FileRoutesByTo {
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
+  '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
@@ -477,6 +485,7 @@ export interface FileRoutesById {
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/_app/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/_app/pricing/rules': typeof AppPricingRulesRoute
+  '/_app/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
@@ -534,6 +543,7 @@ export interface FileRouteTypes {
     | '/pricing/purchase-prices'
     | '/pricing/quick-price'
     | '/pricing/rules'
+    | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/pricing/purchase-prices'
     | '/pricing/quick-price'
     | '/pricing/rules'
+    | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
@@ -642,6 +653,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/purchase-prices'
     | '/_app/pricing/quick-price'
     | '/_app/pricing/rules'
+    | '/_app/pricing/sale-lists'
     | '/_app/pricing/sale-price-types'
     | '/_app/pricing/shipping-rules'
     | '/_app/products/$id'
@@ -931,6 +943,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSalePriceTypesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/sale-lists': {
+      id: '/_app/pricing/sale-lists'
+      path: '/pricing/sale-lists'
+      fullPath: '/pricing/sale-lists'
+      preLoaderRoute: typeof AppPricingSaleListsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/rules': {
       id: '/_app/pricing/rules'
       path: '/pricing/rules'
@@ -1151,6 +1170,7 @@ interface AppRouteChildren {
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
   AppPricingQuickPriceRoute: typeof AppPricingQuickPriceRoute
   AppPricingRulesRoute: typeof AppPricingRulesRoute
+  AppPricingSaleListsRoute: typeof AppPricingSaleListsRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
@@ -1187,6 +1207,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
   AppPricingQuickPriceRoute: AppPricingQuickPriceRoute,
   AppPricingRulesRoute: AppPricingRulesRoute,
+  AppPricingSaleListsRoute: AppPricingSaleListsRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,

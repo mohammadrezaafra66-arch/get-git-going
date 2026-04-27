@@ -1504,6 +1504,156 @@ export type Database = {
           },
         ]
       }
+      sale_list_items: {
+        Row: {
+          change_amount: number | null
+          change_percent: number | null
+          created_at: string
+          current_price: number
+          id: string
+          previous_price: number | null
+          product_id: string
+          sale_list_id: string
+          sort_order: number
+          stock_status: string | null
+        }
+        Insert: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string
+          current_price: number
+          id?: string
+          previous_price?: number | null
+          product_id: string
+          sale_list_id: string
+          sort_order?: number
+          stock_status?: string | null
+        }
+        Update: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string
+          current_price?: number
+          id?: string
+          previous_price?: number | null
+          product_id?: string
+          sale_list_id?: string
+          sort_order?: number
+          stock_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_list_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_list_items_sale_list_id_fkey"
+            columns: ["sale_list_id"]
+            isOneToOne: false
+            referencedRelation: "sale_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sale_list_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          sale_list_id: string
+          snapshot_data: Json
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sale_list_id: string
+          snapshot_data: Json
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sale_list_id?: string
+          snapshot_data?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_list_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_list_versions_sale_list_id_fkey"
+            columns: ["sale_list_id"]
+            isOneToOne: false
+            referencedRelation: "sale_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sale_lists: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          sale_price_type_id: string
+          status: string
+          terms_text: string | null
+          updated_at: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          sale_price_type_id: string
+          status?: string
+          terms_text?: string | null
+          updated_at?: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sale_price_type_id?: string
+          status?: string
+          terms_text?: string | null
+          updated_at?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_lists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_lists_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_price_types: {
         Row: {
           code: string
