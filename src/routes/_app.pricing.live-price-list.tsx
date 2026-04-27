@@ -71,6 +71,7 @@ function LivePriceListPage() {
 
   // ---------- filters ----------
   const [search, setSearch] = useState("");
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
   const [brandId, setBrandId] = useState<string>("__all");
   const [categoryId, setCategoryId] = useState<string>("__all");
@@ -268,7 +269,16 @@ function LivePriceListPage() {
       <PageHeader
         title="لیست قیمت زنده محصولات"
         description="آخرین قیمت فروش ثبت‌شده هر محصول بر اساس تاریخچه قیمت فروش"
+        actions={
+          <RoleGuard roles={["admin", "manager", "sales", "accountant"]}>
+            <Button variant="outline" size="sm" onClick={() => setSupplierModalOpen(true)}>
+              <UserPlus className="ml-2 h-4 w-4" />
+              معرفی تأمین‌کننده جدید
+            </Button>
+          </RoleGuard>
+        }
       />
+      <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
 
       {/* summary */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
