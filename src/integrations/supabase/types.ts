@@ -1464,9 +1464,14 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          currency: string | null
           id: string
           notes: string | null
           number: string | null
+          product_id: string | null
+          purchase_date: string
+          purchase_price: number | null
+          quantity: number
           status: string
           supplier_id: string | null
           total_amount: number
@@ -1475,9 +1480,14 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           notes?: string | null
           number?: string | null
+          product_id?: string | null
+          purchase_date?: string
+          purchase_price?: number | null
+          quantity?: number
           status?: string
           supplier_id?: string | null
           total_amount?: number
@@ -1486,15 +1496,27 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           notes?: string | null
           number?: string | null
+          product_id?: string | null
+          purchase_date?: string
+          purchase_price?: number | null
+          quantity?: number
           status?: string
           supplier_id?: string | null
           total_amount?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchases_supplier_id_fkey"
             columns: ["supplier_id"]
