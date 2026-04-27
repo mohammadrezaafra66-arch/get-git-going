@@ -144,7 +144,8 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
   return {
     pageSize: "A4",
     pageMargins: [25, 80, 25, 60],
-    defaultStyle: { font: "Vazirmatn", fontSize: 10, alignment: "right" },
+    // RTL document — explicit direction + right alignment for all default text
+    defaultStyle: { font: "Vazirmatn", fontSize: 10, alignment: "right", direction: "rtl" } as any,
     info: {
       title: `لیست فروش - ${input.listName}`,
       author: "افراکالا",
