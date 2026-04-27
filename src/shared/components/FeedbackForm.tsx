@@ -21,7 +21,7 @@ const schema = z.object({
   where_occurred: z.string().trim().max(500).optional().or(z.literal("")),
   impact: z.string().trim().max(1000).optional().or(z.literal("")),
   suggestion: z.string().trim().max(1500).optional().or(z.literal("")),
-  attachments: z.array(z.object({ url: z.string() })).default([]),
+  attachments: z.array(z.object({ url: z.string() })),
 });
 
 export type FeedbackFormValues = z.infer<typeof schema>;
