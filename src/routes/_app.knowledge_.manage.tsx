@@ -101,14 +101,15 @@ function KnowledgeManagePage() {
       });
       const publishToggled = original.is_published !== values.is_published;
 
+      const action = publishToggled
+        ? (values.is_published ? "knowledge_document_published" : "knowledge_document_updated")
+        : "knowledge_document_updated";
       const { error: aErr } = await supabase.from("audit_logs").insert({
-        action: publishToggled
-          ? (values.is_published ? "knowledge_document_published" : "knowledge_document_updated")
-          : "knowledge_document_updated",
+        action,
         entity_type: "knowledge_document",
         entity_id: id,
         actor_id: user.id,
-        diff: diff as unknown as Record<string, unknown>,
+        diff: JSON.parse(JSON.stringify(diff)),
       });
       if (aErr) console.warn("audit insert failed:", aErr);
     },
