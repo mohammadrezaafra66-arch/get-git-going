@@ -78,12 +78,12 @@ import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
-import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
-import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
+import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
-import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
+import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
@@ -435,15 +435,15 @@ const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
   getParentRoute: () => AppProductsIdRoute,
 } as any)
 const AppPricingSaleListsNewRoute = AppPricingSaleListsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => AppPricingSaleListsRoute,
+  id: '/pricing/sale-lists_/new',
+  path: '/pricing/sale-lists/new',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPricingSaleListsListIdRoute =
   AppPricingSaleListsListIdRouteImport.update({
-    id: '/$listId',
-    path: '/$listId',
-    getParentRoute: () => AppPricingSaleListsRoute,
+    id: '/pricing/sale-lists_/$listId',
+    path: '/pricing/sale-lists/$listId',
+    getParentRoute: () => AppRoute,
   } as any)
 const AppAcademyCourseIdLessonIdRoute =
   AppAcademyCourseIdLessonIdRouteImport.update({
@@ -526,7 +526,7 @@ export interface FileRoutesByFullPath {
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
-  '/pricing/sale-lists': typeof AppPricingSaleListsRouteWithChildren
+  '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
@@ -603,7 +603,7 @@ export interface FileRoutesByTo {
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/pricing/rules': typeof AppPricingRulesRoute
-  '/pricing/sale-lists': typeof AppPricingSaleListsRouteWithChildren
+  '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
@@ -683,7 +683,7 @@ export interface FileRoutesById {
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/_app/pricing/quick-price': typeof AppPricingQuickPriceRoute
   '/_app/pricing/rules': typeof AppPricingRulesRoute
-  '/_app/pricing/sale-lists': typeof AppPricingSaleListsRouteWithChildren
+  '/_app/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
@@ -709,8 +709,8 @@ export interface FileRoutesById {
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
-  '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
-  '/_app/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
+  '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
+  '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
@@ -718,7 +718,7 @@ export interface FileRoutesById {
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
-  '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -946,8 +946,8 @@ export interface FileRouteTypes {
     | '/_app/products/'
     | '/_app/sales/'
     | '/_app/academy_/$courseId_/$lessonId'
-    | '/_app/pricing/sale-lists/$listId'
-    | '/_app/pricing/sale-lists/new'
+    | '/_app/pricing/sale-lists_/$listId'
+    | '/_app/pricing/sale-lists_/new'
     | '/_app/products/$id/edit'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
@@ -955,7 +955,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
-    | '/_app/pricing/sale-lists/$listId/publish'
+    | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1457,19 +1457,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProductsIdEditRouteImport
       parentRoute: typeof AppProductsIdRoute
     }
-    '/_app/pricing/sale-lists/new': {
-      id: '/_app/pricing/sale-lists/new'
-      path: '/new'
+    '/_app/pricing/sale-lists_/new': {
+      id: '/_app/pricing/sale-lists_/new'
+      path: '/pricing/sale-lists/new'
       fullPath: '/pricing/sale-lists/new'
       preLoaderRoute: typeof AppPricingSaleListsNewRouteImport
-      parentRoute: typeof AppPricingSaleListsRoute
+      parentRoute: typeof AppRoute
     }
-    '/_app/pricing/sale-lists/$listId': {
-      id: '/_app/pricing/sale-lists/$listId'
-      path: '/$listId'
+    '/_app/pricing/sale-lists_/$listId': {
+      id: '/_app/pricing/sale-lists_/$listId'
+      path: '/pricing/sale-lists/$listId'
       fullPath: '/pricing/sale-lists/$listId'
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
-      parentRoute: typeof AppPricingSaleListsRoute
+      parentRoute: typeof AppRoute
     }
     '/_app/academy_/$courseId_/$lessonId': {
       id: '/_app/academy_/$courseId_/$lessonId'
@@ -1492,8 +1492,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersCustomerIdCreditRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/pricing/sale-lists/$listId/publish': {
-      id: '/_app/pricing/sale-lists/$listId/publish'
+    '/_app/pricing/sale-lists_/$listId/publish': {
+      id: '/_app/pricing/sale-lists_/$listId/publish'
       path: '/publish'
       fullPath: '/pricing/sale-lists/$listId/publish'
       preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
@@ -1581,6 +1581,18 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
   AppSalesRouteChildren,
 )
 
+interface AppProductsIdRouteChildren {
+  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
+}
+
+const AppProductsIdRouteChildren: AppProductsIdRouteChildren = {
+  AppProductsIdEditRoute: AppProductsIdEditRoute,
+}
+
+const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
+  AppProductsIdRouteChildren,
+)
+
 interface AppPricingSaleListsListIdRouteChildren {
   AppPricingSaleListsListIdPublishRoute: typeof AppPricingSaleListsListIdPublishRoute
 }
@@ -1595,31 +1607,6 @@ const AppPricingSaleListsListIdRouteWithChildren =
   AppPricingSaleListsListIdRoute._addFileChildren(
     AppPricingSaleListsListIdRouteChildren,
   )
-
-interface AppPricingSaleListsRouteChildren {
-  AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
-  AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
-}
-
-const AppPricingSaleListsRouteChildren: AppPricingSaleListsRouteChildren = {
-  AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
-  AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
-}
-
-const AppPricingSaleListsRouteWithChildren =
-  AppPricingSaleListsRoute._addFileChildren(AppPricingSaleListsRouteChildren)
-
-interface AppProductsIdRouteChildren {
-  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
-}
-
-const AppProductsIdRouteChildren: AppProductsIdRouteChildren = {
-  AppProductsIdEditRoute: AppProductsIdEditRoute,
-}
-
-const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
-  AppProductsIdRouteChildren,
-)
 
 interface AppRouteChildren {
   AppAcademyRoute: typeof AppAcademyRoute
@@ -1652,7 +1639,7 @@ interface AppRouteChildren {
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
   AppPricingQuickPriceRoute: typeof AppPricingQuickPriceRoute
   AppPricingRulesRoute: typeof AppPricingRulesRoute
-  AppPricingSaleListsRoute: typeof AppPricingSaleListsRouteWithChildren
+  AppPricingSaleListsRoute: typeof AppPricingSaleListsRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
@@ -1669,6 +1656,8 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
+  AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
+  AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -1707,7 +1696,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
   AppPricingQuickPriceRoute: AppPricingQuickPriceRoute,
   AppPricingRulesRoute: AppPricingRulesRoute,
-  AppPricingSaleListsRoute: AppPricingSaleListsRouteWithChildren,
+  AppPricingSaleListsRoute: AppPricingSaleListsRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,
@@ -1724,6 +1713,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
+  AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
+  AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
@@ -1762,3 +1753,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
