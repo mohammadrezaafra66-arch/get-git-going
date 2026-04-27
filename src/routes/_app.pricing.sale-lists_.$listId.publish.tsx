@@ -26,7 +26,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { ROLE_LABELS, type AppRole } from "@/lib/rbac/roles";
 
-export const Route = createFileRoute("/_app/pricing/sale-lists/$listId/publish")({
+export const Route = createFileRoute("/_app/pricing/sale-lists_/$listId/publish")({
   beforeLoad: async () => {
     await requirePermission("pricing", "update");
   },
