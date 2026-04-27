@@ -1066,6 +1066,66 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_items: {
+        Row: {
+          assigned_to: string | null
+          attachment_urls: Json
+          converted_task_id: string | null
+          created_at: string
+          description: string
+          id: string
+          impact: string | null
+          responded_at: string | null
+          responded_by: string | null
+          response: string | null
+          status: string
+          submitted_by: string
+          suggestion: string | null
+          title: string
+          type: string
+          updated_at: string
+          where_occurred: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          attachment_urls?: Json
+          converted_task_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          impact?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          status?: string
+          submitted_by: string
+          suggestion?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          where_occurred?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          attachment_urls?: Json
+          converted_task_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          impact?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response?: string | null
+          status?: string
+          submitted_by?: string
+          suggestion?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          where_occurred?: string | null
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           discount: number
