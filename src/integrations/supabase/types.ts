@@ -252,6 +252,184 @@ export type Database = {
           },
         ]
       }
+      credit_requests: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          notes: string | null
+          requested_amount: number
+          requested_by: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          requested_amount: number
+          requested_by?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          requested_amount?: number
+          requested_by?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_requests_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_score_snapshots: {
+        Row: {
+          calculated_at: string
+          calculated_by: string | null
+          credit_limit: number
+          customer_id: string
+          id: string
+          params_used: Json
+          score: number
+        }
+        Insert: {
+          calculated_at?: string
+          calculated_by?: string | null
+          credit_limit?: number
+          customer_id: string
+          id?: string
+          params_used?: Json
+          score: number
+        }
+        Update: {
+          calculated_at?: string
+          calculated_by?: string | null
+          credit_limit?: number
+          customer_id?: string
+          id?: string
+          params_used?: Json
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_score_snapshots_calculated_by_fkey"
+            columns: ["calculated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_score_snapshots_calculated_by_fkey"
+            columns: ["calculated_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_score_snapshots_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_scoring_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          max_value: number | null
+          min_value: number | null
+          parameter_name: string
+          score_formula: string | null
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_value?: number | null
+          min_value?: number | null
+          parameter_name: string
+          score_formula?: string | null
+          updated_at?: string
+          weight: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_value?: number | null
+          min_value?: number | null
+          parameter_name?: string
+          score_formula?: string | null
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_scoring_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_scoring_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_rates: {
         Row: {
           created_at: string
@@ -287,6 +465,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      customer_credit_profile: {
+        Row: {
+          created_at: string
+          credit_limit: number
+          credit_score: number
+          customer_id: string
+          id: string
+          is_active: boolean
+          last_purchase_date: string | null
+          late_payments_count: number
+          outstanding_balance: number
+          total_paid: number
+          total_purchases: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_limit?: number
+          credit_score?: number
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          last_purchase_date?: string | null
+          late_payments_count?: number
+          outstanding_balance?: number
+          total_paid?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_limit?: number
+          credit_score?: number
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          last_purchase_date?: string | null
+          late_payments_count?: number
+          outstanding_balance?: number
+          total_paid?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_profile_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {
@@ -2323,6 +2554,14 @@ export type Database = {
         Returns: {
           applied_keys: string[]
           updated_count: number
+        }[]
+      }
+      calculate_credit_score: {
+        Args: { _customer_id: string }
+        Returns: {
+          credit_limit: number
+          params: Json
+          score: number
         }[]
       }
       claim_next_quote_send_queue_item: {
