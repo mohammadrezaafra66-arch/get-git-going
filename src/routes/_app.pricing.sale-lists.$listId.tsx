@@ -14,6 +14,9 @@ import {
   Minus,
   Eye,
   Search,
+  FileText,
+  Download,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -61,6 +64,14 @@ import {
   type StockStatus,
   type ProductType,
 } from "@/lib/products/constants";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
+import {
+  previewSaleListPdf,
+  downloadSaleListPdf,
+  type SaleListPdfInput,
+  type SaleListPdfColumn,
+} from "@/lib/pdf/sale-list-pdf";
 
 const PAGE_SIZE = 20;
 
@@ -205,16 +216,68 @@ function SaleListDetailPage() {
   const items = itemsQ.data ?? [];
   const versions = versionsQ.data ?? [];
 
+  const { roles } = useAuth();
+  const canPublish = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+
+  const buildPdfInput = (): SaleListPdfInput => {
+    const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
+      "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
+    ];
+    return {
+      listName: list.name,
+      versionNumber: list.version_number,
+      createdByName: "—",
+      salePriceTypeTitle: list.sale_price_type?.title ?? "—",
+      termsText: list.terms_text,
+      selectedColumns: cols,
+      items: items.map((it) => ({
+        product_name: it.product?.name ?? "—",
+        brand_name: it.product?.brand?.name ?? null,
+        category_name: it.product?.category?.name ?? null,
+        current_price: Number(it.current_price),
+        previous_price: it.previous_price !== null ? Number(it.previous_price) : null,
+        change_amount: it.change_amount !== null ? Number(it.change_amount) : null,
+        change_percent: it.change_percent !== null ? Number(it.change_percent) : null,
+        stock_status: it.stock_status,
+      })),
+    };
+  };
+
+  const handlePreview = () => {
+    if (items.length === 0) { toast.error("لیست خالی است."); return; }
+    try { previewSaleListPdf(buildPdfInput()); }
+    catch (e) { toast.error("خطا در ساخت پیش‌نمایش PDF."); console.error(e); }
+  };
+  const handleDownload = () => {
+    if (items.length === 0) { toast.error("لیست خالی است."); return; }
+    try { downloadSaleListPdf(buildPdfInput()); }
+    catch (e) { toast.error("خطا در دانلود PDF."); console.error(e); }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
         title={list.name}
         description={`نسخه ${formatNumber(list.version_number)} • ${list.sale_price_type?.title ?? "—"}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={list.status === "published" ? "default" : "secondary"}>
               {list.status === "published" ? "منتشرشده" : "پیش‌نویس"}
             </Badge>
+            <Button variant="outline" size="sm" className="gap-1" onClick={handlePreview}>
+              <FileText className="h-4 w-4" /> پیش‌نمایش PDF
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleDownload}>
+              <Download className="h-4 w-4" /> دانلود PDF
+            </Button>
+            {canPublish && (
+              <Button asChild size="sm" className="gap-1">
+                <Link to="/pricing/sale-lists/$listId/publish" params={{ listId: list.id }}>
+                  <Send className="h-4 w-4" />
+                  {list.status === "published" ? "بازنشر" : "انتشار"}
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm" className="gap-1">
               <Link to="/pricing/sale-lists">
                 <ArrowRight className="h-4 w-4" />
