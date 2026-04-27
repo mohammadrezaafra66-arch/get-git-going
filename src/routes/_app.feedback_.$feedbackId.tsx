@@ -26,7 +26,7 @@ import {
   FEEDBACK_TYPE_LABELS, type FeedbackStatus, type FeedbackType,
 } from "@/lib/feedback/constants";
 
-export const Route = createFileRoute("/_app/feedback_/$feedbackId")({
+export const Route = createFileRoute("/_app/feedback/$feedbackId")({
   beforeLoad: async () => { await requirePermission("feedback", "view"); },
   component: FeedbackDetailPage,
 });
@@ -69,7 +69,13 @@ function FeedbackDetailPage() {
       taskId?: string;
     }) => {
       if (!user?.id || !data) throw new Error("no user");
-      const updates: Record<string, unknown> = {};
+      const updates: {
+        status?: FeedbackStatus;
+        response?: string | null;
+        responded_by?: string;
+        responded_at?: string;
+        converted_task_id?: string;
+      } = {};
       const auditEntries: Array<{ action: string; diff: Record<string, unknown> }> = [];
 
       if (payload.newStatus && payload.newStatus !== data.status) {
