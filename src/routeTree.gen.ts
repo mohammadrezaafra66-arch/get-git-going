@@ -68,6 +68,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
+import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
@@ -369,6 +370,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/$listId',
     getParentRoute: () => AppPricingSaleListsRoute,
   } as any)
+const AppSalesCustomersCustomerIdEditRoute =
+  AppSalesCustomersCustomerIdEditRouteImport.update({
+    id: '/sales_/customers_/$customerId/edit',
+    path: '/sales/customers/$customerId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingSaleListsListIdPublishRoute =
   AppPricingSaleListsListIdPublishRouteImport.update({
     id: '/publish',
@@ -448,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -508,6 +516,7 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -573,6 +582,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
 }
@@ -638,6 +648,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/quotes/'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesByTo: FileRoutesByTo
@@ -698,6 +709,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/quotes'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   id:
@@ -762,6 +774,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales/quotes/'
     | '/_app/pricing/sale-lists/$listId/publish'
+    | '/_app/sales_/customers_/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
   fileRoutesById: FileRoutesById
@@ -1191,6 +1204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
     }
+    '/_app/sales_/customers_/$customerId/edit': {
+      id: '/_app/sales_/customers_/$customerId/edit'
+      path: '/sales/customers/$customerId/edit'
+      fullPath: '/sales/customers/$customerId/edit'
+      preLoaderRoute: typeof AppSalesCustomersCustomerIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/sale-lists/$listId/publish': {
       id: '/_app/pricing/sale-lists/$listId/publish'
       path: '/publish'
@@ -1349,6 +1369,7 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1389,6 +1410,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
