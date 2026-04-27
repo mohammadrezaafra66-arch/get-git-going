@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -94,6 +96,27 @@ export function InvoiceForm() {
   });
 
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
+
+  // Credit profile for selected customer
+  const customerId = form.watch("customer_id");
+  const { data: creditProfile } = useQuery({
+    queryKey: ["invoice-credit-profile", customerId],
+    enabled: !!customerId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customer_credit_profile")
+        .select("credit_limit, outstanding_balance, credit_score")
+        .eq("customer_id", customerId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const creditLimit = Number(creditProfile?.credit_limit ?? 0);
+  const outstanding = Number(creditProfile?.outstanding_balance ?? 0);
+  const exceedsLimit = creditLimit > 0 && (totalAmount + outstanding) > creditLimit;
 
   // Sale price types
   const { data: priceTypes = [] } = useQuery({
@@ -220,6 +243,38 @@ export function InvoiceForm() {
             </Popover>
             {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id.message}</p>}
           </div>
+
+          {/* Credit info */}
+          {selectedCustomer && creditProfile && (
+            <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
+              <div className="flex items-center gap-2 font-medium">
+                <ShieldCheck className="h-4 w-4" />
+                وضعیت اعتباری مشتری
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <span className="text-muted-foreground">سقف اعتبار: </span>
+                  <span className="font-semibold">{formatNumber(creditLimit)} ریال</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">بدهی جاری: </span>
+                  <span className="font-semibold">{formatNumber(outstanding)} ریال</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">امتیاز: </span>
+                  <span className="font-semibold">{toFaDigits(creditProfile.credit_score ?? 0)} / ۱۰۰</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {exceedsLimit && (
+            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900 dark:text-amber-200">
+                مبلغ فاکتور ({formatNumber(totalAmount)} ریال) به همراه بدهی جاری از سقف اعتبار مشتری فراتر می‌رود.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* نوع قیمت */}
           <div className="space-y-2">

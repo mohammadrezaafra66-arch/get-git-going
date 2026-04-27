@@ -40,6 +40,7 @@ import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.quote-share-logs'
+import { Route as AppSalesCreditRulesRouteImport } from './routes/_app.sales.credit-rules'
 import { Route as AppPurchasesCreateRouteImport } from './routes/_app.purchases_.create'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
@@ -71,6 +72,7 @@ import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$i
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
+import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists.$listId.publish'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
@@ -227,6 +229,11 @@ const AppSalesQuotesRoute = AppSalesQuotesRouteImport.update({
 const AppSalesQuoteShareLogsRoute = AppSalesQuoteShareLogsRouteImport.update({
   id: '/quote-share-logs',
   path: '/quote-share-logs',
+  getParentRoute: () => AppSalesRoute,
+} as any)
+const AppSalesCreditRulesRoute = AppSalesCreditRulesRouteImport.update({
+  id: '/credit-rules',
+  path: '/credit-rules',
   getParentRoute: () => AppSalesRoute,
 } as any)
 const AppPurchasesCreateRoute = AppPurchasesCreateRouteImport.update({
@@ -388,6 +395,12 @@ const AppSalesCustomersCustomerIdEditRoute =
     path: '/sales/customers/$customerId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSalesCustomersCustomerIdCreditRoute =
+  AppSalesCustomersCustomerIdCreditRouteImport.update({
+    id: '/sales_/customers_/$customerId/credit',
+    path: '/sales/customers/$customerId/credit',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingSaleListsListIdPublishRoute =
   AppPricingSaleListsListIdPublishRouteImport.update({
     id: '/publish',
@@ -447,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
+  '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
@@ -469,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -511,6 +526,7 @@ export interface FileRoutesByTo {
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
+  '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
@@ -532,6 +548,7 @@ export interface FileRoutesByTo {
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -578,6 +595,7 @@ export interface FileRoutesById {
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
   '/_app/purchases_/create': typeof AppPurchasesCreateRoute
+  '/_app/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/_app/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
@@ -600,6 +618,7 @@ export interface FileRoutesById {
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
+  '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -646,6 +665,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/purchases/create'
+    | '/sales/credit-rules'
     | '/sales/quote-share-logs'
     | '/sales/quotes'
     | '/sales/search'
@@ -668,6 +688,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/create'
     | '/sales/quotes/'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -710,6 +731,7 @@ export interface FileRouteTypes {
     | '/products/labels'
     | '/products/new'
     | '/purchases/create'
+    | '/sales/credit-rules'
     | '/sales/quote-share-logs'
     | '/sales/search'
     | '/sales/send-queue'
@@ -731,6 +753,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/create'
     | '/sales/quotes'
     | '/pricing/sale-lists/$listId/publish'
+    | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -776,6 +799,7 @@ export interface FileRouteTypes {
     | '/_app/products/labels'
     | '/_app/products/new'
     | '/_app/purchases_/create'
+    | '/_app/sales/credit-rules'
     | '/_app/sales/quote-share-logs'
     | '/_app/sales/quotes'
     | '/_app/sales/search'
@@ -798,6 +822,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
     | '/_app/pricing/sale-lists/$listId/publish'
+    | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -1032,6 +1057,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuoteShareLogsRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/credit-rules': {
+      id: '/_app/sales/credit-rules'
+      path: '/credit-rules'
+      fullPath: '/sales/credit-rules'
+      preLoaderRoute: typeof AppSalesCreditRulesRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/purchases_/create': {
       id: '/_app/purchases_/create'
       path: '/purchases/create'
@@ -1249,6 +1281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersCustomerIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/customers_/$customerId/credit': {
+      id: '/_app/sales_/customers_/$customerId/credit'
+      path: '/sales/customers/$customerId/credit'
+      fullPath: '/sales/customers/$customerId/credit'
+      preLoaderRoute: typeof AppSalesCustomersCustomerIdCreditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pricing/sale-lists/$listId/publish': {
       id: '/_app/pricing/sale-lists/$listId/publish'
       path: '/publish'
@@ -1308,6 +1347,7 @@ const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
 )
 
 interface AppSalesRouteChildren {
+  AppSalesCreditRulesRoute: typeof AppSalesCreditRulesRoute
   AppSalesQuoteShareLogsRoute: typeof AppSalesQuoteShareLogsRoute
   AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
@@ -1317,6 +1357,7 @@ interface AppSalesRouteChildren {
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
+  AppSalesCreditRulesRoute: AppSalesCreditRulesRoute,
   AppSalesQuoteShareLogsRoute: AppSalesQuoteShareLogsRoute,
   AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
@@ -1409,6 +1450,7 @@ interface AppRouteChildren {
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
+  AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
@@ -1452,6 +1494,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
+  AppSalesCustomersCustomerIdCreditRoute:
+    AppSalesCustomersCustomerIdCreditRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
 }
 
