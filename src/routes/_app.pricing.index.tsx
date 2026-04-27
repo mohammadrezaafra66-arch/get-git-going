@@ -17,12 +17,14 @@ function PricingHubPage() {
     queryKey: ["pricing-overview"],
     queryFn: async () => {
       const nowIso = new Date().toISOString();
-      const [productsTotal, productsWithPrice, usdRate, aedRate, activeRules] = await Promise.all([
+      const [productsTotal, productsWithPrice, usdRate, aedRate, activeRules, saleListsTotal, saleListsPublished] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("purchase_prices").select("product_id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("currency_rates").select("rate_to_toman, effective_at").eq("currency", "usd").eq("is_active", true).lte("effective_at", nowIso).order("effective_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("currency_rates").select("rate_to_toman, effective_at").eq("currency", "aed").eq("is_active", true).lte("effective_at", nowIso).order("effective_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("pricing_rules").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("sale_lists").select("id", { count: "exact", head: true }),
+        supabase.from("sale_lists").select("id", { count: "exact", head: true }).eq("status", "published"),
       ]);
       return {
         productsTotal: productsTotal.count ?? 0,
@@ -30,6 +32,8 @@ function PricingHubPage() {
         usd: usdRate.data,
         aed: aedRate.data,
         activeRules: activeRules.count ?? 0,
+        saleListsTotal: saleListsTotal.count ?? 0,
+        saleListsPublished: saleListsPublished.count ?? 0,
       };
     },
     staleTime: 30_000,
@@ -47,6 +51,7 @@ function PricingHubPage() {
     { to: "/pricing/calculator", label: "تست محاسبه قیمت", icon: Calculator, desc: "اجرای موتور قیمت‌گذاری", enabled: true },
     { to: "/pricing/live-price-list", label: "لیست قیمت زنده", icon: ListChecks, desc: "مشاهده آخرین قیمت فروش محصولات", enabled: true },
     { to: "/pricing/quick-price", label: "محاسبه سریع قیمت", icon: Zap, desc: "محاسبه قیمت فروش برای کالای خارج از لیست", enabled: true },
+    { to: "/pricing/sale-lists", label: "لیست‌های فروش", icon: FileText, desc: `مدیریت و انتشار لیست‌های رسمی فروش${data ? ` — ${formatNumber(data.saleListsTotal)} لیست (${formatNumber(data.saleListsPublished)} منتشرشده)` : ""}`, enabled: true },
   ] as const;
 
   return (
