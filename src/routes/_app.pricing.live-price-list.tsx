@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search, Filter, ArrowUpRight, ArrowDownRight, Tag,
-  PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles,
+  PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles, UserPlus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -22,6 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
+import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
+import { RoleGuard } from "@/components/rbac/RoleGuard";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
