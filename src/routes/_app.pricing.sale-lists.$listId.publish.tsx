@@ -70,7 +70,7 @@ function PublishSaleListPage() {
         .from("publish_recipients_view" as any)
         .select("id, full_name, roles");
       if (error) throw error;
-      return ((data ?? []) as Array<{ id: string; full_name: string | null; roles: string[] }>)
+      return ((data ?? []) as unknown as Array<{ id: string; full_name: string | null; roles: string[] }>)
         .map<RecipientRow>((r) => ({
           id: r.id,
           full_name: r.full_name,
