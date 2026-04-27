@@ -1607,6 +1607,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          published_at: string | null
           sale_price_type_id: string
           selected_columns: Json | null
           status: string
@@ -1620,6 +1621,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          published_at?: string | null
           sale_price_type_id: string
           selected_columns?: Json | null
           status?: string
@@ -1633,6 +1635,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          published_at?: string | null
           sale_price_type_id?: string
           selected_columns?: Json | null
           status?: string
