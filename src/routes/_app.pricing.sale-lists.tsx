@@ -130,7 +130,9 @@ function SaleListsPage() {
                     <TableCell>{formatDateFa(r.created_at)}</TableCell>
                     <TableCell><StatusBadge status={r.status} /></TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" disabled>مشاهده</Button>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>مشاهده</Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -154,7 +156,9 @@ function SaleListsPage() {
                     <div><span className="text-foreground">تاریخ:</span> {formatDateFa(r.created_at)}</div>
                   </div>
                   <div className="pt-1">
-                    <Button variant="outline" size="sm" disabled className="w-full">مشاهده</Button>
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>مشاهده</Link>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

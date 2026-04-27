@@ -63,6 +63,7 @@ import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quote
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists.new'
+import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists.$listId'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
@@ -337,6 +338,12 @@ const AppPricingSaleListsNewRoute = AppPricingSaleListsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AppPricingSaleListsRoute,
 } as any)
+const AppPricingSaleListsListIdRoute =
+  AppPricingSaleListsListIdRouteImport.update({
+    id: '/$listId',
+    path: '/$listId',
+    getParentRoute: () => AppPricingSaleListsRoute,
+  } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRoute =
   ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
     id: '/api/public/bot/dynamic-tables/$tableId/rows',
@@ -399,6 +406,7 @@ export interface FileRoutesByFullPath {
   '/pricing/': typeof AppPricingIndexRoute
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
+  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
@@ -453,6 +461,7 @@ export interface FileRoutesByTo {
   '/pricing': typeof AppPricingIndexRoute
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
+  '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
@@ -512,6 +521,7 @@ export interface FileRoutesById {
   '/_app/pricing/': typeof AppPricingIndexRoute
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
+  '/_app/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRoute
   '/_app/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
@@ -571,6 +581,7 @@ export interface FileRouteTypes {
     | '/pricing/'
     | '/products/'
     | '/sales/'
+    | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/products'
     | '/sales'
+    | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
@@ -683,6 +695,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/'
     | '/_app/products/'
     | '/_app/sales/'
+    | '/_app/pricing/sale-lists/$listId'
     | '/_app/pricing/sale-lists/new'
     | '/_app/products/$id/edit'
     | '/_app/sales/quotes/$quoteId'
@@ -1081,6 +1094,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsNewRouteImport
       parentRoute: typeof AppPricingSaleListsRoute
     }
+    '/_app/pricing/sale-lists/$listId': {
+      id: '/_app/pricing/sale-lists/$listId'
+      path: '/$listId'
+      fullPath: '/pricing/sale-lists/$listId'
+      preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
+      parentRoute: typeof AppPricingSaleListsRoute
+    }
     '/api/public/bot/dynamic-tables/$tableId/rows': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows'
       path: '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1155,10 +1175,12 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
 )
 
 interface AppPricingSaleListsRouteChildren {
+  AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRoute
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
 }
 
 const AppPricingSaleListsRouteChildren: AppPricingSaleListsRouteChildren = {
+  AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRoute,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
 }
 

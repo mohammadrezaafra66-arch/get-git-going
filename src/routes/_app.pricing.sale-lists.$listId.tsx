@@ -1,0 +1,1190 @@
+import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  Loader2,
+  Save,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
+  Trash2,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Eye,
+  Search,
+} from "lucide-react";
+import { toast } from "sonner";
+import { requirePermission } from "@/lib/rbac/route-guards";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { useDebounce } from "@/hooks/use-debounce";
+import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
+import {
+  STOCK_STATUS_LABELS,
+  STOCK_STATUS_VARIANTS,
+  PRODUCT_TYPE_LABELS,
+  type StockStatus,
+  type ProductType,
+} from "@/lib/products/constants";
+
+const PAGE_SIZE = 20;
+
+export const Route = createFileRoute("/_app/pricing/sale-lists/$listId")({
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
+  component: SaleListDetailPage,
+});
+
+type ColumnKey =
+  | "name"
+  | "brand"
+  | "category"
+  | "sale_price"
+  | "previous_price"
+  | "change"
+  | "stock_status"
+  | "product_type"
+  | "labels"
+  | "description";
+
+const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
+  { key: "name", label: "نام محصول", locked: true },
+  { key: "brand", label: "برند" },
+  { key: "category", label: "دسته‌بندی" },
+  { key: "sale_price", label: "قیمت فروش" },
+  { key: "previous_price", label: "قیمت قبلی" },
+  { key: "change", label: "میزان تغییر" },
+  { key: "stock_status", label: "وضعیت موجودی" },
+  { key: "product_type", label: "نوع کالا" },
+  { key: "labels", label: "برچسب‌ها" },
+  { key: "description", label: "توضیحات" },
+];
+
+interface SaleListDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  terms_text: string | null;
+  status: string;
+  version_number: number;
+  sale_price_type_id: string;
+  selected_columns: string[] | null;
+  created_at: string;
+  sale_price_type: { id: string; title: string } | null;
+}
+
+interface SaleListItemRow {
+  id: string;
+  product_id: string;
+  current_price: number;
+  previous_price: number | null;
+  change_amount: number | null;
+  change_percent: number | null;
+  stock_status: string | null;
+  sort_order: number;
+  product:
+    | {
+        id: string;
+        name: string;
+        sku: string | null;
+        brand: { name: string } | null;
+        category: { name: string } | null;
+      }
+    | null;
+}
+
+interface VersionRow {
+  id: string;
+  version_number: number;
+  created_at: string;
+  created_by: string | null;
+  snapshot_data: any;
+}
+
+function SaleListDetailPage() {
+  const { listId } = Route.useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const listQ = useQuery({
+    queryKey: ["sale-list", listId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sale_lists")
+        .select(
+          "id, name, description, terms_text, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
+        )
+        .eq("id", listId)
+        .single();
+      if (error) throw error;
+      return data as unknown as SaleListDetail;
+    },
+  });
+
+  const itemsQ = useQuery({
+    queryKey: ["sale-list-items", listId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sale_list_items")
+        .select(
+          "id, product_id, current_price, previous_price, change_amount, change_percent, stock_status, sort_order, product:products(id, name, sku, brand:brands(name), category:categories(name))",
+        )
+        .eq("sale_list_id", listId)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as SaleListItemRow[];
+    },
+  });
+
+  const versionsQ = useQuery({
+    queryKey: ["sale-list-versions", listId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sale_list_versions")
+        .select("id, version_number, created_at, created_by, snapshot_data")
+        .eq("sale_list_id", listId)
+        .order("version_number", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as VersionRow[];
+    },
+  });
+
+  if (listQ.isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+  if (listQ.isError || !listQ.data) {
+    return (
+      <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        لیست فروش یافت نشد یا دسترسی ندارید.
+      </div>
+    );
+  }
+
+  const list = listQ.data;
+  const items = itemsQ.data ?? [];
+  const versions = versionsQ.data ?? [];
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title={list.name}
+        description={`نسخه ${formatNumber(list.version_number)} • ${list.sale_price_type?.title ?? "—"}`}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant={list.status === "published" ? "default" : "secondary"}>
+              {list.status === "published" ? "منتشرشده" : "پیش‌نویس"}
+            </Badge>
+            <Button asChild variant="outline" size="sm" className="gap-1">
+              <Link to="/pricing/sale-lists">
+                <ArrowRight className="h-4 w-4" />
+                بازگشت
+              </Link>
+            </Button>
+          </div>
+        }
+      />
+
+      <Tabs defaultValue="items" dir="rtl">
+        <TabsList>
+          <TabsTrigger value="items">اقلام لیست</TabsTrigger>
+          <TabsTrigger value="versions">نسخه‌ها و تاریخچه</TabsTrigger>
+          <TabsTrigger value="settings">تنظیمات و ویرایش</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="items" className="pt-4">
+          <ItemsTab items={items} loading={itemsQ.isLoading} />
+        </TabsContent>
+
+        <TabsContent value="versions" className="pt-4">
+          <VersionsTab
+            versions={versions}
+            loading={versionsQ.isLoading}
+            currentVersion={list.version_number}
+          />
+        </TabsContent>
+
+        <TabsContent value="settings" className="pt-4">
+          <SettingsTab
+            list={list}
+            items={items}
+            onSaved={() => {
+              qc.invalidateQueries({ queryKey: ["sale-list", listId] });
+              qc.invalidateQueries({ queryKey: ["sale-list-items", listId] });
+              qc.invalidateQueries({ queryKey: ["sale-list-versions", listId] });
+              qc.invalidateQueries({ queryKey: ["sale-lists"] });
+            }}
+            onDeleted={() => navigate({ to: "/pricing/sale-lists" })}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* ---------- Tab 1: Items ---------- */
+function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boolean }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const slice = useMemo(
+    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [items, page],
+  );
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        هیچ آیتمی در این لیست وجود ندارد.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="text-sm text-muted-foreground">
+        مجموع: {formatNumber(items.length)} محصول
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">ردیف</TableHead>
+              <TableHead className="text-right">نام محصول</TableHead>
+              <TableHead className="text-right">SKU</TableHead>
+              <TableHead className="text-right">برند</TableHead>
+              <TableHead className="text-right">دسته</TableHead>
+              <TableHead className="text-right">موجودی</TableHead>
+              <TableHead className="text-right">قیمت قبلی</TableHead>
+              <TableHead className="text-right">قیمت فعلی</TableHead>
+              <TableHead className="text-right">تغییر</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {slice.map((it, idx) => (
+              <TableRow key={it.id}>
+                <TableCell className="text-xs">{formatNumber((page - 1) * PAGE_SIZE + idx + 1)}</TableCell>
+                <TableCell className="font-medium">
+                  {it.product ? (
+                    <Link
+                      to="/products/$id"
+                      params={{ id: it.product.id }}
+                      className="hover:underline"
+                    >
+                      {it.product.name}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{it.product?.sku ?? "—"}</TableCell>
+                <TableCell>{it.product?.brand?.name ?? "—"}</TableCell>
+                <TableCell>{it.product?.category?.name ?? "—"}</TableCell>
+                <TableCell>
+                  {it.stock_status ? (
+                    <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}>
+                      {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
+                    </Badge>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {it.previous_price !== null ? formatCurrency(Number(it.previous_price), "تومان") : "—"}
+                </TableCell>
+                <TableCell className="font-semibold">
+                  {formatCurrency(Number(it.current_price), "تومان")}
+                </TableCell>
+                <TableCell>
+                  <ChangeCell amount={it.change_amount} percent={it.change_percent} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile */}
+      <div className="space-y-2 md:hidden">
+        {slice.map((it, idx) => (
+          <Card key={it.id}>
+            <CardContent className="space-y-2 p-3 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    ردیف {formatNumber((page - 1) * PAGE_SIZE + idx + 1)}
+                  </div>
+                  <div className="font-semibold">
+                    {it.product ? (
+                      <Link to="/products/$id" params={{ id: it.product.id }} className="hover:underline">
+                        {it.product.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {it.product?.sku ?? "—"} • {it.product?.brand?.name ?? "بدون برند"}
+                  </div>
+                </div>
+                {it.stock_status && (
+                  <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}>
+                    {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <div className="text-xs">
+                  <div>قبلی: {it.previous_price !== null ? formatCurrency(Number(it.previous_price), "تومان") : "—"}</div>
+                  <div className="font-semibold">فعلی: {formatCurrency(Number(it.current_price), "تومان")}</div>
+                </div>
+                <ChangeCell amount={it.change_amount} percent={it.change_percent} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 pt-2">
+          <div className="text-xs text-muted-foreground">
+            صفحه {formatNumber(page)} از {formatNumber(totalPages)}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <ChevronRight className="h-4 w-4" /> قبلی
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              بعدی <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChangeCell({ amount, percent }: { amount: number | null; percent: number | null }) {
+  if (amount === null || amount === undefined) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  const n = Number(amount);
+  if (n === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Minus className="h-3 w-3" /> بدون تغییر
+      </span>
+    );
+  }
+  if (n > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
+        <TrendingUp className="h-3 w-3" />
+        +{formatCurrency(n, "تومان")}
+        {percent !== null && <span>({formatNumber(Number(percent))}٪)</span>}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+      <TrendingDown className="h-3 w-3" />
+      {formatCurrency(n, "تومان")}
+      {percent !== null && <span>({formatNumber(Number(percent))}٪)</span>}
+    </span>
+  );
+}
+
+/* ---------- Tab 2: Versions ---------- */
+interface SnapshotItem {
+  product_id: string;
+  product_name: string;
+  current_price: number;
+}
+function VersionsTab({
+  versions,
+  loading,
+  currentVersion,
+}: {
+  versions: VersionRow[];
+  loading: boolean;
+  currentVersion: number;
+}) {
+  const [aId, setAId] = useState<string>("");
+  const [bId, setBId] = useState<string>("");
+  const [viewVersion, setViewVersion] = useState<VersionRow | null>(null);
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (versions.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+        هنوز نسخه‌ای از این لیست ثبت نشده است.
+        <div className="mt-1 text-xs">با اولین ویرایش، نسخه‌بندی فعال می‌شود.</div>
+      </div>
+    );
+  }
+
+  const a = versions.find((v) => v.id === aId) ?? null;
+  const b = versions.find((v) => v.id === bId) ?? null;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="text-sm font-semibold">مقایسه دو نسخه</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">نسخه قدیم</Label>
+              <Select value={aId} onValueChange={setAId}>
+                <SelectTrigger><SelectValue placeholder="انتخاب نسخه قدیم" /></SelectTrigger>
+                <SelectContent>
+                  {versions.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      نسخه {formatNumber(v.version_number)} — {formatDateTimeFa(v.created_at)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">نسخه جدید</Label>
+              <Select value={bId} onValueChange={setBId}>
+                <SelectTrigger><SelectValue placeholder="انتخاب نسخه جدید" /></SelectTrigger>
+                <SelectContent>
+                  {versions.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      نسخه {formatNumber(v.version_number)} — {formatDateTimeFa(v.created_at)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {a && b && a.id !== b.id ? (
+            <DiffView a={a} b={b} />
+          ) : (
+            <div className="text-xs text-muted-foreground">دو نسخه متفاوت برای مقایسه انتخاب کنید.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">شماره نسخه</TableHead>
+              <TableHead className="text-right">تاریخ ایجاد</TableHead>
+              <TableHead className="text-right">تعداد آیتم‌ها</TableHead>
+              <TableHead className="text-right">عملیات</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {versions.map((v) => {
+              const itemsCount = Array.isArray(v.snapshot_data?.items) ? v.snapshot_data.items.length : 0;
+              return (
+                <TableRow key={v.id}>
+                  <TableCell className="font-medium">
+                    v{formatNumber(v.version_number)}
+                    {v.version_number === currentVersion && (
+                      <Badge variant="outline" className="mr-2 text-[10px]">فعلی</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>{formatDateTimeFa(v.created_at)}</TableCell>
+                  <TableCell>{formatNumber(itemsCount)}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => setViewVersion(v)} className="gap-1">
+                      <Eye className="h-4 w-4" /> مشاهده
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={!!viewVersion} onOpenChange={(o) => !o && setViewVersion(null)}>
+        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              مشاهده نسخه {viewVersion ? formatNumber(viewVersion.version_number) : ""}
+            </DialogTitle>
+            <DialogDescription>
+              {viewVersion ? formatDateTimeFa(viewVersion.created_at) : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {viewVersion && <SnapshotPreview snapshot={viewVersion.snapshot_data} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SnapshotPreview({ snapshot }: { snapshot: any }) {
+  const items: SnapshotItem[] = Array.isArray(snapshot?.items) ? snapshot.items : [];
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+        <div><span className="text-muted-foreground">نام:</span> {snapshot?.name ?? "—"}</div>
+        <div><span className="text-muted-foreground">تعداد آیتم:</span> {formatNumber(items.length)}</div>
+      </div>
+      <div className="overflow-x-auto rounded-md border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">نام محصول</TableHead>
+              <TableHead className="text-right">قیمت فعلی</TableHead>
+              <TableHead className="text-right">قیمت قبلی</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((it: any, idx: number) => (
+              <TableRow key={`${it.product_id}-${idx}`}>
+                <TableCell>{it.product_name ?? "—"}</TableCell>
+                <TableCell>{formatCurrency(Number(it.current_price ?? 0), "تومان")}</TableCell>
+                <TableCell>
+                  {it.previous_price !== null && it.previous_price !== undefined
+                    ? formatCurrency(Number(it.previous_price), "تومان")
+                    : "—"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function DiffView({ a, b }: { a: VersionRow; b: VersionRow }) {
+  const aItems: any[] = Array.isArray(a.snapshot_data?.items) ? a.snapshot_data.items : [];
+  const bItems: any[] = Array.isArray(b.snapshot_data?.items) ? b.snapshot_data.items : [];
+  const aMap = new Map<string, any>(aItems.map((it: any) => [it.product_id, it]));
+  const bMap = new Map<string, any>(bItems.map((it: any) => [it.product_id, it]));
+  const allIds = Array.from(new Set([...aMap.keys(), ...bMap.keys()]));
+
+  const rows = allIds.map((pid) => {
+    const oldIt = aMap.get(pid);
+    const newIt = bMap.get(pid);
+    return {
+      pid,
+      name: newIt?.product_name ?? oldIt?.product_name ?? "—",
+      oldPrice: oldIt ? Number(oldIt.current_price ?? 0) : null,
+      newPrice: newIt ? Number(newIt.current_price ?? 0) : null,
+    };
+  });
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-right">محصول</TableHead>
+            <TableHead className="text-right">نسخه قدیم</TableHead>
+            <TableHead className="text-right">نسخه جدید</TableHead>
+            <TableHead className="text-right">تغییر</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => {
+            let cls = "text-muted-foreground";
+            let label = "بدون تغییر";
+            let amount: number | null = null;
+            if (r.oldPrice === null && r.newPrice !== null) {
+              cls = "text-emerald-600 dark:text-emerald-400";
+              label = "افزوده شد";
+            } else if (r.newPrice === null && r.oldPrice !== null) {
+              cls = "text-rose-600 dark:text-rose-400";
+              label = "حذف شد";
+            } else if (r.oldPrice !== null && r.newPrice !== null) {
+              amount = r.newPrice - r.oldPrice;
+              if (amount > 0) {
+                cls = "text-rose-600 dark:text-rose-400";
+                label = `+${formatCurrency(amount, "تومان")}`;
+              } else if (amount < 0) {
+                cls = "text-emerald-600 dark:text-emerald-400";
+                label = formatCurrency(amount, "تومان");
+              }
+            }
+            return (
+              <TableRow key={r.pid}>
+                <TableCell className="font-medium">{r.name}</TableCell>
+                <TableCell>{r.oldPrice !== null ? formatCurrency(r.oldPrice, "تومان") : "—"}</TableCell>
+                <TableCell>{r.newPrice !== null ? formatCurrency(r.newPrice, "تومان") : "—"}</TableCell>
+                <TableCell className={cls}>{label}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+/* ---------- Tab 3: Settings / Edit ---------- */
+function SettingsTab({
+  list,
+  items,
+  onSaved,
+  onDeleted,
+}: {
+  list: SaleListDetail;
+  items: SaleListItemRow[];
+  onSaved: () => void;
+  onDeleted: () => void;
+}) {
+  const [name, setName] = useState(list.name);
+  const [description, setDescription] = useState(list.description ?? "");
+  const [termsText, setTermsText] = useState(list.terms_text ?? "");
+  const initialColumns = (list.selected_columns as ColumnKey[] | null) ?? COLUMN_OPTIONS.map((c) => c.key);
+  const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(initialColumns);
+  const [productIds, setProductIds] = useState<string[]>(items.map((it) => it.product_id));
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Keep state in sync if items prop changes (e.g. after refetch)
+  const initialProductIdsKey = items.map((it) => it.product_id).join(",");
+  useMemo(() => {
+    setProductIds(items.map((it) => it.product_id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProductIdsKey]);
+
+  const toggleColumn = (key: ColumnKey) => {
+    const opt = COLUMN_OPTIONS.find((c) => c.key === key);
+    if (opt?.locked) return;
+    setSelectedColumns((prev) => (prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key]));
+  };
+
+  const hasChanges = useMemo(() => {
+    if (name.trim() !== list.name) return true;
+    if ((description.trim() || null) !== (list.description ?? null)) return true;
+    if ((termsText.trim() || null) !== (list.terms_text ?? null)) return true;
+    const a = [...selectedColumns].sort().join(",");
+    const b = [...initialColumns].sort().join(",");
+    if (a !== b) return true;
+    const p1 = [...productIds].sort().join(",");
+    const p2 = [...items.map((it) => it.product_id)].sort().join(",");
+    if (p1 !== p2) return true;
+    return false;
+  }, [name, description, termsText, selectedColumns, productIds, items, list, initialColumns]);
+
+  const handleSave = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast.error("نام لیست الزامی است.");
+      return;
+    }
+    if (productIds.length === 0) {
+      toast.error("حداقل یک محصول لازم است.");
+      return;
+    }
+    if (selectedColumns.length === 0) {
+      toast.error("حداقل یک ستون باید انتخاب شود.");
+      return;
+    }
+    if (!hasChanges) {
+      toast.message("تغییری برای ذخیره وجود ندارد.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userData.user) throw new Error("کاربر شناسایی نشد.");
+
+      // Fetch latest sale prices for all selected products
+      const { data: priceRows, error: priceErr } = await supabase
+        .from("product_sale_price_history")
+        .select("product_id, new_sale_price, old_sale_price, created_at")
+        .eq("sale_price_type_id", list.sale_price_type_id)
+        .in("product_id", productIds)
+        .order("created_at", { ascending: false });
+      if (priceErr) throw priceErr;
+
+      const priceMap = new Map<string, { current: number; previous: number | null }>();
+      for (const row of priceRows ?? []) {
+        if (!priceMap.has(row.product_id)) {
+          priceMap.set(row.product_id, {
+            current: Number(row.new_sale_price ?? 0) || 0,
+            previous:
+              row.old_sale_price === null || row.old_sale_price === undefined
+                ? null
+                : Number(row.old_sale_price),
+          });
+        }
+      }
+
+      // Fetch product info for snapshot
+      const { data: prodRows, error: prodErr } = await supabase
+        .from("products")
+        .select("id, name, sku, stock_status, brand:brands(name), category:categories(name)")
+        .in("id", productIds);
+      if (prodErr) throw prodErr;
+      const prodMap = new Map<string, any>((prodRows ?? []).map((p: any) => [p.id, p]));
+
+      const newVersionNumber = list.version_number + 1;
+
+      // Build snapshot
+      const snapItems = productIds.map((pid) => {
+        const pe = priceMap.get(pid);
+        const p = prodMap.get(pid);
+        const current = pe?.current ?? 0;
+        const previous = pe?.previous ?? null;
+        const change_amount = previous !== null ? current - previous : null;
+        const change_percent =
+          previous && previous !== 0
+            ? Number((((current - previous) / previous) * 100).toFixed(2))
+            : null;
+        return {
+          product_id: pid,
+          product_name: p?.name ?? "",
+          sku: p?.sku ?? null,
+          brand_name: p?.brand?.name ?? null,
+          category_name: p?.category?.name ?? null,
+          current_price: current,
+          previous_price: previous,
+          change_amount,
+          change_percent,
+          stock_status: p?.stock_status ?? null,
+        };
+      });
+
+      const snapshot = {
+        name: trimmed,
+        description: description.trim() || null,
+        terms_text: termsText.trim() || null,
+        sale_price_type_id: list.sale_price_type_id,
+        selected_columns: selectedColumns,
+        items: snapItems,
+      };
+
+      // Insert version snapshot
+      const { error: vErr } = await supabase.from("sale_list_versions").insert({
+        sale_list_id: list.id,
+        version_number: newVersionNumber,
+        snapshot_data: snapshot,
+        created_by: userData.user.id,
+      });
+      if (vErr) throw vErr;
+
+      // Delete old items, insert new
+      const { error: delErr } = await supabase
+        .from("sale_list_items")
+        .delete()
+        .eq("sale_list_id", list.id);
+      if (delErr) throw delErr;
+
+      const newItems = productIds.map((pid, idx) => {
+        const pe = priceMap.get(pid);
+        const p = prodMap.get(pid);
+        const current = pe?.current ?? 0;
+        const previous = pe?.previous ?? null;
+        const change_amount = previous !== null ? current - previous : null;
+        const change_percent =
+          previous && previous !== 0
+            ? Number((((current - previous) / previous) * 100).toFixed(2))
+            : null;
+        return {
+          sale_list_id: list.id,
+          product_id: pid,
+          current_price: current,
+          previous_price: previous,
+          change_amount,
+          change_percent,
+          stock_status: p?.stock_status ?? null,
+          sort_order: idx,
+        };
+      });
+      if (newItems.length > 0) {
+        const { error: iErr } = await supabase.from("sale_list_items").insert(newItems);
+        if (iErr) throw iErr;
+      }
+
+      // Update list metadata + version_number
+      const { error: uErr } = await supabase
+        .from("sale_lists")
+        .update({
+          name: trimmed,
+          description: description.trim() || null,
+          terms_text: termsText.trim() || null,
+          selected_columns: selectedColumns,
+          version_number: newVersionNumber,
+        })
+        .eq("id", list.id);
+      if (uErr) throw uErr;
+
+      toast.success(`تغییرات ذخیره شد. نسخه ${formatNumber(newVersionNumber)} ایجاد شد.`);
+      onSaved();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطا در ذخیره تغییرات.";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <div className="space-y-1">
+            <Label htmlFor="ed-name">نام لیست *</Label>
+            <Input id="ed-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ed-desc">توضیحات</Label>
+            <Textarea id="ed-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ed-terms">شرایط فروش</Label>
+            <Textarea id="ed-terms" value={termsText} onChange={(e) => setTermsText(e.target.value)} rows={4} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="text-sm font-semibold">ستون‌های نمایشی</div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+            {COLUMN_OPTIONS.map((opt) => {
+              const checked = selectedColumns.includes(opt.key);
+              return (
+                <label
+                  key={opt.key}
+                  className={`flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm ${opt.locked ? "opacity-70" : ""}`}
+                >
+                  <Checkbox checked={checked} disabled={opt.locked} onCheckedChange={() => toggleColumn(opt.key)} />
+                  <span>{opt.label}</span>
+                  {opt.locked && <span className="mr-auto text-[10px] text-muted-foreground">(الزامی)</span>}
+                </label>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold">محصولات لیست</div>
+            <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)} className="gap-1">
+              <Plus className="h-4 w-4" /> ویرایش محصولات
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            تعداد فعلی: {formatNumber(productIds.length)} محصول
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-end gap-2">
+        <Button onClick={handleSave} disabled={saving || !hasChanges} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          ذخیره تغییرات (نسخه جدید)
+        </Button>
+      </div>
+
+      <ProductPickerSheet
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        salePriceTypeId={list.sale_price_type_id}
+        initialSelectedIds={productIds}
+        onConfirm={(ids) => {
+          setProductIds(ids);
+          setPickerOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+
+/* ---------- Product picker (Sheet) — wizard-like single step ---------- */
+function ProductPickerSheet({
+  open,
+  onOpenChange,
+  salePriceTypeId,
+  initialSelectedIds,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  salePriceTypeId: string;
+  initialSelectedIds: string[];
+  onConfirm: (ids: string[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebounce(searchInput.trim(), 350);
+  const [brandId, setBrandId] = useState<string>("__all");
+  const [categoryId, setCategoryId] = useState<string>("__all");
+  const [stockStatus, setStockStatus] = useState<string>("__all");
+  const [productType, setProductType] = useState<string>("__all");
+  const [page, setPage] = useState(1);
+
+  // Re-sync selected when sheet opens
+  useMemo(() => {
+    if (open) setSelectedIds(initialSelectedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
+  const categoriesQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
+
+  const productsQ = useQuery({
+    queryKey: ["sale-list-edit-products", search, brandId, categoryId, stockStatus, productType, page],
+    enabled: open,
+    queryFn: async () => {
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let q = supabase
+        .from("products")
+        .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .range(from, to);
+      if (search) {
+        const safe = search.replace(/[%_]/g, "");
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+      }
+      if (brandId !== "__all") q = q.eq("brand_id", brandId);
+      if (categoryId !== "__all") q = q.eq("category_id", categoryId);
+      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as StockStatus);
+      if (productType !== "__all") q = q.eq("product_type", productType as ProductType);
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return { rows: (data ?? []) as any[], total: count ?? 0 };
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
+
+  const rows = productsQ.data?.rows ?? [];
+  const total = productsQ.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const visiblePricesQ = useQuery({
+    queryKey: ["edit-prices", salePriceTypeId, rows.map((r: any) => r.id).join(",")],
+    enabled: open && !!salePriceTypeId && rows.length > 0,
+    queryFn: async () => {
+      const ids = rows.map((r: any) => r.id);
+      const { data, error } = await supabase
+        .from("product_sale_price_history")
+        .select("product_id, new_sale_price, created_at")
+        .eq("sale_price_type_id", salePriceTypeId)
+        .in("product_id", ids)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const row of data ?? []) {
+        if (!map.has(row.product_id)) map.set(row.product_id, Number(row.new_sale_price ?? 0));
+      }
+      return map;
+    },
+    staleTime: 10_000,
+  });
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+  const removeAll = () => setSelectedIds([]);
+  const allVisibleSelected = rows.length > 0 && rows.every((r: any) => selectedIds.includes(r.id));
+  const toggleAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !rows.some((r: any) => r.id === id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...rows.map((r: any) => r.id)])));
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="flex w-full flex-col gap-3 sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>ویرایش محصولات لیست</SheetTitle>
+          <SheetDescription>
+            محصولات را اضافه یا حذف کنید. در صورت تغییر، با ذخیره، نسخه جدیدی ساخته می‌شود.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
+              placeholder="جستجو نام / SKU"
+              className="pr-9"
+            />
+          </div>
+          <Select value={brandId} onValueChange={(v) => { setBrandId(v); setPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">همه برندها</SelectItem>
+              {(brandsQ.data ?? []).filter((b: any) => b.is_active).map((b: any) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); setPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="دسته" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">همه دسته‌ها</SelectItem>
+              {(categoriesQ.data ?? []).filter((c: any) => c.is_active).map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={stockStatus} onValueChange={(v) => { setStockStatus(v); setPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">همه</SelectItem>
+              {Object.entries(STOCK_STATUS_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={productType} onValueChange={(v) => { setProductType(v); setPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="نوع کالا" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">همه</SelectItem>
+              {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-xs">
+          <span><strong>{formatNumber(selectedIds.length)}</strong> محصول انتخاب‌شده</span>
+          {selectedIds.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={removeAll} className="gap-1 text-destructive">
+              <Trash2 className="h-3 w-3" /> حذف همه
+            </Button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto rounded-md border border-border">
+          {productsQ.isLoading ? (
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 5 }).map((_, i) => (<Skeleton key={i} className="h-10 w-full" />))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">محصولی یافت نشد.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} />
+                  </TableHead>
+                  <TableHead className="text-right">محصول</TableHead>
+                  <TableHead className="text-right">قیمت روز</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r: any) => {
+                  const checked = selectedIds.includes(r.id);
+                  const price = visiblePricesQ.data?.get(r.id);
+                  return (
+                    <TableRow key={r.id} className={checked ? "bg-muted/30" : ""}>
+                      <TableCell><Checkbox checked={checked} onCheckedChange={() => toggleOne(r.id)} /></TableCell>
+                      <TableCell>
+                        <div className="font-medium">{r.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {r.sku ?? "—"} • {r.brand?.name ?? "بدون برند"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {price ? formatCurrency(price, "تومان") : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs text-muted-foreground">
+            صفحه {formatNumber(page)} از {formatNumber(totalPages)}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
+          <Button onClick={() => onConfirm(selectedIds)} disabled={selectedIds.length === 0}>
+            تأیید انتخاب
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
