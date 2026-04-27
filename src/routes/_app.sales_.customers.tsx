@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2 } from "lucide-react";
+import { Plus, Pencil, Loader2, ShieldCheck } from "lucide-react";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +97,11 @@ function CustomersListPage() {
                       <Button asChild size="sm" variant="ghost">
                         <Link to="/sales/customers/$customerId/edit" params={{ customerId: c.id }}>
                           <Pencil className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="ghost" title="پروفایل اعتباری">
+                        <Link to="/sales/customers/$customerId/credit" params={{ customerId: c.id }}>
+                          <ShieldCheck className="h-4 w-4" />
                         </Link>
                       </Button>
                     </TableCell>
