@@ -108,7 +108,7 @@ function KnowledgeManagePage() {
         entity_type: "knowledge_document",
         entity_id: id,
         actor_id: user.id,
-        diff,
+        diff: diff as unknown as Record<string, unknown>,
       });
       if (aErr) console.warn("audit insert failed:", aErr);
     },
