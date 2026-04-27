@@ -62,6 +62,7 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
@@ -337,6 +338,11 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
+  id: '/sales_/customers_/create',
+  path: '/sales/customers/create',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -439,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -498,6 +505,7 @@ export interface FileRoutesByTo {
   '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -562,6 +570,7 @@ export interface FileRoutesById {
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -626,6 +635,7 @@ export interface FileRouteTypes {
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/customers/create'
     | '/sales/quotes/'
     | '/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -685,6 +695,7 @@ export interface FileRouteTypes {
     | '/products/$id/edit'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/customers/create'
     | '/sales/quotes'
     | '/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -748,6 +759,7 @@ export interface FileRouteTypes {
     | '/_app/products/$id/edit'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
+    | '/_app/sales_/customers_/create'
     | '/_app/sales/quotes/'
     | '/_app/pricing/sale-lists/$listId/publish'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1137,6 +1149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/_app/sales_/customers_/create': {
+      id: '/_app/sales_/customers_/create'
+      path: '/sales/customers/create'
+      fullPath: '/sales/customers/create'
+      preLoaderRoute: typeof AppSalesCustomersCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/new': {
       id: '/_app/sales/quotes/new'
       path: '/new'
@@ -1329,6 +1348,7 @@ interface AppRouteChildren {
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
+  AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1368,6 +1388,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
+  AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
