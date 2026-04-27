@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw, ShieldCheck, AlertTriangle, Wallet, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
-import { requirePermission } from "@/lib/rbac/route-guards";
+import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
@@ -17,7 +17,7 @@ import {
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/credit")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
   component: CustomerCreditPage,
 });
 
