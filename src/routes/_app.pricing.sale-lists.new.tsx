@@ -53,7 +53,7 @@ const PAGE_SIZE = 20;
 
 export const Route = createFileRoute("/_app/pricing/sale-lists/new")({
   beforeLoad: async () => {
-    await requirePermission("pricing", "manage");
+    await requirePermission("pricing", "create");
   },
   component: NewSaleListPage,
 });
