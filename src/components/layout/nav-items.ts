@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, DollarSign, ShoppingCart, ShoppingBag,
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
-  MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory,
+  MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/roles",       label: "نقش‌ها و دسترسی",  icon: ShieldCheck,     module: "roles",       group: "admin" },
   { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
   { to: "/knowledge",   label: "دانش سازمانی",    icon: BookOpen,        module: "knowledge",   group: "comms" },
+  { to: "/academy",     label: "آکادمی",           icon: GraduationCap,   module: "academy",     group: "comms" },
   { to: "/messages",    label: "پیام‌ها",          icon: Mail,            module: "messages",    group: "comms" },
   { to: "/feedback",    label: "بازخورد",          icon: MessageSquare,   module: "feedback",    group: "comms" },
   { to: "/data-tables", label: "جداول داده پویا", icon: Database,        module: "data-tables", group: "comms" },
