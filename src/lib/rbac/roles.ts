@@ -45,7 +45,7 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   roles:        { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },
   reports:      { view: ALL_ROLES, create: [], update: [], delete: [] },
   knowledge:    { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
-  feedback:     { view: ALL_ROLES, create: ALL_ROLES, update: ["admin"], delete: ["admin"] },
+  feedback:     { view: ALL_ROLES, create: ALL_ROLES, update: ["admin","manager"], delete: ["admin"] },
   messages:     { view: ALL_ROLES, create: ALL_ROLES, update: ALL_ROLES, delete: ["admin"] },
   "audit-logs": { view: ["admin"], create: [], update: [], delete: [] },
   "data-tables": {

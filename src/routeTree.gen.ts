@@ -71,6 +71,7 @@ import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-a
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
+import { Route as AppFeedbackRouteImport } from './routes/_app.feedback_.'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -398,6 +399,11 @@ const AppAcademyCourseIdRoute = AppAcademyCourseIdRouteImport.update({
   path: '/academy/$courseId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFeedbackRoute = AppFeedbackRouteImport.update({
+  id: '/feedback_/',
+  path: '/feedback/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -502,6 +508,7 @@ export interface FileRoutesByFullPath {
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
+  '/feedback/': typeof AppFeedbackRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -657,6 +664,7 @@ export interface FileRoutesById {
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
+  '/_app/feedback_/': typeof AppFeedbackRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -737,6 +745,7 @@ export interface FileRouteTypes {
     | '/sales'
     | '/suppliers'
     | '/users'
+    | '/feedback/'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/bot-api-keys/docs'
@@ -891,6 +900,7 @@ export interface FileRouteTypes {
     | '/_app/sales'
     | '/_app/suppliers'
     | '/_app/users'
+    | '/_app/feedback_/'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/bot-api-keys/docs'
@@ -1396,6 +1406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAcademyCourseIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/feedback_/': {
+      id: '/_app/feedback_/'
+      path: '/feedback'
+      fullPath: '/feedback/'
+      preLoaderRoute: typeof AppFeedbackRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
       path: '/'
@@ -1618,6 +1635,7 @@ interface AppRouteChildren {
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
+  AppFeedbackRoute: typeof AppFeedbackRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
@@ -1672,6 +1690,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
+  AppFeedbackRoute: AppFeedbackRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
