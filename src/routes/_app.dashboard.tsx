@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FileText, Users, DollarSign } from "lucide-react";
+import { Package, FileText, Users, DollarSign, Factory } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/rbac/roles";
 
@@ -16,6 +16,7 @@ const STATS = [
   { icon: FileText, label: "فاکتورهای امروز", value: "—", color: "text-emerald-600" },
   { icon: DollarSign, label: "فروش این ماه", value: "—", color: "text-amber-600" },
   { icon: Users, label: "مشتریان فعال", value: "—", color: "text-purple-600" },
+  { icon: Factory, label: "تأمین‌کنندگان", value: "—", color: "text-cyan-600" },
 ];
 
 function DashboardPage() {

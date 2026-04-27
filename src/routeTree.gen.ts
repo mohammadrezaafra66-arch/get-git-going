@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
+import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
@@ -33,6 +34,7 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
 import { Route as AppSalesInvoicesRouteImport } from './routes/_app.sales_.invoices'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
@@ -104,6 +106,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSuppliersRoute = AppSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesRoute = AppSalesRouteImport.update({
@@ -195,6 +202,11 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
+  id: '/suppliers_/$supplierId',
+  path: '/suppliers/$supplierId',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSalesInvoicesRoute = AppSalesInvoicesRouteImport.update({
   id: '/sales_/invoices',
@@ -437,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
+  '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -468,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
+  '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -503,6 +517,7 @@ export interface FileRoutesByTo {
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
+  '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -533,6 +548,7 @@ export interface FileRoutesByTo {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
+  '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -572,6 +588,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
+  '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -603,6 +620,7 @@ export interface FileRoutesById {
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/sales_/invoices': typeof AppSalesInvoicesRoute
+  '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -642,6 +660,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/sales'
+    | '/suppliers'
     | '/users'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -673,6 +692,7 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/sales/invoices'
+    | '/suppliers/$supplierId'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -708,6 +728,7 @@ export interface FileRouteTypes {
     | '/purchases'
     | '/reports'
     | '/roles'
+    | '/suppliers'
     | '/users'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -738,6 +759,7 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/sales/invoices'
+    | '/suppliers/$supplierId'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -776,6 +798,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/roles'
     | '/_app/sales'
+    | '/_app/suppliers'
     | '/_app/users'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -807,6 +830,7 @@ export interface FileRouteTypes {
     | '/_app/sales/stock-alerts'
     | '/_app/sales_/customers'
     | '/_app/sales_/invoices'
+    | '/_app/suppliers_/$supplierId'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -880,6 +904,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/suppliers': {
+      id: '/_app/suppliers'
+      path: '/suppliers'
+      fullPath: '/suppliers'
+      preLoaderRoute: typeof AppSuppliersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales': {
@@ -1007,6 +1038,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/suppliers_/$supplierId': {
+      id: '/_app/suppliers_/$supplierId'
+      path: '/suppliers/$supplierId'
+      fullPath: '/suppliers/$supplierId'
+      preLoaderRoute: typeof AppSuppliersSupplierIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/sales_/invoices': {
       id: '/_app/sales_/invoices'
@@ -1423,6 +1461,7 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
+  AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
@@ -1445,6 +1484,7 @@ interface AppRouteChildren {
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSalesInvoicesRoute: typeof AppSalesInvoicesRoute
+  AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
@@ -1467,6 +1507,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
+  AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
@@ -1489,6 +1530,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSalesInvoicesRoute: AppSalesInvoicesRoute,
+  AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
