@@ -289,7 +289,6 @@ function PricingRulesPage() {
                       <th className="p-3 font-medium">نام قانون</th>
                       <th className="p-3 font-medium">نوع قیمت فروش</th>
                       <th className="p-3 font-medium">نوع تسویه</th>
-                      <th className="p-3 font-medium">قانون حمل</th>
                       <th className="p-3 font-medium">حاشیه سود</th>
                       <th className="p-3 font-medium">اولویت</th>
                       <th className="p-3 font-medium">وضعیت</th>
@@ -305,9 +304,6 @@ function PricingRulesPage() {
                         </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {r.settlement_type_id ? settlementMap[r.settlement_type_id] ?? "—" : "—"}
-                        </td>
-                        <td className="p-3 text-xs text-muted-foreground">
-                          {r.shipping_cost_rule_id ? shippingMap[r.shipping_cost_rule_id] ?? "—" : "—"}
                         </td>
                         <td className="p-3 font-semibold">{formatMargin(r)}</td>
                         <td className="p-3 text-xs">{formatNumber(r.priority)}</td>
@@ -369,7 +365,6 @@ function PricingRulesPage() {
         onOpenChange={setOpen}
         editing={editing}
         settlements={settlementsQ.data ?? []}
-        shippings={shippingQ.data ?? []}
         saleTypes={saleTypesQ.data ?? []}
         onSaved={refresh}
       />
@@ -387,13 +382,12 @@ function formatMargin(r: PRule): string {
 }
 
 function RuleDialog({
-  open, onOpenChange, editing, settlements, shippings, saleTypes, onSaved,
+  open, onOpenChange, editing, settlements, saleTypes, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: PRule | null;
   settlements: { id: string; title: string }[];
-  shippings: { id: string; title: string }[];
   saleTypes: { id: string; title: string }[];
   onSaved: () => void;
 }) {
@@ -409,7 +403,6 @@ function RuleDialog({
     margin_type: "percent",
     margin_value: 0,
     fixed_margin_value: null,
-    shipping_cost_rule_id: null,
     priority: 100,
     is_active: true,
   };
@@ -431,7 +424,6 @@ function RuleDialog({
         margin_type: editing.margin_type,
         margin_value: Number(editing.margin_value ?? 0),
         fixed_margin_value: editing.fixed_margin_value != null ? Number(editing.fixed_margin_value) : null,
-        shipping_cost_rule_id: editing.shipping_cost_rule_id,
         priority: editing.priority,
         is_active: editing.is_active,
       } : emptyValues);
@@ -457,7 +449,6 @@ function RuleDialog({
         name: d.rule_name, // ستون legacy NOT NULL
         settlement_type_id: d.settlement_type_id,
         sale_price_type_id: d.sale_price_type_id,
-        shipping_cost_rule_id: d.shipping_cost_rule_id,
         margin_type: d.margin_type,
         margin_value: d.margin_value,
         fixed_margin_value: d.margin_type === "mixed" ? d.fixed_margin_value : null,
@@ -525,20 +516,6 @@ function RuleDialog({
             <p className="mt-1 text-[11px] text-muted-foreground">
               مشخص می‌کند این قانون برای کدام نوع قیمت فروش (نقدی/چکی/همکار/...) است.
             </p>
-          </div>
-
-          <div>
-            <Label>قانون هزینه حمل</Label>
-            <Select
-              value={values.shipping_cost_rule_id ?? "none"}
-              onValueChange={(v) => setValues((s) => ({ ...s, shipping_cost_rule_id: v === "none" ? null : v }))}
-            >
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">—</SelectItem>
-                {shippings.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </div>
 
           <div>
