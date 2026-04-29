@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
+import { ProductPriceCard } from "@/shared/components/ProductPriceCard";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -66,6 +67,8 @@ function SalesSearchPage() {
 
   const [search, setSearch] = useState("");
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
   const [brandId, setBrandId] = useState<string>("__all");
   const [stockStatus, setStockStatus] = useState<string>("__all");
@@ -186,6 +189,11 @@ function SalesSearchPage() {
         }
       />
       <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
+      <ProductPriceCard
+        product={selectedProduct}
+        open={panelOpen}
+        onOpenChange={(v) => { setPanelOpen(v); if (!v) setSelectedProduct(null); }}
+      />
 
       {/* search & price type */}
       <Card>
@@ -284,6 +292,7 @@ function SalesSearchPage() {
                 product={p}
                 history={h}
                 isPrivileged={isPrivileged}
+                onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
               />
             );
           })}
@@ -297,13 +306,20 @@ interface ProductCardProps {
   product: ProductRow;
   history: HistoryRow | undefined;
   isPrivileged: boolean;
+  onSelect: () => void;
 }
 
-function ProductCard({ product, history, isPrivileged }: ProductCardProps) {
+function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4 space-y-3">
+    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
+      <CardContent
+        className="p-4 space-y-3"
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
             <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
@@ -352,6 +368,7 @@ function ProductCard({ product, history, isPrivileged }: ProductCardProps) {
                 <Link
                   to="/pricing/calculator"
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
                 </Link>
@@ -360,7 +377,15 @@ function ProductCard({ product, history, isPrivileged }: ProductCardProps) {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          >
+            مشاهده همه قیمت‌ها
+          </Button>
           <StockAlertButton
             productId={product.id}
             productName={product.name}
