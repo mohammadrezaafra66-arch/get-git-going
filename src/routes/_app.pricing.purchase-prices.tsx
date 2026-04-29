@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Search,
   X,
+  Pencil,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -85,6 +86,7 @@ function PurchasePricesPage() {
   const canWrite = hasAnyRole(roles, ["admin", "manager", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
 
@@ -340,6 +342,11 @@ function PurchasePricesPage() {
                           <Power className="ms-1 h-3 w-3" />غیرفعال‌سازی
                         </Button>
                       )}
+                      {canWrite && (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setEditingRow(r); setOpen(true); }}>
+                          <Pencil className="ms-1 h-3 w-3" />ویرایش
+                        </Button>
+                      )}
                     </li>
                   );
                 })}
@@ -392,6 +399,11 @@ function PurchasePricesPage() {
                                 <Power className="ms-1 h-3 w-3" />غیرفعال
                               </Button>
                             )}
+                            {canWrite && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingRow(r); setOpen(true); }} aria-label="ویرایش">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -419,7 +431,13 @@ function PurchasePricesPage() {
         </div>
       </div>
 
-      <PurchasePriceDialog open={open} onOpenChange={setOpen} onSaved={refresh} />
+      <PurchasePriceDialog
+        open={open}
+        onOpenChange={(v) => { setOpen(v); if (!v) setEditingRow(null); }}
+        onSaved={refresh}
+        editing={editingRow}
+        productMap={listQ.data?.productMap}
+      />
     </div>
   );
 }
