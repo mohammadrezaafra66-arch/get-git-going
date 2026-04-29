@@ -635,7 +635,7 @@ const ROWNUM_W = 90;
 const ACT_W = 60;
 
 function VirtualizedGrid({
-  scrollRef, virtualizer, columns, rows, canEdit,
+  scrollRef, virtualizer, columns, rows, canEdit, canDelete,
   focused, setFocused, editingPos, setEditingPos,
   setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
 }: {
@@ -644,6 +644,7 @@ function VirtualizedGrid({
   columns: ColumnRow[];
   rows: RowItem[];
   canEdit: boolean;
+  canDelete: boolean;
   focused: { row: number; col: number } | null;
   setFocused: (v: { row: number; col: number } | null) => void;
   editingPos: { row: number; col: number; initial?: string } | null;
@@ -675,7 +676,7 @@ function VirtualizedGrid({
             <div key={c.id} className="px-3 py-2 truncate" style={{ width: COL_W }}>{c.label}</div>
           ))}
           <div className="px-3 py-2" style={{ width: 130 }}>ایجاد</div>
-          {canEdit && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
+          {canDelete && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
         </div>
 
         {/* Body (virtualized) */}
@@ -767,7 +768,7 @@ function VirtualizedGrid({
                 <div className="px-3 py-2 text-xs whitespace-nowrap" style={{ width: 130 }}>
                   {formatDateTimeFa(r.created_at)}
                 </div>
-                {canEdit && (
+                {canDelete && (
                   <div className="px-1 py-1 flex items-center" style={{ width: ACT_W }}>
                     <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
                       disabled={toggleRowMut.isPending}
