@@ -40,6 +40,7 @@ const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   shop_eitaa: "https://eitaa.com/...",
   shop_baleh: "https://ble.ir/...",
   default_seller_info: "نام، شماره تماس و سمت پیش‌فرض فروشنده",
+  alert_threshold_percent: "مثلاً 5",
 };
 
 function ShopSettingsPage() {
