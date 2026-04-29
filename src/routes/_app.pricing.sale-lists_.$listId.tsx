@@ -232,12 +232,26 @@ function SaleListDetailPage() {
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
+    const shop = shopSettingsQ.data;
     return {
       listName: list.name,
       versionNumber: list.version_number,
       createdByName: "—",
       salePriceTypeTitle: list.sale_price_type?.title ?? "—",
       termsText: list.terms_text,
+      sellerInfo: list.seller_info ?? null,
+      shopInfo: shop
+        ? {
+            name: shop.shop_name,
+            address: shop.shop_address,
+            phone: shop.shop_phone,
+            website: shop.shop_website,
+            rubika: shop.shop_rubika,
+            whatsapp: shop.shop_whatsapp,
+            eitaa: shop.shop_eitaa,
+            baleh: shop.shop_baleh,
+          }
+        : null,
       selectedColumns: cols,
       items: items.map((it) => ({
         product_name: it.product?.name ?? "—",
