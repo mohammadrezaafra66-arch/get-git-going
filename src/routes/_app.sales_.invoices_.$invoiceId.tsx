@@ -181,6 +181,23 @@ function InvoiceDetailPage() {
     }
   };
 
+  const handleSendToAccountant = async () => {
+    if (!invoice) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.rpc("send_invoice_to_accountant", { p_invoice_id: invoice.id });
+      if (error) throw error;
+      toast.success("پیش‌فاکتور به میز کار حسابدار ارسال شد.");
+      await refetch();
+      router.invalidate();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطا در ارسال به حسابدار";
+      toast.error(msg);
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (isFetching && !invoice) {
     return (
       <div className="flex items-center justify-center py-10 text-sm text-muted-foreground" dir="rtl">
