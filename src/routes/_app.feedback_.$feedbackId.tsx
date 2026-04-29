@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_app/feedback_/$feedbackId")({
 });
 
 function FeedbackDetailPage() {
-  const { feedbackId } = useParams({ from: "/_app/feedback/$feedbackId" });
+  const { feedbackId } = useParams({ from: "/_app/feedback_/$feedbackId" });
   const { user, roles } = useAuth();
   const canManage = hasAnyRole(roles, ["admin", "manager"]);
   const qc = useQueryClient();
