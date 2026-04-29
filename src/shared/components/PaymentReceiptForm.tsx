@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { toFaDigits } from "@/lib/i18n/formatters";
+import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
+  receipt_type: z.enum(["payment", "prepayment"]),
   payer_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
   payer_phone: z.string().trim().max(30).optional().or(z.literal("")),
   payer_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
@@ -60,18 +61,39 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+type InvoiceOption = {
+  id: string;
+  number: string | null;
+  total_amount: number;
+  paid_so_far: number;
+  remaining: number;
+};
+
+type InvoiceAllocation = {
+  invoice_id: string;
+  number: string | null;
+  total_amount: number;
+  remaining: number;
+  amount: number;
+};
+
 export function PaymentReceiptForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [duplicateOpen, setDuplicateOpen] = useState(false);
-  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
+  const [pendingValues, setPendingValues] = useState<
+    { values: FormValues; allocations: InvoiceAllocation[] } | null
+  >(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
+  const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
+  const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       customer_id: "",
+      receipt_type: "payment",
       payer_name: "",
       payer_phone: "",
       payer_accounting_code: "",
@@ -114,13 +136,113 @@ export function PaymentReceiptForm() {
   });
 
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
+  const watchedCustomerId = form.watch("customer_id");
+  const watchedReceiptType = form.watch("receipt_type");
+  const watchedAmount = form.watch("amount") || 0;
+
+  // Reset allocations when customer or receipt type changes
+  const customerForAllocations = `${watchedCustomerId}|${watchedReceiptType}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useStableEffectReset(customerForAllocations, () => setAllocations([]));
+
+  // Open invoices for the selected customer
+  const { data: customerInvoices = [] } = useQuery<InvoiceOption[]>({
+    queryKey: ["receipt-form-invoices", watchedCustomerId],
+    enabled: !!watchedCustomerId && watchedReceiptType === "payment",
+    queryFn: async () => {
+      const { data: invs, error } = await supabase
+        .from("invoices")
+        .select("id, number, total_amount, status")
+        .eq("customer_id", watchedCustomerId)
+        .eq("type", "pre_invoice")
+        .in("status", ["draft", "final", "partially_paid"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const list = (invs ?? []) as Array<{ id: string; number: string | null; total_amount: number; status: string }>;
+      if (list.length === 0) return [];
+
+      const ids = list.map((i) => i.id);
+      const { data: links, error: linkErr } = await supabase
+        .from("payment_receipt_links")
+        .select("invoice_id, amount, receipt:payment_receipts!inner(status)")
+        .in("invoice_id", ids);
+      if (linkErr) throw linkErr;
+      const paidMap = new Map<string, number>();
+      for (const l of (links ?? []) as Array<{ invoice_id: string; amount: number; receipt: { status: string } | null }>) {
+        if (l.receipt?.status === "approved") {
+          paidMap.set(l.invoice_id, (paidMap.get(l.invoice_id) ?? 0) + Number(l.amount));
+        }
+      }
+      return list.map((i) => {
+        const paid = paidMap.get(i.id) ?? 0;
+        return {
+          id: i.id,
+          number: i.number,
+          total_amount: Number(i.total_amount),
+          paid_so_far: paid,
+          remaining: Math.max(0, Number(i.total_amount) - paid),
+        };
+      });
+    },
+    staleTime: 30_000,
+  });
+
+  const totalAllocated = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+  const overAllocated = totalAllocated > watchedAmount;
+  const allocationDiff = watchedAmount - totalAllocated;
+
+  const addAllocation = (inv: InvoiceOption) => {
+    if (allocations.some((a) => a.invoice_id === inv.id)) return;
+    const remainingForReceipt = Math.max(0, watchedAmount - totalAllocated);
+    const suggested = Math.min(inv.remaining, remainingForReceipt || inv.remaining);
+    setAllocations((prev) => [
+      ...prev,
+      {
+        invoice_id: inv.id,
+        number: inv.number,
+        total_amount: inv.total_amount,
+        remaining: inv.remaining,
+        amount: suggested,
+      },
+    ]);
+    setInvoicePickerOpen(false);
+  };
+
+  const removeAllocation = (invoiceId: string) => {
+    setAllocations((prev) => prev.filter((a) => a.invoice_id !== invoiceId));
+  };
+
+  const setAllocationAmount = (invoiceId: string, amount: number) => {
+    setAllocations((prev) =>
+      prev.map((a) => (a.invoice_id === invoiceId ? { ...a, amount } : a)),
+    );
+  };
 
   const mutation = useMutation({
     mutationFn: async (
-      args: { values: FormValues; bypassDuplicate?: boolean },
+      args: { values: FormValues; allocations: InvoiceAllocation[]; bypassDuplicate?: boolean },
     ) => {
-      const { values, bypassDuplicate } = args;
+      const { values, allocations: allocs, bypassDuplicate } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
+
+      // Front-end allocation validation (server has no constraint)
+      if (values.receipt_type === "payment") {
+        if (allocs.length === 0) {
+          throw new Error("حداقل یک پیش‌فاکتور برای اتصال انتخاب کنید");
+        }
+        const sum = allocs.reduce((s, a) => s + Number(a.amount), 0);
+        if (sum <= 0) throw new Error("مبلغ تخصیص نامعتبر است");
+        if (sum - values.amount > 0.001) {
+          throw new Error("مجموع تخصیص بیشتر از مبلغ فیش است");
+        }
+        for (const a of allocs) {
+          if (Number(a.amount) <= 0) throw new Error("مبلغ تخصیص باید مثبت باشد");
+          if (Number(a.amount) - a.remaining > 0.001) {
+            throw new Error(`مبلغ تخصیص از مانده پیش‌فاکتور ${a.number ?? ""} بیشتر است`);
+          }
+        }
+      }
 
       // Duplicate check
       if (!bypassDuplicate) {
@@ -159,6 +281,7 @@ export function PaymentReceiptForm() {
 
       const payload = {
         customer_id: values.customer_id,
+        receipt_type: values.receipt_type,
         payer_name: values.payer_name,
         payer_phone: values.payer_phone || null,
         payer_accounting_code: values.payer_accounting_code || null,
@@ -183,6 +306,23 @@ export function PaymentReceiptForm() {
       if (error) throw error;
       const receiptId = (data as { id: string }).id;
 
+      // Insert links if payment type
+      if (values.receipt_type === "payment" && allocs.length > 0) {
+        const linkRows = allocs.map((a) => ({
+          receipt_id: receiptId,
+          invoice_id: a.invoice_id,
+          amount: Number(a.amount),
+        }));
+        const { error: linkErr } = await supabase
+          .from("payment_receipt_links")
+          .insert(linkRows as never);
+        if (linkErr) {
+          // Rollback the receipt
+          await supabase.from("payment_receipts").delete().eq("id", receiptId);
+          throw new Error(`اتصال به پیش‌فاکتور ناموفق: ${linkErr.message}`);
+        }
+      }
+
       // Audit log
       await supabase.from("audit_logs").insert({
         actor_id: user.id,
@@ -191,10 +331,14 @@ export function PaymentReceiptForm() {
         action: "payment_receipt_created",
         diff: {
           customer_id: values.customer_id,
+          receipt_type: values.receipt_type,
           amount: values.amount,
           tracking_number: values.tracking_number,
           bank_name: values.bank_name || null,
           status: "pending_review",
+          linked_invoices: values.receipt_type === "payment"
+            ? allocs.map((a) => ({ invoice_id: a.invoice_id, amount: Number(a.amount) }))
+            : [],
         },
       } as never);
 
@@ -202,7 +346,7 @@ export function PaymentReceiptForm() {
     },
     onSuccess: (result, vars) => {
       if (result.duplicate) {
-        setPendingValues(vars.values);
+        setPendingValues({ values: vars.values, allocations: vars.allocations });
         setDuplicateCount(result.count);
         setDuplicateOpen(true);
         return;
@@ -220,7 +364,7 @@ export function PaymentReceiptForm() {
   return (
     <>
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v }))}
+      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v, allocations }))}
       className="space-y-6"
       dir="rtl"
     >
