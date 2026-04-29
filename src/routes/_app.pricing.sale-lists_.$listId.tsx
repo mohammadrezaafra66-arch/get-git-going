@@ -161,7 +161,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
         )
         .eq("id", listId)
         .single();
