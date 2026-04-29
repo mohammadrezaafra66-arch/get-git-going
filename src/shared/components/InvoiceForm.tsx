@@ -40,6 +40,7 @@ const itemSchema = z.object({
 const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
   sale_price_type_id: z.string().uuid("انتخاب نوع قیمت الزامی است"),
+  settlement_type_id: z.string().uuid().nullable().optional(),
   notes: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1, "حداقل یک قلم اضافه کنید"),
 });
@@ -56,6 +57,7 @@ export function InvoiceForm() {
     defaultValues: {
       customer_id: "",
       sale_price_type_id: "",
+      settlement_type_id: null,
       notes: "",
       items: [],
     },
@@ -133,6 +135,22 @@ export function InvoiceForm() {
     staleTime: 5 * 60_000,
   });
 
+  // Settlement types (active only, sorted)
+  const { data: settlementTypes = [] } = useQuery({
+    queryKey: ["invoice-form-settlement-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("settlement_types")
+        .select("id, title, code, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("title", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
@@ -143,6 +161,7 @@ export function InvoiceForm() {
         .insert({
           customer_id: values.customer_id,
           sale_price_type_id: values.sale_price_type_id,
+          settlement_type_id: values.settlement_type_id ?? null,
           type: "pre_invoice",
           status: "draft",
           total_amount: total,
