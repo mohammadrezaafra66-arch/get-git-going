@@ -10,6 +10,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import {
+  DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
+  DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
+  type DynamicTableAccessLevel,
+} from "@/lib/data-tables/constants";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_app/data-tables/")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -17,15 +23,16 @@ export const Route = createFileRoute("/_app/data-tables/")({
 });
 
 function DataTablesHub() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const canCreate = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
   const listQuery = useQuery({
     enabled: !!user,
-    queryKey: ["dynamic-tables-hub"],
+    queryKey: ["dynamic-tables-hub", roles?.join(",") ?? ""],
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_tables")
-        .select("id, name, slug, description, is_active, created_at")
+        .select("id, name, slug, description, is_active, created_at, access_level")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -49,21 +56,36 @@ function DataTablesHub() {
   const items = listQuery.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider><div className="space-y-6">
       <PageHeader
         title="جداول داده پویا"
         description="مدیریت جداول قابل تنظیم برای استفاده در ربات‌ها و کمپین‌ها"
         actions={
-          <Button asChild>
-            <Link to="/data-tables/new"><Plus className="ml-2 h-4 w-4" />جدول جدید</Link>
-          </Button>
+          canCreate ? (
+            <Button asChild>
+              <Link to="/data-tables/new"><Plus className="ml-2 h-4 w-4" />جدول جدید</Link>
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span><Button disabled><Plus className="ml-2 h-4 w-4" />جدول جدید</Button></span>
+              </TooltipTrigger>
+              <TooltipContent>شما دسترسی انجام این عملیات را ندارید</TooltipContent>
+            </Tooltip>
+          )
         }
       />
 
       {listQuery.isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : items.length === 0 ? (
-        <EmptyState icon={Database} title="هنوز جدولی ساخته نشده" description="برای شروع یک جدول داده پویا بسازید." />
+        <EmptyState
+          icon={Database}
+          title={canCreate ? "هنوز جدولی ساخته نشده" : "بدون دسترسی"}
+          description={canCreate
+            ? "برای شروع یک جدول داده پویا بسازید."
+            : "شما به هیچ جدول پویایی دسترسی ندارید."}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {items.map((t) => (
@@ -74,9 +96,20 @@ function DataTablesHub() {
                     <div className="font-semibold text-foreground truncate">{t.name}</div>
                     <div className="text-xs text-muted-foreground font-mono truncate">{t.slug}</div>
                   </div>
-                  <Badge variant={t.is_active ? "default" : "secondary"}>
-                    {t.is_active ? "فعال" : "غیرفعال"}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={t.is_active ? "default" : "secondary"}>
+                      {t.is_active ? "فعال" : "غیرفعال"}
+                    </Badge>
+                    {(() => {
+                      const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
+                      const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+                      return (
+                        <Badge variant="outline" className={cls}>
+                          {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
                 </div>
                 {t.description && <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -91,6 +124,6 @@ function DataTablesHub() {
           ))}
         </div>
       )}
-    </div>
+    </div></TooltipProvider>
   );
 }
