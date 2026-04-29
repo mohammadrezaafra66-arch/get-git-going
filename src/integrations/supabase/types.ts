@@ -1570,6 +1570,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_receipt_links: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          receipt_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          receipt_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipt_links_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipt_links_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_receipts: {
         Row: {
           amount: number
@@ -1585,6 +1624,7 @@ export type Database = {
           payment_date: string
           payment_time: string
           receipt_image_url: string | null
+          receipt_type: string
           receiver_accounting_code: string | null
           receiver_name: string
           receiver_phone: string | null
@@ -1607,6 +1647,7 @@ export type Database = {
           payment_date: string
           payment_time: string
           receipt_image_url?: string | null
+          receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name: string
           receiver_phone?: string | null
@@ -1629,6 +1670,7 @@ export type Database = {
           payment_date?: string
           payment_time?: string
           receipt_image_url?: string | null
+          receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name?: string
           receiver_phone?: string | null
