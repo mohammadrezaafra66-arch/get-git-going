@@ -351,6 +351,29 @@ export function InvoiceForm() {
             )}
           </div>
 
+          {/* نوع پیش‌فاکتور */}
+          {canChooseInvoiceType && (
+            <div className="space-y-2">
+              <Label>نوع پیش‌فاکتور <span className="text-destructive">*</span></Label>
+              <Select
+                value={invoiceType}
+                onValueChange={(v) =>
+                  form.setValue("invoice_type", v as "pre_invoice" | "advance_payment", {
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pre_invoice">پیش‌فاکتور اعتباری</SelectItem>
+                  <SelectItem value="advance_payment">پیش‌فاکتور پیش‌واریزی (نقدی)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {invoiceType === "advance_payment" && <AdvancePaymentSection />}
+
           {/* نوع تسویه */}
           <div className="space-y-2">
             <Label>نوع تسویه</Label>
