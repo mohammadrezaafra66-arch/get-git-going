@@ -232,6 +232,7 @@ function ReceiptsListPage() {
                   <TableHead>ساعت</TableHead>
                   <TableHead>شماره پیگیری</TableHead>
                   <TableHead>وضعیت</TableHead>
+                  <TableHead className="w-20">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,6 +257,17 @@ function ReceiptsListPage() {
                         <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"}>
                           {STATUS_LABEL[row.status] ?? row.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button asChild variant="outline" size="sm">
+                          <Link
+                            to="/accounting/receipts/$receiptId"
+                            params={{ receiptId: row.id }}
+                          >
+                            <Eye className="ml-1 h-4 w-4" />
+                            جزئیات
+                          </Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
