@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ModuleKey, Action } from "./roles";
 import { hasPermission as hasPermissionStatic } from "./roles";
+import { setCachedRolePermissions } from "./permissions-cache";
 
 export type DynamicAction = Action | "approve" | "export" | "view_sensitive";
 
@@ -33,6 +34,7 @@ export async function loadRolePermissions(force = false): Promise<RolePermission
     }
     const rows = (data ?? []) as unknown as RolePermissionRow[];
     cache = { rows, ts: Date.now() };
+    setCachedRolePermissions(rows);
     inflight = null;
     return rows;
   })();
@@ -41,6 +43,7 @@ export async function loadRolePermissions(force = false): Promise<RolePermission
 
 export function invalidateRolePermissionsCache() {
   cache = null;
+  setCachedRolePermissions([]);
 }
 
 const ACTION_COL: Record<DynamicAction, keyof RolePermissionRow> = {

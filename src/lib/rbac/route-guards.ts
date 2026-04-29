@@ -1,10 +1,11 @@
 import { redirect } from "@tanstack/react-router";
-import type { AppRole, ModuleKey, Action } from "@/lib/rbac/roles";
-import { hasPermission } from "@/lib/rbac/roles";
+import type { AppRole, ModuleKey, ExtendedAction } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { ensureAuthReady } from "@/lib/auth/session";
+import { loadRolePermissions } from "@/lib/rbac/dynamic-permissions";
 
 /** بررسی دسترسی کاربر به یک ماژول؛ در صورت نبود دسترسی به /unauthorized یا /login هدایت می‌کند. */
-export async function requirePermission(module: ModuleKey, action: Action = "view") {
+export async function requirePermission(module: ModuleKey, action: ExtendedAction = "view") {
   const auth = await ensureAuthReady();
   const user = auth.user;
   if (!user) throw redirect({ to: "/login" });
@@ -12,8 +13,10 @@ export async function requirePermission(module: ModuleKey, action: Action = "vie
   if (auth.rolesError) throw new Error(`بارگذاری نقش‌های کاربر ناموفق بود: ${auth.rolesError}`);
 
   const roles = auth.roles as AppRole[];
+  // Ensure dynamic permissions cache is populated before checking.
+  await loadRolePermissions();
 
-  if (!hasPermission(roles, module, action)) {
+  if (!hasPermissionEx(roles, module, action)) {
     throw redirect({ to: "/unauthorized" });
   }
   return { user, roles };

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/lib/rbac/roles";
+import { loadRolePermissions } from "@/lib/rbac/dynamic-permissions";
 import {
   ensureAuthReady,
   getAuthSnapshot,
@@ -41,6 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void ensureAuthReady();
     return unsubscribe;
   }, []);
+
+  // Preload dynamic role permissions once user is authenticated so route guards
+  // and UI checks don't need to await individually.
+  useEffect(() => {
+    if (state.user && !state.rolesLoading) {
+      void loadRolePermissions();
+    }
+  }, [state.user, state.rolesLoading]);
 
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
