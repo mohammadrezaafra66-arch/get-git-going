@@ -89,7 +89,13 @@ function EditProductPage() {
       toast.success("تغییرات ذخیره شد");
       navigate({ to: "/products/$id", params: { id } });
     } catch (e: any) {
-      toast.error(e?.message ?? "خطا در ذخیره");
+      const code = e?.code ?? "";
+      const msg = String(e?.message ?? "");
+      if (code === "23505" || /duplicate key|sku/i.test(msg)) {
+        toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
+      } else {
+        toast.error(msg || "خطا در ذخیره");
+      }
     } finally {
       setLoading(false);
     }
