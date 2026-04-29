@@ -1576,6 +1576,60 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_queue: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          read_at: string | null
+          reference_id: string | null
+          reference_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          read_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_receipt_links: {
         Row: {
           amount: number
@@ -3612,6 +3666,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
       query_dynamic_table_rows: {
@@ -3759,7 +3818,12 @@ export type Database = {
         | "canceled"
       shipping_cost_type: "fixed" | "percent"
       stock_alert_priority: "low" | "normal" | "high"
-      stock_alert_status: "open" | "contacted" | "closed" | "canceled"
+      stock_alert_status:
+        | "open"
+        | "contacted"
+        | "closed"
+        | "canceled"
+        | "notified"
       stock_status: "available" | "unavailable" | "limited" | "unknown"
     }
     CompositeTypes: {
@@ -3915,7 +3979,13 @@ export const Constants = {
       sales_quote_status: ["draft", "sent", "accepted", "rejected", "canceled"],
       shipping_cost_type: ["fixed", "percent"],
       stock_alert_priority: ["low", "normal", "high"],
-      stock_alert_status: ["open", "contacted", "closed", "canceled"],
+      stock_alert_status: [
+        "open",
+        "contacted",
+        "closed",
+        "canceled",
+        "notified",
+      ],
       stock_status: ["available", "unavailable", "limited", "unknown"],
     },
   },
