@@ -23,6 +23,7 @@ import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
+import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
 import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
@@ -166,6 +167,11 @@ const AppPurchasesRoute = AppPurchasesRouteImport.update({
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
   id: '/price-lists',
   path: '/price-lists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -573,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
+  '/notifications': typeof AppNotificationsRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -662,6 +669,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
+  '/notifications': typeof AppNotificationsRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -752,6 +760,7 @@ export interface FileRoutesById {
   '/_app/invoices': typeof AppInvoicesRoute
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
@@ -844,6 +853,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/knowledge'
     | '/messages'
+    | '/notifications'
     | '/price-lists'
     | '/purchases'
     | '/reports'
@@ -933,6 +943,7 @@ export interface FileRouteTypes {
     | '/invoices'
     | '/knowledge'
     | '/messages'
+    | '/notifications'
     | '/price-lists'
     | '/purchases'
     | '/reports'
@@ -1022,6 +1033,7 @@ export interface FileRouteTypes {
     | '/_app/invoices'
     | '/_app/knowledge'
     | '/_app/messages'
+    | '/_app/notifications'
     | '/_app/price-lists'
     | '/_app/purchases'
     | '/_app/reports'
@@ -1208,6 +1220,13 @@ declare module '@tanstack/react-router' {
       path: '/price-lists'
       fullPath: '/price-lists'
       preLoaderRoute: typeof AppPriceListsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -1863,6 +1882,7 @@ interface AppRouteChildren {
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -1924,6 +1944,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInvoicesRoute: AppInvoicesRoute,
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppPriceListsRoute: AppPriceListsRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
