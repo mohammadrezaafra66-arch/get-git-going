@@ -73,6 +73,7 @@ import {
   type SaleListPdfInput,
   type SaleListPdfColumn,
 } from "@/lib/pdf/sale-list-pdf";
+import { fetchShopSettings } from "@/lib/shop/settings";
 
 const PAGE_SIZE = 20;
 
