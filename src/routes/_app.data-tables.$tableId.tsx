@@ -394,10 +394,23 @@ function DataTableDetailPage() {
           {(() => {
             const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
             const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+            const allowed = (((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [];
             return (
-              <Badge variant="outline" className={cls}>
-                سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
-              </Badge>
+              <>
+                <Badge variant="outline" className={cls}>
+                  سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+                </Badge>
+                {lvl === "custom" && allowed.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    نقش‌ها: {allowed.map((r) => SELECTABLE_ROLES.find((x) => x.value === r)?.label ?? r).join("، ")}
+                  </Badge>
+                )}
+                {canChangeAccess && (
+                  <Button size="sm" variant="ghost" onClick={() => setAccessDialogOpen(true)}>
+                    <Pencil className="ml-1 h-3.5 w-3.5" /> ویرایش دسترسی
+                  </Button>
+                )}
+              </>
             );
           })()}
         </div>
