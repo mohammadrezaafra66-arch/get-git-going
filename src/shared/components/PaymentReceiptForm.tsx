@@ -434,6 +434,147 @@ export function PaymentReceiptForm() {
             )}
           </div>
 
+          {/* نوع فیش */}
+          <div className="space-y-2">
+            <Label>نوع فیش <span className="text-destructive">*</span></Label>
+            <Select
+              value={watchedReceiptType}
+              onValueChange={(v) => form.setValue("receipt_type", v as "payment" | "prepayment", { shouldValidate: true })}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
+                <SelectItem value="prepayment">پیش‌پرداخت (اعتبار مثبت)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {watchedReceiptType === "payment"
+                ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
+                : "این فیش به‌عنوان اعتبار مثبت برای مشتری ثبت می‌شود (بدون اتصال به بدهی)."}
+            </p>
+          </div>
+
+          {/* اتصال به پیش‌فاکتورها */}
+          {watchedReceiptType === "payment" && (
+            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">اتصال به پیش‌فاکتورها</h3>
+                <Popover open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!watchedCustomerId}
+                    >
+                      <Plus className="ml-1 h-4 w-4" />
+                      افزودن پیش‌فاکتور
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <Command>
+                      <CommandInput placeholder="جستجو شماره فاکتور..." />
+                      <CommandList>
+                        <CommandEmpty>پیش‌فاکتور بازی یافت نشد</CommandEmpty>
+                        <CommandGroup>
+                          {customerInvoices
+                            .filter((i) => !allocations.some((a) => a.invoice_id === i.id))
+                            .map((inv) => (
+                              <CommandItem
+                                key={inv.id}
+                                value={`${inv.number ?? ""} ${inv.id}`}
+                                onSelect={() => addAllocation(inv)}
+                              >
+                                <div className="flex w-full items-center justify-between gap-2">
+                                  <span dir="ltr" className="text-sm">
+                                    {toFaDigits(inv.number ?? inv.id.slice(0, 8))}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    مانده: {formatNumber(inv.remaining)}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {!watchedCustomerId && (
+                <p className="text-xs text-muted-foreground">
+                  ابتدا مشتری را انتخاب کنید.
+                </p>
+              )}
+
+              {watchedCustomerId && allocations.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  هنوز پیش‌فاکتوری انتخاب نشده است.
+                </p>
+              )}
+
+              {allocations.length > 0 && (
+                <div className="space-y-2">
+                  {allocations.map((a) => (
+                    <div
+                      key={a.invoice_id}
+                      className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center"
+                    >
+                      <div className="flex-1 space-y-0.5">
+                        <div className="text-sm font-medium" dir="ltr">
+                          {toFaDigits(a.number ?? a.invoice_id.slice(0, 8))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          مبلغ کل: {formatNumber(a.total_amount)} • مانده: {formatNumber(a.remaining)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={a.remaining}
+                          value={a.amount || ""}
+                          onChange={(e) =>
+                            setAllocationAmount(a.invoice_id, Number(e.target.value) || 0)
+                          }
+                          className="w-36"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeAllocation(a.invoice_id)}
+                          aria-label="حذف"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
+                    <span>
+                      مجموع تخصیص: <strong>{formatNumber(totalAllocated)}</strong> از {formatNumber(watchedAmount)}
+                    </span>
+                    {overAllocated ? (
+                      <span className="text-destructive">
+                        مازاد: {formatNumber(totalAllocated - watchedAmount)}
+                      </span>
+                    ) : allocationDiff > 0 ? (
+                      <span className="text-muted-foreground">
+                        باقی‌مانده: {formatNumber(allocationDiff)}
+                      </span>
+                    ) : (
+                      <span className="text-primary">برابر</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* اطلاعات واریزکننده */}
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
             <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
