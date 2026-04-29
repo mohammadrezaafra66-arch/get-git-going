@@ -755,6 +755,37 @@ function NewSaleListPage() {
                 placeholder="شرایط، گارانتی، ارسال و ... (اختیاری)"
               />
             </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sl-seller">اطلاعات فروشنده (درج‌شده در PDF)</Label>
+                {shopSettingsQ.data?.default_seller_info ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setSellerInfo(shopSettingsQ.data!.default_seller_info);
+                      setSellerInfoTouched(true);
+                    }}
+                  >
+                    استفاده از مقدار پیش‌فرض
+                  </Button>
+                ) : null}
+              </div>
+              <Textarea
+                id="sl-seller"
+                value={sellerInfo}
+                onChange={(e) => {
+                  setSellerInfo(e.target.value);
+                  setSellerInfoTouched(true);
+                }}
+                rows={3}
+                maxLength={500}
+                placeholder="نام، شماره تماس و سمت فروشنده (اختیاری، حداکثر ۵۰۰ کاراکتر)"
+                dir="rtl"
+              />
+            </div>
             <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               <div>تعداد محصولات: {formatNumber(selectedIds.length)}</div>
               <div>ستون‌های نمایشی: {formatNumber(selectedColumns.length)}</div>
