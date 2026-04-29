@@ -40,7 +40,6 @@ export const pricingRuleSchema = z
     margin_type: z.enum(["fixed", "percent", "mixed"]),
     margin_value: z.coerce.number().nonnegative("مقدار حاشیه نمی‌تواند منفی باشد"),
     fixed_margin_value: z.coerce.number().nonnegative().nullable().optional(),
-    shipping_cost_rule_id: z.string().uuid().nullable().optional(),
     priority: z.coerce.number().int().min(1).default(100),
     is_active: z.boolean().default(true),
   })
