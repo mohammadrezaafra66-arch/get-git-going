@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
   KNOWLEDGE_CATEGORIES, KNOWLEDGE_CATEGORY_LABELS, KNOWLEDGE_ACCESS_LABELS,
@@ -40,7 +41,9 @@ function KnowledgeListPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<KnowledgeCategory | "all">("all");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search, 350);
+  const debouncedRaw = useDebounce(search, 350);
+  const debouncedNorm = normalizeSearchText(debouncedRaw);
+  const debounced = debouncedNorm.length >= 2 ? debouncedNorm : "";
 
   const queryKey = useMemo(
     () => ["knowledge-documents", { search: debounced, category, page }],

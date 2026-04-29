@@ -16,6 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +73,8 @@ function LivePriceListPage() {
   // ---------- filters ----------
   const [search, setSearch] = useState("");
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  const dSearch = useDebounce(search, 350);
+  const dSearchRaw = useDebounce(search, 350);
+  const dSearch = normalizeSearchText(dSearchRaw);
   const [brandId, setBrandId] = useState<string>("__all");
   const [categoryId, setCategoryId] = useState<string>("__all");
   const [productType, setProductType] = useState<string>("__all");

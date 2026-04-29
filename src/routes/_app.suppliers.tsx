@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,9 @@ function SuppliersListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [page, setPage] = useState(0);
-  const debounced = useDebounce(search, 350);
+  const debouncedRaw = useDebounce(search, 350);
+  const debouncedNorm = normalizeSearchText(debouncedRaw);
+  const debounced = debouncedNorm.length >= 2 ? debouncedNorm : "";
 
   const { data, isLoading } = useQuery({
     queryKey: ["suppliers", { q: debounced, status, page }],

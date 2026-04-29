@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { ProductFilters, EMPTY_FILTERS, type ProductFilterState } from "@/components/products/ProductFilters";
 import {
   PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS,
@@ -48,7 +49,9 @@ function ProductsPage() {
 
   const [filters, setFilters] = useState<ProductFilterState>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
-  const debouncedQ = useDebounce(filters.q, 350);
+  const debouncedRaw = useDebounce(filters.q, 350);
+  const debouncedNorm = normalizeSearchText(debouncedRaw);
+  const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
 
   // any change in filters resets page to 0
   const stableFilters = useMemo(() => ({ ...filters, q: debouncedQ }), [filters, debouncedQ]);
