@@ -3417,6 +3417,7 @@ export type Database = {
           score: number
         }[]
       }
+      cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       claim_next_quote_send_queue_item: {
         Args: never
         Returns: {
