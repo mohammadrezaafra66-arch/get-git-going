@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Pencil, Power, Search } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasAnyRole } from "@/lib/rbac/roles";
+import { useDebounce } from "@/hooks/use-debounce";
 import { brandSchema, type BrandFormValues } from "@/lib/products/schemas";
 
 export const Route = createFileRoute("/_app/products/brands")({
@@ -24,35 +29,72 @@ export const Route = createFileRoute("/_app/products/brands")({
 });
 
 interface Brand { id: string; name: string; slug: string; description: string | null; is_active: boolean; }
+const PAGE_SIZE = 20;
 
 function BrandsPage() {
   const { roles } = useAuth();
-  const canWrite = hasPermission(roles, "products", "update");
+  const canWrite = hasAnyRole(roles, ["admin", "manager", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Brand | null>(null);
+  const [search, setSearch] = useState("");
+  const dSearch = useDebounce(search, 350);
+  const [page, setPage] = useState(0);
+  const [toggleTarget, setToggleTarget] = useState<Brand | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["brands"],
-    queryFn: async (): Promise<Brand[]> => {
-      const { data, error } = await supabase.from("brands")
+    queryKey: ["brands-admin", dSearch, page],
+    queryFn: async (): Promise<{ rows: Brand[]; total: number }> => {
+      const safe = dSearch.trim().replace(/[%_]/g, "");
+      let q = supabase.from("brands")
         .select("id, name, slug, description, is_active")
-        .order("name", { ascending: true });
+        .order("name", { ascending: true })
+        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+      if (safe.length >= 2) q = q.ilike("name", `%${safe}%`);
+      const { data, error, count } = await q;
       if (error) throw error;
-      return data ?? [];
+      // separate count query
+      let cq = supabase.from("brands").select("id", { count: "exact", head: true });
+      if (safe.length >= 2) cq = cq.ilike("name", `%${safe}%`);
+      const cr = await cq;
+      return { rows: data ?? [], total: cr.count ?? count ?? 0 };
     },
+    staleTime: 30_000,
+  });
+
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const productCountsQ = useQuery({
+    enabled: rows.length > 0,
+    queryKey: ["brands-product-counts", rows.map((b) => b.id).join(",")],
+    queryFn: async () => {
+      const ids = rows.map((b) => b.id);
+      const { data, error } = await supabase
+        .from("products")
+        .select("brand_id")
+        .in("brand_id", ids);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const r of (data ?? []) as { brand_id: string | null }[]) {
+        if (r.brand_id) map[r.brand_id] = (map[r.brand_id] ?? 0) + 1;
+      }
+      return map;
+    },
+    staleTime: 60_000,
   });
 
   const onSaved = () => {
-    qc.invalidateQueries({ queryKey: ["brands"] });
+    qc.invalidateQueries({ queryKey: ["brands-admin"] });
     qc.invalidateQueries({ queryKey: ["brands-lite"] });
   };
 
-  const remove = async (b: Brand) => {
-    if (!confirm(`حذف برند "${b.name}"؟`)) return;
-    const { error } = await supabase.from("brands").delete().eq("id", b.id);
+  const toggleStatus = async (b: Brand) => {
+    const { error } = await supabase.from("brands").update({ is_active: !b.is_active }).eq("id", b.id);
     if (error) toast.error(error.message);
-    else { toast.success("برند حذف شد"); onSaved(); }
+    else { toast.success(b.is_active ? "برند غیرفعال شد" : "برند فعال شد"); onSaved(); }
+    setToggleTarget(null);
   };
 
   return (
@@ -75,19 +117,38 @@ function BrandsPage() {
       />
 
       <Card>
+        <CardContent className="p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="جستجوی نام برند (حداقل ۲ کاراکتر)"
+              className="pr-9"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
-          ) : (data ?? []).length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">برندی ثبت نشده.</div>
           ) : (
             <ul className="divide-y divide-border">
-              {(data ?? []).map((b) => (
+              {rows.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-2 p-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{b.name}</span>
-                      {!b.is_active && <Badge variant="outline">غیرفعال</Badge>}
+                      {b.is_active
+                        ? <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">فعال</Badge>
+                        : <Badge variant="destructive">غیرفعال</Badge>}
+                      <Badge variant="secondary" className="text-[11px]">
+                        {productCountsQ.data?.[b.id] ?? 0} محصول
+                      </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground" dir="ltr">{b.slug}</div>
                     {b.description && <div className="mt-1 text-xs text-muted-foreground">{b.description}</div>}
@@ -97,8 +158,8 @@ function BrandsPage() {
                       <Button variant="ghost" size="icon" onClick={() => { setEditing(b); setOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(b)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                      <Button variant="ghost" size="icon" onClick={() => setToggleTarget(b)} title={b.is_active ? "غیرفعال" : "فعال"}>
+                        <Power className={`h-4 w-4 ${b.is_active ? "text-destructive" : "text-emerald-600"}`} />
                       </Button>
                     </div>
                   )}
@@ -109,7 +170,36 @@ function BrandsPage() {
         </CardContent>
       </Card>
 
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">صفحه {page + 1} از {totalPages} ({total} مورد)</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
+            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+          </div>
+        </div>
+      )}
+
       <BrandDialog open={open} onOpenChange={setOpen} editing={editing} onSaved={onSaved} />
+
+      <AlertDialog open={!!toggleTarget} onOpenChange={(v) => !v && setToggleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{toggleTarget?.is_active ? "غیرفعال‌سازی برند" : "فعال‌سازی برند"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleTarget?.is_active
+                ? `آیا از غیرفعال‌کردن «${toggleTarget?.name}» اطمینان دارید؟ این برند در فرم‌های جدید نمایش داده نخواهد شد ولی در سوابق باقی می‌ماند.`
+                : `آیا از فعال‌کردن «${toggleTarget?.name}» اطمینان دارید؟`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction onClick={() => toggleTarget && toggleStatus(toggleTarget)}>
+              تایید
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

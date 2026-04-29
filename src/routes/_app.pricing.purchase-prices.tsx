@@ -245,7 +245,7 @@ function PurchasePricesPage() {
               <SelectTrigger className="h-9"><SelectValue placeholder="همه" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
-                {(brandsQ.data ?? []).map((b) => (
+                {(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -257,7 +257,7 @@ function PurchasePricesPage() {
               <SelectTrigger className="h-9"><SelectValue placeholder="همه" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
-                {(categoriesQ.data ?? []).map((c) => (
+                {(categoriesQ.data ?? []).filter((c) => c.is_active).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>

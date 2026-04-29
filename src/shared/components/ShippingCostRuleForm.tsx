@@ -165,7 +165,7 @@ export function ShippingCostRuleForm({
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">— هیچ —</SelectItem>
-            {(categories ?? []).map((c) => (
+            {(categories ?? []).filter((c: any) => c.is_active !== false).map((c: any) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
           </SelectContent>
@@ -181,7 +181,7 @@ export function ShippingCostRuleForm({
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">— هیچ —</SelectItem>
-            {(brands ?? []).map((b) => (
+            {(brands ?? []).filter((b: any) => b.is_active !== false).map((b: any) => (
               <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
             ))}
           </SelectContent>
