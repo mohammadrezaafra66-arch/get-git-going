@@ -42,7 +42,7 @@ const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
   sale_price_type_id: z.string().uuid("انتخاب نوع قیمت الزامی است"),
   settlement_type_id: z.string().uuid().nullable().optional(),
-  invoice_type: z.enum(["pre_invoice", "advance_payment"]).default("pre_invoice"),
+  invoice_type: z.enum(["pre_invoice", "advance_payment"]),
   notes: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1, "حداقل یک قلم اضافه کنید"),
 });
