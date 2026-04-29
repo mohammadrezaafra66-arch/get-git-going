@@ -3449,6 +3449,152 @@ export type Database = {
         }
         Relationships: []
       }
+      waybill_items: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_item_id: string
+          notes: string | null
+          product_id: string
+          quantity: number
+          waybill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_item_id: string
+          notes?: string | null
+          product_id: string
+          quantity: number
+          waybill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_item_id?: string
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          waybill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waybill_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waybill_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waybill_items_waybill_id_fkey"
+            columns: ["waybill_id"]
+            isOneToOne: false
+            referencedRelation: "waybills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waybill_number_counter: {
+        Row: {
+          day: string
+          last_value: number
+        }
+        Insert: {
+          day: string
+          last_value?: number
+        }
+        Update: {
+          day?: string
+          last_value?: number
+        }
+        Relationships: []
+      }
+      waybills: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_accounting_code: string | null
+          destination_address: string | null
+          destination_city: string
+          id: string
+          invoice_id: string
+          receiver_name: string
+          receiver_phone: string
+          sender_name: string
+          sender_phone: string
+          shipping_company: string
+          shipping_notes: string | null
+          status: string
+          updated_at: string
+          waybill_number: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_accounting_code?: string | null
+          destination_address?: string | null
+          destination_city: string
+          id?: string
+          invoice_id: string
+          receiver_name: string
+          receiver_phone: string
+          sender_name: string
+          sender_phone: string
+          shipping_company: string
+          shipping_notes?: string | null
+          status?: string
+          updated_at?: string
+          waybill_number: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_accounting_code?: string | null
+          destination_address?: string | null
+          destination_city?: string
+          id?: string
+          invoice_id?: string
+          receiver_name?: string
+          receiver_phone?: string
+          sender_name?: string
+          sender_phone?: string
+          shipping_company?: string
+          shipping_notes?: string | null
+          status?: string
+          updated_at?: string
+          waybill_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waybills_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waybills_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waybills_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       publish_recipients_view: {
@@ -3667,6 +3813,22 @@ export type Database = {
           p_subtotal_amount: number
         }
         Returns: Json
+      }
+      create_waybill_for_invoice: {
+        Args: {
+          p_customer_accounting_code?: string
+          p_destination_address?: string
+          p_destination_city: string
+          p_invoice_id: string
+          p_receiver_name: string
+          p_receiver_phone: string
+          p_register?: boolean
+          p_sender_name: string
+          p_sender_phone: string
+          p_shipping_company: string
+          p_shipping_notes?: string
+        }
+        Returns: string
       }
       deactivate_user: { Args: { _user_id: string }; Returns: undefined }
       delete_bot_api_key_table_access: {
@@ -3893,6 +4055,10 @@ export type Database = {
       }
       update_role_permissions: {
         Args: { _permissions: Json; _role_name: string }
+        Returns: undefined
+      }
+      update_waybill_status: {
+        Args: { p_new_status: string; p_waybill_id: string }
         Returns: undefined
       }
     }
