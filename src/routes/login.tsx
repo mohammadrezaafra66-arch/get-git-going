@@ -285,6 +285,8 @@ function LoginPage() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
+          حساب ندارید؟ <Link to="/register" className="text-primary hover:underline">ثبت‌نام کنید</Link>
+          {" "}|{" "}
           <Link to="/" className="hover:text-primary">بازگشت به خانه</Link>
         </p>
       </div>
