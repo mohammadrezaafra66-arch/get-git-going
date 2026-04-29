@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Pencil, Power, Search } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasAnyRole } from "@/lib/rbac/roles";
+import { useDebounce } from "@/hooks/use-debounce";
 import { categorySchema, type CategoryFormValues } from "@/lib/products/schemas";
 
 export const Route = createFileRoute("/_app/products/categories")({
@@ -28,10 +33,13 @@ interface Cat { id: string; name: string; slug: string; parent_id: string | null
 
 function CategoriesPage() {
   const { roles } = useAuth();
-  const canWrite = hasPermission(roles, "products", "update");
+  const canWrite = hasAnyRole(roles, ["admin", "manager", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Cat | null>(null);
+  const [search, setSearch] = useState("");
+  const dSearch = useDebounce(search, 350);
+  const [toggleTarget, setToggleTarget] = useState<Cat | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["categories-full"],
@@ -44,27 +52,42 @@ function CategoriesPage() {
     },
   });
 
+  const filtered = useMemo(() => {
+    const list = data ?? [];
+    const q = dSearch.trim().toLowerCase();
+    if (q.length < 2) return list;
+    // Include matched + ancestors so the tree stays readable
+    const matched = new Set(list.filter((c) => c.name.toLowerCase().includes(q)).map((c) => c.id));
+    const byId = new Map(list.map((c) => [c.id, c] as const));
+    const include = new Set<string>(matched);
+    for (const id of matched) {
+      let p = byId.get(id)?.parent_id ?? null;
+      while (p && !include.has(p)) { include.add(p); p = byId.get(p)?.parent_id ?? null; }
+    }
+    return list.filter((c) => include.has(c.id));
+  }, [data, dSearch]);
+
   // ساخت ساختار درختی برای نمایش
   const tree = useMemo(() => {
-    const list = data ?? [];
+    const list = filtered;
     const byParent = new Map<string | null, Cat[]>();
     for (const c of list) {
       const arr = byParent.get(c.parent_id) ?? [];
       arr.push(c); byParent.set(c.parent_id, arr);
     }
     return byParent;
-  }, [data]);
+  }, [filtered]);
 
   const onSaved = () => {
     qc.invalidateQueries({ queryKey: ["categories-full"] });
     qc.invalidateQueries({ queryKey: ["categories-lite"] });
   };
 
-  const remove = async (c: Cat) => {
-    if (!confirm(`حذف دسته "${c.name}"؟ زیردسته‌ها بدون والد می‌شوند.`)) return;
-    const { error } = await supabase.from("categories").delete().eq("id", c.id);
+  const toggleStatus = async (c: Cat) => {
+    const { error } = await supabase.from("categories").update({ is_active: !c.is_active }).eq("id", c.id);
     if (error) toast.error(error.message);
-    else { toast.success("دسته حذف شد"); onSaved(); }
+    else { toast.success(c.is_active ? "دسته غیرفعال شد" : "دسته فعال شد"); onSaved(); }
+    setToggleTarget(null);
   };
 
   const renderNode = (c: Cat, depth: number): React.ReactNode => {
@@ -73,9 +96,11 @@ function CategoriesPage() {
       <div key={c.id}>
         <div className="flex items-center justify-between gap-2 border-b border-border p-3" style={{ paddingInlineStart: 12 + depth * 20 }}>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{c.name}</span>
-              {!c.is_active && <Badge variant="outline">غیرفعال</Badge>}
+              {c.is_active
+                ? <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">فعال</Badge>
+                : <Badge variant="destructive">غیرفعال</Badge>}
             </div>
             <div className="text-xs text-muted-foreground" dir="ltr">{c.slug}</div>
           </div>
@@ -84,8 +109,8 @@ function CategoriesPage() {
               <Button variant="ghost" size="icon" onClick={() => { setEditing(c); setOpen(true); }}>
                 <Pencil className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => remove(c)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
+              <Button variant="ghost" size="icon" onClick={() => setToggleTarget(c)} title={c.is_active ? "غیرفعال" : "فعال"}>
+                <Power className={`h-4 w-4 ${c.is_active ? "text-destructive" : "text-emerald-600"}`} />
               </Button>
             </div>
           )}
@@ -117,6 +142,20 @@ function CategoriesPage() {
       />
 
       <Card>
+        <CardContent className="p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجوی نام دسته (حداقل ۲ کاراکتر)"
+              className="pr-9"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
@@ -135,6 +174,25 @@ function CategoriesPage() {
         all={data ?? []}
         onSaved={onSaved}
       />
+
+      <AlertDialog open={!!toggleTarget} onOpenChange={(v) => !v && setToggleTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{toggleTarget?.is_active ? "غیرفعال‌سازی دسته" : "فعال‌سازی دسته"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleTarget?.is_active
+                ? `آیا از غیرفعال‌کردن «${toggleTarget?.name}» اطمینان دارید؟ این دسته در فرم‌های جدید نمایش داده نخواهد شد.`
+                : `آیا از فعال‌کردن «${toggleTarget?.name}» اطمینان دارید؟`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction onClick={() => toggleTarget && toggleStatus(toggleTarget)}>
+              تایید
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
