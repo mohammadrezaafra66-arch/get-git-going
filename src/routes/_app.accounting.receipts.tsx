@@ -94,7 +94,7 @@ function ReceiptsListPage() {
       let q = supabase
         .from("payment_receipts")
         .select(
-          "id, amount, payment_date, payment_time, tracking_number, status, customer:customers(id, name)",
+          "id, amount, payment_date, payment_time, tracking_number, status, receipt_type, customer:customers(id, name)",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -231,6 +231,7 @@ function ReceiptsListPage() {
                   <TableHead>تاریخ</TableHead>
                   <TableHead>ساعت</TableHead>
                   <TableHead>شماره پیگیری</TableHead>
+                  <TableHead>نوع</TableHead>
                   <TableHead>وضعیت</TableHead>
                   <TableHead className="w-20">عملیات</TableHead>
                 </TableRow>
@@ -244,6 +245,7 @@ function ReceiptsListPage() {
                     payment_time: string;
                     tracking_number: string;
                     status: string;
+                    receipt_type: string;
                     customer: { id: string; name: string } | null;
                   };
                   return (
@@ -253,6 +255,11 @@ function ReceiptsListPage() {
                       <TableCell dir="ltr">{toFaDigits(row.payment_date)}</TableCell>
                       <TableCell dir="ltr">{toFaDigits(row.payment_time?.slice(0, 5) ?? "")}</TableCell>
                       <TableCell dir="ltr">{toFaDigits(row.tracking_number)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {row.receipt_type === "prepayment" ? "پیش‌پرداخت" : "پرداخت"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"}>
                           {STATUS_LABEL[row.status] ?? row.status}
