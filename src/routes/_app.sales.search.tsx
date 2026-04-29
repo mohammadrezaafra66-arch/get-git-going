@@ -509,3 +509,189 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
     </Card>
   );
 }
+
+// =============================================================================
+// Filters Panel (shared between desktop horizontal layout and mobile sheet)
+// =============================================================================
+
+interface FiltersPanelProps {
+  brands: { id: string; name: string }[];
+  categories: { id: string; name: string; parent_id: string | null }[];
+  labels: { id: string; title: string; color: string | null }[];
+  brandIds: string[]; setBrandIds: (v: string[]) => void;
+  categoryIds: string[]; setCategoryIds: (v: string[]) => void;
+  labelIds: string[]; setLabelIds: (v: string[]) => void;
+  stockStatus: string; setStockStatus: (v: string) => void;
+  productType: string; setProductType: (v: string) => void;
+  brandFilterText: string; setBrandFilterText: (v: string) => void;
+  categoryFilterText: string; setCategoryFilterText: (v: string) => void;
+  labelFilterText: string; setLabelFilterText: (v: string) => void;
+  dBrandText: string; dCategoryText: string; dLabelText: string;
+}
+
+function FiltersPanel(props: FiltersPanelProps) {
+  const {
+    brands, categories, labels,
+    brandIds, setBrandIds, categoryIds, setCategoryIds, labelIds, setLabelIds,
+    stockStatus, setStockStatus, productType, setProductType,
+    brandFilterText, setBrandFilterText,
+    categoryFilterText, setCategoryFilterText,
+    labelFilterText, setLabelFilterText,
+    dBrandText, dCategoryText, dLabelText,
+  } = props;
+
+  const filteredBrands = useMemo(() => {
+    if (!dBrandText) return brands;
+    return brands.filter((b) => normalizeSearchText(b.name).includes(dBrandText));
+  }, [brands, dBrandText]);
+
+  const filteredCategories = useMemo(() => {
+    if (!dCategoryText) return categories;
+    return categories.filter((c) => normalizeSearchText(c.name).includes(dCategoryText));
+  }, [categories, dCategoryText]);
+
+  const filteredLabels = useMemo(() => {
+    if (!dLabelText) return labels;
+    return labels.filter((l) => normalizeSearchText(l.title).includes(dLabelText));
+  }, [labels, dLabelText]);
+
+  const toggle = (arr: string[], setArr: (v: string[]) => void, id: string) => {
+    setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stock status (toggle buttons) */}
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">
+          وضعیت موجودی
+          {stockStatus !== "__all" && <Badge variant="secondary" className="mr-2">۱</Badge>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { v: "__all", l: "همه" },
+            { v: "available", l: "موجود" },
+            { v: "limited", l: "محدود" },
+            { v: "unavailable", l: "ناموجود" },
+          ].map((o) => (
+            <Button
+              key={o.v}
+              type="button"
+              variant={stockStatus === o.v ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStockStatus(o.v)}
+            >
+              {o.l}
+            </Button>
+          ))}
+        </div>
+        <div className="text-sm font-semibold pt-2">نوع کالا</div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { v: "__all", l: "همه" },
+            { v: "iranian", l: "ایرانی" },
+            { v: "foreign", l: "خارجی" },
+          ].map((o) => (
+            <Button
+              key={o.v}
+              type="button"
+              variant={productType === o.v ? "default" : "outline"}
+              size="sm"
+              onClick={() => setProductType(o.v)}
+            >
+              {o.l}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Brands */}
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">
+          برندها {brandIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(brandIds.length)} انتخاب</Badge>}
+        </div>
+        <Input
+          value={brandFilterText}
+          onChange={(e) => setBrandFilterText(e.target.value)}
+          placeholder="جستجو در برند..."
+          className="h-8 text-sm"
+        />
+        <ScrollArea className="h-44 rounded-md border p-2">
+          <div className="space-y-1.5">
+            {filteredBrands.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-4">برندی یافت نشد</div>
+            ) : filteredBrands.map((b) => (
+              <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                <Checkbox
+                  checked={brandIds.includes(b.id)}
+                  onCheckedChange={() => toggle(brandIds, setBrandIds, b.id)}
+                />
+                <span className="truncate">{b.name}</span>
+              </label>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Categories */}
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">
+          دسته‌بندی‌ها {categoryIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(categoryIds.length)} انتخاب</Badge>}
+        </div>
+        <Input
+          value={categoryFilterText}
+          onChange={(e) => setCategoryFilterText(e.target.value)}
+          placeholder="جستجو در دسته..."
+          className="h-8 text-sm"
+        />
+        <ScrollArea className="h-44 rounded-md border p-2">
+          <div className="space-y-1.5">
+            {filteredCategories.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-4">دسته‌ای یافت نشد</div>
+            ) : filteredCategories.map((c) => (
+              <label key={c.id} className={`flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 ${c.parent_id ? "pr-4" : ""}`}>
+                <Checkbox
+                  checked={categoryIds.includes(c.id)}
+                  onCheckedChange={() => toggle(categoryIds, setCategoryIds, c.id)}
+                />
+                <span className="truncate">{c.name}</span>
+              </label>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {/* Labels */}
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">
+          برچسب‌ها {labelIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(labelIds.length)} انتخاب</Badge>}
+        </div>
+        <Input
+          value={labelFilterText}
+          onChange={(e) => setLabelFilterText(e.target.value)}
+          placeholder="جستجو در برچسب..."
+          className="h-8 text-sm"
+        />
+        <ScrollArea className="h-44 rounded-md border p-2">
+          <div className="space-y-1.5">
+            {filteredLabels.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-4">برچسبی یافت نشد</div>
+            ) : filteredLabels.map((l) => (
+              <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                <Checkbox
+                  checked={labelIds.includes(l.id)}
+                  onCheckedChange={() => toggle(labelIds, setLabelIds, l.id)}
+                />
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full border"
+                  style={l.color ? { backgroundColor: l.color } : undefined}
+                />
+                <span className="truncate">{l.title}</span>
+              </label>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
