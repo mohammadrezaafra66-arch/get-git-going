@@ -76,6 +76,7 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
+import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
@@ -86,6 +87,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
+import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
@@ -431,6 +433,11 @@ const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   path: '/admin/roles',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountingReceiptsRoute = AppAccountingReceiptsRouteImport.update({
+  id: '/accounting/receipts',
+  path: '/accounting/receipts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
   id: '/academy_/manage',
   path: '/academy/manage',
@@ -481,6 +488,12 @@ const AppPricingSaleListsListIdRoute =
     id: '/pricing/sale-lists_/$listId',
     path: '/pricing/sale-lists/$listId',
     getParentRoute: () => AppRoute,
+  } as any)
+const AppAccountingReceiptsCreateRoute =
+  AppAccountingReceiptsCreateRouteImport.update({
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => AppAccountingReceiptsRoute,
   } as any)
 const AppAcademyCourseIdLessonIdRoute =
   AppAcademyCourseIdLessonIdRouteImport.update({
@@ -549,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -595,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -632,6 +647,7 @@ export interface FileRoutesByTo {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -677,6 +693,7 @@ export interface FileRoutesByTo {
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -718,6 +735,7 @@ export interface FileRoutesById {
   '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
+  '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -764,6 +782,7 @@ export interface FileRoutesById {
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/products/$id/edit': typeof AppProductsIdEditRoute
@@ -805,6 +824,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/receipts'
     | '/admin/roles'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -851,6 +871,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/sales/'
     | '/academy/$courseId/$lessonId'
+    | '/accounting/receipts/create'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -888,6 +909,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/receipts'
     | '/admin/roles'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -933,6 +955,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/academy/$courseId/$lessonId'
+    | '/accounting/receipts/create'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -973,6 +996,7 @@ export interface FileRouteTypes {
     | '/_app/users'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
+    | '/_app/accounting/receipts'
     | '/_app/admin/roles'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -1019,6 +1043,7 @@ export interface FileRouteTypes {
     | '/_app/products/'
     | '/_app/sales/'
     | '/_app/academy_/$courseId_/$lessonId'
+    | '/_app/accounting/receipts/create'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/products/$id/edit'
@@ -1518,6 +1543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRolesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/receipts': {
+      id: '/_app/accounting/receipts'
+      path: '/accounting/receipts'
+      fullPath: '/accounting/receipts'
+      preLoaderRoute: typeof AppAccountingReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/manage': {
       id: '/_app/academy_/manage'
       path: '/academy/manage'
@@ -1587,6 +1619,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pricing/sale-lists/$listId'
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/accounting/receipts/create': {
+      id: '/_app/accounting/receipts/create'
+      path: '/create'
+      fullPath: '/accounting/receipts/create'
+      preLoaderRoute: typeof AppAccountingReceiptsCreateRouteImport
+      parentRoute: typeof AppAccountingReceiptsRoute
     }
     '/_app/academy_/$courseId_/$lessonId': {
       id: '/_app/academy_/$courseId_/$lessonId'
@@ -1712,6 +1751,19 @@ const AppUsersRouteWithChildren = AppUsersRoute._addFileChildren(
   AppUsersRouteChildren,
 )
 
+interface AppAccountingReceiptsRouteChildren {
+  AppAccountingReceiptsCreateRoute: typeof AppAccountingReceiptsCreateRoute
+}
+
+const AppAccountingReceiptsRouteChildren: AppAccountingReceiptsRouteChildren = {
+  AppAccountingReceiptsCreateRoute: AppAccountingReceiptsCreateRoute,
+}
+
+const AppAccountingReceiptsRouteWithChildren =
+  AppAccountingReceiptsRoute._addFileChildren(
+    AppAccountingReceiptsRouteChildren,
+  )
+
 interface AppProductsIdRouteChildren {
   AppProductsIdEditRoute: typeof AppProductsIdEditRoute
 }
@@ -1757,6 +1809,7 @@ interface AppRouteChildren {
   AppUsersRoute: typeof AppUsersRouteWithChildren
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
+  AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
@@ -1816,6 +1869,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsersRoute: AppUsersRouteWithChildren,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
+  AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
