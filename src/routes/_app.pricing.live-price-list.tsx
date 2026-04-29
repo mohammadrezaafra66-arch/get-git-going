@@ -25,6 +25,7 @@ import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatter
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
+import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -42,6 +43,9 @@ interface ProductRow {
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
   status: string;
+  color?: string | null;
+  capacity?: string | null;
+  model?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
 }
@@ -133,7 +137,7 @@ function LivePriceListPage() {
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, status, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .select("id, name, sku, product_type, stock_status, status, color, capacity, model, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
         .eq("is_active", true)
         .order("name", { ascending: true })
         .range(from, to);
