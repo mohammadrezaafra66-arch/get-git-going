@@ -95,6 +95,7 @@ import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pri
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
+import { Route as AppSalesInvoicesInvoiceIdWaybillRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
@@ -540,6 +541,12 @@ const AppAcademyCourseIdLessonIdRoute =
     path: '/academy/$courseId/$lessonId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSalesInvoicesInvoiceIdWaybillRoute =
+  AppSalesInvoicesInvoiceIdWaybillRouteImport.update({
+    id: '/waybill',
+    path: '/waybill',
+    getParentRoute: () => AppSalesInvoicesInvoiceIdRoute,
+  } as any)
 const AppSalesCustomersCustomerIdEditRoute =
   AppSalesCustomersCustomerIdEditRouteImport.update({
     id: '/sales_/customers_/$customerId/edit',
@@ -572,9 +579,9 @@ const ApiPublicBotDynamicTablesTableIdRowsRoute =
   } as any)
 const AppSalesInvoicesInvoiceIdWaybillCreateRoute =
   AppSalesInvoicesInvoiceIdWaybillCreateRouteImport.update({
-    id: '/waybill/create',
-    path: '/waybill/create',
-    getParentRoute: () => AppSalesInvoicesInvoiceIdRoute,
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => AppSalesInvoicesInvoiceIdWaybillRoute,
   } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRowIdRoute =
   ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport.update({
@@ -673,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
+  '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -764,6 +772,7 @@ export interface FileRoutesByTo {
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
+  '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -860,6 +869,7 @@ export interface FileRoutesById {
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
+  '/_app/sales_/invoices_/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
@@ -956,6 +966,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
+    | '/sales/invoices/$invoiceId/waybill'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -1047,6 +1058,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
+    | '/sales/invoices/$invoiceId/waybill'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -1142,6 +1154,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
+    | '/_app/sales_/invoices_/$invoiceId/waybill'
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -1763,6 +1776,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAcademyCourseIdLessonIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/invoices_/$invoiceId/waybill': {
+      id: '/_app/sales_/invoices_/$invoiceId/waybill'
+      path: '/waybill'
+      fullPath: '/sales/invoices/$invoiceId/waybill'
+      preLoaderRoute: typeof AppSalesInvoicesInvoiceIdWaybillRouteImport
+      parentRoute: typeof AppSalesInvoicesInvoiceIdRoute
+    }
     '/_app/sales_/customers_/$customerId/edit': {
       id: '/_app/sales_/customers_/$customerId/edit'
       path: '/sales/customers/$customerId/edit'
@@ -1800,10 +1820,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/sales_/invoices_/$invoiceId/waybill/create': {
       id: '/_app/sales_/invoices_/$invoiceId/waybill/create'
-      path: '/waybill/create'
+      path: '/create'
       fullPath: '/sales/invoices/$invoiceId/waybill/create'
       preLoaderRoute: typeof AppSalesInvoicesInvoiceIdWaybillCreateRouteImport
-      parentRoute: typeof AppSalesInvoicesInvoiceIdRoute
+      parentRoute: typeof AppSalesInvoicesInvoiceIdWaybillRoute
     }
     '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
@@ -1931,14 +1951,29 @@ const AppPricingSaleListsListIdRouteWithChildren =
     AppPricingSaleListsListIdRouteChildren,
   )
 
-interface AppSalesInvoicesInvoiceIdRouteChildren {
+interface AppSalesInvoicesInvoiceIdWaybillRouteChildren {
   AppSalesInvoicesInvoiceIdWaybillCreateRoute: typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
+}
+
+const AppSalesInvoicesInvoiceIdWaybillRouteChildren: AppSalesInvoicesInvoiceIdWaybillRouteChildren =
+  {
+    AppSalesInvoicesInvoiceIdWaybillCreateRoute:
+      AppSalesInvoicesInvoiceIdWaybillCreateRoute,
+  }
+
+const AppSalesInvoicesInvoiceIdWaybillRouteWithChildren =
+  AppSalesInvoicesInvoiceIdWaybillRoute._addFileChildren(
+    AppSalesInvoicesInvoiceIdWaybillRouteChildren,
+  )
+
+interface AppSalesInvoicesInvoiceIdRouteChildren {
+  AppSalesInvoicesInvoiceIdWaybillRoute: typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
 }
 
 const AppSalesInvoicesInvoiceIdRouteChildren: AppSalesInvoicesInvoiceIdRouteChildren =
   {
-    AppSalesInvoicesInvoiceIdWaybillCreateRoute:
-      AppSalesInvoicesInvoiceIdWaybillCreateRoute,
+    AppSalesInvoicesInvoiceIdWaybillRoute:
+      AppSalesInvoicesInvoiceIdWaybillRouteWithChildren,
   }
 
 const AppSalesInvoicesInvoiceIdRouteWithChildren =

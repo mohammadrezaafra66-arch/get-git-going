@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight, Copy, Send } from "lucide-react";
+import { Loader2, XCircle, ArrowRight, Copy, Send, Truck } from "lucide-react";
+import { WaybillStatusBadge } from "@/shared/components/WaybillStatusBadge";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -95,6 +96,23 @@ function InvoiceDetailPage() {
         line_total: number;
         product: { name: string } | null;
       }>;
+    },
+  });
+
+  const { data: waybill } = useQuery({
+    queryKey: ["waybill-summary", invoiceId],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("waybills")
+        .select("id, waybill_number, status, shipping_company, destination_city")
+        .eq("invoice_id", invoiceId)
+        .neq("status", "canceled")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 
