@@ -74,13 +74,28 @@ function SalesSearchPage() {
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
-  const [brandId, setBrandId] = useState<string>("__all");
+  const [brandIds, setBrandIds] = useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [labelIds, setLabelIds] = useState<string[]>([]);
   const [stockStatus, setStockStatus] = useState<string>("__all");
   const [productType, setProductType] = useState<string>("__all");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // local search inputs inside filter panels
+  const [brandFilterText, setBrandFilterText] = useState("");
+  const [categoryFilterText, setCategoryFilterText] = useState("");
+  const [labelFilterText, setLabelFilterText] = useState("");
   const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
 
-  const term = dSearch.trim();
+  const term = normalizeSearchText(dSearch);
   const canSearch = term.length >= 2;
+
+  const dBrandText = useDebounce(normalizeSearchText(brandFilterText), 200);
+  const dCategoryText = useDebounce(normalizeSearchText(categoryFilterText), 200);
+  const dLabelText = useDebounce(normalizeSearchText(labelFilterText), 200);
+
+  const activeFilterCount =
+    brandIds.length + categoryIds.length + labelIds.length +
+    (stockStatus !== "__all" ? 1 : 0) + (productType !== "__all" ? 1 : 0);
 
   // ---------- reference data ----------
   const { data: brands = [] } = useQuery({
@@ -88,6 +103,28 @@ function SalesSearchPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("brands").select("id, name").eq("is_active", true).order("name").limit(500);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories-lite-sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories").select("id, name, parent_id").eq("is_active", true).order("name").limit(500);
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: labels = [] } = useQuery({
+    queryKey: ["product-labels-lite-sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_labels").select("id, title, color").order("title").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -107,12 +144,30 @@ function SalesSearchPage() {
     }
   }, [salePriceTypes, salePriceTypeId]);
 
+  // labels -> products mapping when label filter active
+  const labelProductIdsQuery = useQuery({
+    enabled: labelIds.length > 0,
+    queryKey: ["sales-search-label-product-ids", labelIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_label_links")
+        .select("product_id")
+        .in("label_id", labelIds)
+        .limit(5000);
+      if (error) throw error;
+      return Array.from(new Set((data ?? []).map((r: { product_id: string }) => r.product_id)));
+    },
+    staleTime: 60_000,
+  });
+
   // ---------- products query ----------
   const productsQuery = useQuery({
-    enabled: canSearch,
-    queryKey: ["sales-search-products", { term, brandId, stockStatus, productType }],
+    enabled: canSearch && (labelIds.length === 0 || !!labelProductIdsQuery.data),
+    queryKey: ["sales-search-products", { term, brandIds, categoryIds, stockStatus, productType, labelProductIds: labelProductIdsQuery.data ?? null }],
     queryFn: async () => {
       const safe = term.replace(/[%_]/g, "");
+      const labelFilteredIds = labelIds.length > 0 ? (labelProductIdsQuery.data ?? []) : null;
+      if (labelFilteredIds && labelFilteredIds.length === 0) return [] as ProductRow[];
       // search by name, SKU, brand name, category name
       let q = supabase
         .from("products")
@@ -121,9 +176,11 @@ function SalesSearchPage() {
         .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,brands.name.ilike.%${safe}%,categories.name.ilike.%${safe}%`)
         .order("name", { ascending: true })
         .limit(RESULT_LIMIT);
-      if (brandId !== "__all") q = q.eq("brand_id", brandId);
+      if (brandIds.length > 0) q = q.in("brand_id", brandIds);
+      if (categoryIds.length > 0) q = q.in("category_id", categoryIds);
       if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
       if (productType !== "__all") q = q.eq("product_type", productType as "iranian" | "foreign");
+      if (labelFilteredIds) q = q.in("id", labelFilteredIds);
       const { data, error } = await q;
       if (error) {
         // fallback: some PostgREST setups don't allow OR across embedded relations.
@@ -135,9 +192,11 @@ function SalesSearchPage() {
           .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
           .order("name", { ascending: true })
           .limit(RESULT_LIMIT);
-        if (brandId !== "__all") q2 = q2.eq("brand_id", brandId);
+        if (brandIds.length > 0) q2 = q2.in("brand_id", brandIds);
+        if (categoryIds.length > 0) q2 = q2.in("category_id", categoryIds);
         if (stockStatus !== "__all") q2 = q2.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
         if (productType !== "__all") q2 = q2.eq("product_type", productType as "iranian" | "foreign");
+        if (labelFilteredIds) q2 = q2.in("id", labelFilteredIds);
         const r2 = await q2;
         if (r2.error) throw r2.error;
         return (r2.data ?? []) as ProductRow[];
