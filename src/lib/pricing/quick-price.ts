@@ -124,10 +124,8 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
         if (!input.category_id) return false;
         if (s.category_id !== input.category_id) return false;
       }
-      if (s.brand_id) {
-        if (!input.brand_id) return false;
-        if (s.brand_id !== input.brand_id) return false;
-      }
+      // quick-price ورودی برند ندارد؛ قوانین مخصوص یک برند خاص نادیده گرفته می‌شوند
+      if (s.brand_id) return false;
       if (s.product_type && s.product_type !== input.product_type) return false;
       if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
       if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price)) return false;
