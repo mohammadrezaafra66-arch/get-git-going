@@ -913,6 +913,7 @@ export type Database = {
           email: string | null
           id: string
           is_active: boolean
+          link_group: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -928,6 +929,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          link_group?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -943,6 +945,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_active?: boolean
+          link_group?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
