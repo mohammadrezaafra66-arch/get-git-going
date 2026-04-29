@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDownRight, ArrowUpRight, Calculator, Loader2, Minus, PackageX, Tag, Truck, UserRound } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Calculator, Copy, Loader2, Minus, PackageX, Tag, Truck, UserRound } from "lucide-react";
+import { toast } from "sonner";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
-import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 interface ProductLite {
@@ -108,6 +109,64 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
   const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
   const stockKey = product?.stock_status ?? "unknown";
 
+  const handleCopy = async () => {
+    if (!product) return;
+    const lines: string[] = [];
+    lines.push(`📦 ${product.name}`);
+    if (product.brand?.name) lines.push(`🏷 برند: ${product.brand.name}`);
+    if (product.category?.name) lines.push(`📂 دسته: ${product.category.name}`);
+    lines.push(`📊 موجودی: ${STOCK_LABEL[stockKey] ?? stockKey}`);
+    lines.push("");
+
+    const priceLines: string[] = [];
+    let latestAt: string | null = null;
+    for (const t of priceTypes as { id: string; title: string }[]) {
+      const h = priceMap.get(t.id);
+      if (!h) continue;
+      const price = `${formatNumber(Number(h.new_sale_price))} تومان`;
+      const change = Number(h.change_percent ?? 0);
+      const hasOld = h.old_sale_price != null && Number(h.old_sale_price) > 0;
+      let suffix = "";
+      if (hasOld && Math.abs(change) >= 0.01) {
+        const arrow = change > 0 ? "↑" : "↓";
+        suffix = ` (${arrow} ${formatNumber(Math.abs(Math.round(change)))}٪)`;
+      }
+      priceLines.push(`• ${t.title}: ${price}${suffix}`);
+      if (!latestAt || new Date(h.created_at) > new Date(latestAt)) latestAt = h.created_at;
+    }
+
+    if (priceLines.length > 0) {
+      lines.push("💰 قیمت‌های فروش:");
+      lines.push(...priceLines);
+      lines.push("");
+      if (latestAt) lines.push(`📅 آخرین به‌روزرسانی: ${formatDateFa(latestAt)}`);
+    } else {
+      lines.push("💰 قیمت فروش معتبری ثبت نشده است.");
+    }
+    lines.push("");
+    lines.push("🔗 برای اطلاعات بیشتر با ما تماس بگیرید.");
+
+    const text = lines.join("\n");
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (!ok) throw new Error("copy failed");
+      }
+      toast.success("اطلاعات محصول در کلیپ‌بورد کپی شد.");
+    } catch {
+      toast.error("کپی در کلیپ‌بورد ممکن نشد. لطفاً به‌صورت دستی انتخاب و کپی کنید.");
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto sm:max-w-2xl sm:mx-auto rounded-t-2xl">
@@ -190,6 +249,10 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
             )}
 
             <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">
+              <Button type="button" variant="secondary" size="sm" onClick={handleCopy}>
+                <Copy className="ms-1 h-4 w-4" />
+                کپی اطلاعات
+              </Button>
               <Button asChild variant="outline" size="sm">
                 <Link to="/pricing/calculator">
                   <Calculator className="ms-1 h-4 w-4" />
