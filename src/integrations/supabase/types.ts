@@ -1038,6 +1038,7 @@ export type Database = {
       }
       dynamic_tables: {
         Row: {
+          access_level: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -1049,6 +1050,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_level?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1060,6 +1062,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_level?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3265,6 +3268,10 @@ export type Database = {
       delete_bot_api_key_table_access: {
         Args: { p_key_id: string; p_table_id: string }
         Returns: undefined
+      }
+      dyn_table_role_can_view: {
+        Args: { _access_level: string; _user_id: string }
+        Returns: boolean
       }
       export_dynamic_table_rows: {
         Args: {
