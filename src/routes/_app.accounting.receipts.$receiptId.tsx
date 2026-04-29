@@ -329,6 +329,9 @@ function ReceiptDetailPage() {
                   <Badge variant={STATUS_VARIANT[receipt.status] ?? "secondary"}>
                     {STATUS_LABEL[receipt.status] ?? receipt.status}
                   </Badge>
+                  <Badge variant="outline">
+                    {receipt.receipt_type === "prepayment" ? "پیش‌پرداخت" : "پرداخت بدهی"}
+                  </Badge>
                   <span className="text-sm text-muted-foreground">
                     شماره پیگیری: <span dir="ltr">{toFaDigits(receipt.tracking_number)}</span>
                   </span>
@@ -419,6 +422,50 @@ function ReceiptDetailPage() {
                     <Field label="توضیحات">
                       <p className="whitespace-pre-wrap text-sm">{receipt.description}</p>
                     </Field>
+                  </>
+                )}
+
+                {receipt.receipt_type === "payment" && (
+                  <>
+                    <Separator />
+                    <h3 className="text-sm font-semibold">پیش‌فاکتورهای متصل</h3>
+                    {linkedInvoices.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">هیچ پیش‌فاکتوری متصل نیست.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {linkedInvoices.map((l) => (
+                          <div
+                            key={l.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background p-2 text-sm"
+                          >
+                            <div className="flex flex-col">
+                              <span dir="ltr" className="font-medium">
+                                {toFaDigits(l.invoice?.number ?? l.invoice?.id?.slice(0, 8) ?? "—")}
+                              </span>
+                              {l.invoice && (
+                                <span className="text-xs text-muted-foreground">
+                                  مبلغ کل: {formatNumber(Number(l.invoice.total_amount))} تومان
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {l.invoice?.status && (
+                                <Badge variant="outline" className="text-xs">
+                                  {l.invoice.status === "paid"
+                                    ? "پرداخت‌شده"
+                                    : l.invoice.status === "partially_paid"
+                                      ? "پرداخت جزئی"
+                                      : l.invoice.status}
+                                </Badge>
+                              )}
+                              <span className="text-sm font-semibold">
+                                {formatNumber(Number(l.amount))} تومان
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
