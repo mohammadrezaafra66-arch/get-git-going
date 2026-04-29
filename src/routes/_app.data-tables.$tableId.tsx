@@ -645,6 +645,21 @@ function DataTableDetailPage() {
           }}
         />
       )}
+
+      {/* Access dialog (admin only) */}
+      {canChangeAccess && t && (
+        <AccessDialog
+          open={accessDialogOpen}
+          onOpenChange={setAccessDialogOpen}
+          tableId={tableId}
+          initialAccessLevel={(((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel)}
+          initialAllowedRoles={((((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [])}
+          onSaved={() => {
+            setAccessDialogOpen(false);
+            qc.invalidateQueries({ queryKey: ["dynamic-table", tableId] });
+          }}
+        />
+      )}
     </div>
   );
 }
