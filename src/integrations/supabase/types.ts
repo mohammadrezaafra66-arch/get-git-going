@@ -833,6 +833,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          responsible_id: string | null
           tax_id: string | null
           updated_at: string
         }
@@ -846,6 +847,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          responsible_id?: string | null
           tax_id?: string | null
           updated_at?: string
         }
@@ -859,10 +861,26 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          responsible_id?: string | null
           tax_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_responsible_id_fkey"
+            columns: ["responsible_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dynamic_table_cells: {
         Row: {
