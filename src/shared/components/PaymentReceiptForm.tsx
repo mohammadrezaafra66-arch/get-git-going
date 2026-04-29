@@ -412,5 +412,37 @@ export function PaymentReceiptForm() {
         </Button>
       </div>
     </form>
+
+    <AlertDialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>احتمال ثبت فیش تکراری</AlertDialogTitle>
+          <AlertDialogDescription>
+            {`بر اساس شماره پیگیری، مبلغ، تاریخ و بانک، ${toFaDigits(String(duplicateCount))} فیش مشابه قبلاً ثبت شده است. آیا مطمئن هستید که می‌خواهید این فیش را ثبت کنید؟`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPendingValues(null);
+              setDuplicateCount(0);
+            }}
+          >
+            انصراف
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingValues) {
+                mutation.mutate({ values: pendingValues, bypassDuplicate: true });
+              }
+              setDuplicateOpen(false);
+            }}
+          >
+            ادامه و ثبت
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
