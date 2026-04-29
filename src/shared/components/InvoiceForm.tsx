@@ -363,26 +363,28 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id.message}</p>}
           </div>
 
-          {/* Credit info */}
-          {selectedCustomer && creditProfile && (
+          {/* Credit info (real-time via get_customer_credit) */}
+          {selectedCustomer && creditInfo && (
             <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
               <div className="flex items-center gap-2 font-medium">
                 <ShieldCheck className="h-4 w-4" />
-                وضعیت اعتباری مشتری
+                وضعیت اعتباری مشتری (لحظه‌ای)
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <span className="text-muted-foreground">سقف اعتبار: </span>
-                  <span className="font-semibold">{formatNumber(creditLimit)} ریال</span>
+                  <span className="text-muted-foreground">اعتبار قابل استفاده: </span>
+                  <span className="font-semibold">{formatNumber(availableCredit)} ریال</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">بدهی جاری: </span>
                   <span className="font-semibold">{formatNumber(outstanding)} ریال</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">امتیاز: </span>
-                  <span className="font-semibold">{toFaDigits(creditProfile.credit_score ?? 0)} / ۱۰۰</span>
-                </div>
+                {heldCredit > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">اعتبار مسدودشده: </span>
+                    <span className="font-semibold">{formatNumber(heldCredit)} ریال</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
