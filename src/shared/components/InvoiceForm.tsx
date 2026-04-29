@@ -435,7 +435,21 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             </div>
           )}
 
-          {invoiceType === "advance_payment" && <AdvancePaymentSection />}
+          {invoiceType === "advance_payment" && (
+            <AdvancePaymentSection
+              totalAmount={totalAmount}
+              depositAmount={form.watch("deposit_amount") ?? null}
+              onDepositChange={(v) =>
+                form.setValue("deposit_amount", v, { shouldValidate: true })
+              }
+              commitmentConfirmed={!!form.watch("commitment_confirmed")}
+              onCommitmentChange={(v) =>
+                form.setValue("commitment_confirmed", v, { shouldValidate: true })
+              }
+              commitmentLocked={commitmentLocked}
+              showErrors={submitAttempted}
+            />
+          )}
 
           {/* نوع تسویه */}
           <div className="space-y-2">
