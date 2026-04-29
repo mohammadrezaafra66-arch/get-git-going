@@ -347,22 +347,7 @@ function DataTableDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={t?.name ?? "جزئیات جدول"}
-        description={
-          t?.slug ? (
-            <span className="flex flex-wrap items-center gap-2">
-              <span>شناسه: {t.slug}</span>
-              {(() => {
-                const lvl = ((t as { access_level?: string } | null | undefined)?.access_level ?? "all") as DynamicTableAccessLevel;
-                const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
-                return (
-                  <Badge variant="outline" className={cls}>
-                    سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
-                  </Badge>
-                );
-              })()}
-            </span>
-          ) : undefined
-        }
+        description={t?.slug ? `شناسه: ${t.slug}` : undefined}
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline">
@@ -395,6 +380,20 @@ function DataTableDetailPage() {
           </div>
         }
       />
+
+      {t && (
+        <div className="flex flex-wrap items-center gap-2 -mt-2">
+          {(() => {
+            const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
+            const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+            return (
+              <Badge variant="outline" className={cls}>
+                سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+              </Badge>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Columns management */}
       <Card>
