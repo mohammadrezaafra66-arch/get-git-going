@@ -733,6 +733,42 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_roles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          display_name: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_credit_profile: {
         Row: {
           created_at: string
@@ -2254,6 +2290,51 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          can_approve: boolean
+          can_create: boolean
+          can_delete: boolean
+          can_export: boolean
+          can_update: boolean
+          can_view: boolean
+          can_view_sensitive: boolean
+          created_at: string
+          id: string
+          module: string
+          role_name: string
+          updated_at: string
+        }
+        Insert: {
+          can_approve?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_update?: boolean
+          can_view?: boolean
+          can_view_sensitive?: boolean
+          created_at?: string
+          id?: string
+          module: string
+          role_name: string
+          updated_at?: string
+        }
+        Update: {
+          can_approve?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_update?: boolean
+          can_view?: boolean
+          can_view_sensitive?: boolean
+          created_at?: string
+          id?: string
+          module?: string
+          role_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sale_list_items: {
         Row: {
           change_amount: number | null
@@ -3159,6 +3240,10 @@ export type Database = {
           raw_key: string
         }[]
       }
+      create_custom_role: {
+        Args: { _description?: string; _display_name?: string; _name: string }
+        Returns: string
+      }
       create_dynamic_table_row: {
         Args: { p_table_id: string; p_values: Json }
         Returns: string
@@ -3319,6 +3404,10 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      toggle_custom_role_status: {
+        Args: { _is_active: boolean; _role_id: string }
+        Returns: undefined
+      }
       update_dynamic_table_cell: {
         Args: { p_column_id: string; p_row_id: string; p_value: string }
         Returns: undefined
@@ -3331,6 +3420,10 @@ export type Database = {
           p_is_required: boolean
           p_label: string
         }
+        Returns: undefined
+      }
+      update_role_permissions: {
+        Args: { _permissions: Json; _role_name: string }
         Returns: undefined
       }
     }
