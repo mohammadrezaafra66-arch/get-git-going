@@ -177,17 +177,15 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const total = values.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
-      // Credit pre-flight check for credit pre-invoices only
+      // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
-        const { data: cp } = await supabase
-          .from("customer_credit_profile")
-          .select("credit_limit, outstanding_balance")
-          .eq("customer_id", values.customer_id)
-          .maybeSingle();
-        const limit = Number(cp?.credit_limit ?? 0);
-        const out = Number(cp?.outstanding_balance ?? 0);
-        if (limit > 0 && total + out > limit) {
-          // audit credit_limit_blocked
+        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
+          p_customer_id: values.customer_id,
+        });
+        if (ccErr) throw ccErr;
+        const row = Array.isArray(cc) ? cc[0] : cc;
+        const avail = Number((row as { available_credit?: number } | null)?.available_credit ?? 0);
+        if (avail < total) {
           await supabase.from("audit_logs").insert({
             actor_id: user.id,
             entity_type: "invoice",
@@ -196,8 +194,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             diff: {
               customer_id: values.customer_id,
               total_amount: total,
-              outstanding_balance: out,
-              credit_limit: limit,
+              available_credit: avail,
             },
           } as never);
           throw new Error(
@@ -257,6 +254,22 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       }));
       const { error: itErr } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (itErr) throw itErr;
+
+      // Hold credit for credit pre-invoices (race-safe via FOR UPDATE inside RPC)
+      if (values.invoice_type === "pre_invoice") {
+        const { error: holdErr } = await supabase.rpc("hold_credit", {
+          p_customer_id: values.customer_id,
+          p_amount: total,
+          p_invoice_id: invoiceId,
+          p_user_id: user.id,
+        });
+        if (holdErr) {
+          // Roll back invoice if hold fails (e.g. concurrent overuse)
+          await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+          await supabase.from("invoices").delete().eq("id", invoiceId);
+          throw new Error(holdErr.message || "ثبت اعتبار با خطا مواجه شد");
+        }
+      }
 
       // Audit log for advance payment issuance
       if (values.invoice_type === "advance_payment") {
