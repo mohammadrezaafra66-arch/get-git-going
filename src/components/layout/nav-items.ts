@@ -26,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/sales/credit-rules", label: "اعتبارسنجی", icon: ShieldCheck,    module: "sales",       group: "finance" },
   { to: "/sales/credit-customers", label: "وضعیت اعتبار مشتریان", icon: ShieldCheck, module: "sales", group: "finance" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
+  { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText,  module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
   { to: "/users",       label: "کاربران",          icon: Users,           module: "users",       group: "admin" },
   { to: "/users/pending", label: "کاربران در انتظار", icon: Users,        module: "users",       group: "admin" },
