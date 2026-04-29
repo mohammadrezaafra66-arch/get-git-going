@@ -18,6 +18,8 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
   SLUG_REGEX, COLUMN_KEY_REGEX, type DynamicColumnDataType,
+  DYNAMIC_TABLE_ACCESS_LEVELS, DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
+  type DynamicTableAccessLevel,
 } from "@/lib/data-tables/constants";
 
 export const Route = createFileRoute("/_app/data-tables/new")({
@@ -43,6 +45,7 @@ function NewDataTablePage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [accessLevel, setAccessLevel] = useState<DynamicTableAccessLevel>("all");
   const [columns, setColumns] = useState<ColumnDraft[]>([emptyCol()]);
 
   const updateCol = (i: number, patch: Partial<ColumnDraft>) =>
@@ -71,7 +74,12 @@ function NewDataTablePage() {
 
       const { data: ins, error: e1 } = await supabase
         .from("dynamic_tables")
-        .insert({ name: trimmedName, slug: trimmedSlug, description: description.trim() || null })
+        .insert({
+          name: trimmedName,
+          slug: trimmedSlug,
+          description: description.trim() || null,
+          access_level: accessLevel,
+        } as never)
         .select("id")
         .single();
       if (e1) throw e1;
@@ -133,6 +141,18 @@ function NewDataTablePage() {
           <div className="space-y-1.5">
             <Label>توضیح (اختیاری)</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>سطح دسترسی</Label>
+            <Select value={accessLevel} onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DYNAMIC_TABLE_ACCESS_LEVELS.map((lvl) => (
+                  <SelectItem key={lvl} value={lvl}>{DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">مشخص کنید کدام نقش‌ها مجاز به مشاهده و کار با این جدول هستند.</p>
           </div>
         </CardContent>
       </Card>

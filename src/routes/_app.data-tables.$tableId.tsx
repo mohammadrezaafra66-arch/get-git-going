@@ -33,6 +33,11 @@ import {
 } from "@/lib/data-tables/constants";
 import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
 import { buildCsv, downloadCsv, buildExportFilename, type ExportColumnDef, type ExportRow } from "@/lib/data-tables/csv-export";
+import {
+  DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
+  DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
+  type DynamicTableAccessLevel,
+} from "@/lib/data-tables/constants";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -66,6 +71,10 @@ function DataTableDetailPage() {
   const { tableId } = Route.useParams();
   const { user, roles } = useAuth();
   const canEdit = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
+  const canEditRows =
+    canEdit || (roles ?? []).includes("accountant");
+  const canExport =
+    canEdit || (roles ?? []).includes("accountant");
   const qc = useQueryClient();
 
   const [showInactive, setShowInactive] = useState(false);
@@ -103,7 +112,7 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_tables")
-        .select("id, name, slug, description, is_active, created_at")
+        .select("id, name, slug, description, is_active, created_at, access_level")
         .eq("id", tableId).maybeSingle();
       if (error) throw error;
       return data;
@@ -344,7 +353,7 @@ function DataTableDetailPage() {
             <Button asChild variant="outline">
               <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
-            {canEdit && (
+            {canExport && (
               <Button
                 variant="outline"
                 onClick={() => exportMut.mutate()}
@@ -359,12 +368,32 @@ function DataTableDetailPage() {
                 خروجی CSV
               </Button>
             )}
-            <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
-              <Plus className="ml-2 h-4 w-4" />افزودن ردیف
-            </Button>
+            {canEditRows ? (
+              <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
+                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+              </Button>
+            ) : (
+              <Button disabled title="شما دسترسی انجام این عملیات را ندارید">
+                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+              </Button>
+            )}
           </div>
         }
       />
+
+      {t && (
+        <div className="flex flex-wrap items-center gap-2 -mt-2">
+          {(() => {
+            const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
+            const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+            return (
+              <Badge variant="outline" className={cls}>
+                سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+              </Badge>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Columns management */}
       <Card>
@@ -477,7 +506,8 @@ function DataTableDetailPage() {
                   virtualizer={rowVirtualizer}
                   columns={columns}
                   rows={loadedRows}
-                  canEdit={canEdit}
+                  canEdit={canEditRows}
+                  canDelete={canEdit}
                   focused={focused}
                   setFocused={setFocused}
                   editingPos={editingPos}
@@ -605,7 +635,7 @@ const ROWNUM_W = 90;
 const ACT_W = 60;
 
 function VirtualizedGrid({
-  scrollRef, virtualizer, columns, rows, canEdit,
+  scrollRef, virtualizer, columns, rows, canEdit, canDelete,
   focused, setFocused, editingPos, setEditingPos,
   setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
 }: {
@@ -614,6 +644,7 @@ function VirtualizedGrid({
   columns: ColumnRow[];
   rows: RowItem[];
   canEdit: boolean;
+  canDelete: boolean;
   focused: { row: number; col: number } | null;
   setFocused: (v: { row: number; col: number } | null) => void;
   editingPos: { row: number; col: number; initial?: string } | null;
@@ -645,7 +676,7 @@ function VirtualizedGrid({
             <div key={c.id} className="px-3 py-2 truncate" style={{ width: COL_W }}>{c.label}</div>
           ))}
           <div className="px-3 py-2" style={{ width: 130 }}>ایجاد</div>
-          {canEdit && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
+          {canDelete && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
         </div>
 
         {/* Body (virtualized) */}
@@ -737,7 +768,7 @@ function VirtualizedGrid({
                 <div className="px-3 py-2 text-xs whitespace-nowrap" style={{ width: 130 }}>
                   {formatDateTimeFa(r.created_at)}
                 </div>
-                {canEdit && (
+                {canDelete && (
                   <div className="px-1 py-1 flex items-center" style={{ width: ACT_W }}>
                     <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
                       disabled={toggleRowMut.isPending}
