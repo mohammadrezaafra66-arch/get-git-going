@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -35,6 +37,7 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
 import { Route as AppSalesInvoicesRouteImport } from './routes/_app.sales_.invoices'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
@@ -97,6 +100,16 @@ const UnauthorizedRoute = UnauthorizedRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingApprovalRoute = PendingApprovalRouteImport.update({
+  id: '/pending-approval',
+  path: '/pending-approval',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -217,6 +230,11 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppUsersPendingRoute = AppUsersPendingRouteImport.update({
+  id: '/pending',
+  path: '/pending',
+  getParentRoute: () => AppUsersRoute,
 } as any)
 const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
   id: '/suppliers_/$supplierId',
@@ -498,6 +516,8 @@ const ApiPublicBotDynamicTablesTableIdRowsRowIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
@@ -514,7 +534,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
-  '/users': typeof AppUsersRoute
+  '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -553,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/pending': typeof AppUsersPendingRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -578,6 +599,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
@@ -592,7 +615,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
-  '/users': typeof AppUsersRoute
+  '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -630,6 +653,7 @@ export interface FileRoutesByTo {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/pending': typeof AppUsersPendingRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -657,6 +681,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/pending-approval': typeof PendingApprovalRoute
+  '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/academy': typeof AppAcademyRoute
@@ -673,7 +699,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
-  '/_app/users': typeof AppUsersRoute
+  '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -712,6 +738,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/sales_/invoices': typeof AppSalesInvoicesRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/_app/users/pending': typeof AppUsersPendingRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -739,6 +766,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/pending-approval'
+    | '/register'
     | '/reset-password'
     | '/unauthorized'
     | '/academy'
@@ -794,6 +823,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/pending'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -819,6 +849,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/pending-approval'
+    | '/register'
     | '/reset-password'
     | '/unauthorized'
     | '/academy'
@@ -871,6 +903,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/pending'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -897,6 +930,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/pending-approval'
+    | '/register'
     | '/reset-password'
     | '/unauthorized'
     | '/_app/academy'
@@ -952,6 +987,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers'
     | '/_app/sales_/invoices'
     | '/_app/suppliers_/$supplierId'
+    | '/_app/users/pending'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -979,6 +1015,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PendingApprovalRoute: typeof PendingApprovalRoute
+  RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
@@ -999,6 +1037,20 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-approval': {
+      id: '/pending-approval'
+      path: '/pending-approval'
+      fullPath: '/pending-approval'
+      preLoaderRoute: typeof PendingApprovalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -1168,6 +1220,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/users/pending': {
+      id: '/_app/users/pending'
+      path: '/pending'
+      fullPath: '/users/pending'
+      preLoaderRoute: typeof AppUsersPendingRouteImport
+      parentRoute: typeof AppUsersRoute
     }
     '/_app/suppliers_/$supplierId': {
       id: '/_app/suppliers_/$supplierId'
@@ -1601,6 +1660,18 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
   AppSalesRouteChildren,
 )
 
+interface AppUsersRouteChildren {
+  AppUsersPendingRoute: typeof AppUsersPendingRoute
+}
+
+const AppUsersRouteChildren: AppUsersRouteChildren = {
+  AppUsersPendingRoute: AppUsersPendingRoute,
+}
+
+const AppUsersRouteWithChildren = AppUsersRoute._addFileChildren(
+  AppUsersRouteChildren,
+)
+
 interface AppProductsIdRouteChildren {
   AppProductsIdEditRoute: typeof AppProductsIdEditRoute
 }
@@ -1643,7 +1714,7 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
-  AppUsersRoute: typeof AppUsersRoute
+  AppUsersRoute: typeof AppUsersRouteWithChildren
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
@@ -1701,7 +1772,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
-  AppUsersRoute: AppUsersRoute,
+  AppUsersRoute: AppUsersRouteWithChildren,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
@@ -1766,6 +1837,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  PendingApprovalRoute: PendingApprovalRoute,
+  RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,

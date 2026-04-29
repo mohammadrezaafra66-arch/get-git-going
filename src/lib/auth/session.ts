@@ -7,6 +7,7 @@ export interface AuthProfile {
   full_name: string | null;
   phone: string | null;
   is_active: boolean;
+  status: string;
 }
 
 export interface AuthSnapshot {
@@ -79,7 +80,7 @@ async function loadIdentity(user: User, force = false) {
   });
 
   const [profileResult, rolesResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, phone, is_active").eq("id", user.id).maybeSingle(),
+    supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", user.id),
   ]);
 
