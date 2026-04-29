@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
