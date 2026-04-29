@@ -37,7 +37,10 @@ import {
   DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
   DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
   type DynamicTableAccessLevel,
+  DYNAMIC_TABLE_ACCESS_LEVELS,
+  SELECTABLE_ROLES,
 } from "@/lib/data-tables/constants";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -70,11 +73,15 @@ interface RowItem {
 function DataTableDetailPage() {
   const { tableId } = Route.useParams();
   const { user, roles } = useAuth();
-  const canEdit = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
-  const canEditRows =
-    canEdit || (roles ?? []).includes("accountant");
-  const canExport =
-    canEdit || (roles ?? []).includes("accountant");
+  const isAdmin = (roles ?? []).includes("admin");
+  // Structural changes (columns, access settings, soft-deletes)
+  const canEdit = isAdmin || (roles ?? []).includes("manager");
+  // Row data CRUD: admin & manager only (accountant & viewer are read-only per spec)
+  const canEditRows = canEdit;
+  // Export is allowed for everyone with view access (admin, manager, accountant, viewer)
+  const canExport = canEdit || (roles ?? []).includes("accountant") || (roles ?? []).includes("viewer");
+  // Only admin can change access_level / allowed_roles
+  const canChangeAccess = isAdmin;
   const qc = useQueryClient();
 
   const [showInactive, setShowInactive] = useState(false);
@@ -86,6 +93,7 @@ function DataTableDetailPage() {
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false);
 
   // Spreadsheet keyboard grid state
   const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
@@ -112,7 +120,7 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_tables")
-        .select("id, name, slug, description, is_active, created_at, access_level")
+        .select("id, name, slug, description, is_active, created_at, access_level, allowed_roles")
         .eq("id", tableId).maybeSingle();
       if (error) throw error;
       return data;
