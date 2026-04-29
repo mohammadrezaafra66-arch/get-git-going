@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Check, ChevronsUpDown, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,7 @@ function trustBadge(level: TrustLevel | null) {
 export function ProductSupplierManager({ productId }: { productId: string }) {
   const { roles } = useAuth();
   const canManage = hasAnyRole(roles, ["admin", "accountant", "manager"]);
-  const canSeeContact = canManage;
+  const canSeeContact = hasPermissionEx(roles, "suppliers", "view_sensitive");
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [deleteRow, setDeleteRow] = useState<ProductSupplierRow | null>(null);

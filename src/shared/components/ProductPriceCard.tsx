@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 
 interface ProductLite {
   id: string;
@@ -45,8 +46,8 @@ interface HistoryRow {
 
 export function ProductPriceCard({ product, open, onOpenChange }: Props) {
   const { roles } = useAuth();
-  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
-  const canSeeContact = roles.includes("admin") || roles.includes("manager");
+  const isPrivileged = hasPermissionEx(roles, "pricing", "view_sensitive");
+  const canSeeContact = hasPermissionEx(roles, "suppliers", "view_sensitive");
   const productId = product?.id ?? null;
 
   const { data: priceTypes = [] } = useQuery({
