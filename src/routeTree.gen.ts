@@ -88,6 +88,7 @@ import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$i
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
+import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
@@ -495,6 +496,12 @@ const AppAccountingReceiptsCreateRoute =
     path: '/create',
     getParentRoute: () => AppAccountingReceiptsRoute,
   } as any)
+const AppAccountingReceiptsReceiptIdRoute =
+  AppAccountingReceiptsReceiptIdRouteImport.update({
+    id: '/$receiptId',
+    path: '/$receiptId',
+    getParentRoute: () => AppAccountingReceiptsRoute,
+  } as any)
 const AppAcademyCourseIdLessonIdRoute =
   AppAcademyCourseIdLessonIdRouteImport.update({
     id: '/academy_/$courseId_/$lessonId',
@@ -609,6 +616,7 @@ export interface FileRoutesByFullPath {
   '/products/': typeof AppProductsIndexRoute
   '/sales/': typeof AppSalesIndexRoute
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -693,6 +701,7 @@ export interface FileRoutesByTo {
   '/products': typeof AppProductsIndexRoute
   '/sales': typeof AppSalesIndexRoute
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -782,6 +791,7 @@ export interface FileRoutesById {
   '/_app/products/': typeof AppProductsIndexRoute
   '/_app/sales/': typeof AppSalesIndexRoute
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
+  '/_app/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
@@ -871,6 +881,7 @@ export interface FileRouteTypes {
     | '/products/'
     | '/sales/'
     | '/academy/$courseId/$lessonId'
+    | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -955,6 +966,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/sales'
     | '/academy/$courseId/$lessonId'
+    | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -1043,6 +1055,7 @@ export interface FileRouteTypes {
     | '/_app/products/'
     | '/_app/sales/'
     | '/_app/academy_/$courseId_/$lessonId'
+    | '/_app/accounting/receipts/$receiptId'
     | '/_app/accounting/receipts/create'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
@@ -1627,6 +1640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingReceiptsCreateRouteImport
       parentRoute: typeof AppAccountingReceiptsRoute
     }
+    '/_app/accounting/receipts/$receiptId': {
+      id: '/_app/accounting/receipts/$receiptId'
+      path: '/$receiptId'
+      fullPath: '/accounting/receipts/$receiptId'
+      preLoaderRoute: typeof AppAccountingReceiptsReceiptIdRouteImport
+      parentRoute: typeof AppAccountingReceiptsRoute
+    }
     '/_app/academy_/$courseId_/$lessonId': {
       id: '/_app/academy_/$courseId_/$lessonId'
       path: '/academy/$courseId/$lessonId'
@@ -1752,10 +1772,12 @@ const AppUsersRouteWithChildren = AppUsersRoute._addFileChildren(
 )
 
 interface AppAccountingReceiptsRouteChildren {
+  AppAccountingReceiptsReceiptIdRoute: typeof AppAccountingReceiptsReceiptIdRoute
   AppAccountingReceiptsCreateRoute: typeof AppAccountingReceiptsCreateRoute
 }
 
 const AppAccountingReceiptsRouteChildren: AppAccountingReceiptsRouteChildren = {
+  AppAccountingReceiptsReceiptIdRoute: AppAccountingReceiptsReceiptIdRoute,
   AppAccountingReceiptsCreateRoute: AppAccountingReceiptsCreateRoute,
 }
 

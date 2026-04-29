@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2, Check, X } from "lucide-react";
 import { toast } from "sonner";
@@ -78,7 +78,6 @@ function Field({ label, children, dir }: { label: string; children: React.ReactN
 function ReceiptDetailPage() {
   const { receiptId } = Route.useParams();
   const { user, roles } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const canActOnReceipt = hasAnyRole(roles as AppRole[], ["admin", "accountant"]);
@@ -466,6 +465,3 @@ function ReceiptDetailPage() {
     </div>
   );
 }
-
-// Suppress unused warning for navigate (kept for future inline navigation)
-void useNavigate;
