@@ -143,9 +143,9 @@ function CreateWaybillPage() {
                     p_receiver_phone: values.receiver_phone,
                     p_shipping_company: values.shipping_company,
                     p_destination_city: values.destination_city,
-                    p_customer_accounting_code: values.customer_accounting_code || null,
-                    p_destination_address: values.destination_address || null,
-                    p_shipping_notes: values.shipping_notes || null,
+                    p_customer_accounting_code: values.customer_accounting_code || undefined,
+                    p_destination_address: values.destination_address || undefined,
+                    p_shipping_notes: values.shipping_notes || undefined,
                     p_register: register,
                   });
                   if (error) throw error;
