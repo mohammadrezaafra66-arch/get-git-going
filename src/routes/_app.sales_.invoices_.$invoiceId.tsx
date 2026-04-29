@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight, Copy, Send } from "lucide-react";
+import { Loader2, XCircle, ArrowRight, Copy, Send, Truck } from "lucide-react";
+import { WaybillStatusBadge } from "@/shared/components/WaybillStatusBadge";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -95,6 +96,23 @@ function InvoiceDetailPage() {
         line_total: number;
         product: { name: string } | null;
       }>;
+    },
+  });
+
+  const { data: waybill } = useQuery({
+    queryKey: ["waybill-summary", invoiceId],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("waybills")
+        .select("id, waybill_number, status, shipping_company, destination_city")
+        .eq("invoice_id", invoiceId)
+        .neq("status", "canceled")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -323,6 +341,37 @@ function InvoiceDetailPage() {
               <div className="text-muted-foreground mb-1">یادداشت</div>
               <div className="rounded-md border p-3 whitespace-pre-wrap">{invoice.notes}</div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Truck className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <div className="text-sm font-semibold">بیجک / بارنامه</div>
+              {waybill ? (
+                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                  <span>{toFaDigits(waybill.waybill_number)}</span>
+                  <WaybillStatusBadge status={waybill.status} />
+                  <span>{waybill.shipping_company} — {waybill.destination_city}</span>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mt-1">بیجکی برای این پیش‌فاکتور صادر نشده است</div>
+              )}
+            </div>
+          </div>
+          {waybill ? (
+            <Button asChild variant="outline">
+              <Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId: invoice.id }}>مشاهده بیجک</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/sales/invoices/$invoiceId/waybill/create" params={{ invoiceId: invoice.id }}>
+                <Truck className="ml-2 h-4 w-4" /> صدور بیجک
+              </Link>
+            </Button>
           )}
         </CardContent>
       </Card>
