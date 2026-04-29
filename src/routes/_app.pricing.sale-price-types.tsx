@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Power } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Pencil, Power, RefreshCw } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -193,6 +193,12 @@ function SaleTypeDialog({
   const [values, setValues] = useState<SalePriceTypeFormValues>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [previewCode, setPreviewCode] = useState<string>("");
+
+  const fetchPreviewCode = async () => {
+    const { data, error } = await supabase.rpc("generate_sale_price_type_code");
+    if (!error && typeof data === "string") setPreviewCode(data);
+  };
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
@@ -204,6 +210,8 @@ function SaleTypeDialog({
         is_active: editing.is_active,
       } : empty);
       setErrors({});
+      setPreviewCode("");
+      if (!editing) void fetchPreviewCode();
     }
     onOpenChange(v);
   };
@@ -220,19 +228,30 @@ function SaleTypeDialog({
     setLoading(true);
     try {
       const d = parsed.data;
-      const payload = {
-        code: d.code,
+      const trimmedCode = (d.code ?? "").trim();
+      const basePayload = {
         title: d.title,
         description: d.description || null,
         sort_order: d.sort_order,
         is_active: d.is_active,
       };
       if (editing) {
-        const { error } = await supabase.from("sale_price_types").update(payload).eq("id", editing.id);
+        if (!trimmedCode) {
+          setErrors({ code: "کد الزامی است" });
+          setLoading(false);
+          return;
+        }
+        const { error } = await supabase
+          .from("sale_price_types")
+          .update({ ...basePayload, code: trimmedCode })
+          .eq("id", editing.id);
         if (error) throw error;
         toast.success("به‌روزرسانی شد");
       } else {
-        const { error } = await supabase.from("sale_price_types").insert(payload);
+        const insertPayload = trimmedCode
+          ? { ...basePayload, code: trimmedCode }
+          : (basePayload as typeof basePayload & { code: string });
+        const { error } = await supabase.from("sale_price_types").insert(insertPayload);
         if (error) throw error;
         toast.success("ثبت شد");
       }
@@ -260,9 +279,32 @@ function SaleTypeDialog({
           </div>
           <div>
             <Label>کد یکتا *</Label>
-            <Input value={values.code} dir="ltr"
-              placeholder="cash_price"
-              onChange={(e) => setValues((s) => ({ ...s, code: e.target.value }))} />
+            <div className="flex gap-2">
+              <Input
+                value={values.code ?? ""}
+                dir="ltr"
+                placeholder={editing ? "" : (previewCode || "به‌صورت خودکار تولید می‌شود")}
+                onChange={(e) => setValues((s) => ({ ...s, code: e.target.value }))}
+              />
+              {!editing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchPreviewCode}
+                  title="تولید مجدد پیشنهاد کد"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {!editing && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {previewCode
+                  ? `پیشنهاد سیستم: ${previewCode} — در صورت خالی گذاشتن، همین کد ثبت می‌شود.`
+                  : "در صورت خالی گذاشتن، کد یکتا به‌صورت خودکار تولید می‌شود."}
+              </p>
+            )}
             {errors.code && <p className="mt-1 text-xs text-destructive">{errors.code}</p>}
           </div>
           <div>
