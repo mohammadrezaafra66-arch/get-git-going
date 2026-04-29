@@ -252,7 +252,7 @@ function FetchDialog({ source, onOpenChange, onSaved }: { source: SourceRow | nu
         p_source_id: source.id,
         p_currency: currency,
         p_rate: r,
-        p_note: null,
+        p_note: undefined,
       });
       if (error) throw error;
       toast.success("نرخ ثبت شد و در انتظار تأیید قرار گرفت.");
