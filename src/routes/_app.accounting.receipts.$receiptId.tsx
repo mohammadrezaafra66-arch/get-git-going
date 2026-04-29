@@ -47,6 +47,7 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> = 
 type ReceiptRow = {
   id: string;
   customer_id: string;
+  receipt_type: string;
   payer_name: string;
   payer_phone: string | null;
   payer_accounting_code: string | null;
@@ -64,6 +65,17 @@ type ReceiptRow = {
   rejection_reason: string | null;
   created_at: string;
   customer: { id: string; name: string; phone: string | null } | null;
+};
+
+type LinkedInvoice = {
+  id: string;
+  amount: number;
+  invoice: {
+    id: string;
+    number: string | null;
+    total_amount: number;
+    status: string;
+  } | null;
 };
 
 function Field({ label, children, dir }: { label: string; children: React.ReactNode; dir?: "ltr" | "rtl" }) {
@@ -93,13 +105,26 @@ function ReceiptDetailPage() {
       const { data, error } = await supabase
         .from("payment_receipts")
         .select(
-          "id, customer_id, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, customer:customers(id, name, phone)",
+          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, customer:customers(id, name, phone)",
         )
         .eq("id", receiptId)
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error("فیش یافت نشد");
       return data as unknown as ReceiptRow;
+    },
+  });
+
+  const { data: linkedInvoices = [] } = useQuery<LinkedInvoice[]>({
+    queryKey: ["payment-receipt-links", receiptId],
+    enabled: !!receipt,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_receipt_links")
+        .select("id, amount, invoice:invoices(id, number, total_amount, status)")
+        .eq("receipt_id", receiptId);
+      if (error) throw error;
+      return (data ?? []) as unknown as LinkedInvoice[];
     },
   });
 
@@ -135,7 +160,7 @@ function ReceiptDetailPage() {
         .eq("status", "pending_review");
       if (updErr) throw updErr;
 
-      // 2) Increase credit
+      // 2) Increase credit (always — both prepayment and payment add credit; payment then settles invoices)
       const { error: rpcErr } = await supabase.rpc("increase_credit", {
         p_customer_id: receipt.customer_id,
         p_amount: Number(receipt.amount),
@@ -143,7 +168,6 @@ function ReceiptDetailPage() {
         p_user_id: user.id,
       });
       if (rpcErr) {
-        // Rollback status if credit fails
         await supabase
           .from("payment_receipts")
           .update({ status: "pending_review" } as never)
@@ -151,22 +175,76 @@ function ReceiptDetailPage() {
         throw new Error(rpcErr.message || "خطا در افزایش اعتبار");
       }
 
-      // 3) Audit log
+      // 3) Update linked invoice statuses if payment-type
+      const linkedInvoiceUpdates: Array<{ invoice_id: string; new_status: string; total: number; paid: number }> = [];
+      if (receipt.receipt_type === "payment" && linkedInvoices.length > 0) {
+        for (const link of linkedInvoices) {
+          if (!link.invoice) continue;
+          const invoiceId = link.invoice.id;
+          const total = Number(link.invoice.total_amount);
+
+          // Sum approved-receipt allocations for this invoice (now includes current one)
+          const { data: allLinks, error: allErr } = await supabase
+            .from("payment_receipt_links")
+            .select("amount, receipt:payment_receipts!inner(status)")
+            .eq("invoice_id", invoiceId);
+          if (allErr) continue;
+          const paid = ((allLinks ?? []) as Array<{ amount: number; receipt: { status: string } | null }>)
+            .filter((l) => l.receipt?.status === "approved")
+            .reduce((s, l) => s + Number(l.amount), 0);
+
+          let newStatus: string | null = null;
+          if (paid >= total - 0.001) newStatus = "paid";
+          else if (paid > 0) newStatus = "partially_paid";
+
+          if (newStatus && newStatus !== link.invoice.status) {
+            const { error: upErr } = await supabase
+              .from("invoices")
+              .update({ status: newStatus } as never)
+              .eq("id", invoiceId);
+            if (!upErr) {
+              linkedInvoiceUpdates.push({ invoice_id: invoiceId, new_status: newStatus, total, paid });
+              // Audit per invoice
+              await supabase.from("audit_logs").insert({
+                actor_id: user.id,
+                entity_type: "invoice",
+                entity_id: invoiceId,
+                action: "invoice_status_updated",
+                diff: { from: link.invoice.status, to: newStatus, paid_total: paid, invoice_total: total, by_receipt: receipt.id },
+              } as never);
+            }
+          }
+
+          // Always log the linkage event
+          await supabase.from("audit_logs").insert({
+            actor_id: user.id,
+            entity_type: "invoice",
+            entity_id: invoiceId,
+            action: "invoice_payment_linked",
+            diff: { invoice_id: invoiceId, receipt_id: receipt.id, amount: Number(link.amount) },
+          } as never);
+        }
+      }
+
+      // 4) Top-level audit
       await supabase.from("audit_logs").insert({
         actor_id: user.id,
         entity_type: "payment_receipt",
         entity_id: receipt.id,
-        action: "payment_receipt_approved",
+        action: receipt.receipt_type === "prepayment" ? "prepayment_credit_added" : "payment_receipt_approved",
         diff: {
           receipt_id: receipt.id,
           customer_id: receipt.customer_id,
           amount: Number(receipt.amount),
+          receipt_type: receipt.receipt_type,
+          invoice_updates: linkedInvoiceUpdates,
         },
       } as never);
     },
     onSuccess: () => {
       toast.success("فیش تأیید شد و اعتبار مشتری به‌روزرسانی گردید.");
       queryClient.invalidateQueries({ queryKey: ["payment-receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-links", receiptId] });
       queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
       queryClient.invalidateQueries({ queryKey: ["customer-credit"] });
       setApproveOpen(false);
