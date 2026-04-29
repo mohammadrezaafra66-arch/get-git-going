@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/command";
 
 const phoneRegex = /^09\d{9}$/;
+const accountingCodeRegex = /^[A-Za-z0-9_-]{1,30}$/;
 
 const schema = z.object({
   name: z.string().trim().min(2, "نام باید حداقل ۲ کاراکتر باشد").max(100),
@@ -34,6 +35,14 @@ const schema = z.object({
   city: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(500, "حداکثر ۵۰۰ کاراکتر").optional(),
   responsible_id: z.string().uuid().nullable().optional(),
+  accounting_code: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => !v || accountingCodeRegex.test(v),
+      "کد حسابداری فقط شامل حروف انگلیسی، اعداد، _ و - و حداکثر ۳۰ کاراکتر",
+    ),
 });
 
 export type CustomerFormValues = z.infer<typeof schema>;
@@ -66,6 +75,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       city: defaultValues?.city ?? "",
       notes: defaultValues?.notes ?? "",
       responsible_id: defaultValues?.responsible_id ?? null,
+      accounting_code: defaultValues?.accounting_code ?? "",
     },
     mode: "onBlur",
   });
@@ -85,6 +95,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         city: values.city?.trim() || null,
         notes: values.notes?.trim() || null,
         responsible_id: values.responsible_id ?? null,
+        accounting_code: values.accounting_code?.trim() || null,
       };
       if (customerId) {
         const { error } = await supabase
@@ -108,7 +119,10 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       navigate({ to: "/sales/customers" });
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+      const raw = err instanceof Error ? err.message : "خطای ناشناخته";
+      const msg = /accounting_code/i.test(raw) || /duplicate key/i.test(raw)
+        ? "کد حسابداری تکراری است یا قالب نامعتبر دارد"
+        : raw;
       toast.error(`عملیات ناموفق بود: ${msg}`);
     },
   });
@@ -143,6 +157,21 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       <div className="space-y-2">
         <Label htmlFor="city">شهر</Label>
         <Input id="city" {...form.register("city")} placeholder="مثلاً تهران" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="accounting_code">کد حسابداری</Label>
+        <Input
+          id="accounting_code"
+          dir="ltr"
+          maxLength={30}
+          placeholder="مثلاً CUST-1024"
+          {...form.register("accounting_code")}
+        />
+        {errors.accounting_code && (
+          <p className="text-xs text-destructive">{errors.accounting_code.message}</p>
+        )}
+        <p className="text-[11px] text-muted-foreground">اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-</p>
       </div>
 
       {/* Responsible (مسئول مشتری) */}

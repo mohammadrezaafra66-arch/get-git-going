@@ -906,6 +906,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          accounting_code: string | null
           address: string | null
           city: string | null
           created_at: string
@@ -920,6 +921,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accounting_code?: string | null
           address?: string | null
           city?: string | null
           created_at?: string
@@ -934,6 +936,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accounting_code?: string | null
           address?: string | null
           city?: string | null
           created_at?: string

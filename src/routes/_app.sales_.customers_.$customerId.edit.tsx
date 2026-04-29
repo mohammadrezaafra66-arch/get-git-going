@@ -19,7 +19,7 @@ function EditCustomerPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, name, phone, city, notes, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)")
+        .select("id, name, phone, city, notes, accounting_code, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)")
         .eq("id", customerId)
         .maybeSingle();
       if (error) throw error;
@@ -44,6 +44,8 @@ function EditCustomerPage() {
             phone: data.phone ?? "",
             city: (data as { city?: string | null }).city ?? "",
             notes: (data as { notes?: string | null }).notes ?? "",
+            accounting_code:
+              (data as { accounting_code?: string | null }).accounting_code ?? "",
             responsible_id:
               (data as { responsible_id?: string | null }).responsible_id ?? null,
             responsible:
