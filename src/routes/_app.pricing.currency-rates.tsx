@@ -73,12 +73,12 @@ function CurrencyRatesPage() {
     qc.invalidateQueries({ queryKey: ["pricing-overview"] });
   };
 
-  const deactivate = async (id: string) => {
+  const toggleActive = async (id: string, current: boolean) => {
     if (!canWrite) return;
-    if (!confirm("نرخ انتخاب‌شده غیرفعال شود؟")) return;
-    const { error } = await supabase.from("currency_rates").update({ is_active: false }).eq("id", id);
+    if (current && !confirm("نرخ انتخاب‌شده غیرفعال شود؟")) return;
+    const { error } = await supabase.from("currency_rates").update({ is_active: !current }).eq("id", id);
     if (error) { toast.error(error.message); return; }
-    toast.success("نرخ غیرفعال شد");
+    toast.success(current ? "نرخ غیرفعال شد" : "نرخ فعال شد");
     refresh();
   };
 
@@ -139,9 +139,9 @@ function CurrencyRatesPage() {
                     </div>
                     <div className="text-sm"><span className="font-semibold">{formatNumber(Number(r.rate_to_toman))}</span> <span className="text-xs text-muted-foreground">تومان</span></div>
                     <div className="text-xs text-muted-foreground">{r.source_name || "بدون منبع"} · {formatDateTimeFa(r.effective_at)}</div>
-                    {canWrite && r.is_active && (
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => deactivate(r.id)}>
-                        <Power className="ms-1 h-3 w-3" />غیرفعال‌سازی
+                    {canWrite && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => toggleActive(r.id, r.is_active)}>
+                        <Power className={`ms-1 h-3 w-3 ${r.is_active ? "text-destructive" : ""}`} />{r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
                       </Button>
                     )}
                   </li>
@@ -172,9 +172,9 @@ function CurrencyRatesPage() {
                         {r.is_active ? <Badge variant="default"><Check className="ms-1 h-3 w-3" />فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
                       </td>
                       <td className="p-3">
-                        {canWrite && r.is_active && (
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => deactivate(r.id)}>
-                            <Power className="ms-1 h-3 w-3" />غیرفعال
+                        {canWrite && (
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => toggleActive(r.id, r.is_active)}>
+                            <Power className={`ms-1 h-3 w-3 ${r.is_active ? "text-destructive" : ""}`} />{r.is_active ? "غیرفعال" : "فعال"}
                           </Button>
                         )}
                       </td>

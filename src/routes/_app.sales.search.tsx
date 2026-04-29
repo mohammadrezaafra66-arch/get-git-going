@@ -25,6 +25,7 @@ import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
+import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -39,6 +40,9 @@ interface ProductRow {
   sku: string | null;
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
+  color?: string | null;
+  capacity?: string | null;
+  model?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
 }
@@ -171,7 +175,7 @@ function SalesSearchPage() {
       // search by name, SKU, brand name, category name
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)")
+        .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
         .eq("is_active", true)
         .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,brands.name.ilike.%${safe}%,categories.name.ilike.%${safe}%`)
         .order("name", { ascending: true })
@@ -187,7 +191,7 @@ function SalesSearchPage() {
         // Retry with name+sku only.
         let q2 = supabase
           .from("products")
-          .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)")
+          .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
           .eq("is_active", true)
           .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
           .order("name", { ascending: true })
@@ -446,6 +450,7 @@ interface ProductCardProps {
 
 function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
+  const isUnavailable = stockKey === "unavailable";
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent
@@ -457,7 +462,7 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h3 className="font-semibold text-foreground truncate">{product.name}</h3>
+            <h3 className="font-semibold text-foreground truncate">{formatProductDisplayNameWithFallback(product)}</h3>
             <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {product.sku && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
@@ -479,7 +484,12 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
         </div>
 
         <div className="rounded-md border border-border bg-muted/30 p-3">
-          {history ? (
+          {isUnavailable ? (
+            <div className="flex items-center gap-2 text-sm text-red-600">
+              <PackageX className="h-4 w-4" />
+              ناموجود — قیمت نمایش داده نمی‌شود
+            </div>
+          ) : history ? (
             <div className="flex items-end justify-between gap-2">
               <div>
                 <div className="text-xs text-muted-foreground">قیمت فروش</div>

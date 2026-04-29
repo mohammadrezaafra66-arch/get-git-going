@@ -25,6 +25,7 @@ import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatter
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
+import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -42,6 +43,9 @@ interface ProductRow {
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
   status: string;
+  color?: string | null;
+  capacity?: string | null;
+  model?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
 }
@@ -133,7 +137,7 @@ function LivePriceListPage() {
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, status, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .select("id, name, sku, product_type, stock_status, status, color, capacity, model, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
         .eq("is_active", true)
         .order("name", { ascending: true })
         .range(from, to);
@@ -443,6 +447,24 @@ function renderProductRows(
   ctx: { isSalesOnly: boolean; isPrivileged: boolean },
 ) {
   const colSpan = ctx.isSalesOnly ? 7 : 8;
+  const isUnavailable = row.product.stock_status === "unavailable";
+  if (isUnavailable) {
+    return [(
+      <tr key={row.product.id} className="bg-muted/20">
+        <td className="p-3 align-top">
+          <ProductCell product={row.product} />
+        </td>
+        <td className="p-3 align-top text-xs text-muted-foreground">
+          {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
+        </td>
+        {!ctx.isSalesOnly && <td className="p-3 align-top"><ProductTypeBadge t={row.product.product_type} /></td>}
+        <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
+        <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
+          <Badge variant="outline" className="border-red-500/30 bg-red-500/5 text-red-600 font-normal">ناموجود — قیمت نمایش داده نمی‌شود</Badge>
+        </td>
+      </tr>
+    )];
+  }
   if (!row.hasPrice) {
     return [(
       <tr key={row.product.id} className="bg-muted/20">
@@ -456,7 +478,7 @@ function renderProductRows(
         <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
         <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
           <div className="flex flex-wrap items-center gap-2">
-            <span>برای این محصول هنوز قیمت فروش ثبت نشده است.</span>
+            <span>قیمت ثبت نشده</span>
             {ctx.isPrivileged && (
               <Link to="/pricing/calculator" className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-1">
                 <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
@@ -497,6 +519,7 @@ function renderProductRows(
 }
 
 function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product: ProductRow; histories: any[]; hasPrice: boolean }; isSalesOnly: boolean; isPrivileged: boolean }) {
+  const isUnavailable = row.product.stock_status === "unavailable";
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -516,9 +539,13 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
             stockStatus={row.product.stock_status}
           />
         </div>
-        {!row.hasPrice ? (
+        {isUnavailable ? (
+          <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600">
+            ناموجود — قیمت نمایش داده نمی‌شود.
+          </div>
+        ) : !row.hasPrice ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-            برای این محصول هنوز قیمت فروش ثبت نشده است.
+            قیمت ثبت نشده
             {isPrivileged && (
               <div className="mt-2">
                 <Link to="/pricing/calculator" className="text-primary inline-flex items-center gap-1">
@@ -556,7 +583,7 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
 function ProductCell({ product }: { product: ProductRow }) {
   return (
     <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-foreground">{product.name}</div>
+      <div className="truncate text-sm font-medium text-foreground">{formatProductDisplayNameWithFallback(product)}</div>
       <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
       <div className="mt-1">
         <StockAlertButton

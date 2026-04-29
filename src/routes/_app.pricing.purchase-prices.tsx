@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   Search,
   X,
+  Pencil,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -85,6 +86,7 @@ function PurchasePricesPage() {
   const canWrite = hasAnyRole(roles, ["admin", "manager", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
 
@@ -340,6 +342,11 @@ function PurchasePricesPage() {
                           <Power className="ms-1 h-3 w-3" />غیرفعال‌سازی
                         </Button>
                       )}
+                      {canWrite && (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setEditingRow(r); setOpen(true); }}>
+                          <Pencil className="ms-1 h-3 w-3" />ویرایش
+                        </Button>
+                      )}
                     </li>
                   );
                 })}
@@ -392,6 +399,11 @@ function PurchasePricesPage() {
                                 <Power className="ms-1 h-3 w-3" />غیرفعال
                               </Button>
                             )}
+                            {canWrite && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingRow(r); setOpen(true); }} aria-label="ویرایش">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -419,7 +431,13 @@ function PurchasePricesPage() {
         </div>
       </div>
 
-      <PurchasePriceDialog open={open} onOpenChange={setOpen} onSaved={refresh} />
+      <PurchasePriceDialog
+        open={open}
+        onOpenChange={(v) => { setOpen(v); if (!v) setEditingRow(null); }}
+        onSaved={refresh}
+        editing={editingRow}
+        productMap={listQ.data?.productMap}
+      />
     </div>
   );
 }
@@ -529,10 +547,14 @@ function PurchasePriceDialog({
   open,
   onOpenChange,
   onSaved,
+  editing,
+  productMap,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved: () => void;
+  editing?: any | null;
+  productMap?: Record<string, { name: string; sku: string | null }>;
 }) {
   const [values, setValues] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
   const [expiresAt, setExpiresAt] = useState<string>("");
@@ -544,8 +566,27 @@ function PurchasePriceDialog({
       setValues(EMPTY_FORM);
       setExpiresAt("");
       setErrors({});
+      return;
     }
-  }, [open]);
+    if (editing) {
+      const prodLabel = productMap?.[editing.product_id]
+        ? `${productMap[editing.product_id].name} — ${productMap[editing.product_id].sku ?? ""}`
+        : null;
+      setValues({
+        product_id: editing.product_id,
+        supplier_id: editing.supplier_id ?? null,
+        purchase_price: Number(editing.purchase_price) || 0,
+        currency: editing.currency,
+        reason_id: editing.reason_id ?? null,
+        private_note: editing.private_note ?? "",
+        effective_at: editing.effective_at ? String(editing.effective_at).slice(0, 16) : "",
+        selectedProductLabel: prodLabel,
+        is_active: !!editing.is_active,
+      });
+      setExpiresAt(editing.expires_at ? String(editing.expires_at).slice(0, 16) : "");
+      setErrors({});
+    }
+  }, [open, editing, productMap]);
 
   const reasonsQ = useQuery({
     queryKey: ["change-reasons-active"],
@@ -609,9 +650,15 @@ function PurchasePriceDialog({
       if (parsed.data.effective_at) payload.effective_at = parsed.data.effective_at;
       if (expiresAt) payload.expires_at = expiresAt;
 
-      const { error } = await supabase.from("purchase_prices").insert(payload);
-      if (error) throw error;
-      toast.success("قیمت خرید ثبت شد");
+      if (editing?.id) {
+        const { error } = await supabase.from("purchase_prices").update(payload).eq("id", editing.id);
+        if (error) throw error;
+        toast.success("قیمت خرید ویرایش شد");
+      } else {
+        const { error } = await supabase.from("purchase_prices").insert(payload);
+        if (error) throw error;
+        toast.success("قیمت خرید ثبت شد");
+      }
       onSaved();
       onOpenChange(false);
     } catch (e: any) {
@@ -630,7 +677,7 @@ function PurchasePriceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>ثبت قیمت خرید جدید</DialogTitle>
+          <DialogTitle>{editing ? "ویرایش قیمت خرید" : "ثبت قیمت خرید جدید"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <ProductPicker
