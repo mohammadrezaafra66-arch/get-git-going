@@ -3167,6 +3167,7 @@ export type Database = {
           total_count: number
         }[]
       }
+      generate_sale_price_type_code: { Args: never; Returns: string }
       get_product_sale_price: {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
