@@ -296,6 +296,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     onSuccess: () => {
       toast.success("پیش‌فاکتور ذخیره شد");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice-credit-info"] });
       navigate({ to: "/sales/invoices" });
     },
     onError: (err: unknown) => {
