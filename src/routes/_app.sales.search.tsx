@@ -175,7 +175,7 @@ function SalesSearchPage() {
       // search by name, SKU, brand name, category name
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)")
+        .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
         .eq("is_active", true)
         .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,brands.name.ilike.%${safe}%,categories.name.ilike.%${safe}%`)
         .order("name", { ascending: true })
@@ -191,7 +191,7 @@ function SalesSearchPage() {
         // Retry with name+sku only.
         let q2 = supabase
           .from("products")
-          .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)")
+          .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
           .eq("is_active", true)
           .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
           .order("name", { ascending: true })
