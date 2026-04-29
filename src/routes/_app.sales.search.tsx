@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -9,6 +9,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { ProductPriceCard } from "@/shared/components/ProductPriceCard";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
@@ -20,6 +23,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
 
 export const Route = createFileRoute("/_app/sales/search")({
