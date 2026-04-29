@@ -192,6 +192,20 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         <p className="text-[11px] text-muted-foreground">اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-</p>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="link_group">لینک گروه (واتساپ/روبیکا)</Label>
+        <Input
+          id="link_group"
+          dir="ltr"
+          type="url"
+          placeholder="https://chat.whatsapp.com/..."
+          {...form.register("link_group")}
+        />
+        {errors.link_group && (
+          <p className="text-xs text-destructive">{errors.link_group.message}</p>
+        )}
+      </div>
+
       {/* Responsible (مسئول مشتری) */}
       {canSetResponsible && (
         <ResponsiblePicker
