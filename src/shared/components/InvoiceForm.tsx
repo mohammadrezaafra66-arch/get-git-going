@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
+import { AdvancePaymentSection } from "@/shared/components/AdvancePaymentSection";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
   sale_price_type_id: z.string().uuid("انتخاب نوع قیمت الزامی است"),
   settlement_type_id: z.string().uuid().nullable().optional(),
+  invoice_type: z.enum(["pre_invoice", "advance_payment"]),
   notes: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1, "حداقل یک قلم اضافه کنید"),
 });
@@ -48,7 +50,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function InvoiceForm() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const canChooseInvoiceType =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -58,6 +62,7 @@ export function InvoiceForm() {
       customer_id: "",
       sale_price_type_id: "",
       settlement_type_id: null,
+      invoice_type: "pre_invoice",
       notes: "",
       items: [],
     },
@@ -119,6 +124,7 @@ export function InvoiceForm() {
   const creditLimit = Number(creditProfile?.credit_limit ?? 0);
   const outstanding = Number(creditProfile?.outstanding_balance ?? 0);
   const exceedsLimit = creditLimit > 0 && (totalAmount + outstanding) > creditLimit;
+  const invoiceType = form.watch("invoice_type");
 
   // Sale price types
   const { data: priceTypes = [] } = useQuery({
@@ -156,6 +162,35 @@ export function InvoiceForm() {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const total = values.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
+      // Credit pre-flight check for credit pre-invoices only
+      if (values.invoice_type === "pre_invoice") {
+        const { data: cp } = await supabase
+          .from("customer_credit_profile")
+          .select("credit_limit, outstanding_balance")
+          .eq("customer_id", values.customer_id)
+          .maybeSingle();
+        const limit = Number(cp?.credit_limit ?? 0);
+        const out = Number(cp?.outstanding_balance ?? 0);
+        if (limit > 0 && total + out > limit) {
+          // audit credit_limit_blocked
+          await supabase.from("audit_logs").insert({
+            actor_id: user.id,
+            entity_type: "invoice",
+            entity_id: values.customer_id,
+            action: "credit_limit_blocked",
+            diff: {
+              customer_id: values.customer_id,
+              total_amount: total,
+              outstanding_balance: out,
+              credit_limit: limit,
+            },
+          } as never);
+          throw new Error(
+            "اعتبار مشتری برای این مبلغ کافی نیست. لطفاً از پیش‌فاکتور پیش‌واریزی استفاده کنید.",
+          );
+        }
+      }
+
       const { data: inv, error: iErr } = await supabase
         .from("invoices")
         .insert({
@@ -163,6 +198,8 @@ export function InvoiceForm() {
           sale_price_type_id: values.sale_price_type_id,
           settlement_type_id: values.settlement_type_id ?? null,
           type: "pre_invoice",
+          invoice_type: values.invoice_type,
+          issued_by: user.id,
           status: "draft",
           total_amount: total,
           subtotal: total,
@@ -313,6 +350,29 @@ export function InvoiceForm() {
               <p className="text-xs text-destructive">{errors.sale_price_type_id.message}</p>
             )}
           </div>
+
+          {/* نوع پیش‌فاکتور */}
+          {canChooseInvoiceType && (
+            <div className="space-y-2">
+              <Label>نوع پیش‌فاکتور <span className="text-destructive">*</span></Label>
+              <Select
+                value={invoiceType}
+                onValueChange={(v) =>
+                  form.setValue("invoice_type", v as "pre_invoice" | "advance_payment", {
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pre_invoice">پیش‌فاکتور اعتباری</SelectItem>
+                  <SelectItem value="advance_payment">پیش‌فاکتور پیش‌واریزی (نقدی)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {invoiceType === "advance_payment" && <AdvancePaymentSection />}
 
           {/* نوع تسویه */}
           <div className="space-y-2">
