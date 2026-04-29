@@ -447,6 +447,24 @@ function renderProductRows(
   ctx: { isSalesOnly: boolean; isPrivileged: boolean },
 ) {
   const colSpan = ctx.isSalesOnly ? 7 : 8;
+  const isUnavailable = row.product.stock_status === "unavailable";
+  if (isUnavailable) {
+    return [(
+      <tr key={row.product.id} className="bg-muted/20">
+        <td className="p-3 align-top">
+          <ProductCell product={row.product} />
+        </td>
+        <td className="p-3 align-top text-xs text-muted-foreground">
+          {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
+        </td>
+        {!ctx.isSalesOnly && <td className="p-3 align-top"><ProductTypeBadge t={row.product.product_type} /></td>}
+        <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
+        <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
+          <Badge variant="outline" className="border-red-500/30 bg-red-500/5 text-red-600 font-normal">ناموجود — قیمت نمایش داده نمی‌شود</Badge>
+        </td>
+      </tr>
+    )];
+  }
   if (!row.hasPrice) {
     return [(
       <tr key={row.product.id} className="bg-muted/20">
@@ -460,7 +478,7 @@ function renderProductRows(
         <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
         <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
           <div className="flex flex-wrap items-center gap-2">
-            <span>برای این محصول هنوز قیمت فروش ثبت نشده است.</span>
+            <span>قیمت ثبت نشده</span>
             {ctx.isPrivileged && (
               <Link to="/pricing/calculator" className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-1">
                 <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
