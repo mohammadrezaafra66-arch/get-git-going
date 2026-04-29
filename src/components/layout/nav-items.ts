@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/products",    label: "محصولات",          icon: Package,         module: "products",    group: "operations" },
   { to: "/price-lists", label: "لیست‌های قیمت",    icon: ListOrdered,     module: "price-lists", group: "operations" },
   { to: "/pricing",     label: "قیمت‌گذاری",       icon: DollarSign,      module: "pricing",     group: "operations" },
+  { to: "/pricing/currency-sources", label: "منابع ارز", icon: DollarSign, module: "pricing", group: "operations" },
   { to: "/purchases",   label: "خرید",            icon: ShoppingBag,     module: "purchases",   group: "finance" },
   { to: "/suppliers",   label: "تأمین‌کنندگان",     icon: Factory,         module: "suppliers",   group: "finance" },
   { to: "/sales",       label: "فروش",            icon: ShoppingCart,    module: "sales",       group: "finance" },

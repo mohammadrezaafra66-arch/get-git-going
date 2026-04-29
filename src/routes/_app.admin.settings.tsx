@@ -40,6 +40,7 @@ const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   shop_eitaa: "https://eitaa.com/...",
   shop_baleh: "https://ble.ir/...",
   default_seller_info: "نام، شماره تماس و سمت پیش‌فرض فروشنده",
+  alert_threshold_percent: "مثلاً 5",
 };
 
 function ShopSettingsPage() {
@@ -64,6 +65,13 @@ function ShopSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Validate alert threshold
+      const threshold = Number(values.alert_threshold_percent);
+      if (values.alert_threshold_percent && (isNaN(threshold) || threshold < 1 || threshold > 100)) {
+        toast.error("آستانه هشدار باید عددی بین ۱ تا ۱۰۰ باشد.");
+        setSaving(false);
+        return;
+      }
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id ?? null;
       const original = settingsQ.data ?? emptyShopSettings();

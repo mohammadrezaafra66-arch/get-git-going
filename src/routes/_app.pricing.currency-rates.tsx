@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Check, Power, ChevronRight, ChevronLeft } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Check, Power, ChevronRight, ChevronLeft, X, Inbox } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
@@ -31,10 +32,12 @@ type CurrencyFilter = "all" | "usd" | "aed";
 function CurrencyRatesPage() {
   const { roles } = useAuth();
   const canWrite = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+  const canApprove = hasAnyRole(roles, ["admin", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<CurrencyFilter>("all");
   const [page, setPage] = useState(0);
+  const [tab, setTab] = useState<"current" | "fetched">("current");
 
   const latest = useQuery({
     queryKey: ["currency-rates", "latest"],
@@ -92,6 +95,9 @@ function CurrencyRatesPage() {
             <Button asChild variant="outline" size="sm">
               <Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/pricing/currency-sources">منابع ارز</Link>
+            </Button>
             {canWrite && (
               <Button size="sm" onClick={() => setOpen(true)}><Plus className="ms-1 h-4 w-4" />ثبت نرخ جدید</Button>
             )}
@@ -104,6 +110,12 @@ function CurrencyRatesPage() {
         <LatestCard label="آخرین نرخ درهم" data={latest.data?.aed} loading={latest.isLoading} />
       </div>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "current" | "fetched")}>
+        <TabsList>
+          <TabsTrigger value="current">نرخ‌های جاری</TabsTrigger>
+          <TabsTrigger value="fetched">نرخ‌های دریافت‌شده</TabsTrigger>
+        </TabsList>
+        <TabsContent value="current" className="space-y-3">
       <Card>
         <CardContent className="flex flex-col items-stretch gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
@@ -199,9 +211,126 @@ function CurrencyRatesPage() {
           </Button>
         </div>
       </div>
+        </TabsContent>
+        <TabsContent value="fetched">
+          <FetchedRatesTab canApprove={canApprove} onChanged={refresh} />
+        </TabsContent>
+      </Tabs>
 
       <RateDialog open={open} onOpenChange={setOpen} onSaved={refresh} />
     </div>
+  );
+}
+
+function FetchedRatesTab({ canApprove, onChanged }: { canApprove: boolean; onChanged: () => void }) {
+  const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<"pending_review" | "approved" | "rejected" | "all">("pending_review");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["currency-rate-fetches", statusFilter],
+    queryFn: async () => {
+      let q = supabase
+        .from("currency_rate_fetches")
+        .select("id, currency, rate, fetched_at, status, source_id, currency_sources(name)")
+        .order("fetched_at", { ascending: false })
+        .limit(50);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 15_000,
+  });
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["currency-rate-fetches"] });
+    onChanged();
+  };
+
+  const approve = async (id: string) => {
+    setBusy(id);
+    try {
+      const { error } = await supabase.rpc("approve_currency_fetch", { p_fetch_id: id, p_deactivate_previous: true });
+      if (error) throw error;
+      toast.success("نرخ تأیید شد و در محاسبات استفاده می‌شود.");
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.message ?? "خطا در تأیید");
+    } finally { setBusy(null); }
+  };
+
+  const reject = async (id: string) => {
+    if (!confirm("نرخ رد شود؟")) return;
+    setBusy(id);
+    try {
+      const { error } = await supabase.rpc("reject_currency_fetch", { p_fetch_id: id });
+      if (error) throw error;
+      toast.success("نرخ رد شد.");
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.message ?? "خطا در رد");
+    } finally { setBusy(null); }
+  };
+
+  const statusBadge = (s: string) => {
+    if (s === "pending_review") return <Badge variant="secondary">در انتظار تأیید</Badge>;
+    if (s === "approved") return <Badge variant="default">تأیید شده</Badge>;
+    return <Badge variant="outline">رد شده</Badge>;
+  };
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-3">
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">وضعیت:</Label>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending_review">در انتظار تأیید</SelectItem>
+              <SelectItem value="approved">تأیید شده</SelectItem>
+              <SelectItem value="rejected">رد شده</SelectItem>
+              <SelectItem value="all">همه</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {isLoading ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+        ) : !data || data.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 p-8 text-sm text-muted-foreground">
+            <Inbox className="h-8 w-8 opacity-40" />
+            موردی یافت نشد.
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {data.map((r: any) => (
+              <li key={r.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{CURRENCY_LABELS[r.currency as "usd" | "aed"]}</span>
+                    <span className="text-sm">{formatNumber(Number(r.rate))} <span className="text-xs text-muted-foreground">تومان</span></span>
+                    {statusBadge(r.status)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.currency_sources?.name ?? "—"} · {formatDateTimeFa(r.fetched_at)}
+                  </div>
+                </div>
+                {canApprove && r.status === "pending_review" && (
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" className="h-8" onClick={() => approve(r.id)} disabled={busy === r.id}>
+                      {busy === r.id ? <Loader2 className="ms-1 h-3 w-3 animate-spin" /> : <Check className="ms-1 h-3 w-3" />}تأیید
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => reject(r.id)} disabled={busy === r.id}>
+                      <X className="ms-1 h-3 w-3" />رد
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
