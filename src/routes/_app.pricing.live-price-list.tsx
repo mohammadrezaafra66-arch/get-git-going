@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import type { AppRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
@@ -66,7 +66,7 @@ interface SnapshotLite {
 
 function LivePriceListPage() {
   const { roles } = useAuth();
-  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const isPrivileged = hasPermissionEx(roles, "pricing", "view_sensitive");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
 
   // ---------- filters ----------
