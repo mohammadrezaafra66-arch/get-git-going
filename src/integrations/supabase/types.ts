@@ -1634,7 +1634,6 @@ export type Database = {
           rule_name: string | null
           sale_price_type_id: string | null
           settlement_type_id: string | null
-          shipping_cost_rule_id: string | null
           updated_at: string
           version: number
         }
@@ -1660,7 +1659,6 @@ export type Database = {
           rule_name?: string | null
           sale_price_type_id?: string | null
           settlement_type_id?: string | null
-          shipping_cost_rule_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1686,7 +1684,6 @@ export type Database = {
           rule_name?: string | null
           sale_price_type_id?: string | null
           settlement_type_id?: string | null
-          shipping_cost_rule_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1703,13 +1700,6 @@ export type Database = {
             columns: ["settlement_type_id"]
             isOneToOne: false
             referencedRelation: "settlement_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pricing_rules_shipping_cost_rule_id_fkey"
-            columns: ["shipping_cost_rule_id"]
-            isOneToOne: false
-            referencedRelation: "shipping_cost_rules"
             referencedColumns: ["id"]
           },
         ]
