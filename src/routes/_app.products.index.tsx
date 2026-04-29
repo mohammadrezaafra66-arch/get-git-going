@@ -19,6 +19,7 @@ import {
   PRODUCT_STATUS_LABELS, PRODUCT_STATUS_VARIANTS, PRODUCTS_PAGE_SIZE,
 } from "@/lib/products/constants";
 import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -179,7 +180,7 @@ function ProductsPage() {
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
                         <td className="p-3">
                           <Link to="/products/$id" params={{ id: p.id }} className="font-medium text-foreground hover:underline">
-                            {p.name}
+                            {formatProductDisplayNameWithFallback(p)}
                           </Link>
                           {p.labels.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
@@ -230,7 +231,7 @@ function ProductsPage() {
                 <CardContent className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <Link to="/products/$id" params={{ id: p.id }} className="font-semibold text-foreground hover:underline">
-                      {p.name}
+                      {formatProductDisplayNameWithFallback(p)}
                     </Link>
                     <div className="flex shrink-0 gap-1">
                       <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>{PRODUCT_STATUS_LABELS[p.status]}</Badge>
