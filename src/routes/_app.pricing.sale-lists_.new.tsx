@@ -332,6 +332,7 @@ function NewSaleListPage() {
           name: trimmedName,
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
+          seller_info: sellerInfo.trim() || null,
           sale_price_type_id: salePriceTypeId,
           created_by: userData.user.id,
           version_number: 1,
