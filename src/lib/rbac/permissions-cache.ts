@@ -1,11 +1,21 @@
-import type { RolePermissionRow } from "./dynamic-permissions";
+export interface CachedRolePermissionRow {
+  role_name: string;
+  module: string;
+  can_view: boolean;
+  can_create: boolean;
+  can_update: boolean;
+  can_delete: boolean;
+  can_approve: boolean;
+  can_export: boolean;
+  can_view_sensitive: boolean;
+}
 
-let cached: RolePermissionRow[] = [];
+let cached: CachedRolePermissionRow[] = [];
 
-export function setCachedRolePermissions(rows: RolePermissionRow[]) {
+export function setCachedRolePermissions(rows: CachedRolePermissionRow[]) {
   cached = rows;
 }
 
-export function getCachedRolePermissions(): RolePermissionRow[] {
+export function getCachedRolePermissions(): CachedRolePermissionRow[] {
   return cached;
 }
