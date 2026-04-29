@@ -1022,6 +1022,31 @@ function SettingsTab({
             <Label htmlFor="ed-terms">شرایط فروش</Label>
             <Textarea id="ed-terms" value={termsText} onChange={(e) => setTermsText(e.target.value)} rows={4} />
           </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="ed-seller">اطلاعات فروشنده (درج‌شده در PDF)</Label>
+              {sellerDefaultQ.data?.default_seller_info ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setSellerInfo(sellerDefaultQ.data!.default_seller_info)}
+                >
+                  استفاده از مقدار پیش‌فرض
+                </Button>
+              ) : null}
+            </div>
+            <Textarea
+              id="ed-seller"
+              value={sellerInfo}
+              onChange={(e) => setSellerInfo(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="نام، شماره تماس و سمت فروشنده (اختیاری، حداکثر ۵۰۰ کاراکتر)"
+              dir="rtl"
+            />
+          </div>
         </CardContent>
       </Card>
 
