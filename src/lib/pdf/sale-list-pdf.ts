@@ -51,6 +51,17 @@ export interface SaleListPdfInput {
   termsText?: string | null;
   selectedColumns: SaleListPdfColumn[];
   items: SaleListPdfItem[];
+  sellerInfo?: string | null;
+  shopInfo?: {
+    name?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    rubika?: string | null;
+    whatsapp?: string | null;
+    eitaa?: string | null;
+    baleh?: string | null;
+  } | null;
 }
 
 const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
