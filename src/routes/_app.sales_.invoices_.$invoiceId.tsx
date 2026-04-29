@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight, Copy } from "lucide-react";
+import { Loader2, XCircle, ArrowRight, Copy, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -43,6 +43,10 @@ function statusLabel(s: string) {
       return "پرداخت جزئی";
     case "issued":
       return "صادر شده";
+    case "pending_accountant":
+      return "در انتظار حسابدار";
+    case "final":
+      return "نهایی";
     default:
       return s;
   }
@@ -54,8 +58,11 @@ function InvoiceDetailPage() {
   const router = useRouter();
   const [canceling, setCanceling] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const canManage = roles.includes("admin") || roles.includes("accountant");
+  const canSendToAccountant =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
 
   const { data: invoice, isFetching, refetch } = useQuery({
     queryKey: ["invoice", invoiceId],
@@ -93,6 +100,7 @@ function InvoiceDetailPage() {
 
   const isDraftPreInvoice = invoice?.status === "draft" && invoice?.type === "pre_invoice";
   const showCancel = canManage && isDraftPreInvoice;
+  const showSendToAccountant = canSendToAccountant && isDraftPreInvoice;
 
   const handleCopy = async () => {
     if (!invoice) return;
