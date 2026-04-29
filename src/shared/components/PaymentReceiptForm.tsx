@@ -696,7 +696,13 @@ export function PaymentReceiptForm() {
         >
           انصراف
         </Button>
-        <Button type="submit" disabled={mutation.isPending}>
+        <Button
+          type="submit"
+          disabled={
+            mutation.isPending ||
+            (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
+          }
+        >
           {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           ثبت فیش
         </Button>
