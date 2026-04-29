@@ -206,6 +206,26 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         }
       }
 
+      // Advance-payment validation
+      let depositAmt: number | null = null;
+      let commitment = false;
+      if (values.invoice_type === "advance_payment") {
+        depositAmt = Number(values.deposit_amount ?? 0);
+        commitment = !!values.commitment_confirmed;
+        const minRequired = Math.ceil(total * 0.3);
+        if (!depositAmt || depositAmt <= 0) {
+          throw new Error("مبلغ بیعانه الزامی است");
+        }
+        if (depositAmt < minRequired) {
+          throw new Error(
+            `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${minRequired.toLocaleString("fa-IR")} ریال) باشد`,
+          );
+        }
+        if (!commitment) {
+          throw new Error("تأیید تعهد فروشنده الزامی است");
+        }
+      }
+
       const { data: inv, error: iErr } = await supabase
         .from("invoices")
         .insert({
@@ -220,6 +240,8 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           subtotal: total,
           notes: values.notes || null,
           created_by: user.id,
+          deposit_amount: depositAmt,
+          commitment_confirmed: commitment,
         } as never)
         .select("id")
         .single();
@@ -235,6 +257,26 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       }));
       const { error: itErr } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (itErr) throw itErr;
+
+      // Audit log for advance payment issuance
+      if (values.invoice_type === "advance_payment") {
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "invoice",
+          entity_id: invoiceId,
+          action: "advance_payment_issued",
+          diff: {
+            invoice_id: invoiceId,
+            customer_id: values.customer_id,
+            issued_by: user.id,
+            issued_by_name: user.email ?? null,
+            total_amount: total,
+            deposit_amount: depositAmt,
+            commitment_confirmed: commitment,
+            issued_at: new Date().toISOString(),
+          },
+        } as never);
+      }
 
       return invoiceId;
     },
