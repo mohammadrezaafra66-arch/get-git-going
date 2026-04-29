@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Loader2, Check, ChevronsUpDown, Eye } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_app/accounting/receipts")({
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "accountant"]);
   },
-  component: ReceiptsListPage,
+  component: ReceiptsLayout,
 });
 
 const PAGE_SIZE = 20;
@@ -47,6 +47,17 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> = 
   approved: "default",
   rejected: "destructive",
 };
+
+function ReceiptsLayout() {
+  const matches = useMatches();
+  // If a child route is active, render only the child (Outlet)
+  const hasChild = matches.some((m) =>
+    m.routeId === "/_app/accounting/receipts/create" ||
+    m.routeId === "/_app/accounting/receipts/$receiptId"
+  );
+  if (hasChild) return <Outlet />;
+  return <ReceiptsListPage />;
+}
 
 function ReceiptsListPage() {
   const [page, setPage] = useState(0);
