@@ -81,6 +81,7 @@ import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.man
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
+import { Route as AppSalesInvoicesInvoiceIdRouteImport } from './routes/_app.sales_.invoices_.$invoiceId'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -459,6 +460,12 @@ const AppSalesInvoicesCreateRoute = AppSalesInvoicesCreateRouteImport.update({
   path: '/sales/invoices/create',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesInvoicesInvoiceIdRoute =
+  AppSalesInvoicesInvoiceIdRouteImport.update({
+    id: '/sales_/invoices_/$invoiceId',
+    path: '/sales/invoices/$invoiceId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   id: '/sales_/customers_/create',
   path: '/sales/customers/create',
@@ -624,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -709,6 +717,7 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRoute
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -799,6 +808,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
+  '/_app/sales_/invoices_/$invoiceId': typeof AppSalesInvoicesInvoiceIdRoute
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -889,6 +899,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
@@ -974,6 +985,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
@@ -1063,6 +1075,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales_/customers_/create'
+    | '/_app/sales_/invoices_/$invoiceId'
     | '/_app/sales_/invoices_/create'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
@@ -1591,6 +1604,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesInvoicesCreateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/invoices_/$invoiceId': {
+      id: '/_app/sales_/invoices_/$invoiceId'
+      path: '/sales/invoices/$invoiceId'
+      fullPath: '/sales/invoices/$invoiceId'
+      preLoaderRoute: typeof AppSalesInvoicesInvoiceIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/create': {
       id: '/_app/sales_/customers_/create'
       path: '/sales/customers/create'
@@ -1867,6 +1887,7 @@ interface AppRouteChildren {
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRoute
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
@@ -1927,6 +1948,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRoute,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
   AppSalesCustomersCustomerIdCreditRoute:

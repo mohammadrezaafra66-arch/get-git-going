@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Eye } from "lucide-react";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +80,7 @@ function InvoicesListPage() {
                   <TableHead>جمع کل</TableHead>
                   <TableHead>تاریخ</TableHead>
                   <TableHead>وضعیت</TableHead>
+                  <TableHead className="text-left">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -104,12 +105,19 @@ function InvoicesListPage() {
                           {row.status === "draft" ? "پیش‌نویس" : row.status}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-left">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: row.id }}>
+                            <Eye className="ml-1 h-4 w-4" /> مشاهده
+                          </Link>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {!isFetching && (data?.rows.length ?? 0) === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
                       پیش‌فاکتوری یافت نشد
                     </TableCell>
                   </TableRow>
