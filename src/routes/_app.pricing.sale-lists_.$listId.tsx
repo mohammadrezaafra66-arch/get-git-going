@@ -113,6 +113,7 @@ interface SaleListDetail {
   name: string;
   description: string | null;
   terms_text: string | null;
+  seller_info?: string | null;
   status: string;
   version_number: number;
   sale_price_type_id: string;
