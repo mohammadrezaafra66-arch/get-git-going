@@ -31,6 +31,25 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+/**
+ * Release held credit when a credit pre-invoice is cancelled/rejected.
+ * Wired here for future cancel button integration (F-9 prep).
+ */
+export async function releaseInvoiceCredit(params: {
+  customerId: string;
+  amount: number;
+  invoiceId: string;
+  userId: string;
+}) {
+  const { error } = await supabase.rpc("release_credit", {
+    p_customer_id: params.customerId,
+    p_amount: params.amount,
+    p_invoice_id: params.invoiceId,
+    p_user_id: params.userId,
+  });
+  if (error) throw new Error(error.message || "آزادسازی اعتبار با خطا مواجه شد");
+}
+
 const itemSchema = z.object({
   product_id: z.string().uuid("انتخاب محصول الزامی است"),
   product_label: z.string().optional(),
@@ -119,26 +138,26 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
 
-  // Credit profile for selected customer
+  // Real-time credit balance for selected customer (via secure RPC)
   const customerId = form.watch("customer_id");
-  const { data: creditProfile } = useQuery({
-    queryKey: ["invoice-credit-profile", customerId],
+  const { data: creditInfo } = useQuery({
+    queryKey: ["invoice-credit-info", customerId],
     enabled: !!customerId,
-    staleTime: 60_000,
+    staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customer_credit_profile")
-        .select("credit_limit, outstanding_balance, credit_score")
-        .eq("customer_id", customerId)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_customer_credit", {
+        p_customer_id: customerId,
+      });
       if (error) throw error;
-      return data;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row ?? null;
     },
   });
 
-  const creditLimit = Number(creditProfile?.credit_limit ?? 0);
-  const outstanding = Number(creditProfile?.outstanding_balance ?? 0);
-  const exceedsLimit = creditLimit > 0 && (totalAmount + outstanding) > creditLimit;
+  const availableCredit = Number((creditInfo as { available_credit?: number } | null)?.available_credit ?? 0);
+  const heldCredit = Number((creditInfo as { held_credit?: number } | null)?.held_credit ?? 0);
+  const outstanding = Number((creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0);
+  const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
 
   // Sale price types
@@ -177,17 +196,15 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const total = values.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
-      // Credit pre-flight check for credit pre-invoices only
+      // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
-        const { data: cp } = await supabase
-          .from("customer_credit_profile")
-          .select("credit_limit, outstanding_balance")
-          .eq("customer_id", values.customer_id)
-          .maybeSingle();
-        const limit = Number(cp?.credit_limit ?? 0);
-        const out = Number(cp?.outstanding_balance ?? 0);
-        if (limit > 0 && total + out > limit) {
-          // audit credit_limit_blocked
+        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
+          p_customer_id: values.customer_id,
+        });
+        if (ccErr) throw ccErr;
+        const row = Array.isArray(cc) ? cc[0] : cc;
+        const avail = Number((row as { available_credit?: number } | null)?.available_credit ?? 0);
+        if (avail < total) {
           await supabase.from("audit_logs").insert({
             actor_id: user.id,
             entity_type: "invoice",
@@ -196,8 +213,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             diff: {
               customer_id: values.customer_id,
               total_amount: total,
-              outstanding_balance: out,
-              credit_limit: limit,
+              available_credit: avail,
             },
           } as never);
           throw new Error(
@@ -258,6 +274,22 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       const { error: itErr } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (itErr) throw itErr;
 
+      // Hold credit for credit pre-invoices (race-safe via FOR UPDATE inside RPC)
+      if (values.invoice_type === "pre_invoice") {
+        const { error: holdErr } = await supabase.rpc("hold_credit", {
+          p_customer_id: values.customer_id,
+          p_amount: total,
+          p_invoice_id: invoiceId,
+          p_user_id: user.id,
+        });
+        if (holdErr) {
+          // Roll back invoice if hold fails (e.g. concurrent overuse)
+          await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+          await supabase.from("invoices").delete().eq("id", invoiceId);
+          throw new Error(holdErr.message || "ثبت اعتبار با خطا مواجه شد");
+        }
+      }
+
       // Audit log for advance payment issuance
       if (values.invoice_type === "advance_payment") {
         await supabase.from("audit_logs").insert({
@@ -283,6 +315,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     onSuccess: () => {
       toast.success("پیش‌فاکتور ذخیره شد");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice-credit-info"] });
       navigate({ to: "/sales/invoices" });
     },
     onError: (err: unknown) => {
@@ -363,26 +396,28 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id.message}</p>}
           </div>
 
-          {/* Credit info */}
-          {selectedCustomer && creditProfile && (
+          {/* Credit info (real-time via get_customer_credit) */}
+          {selectedCustomer && creditInfo && (
             <div className="rounded-md border bg-muted/30 p-3 space-y-2 text-sm">
               <div className="flex items-center gap-2 font-medium">
                 <ShieldCheck className="h-4 w-4" />
-                وضعیت اعتباری مشتری
+                وضعیت اعتباری مشتری (لحظه‌ای)
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
-                  <span className="text-muted-foreground">سقف اعتبار: </span>
-                  <span className="font-semibold">{formatNumber(creditLimit)} ریال</span>
+                  <span className="text-muted-foreground">اعتبار قابل استفاده: </span>
+                  <span className="font-semibold">{formatNumber(availableCredit)} ریال</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">بدهی جاری: </span>
                   <span className="font-semibold">{formatNumber(outstanding)} ریال</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">امتیاز: </span>
-                  <span className="font-semibold">{toFaDigits(creditProfile.credit_score ?? 0)} / ۱۰۰</span>
-                </div>
+                {heldCredit > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">اعتبار مسدودشده: </span>
+                    <span className="font-semibold">{formatNumber(heldCredit)} ریال</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
