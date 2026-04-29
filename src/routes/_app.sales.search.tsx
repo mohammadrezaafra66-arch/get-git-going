@@ -347,7 +347,30 @@ function SalesSearchPage() {
           </div>
 
           {/* desktop horizontal filters */}
-          <div className="hidden md:block">
+          <div className="hidden md:block space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                <span>فیلترها</span>
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1">
+                    {formatNumber(activeFilterCount)}
+                  </Badge>
+                )}
+              </div>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                    setStockStatus("__all"); setProductType("__all");
+                  }}
+                >
+                  <X className="ml-1 h-3.5 w-3.5" /> پاک کردن همه فیلترها
+                </Button>
+              )}
+            </div>
             <FiltersPanel
               brands={brands as { id: string; name: string }[]}
               categories={categories as { id: string; name: string; parent_id: string | null }[]}
