@@ -33,6 +33,11 @@ import {
 } from "@/lib/data-tables/constants";
 import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
 import { buildCsv, downloadCsv, buildExportFilename, type ExportColumnDef, type ExportRow } from "@/lib/data-tables/csv-export";
+import {
+  DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
+  DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
+  type DynamicTableAccessLevel,
+} from "@/lib/data-tables/constants";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
   beforeLoad: async () => { await requirePermission("data-tables", "view"); },
@@ -66,6 +71,10 @@ function DataTableDetailPage() {
   const { tableId } = Route.useParams();
   const { user, roles } = useAuth();
   const canEdit = (roles ?? []).includes("admin") || (roles ?? []).includes("manager");
+  const canEditRows =
+    canEdit || (roles ?? []).includes("accountant");
+  const canExport =
+    canEdit || (roles ?? []).includes("accountant");
   const qc = useQueryClient();
 
   const [showInactive, setShowInactive] = useState(false);
@@ -103,7 +112,7 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_tables")
-        .select("id, name, slug, description, is_active, created_at")
+        .select("id, name, slug, description, is_active, created_at, access_level")
         .eq("id", tableId).maybeSingle();
       if (error) throw error;
       return data;
