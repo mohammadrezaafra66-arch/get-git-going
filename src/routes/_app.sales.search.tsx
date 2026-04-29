@@ -284,35 +284,84 @@ function SalesSearchPage() {
             </Select>
           </div>
 
-          {/* light filters */}
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <Select value={brandId} onValueChange={setBrandId}>
-              <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">همه برندها</SelectItem>
-                {brands.map((b: { id: string; name: string }) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={stockStatus} onValueChange={setStockStatus}>
-              <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">همه</SelectItem>
-                <SelectItem value="available">موجود</SelectItem>
-                <SelectItem value="limited">محدود</SelectItem>
-                <SelectItem value="unavailable">ناموجود</SelectItem>
-                <SelectItem value="unknown">نامشخص</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={productType} onValueChange={setProductType}>
-              <SelectTrigger><SelectValue placeholder="نوع کالا" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">همه</SelectItem>
-                <SelectItem value="iranian">ایرانی</SelectItem>
-                <SelectItem value="foreign">خارجی</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* mobile filters trigger */}
+          <div className="flex items-center justify-between md:hidden">
+            <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  فیلترها
+                  {activeFilterCount > 0 && (
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1">{formatNumber(activeFilterCount)}</Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>فیلترها</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  <FiltersPanel
+                    brands={brands as { id: string; name: string }[]}
+                    categories={categories as { id: string; name: string; parent_id: string | null }[]}
+                    labels={labels as { id: string; title: string; color: string | null }[]}
+                    brandIds={brandIds} setBrandIds={setBrandIds}
+                    categoryIds={categoryIds} setCategoryIds={setCategoryIds}
+                    labelIds={labelIds} setLabelIds={setLabelIds}
+                    stockStatus={stockStatus} setStockStatus={setStockStatus}
+                    productType={productType} setProductType={setProductType}
+                    brandFilterText={brandFilterText} setBrandFilterText={setBrandFilterText}
+                    categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
+                    labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
+                    dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+                  />
+                </div>
+                <SheetFooter className="mt-4 flex-row gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                      setStockStatus("__all"); setProductType("__all");
+                    }}
+                  >
+                    پاک کردن همه
+                  </Button>
+                  <SheetClose asChild>
+                    <Button className="flex-1">اعمال فیلترها</Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+            {activeFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                  setStockStatus("__all"); setProductType("__all");
+                }}
+              >
+                <X className="ml-1 h-3.5 w-3.5" /> پاک کردن
+              </Button>
+            )}
+          </div>
+
+          {/* desktop horizontal filters */}
+          <div className="hidden md:block">
+            <FiltersPanel
+              brands={brands as { id: string; name: string }[]}
+              categories={categories as { id: string; name: string; parent_id: string | null }[]}
+              labels={labels as { id: string; title: string; color: string | null }[]}
+              brandIds={brandIds} setBrandIds={setBrandIds}
+              categoryIds={categoryIds} setCategoryIds={setCategoryIds}
+              labelIds={labelIds} setLabelIds={setLabelIds}
+              stockStatus={stockStatus} setStockStatus={setStockStatus}
+              productType={productType} setProductType={setProductType}
+              brandFilterText={brandFilterText} setBrandFilterText={setBrandFilterText}
+              categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
+              labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
+              dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+            />
           </div>
         </CardContent>
       </Card>
