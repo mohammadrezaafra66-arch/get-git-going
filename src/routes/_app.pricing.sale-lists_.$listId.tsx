@@ -810,6 +810,12 @@ function SettingsTab({
   const [name, setName] = useState(list.name);
   const [description, setDescription] = useState(list.description ?? "");
   const [termsText, setTermsText] = useState(list.terms_text ?? "");
+  const [sellerInfo, setSellerInfo] = useState(list.seller_info ?? "");
+  const sellerDefaultQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
   const initialColumns = (list.selected_columns as ColumnKey[] | null) ?? COLUMN_OPTIONS.map((c) => c.key);
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(initialColumns);
   const [productIds, setProductIds] = useState<string[]>(items.map((it) => it.product_id));
