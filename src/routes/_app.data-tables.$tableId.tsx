@@ -347,13 +347,28 @@ function DataTableDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={t?.name ?? "جزئیات جدول"}
-        description={t?.slug ? `شناسه: ${t.slug}` : undefined}
+        description={
+          t?.slug ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <span>شناسه: {t.slug}</span>
+              {(() => {
+                const lvl = ((t as { access_level?: string } | null | undefined)?.access_level ?? "all") as DynamicTableAccessLevel;
+                const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+                return (
+                  <Badge variant="outline" className={cls}>
+                    سطح دسترسی: {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+                  </Badge>
+                );
+              })()}
+            </span>
+          ) : undefined
+        }
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline">
               <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
-            {canEdit && (
+            {canExport && (
               <Button
                 variant="outline"
                 onClick={() => exportMut.mutate()}
@@ -368,9 +383,15 @@ function DataTableDetailPage() {
                 خروجی CSV
               </Button>
             )}
-            <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
-              <Plus className="ml-2 h-4 w-4" />افزودن ردیف
-            </Button>
+            {canEditRows ? (
+              <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
+                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+              </Button>
+            ) : (
+              <Button disabled title="شما دسترسی انجام این عملیات را ندارید">
+                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+              </Button>
+            )}
           </div>
         }
       />
