@@ -769,6 +769,88 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_credit_balance: {
+        Row: {
+          available_credit: number
+          customer_id: string
+          held_credit: number
+          last_transaction_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          available_credit?: number
+          customer_id: string
+          held_credit?: number
+          last_transaction_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          available_credit?: number
+          customer_id?: string
+          held_credit?: number
+          last_transaction_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_balance_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_credit_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credit_profile: {
         Row: {
           created_at: string
@@ -3096,6 +3178,10 @@ export type Database = {
       }
     }
     Functions: {
+      _ensure_credit_balance: {
+        Args: { p_customer_id: string }
+        Returns: undefined
+      }
       add_dynamic_table_column: {
         Args: {
           p_column_key: string
@@ -3334,6 +3420,15 @@ export type Database = {
         }[]
       }
       generate_sale_price_type_code: { Args: never; Returns: string }
+      get_customer_credit: {
+        Args: { p_customer_id: string }
+        Returns: {
+          available_credit: number
+          held_credit: number
+          outstanding_balance: number
+          total_purchases: number
+        }[]
+      }
       get_product_sale_price: {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
@@ -3356,9 +3451,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      hold_credit: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       import_dynamic_table_rows: {
         Args: { p_rows: Json; p_session_id?: string; p_table_id: string }
         Returns: Json
+      }
+      increase_credit: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_receipt_id: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       kd_role_can_view: {
         Args: { _access_level: string; _uid: string }
@@ -3395,6 +3508,15 @@ export type Database = {
       }
       reject_pending_user: {
         Args: { _notes?: string; _user_id: string }
+        Returns: undefined
+      }
+      release_credit: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       release_stale_quote_send_locks: { Args: never; Returns: number }
