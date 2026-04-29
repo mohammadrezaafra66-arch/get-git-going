@@ -583,7 +583,7 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
 function ProductCell({ product }: { product: ProductRow }) {
   return (
     <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-foreground">{product.name}</div>
+      <div className="truncate text-sm font-medium text-foreground">{formatProductDisplayNameWithFallback(product)}</div>
       <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
       <div className="mt-1">
         <StockAlertButton
