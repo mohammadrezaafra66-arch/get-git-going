@@ -31,6 +31,25 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+/**
+ * Release held credit when a credit pre-invoice is cancelled/rejected.
+ * Wired here for future cancel button integration (F-9 prep).
+ */
+export async function releaseInvoiceCredit(params: {
+  customerId: string;
+  amount: number;
+  invoiceId: string;
+  userId: string;
+}) {
+  const { error } = await supabase.rpc("release_credit", {
+    p_customer_id: params.customerId,
+    p_amount: params.amount,
+    p_invoice_id: params.invoiceId,
+    p_user_id: params.userId,
+  });
+  if (error) throw new Error(error.message || "آزادسازی اعتبار با خطا مواجه شد");
+}
+
 const itemSchema = z.object({
   product_id: z.string().uuid("انتخاب محصول الزامی است"),
   product_label: z.string().optional(),
