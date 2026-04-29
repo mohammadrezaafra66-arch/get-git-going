@@ -41,6 +41,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
+import { fetchShopSettings } from "@/lib/shop/settings";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -124,7 +125,23 @@ function NewSaleListPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [termsText, setTermsText] = useState("");
+  const [sellerInfo, setSellerInfo] = useState("");
+  const [sellerInfoTouched, setSellerInfoTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const shopSettingsQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
+
+  // Prefill seller info from default once settings load (if user hasn't typed)
+  useMemo(() => {
+    if (!sellerInfoTouched && shopSettingsQ.data?.default_seller_info) {
+      setSellerInfo(shopSettingsQ.data.default_seller_info);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopSettingsQ.data?.default_seller_info]);
 
   // Reset page on filter changes
   const resetPage = () => setPage(1);
