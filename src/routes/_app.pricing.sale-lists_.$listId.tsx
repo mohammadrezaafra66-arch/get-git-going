@@ -199,6 +199,12 @@ function SaleListDetailPage() {
     },
   });
 
+  const shopSettingsQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
