@@ -519,6 +519,7 @@ function renderProductRows(
 }
 
 function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product: ProductRow; histories: any[]; hasPrice: boolean }; isSalesOnly: boolean; isPrivileged: boolean }) {
+  const isUnavailable = row.product.stock_status === "unavailable";
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -538,9 +539,13 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
             stockStatus={row.product.stock_status}
           />
         </div>
-        {!row.hasPrice ? (
+        {isUnavailable ? (
+          <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600">
+            ناموجود — قیمت نمایش داده نمی‌شود.
+          </div>
+        ) : !row.hasPrice ? (
           <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-            برای این محصول هنوز قیمت فروش ثبت نشده است.
+            قیمت ثبت نشده
             {isPrivileged && (
               <div className="mt-2">
                 <Link to="/pricing/calculator" className="text-primary inline-flex items-center gap-1">
