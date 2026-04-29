@@ -74,10 +74,13 @@ export const shippingRuleSchema = z
     cost_type: z.enum(["fixed", "percent"]),
     cost_value: z.coerce.number().nonnegative("مقدار نمی‌تواند منفی باشد"),
     product_type: z.enum(["iranian", "foreign"]).nullable().optional(),
+    product_id: z.string().uuid().nullable().optional(),
+    brand_id: z.string().uuid().nullable().optional(),
     category_id: z.string().uuid().nullable().optional(),
     min_purchase_price: z.coerce.number().nonnegative().nullable().optional(),
     max_purchase_price: z.coerce.number().nonnegative().nullable().optional(),
     priority: z.coerce.number().int().min(1).default(100),
+    sort_order: z.coerce.number().int().min(0).default(0),
     is_active: z.boolean().default(true),
   })
   .refine(
@@ -86,5 +89,9 @@ export const shippingRuleSchema = z
       v.max_purchase_price == null ||
       Number(v.max_purchase_price) >= Number(v.min_purchase_price),
     { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price"] }
+  )
+  .refine(
+    (v) => Boolean(v.product_id || v.category_id || v.brand_id || v.product_type),
+    { message: "حداقل یکی از محصول، دسته، برند یا نوع کالا را انتخاب کنید", path: ["title"] }
   );
 export type ShippingRuleFormValues = z.infer<typeof shippingRuleSchema>;

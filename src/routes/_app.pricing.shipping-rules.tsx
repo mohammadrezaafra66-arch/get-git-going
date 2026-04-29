@@ -1,26 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, ArrowRight, Pencil, Trash2, Power } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
-import { shippingRuleSchema, type ShippingRuleFormValues } from "@/lib/pricing/schemas";
+import { type ShippingRuleFormValues } from "@/lib/pricing/schemas";
 import { SHIPPING_COST_TYPE_LABELS } from "@/lib/pricing/constants";
-import { fetchCategoriesLite } from "@/lib/products/queries";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { PRODUCT_TYPE_LABELS } from "@/lib/products/constants";
+import {
+  ShippingCostRuleForm,
+  emptyShippingRule,
+  validateShippingRule,
+} from "@/shared/components/ShippingCostRuleForm";
 
 export const Route = createFileRoute("/_app/pricing/shipping-rules")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -29,42 +29,84 @@ export const Route = createFileRoute("/_app/pricing/shipping-rules")({
 
 interface SRule {
   id: string; title: string; cost_type: "fixed" | "percent"; cost_value: number;
-  product_type: "iranian" | "foreign" | null; category_id: string | null;
+  product_type: "iranian" | "foreign" | null;
+  product_id: string | null; brand_id: string | null; category_id: string | null;
+  product_name?: string | null; brand_name?: string | null; category_name?: string | null;
   min_purchase_price: number | null; max_purchase_price: number | null;
-  is_active: boolean; priority: number;
+  is_active: boolean; priority: number; sort_order: number;
 }
 
 function ShippingRulesPage() {
   const { roles } = useAuth();
-  const canWrite = hasAnyRole(roles, ["admin", "manager"]);
+  const canWrite = hasAnyRole(roles, ["admin", "accountant"]);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<SRule | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["shipping-rules"],
+    queryKey: ["shipping-rules", page],
     queryFn: async (): Promise<SRule[]> => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("shipping_cost_rules")
-        .select("id, title, cost_type, cost_value, product_type, category_id, min_purchase_price, max_purchase_price, is_active, priority")
-        .order("priority", { ascending: true });
+        .select(`
+          id, title, cost_type, cost_value, product_type,
+          product_id, brand_id, category_id,
+          min_purchase_price, max_purchase_price,
+          is_active, priority, sort_order,
+          product:products(id,name),
+          brand:brands(id,name),
+          category:categories(id,name)
+        `)
+        .order("sort_order", { ascending: true })
+        .order("priority", { ascending: true })
+        .range(from, to);
       if (error) throw error;
-      return (data ?? []) as SRule[];
+      return (data ?? []).map((r: any) => ({
+        ...r,
+        product_name: r.product?.name ?? null,
+        brand_name: r.brand?.name ?? null,
+        category_name: r.category?.name ?? null,
+      })) as SRule[];
     },
   });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["shipping-rules"] });
+
+  const toggle = async (r: SRule) => {
+    if (r.is_active && !confirm(`قانون "${r.title}" غیرفعال شود؟`)) return;
+    const { error } = await supabase
+      .from("shipping_cost_rules")
+      .update({ is_active: !r.is_active })
+      .eq("id", r.id);
+    if (error) toast.error(error.message);
+    else { toast.success(r.is_active ? "غیرفعال شد" : "فعال شد"); refresh(); }
+  };
 
   const remove = async (r: SRule) => {
     if (!confirm(`حذف قانون "${r.title}"؟`)) return;
     const { error } = await supabase.from("shipping_cost_rules").delete().eq("id", r.id);
     if (error) toast.error(error.message);
-    else { toast.success("حذف شد"); qc.invalidateQueries({ queryKey: ["shipping-rules"] }); }
+    else { toast.success("حذف شد"); refresh(); }
+  };
+
+  const scopeLabel = (r: SRule) => {
+    const parts: string[] = [];
+    if (r.product_name) parts.push(`محصول: ${r.product_name}`);
+    if (r.category_name) parts.push(`دسته: ${r.category_name}`);
+    if (r.brand_name) parts.push(`برند: ${r.brand_name}`);
+    if (r.product_type) parts.push(`نوع: ${PRODUCT_TYPE_LABELS[r.product_type]}`);
+    return parts.length ? parts.join(" • ") : "همه";
   };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="قوانین هزینه حمل"
-        description="تعریف هزینه حمل بر اساس نوع کالا، دسته و بازه قیمت خرید"
+        description="تعریف هزینه حمل بر اساس محصول، دسته‌بندی، برند یا نوع کالا"
         actions={
           <>
             <Button asChild variant="outline" size="sm"><Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link></Button>
@@ -87,8 +129,8 @@ function ShippingRulesPage() {
                     <th className="p-3">عنوان</th>
                     <th className="p-3">نوع</th>
                     <th className="p-3">مقدار</th>
-                    <th className="p-3">نوع کالا</th>
-                    <th className="p-3">اولویت</th>
+                    <th className="p-3">محدوده اعمال</th>
+                    <th className="p-3">ترتیب</th>
                     <th className="p-3">وضعیت</th>
                     <th className="p-3">عملیات</th>
                   </tr>
@@ -99,13 +141,16 @@ function ShippingRulesPage() {
                       <td className="p-3 font-medium">{r.title}</td>
                       <td className="p-3 text-xs">{SHIPPING_COST_TYPE_LABELS[r.cost_type]}</td>
                       <td className="p-3">{r.cost_type === "percent" ? `%${formatNumber(Number(r.cost_value))}` : `${formatNumber(Number(r.cost_value))} ت`}</td>
-                      <td className="p-3 text-xs">{r.product_type ? PRODUCT_TYPE_LABELS[r.product_type] : "همه"}</td>
-                      <td className="p-3 text-xs">{formatNumber(r.priority)}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{scopeLabel(r)}</td>
+                      <td className="p-3 text-xs">{formatNumber(r.sort_order ?? 0)}</td>
                       <td className="p-3">{r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}</td>
                       <td className="p-3">
                         {canWrite && (
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => toggle(r)} title={r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}>
+                              <Power className={`h-4 w-4 ${r.is_active ? "text-destructive" : ""}`} />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                           </div>
                         )}
@@ -116,11 +161,20 @@ function ShippingRulesPage() {
               </table>
             </div>
           )}
+          {(data ?? []).length > 0 && (
+            <div className="flex items-center justify-between gap-2 border-t p-3 text-xs text-muted-foreground">
+              <span>صفحه {formatNumber(page + 1)}</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
+                <Button variant="outline" size="sm" disabled={(data ?? []).length < PAGE_SIZE} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <SRuleDialog open={open} onOpenChange={setOpen} editing={editing}
-        onSaved={() => qc.invalidateQueries({ queryKey: ["shipping-rules"] })} />
+        onSaved={refresh} />
     </div>
   );
 }
@@ -128,29 +182,27 @@ function ShippingRulesPage() {
 function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; editing: SRule | null; onSaved: () => void;
 }) {
-  const [values, setValues] = useState<ShippingRuleFormValues>({
-    title: "", cost_type: "fixed", cost_value: 0, product_type: null, category_id: null,
-    min_purchase_price: null, max_purchase_price: null, priority: 100, is_active: true,
-  });
+  const [values, setValues] = useState<ShippingRuleFormValues>(emptyShippingRule);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const { data: categories } = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
+  const initialProductLabel = useMemo(() => editing?.product_name ?? null, [editing]);
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
       setValues(editing ? {
         title: editing.title, cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
-        product_type: editing.product_type, category_id: editing.category_id,
+        product_type: editing.product_type,
+        product_id: editing.product_id, brand_id: editing.brand_id, category_id: editing.category_id,
         min_purchase_price: editing.min_purchase_price, max_purchase_price: editing.max_purchase_price,
-        priority: editing.priority, is_active: editing.is_active,
-      } : { title: "", cost_type: "fixed", cost_value: 0, product_type: null, category_id: null, min_purchase_price: null, max_purchase_price: null, priority: 100, is_active: true });
+        priority: editing.priority, sort_order: editing.sort_order ?? 0, is_active: editing.is_active,
+      } : emptyShippingRule);
       setErrors({});
     }
     onOpenChange(v);
   };
 
   const submit = async () => {
-    const parsed = shippingRuleSchema.safeParse(values);
+    const parsed = validateShippingRule(values);
     if (!parsed.success) {
       const f: Record<string, string> = {};
       for (const i of parsed.error.issues) f[i.path.join(".")] = i.message;
@@ -158,7 +210,7 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
     }
     setErrors({}); setLoading(true);
     try {
-      const payload: any = { ...parsed.data };
+      const payload = { ...parsed.data };
       if (editing) {
         const { error } = await supabase.from("shipping_cost_rules").update(payload).eq("id", editing.id);
         if (error) throw error; toast.success("به‌روزرسانی شد");
@@ -167,76 +219,26 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
         if (error) throw error; toast.success("ثبت شد");
       }
       onSaved(); onOpenChange(false);
-    } catch (e: any) { toast.error(e?.message ?? "خطا"); } finally { setLoading(false); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ذخیره");
+    } finally { setLoading(false); }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>{editing ? "ویرایش قانون حمل" : "قانون حمل جدید"}</DialogTitle></DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>عنوان *</Label>
-            <Input value={values.title} onChange={(e) => setValues((s) => ({ ...s, title: e.target.value }))} />
-            {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-          </div>
-          <div>
-            <Label>نوع هزینه *</Label>
-            <Select value={values.cost_type} onValueChange={(v) => setValues((s) => ({ ...s, cost_type: v as "fixed" | "percent" }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="fixed">مبلغ ثابت</SelectItem>
-                <SelectItem value="percent">درصد قیمت خرید</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>مقدار *</Label>
-            <Input type="number" inputMode="numeric" dir="ltr" value={values.cost_value || ""} onChange={(e) => setValues((s) => ({ ...s, cost_value: Number(e.target.value) }))} />
-          </div>
-          <div>
-            <Label>نوع کالا</Label>
-            <Select value={values.product_type ?? "all"} onValueChange={(v) => setValues((s) => ({ ...s, product_type: v === "all" ? null : (v as "iranian" | "foreign") }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
-                <SelectItem value="iranian">ایرانی</SelectItem>
-                <SelectItem value="foreign">خارجی</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>دسته‌بندی</Label>
-            <Select value={values.category_id ?? "all"} onValueChange={(v) => setValues((s) => ({ ...s, category_id: v === "all" ? null : v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
-                {(categories ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>حداقل قیمت خرید (ت)</Label>
-            <Input type="number" inputMode="numeric" dir="ltr" value={values.min_purchase_price ?? ""} onChange={(e) => setValues((s) => ({ ...s, min_purchase_price: e.target.value === "" ? null : Number(e.target.value) }))} />
-          </div>
-          <div>
-            <Label>حداکثر قیمت خرید (ت)</Label>
-            <Input type="number" inputMode="numeric" dir="ltr" value={values.max_purchase_price ?? ""} onChange={(e) => setValues((s) => ({ ...s, max_purchase_price: e.target.value === "" ? null : Number(e.target.value) }))} />
-            {errors.max_purchase_price && <p className="mt-1 text-xs text-destructive">{errors.max_purchase_price}</p>}
-          </div>
-          <div>
-            <Label>اولویت</Label>
-            <Input type="number" dir="ltr" value={values.priority} onChange={(e) => setValues((s) => ({ ...s, priority: Number(e.target.value) }))} />
-          </div>
-          <div className="flex items-center gap-2 sm:col-span-2">
-            <Switch checked={values.is_active} onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))} />
-            <Label>فعال</Label>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
-          <Button onClick={submit} disabled={loading}>{loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره</Button>
-        </DialogFooter>
+        <ShippingCostRuleForm
+          values={values}
+          onChange={setValues}
+          errors={errors}
+          loading={loading}
+          onSubmit={submit}
+          onCancel={() => onOpenChange(false)}
+          isEditing={!!editing}
+          initialProductLabel={initialProductLabel}
+        />
+        <DialogFooter className="hidden" />
       </DialogContent>
     </Dialog>
   );

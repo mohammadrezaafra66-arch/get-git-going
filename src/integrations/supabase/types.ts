@@ -2763,6 +2763,7 @@ export type Database = {
       }
       shipping_cost_rules: {
         Row: {
+          brand_id: string | null
           category_id: string | null
           cost_type: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value: number
@@ -2772,11 +2773,14 @@ export type Database = {
           max_purchase_price: number | null
           min_purchase_price: number | null
           priority: number
+          product_id: string | null
           product_type: Database["public"]["Enums"]["product_type"] | null
+          sort_order: number
           title: string
           updated_at: string
         }
         Insert: {
+          brand_id?: string | null
           category_id?: string | null
           cost_type: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value: number
@@ -2786,11 +2790,14 @@ export type Database = {
           max_purchase_price?: number | null
           min_purchase_price?: number | null
           priority?: number
+          product_id?: string | null
           product_type?: Database["public"]["Enums"]["product_type"] | null
+          sort_order?: number
           title: string
           updated_at?: string
         }
         Update: {
+          brand_id?: string | null
           category_id?: string | null
           cost_type?: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value?: number
@@ -2800,11 +2807,28 @@ export type Database = {
           max_purchase_price?: number | null
           min_purchase_price?: number | null
           priority?: number
+          product_id?: string | null
           product_type?: Database["public"]["Enums"]["product_type"] | null
+          sort_order?: number
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "shipping_cost_rules_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_alert_requests: {
         Row: {
