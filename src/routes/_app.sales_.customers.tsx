@@ -6,6 +6,7 @@ import { Plus, Pencil, Loader2, ShieldCheck } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ const PAGE_SIZE = 20;
 function CustomersListPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const debounced = useDebounce(search, 350);
+  const debouncedRaw = useDebounce(search, 350);
+  const debounced = normalizeSearchText(debouncedRaw);
 
   const { data, isFetching } = useQuery({
     queryKey: ["customers", "list", debounced, page],
