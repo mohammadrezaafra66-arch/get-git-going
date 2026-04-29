@@ -222,8 +222,20 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
       for (const i of parsed.error.issues) flat[i.path.join(".")] = i.message;
       setErrors(flat); return;
     }
-    if (editing && parsed.data.parent_id === editing.id) {
-      toast.error("دسته نمی‌تواند والد خود باشد"); return;
+    if (editing && parsed.data.parent_id) {
+      // Prevent parent loops: parent cannot be self or any descendant
+      const childrenOf = (id: string): Set<string> => {
+        const out = new Set<string>([id]);
+        const stack = [id];
+        while (stack.length) {
+          const cur = stack.pop()!;
+          for (const c of all) if (c.parent_id === cur) { out.add(c.id); stack.push(c.id); }
+        }
+        return out;
+      };
+      if (childrenOf(editing.id).has(parsed.data.parent_id)) {
+        toast.error("دسته نمی‌تواند والد خود یا یکی از زیردسته‌هایش باشد"); return;
+      }
     }
     setErrors({}); setLoading(true);
     try {
@@ -242,7 +254,17 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
     finally { setLoading(false); }
   };
 
-  const parents = all.filter((c) => !editing || c.id !== editing.id);
+  // Hide self + descendants and inactive entries from the parent picker
+  const parents = (() => {
+    if (!editing) return all.filter((c) => c.is_active);
+    const exclude = new Set<string>([editing.id]);
+    const stack = [editing.id];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      for (const c of all) if (c.parent_id === cur && !exclude.has(c.id)) { exclude.add(c.id); stack.push(c.id); }
+    }
+    return all.filter((c) => !exclude.has(c.id) && c.is_active);
+  })();
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
