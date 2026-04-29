@@ -52,6 +52,7 @@ import { Route as AppProductsBrandsRouteImport } from './routes/_app.products.br
 import { Route as AppProductsAttributesRouteImport } from './routes/_app.products.attributes'
 import { Route as AppProductsIdRouteImport } from './routes/_app.products.$id'
 import { Route as AppPricingShippingRulesRouteImport } from './routes/_app.pricing.shipping-rules'
+import { Route as AppPricingSettlementTypesRouteImport } from './routes/_app.pricing.settlement-types'
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
 import { Route as AppPricingSaleListsRouteImport } from './routes/_app.pricing.sale-lists'
 import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
@@ -302,6 +303,12 @@ const AppPricingShippingRulesRoute = AppPricingShippingRulesRouteImport.update({
   path: '/pricing/shipping-rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingSettlementTypesRoute =
+  AppPricingSettlementTypesRouteImport.update({
+    id: '/pricing/settlement-types',
+    path: '/pricing/settlement-types',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingSalePriceTypesRoute =
   AppPricingSalePriceTypesRouteImport.update({
     id: '/pricing/sale-price-types',
@@ -528,6 +535,7 @@ export interface FileRoutesByFullPath {
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
+  '/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/attributes': typeof AppProductsAttributesRoute
@@ -605,6 +613,7 @@ export interface FileRoutesByTo {
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
+  '/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/products/$id': typeof AppProductsIdRouteWithChildren
   '/products/attributes': typeof AppProductsAttributesRoute
@@ -685,6 +694,7 @@ export interface FileRoutesById {
   '/_app/pricing/rules': typeof AppPricingRulesRoute
   '/_app/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
+  '/_app/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
   '/_app/products/$id': typeof AppProductsIdRouteWithChildren
   '/_app/products/attributes': typeof AppProductsAttributesRoute
@@ -766,6 +776,7 @@ export interface FileRouteTypes {
     | '/pricing/rules'
     | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
+    | '/pricing/settlement-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/attributes'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/pricing/rules'
     | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
+    | '/pricing/settlement-types'
     | '/pricing/shipping-rules'
     | '/products/$id'
     | '/products/attributes'
@@ -922,6 +934,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/rules'
     | '/_app/pricing/sale-lists'
     | '/_app/pricing/sale-price-types'
+    | '/_app/pricing/settlement-types'
     | '/_app/pricing/shipping-rules'
     | '/_app/products/$id'
     | '/_app/products/attributes'
@@ -1273,6 +1286,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/shipping-rules'
       fullPath: '/pricing/shipping-rules'
       preLoaderRoute: typeof AppPricingShippingRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/settlement-types': {
+      id: '/_app/pricing/settlement-types'
+      path: '/pricing/settlement-types'
+      fullPath: '/pricing/settlement-types'
+      preLoaderRoute: typeof AppPricingSettlementTypesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/sale-price-types': {
@@ -1641,6 +1661,7 @@ interface AppRouteChildren {
   AppPricingRulesRoute: typeof AppPricingRulesRoute
   AppPricingSaleListsRoute: typeof AppPricingSaleListsRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
+  AppPricingSettlementTypesRoute: typeof AppPricingSettlementTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
   AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
   AppProductsAttributesRoute: typeof AppProductsAttributesRoute
@@ -1698,6 +1719,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingRulesRoute: AppPricingRulesRoute,
   AppPricingSaleListsRoute: AppPricingSaleListsRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
+  AppPricingSettlementTypesRoute: AppPricingSettlementTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
   AppProductsIdRoute: AppProductsIdRouteWithChildren,
   AppProductsAttributesRoute: AppProductsAttributesRoute,
