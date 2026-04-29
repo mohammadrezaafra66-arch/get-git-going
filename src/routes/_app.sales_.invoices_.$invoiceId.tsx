@@ -242,6 +242,32 @@ function InvoiceDetailPage() {
               )}
               کپی اطلاعات پیش‌فاکتور
             </Button>
+            {showSendToAccountant && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={sending}>
+                    {sending ? (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="ml-2 h-4 w-4" />
+                    )}
+                    ارسال به حسابدار
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ارسال به میز کار حسابدار</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      پس از ارسال، وضعیت پیش‌فاکتور به «در انتظار حسابدار» تغییر می‌کند و یک وظیفه برای حسابدار ایجاد می‌شود.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>انصراف</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSendToAccountant}>تأیید و ارسال</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             {showCancel && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
