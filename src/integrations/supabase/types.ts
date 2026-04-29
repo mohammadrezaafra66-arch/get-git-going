@@ -1215,13 +1215,17 @@ export type Database = {
       }
       invoices: {
         Row: {
+          commitment_confirmed: boolean
           created_at: string
           created_by: string | null
           customer_id: string | null
+          deposit_amount: number | null
           discount_amount: number
           due_date: string | null
           id: string
+          invoice_type: string
           issue_date: string
+          issued_by: string | null
           notes: string | null
           number: string | null
           sale_price_type_id: string | null
@@ -1234,13 +1238,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
+          deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
           id?: string
+          invoice_type?: string
           issue_date?: string
+          issued_by?: string | null
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
@@ -1253,13 +1261,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
+          deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
           id?: string
+          invoice_type?: string
           issue_date?: string
+          issued_by?: string | null
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
