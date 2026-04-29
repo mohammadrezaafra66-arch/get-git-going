@@ -45,16 +45,29 @@ const schema = z.object({
   invoice_type: z.enum(["pre_invoice", "advance_payment"]),
   notes: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1, "حداقل یک قلم اضافه کنید"),
+  deposit_amount: z.number().positive().nullable().optional(),
+  commitment_confirmed: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export function InvoiceForm() {
+interface InvoiceFormProps {
+  /** Optional initial values for edit mode (advance payment fields). */
+  initialAdvance?: {
+    deposit_amount: number | null;
+    commitment_confirmed: boolean;
+  };
+}
+
+export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
   const { user, roles } = useAuth();
   const canChooseInvoiceType =
     roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Lock the commitment checkbox if it was already confirmed previously (edit mode).
+  const commitmentLocked = !!initialAdvance?.commitment_confirmed;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -65,6 +78,8 @@ export function InvoiceForm() {
       invoice_type: "pre_invoice",
       notes: "",
       items: [],
+      deposit_amount: initialAdvance?.deposit_amount ?? null,
+      commitment_confirmed: initialAdvance?.commitment_confirmed ?? false,
     },
     mode: "onBlur",
   });
@@ -191,6 +206,26 @@ export function InvoiceForm() {
         }
       }
 
+      // Advance-payment validation
+      let depositAmt: number | null = null;
+      let commitment = false;
+      if (values.invoice_type === "advance_payment") {
+        depositAmt = Number(values.deposit_amount ?? 0);
+        commitment = !!values.commitment_confirmed;
+        const minRequired = Math.ceil(total * 0.3);
+        if (!depositAmt || depositAmt <= 0) {
+          throw new Error("مبلغ بیعانه الزامی است");
+        }
+        if (depositAmt < minRequired) {
+          throw new Error(
+            `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${minRequired.toLocaleString("fa-IR")} ریال) باشد`,
+          );
+        }
+        if (!commitment) {
+          throw new Error("تأیید تعهد فروشنده الزامی است");
+        }
+      }
+
       const { data: inv, error: iErr } = await supabase
         .from("invoices")
         .insert({
@@ -205,6 +240,8 @@ export function InvoiceForm() {
           subtotal: total,
           notes: values.notes || null,
           created_by: user.id,
+          deposit_amount: depositAmt,
+          commitment_confirmed: commitment,
         } as never)
         .select("id")
         .single();
@@ -220,6 +257,26 @@ export function InvoiceForm() {
       }));
       const { error: itErr } = await supabase.from("invoice_items").insert(itemsPayload as never);
       if (itErr) throw itErr;
+
+      // Audit log for advance payment issuance
+      if (values.invoice_type === "advance_payment") {
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "invoice",
+          entity_id: invoiceId,
+          action: "advance_payment_issued",
+          diff: {
+            invoice_id: invoiceId,
+            customer_id: values.customer_id,
+            issued_by: user.id,
+            issued_by_name: user.email ?? null,
+            total_amount: total,
+            deposit_amount: depositAmt,
+            commitment_confirmed: commitment,
+            issued_at: new Date().toISOString(),
+          },
+        } as never);
+      }
 
       return invoiceId;
     },
@@ -239,7 +296,13 @@ export function InvoiceForm() {
 
   return (
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+      onSubmit={form.handleSubmit(
+        (v) => {
+          setSubmitAttempted(true);
+          mutation.mutate(v);
+        },
+        () => setSubmitAttempted(true),
+      )}
       className="space-y-6"
       dir="rtl"
     >
@@ -372,7 +435,21 @@ export function InvoiceForm() {
             </div>
           )}
 
-          {invoiceType === "advance_payment" && <AdvancePaymentSection />}
+          {invoiceType === "advance_payment" && (
+            <AdvancePaymentSection
+              totalAmount={totalAmount}
+              depositAmount={form.watch("deposit_amount") ?? null}
+              onDepositChange={(v) =>
+                form.setValue("deposit_amount", v, { shouldValidate: true })
+              }
+              commitmentConfirmed={!!form.watch("commitment_confirmed")}
+              onCommitmentChange={(v) =>
+                form.setValue("commitment_confirmed", v, { shouldValidate: true })
+              }
+              commitmentLocked={commitmentLocked}
+              showErrors={submitAttempted}
+            />
+          )}
 
           {/* نوع تسویه */}
           <div className="space-y-2">
