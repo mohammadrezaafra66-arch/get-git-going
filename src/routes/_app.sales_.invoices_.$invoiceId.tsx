@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight, Copy } from "lucide-react";
+import { Loader2, XCircle, ArrowRight, Copy, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -43,6 +43,10 @@ function statusLabel(s: string) {
       return "پرداخت جزئی";
     case "issued":
       return "صادر شده";
+    case "pending_accountant":
+      return "در انتظار حسابدار";
+    case "final":
+      return "نهایی";
     default:
       return s;
   }
@@ -54,8 +58,11 @@ function InvoiceDetailPage() {
   const router = useRouter();
   const [canceling, setCanceling] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const canManage = roles.includes("admin") || roles.includes("accountant");
+  const canSendToAccountant =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
 
   const { data: invoice, isFetching, refetch } = useQuery({
     queryKey: ["invoice", invoiceId],
@@ -93,6 +100,7 @@ function InvoiceDetailPage() {
 
   const isDraftPreInvoice = invoice?.status === "draft" && invoice?.type === "pre_invoice";
   const showCancel = canManage && isDraftPreInvoice;
+  const showSendToAccountant = canSendToAccountant && isDraftPreInvoice;
 
   const handleCopy = async () => {
     if (!invoice) return;
@@ -173,6 +181,23 @@ function InvoiceDetailPage() {
     }
   };
 
+  const handleSendToAccountant = async () => {
+    if (!invoice) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.rpc("send_invoice_to_accountant", { p_invoice_id: invoice.id });
+      if (error) throw error;
+      toast.success("پیش‌فاکتور به میز کار حسابدار ارسال شد.");
+      await refetch();
+      router.invalidate();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطا در ارسال به حسابدار";
+      toast.error(msg);
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (isFetching && !invoice) {
     return (
       <div className="flex items-center justify-center py-10 text-sm text-muted-foreground" dir="rtl">
@@ -217,6 +242,32 @@ function InvoiceDetailPage() {
               )}
               کپی اطلاعات پیش‌فاکتور
             </Button>
+            {showSendToAccountant && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button disabled={sending}>
+                    {sending ? (
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="ml-2 h-4 w-4" />
+                    )}
+                    ارسال به حسابدار
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ارسال به میز کار حسابدار</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      پس از ارسال، وضعیت پیش‌فاکتور به «در انتظار حسابدار» تغییر می‌کند و یک وظیفه برای حسابدار ایجاد می‌شود.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>انصراف</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSendToAccountant}>تأیید و ارسال</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             {showCancel && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>

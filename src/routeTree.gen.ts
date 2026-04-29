@@ -67,6 +67,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
@@ -76,6 +77,7 @@ import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tab
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
+import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
@@ -392,6 +394,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
+  id: '/operations/tasks',
+  path: '/operations/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKnowledgeManageRoute = AppKnowledgeManageRouteImport.update({
   id: '/knowledge_/manage',
   path: '/knowledge/manage',
@@ -436,6 +443,11 @@ const AppBotApiKeysDocsRoute = AppBotApiKeysDocsRouteImport.update({
   id: '/docs',
   path: '/docs',
   getParentRoute: () => AppBotApiKeysRoute,
+} as any)
+const AppAdminWorkflowStagesRoute = AppAdminWorkflowStagesRouteImport.update({
+  id: '/admin/workflow-stages',
+  path: '/admin/workflow-stages',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   id: '/admin/roles',
@@ -591,6 +603,7 @@ export interface FileRoutesByFullPath {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -600,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -680,6 +694,7 @@ export interface FileRoutesByTo {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -689,6 +704,7 @@ export interface FileRoutesByTo {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -772,6 +788,7 @@ export interface FileRoutesById {
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/admin/roles': typeof AppAdminRolesRoute
+  '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -781,6 +798,7 @@ export interface FileRoutesById {
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
+  '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -865,6 +883,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/receipts'
     | '/admin/roles'
+    | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -874,6 +893,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -954,6 +974,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/receipts'
     | '/admin/roles'
+    | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -963,6 +984,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -1045,6 +1067,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/manage'
     | '/_app/accounting/receipts'
     | '/_app/admin/roles'
+    | '/_app/admin/workflow-stages'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
     | '/_app/bot-api-keys/usage'
@@ -1054,6 +1077,7 @@ export interface FileRouteTypes {
     | '/_app/feedback_/create'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
+    | '/_app/operations/tasks'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
@@ -1530,6 +1554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/tasks': {
+      id: '/_app/operations/tasks'
+      path: '/operations/tasks'
+      fullPath: '/operations/tasks'
+      preLoaderRoute: typeof AppOperationsTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/knowledge_/manage': {
       id: '/_app/knowledge_/manage'
       path: '/knowledge/manage'
@@ -1592,6 +1623,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/bot-api-keys/docs'
       preLoaderRoute: typeof AppBotApiKeysDocsRouteImport
       parentRoute: typeof AppBotApiKeysRoute
+    }
+    '/_app/admin/workflow-stages': {
+      id: '/_app/admin/workflow-stages'
+      path: '/admin/workflow-stages'
+      fullPath: '/admin/workflow-stages'
+      preLoaderRoute: typeof AppAdminWorkflowStagesRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/admin/roles': {
       id: '/_app/admin/roles'
@@ -1894,12 +1932,14 @@ interface AppRouteChildren {
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAdminRolesRoute: typeof AppAdminRolesRoute
+  AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppFeedbackFeedbackIdRoute: typeof AppFeedbackFeedbackIdRoute
   AppFeedbackCreateRoute: typeof AppFeedbackCreateRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
+  AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
@@ -1956,12 +1996,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAdminRolesRoute: AppAdminRolesRoute,
+  AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppFeedbackFeedbackIdRoute: AppFeedbackFeedbackIdRoute,
   AppFeedbackCreateRoute: AppFeedbackCreateRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
+  AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,

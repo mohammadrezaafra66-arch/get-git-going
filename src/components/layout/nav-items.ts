@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Package, DollarSign, ShoppingCart, ShoppingBag,
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
   MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
+  CheckSquare, Workflow,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/sales/invoices",  label: "پیش‌فاکتورها", icon: FileText,       module: "invoices",    group: "finance" },
   { to: "/sales/credit-rules", label: "اعتبارسنجی", icon: ShieldCheck,    module: "sales",       group: "finance" },
   { to: "/sales/credit-customers", label: "وضعیت اعتبار مشتریان", icon: ShieldCheck, module: "sales", group: "finance" },
+  { to: "/operations/tasks", label: "برد وظایف", icon: CheckSquare, module: "invoices", group: "operations" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText,  module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
@@ -32,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/users/pending", label: "کاربران در انتظار", icon: Users,        module: "users",       group: "admin" },
   { to: "/roles",       label: "نقش‌ها و دسترسی",  icon: ShieldCheck,     module: "roles",       group: "admin" },
   { to: "/admin/roles", label: "مجوزهای پویا",     icon: ShieldCheck,     module: "roles",       group: "admin" },
+  { to: "/admin/workflow-stages", label: "مراحل گردش‌کار", icon: Workflow, module: "roles",   group: "admin" },
   { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
   { to: "/knowledge",   label: "دانش سازمانی",    icon: BookOpen,        module: "knowledge",   group: "comms" },
   { to: "/academy",     label: "آکادمی",           icon: GraduationCap,   module: "academy",     group: "comms" },
