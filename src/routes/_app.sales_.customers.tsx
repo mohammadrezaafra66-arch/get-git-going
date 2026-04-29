@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, ShieldCheck, Check, ChevronsUpDown, X } from "lucide-react";
+import { Plus, Pencil, Loader2, ShieldCheck, Check, ChevronsUpDown, X, Upload } from "lucide-react";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ interface CustomerRow {
   name: string;
   phone: string | null;
   city: string | null;
+  accounting_code: string | null;
   is_active: boolean;
   created_at: string;
   responsible_id: string | null;
@@ -45,6 +46,7 @@ function CustomersListPage() {
   const { roles } = useAuth();
   const canFilterByResponsible =
     roles.includes("admin") || roles.includes("manager");
+  const canImport = roles.includes("admin") || roles.includes("accountant");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -61,14 +63,14 @@ function CustomersListPage() {
       let q = supabase
         .from("customers")
         .select(
-          "id, name, phone, city, is_active, created_at, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
+          "id, name, phone, city, accounting_code, is_active, created_at, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
       const term = debounced.trim().replace(/[%_]/g, "");
       if (term) {
-        q = q.or(`name.ilike.%${term}%,phone.ilike.%${term}%`);
+        q = q.or(`name.ilike.%${term}%,phone.ilike.%${term}%,accounting_code.ilike.%${term}%`);
       }
       if (responsibleFilter?.id) {
         q = q.eq("responsible_id", responsibleFilter.id);
@@ -89,12 +91,22 @@ function CustomersListPage() {
         title="مشتریان"
         description="مدیریت لیست مشتریان"
         actions={
-          <Button asChild>
-            <Link to="/sales/customers/create">
-              <Plus className="ml-2 h-4 w-4" />
-              مشتری جدید
-            </Link>
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {canImport && (
+              <Button asChild variant="outline">
+                <Link to="/sales/customers/import">
+                  <Upload className="ml-2 h-4 w-4" />
+                  ورود از اکسل
+                </Link>
+              </Button>
+            )}
+            <Button asChild>
+              <Link to="/sales/customers/create">
+                <Plus className="ml-2 h-4 w-4" />
+                مشتری جدید
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -104,7 +116,7 @@ function CustomersListPage() {
             <div className="space-y-1 flex-1">
               <Label className="text-xs">جستجو</Label>
               <Input
-                placeholder="جستجو نام یا تلفن..."
+                placeholder="جستجو نام، تلفن یا کد حسابداری..."
                 value={search}
                 onChange={(e) => { setPage(0); setSearch(e.target.value); }}
                 className="max-w-sm"
@@ -131,6 +143,7 @@ function CustomersListPage() {
                   <TableHead>نام</TableHead>
                   <TableHead>تلفن</TableHead>
                   <TableHead>شهر</TableHead>
+                  <TableHead>کد حسابداری</TableHead>
                   <TableHead>مسئول</TableHead>
                   <TableHead className="w-24">عملیات</TableHead>
                 </TableRow>
@@ -141,6 +154,7 @@ function CustomersListPage() {
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell dir="ltr" className="text-right">{c.phone ? toFaDigits(c.phone) : "—"}</TableCell>
                     <TableCell>{c.city || "—"}</TableCell>
+                    <TableCell dir="ltr" className="text-right font-mono text-xs">{c.accounting_code || "—"}</TableCell>
                     <TableCell>
                       {c.responsible?.full_name ? (
                         <span>{c.responsible.full_name}</span>
@@ -164,7 +178,7 @@ function CustomersListPage() {
                 ))}
                 {!isFetching && (data?.rows.length ?? 0) === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                       مشتری یافت نشد
                     </TableCell>
                   </TableRow>
