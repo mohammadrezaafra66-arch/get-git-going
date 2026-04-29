@@ -119,26 +119,26 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
 
-  // Credit profile for selected customer
+  // Real-time credit balance for selected customer (via secure RPC)
   const customerId = form.watch("customer_id");
-  const { data: creditProfile } = useQuery({
-    queryKey: ["invoice-credit-profile", customerId],
+  const { data: creditInfo } = useQuery({
+    queryKey: ["invoice-credit-info", customerId],
     enabled: !!customerId,
-    staleTime: 60_000,
+    staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customer_credit_profile")
-        .select("credit_limit, outstanding_balance, credit_score")
-        .eq("customer_id", customerId)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_customer_credit", {
+        p_customer_id: customerId,
+      });
       if (error) throw error;
-      return data;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row ?? null;
     },
   });
 
-  const creditLimit = Number(creditProfile?.credit_limit ?? 0);
-  const outstanding = Number(creditProfile?.outstanding_balance ?? 0);
-  const exceedsLimit = creditLimit > 0 && (totalAmount + outstanding) > creditLimit;
+  const availableCredit = Number((creditInfo as { available_credit?: number } | null)?.available_credit ?? 0);
+  const heldCredit = Number((creditInfo as { held_credit?: number } | null)?.held_credit ?? 0);
+  const outstanding = Number((creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0);
+  const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
 
   // Sale price types
