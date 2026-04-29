@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight } from "lucide-react";
+import { Loader2, XCircle, ArrowRight, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -53,6 +53,7 @@ function InvoiceDetailPage() {
   const { roles } = useAuth();
   const router = useRouter();
   const [canceling, setCanceling] = useState(false);
+  const [copying, setCopying] = useState(false);
 
   const canManage = roles.includes("admin") || roles.includes("accountant");
 
@@ -71,8 +72,89 @@ function InvoiceDetailPage() {
     },
   });
 
+  const { data: items } = useQuery({
+    queryKey: ["invoice-items", invoiceId],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoice_items")
+        .select("id, quantity, unit_price, line_total, product:products(name)")
+        .eq("invoice_id", invoiceId);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        quantity: number;
+        unit_price: number;
+        line_total: number;
+        product: { name: string } | null;
+      }>;
+    },
+  });
+
   const isDraftPreInvoice = invoice?.status === "draft" && invoice?.type === "pre_invoice";
   const showCancel = canManage && isDraftPreInvoice;
+
+  const handleCopy = async () => {
+    if (!invoice) return;
+    setCopying(true);
+    try {
+      const customer = invoice.customer as { id: string; name: string } | null;
+      const lines: string[] = [];
+      lines.push("📋 پیش‌فاکتور");
+      lines.push(`👤 مشتری: ${customer?.name ?? "—"}`);
+      lines.push(`💰 مبلغ کل: ${formatNumber(Number(invoice.total_amount))} تومان`);
+      lines.push(`📅 تاریخ: ${formatDateFa(invoice.issue_date)}`);
+      lines.push(
+        `🏷 نوع: ${invoice.invoice_type === "pre_invoice" ? "اعتباری" : invoice.invoice_type === "advance_payment" ? "پیش‌واریزی" : invoice.invoice_type}`,
+      );
+      lines.push(`📊 وضعیت: ${statusLabel(invoice.status)}`);
+      lines.push("");
+      lines.push("📦 اقلام:");
+      if (items && items.length > 0) {
+        for (const it of items) {
+          const name = it.product?.name ?? "—";
+          lines.push(`• ${name} - ${toFaDigits(it.quantity)} عدد - ${formatNumber(Number(it.unit_price))} تومان`);
+        }
+      } else {
+        lines.push("• —");
+      }
+      lines.push("");
+      lines.push("🔗 برای اطلاعات بیشتر با ما تماس بگیرید.");
+      const text = lines.join("\n");
+
+      let copied = false;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        }
+      } catch {
+        copied = false;
+      }
+      if (!copied) {
+        // Fallback for older browsers / non-secure contexts
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          copied = document.execCommand("copy");
+        } finally {
+          document.body.removeChild(ta);
+        }
+      }
+      if (!copied) throw new Error("کپی در کلیپ‌بورد ممکن نشد");
+      toast.success("اطلاعات پیش‌فاکتور در کلیپ‌بورد کپی شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطا در کپی اطلاعات";
+      toast.error(msg);
+    } finally {
+      setCopying(false);
+    }
+  };
 
   const handleCancel = async () => {
     if (!invoice) return;
@@ -126,6 +208,14 @@ function InvoiceDetailPage() {
               <Link to="/sales/invoices">
                 <ArrowRight className="ml-2 h-4 w-4" /> بازگشت
               </Link>
+            </Button>
+            <Button variant="secondary" onClick={handleCopy} disabled={copying}>
+              {copying ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="ml-2 h-4 w-4" />
+              )}
+              کپی اطلاعات پیش‌فاکتور
             </Button>
             {showCancel && (
               <AlertDialog>
