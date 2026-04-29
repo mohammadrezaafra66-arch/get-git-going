@@ -506,7 +506,8 @@ function DataTableDetailPage() {
                   virtualizer={rowVirtualizer}
                   columns={columns}
                   rows={loadedRows}
-                  canEdit={canEdit}
+                  canEdit={canEditRows}
+                  canDelete={canEdit}
                   focused={focused}
                   setFocused={setFocused}
                   editingPos={editingPos}
