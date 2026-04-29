@@ -121,7 +121,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   // 4) قانون قیمت‌گذاری
   const { data: rules, error: rulesErr } = await supabase
     .from("pricing_rules")
-    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, shipping_cost_rule_id, priority, created_at, is_active")
+    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active")
     .eq("is_active", true)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: false })
@@ -146,35 +146,32 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   if (!matchedRule) throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این محصول پیدا نشد.");
   const m = matchedRule as any;
 
-  // 5) قانون حمل
+  // 5) قانون حمل — همیشه از shipping_cost_rules انتخاب می‌شود
+  // (اولویت تطبیق: محصول > دسته > برند > نوع کالا)
   let shipping_cost = 0;
   let shipping_rule_used: { id: string; title: string } | null = null;
-  let candidates: any[] = [];
-  if (m.shipping_cost_rule_id) {
-    const { data, error } = await supabase
-      .from("shipping_cost_rules")
-      .select("id, title, cost_type, cost_value, product_type, category_id, min_purchase_price, max_purchase_price, is_active, priority")
-      .eq("id", m.shipping_cost_rule_id)
-      .maybeSingle();
-    if (error) throw error;
-    if (data && data.is_active) candidates = [data];
-  } else {
-    const { data, error } = await supabase
-      .from("shipping_cost_rules")
-      .select("id, title, cost_type, cost_value, product_type, category_id, min_purchase_price, max_purchase_price, is_active, priority")
-      .eq("is_active", true)
-      .order("priority", { ascending: true })
-      .limit(200);
-    if (error) throw error;
-    candidates = data ?? [];
-  }
-  const sRule = candidates.find((s: any) => {
-    if (s.product_type && s.product_type !== product.product_type) return false;
+  const { data: shippingRows, error: shippingErr } = await supabase
+    .from("shipping_cost_rules")
+    .select("id, title, cost_type, cost_value, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("priority", { ascending: true })
+    .limit(500);
+  if (shippingErr) throw shippingErr;
+  const candidates = (shippingRows ?? []).filter((s: any) => {
+    if (s.product_id && s.product_id !== product.id) return false;
     if (s.category_id && s.category_id !== product.category_id) return false;
+    if (s.brand_id && s.brand_id !== product.brand_id) return false;
+    if (s.product_type && s.product_type !== product.product_type) return false;
     if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
     if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price)) return false;
     return true;
   });
+  // اولویت‌بندی صریح: محصول > دسته > برند > نوع کالا
+  const specificity = (s: any): number =>
+    (s.product_id ? 1000 : 0) + (s.category_id ? 100 : 0) + (s.brand_id ? 10 : 0) + (s.product_type ? 1 : 0);
+  candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
+  const sRule = candidates[0];
   if (sRule) {
     shipping_rule_used = { id: sRule.id, title: sRule.title };
     shipping_cost = sRule.cost_type === "percent"
