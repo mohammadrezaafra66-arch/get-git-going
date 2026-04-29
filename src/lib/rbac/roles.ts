@@ -1,3 +1,5 @@
+import { getCachedRolePermissions } from "./permissions-cache";
+
 export type AppRole = "admin" | "manager" | "sales" | "accountant" | "viewer";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -86,8 +88,6 @@ export function hasPermission(roles: AppRole[], module: ModuleKey, action: Actio
  * (only for the four standard actions). For extended actions (approve/export/view_sensitive)
  * the static fallback returns true only for admin/manager (sensible safe default).
  */
-import { getCachedRolePermissions } from "./permissions-cache";
-
 const SENSITIVE_FALLBACK: AppRole[] = ["admin", "manager", "accountant"];
 const APPROVE_FALLBACK: AppRole[] = ["admin", "manager"];
 const EXPORT_FALLBACK: AppRole[] = ["admin", "manager", "accountant"];
