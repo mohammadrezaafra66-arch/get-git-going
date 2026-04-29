@@ -1039,6 +1039,7 @@ export type Database = {
       dynamic_tables: {
         Row: {
           access_level: string
+          allowed_roles: Json
           created_at: string
           created_by: string | null
           description: string | null
@@ -1051,6 +1052,7 @@ export type Database = {
         }
         Insert: {
           access_level?: string
+          allowed_roles?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1063,6 +1065,7 @@ export type Database = {
         }
         Update: {
           access_level?: string
+          allowed_roles?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -3269,10 +3272,19 @@ export type Database = {
         Args: { p_key_id: string; p_table_id: string }
         Returns: undefined
       }
-      dyn_table_role_can_view: {
-        Args: { _access_level: string; _user_id: string }
-        Returns: boolean
-      }
+      dyn_table_role_can_view:
+        | {
+            Args: { _access_level: string; _user_id: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              _access_level: string
+              _allowed_roles: Json
+              _user_id: string
+            }
+            Returns: boolean
+          }
       export_dynamic_table_rows: {
         Args: {
           p_filters?: Json
