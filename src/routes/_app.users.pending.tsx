@@ -85,7 +85,7 @@ function PendingUsersPage() {
   const approveMut = useMutation({
     mutationFn: async (args: { userId: string; role: AppRole; position: string }) => {
       const { error } = await supabase.rpc("approve_pending_user", {
-        _user_id: args.userId, _role: args.role, _position: args.position || null,
+        _user_id: args.userId, _role: args.role, _position: args.position || undefined,
       });
       if (error) throw error;
     },
@@ -101,7 +101,7 @@ function PendingUsersPage() {
   const rejectMut = useMutation({
     mutationFn: async (args: { userId: string; notes: string }) => {
       const { error } = await supabase.rpc("reject_pending_user", {
-        _user_id: args.userId, _notes: args.notes || null,
+        _user_id: args.userId, _notes: args.notes || undefined,
       });
       if (error) throw error;
     },
