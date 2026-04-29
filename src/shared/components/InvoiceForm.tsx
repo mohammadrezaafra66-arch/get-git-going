@@ -296,7 +296,13 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
   return (
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+      onSubmit={form.handleSubmit(
+        (v) => {
+          setSubmitAttempted(true);
+          mutation.mutate(v);
+        },
+        () => setSubmitAttempted(true),
+      )}
       className="space-y-6"
       dir="rtl"
     >
