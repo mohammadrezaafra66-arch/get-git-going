@@ -1172,3 +1172,102 @@ function ColumnDialog({
     </Dialog>
   );
 }
+
+// =============== Access Dialog (admin only) ===============
+function AccessDialog({
+  open, onOpenChange, tableId, initialAccessLevel, initialAllowedRoles, onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tableId: string;
+  initialAccessLevel: DynamicTableAccessLevel;
+  initialAllowedRoles: string[];
+  onSaved: () => void;
+}) {
+  const [accessLevel, setAccessLevel] = useState<DynamicTableAccessLevel>(initialAccessLevel);
+  const [allowedRoles, setAllowedRoles] = useState<string[]>(initialAllowedRoles);
+
+  useEffect(() => {
+    if (open) {
+      setAccessLevel(initialAccessLevel);
+      setAllowedRoles(initialAllowedRoles);
+    }
+  }, [open, initialAccessLevel, initialAllowedRoles]);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (accessLevel === "custom" && allowedRoles.length === 0) {
+        throw new Error("برای دسترسی سفارشی، حداقل یک نقش انتخاب کنید.");
+      }
+      const { error } = await supabase
+        .from("dynamic_tables")
+        .update({
+          access_level: accessLevel,
+          allowed_roles: accessLevel === "custom" ? allowedRoles : [],
+        } as never)
+        .eq("id", tableId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("سطح دسترسی به‌روزرسانی شد.");
+      onSaved();
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "خطا در ذخیره‌سازی";
+      toast.error(msg);
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>ویرایش سطح دسترسی جدول</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>سطح دسترسی</Label>
+            <Select value={accessLevel} onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DYNAMIC_TABLE_ACCESS_LEVELS.map((lvl) => (
+                  <SelectItem key={lvl} value={lvl}>{DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {accessLevel === "custom" && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+              <Label className="text-xs">نقش‌های مجاز</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {SELECTABLE_ROLES.map((r) => (
+                  <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={allowedRoles.includes(r.value)}
+                      onCheckedChange={(v) =>
+                        setAllowedRoles((prev) =>
+                          v ? Array.from(new Set([...prev, r.value])) : prev.filter((x) => x !== r.value),
+                        )
+                      }
+                    />
+                    {r.label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                مدیر کل و مدیر همیشه دسترسی دارند.
+              </p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+            {saveMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            ذخیره
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
