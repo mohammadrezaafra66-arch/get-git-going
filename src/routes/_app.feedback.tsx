@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
   FEEDBACK_TYPES, FEEDBACK_STATUSES,
@@ -42,7 +43,8 @@ function FeedbackListPage() {
   const [type, setType] = useState<FeedbackType | "all">("all");
   const [status, setStatus] = useState<FeedbackStatus | "all">("all");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search, 350);
+  const debouncedRaw = useDebounce(search, 350);
+  const debounced = normalizeSearchText(debouncedRaw);
 
   const queryKey = useMemo(
     () => ["feedback-items", { search: debounced, type, status, page, canManage, uid: user?.id }],
