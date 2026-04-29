@@ -27,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
   { to: "/users",       label: "کاربران",          icon: Users,           module: "users",       group: "admin" },
+  { to: "/users/pending", label: "کاربران در انتظار", icon: Users,        module: "users",       group: "admin" },
   { to: "/roles",       label: "نقش‌ها و دسترسی",  icon: ShieldCheck,     module: "roles",       group: "admin" },
   { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
   { to: "/knowledge",   label: "دانش سازمانی",    icon: BookOpen,        module: "knowledge",   group: "comms" },
