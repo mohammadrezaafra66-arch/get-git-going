@@ -697,12 +697,90 @@ export type Database = {
           },
         ]
       }
+      currency_rate_fetches: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
+          fetched_at: string
+          fetched_by: string | null
+          id: string
+          note: string | null
+          rate: number
+          source_id: string
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          currency: Database["public"]["Enums"]["currency_code"]
+          fetched_at?: string
+          fetched_by?: string | null
+          id?: string
+          note?: string | null
+          rate: number
+          source_id: string
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          currency?: Database["public"]["Enums"]["currency_code"]
+          fetched_at?: string
+          fetched_by?: string | null
+          id?: string
+          note?: string | null
+          rate?: number
+          source_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_rate_fetches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rate_fetches_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rate_fetches_fetched_by_fkey"
+            columns: ["fetched_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rate_fetches_fetched_by_fkey"
+            columns: ["fetched_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rate_fetches_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "currency_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currency_rates: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string | null
           currency: Database["public"]["Enums"]["currency_code"]
           effective_at: string
+          fetch_source_id: string | null
           id: string
           is_active: boolean
           rate_to_toman: number
@@ -710,10 +788,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           currency: Database["public"]["Enums"]["currency_code"]
           effective_at?: string
+          fetch_source_id?: string | null
           id?: string
           is_active?: boolean
           rate_to_toman: number
@@ -721,15 +802,70 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           currency?: Database["public"]["Enums"]["currency_code"]
           effective_at?: string
+          fetch_source_id?: string | null
           id?: string
           is_active?: boolean
           rate_to_toman?: number
           source_name?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_rates_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rates_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rates_fetch_source_id_fkey"
+            columns: ["fetch_source_id"]
+            isOneToOne: false
+            referencedRelation: "currency_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      currency_sources: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          url?: string | null
         }
         Relationships: []
       }
@@ -3668,6 +3804,10 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_currency_fetch: {
+        Args: { p_deactivate_previous?: boolean; p_fetch_id: string }
+        Returns: string
+      }
       approve_pending_user: {
         Args: {
           _position?: string
@@ -3984,6 +4124,19 @@ export type Database = {
           out_values: Json
           total_count: number
         }[]
+      }
+      record_currency_fetch: {
+        Args: {
+          p_currency: Database["public"]["Enums"]["currency_code"]
+          p_note?: string
+          p_rate: number
+          p_source_id: string
+        }
+        Returns: string
+      }
+      reject_currency_fetch: {
+        Args: { p_fetch_id: string; p_reason?: string }
+        Returns: undefined
       }
       reject_pending_user: {
         Args: { _notes?: string; _user_id: string }
