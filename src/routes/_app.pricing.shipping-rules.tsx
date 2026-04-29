@@ -231,7 +231,7 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
         <ShippingCostRuleForm
           values={values}
           onChange={setValues}
-          errors=
+          errors={errors}
           loading={loading}
           onSubmit={submit}
           onCancel={() => onOpenChange(false)}
