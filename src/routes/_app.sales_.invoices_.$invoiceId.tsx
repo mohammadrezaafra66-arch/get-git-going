@@ -344,6 +344,37 @@ function InvoiceDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Truck className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <div className="text-sm font-semibold">بیجک / بارنامه</div>
+              {waybill ? (
+                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                  <span>{toFaDigits(waybill.waybill_number)}</span>
+                  <WaybillStatusBadge status={waybill.status} />
+                  <span>{waybill.shipping_company} — {waybill.destination_city}</span>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mt-1">بیجکی برای این پیش‌فاکتور صادر نشده است</div>
+              )}
+            </div>
+          </div>
+          {waybill ? (
+            <Button asChild variant="outline">
+              <Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId: invoice.id }}>مشاهده بیجک</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/sales/invoices/$invoiceId/waybill/create" params={{ invoiceId: invoice.id }}>
+                <Truck className="ml-2 h-4 w-4" /> صدور بیجک
+              </Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
