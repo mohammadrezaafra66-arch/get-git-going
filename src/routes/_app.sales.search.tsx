@@ -25,6 +25,7 @@ import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
+import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -39,6 +40,9 @@ interface ProductRow {
   sku: string | null;
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
+  color?: string | null;
+  capacity?: string | null;
+  model?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
 }
