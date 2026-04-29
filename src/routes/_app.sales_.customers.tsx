@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, ShieldCheck, Check, ChevronsUpDown, X, Upload } from "lucide-react";
+import { Plus, Pencil, Loader2, ShieldCheck, Check, ChevronsUpDown, X, Upload, Download } from "lucide-react";
+import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,8 @@ function CustomersListPage() {
   const canFilterByResponsible =
     roles.includes("admin") || roles.includes("manager");
   const canImport = roles.includes("admin") || roles.includes("accountant");
+  const canExport = roles.includes("admin") || roles.includes("manager");
+  const [exporting, setExporting] = useState(false);
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -85,6 +88,87 @@ function CustomersListPage() {
   const total = data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const handleExport = async () => {
+    if (!canExport) {
+      toast.error("شما اجازه خروجی گرفتن از مشتریان را ندارید.");
+      return;
+    }
+    setExporting(true);
+    try {
+      let q = supabase
+        .from("customers")
+        .select(
+          "id, name, phone, city, accounting_code, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      const term = debounced.trim().replace(/[%_]/g, "");
+      if (term) {
+        q = q.or(`name.ilike.%${term}%,phone.ilike.%${term}%,accounting_code.ilike.%${term}%`);
+      }
+      if (responsibleFilter?.id) {
+        q = q.eq("responsible_id", responsibleFilter.id);
+      }
+      const { data: rows, error } = await q;
+      if (error) throw error;
+
+      const escape = (v: string | null | undefined): string => {
+        if (v === null || v === undefined) return "";
+        const s = String(v);
+        if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+      const header = ["نام", "تلفن", "شهر", "کد حسابداری", "مسئول"].join(",");
+      const lines = (rows ?? []).map((r: any) => {
+        const phone = r.phone ? String(r.phone).replace(/[^\d]/g, "") : "";
+        return [
+          escape(r.name),
+          escape(phone),
+          escape(r.city),
+          escape(r.accounting_code),
+          escape(r.responsible?.full_name ?? null),
+        ].join(",");
+      });
+      const csv = "\uFEFF" + header + "\n" + lines.join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const today = new Date().toISOString().slice(0, 10);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customers-${today}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5_000);
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        await supabase.from("audit_logs").insert({
+          action: "customers_exported",
+          entity_type: "customers",
+          entity_id: "list",
+          actor_id: userData.user.id,
+          diff: {
+            row_count: rows?.length ?? 0,
+            timestamp: new Date().toISOString(),
+            filters: {
+              search: term || null,
+              responsible_id: responsibleFilter?.id ?? null,
+            },
+          },
+        });
+      }
+
+      toast.success("خروجی با موفقیت آماده شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطا در تهیه خروجی.";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6" dir="rtl">
       <PageHeader
@@ -92,6 +176,20 @@ function CustomersListPage() {
         description="مدیریت لیست مشتریان"
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
+            {canExport && (
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="ml-2 h-4 w-4" />
+                )}
+                خروجی CSV
+              </Button>
+            )}
             {canImport && (
               <Button asChild variant="outline">
                 <Link to="/sales/customers/import">
