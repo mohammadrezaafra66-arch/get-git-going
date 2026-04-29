@@ -45,16 +45,29 @@ const schema = z.object({
   invoice_type: z.enum(["pre_invoice", "advance_payment"]),
   notes: z.string().max(500).optional(),
   items: z.array(itemSchema).min(1, "حداقل یک قلم اضافه کنید"),
+  deposit_amount: z.number().positive().nullable().optional(),
+  commitment_confirmed: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export function InvoiceForm() {
+interface InvoiceFormProps {
+  /** Optional initial values for edit mode (advance payment fields). */
+  initialAdvance?: {
+    deposit_amount: number | null;
+    commitment_confirmed: boolean;
+  };
+}
+
+export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
   const { user, roles } = useAuth();
   const canChooseInvoiceType =
     roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Lock the commitment checkbox if it was already confirmed previously (edit mode).
+  const commitmentLocked = !!initialAdvance?.commitment_confirmed;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -65,6 +78,8 @@ export function InvoiceForm() {
       invoice_type: "pre_invoice",
       notes: "",
       items: [],
+      deposit_amount: initialAdvance?.deposit_amount ?? null,
+      commitment_confirmed: initialAdvance?.commitment_confirmed ?? false,
     },
     mode: "onBlur",
   });
