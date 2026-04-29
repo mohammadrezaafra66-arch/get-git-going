@@ -368,6 +368,7 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
                 <Link
                   to="/pricing/calculator"
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
                 </Link>
@@ -376,7 +377,7 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             type="button"
             variant="outline"
