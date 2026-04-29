@@ -934,6 +934,7 @@ function SettingsTab({
         name: trimmed,
         description: description.trim() || null,
         terms_text: termsText.trim() || null,
+        seller_info: sellerInfo.trim() || null,
         sale_price_type_id: list.sale_price_type_id,
         selected_columns: selectedColumns,
         items: snapItems,
@@ -988,6 +989,7 @@ function SettingsTab({
           name: trimmed,
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
+          seller_info: sellerInfo.trim() || null,
           selected_columns: selectedColumns,
           version_number: newVersionNumber,
         })
