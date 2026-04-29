@@ -2045,6 +2045,9 @@ export type Database = {
           id: string
           is_active: boolean
           phone: string | null
+          position: string | null
+          registered_at: string
+          status: string
           updated_at: string
         }
         Insert: {
@@ -2054,6 +2057,9 @@ export type Database = {
           id: string
           is_active?: boolean
           phone?: string | null
+          position?: string | null
+          registered_at?: string
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -2063,6 +2069,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           phone?: string | null
+          position?: string | null
+          registered_at?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -3000,6 +3009,14 @@ export type Database = {
         }
         Returns: Json
       }
+      approve_pending_user: {
+        Args: {
+          _position?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       assign_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3159,6 +3176,7 @@ export type Database = {
         }
         Returns: Json
       }
+      deactivate_user: { Args: { _user_id: string }; Returns: undefined }
       delete_bot_api_key_table_access: {
         Args: { p_key_id: string; p_table_id: string }
         Returns: undefined
@@ -3236,6 +3254,10 @@ export type Database = {
           out_values: Json
           total_count: number
         }[]
+      }
+      reject_pending_user: {
+        Args: { _notes?: string; _user_id: string }
+        Returns: undefined
       }
       release_stale_quote_send_locks: { Args: never; Returns: number }
       reorder_dynamic_table_columns: {
