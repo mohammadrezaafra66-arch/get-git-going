@@ -67,6 +67,7 @@ import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.pricing.currency-rates'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
@@ -393,6 +394,11 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
+  id: '/operations/tasks',
+  path: '/operations/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKnowledgeManageRoute = AppKnowledgeManageRouteImport.update({
   id: '/knowledge_/manage',
   path: '/knowledge/manage',
@@ -607,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -697,6 +704,7 @@ export interface FileRoutesByTo {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -790,6 +798,7 @@ export interface FileRoutesById {
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
+  '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currency-rates': typeof AppPricingCurrencyRatesRoute
@@ -884,6 +893,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -974,6 +984,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currency-rates'
@@ -1066,6 +1077,7 @@ export interface FileRouteTypes {
     | '/_app/feedback_/create'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
+    | '/_app/operations/tasks'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currency-rates'
@@ -1542,6 +1554,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/tasks': {
+      id: '/_app/operations/tasks'
+      path: '/operations/tasks'
+      fullPath: '/operations/tasks'
+      preLoaderRoute: typeof AppOperationsTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/knowledge_/manage': {
       id: '/_app/knowledge_/manage'
       path: '/knowledge/manage'
@@ -1920,6 +1939,7 @@ interface AppRouteChildren {
   AppFeedbackCreateRoute: typeof AppFeedbackCreateRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
+  AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrencyRatesRoute: typeof AppPricingCurrencyRatesRoute
@@ -1983,6 +2003,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppFeedbackCreateRoute: AppFeedbackCreateRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
+  AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrencyRatesRoute: AppPricingCurrencyRatesRoute,
