@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -140,10 +140,15 @@ export function PaymentReceiptForm() {
   const watchedReceiptType = form.watch("receipt_type");
   const watchedAmount = form.watch("amount") || 0;
 
-  // Reset allocations when customer or receipt type changes
-  const customerForAllocations = `${watchedCustomerId}|${watchedReceiptType}`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useStableEffectReset(customerForAllocations, () => setAllocations([]));
+  // Reset allocations when customer or receipt type changes (skip first render)
+  const allocResetKey = `${watchedCustomerId}|${watchedReceiptType}`;
+  const prevAllocResetKey = useRef(allocResetKey);
+  useEffect(() => {
+    if (prevAllocResetKey.current !== allocResetKey) {
+      prevAllocResetKey.current = allocResetKey;
+      setAllocations([]);
+    }
+  }, [allocResetKey]);
 
   // Open invoices for the selected customer
   const { data: customerInvoices = [] } = useQuery<InvoiceOption[]>({
@@ -577,7 +582,11 @@ export function PaymentReceiptForm() {
           <AlertDialogAction
             onClick={() => {
               if (pendingValues) {
-                mutation.mutate({ values: pendingValues, bypassDuplicate: true });
+                mutation.mutate({
+                  values: pendingValues.values,
+                  allocations: pendingValues.allocations,
+                  bypassDuplicate: true,
+                });
               }
               setDuplicateOpen(false);
             }}
