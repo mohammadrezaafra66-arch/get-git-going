@@ -10,6 +10,10 @@ export const Route = createFileRoute("/_app")({
     if (!auth.user) {
       throw redirect({ to: "/login" });
     }
+    const status = auth.profile?.status;
+    if (status && status !== "active") {
+      throw redirect({ to: "/pending-approval" });
+    }
   },
   pendingMs: 0,
   pendingComponent: AuthLoadingScreen,
