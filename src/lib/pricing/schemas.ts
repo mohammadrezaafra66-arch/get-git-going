@@ -57,9 +57,10 @@ export const salePriceTypeSchema = z.object({
   code: z
     .string()
     .trim()
-    .min(2, "کد الزامی است")
-    .max(60)
-    .regex(/^[a-z0-9_]+$/i, "کد فقط شامل حروف انگلیسی، عدد و _ باشد"),
+    .max(50)
+    .regex(/^[A-Za-z0-9_-]*$/, "کد فقط شامل حروف انگلیسی، عدد، _ و - باشد")
+    .optional()
+    .or(z.literal("")),
   title: z.string().trim().min(1, "عنوان الزامی است").max(120),
   description: z.string().trim().max(500).optional().or(z.literal("")),
   sort_order: z.coerce.number().int().min(0).default(100),
