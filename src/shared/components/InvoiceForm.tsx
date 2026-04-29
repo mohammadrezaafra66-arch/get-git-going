@@ -313,6 +313,25 @@ export function InvoiceForm() {
               <p className="text-xs text-destructive">{errors.sale_price_type_id.message}</p>
             )}
           </div>
+
+          {/* نوع تسویه */}
+          <div className="space-y-2">
+            <Label>نوع تسویه</Label>
+            <Select
+              value={form.watch("settlement_type_id") ?? "__none"}
+              onValueChange={(v) =>
+                form.setValue("settlement_type_id", v === "__none" ? null : v, { shouldValidate: true })
+              }
+            >
+              <SelectTrigger><SelectValue placeholder="انتخاب نوع تسویه (اختیاری)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">—</SelectItem>
+                {settlementTypes.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
