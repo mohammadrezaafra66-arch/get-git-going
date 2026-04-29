@@ -152,6 +152,56 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
     },
   };
 
+  // Shop info / seller block (rendered after the table, before page footer)
+  const shop = input.shopInfo ?? {};
+  const infoLines: string[] = [];
+  if (shop.name && shop.name.trim()) infoLines.push(shop.name.trim());
+  if (shop.address && shop.address.trim()) infoLines.push(`آدرس: ${shop.address.trim()}`);
+  if (shop.phone && shop.phone.trim()) infoLines.push(`تلفن: ${shop.phone.trim()}`);
+  const messengers1: string[] = [];
+  if (shop.rubika && shop.rubika.trim()) messengers1.push(`روبیکا: ${shop.rubika.trim()}`);
+  if (shop.whatsapp && shop.whatsapp.trim()) messengers1.push(`واتساپ: ${shop.whatsapp.trim()}`);
+  if (messengers1.length) infoLines.push(messengers1.join(" | "));
+  const messengers2: string[] = [];
+  if (shop.eitaa && shop.eitaa.trim()) messengers2.push(`ایتا: ${shop.eitaa.trim()}`);
+  if (shop.baleh && shop.baleh.trim()) messengers2.push(`بله: ${shop.baleh.trim()}`);
+  if (messengers2.length) infoLines.push(messengers2.join(" | "));
+  if (shop.website && shop.website.trim()) infoLines.push(`وب‌سایت: ${shop.website.trim()}`);
+
+  const sellerInfoText = (input.sellerInfo ?? "").trim();
+  const footerInfoBlock: Content[] = [];
+  if (sellerInfoText || infoLines.length > 0) {
+    footerInfoBlock.push({
+      margin: [0, 16, 0, 0],
+      table: {
+        widths: ["*"],
+        body: [[{
+          stack: [
+            ...(sellerInfoText
+              ? [{ text: `فروشنده: ${sellerInfoText}`, fontSize: 9, bold: true, alignment: "right" as const, margin: [0, 0, 0, 4] as [number, number, number, number] }]
+              : []),
+            ...infoLines.map((line) => ({
+              text: line,
+              fontSize: 9,
+              color: "#374151",
+              alignment: "right" as const,
+              margin: [0, 1, 0, 1] as [number, number, number, number],
+            })),
+          ],
+          fillColor: "#f8fafc",
+          margin: [8, 8, 8, 8] as [number, number, number, number],
+          border: [false, true, false, false] as [boolean, boolean, boolean, boolean],
+        }]],
+      },
+      layout: {
+        hLineColor: () => "#cbd5e1",
+        vLineColor: () => "#cbd5e1",
+        hLineWidth: (i: number) => (i === 0 ? 1 : 0),
+        vLineWidth: () => 0,
+      },
+    });
+  }
+
   return {
     pageSize: "A4",
     pageMargins: [25, 80, 25, 60],
@@ -199,7 +249,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
         },
       ],
     }),
-    content: [tableContent],
+    content: [tableContent, ...footerInfoBlock],
     styles: {
       brand: { fontSize: 14, bold: true, color: "#1e293b" },
       title: { fontSize: 12, bold: true, color: "#334155" },
