@@ -27,7 +27,8 @@ export type DynamicTableAccessLevel =
   | "manager_only"
   | "finance_only"
   | "admin_only"
-  | "sales_only";
+  | "sales_only"
+  | "custom";
 
 export const DYNAMIC_TABLE_ACCESS_LEVELS: DynamicTableAccessLevel[] = [
   "all",
@@ -35,6 +36,7 @@ export const DYNAMIC_TABLE_ACCESS_LEVELS: DynamicTableAccessLevel[] = [
   "finance_only",
   "admin_only",
   "sales_only",
+  "custom",
 ];
 
 export const DYNAMIC_TABLE_ACCESS_LEVEL_LABELS: Record<DynamicTableAccessLevel, string> = {
@@ -43,6 +45,7 @@ export const DYNAMIC_TABLE_ACCESS_LEVEL_LABELS: Record<DynamicTableAccessLevel, 
   finance_only: "مالی",
   admin_only: "فقط مدیر کل",
   sales_only: "فقط فروش",
+  custom: "سفارشی",
 };
 
 export const DYNAMIC_TABLE_ACCESS_LEVEL_BADGE: Record<
@@ -54,15 +57,30 @@ export const DYNAMIC_TABLE_ACCESS_LEVEL_BADGE: Record<
   finance_only: { className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
   admin_only: { className: "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30" },
   sales_only: { className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30" },
+  custom: { className: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30" },
 };
 
 /** Client-side helper mirroring the DB's dyn_table_role_can_view function. */
-export function canViewDynamicTable(roles: string[], level: DynamicTableAccessLevel): boolean {
+export function canViewDynamicTable(
+  roles: string[],
+  level: DynamicTableAccessLevel,
+  allowedRoles: string[] = [],
+): boolean {
   if (roles.includes("admin") || roles.includes("manager")) return true;
   if (level === "all") return true;
   if (level === "manager_only") return false; // already covered above
   if (level === "finance_only") return roles.includes("accountant");
   if (level === "admin_only") return false;
   if (level === "sales_only") return roles.includes("sales");
+  if (level === "custom") return allowedRoles.some((r) => roles.includes(r));
   return false;
 }
+
+/** Roles selectable for the custom access level. */
+export const SELECTABLE_ROLES: { value: string; label: string }[] = [
+  { value: "admin", label: "مدیر کل" },
+  { value: "manager", label: "مدیر" },
+  { value: "accountant", label: "حسابدار" },
+  { value: "sales", label: "فروش" },
+  { value: "viewer", label: "مشاهده‌گر" },
+];

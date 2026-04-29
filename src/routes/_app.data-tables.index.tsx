@@ -14,6 +14,7 @@ import {
   DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
   DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
   type DynamicTableAccessLevel,
+  SELECTABLE_ROLES,
 } from "@/lib/data-tables/constants";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -32,7 +33,7 @@ function DataTablesHub() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_tables")
-        .select("id, name, slug, description, is_active, created_at, access_level")
+        .select("id, name, slug, description, is_active, created_at, access_level, allowed_roles")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -103,10 +104,18 @@ function DataTablesHub() {
                     {(() => {
                       const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
                       const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
+                      const allowed = (((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [];
                       return (
-                        <Badge variant="outline" className={cls}>
-                          {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
-                        </Badge>
+                        <>
+                          <Badge variant="outline" className={cls}>
+                            {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl] ?? lvl}
+                          </Badge>
+                          {lvl === "custom" && allowed.length > 0 && (
+                            <span className="text-[10px] text-muted-foreground text-left max-w-[160px] truncate" title={allowed.join("، ")}>
+                              {allowed.map((r) => SELECTABLE_ROLES.find((x) => x.value === r)?.label ?? r).join("، ")}
+                            </span>
+                          )}
+                        </>
                       );
                     })()}
                   </div>

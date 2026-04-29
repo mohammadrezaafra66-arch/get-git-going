@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
   SLUG_REGEX, COLUMN_KEY_REGEX, type DynamicColumnDataType,
   DYNAMIC_TABLE_ACCESS_LEVELS, DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
-  type DynamicTableAccessLevel,
+  type DynamicTableAccessLevel, SELECTABLE_ROLES,
 } from "@/lib/data-tables/constants";
 
 export const Route = createFileRoute("/_app/data-tables/new")({
@@ -42,10 +43,13 @@ function emptyCol(): ColumnDraft {
 
 function NewDataTablePage() {
   const navigate = useNavigate();
+  const { roles } = useAuth();
+  const isAdmin = (roles ?? []).includes("admin");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [accessLevel, setAccessLevel] = useState<DynamicTableAccessLevel>("all");
+  const [allowedRoles, setAllowedRoles] = useState<string[]>([]);
   const [columns, setColumns] = useState<ColumnDraft[]>([emptyCol()]);
 
   const updateCol = (i: number, patch: Partial<ColumnDraft>) =>
@@ -62,6 +66,9 @@ function NewDataTablePage() {
         throw new Error("شناسه (slug) فقط حروف انگلیسی کوچک، عدد و خط تیره مجاز است.");
       }
       if (columns.length < 1) throw new Error("حداقل یک ستون لازم است.");
+      if (accessLevel === "custom" && allowedRoles.length === 0) {
+        throw new Error("برای دسترسی سفارشی، حداقل یک نقش انتخاب کنید.");
+      }
       const seen = new Set<string>();
       for (const c of columns) {
         const key = c.column_key.trim();
@@ -78,7 +85,8 @@ function NewDataTablePage() {
           name: trimmedName,
           slug: trimmedSlug,
           description: description.trim() || null,
-          access_level: accessLevel,
+          access_level: isAdmin ? accessLevel : "all",
+          allowed_roles: isAdmin && accessLevel === "custom" ? allowedRoles : [],
         } as never)
         .select("id")
         .single();
@@ -144,7 +152,11 @@ function NewDataTablePage() {
           </div>
           <div className="space-y-1.5">
             <Label>سطح دسترسی</Label>
-            <Select value={accessLevel} onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}>
+            <Select
+              value={accessLevel}
+              onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}
+              disabled={!isAdmin}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DYNAMIC_TABLE_ACCESS_LEVELS.map((lvl) => (
@@ -152,7 +164,34 @@ function NewDataTablePage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">مشخص کنید کدام نقش‌ها مجاز به مشاهده و کار با این جدول هستند.</p>
+            <p className="text-xs text-muted-foreground">
+              {isAdmin
+                ? "مشخص کنید کدام نقش‌ها مجاز به مشاهده و کار با این جدول هستند."
+                : "فقط مدیر کل می‌تواند سطح دسترسی را تغییر دهد. مقدار پیش‌فرض «همه کاربران» است."}
+            </p>
+            {isAdmin && accessLevel === "custom" && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <Label className="text-xs">نقش‌های مجاز (سفارشی)</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {SELECTABLE_ROLES.map((r) => (
+                    <label key={r.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={allowedRoles.includes(r.value)}
+                        onCheckedChange={(v) =>
+                          setAllowedRoles((prev) =>
+                            v ? Array.from(new Set([...prev, r.value])) : prev.filter((x) => x !== r.value),
+                          )
+                        }
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  مدیر کل و مدیر همیشه دسترسی دارند؛ نقش‌های انتخاب‌شده اضافه می‌شوند.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
