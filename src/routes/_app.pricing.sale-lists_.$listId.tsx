@@ -73,6 +73,7 @@ import {
   type SaleListPdfInput,
   type SaleListPdfColumn,
 } from "@/lib/pdf/sale-list-pdf";
+import { fetchShopSettings } from "@/lib/shop/settings";
 
 const PAGE_SIZE = 20;
 
@@ -113,6 +114,7 @@ interface SaleListDetail {
   name: string;
   description: string | null;
   terms_text: string | null;
+  seller_info?: string | null;
   status: string;
   version_number: number;
   sale_price_type_id: string;
@@ -160,7 +162,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -197,6 +199,12 @@ function SaleListDetailPage() {
     },
   });
 
+  const shopSettingsQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
@@ -224,12 +232,26 @@ function SaleListDetailPage() {
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
+    const shop = shopSettingsQ.data;
     return {
       listName: list.name,
       versionNumber: list.version_number,
       createdByName: "—",
       salePriceTypeTitle: list.sale_price_type?.title ?? "—",
       termsText: list.terms_text,
+      sellerInfo: list.seller_info ?? null,
+      shopInfo: shop
+        ? {
+            name: shop.shop_name,
+            address: shop.shop_address,
+            phone: shop.shop_phone,
+            website: shop.shop_website,
+            rubika: shop.shop_rubika,
+            whatsapp: shop.shop_whatsapp,
+            eitaa: shop.shop_eitaa,
+            baleh: shop.shop_baleh,
+          }
+        : null,
       selectedColumns: cols,
       items: items.map((it) => ({
         product_name: it.product?.name ?? "—",
@@ -788,6 +810,12 @@ function SettingsTab({
   const [name, setName] = useState(list.name);
   const [description, setDescription] = useState(list.description ?? "");
   const [termsText, setTermsText] = useState(list.terms_text ?? "");
+  const [sellerInfo, setSellerInfo] = useState(list.seller_info ?? "");
+  const sellerDefaultQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
   const initialColumns = (list.selected_columns as ColumnKey[] | null) ?? COLUMN_OPTIONS.map((c) => c.key);
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(initialColumns);
   const [productIds, setProductIds] = useState<string[]>(items.map((it) => it.product_id));
@@ -811,6 +839,7 @@ function SettingsTab({
     if (name.trim() !== list.name) return true;
     if ((description.trim() || null) !== (list.description ?? null)) return true;
     if ((termsText.trim() || null) !== (list.terms_text ?? null)) return true;
+    if ((sellerInfo.trim() || null) !== (list.seller_info ?? null)) return true;
     const a = [...selectedColumns].sort().join(",");
     const b = [...initialColumns].sort().join(",");
     if (a !== b) return true;
@@ -818,7 +847,7 @@ function SettingsTab({
     const p2 = [...items.map((it) => it.product_id)].sort().join(",");
     if (p1 !== p2) return true;
     return false;
-  }, [name, description, termsText, selectedColumns, productIds, items, list, initialColumns]);
+  }, [name, description, termsText, sellerInfo, selectedColumns, productIds, items, list, initialColumns]);
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -905,6 +934,7 @@ function SettingsTab({
         name: trimmed,
         description: description.trim() || null,
         terms_text: termsText.trim() || null,
+        seller_info: sellerInfo.trim() || null,
         sale_price_type_id: list.sale_price_type_id,
         selected_columns: selectedColumns,
         items: snapItems,
@@ -959,6 +989,7 @@ function SettingsTab({
           name: trimmed,
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
+          seller_info: sellerInfo.trim() || null,
           selected_columns: selectedColumns,
           version_number: newVersionNumber,
         })
@@ -990,6 +1021,31 @@ function SettingsTab({
           <div className="space-y-1">
             <Label htmlFor="ed-terms">شرایط فروش</Label>
             <Textarea id="ed-terms" value={termsText} onChange={(e) => setTermsText(e.target.value)} rows={4} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="ed-seller">اطلاعات فروشنده (درج‌شده در PDF)</Label>
+              {sellerDefaultQ.data?.default_seller_info ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setSellerInfo(sellerDefaultQ.data!.default_seller_info)}
+                >
+                  استفاده از مقدار پیش‌فرض
+                </Button>
+              ) : null}
+            </div>
+            <Textarea
+              id="ed-seller"
+              value={sellerInfo}
+              onChange={(e) => setSellerInfo(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="نام، شماره تماس و سمت فروشنده (اختیاری، حداکثر ۵۰۰ کاراکتر)"
+              dir="rtl"
+            />
           </div>
         </CardContent>
       </Card>

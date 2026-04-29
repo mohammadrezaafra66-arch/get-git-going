@@ -78,6 +78,7 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
+import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
@@ -451,6 +452,11 @@ const AppAdminWorkflowStagesRoute = AppAdminWorkflowStagesRouteImport.update({
   path: '/admin/workflow-stages',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -617,6 +623,7 @@ export interface FileRoutesByFullPath {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -710,6 +717,7 @@ export interface FileRoutesByTo {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -806,6 +814,7 @@ export interface FileRoutesById {
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/admin/roles': typeof AppAdminRolesRoute
+  '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -903,6 +912,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/receipts'
     | '/admin/roles'
+    | '/admin/settings'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -996,6 +1006,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/receipts'
     | '/admin/roles'
+    | '/admin/settings'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -1091,6 +1102,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/manage'
     | '/_app/accounting/receipts'
     | '/_app/admin/roles'
+    | '/_app/admin/settings'
     | '/_app/admin/workflow-stages'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -1657,6 +1669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWorkflowStagesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/settings': {
+      id: '/_app/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AppAdminSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/roles': {
       id: '/_app/admin/roles'
       path: '/admin/roles'
@@ -2002,6 +2021,7 @@ interface AppRouteChildren {
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAdminRolesRoute: typeof AppAdminRolesRoute
+  AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
@@ -2066,6 +2086,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAdminRolesRoute: AppAdminRolesRoute,
+  AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,

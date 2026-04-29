@@ -41,6 +41,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
+import { fetchShopSettings } from "@/lib/shop/settings";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -124,7 +125,23 @@ function NewSaleListPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [termsText, setTermsText] = useState("");
+  const [sellerInfo, setSellerInfo] = useState("");
+  const [sellerInfoTouched, setSellerInfoTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const shopSettingsQ = useQuery({
+    queryKey: ["shop-settings"],
+    queryFn: fetchShopSettings,
+    staleTime: 300_000,
+  });
+
+  // Prefill seller info from default once settings load (if user hasn't typed)
+  useMemo(() => {
+    if (!sellerInfoTouched && shopSettingsQ.data?.default_seller_info) {
+      setSellerInfo(shopSettingsQ.data.default_seller_info);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopSettingsQ.data?.default_seller_info]);
 
   // Reset page on filter changes
   const resetPage = () => setPage(1);
@@ -315,6 +332,7 @@ function NewSaleListPage() {
           name: trimmedName,
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
+          seller_info: sellerInfo.trim() || null,
           sale_price_type_id: salePriceTypeId,
           created_by: userData.user.id,
           version_number: 1,
@@ -735,6 +753,37 @@ function NewSaleListPage() {
                 onChange={(e) => setTermsText(e.target.value)}
                 rows={4}
                 placeholder="شرایط، گارانتی، ارسال و ... (اختیاری)"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="sl-seller">اطلاعات فروشنده (درج‌شده در PDF)</Label>
+                {shopSettingsQ.data?.default_seller_info ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setSellerInfo(shopSettingsQ.data!.default_seller_info);
+                      setSellerInfoTouched(true);
+                    }}
+                  >
+                    استفاده از مقدار پیش‌فرض
+                  </Button>
+                ) : null}
+              </div>
+              <Textarea
+                id="sl-seller"
+                value={sellerInfo}
+                onChange={(e) => {
+                  setSellerInfo(e.target.value);
+                  setSellerInfoTouched(true);
+                }}
+                rows={3}
+                maxLength={500}
+                placeholder="نام، شماره تماس و سمت فروشنده (اختیاری، حداکثر ۵۰۰ کاراکتر)"
+                dir="rtl"
               />
             </div>
             <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">

@@ -2772,6 +2772,7 @@ export type Database = {
           published_at: string | null
           sale_price_type_id: string
           selected_columns: Json | null
+          seller_info: string | null
           status: string
           terms_text: string | null
           updated_at: string
@@ -2786,6 +2787,7 @@ export type Database = {
           published_at?: string | null
           sale_price_type_id: string
           selected_columns?: Json | null
+          seller_info?: string | null
           status?: string
           terms_text?: string | null
           updated_at?: string
@@ -2800,6 +2802,7 @@ export type Database = {
           published_at?: string | null
           sale_price_type_id?: string
           selected_columns?: Json | null
+          seller_info?: string | null
           status?: string
           terms_text?: string | null
           updated_at?: string
@@ -3233,6 +3236,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
       }
       stock_alert_requests: {
         Row: {
