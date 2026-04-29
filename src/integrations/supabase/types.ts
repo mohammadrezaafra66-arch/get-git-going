@@ -1183,6 +1183,7 @@ export type Database = {
           notes: string | null
           number: string | null
           sale_price_type_id: string | null
+          settlement_type_id: string | null
           status: string
           subtotal: number
           tax_amount: number
@@ -1201,6 +1202,7 @@ export type Database = {
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
+          settlement_type_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -1219,6 +1221,7 @@ export type Database = {
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
+          settlement_type_id?: string | null
           status?: string
           subtotal?: number
           tax_amount?: number
@@ -1239,6 +1242,13 @@ export type Database = {
             columns: ["sale_price_type_id"]
             isOneToOne: false
             referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_settlement_type_id_fkey"
+            columns: ["settlement_type_id"]
+            isOneToOne: false
+            referencedRelation: "settlement_types"
             referencedColumns: ["id"]
           },
         ]

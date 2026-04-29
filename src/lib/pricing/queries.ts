@@ -1,10 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export async function fetchSettlementTypes() {
-  const { data, error } = await supabase
+export async function fetchSettlementTypes(activeOnly = false) {
+  let q = supabase
     .from("settlement_types")
-    .select("id, code, title, is_active")
+    .select("id, code, title, is_active, sort_order")
+    .order("sort_order", { ascending: true })
     .order("title", { ascending: true });
+  if (activeOnly) q = q.eq("is_active", true);
+  const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
 }

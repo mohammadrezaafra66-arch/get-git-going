@@ -51,7 +51,7 @@ function CalculatorPage() {
   });
   const { data: settlementTypes = [] } = useQuery({
     queryKey: ["settlement-types"],
-    queryFn: fetchSettlementTypes,
+    queryFn: () => fetchSettlementTypes(true),
     staleTime: 60_000,
   });
 

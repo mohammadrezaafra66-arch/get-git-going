@@ -59,7 +59,7 @@ function QuickPricePage() {
   });
   const { data: settlementTypes = [] } = useQuery({
     queryKey: ["settlement-types"],
-    queryFn: fetchSettlementTypes,
+    queryFn: () => fetchSettlementTypes(true),
     staleTime: 5 * 60_000,
   });
   const { data: categories = [] } = useQuery({
