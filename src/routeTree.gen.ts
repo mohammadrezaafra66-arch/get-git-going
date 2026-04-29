@@ -74,6 +74,7 @@ import { Route as AppDataTablesTableIdRouteImport } from './routes/_app.data-tab
 import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-keys.usage'
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
+import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
@@ -419,6 +420,11 @@ const AppBotApiKeysDocsRoute = AppBotApiKeysDocsRouteImport.update({
   path: '/docs',
   getParentRoute: () => AppBotApiKeysRoute,
 } as any)
+const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
+  id: '/admin/roles',
+  path: '/admin/roles',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
   id: '/academy_/manage',
   path: '/academy/manage',
@@ -537,6 +543,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/admin/roles': typeof AppAdminRolesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -618,6 +625,7 @@ export interface FileRoutesByTo {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/admin/roles': typeof AppAdminRolesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -702,6 +710,7 @@ export interface FileRoutesById {
   '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
+  '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
   '/_app/bot-api-keys/usage': typeof AppBotApiKeysUsageRoute
@@ -787,6 +796,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/admin/roles'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -868,6 +878,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/admin/roles'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
     | '/bot-api-keys/usage'
@@ -951,6 +962,7 @@ export interface FileRouteTypes {
     | '/_app/users'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
+    | '/_app/admin/roles'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
     | '/_app/bot-api-keys/usage'
@@ -1480,6 +1492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBotApiKeysDocsRouteImport
       parentRoute: typeof AppBotApiKeysRoute
     }
+    '/_app/admin/roles': {
+      id: '/_app/admin/roles'
+      path: '/admin/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AppAdminRolesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/manage': {
       id: '/_app/academy_/manage'
       path: '/academy/manage'
@@ -1717,6 +1736,7 @@ interface AppRouteChildren {
   AppUsersRoute: typeof AppUsersRouteWithChildren
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
+  AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppFeedbackFeedbackIdRoute: typeof AppFeedbackFeedbackIdRoute
@@ -1775,6 +1795,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsersRoute: AppUsersRouteWithChildren,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
+  AppAdminRolesRoute: AppAdminRolesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppFeedbackFeedbackIdRoute: AppFeedbackFeedbackIdRoute,
