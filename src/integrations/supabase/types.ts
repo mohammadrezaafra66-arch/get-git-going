@@ -1570,6 +1570,80 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_receipts: {
+        Row: {
+          amount: number
+          bank_name: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          id: string
+          payer_accounting_code: string | null
+          payer_name: string
+          payer_phone: string | null
+          payment_date: string
+          payment_time: string
+          receipt_image_url: string | null
+          receiver_accounting_code: string | null
+          receiver_name: string
+          receiver_phone: string | null
+          status: string
+          tracking_number: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_name?: string | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          description?: string | null
+          id?: string
+          payer_accounting_code?: string | null
+          payer_name: string
+          payer_phone?: string | null
+          payment_date: string
+          payment_time: string
+          receipt_image_url?: string | null
+          receiver_accounting_code?: string | null
+          receiver_name: string
+          receiver_phone?: string | null
+          status?: string
+          tracking_number: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_name?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          id?: string
+          payer_accounting_code?: string | null
+          payer_name?: string
+          payer_phone?: string | null
+          payment_date?: string
+          payment_time?: string
+          receipt_image_url?: string | null
+          receiver_accounting_code?: string | null
+          receiver_name?: string
+          receiver_phone?: string | null
+          status?: string
+          tracking_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_receipts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_calculation_snapshots: {
         Row: {
           calculated_at: string
