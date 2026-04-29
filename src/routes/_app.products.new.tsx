@@ -49,7 +49,13 @@ function NewProductPage() {
       toast.success("محصول با موفقیت ایجاد شد");
       navigate({ to: "/products/$id", params: { id: inserted.id } });
     } catch (e: any) {
-      toast.error(e?.message ?? "خطا در ایجاد محصول");
+      const code = e?.code ?? "";
+      const msg = String(e?.message ?? "");
+      if (code === "23505" || /duplicate key|sku/i.test(msg)) {
+        toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
+      } else {
+        toast.error(msg || "خطا در ایجاد محصول");
+      }
     } finally {
       setLoading(false);
     }
