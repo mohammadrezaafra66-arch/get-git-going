@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { toFaDigits } from "@/lib/i18n/formatters";
+import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BANKS = [
   "ملی", "ملت", "صادرات", "سپه", "تجارت", "رفاه", "مسکن",
@@ -60,6 +64,9 @@ export function PaymentReceiptForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
+  const [duplicateCount, setDuplicateCount] = useState(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -109,8 +116,47 @@ export function PaymentReceiptForm() {
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
 
   const mutation = useMutation({
-    mutationFn: async (values: FormValues) => {
+    mutationFn: async (
+      args: { values: FormValues; bypassDuplicate?: boolean },
+    ) => {
+      const { values, bypassDuplicate } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
+
+      // Duplicate check
+      if (!bypassDuplicate) {
+        let dq = supabase
+          .from("payment_receipts")
+          .select("id", { count: "exact", head: true })
+          .eq("tracking_number", values.tracking_number)
+          .eq("amount", values.amount)
+          .eq("payment_date", values.payment_date)
+          .neq("status", "rejected");
+        if (values.bank_name) {
+          dq = dq.eq("bank_name", values.bank_name);
+        } else {
+          dq = dq.is("bank_name", null);
+        }
+        const { count: dupCount, error: dupErr } = await dq;
+        if (dupErr) throw dupErr;
+        if ((dupCount ?? 0) > 0) {
+          // Audit duplicate detection
+          await supabase.from("audit_logs").insert({
+            actor_id: user.id,
+            entity_type: "payment_receipt",
+            entity_id: values.tracking_number,
+            action: "duplicate_receipt_warning",
+            diff: {
+              tracking_number: values.tracking_number,
+              amount: values.amount,
+              payment_date: values.payment_date,
+              bank_name: values.bank_name || null,
+              matches: dupCount,
+            },
+          } as never);
+          return { duplicate: true as const, count: dupCount ?? 0 };
+        }
+      }
+
       const payload = {
         customer_id: values.customer_id,
         payer_name: values.payer_name,
@@ -152,9 +198,15 @@ export function PaymentReceiptForm() {
         },
       } as never);
 
-      return receiptId;
+      return { duplicate: false as const, receiptId };
     },
-    onSuccess: () => {
+    onSuccess: (result, vars) => {
+      if (result.duplicate) {
+        setPendingValues(vars.values);
+        setDuplicateCount(result.count);
+        setDuplicateOpen(true);
+        return;
+      }
       toast.success("فیش واریزی ثبت شد");
       queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
       navigate({ to: "/accounting/receipts" });
@@ -166,8 +218,9 @@ export function PaymentReceiptForm() {
   });
 
   return (
+    <>
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v }))}
       className="space-y-6"
       dir="rtl"
     >
