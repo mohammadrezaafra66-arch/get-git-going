@@ -27,6 +27,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const BANKS = [
   "ملی", "ملت", "صادرات", "سپه", "تجارت", "رفاه", "مسکن",
@@ -60,6 +64,9 @@ export function PaymentReceiptForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [duplicateOpen, setDuplicateOpen] = useState(false);
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
+  const [duplicateCount, setDuplicateCount] = useState(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -109,8 +116,47 @@ export function PaymentReceiptForm() {
   const selectedCustomer = customers.find((c) => c.id === form.watch("customer_id"));
 
   const mutation = useMutation({
-    mutationFn: async (values: FormValues) => {
+    mutationFn: async (
+      args: { values: FormValues; bypassDuplicate?: boolean },
+    ) => {
+      const { values, bypassDuplicate } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
+
+      // Duplicate check
+      if (!bypassDuplicate) {
+        let dq = supabase
+          .from("payment_receipts")
+          .select("id", { count: "exact", head: true })
+          .eq("tracking_number", values.tracking_number)
+          .eq("amount", values.amount)
+          .eq("payment_date", values.payment_date)
+          .neq("status", "rejected");
+        if (values.bank_name) {
+          dq = dq.eq("bank_name", values.bank_name);
+        } else {
+          dq = dq.is("bank_name", null);
+        }
+        const { count: dupCount, error: dupErr } = await dq;
+        if (dupErr) throw dupErr;
+        if ((dupCount ?? 0) > 0) {
+          // Audit duplicate detection
+          await supabase.from("audit_logs").insert({
+            actor_id: user.id,
+            entity_type: "payment_receipt",
+            entity_id: values.tracking_number,
+            action: "duplicate_receipt_warning",
+            diff: {
+              tracking_number: values.tracking_number,
+              amount: values.amount,
+              payment_date: values.payment_date,
+              bank_name: values.bank_name || null,
+              matches: dupCount,
+            },
+          } as never);
+          return { duplicate: true as const, count: dupCount ?? 0 };
+        }
+      }
+
       const payload = {
         customer_id: values.customer_id,
         payer_name: values.payer_name,
@@ -152,9 +198,15 @@ export function PaymentReceiptForm() {
         },
       } as never);
 
-      return receiptId;
+      return { duplicate: false as const, receiptId };
     },
-    onSuccess: () => {
+    onSuccess: (result, vars) => {
+      if (result.duplicate) {
+        setPendingValues(vars.values);
+        setDuplicateCount(result.count);
+        setDuplicateOpen(true);
+        return;
+      }
       toast.success("فیش واریزی ثبت شد");
       queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
       navigate({ to: "/accounting/receipts" });
@@ -166,8 +218,9 @@ export function PaymentReceiptForm() {
   });
 
   return (
+    <>
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v }))}
       className="space-y-6"
       dir="rtl"
     >
@@ -359,5 +412,37 @@ export function PaymentReceiptForm() {
         </Button>
       </div>
     </form>
+
+    <AlertDialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>احتمال ثبت فیش تکراری</AlertDialogTitle>
+          <AlertDialogDescription>
+            {`بر اساس شماره پیگیری، مبلغ، تاریخ و بانک، ${toFaDigits(String(duplicateCount))} فیش مشابه قبلاً ثبت شده است. آیا مطمئن هستید که می‌خواهید این فیش را ثبت کنید؟`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPendingValues(null);
+              setDuplicateCount(0);
+            }}
+          >
+            انصراف
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingValues) {
+                mutation.mutate({ values: pendingValues, bypassDuplicate: true });
+              }
+              setDuplicateOpen(false);
+            }}
+          >
+            ادامه و ثبت
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

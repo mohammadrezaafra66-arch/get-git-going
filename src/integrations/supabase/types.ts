@@ -1588,6 +1588,7 @@ export type Database = {
           receiver_accounting_code: string | null
           receiver_name: string
           receiver_phone: string | null
+          rejection_reason: string | null
           status: string
           tracking_number: string
           updated_at: string
@@ -1609,6 +1610,7 @@ export type Database = {
           receiver_accounting_code?: string | null
           receiver_name: string
           receiver_phone?: string | null
+          rejection_reason?: string | null
           status?: string
           tracking_number: string
           updated_at?: string
@@ -1630,6 +1632,7 @@ export type Database = {
           receiver_accounting_code?: string | null
           receiver_name?: string
           receiver_phone?: string | null
+          rejection_reason?: string | null
           status?: string
           tracking_number?: string
           updated_at?: string
