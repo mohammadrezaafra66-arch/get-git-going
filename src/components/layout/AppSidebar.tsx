@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NAV_ITEMS, GROUP_LABELS, type NavItem } from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { Sparkles } from "lucide-react";
 
 const GROUPS: NavItem["group"][] = ["main", "operations", "finance", "admin", "comms"];
@@ -15,7 +15,7 @@ const GROUPS: NavItem["group"][] = ["main", "operations", "finance", "admin", "c
 export function AppSidebar() {
   const { roles } = useAuth();
   const location = useLocation();
-  const visible = NAV_ITEMS.filter((i) => hasPermission(roles, i.module, "view"));
+  const visible = NAV_ITEMS.filter((i) => hasPermissionEx(roles, i.module, "view"));
   const isAdmin = roles.includes("admin");
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
