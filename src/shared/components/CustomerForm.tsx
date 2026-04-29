@@ -43,6 +43,22 @@ const schema = z.object({
       (v) => !v || accountingCodeRegex.test(v),
       "کد حسابداری فقط شامل حروف انگلیسی، اعداد، _ و - و حداکثر ۳۰ کاراکتر",
     ),
+  link_group: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => {
+        if (!v) return true;
+        try {
+          const u = new URL(v);
+          return u.protocol === "http:" || u.protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      "لینک نامعتبر است (باید با http یا https شروع شود)",
+    ),
 });
 
 export type CustomerFormValues = z.infer<typeof schema>;
@@ -76,6 +92,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       notes: defaultValues?.notes ?? "",
       responsible_id: defaultValues?.responsible_id ?? null,
       accounting_code: defaultValues?.accounting_code ?? "",
+      link_group: defaultValues?.link_group ?? "",
     },
     mode: "onBlur",
   });
@@ -96,6 +113,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         notes: values.notes?.trim() || null,
         responsible_id: values.responsible_id ?? null,
         accounting_code: values.accounting_code?.trim() || null,
+        link_group: values.link_group?.trim() || null,
       };
       if (customerId) {
         const { error } = await supabase
