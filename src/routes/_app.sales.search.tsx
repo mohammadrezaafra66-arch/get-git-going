@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -37,6 +37,16 @@ export const Route = createFileRoute("/_app/sales/search")({
 
 const RESULT_LIMIT = 20;
 
+interface PriceEntry {
+  sale_price_type_id: string;
+  code: string;
+  title: string;
+  sort_order: number;
+  current_price: number | null;
+  previous_price: number | null;
+  last_updated_at: string | null;
+}
+
 interface ProductRow {
   id: string;
   name: string;
@@ -46,19 +56,12 @@ interface ProductRow {
   color?: string | null;
   capacity?: string | null;
   model?: string | null;
+  description?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
-}
-
-interface HistoryRow {
-  id: string;
-  product_id: string;
-  sale_price_type_id: string | null;
-  new_sale_price: number;
-  old_sale_price?: number | null;
-  change_amount?: number | null;
-  change_percent?: number | null;
-  created_at: string;
+  labels?: Array<{ id: string; title: string; color: string | null; visibility?: string | null }>;
+  prices?: PriceEntry[];
+  is_unavailable_for_sales?: boolean;
 }
 
 const STOCK_LABEL: Record<string, string> = {
@@ -95,6 +98,7 @@ function SalesSearchPage() {
   const [categoryFilterText, setCategoryFilterText] = useState("");
   const [labelFilterText, setLabelFilterText] = useState("");
   const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
+  const [onlyWithPrice, setOnlyWithPrice] = useState<boolean>(false);
   const [chartCtx, setChartCtx] = useState<{
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
@@ -163,98 +167,34 @@ function SalesSearchPage() {
     }
   }, [salePriceTypes, salePriceTypeId]);
 
-  // labels -> products mapping when label filter active
-  const labelProductIdsQuery = useQuery({
-    enabled: labelIds.length > 0,
-    queryKey: ["sales-search-label-product-ids", labelIds],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_label_links")
-        .select("product_id")
-        .in("label_id", labelIds)
-        .limit(5000);
-      if (error) throw error;
-      return Array.from(new Set((data ?? []).map((r: { product_id: string }) => r.product_id)));
-    },
-    staleTime: 60_000,
-  });
-
   // ---------- products query ----------
   const productsQuery = useQuery({
-    enabled: canSearch && (labelIds.length === 0 || !!labelProductIdsQuery.data),
-    queryKey: ["sales-search-products", { term, brandIds, categoryIds, stockStatus, productType, labelProductIds: labelProductIdsQuery.data ?? null }],
+    enabled: canSearch,
+    queryKey: ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }],
     queryFn: async () => {
-      const safe = term.replace(/[%_]/g, "");
-      const labelFilteredIds = labelIds.length > 0 ? (labelProductIdsQuery.data ?? []) : null;
-      if (labelFilteredIds && labelFilteredIds.length === 0) return [] as ProductRow[];
-      // search by name, SKU, brand name, category name
-      let q = supabase
-        .from("products")
-        .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
-        .eq("is_active", true)
-        .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,brands.name.ilike.%${safe}%,categories.name.ilike.%${safe}%`)
-        .order("name", { ascending: true })
-        .limit(RESULT_LIMIT);
-      if (brandIds.length > 0) q = q.in("brand_id", brandIds);
-      if (categoryIds.length > 0) q = q.in("category_id", categoryIds);
-      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
-      if (productType !== "__all") q = q.eq("product_type", productType as "iranian" | "foreign");
-      if (labelFilteredIds) q = q.in("id", labelFilteredIds);
-      const { data, error } = await q;
-      if (error) {
-        // fallback: some PostgREST setups don't allow OR across embedded relations.
-        // Retry with name+sku only.
-        let q2 = supabase
-          .from("products")
-          .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
-          .eq("is_active", true)
-          .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
-          .order("name", { ascending: true })
-          .limit(RESULT_LIMIT);
-        if (brandIds.length > 0) q2 = q2.in("brand_id", brandIds);
-        if (categoryIds.length > 0) q2 = q2.in("category_id", categoryIds);
-        if (stockStatus !== "__all") q2 = q2.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
-        if (productType !== "__all") q2 = q2.eq("product_type", productType as "iranian" | "foreign");
-        if (labelFilteredIds) q2 = q2.in("id", labelFilteredIds);
-        const r2 = await q2;
-        if (r2.error) throw r2.error;
-        return (r2.data ?? []) as ProductRow[];
-      }
-      return (data ?? []) as ProductRow[];
+      const { data, error } = await supabase.rpc("get_sales_search_products", {
+        p_search: term,
+        p_brand_ids: brandIds.length > 0 ? brandIds : undefined,
+        p_category_ids: categoryIds.length > 0 ? categoryIds : undefined,
+        p_label_ids: labelIds.length > 0 ? labelIds : undefined,
+        p_stock_status: stockStatus !== "__all" ? stockStatus : undefined,
+        p_product_type: productType !== "__all" ? productType : undefined,
+        p_only_with_price: onlyWithPrice,
+        p_limit: RESULT_LIMIT,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+        ...(row as object),
+        labels: Array.isArray(row.labels) ? row.labels : [],
+        prices: Array.isArray(row.prices) ? row.prices : [],
+      })) as ProductRow[];
     },
     staleTime: 30_000,
   });
 
   const products = productsQuery.data ?? [];
-  const productIds = useMemo(() => products.map((p) => p.id), [products]);
-
-  // ---------- history (latest per product for selected sale_price_type) ----------
-  const historyQuery = useQuery({
-    enabled: productIds.length > 0 && !!salePriceTypeId,
-    queryKey: ["sales-search-history", productIds, salePriceTypeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_sale_price_history")
-        .select("id, product_id, sale_price_type_id, new_sale_price, old_sale_price, change_amount, change_percent, created_at")
-        .in("product_id", productIds)
-        .eq("sale_price_type_id", salePriceTypeId)
-        .order("created_at", { ascending: false })
-        .limit(productIds.length * 5);
-      if (error) throw error;
-      const seen = new Set<string>();
-      const latest = new Map<string, HistoryRow>();
-      for (const r of (data ?? []) as HistoryRow[]) {
-        if (seen.has(r.product_id)) continue;
-        seen.add(r.product_id);
-        latest.set(r.product_id, r);
-      }
-      return latest;
-    },
-    staleTime: 30_000,
-  });
-
-  const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
-  const isLoading = (canSearch && productsQuery.isLoading) || (productIds.length > 0 && historyQuery.isLoading);
+  const isLoading = canSearch && productsQuery.isLoading;
 
   return (
     <div className="space-y-5">
@@ -333,6 +273,7 @@ function SalesSearchPage() {
                     categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
                     labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
                     dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+                    onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
                   />
                 </div>
                 <SheetFooter className="mt-4 flex-row gap-2">
@@ -340,7 +281,7 @@ function SalesSearchPage() {
                     variant="ghost"
                     onClick={() => {
                       setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                      setStockStatus("__all"); setProductType("__all");
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                     }}
                   >
                     پاک کردن همه
@@ -357,7 +298,7 @@ function SalesSearchPage() {
                 size="sm"
                 onClick={() => {
                   setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                  setStockStatus("__all"); setProductType("__all");
+                  setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                 }}
               >
                 <X className="ml-1 h-3.5 w-3.5" /> پاک کردن
@@ -383,7 +324,7 @@ function SalesSearchPage() {
                   size="sm"
                   onClick={() => {
                     setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                    setStockStatus("__all"); setProductType("__all");
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                   }}
                 >
                   <X className="ml-1 h-3.5 w-3.5" /> پاک کردن همه فیلترها
@@ -403,6 +344,7 @@ function SalesSearchPage() {
               categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
               labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
               dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+              onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
             />
           </div>
         </CardContent>
@@ -439,27 +381,42 @@ function SalesSearchPage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {
-            const h = priceMap.get(p.id);
             return (
               <ProductCard
                 key={p.id}
                 product={p}
-                history={h}
+                primarySalePriceTypeId={salePriceTypeId}
                 isPrivileged={isPrivileged}
                 onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
-                onOpenChart={() => {
-                  if (!salePriceTypeId) return;
-                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)?.title ?? "—";
+                onOpenChart={(typeId) => {
+                  const targetId = typeId ?? salePriceTypeId;
+                  if (!targetId) return;
+                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === targetId)?.title
+                    ?? p.prices?.find((x) => x.sale_price_type_id === targetId)?.title
+                    ?? "—";
                   setChartCtx({
                     productId: p.id,
                     productName: p.name,
-                    salePriceTypeId,
+                    salePriceTypeId: targetId,
                     salePriceTypeTitle: title,
                   });
                 }}
               />
             );
           })}
+        </div>
+      )}
+
+      {/* Secondary action: link to calculator (kept for privileged users) */}
+      {canSearch && isPrivileged && (
+        <div className="flex justify-center pt-2">
+          <Link
+            to="/pricing/calculator"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            محاسبه قیمت برای کالای خارج از لیست
+          </Link>
         </div>
       )}
 
@@ -477,19 +434,27 @@ function SalesSearchPage() {
 
 interface ProductCardProps {
   product: ProductRow;
-  history: HistoryRow | undefined;
+  primarySalePriceTypeId: string;
   isPrivileged: boolean;
   onSelect: () => void;
-  onOpenChart: () => void;
+  onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
-  const prev = history?.old_sale_price != null ? Number(history.old_sale_price) : null;
-  const cur = history ? Number(history.new_sale_price) : null;
-  const amt = (cur !== null && prev !== null) ? cur - prev : (history?.change_amount != null ? Number(history.change_amount) : null);
-  const pct = history?.change_percent != null ? Number(history.change_percent) : computeChangePercent(cur, prev);
+  const prices = product.prices ?? [];
+  const labels = product.labels ?? [];
+  // primary price = the one selected globally (if available for this product), otherwise the first.
+  const primary =
+    prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
+  const others = prices.filter((p) => p.sale_price_type_id !== (primary?.sale_price_type_id ?? ""));
+
+  const cur = primary?.current_price != null ? Number(primary.current_price) : null;
+  const prev = primary?.previous_price != null ? Number(primary.previous_price) : null;
+  const amt = cur !== null && prev !== null ? cur - prev : null;
+  const pct = computeChangePercent(cur, prev);
+
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent
@@ -511,6 +476,23 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
               {product.brand?.name && <span>برند: {product.brand.name}</span>}
               {product.category?.name && <span>· {product.category.name}</span>}
             </div>
+            {labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {labels.slice(0, 4).map((l) => (
+                  <span
+                    key={l.id}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                    style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={l.color ? { backgroundColor: l.color } : undefined}
+                    />
+                    {l.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant={STOCK_VARIANT[stockKey] ?? "outline"}>
@@ -528,12 +510,12 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
               <PackageX className="h-4 w-4" />
               ناموجود — قیمت نمایش داده نمی‌شود
             </div>
-          ) : history ? (
+          ) : primary && cur !== null ? (
             <div className="flex items-end justify-between gap-2">
               <div>
-                <div className="text-xs text-muted-foreground">قیمت فروش</div>
+                <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
                 <div className="text-2xl font-bold text-primary">
-                  {formatNumber(Number(history.new_sale_price))}
+                  {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
                 {prev !== null && (
@@ -543,37 +525,57 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
                   <PriceChangeBadge info={{ change_amount: amt, change_percent: pct, direction: computeDirection(amt) }} />
                 </div>
               </div>
-              <div className="text-[11px] text-muted-foreground text-left">
-                آخرین بروزرسانی
-                <div>{formatDateTimeFa(history.created_at)}</div>
-              </div>
+              {primary.last_updated_at && (
+                <div className="text-[11px] text-muted-foreground text-left">
+                  آخرین بروزرسانی
+                  <div>{formatDateTimeFa(primary.last_updated_at)}</div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Sparkles className="h-4 w-4" />
-                برای این نوع قیمت، قیمت فروش ثبت نشده است.
-              </div>
-              {isPrivileged && (
-                <Link
-                  to="/pricing/calculator"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
-                </Link>
-              )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              قیمت ثبت نشده
             </div>
           )}
         </div>
+
+        {/* Secondary prices grid */}
+        {!isUnavailable && others.length > 0 && (
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {others.map((p) => {
+              const c = p.current_price != null ? Number(p.current_price) : null;
+              const pv = p.previous_price != null ? Number(p.previous_price) : null;
+              const a = c !== null && pv !== null ? c - pv : null;
+              return (
+                <button
+                  key={p.sale_price_type_id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpenChart(p.sale_price_type_id); }}
+                  className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
+                >
+                  <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
+                  <div className="text-sm font-semibold tabular-nums">
+                    {c !== null ? formatNumber(c) : <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>}
+                  </div>
+                  {a !== null && a !== 0 && (
+                    <div className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {a > 0 ? "+" : ""}{formatNumber(a)}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); onOpenChart(); }}
-            disabled={!history}
+            onClick={(e) => { e.stopPropagation(); onOpenChart(primary?.sale_price_type_id); }}
+            disabled={!primary || cur === null}
           >
             <LineChart className="ms-1 h-4 w-4" /> نمودار قیمت
           </Button>
@@ -614,6 +616,7 @@ interface FiltersPanelProps {
   categoryFilterText: string; setCategoryFilterText: (v: string) => void;
   labelFilterText: string; setLabelFilterText: (v: string) => void;
   dBrandText: string; dCategoryText: string; dLabelText: string;
+  onlyWithPrice: boolean; setOnlyWithPrice: (v: boolean) => void;
 }
 
 function FiltersPanel(props: FiltersPanelProps) {
@@ -625,6 +628,7 @@ function FiltersPanel(props: FiltersPanelProps) {
     categoryFilterText, setCategoryFilterText,
     labelFilterText, setLabelFilterText,
     dBrandText, dCategoryText, dLabelText,
+    onlyWithPrice, setOnlyWithPrice,
   } = props;
 
   const filteredBrands = useMemo(() => {
@@ -690,6 +694,13 @@ function FiltersPanel(props: FiltersPanelProps) {
             </Button>
           ))}
         </div>
+        <label className="flex items-center gap-2 text-sm pt-2 cursor-pointer">
+          <Checkbox
+            checked={onlyWithPrice}
+            onCheckedChange={(v) => setOnlyWithPrice(!!v)}
+          />
+          <span>فقط محصولات دارای قیمت معتبر</span>
+        </label>
       </div>
 
       {/* Brands */}
