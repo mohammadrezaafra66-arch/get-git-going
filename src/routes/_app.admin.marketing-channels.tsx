@@ -78,13 +78,14 @@ function MarketingChannelsPage() {
 
   const audit = async (action: string, entity_id: string, diff: Record<string, unknown>) => {
     if (!user?.id) return;
-    await supabase.from("audit_logs").insert({
+    const row = {
       actor_id: user.id,
       entity_type: "marketing_channel",
       entity_id,
       action,
-      diff,
-    });
+      diff: diff as never,
+    };
+    await supabase.from("audit_logs").insert(row);
   };
 
   const save = async () => {
