@@ -6,7 +6,7 @@ export const productSchema = z.object({
   brand_id: z.string().uuid().nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
   product_type: z.enum(["iranian", "foreign"]),
-  base_currency: z.enum(["toman", "usd", "aed"]),
+  base_currency: z.string().trim().min(1, "ارز مبنا الزامی است").max(20),
   stock_status: z.enum(["available", "unavailable", "limited", "unknown"]),
   status: z.enum(["active", "inactive", "discontinued"]),
   unit: z.string().trim().max(40).optional().or(z.literal("")),
