@@ -99,7 +99,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_label_links")
-        .select("label:product_labels(id, title)")
+        .select("label:product_labels(id, title, visibility)")
         .eq("product_id", productId!);
       if (error) return [] as any[];
       return (data ?? []).map((r: any) => r.label).filter(Boolean);
@@ -109,6 +109,10 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
 
   const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
   const stockKey = product?.stock_status ?? "unknown";
+  const canSeeInternalLabels = roles.includes("admin") || roles.includes("manager");
+  const visibleLabels = (labelsQuery.data ?? []).filter(
+    (l: any) => canSeeInternalLabels || l?.visibility !== "internal",
+  );
 
   const handleCopy = async () => {
     if (!product) return;
@@ -190,9 +194,9 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
             </SheetHeader>
 
             {/* Labels */}
-            {(labelsQuery.data?.length ?? 0) > 0 && (
+            {visibleLabels.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {labelsQuery.data!.map((l: any) => (
+                {visibleLabels.map((l: any) => (
                   <Badge key={l.id} variant="outline" className="text-[11px]">{l.title}</Badge>
                 ))}
               </div>

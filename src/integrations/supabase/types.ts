@@ -2272,6 +2272,8 @@ export type Database = {
           is_active: boolean
           title: string
           updated_at: string
+          visibility: string
+          weight: number
         }
         Insert: {
           color?: string
@@ -2281,6 +2283,8 @@ export type Database = {
           is_active?: boolean
           title: string
           updated_at?: string
+          visibility?: string
+          weight?: number
         }
         Update: {
           color?: string
@@ -2290,6 +2294,8 @@ export type Database = {
           is_active?: boolean
           title?: string
           updated_at?: string
+          visibility?: string
+          weight?: number
         }
         Relationships: []
       }
