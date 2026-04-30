@@ -192,6 +192,17 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="birth_date">تاریخ تولد (اختیاری)</Label>
+        <BirthDatePicker
+          value={form.watch("birth_date") ?? null}
+          onChange={(iso) => form.setValue("birth_date", iso, { shouldValidate: true })}
+        />
+        {errors.birth_date && (
+          <p className="text-xs text-destructive">{errors.birth_date.message as string}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="accounting_code">کد حسابداری</Label>
         <Input
           id="accounting_code"
@@ -258,6 +269,73 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
 }
 
 /* ------------- Responsible autocomplete ------------- */
+
+/* ------------- Birth-date picker (Gregorian shadcn DatePicker) ------------- */
+
+function BirthDatePicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (iso: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const dateValue = value ? new Date(value) : undefined;
+  const display = dateValue
+    ? dateValue.toLocaleDateString("fa-IR")
+    : "انتخاب تاریخ تولد";
+  return (
+    <div className="flex gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              "flex-1 justify-start font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="ml-2 h-4 w-4 opacity-60" />
+            {display}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={dateValue}
+            onSelect={(d) => {
+              if (!d) {
+                onChange(null);
+              } else {
+                // Use local YYYY-MM-DD (avoid TZ shift to previous day)
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                onChange(`${y}-${m}-${day}`);
+              }
+              setOpen(false);
+            }}
+            disabled={(date) => date > new Date()}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onChange(null)}
+          aria-label="پاک کردن"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 interface ResponsiblePickerProps {
   value: string | null;
