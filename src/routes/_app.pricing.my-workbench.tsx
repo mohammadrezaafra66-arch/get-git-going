@@ -18,7 +18,6 @@ import {
   TrendingDown,
   Check,
   CircleDot,
-  AlertCircle,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
