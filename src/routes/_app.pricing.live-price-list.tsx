@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Search, Filter, ArrowUpRight, ArrowDownRight, Tag,
+  Search, Filter, ArrowUpRight, ArrowDownRight, Tag, LineChart,
   PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles, UserPlus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -27,6 +27,7 @@ import { StockAlertButton } from "@/components/sales/StockAlertButton";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
+import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -74,6 +75,11 @@ function LivePriceListPage() {
   const { roles } = useAuth();
   const isPrivileged = hasPermissionEx(roles, "pricing", "view_sensitive");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
+
+  // ---------- chart drawer ----------
+  const [chartCtx, setChartCtx] = useState<{
+    productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
+  } | null>(null);
 
   // ---------- filters ----------
   const [search, setSearch] = useState("");
@@ -441,13 +447,22 @@ function LivePriceListPage() {
           </div>
         </>
       )}
+
+      <ProductPriceHistoryDrawer
+        open={!!chartCtx}
+        onOpenChange={(v) => { if (!v) setChartCtx(null); }}
+        productId={chartCtx?.productId ?? null}
+        productName={chartCtx?.productName ?? null}
+        salePriceTypeId={chartCtx?.salePriceTypeId ?? null}
+        salePriceTypeTitle={chartCtx?.salePriceTypeTitle ?? null}
+      />
     </div>
   );
 }
 
 function renderProductRows(
   row: { product: ProductRow; histories: any[]; hasPrice: boolean },
-  ctx: { isSalesOnly: boolean; isPrivileged: boolean },
+  ctx: { isSalesOnly: boolean; isPrivileged: boolean; onOpenChart?: (h: any, productName: string) => void; product?: ProductRow },
 ) {
   const colSpan = ctx.isSalesOnly ? 7 : 8;
   const isUnavailable = row.product.stock_status === "unavailable";
