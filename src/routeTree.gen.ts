@@ -96,7 +96,7 @@ import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
-import { Route as AppProductsIdEditRouteImport } from './routes/_app.products.$id.edit'
+import { Route as AppProductsIdEditRouteImport } from './routes/_app.products_.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
@@ -553,9 +553,9 @@ const AppSalesCustomersImportRoute = AppSalesCustomersImportRouteImport.update({
   getParentRoute: () => AppSalesRoute,
 } as any)
 const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => AppProductsIdRoute,
+  id: '/products_/$id/edit',
+  path: '/products/$id/edit',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPricingSaleListsNewRoute = AppPricingSaleListsNewRouteImport.update({
   id: '/pricing/sale-lists_/new',
@@ -691,7 +691,7 @@ export interface FileRoutesByFullPath {
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
-  '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/$id': typeof AppProductsIdRoute
   '/products/attributes': typeof AppProductsAttributesRoute
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
@@ -791,7 +791,7 @@ export interface FileRoutesByTo {
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
-  '/products/$id': typeof AppProductsIdRouteWithChildren
+  '/products/$id': typeof AppProductsIdRoute
   '/products/attributes': typeof AppProductsAttributesRoute
   '/products/brands': typeof AppProductsBrandsRoute
   '/products/categories': typeof AppProductsCategoriesRoute
@@ -894,7 +894,7 @@ export interface FileRoutesById {
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
   '/_app/pricing/settlement-types': typeof AppPricingSettlementTypesRoute
   '/_app/pricing/shipping-rules': typeof AppPricingShippingRulesRoute
-  '/_app/products/$id': typeof AppProductsIdRouteWithChildren
+  '/_app/products/$id': typeof AppProductsIdRoute
   '/_app/products/attributes': typeof AppProductsAttributesRoute
   '/_app/products/brands': typeof AppProductsBrandsRoute
   '/_app/products/categories': typeof AppProductsCategoriesRoute
@@ -923,7 +923,7 @@ export interface FileRoutesById {
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
-  '/_app/products/$id/edit': typeof AppProductsIdEditRoute
+  '/_app/products_/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
@@ -1229,7 +1229,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receipts/create'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
-    | '/_app/products/$id/edit'
+    | '/_app/products_/$id/edit'
     | '/_app/sales/customers_/import'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
@@ -1870,12 +1870,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersImportRouteImport
       parentRoute: typeof AppSalesRoute
     }
-    '/_app/products/$id/edit': {
-      id: '/_app/products/$id/edit'
-      path: '/edit'
+    '/_app/products_/$id/edit': {
+      id: '/_app/products_/$id/edit'
+      path: '/products/$id/edit'
       fullPath: '/products/$id/edit'
       preLoaderRoute: typeof AppProductsIdEditRouteImport
-      parentRoute: typeof AppProductsIdRoute
+      parentRoute: typeof AppRoute
     }
     '/_app/pricing/sale-lists_/new': {
       id: '/_app/pricing/sale-lists_/new'
@@ -2060,18 +2060,6 @@ const AppAccountingReceiptsRouteWithChildren =
     AppAccountingReceiptsRouteChildren,
   )
 
-interface AppProductsIdRouteChildren {
-  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
-}
-
-const AppProductsIdRouteChildren: AppProductsIdRouteChildren = {
-  AppProductsIdEditRoute: AppProductsIdEditRoute,
-}
-
-const AppProductsIdRouteWithChildren = AppProductsIdRoute._addFileChildren(
-  AppProductsIdRouteChildren,
-)
-
 interface AppPricingSaleListsListIdRouteChildren {
   AppPricingSaleListsListIdPublishRoute: typeof AppPricingSaleListsListIdPublishRoute
 }
@@ -2164,7 +2152,7 @@ interface AppRouteChildren {
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
   AppPricingSettlementTypesRoute: typeof AppPricingSettlementTypesRoute
   AppPricingShippingRulesRoute: typeof AppPricingShippingRulesRoute
-  AppProductsIdRoute: typeof AppProductsIdRouteWithChildren
+  AppProductsIdRoute: typeof AppProductsIdRoute
   AppProductsAttributesRoute: typeof AppProductsAttributesRoute
   AppProductsBrandsRoute: typeof AppProductsBrandsRoute
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
@@ -2180,6 +2168,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
+  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
@@ -2235,7 +2224,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
   AppPricingSettlementTypesRoute: AppPricingSettlementTypesRoute,
   AppPricingShippingRulesRoute: AppPricingShippingRulesRoute,
-  AppProductsIdRoute: AppProductsIdRouteWithChildren,
+  AppProductsIdRoute: AppProductsIdRoute,
   AppProductsAttributesRoute: AppProductsAttributesRoute,
   AppProductsBrandsRoute: AppProductsBrandsRoute,
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
@@ -2251,6 +2240,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
+  AppProductsIdEditRoute: AppProductsIdEditRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRouteWithChildren,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
