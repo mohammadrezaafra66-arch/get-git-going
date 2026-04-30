@@ -5673,14 +5673,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      compute_mission_period: {
-        Args: { _mission: Database["public"]["Tables"]["missions"]["Row"] }
-        Returns: {
-          period_end: string
-          period_key: string
-          period_start: string
-        }[]
-      }
       compute_promotion_scores: {
         Args: { _channel_id?: string; _limit?: number; _min_score?: number }
         Returns: {
