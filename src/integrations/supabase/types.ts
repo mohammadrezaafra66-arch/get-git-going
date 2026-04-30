@@ -2665,39 +2665,69 @@ export type Database = {
       }
       missions: {
         Row: {
+          condition_event_key: string | null
+          condition_operator: string | null
+          condition_value: number | null
           created_at: string
           description: string | null
           display_order: number
           enabled: boolean
+          ends_at: string | null
           frequency: string
           id: string
           key: string
+          mission_type: string
+          repeat_rule: string
+          sort_order: number
+          starts_at: string | null
           target_value: number
+          title_en: string | null
           title_fa: string
+          updated_at: string
           xp_reward: number
         }
         Insert: {
+          condition_event_key?: string | null
+          condition_operator?: string | null
+          condition_value?: number | null
           created_at?: string
           description?: string | null
           display_order?: number
           enabled?: boolean
+          ends_at?: string | null
           frequency?: string
           id?: string
           key: string
+          mission_type?: string
+          repeat_rule?: string
+          sort_order?: number
+          starts_at?: string | null
           target_value?: number
+          title_en?: string | null
           title_fa: string
+          updated_at?: string
           xp_reward?: number
         }
         Update: {
+          condition_event_key?: string | null
+          condition_operator?: string | null
+          condition_value?: number | null
           created_at?: string
           description?: string | null
           display_order?: number
           enabled?: boolean
+          ends_at?: string | null
           frequency?: string
           id?: string
           key?: string
+          mission_type?: string
+          repeat_rule?: string
+          sort_order?: number
+          starts_at?: string | null
           target_value?: number
+          title_en?: string | null
           title_fa?: string
+          updated_at?: string
           xp_reward?: number
         }
         Relationships: []
