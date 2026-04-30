@@ -281,6 +281,42 @@ export type Database = {
           },
         ]
       }
+      achievements: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          enabled: boolean
+          icon: string | null
+          id: string
+          key: string
+          title_fa: string
+          xp_reward: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          key: string
+          title_fa: string
+          xp_reward?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          key?: string
+          title_fa?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1577,6 +1613,49 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_achievements: {
+        Row: {
+          achievement_id: string
+          employee_id: string
+          id: string
+          unlocked_at: string
+        }
+        Insert: {
+          achievement_id: string
+          employee_id: string
+          id?: string
+          unlocked_at?: string
+        }
+        Update: {
+          achievement_id?: string
+          employee_id?: string
+          id?: string
+          unlocked_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_achievements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_achievements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_leagues: {
         Row: {
           created_at: string
@@ -1673,6 +1752,64 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_mission_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          mission_id: string
+          period_key: string
+          progress: number
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          mission_id: string
+          period_key: string
+          progress?: number
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          mission_id?: string
+          period_key?: string
+          progress?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_mission_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_mission_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_mission_progress_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
             referencedColumns: ["id"]
           },
         ]
@@ -1799,6 +1936,51 @@ export type Database = {
           weekly_score?: number
         }
         Relationships: []
+      }
+      employee_streaks: {
+        Row: {
+          best_count: number
+          current_count: number
+          employee_id: string
+          id: string
+          last_event_date: string | null
+          streak_type: string
+          updated_at: string
+        }
+        Insert: {
+          best_count?: number
+          current_count?: number
+          employee_id: string
+          id?: string
+          last_event_date?: string | null
+          streak_type: string
+          updated_at?: string
+        }
+        Update: {
+          best_count?: number
+          current_count?: number
+          employee_id?: string
+          id?: string
+          last_event_date?: string | null
+          streak_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_streaks_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_streaks_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedback: {
         Row: {
@@ -2331,6 +2513,45 @@ export type Database = {
           recipient_id?: string
           sender_id?: string
           subject?: string | null
+        }
+        Relationships: []
+      }
+      missions: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          enabled: boolean
+          frequency: string
+          id: string
+          key: string
+          target_value: number
+          title_fa: string
+          xp_reward: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          key: string
+          target_value?: number
+          title_fa: string
+          xp_reward?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          key?: string
+          target_value?: number
+          title_fa?: string
+          xp_reward?: number
         }
         Relationships: []
       }
