@@ -289,6 +289,7 @@ function SalesSearchPage() {
                     categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
                     labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
                     dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+                    onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
                   />
                 </div>
                 <SheetFooter className="mt-4 flex-row gap-2">
@@ -296,7 +297,7 @@ function SalesSearchPage() {
                     variant="ghost"
                     onClick={() => {
                       setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                      setStockStatus("__all"); setProductType("__all");
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                     }}
                   >
                     پاک کردن همه
@@ -313,7 +314,7 @@ function SalesSearchPage() {
                 size="sm"
                 onClick={() => {
                   setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                  setStockStatus("__all"); setProductType("__all");
+                  setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                 }}
               >
                 <X className="ml-1 h-3.5 w-3.5" /> پاک کردن
@@ -339,7 +340,7 @@ function SalesSearchPage() {
                   size="sm"
                   onClick={() => {
                     setBrandIds([]); setCategoryIds([]); setLabelIds([]);
-                    setStockStatus("__all"); setProductType("__all");
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                   }}
                 >
                   <X className="ml-1 h-3.5 w-3.5" /> پاک کردن همه فیلترها
@@ -359,6 +360,7 @@ function SalesSearchPage() {
               categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
               labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
               dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+              onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
             />
           </div>
         </CardContent>
