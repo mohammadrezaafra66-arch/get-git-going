@@ -167,22 +167,6 @@ function SalesSearchPage() {
     }
   }, [salePriceTypes, salePriceTypeId]);
 
-  // labels -> products mapping when label filter active
-  const labelProductIdsQuery = useQuery({
-    enabled: labelIds.length > 0,
-    queryKey: ["sales-search-label-product-ids", labelIds],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_label_links")
-        .select("product_id")
-        .in("label_id", labelIds)
-        .limit(5000);
-      if (error) throw error;
-      return Array.from(new Set((data ?? []).map((r: { product_id: string }) => r.product_id)));
-    },
-    staleTime: 60_000,
-  });
-
   // ---------- products query ----------
   const productsQuery = useQuery({
     enabled: canSearch,
