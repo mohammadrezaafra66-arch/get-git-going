@@ -23,6 +23,7 @@ import { BoardSettingsSelector } from "./BoardSettingsSelector";
 import { BoardPriceTable } from "./BoardPriceTable";
 import { BoardProductDetailsDrawer } from "./BoardProductDetailsDrawer";
 import { useAminHozoorBoardPrices } from "@/hooks/pricing/useAminHozoorBoardPrices";
+import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 import { usePricingBoardAccess } from "@/hooks/pricing/usePricingBoardAccess";
 import { usePricingBoardPresence } from "@/hooks/pricing/usePricingBoardPresence";
 import { BoardAccessPendingState } from "./BoardAccessPendingState";
@@ -107,6 +108,21 @@ export function AminHozoorPriceBoard() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const startIndex = (page - 1) * pageSize + 1;
+
+  // analytics: board_price_viewed for currently rendered items
+  useEffect(() => {
+    if (!salePriceTypeId) return;
+    for (const it of items as any[]) {
+      const pid = it?.product_id ?? it?.id;
+      if (!pid) continue;
+      trackProductInteraction({
+        productId: pid,
+        eventType: "board_price_viewed",
+        source: "amin_hozoor_board",
+        salePriceTypeId,
+      });
+    }
+  }, [items, salePriceTypeId]);
 
   // ESC برای خروج از حالت نمایشگر
   useEffect(() => {
@@ -258,7 +274,15 @@ export function AminHozoorPriceBoard() {
           <BoardPriceTable
             items={items}
             kioskMode={kioskMode}
-            onOpenDetails={setDetailsId}
+            onOpenDetails={(id: string) => {
+              trackProductInteraction({
+                productId: id,
+                eventType: "product_details_opened",
+                source: "amin_hozoor_board",
+                salePriceTypeId,
+              });
+              setDetailsId(id);
+            }}
             startIndex={startIndex}
           />
 
