@@ -629,6 +629,23 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
                   </div>
                   <ChangeCell h={h} />
                 </div>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 px-2 text-xs"
+                    onClick={() => onOpenChart({
+                      productId: row.product.id,
+                      productName: row.product.name,
+                      salePriceTypeId: h.sale_price_type_id ?? "",
+                      salePriceTypeTitle: h.sale_price_type_title ?? "—",
+                    })}
+                    disabled={!h.sale_price_type_id}
+                  >
+                    <LineChart className="h-3.5 w-3.5" /> نمودار قیمت
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
