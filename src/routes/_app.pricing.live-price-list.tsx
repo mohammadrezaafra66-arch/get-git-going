@@ -479,7 +479,7 @@ function renderProductRows(
     onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
   },
 ) {
-  const colSpan = ctx.isSalesOnly ? 7 : 8;
+  const colSpan = ctx.isSalesOnly ? 8 : 9;
   const isUnavailable = row.product.stock_status === "unavailable";
   if (isUnavailable) {
     return [(
@@ -683,7 +683,8 @@ function ChangeCell({ h }: { h: HistoryRow }) {
   }
   const up = amt > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
-  const cls = up ? "text-red-600" : "text-emerald-600";
+  // قرارداد: افزایش = سبز، کاهش = قرمز
+  const cls = up ? "text-emerald-600" : "text-red-600";
   return (
     <div className={`flex flex-col text-xs ${cls}`}>
       <span className="inline-flex items-center gap-1 font-medium">
