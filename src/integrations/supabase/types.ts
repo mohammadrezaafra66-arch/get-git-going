@@ -734,7 +734,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          currency: Database["public"]["Enums"]["currency_code"]
+          currency: string
           fetched_at: string
           fetched_by: string | null
           id: string
@@ -746,7 +746,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          currency: Database["public"]["Enums"]["currency_code"]
+          currency: string
           fetched_at?: string
           fetched_by?: string | null
           id?: string
@@ -758,7 +758,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          currency?: Database["public"]["Enums"]["currency_code"]
+          currency?: string
           fetched_at?: string
           fetched_by?: string | null
           id?: string
@@ -811,7 +811,7 @@ export type Database = {
           approved_by: string | null
           created_at: string
           created_by: string | null
-          currency: Database["public"]["Enums"]["currency_code"]
+          currency: string
           effective_at: string
           fetch_source_id: string | null
           id: string
@@ -825,7 +825,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           created_by?: string | null
-          currency: Database["public"]["Enums"]["currency_code"]
+          currency: string
           effective_at?: string
           fetch_source_id?: string | null
           id?: string
@@ -839,7 +839,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           created_by?: string | null
-          currency?: Database["public"]["Enums"]["currency_code"]
+          currency?: string
           effective_at?: string
           fetch_source_id?: string | null
           id?: string
@@ -862,6 +862,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "publish_recipients_view"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "currency_rates_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "currency_rates_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "effective_currencies_view"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "currency_rates_fetch_source_id_fkey"
@@ -2316,6 +2330,85 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      product_computed_prices: {
+        Row: {
+          computed_at: string
+          computed_by: string | null
+          currency_rate: number
+          final_sale_price: number
+          id: string
+          input_currency: string
+          input_purchase_price: number
+          margin_amount: number
+          pricing_rule_id: string | null
+          product_id: string
+          purchase_price_id: string | null
+          purchase_price_toman: number
+          rounded_sale_price: number
+          sale_price_type_id: string
+          shipping_cost: number
+          source: string
+        }
+        Insert: {
+          computed_at?: string
+          computed_by?: string | null
+          currency_rate: number
+          final_sale_price: number
+          id?: string
+          input_currency: string
+          input_purchase_price: number
+          margin_amount?: number
+          pricing_rule_id?: string | null
+          product_id: string
+          purchase_price_id?: string | null
+          purchase_price_toman: number
+          rounded_sale_price: number
+          sale_price_type_id: string
+          shipping_cost?: number
+          source?: string
+        }
+        Update: {
+          computed_at?: string
+          computed_by?: string | null
+          currency_rate?: number
+          final_sale_price?: number
+          id?: string
+          input_currency?: string
+          input_purchase_price?: number
+          margin_amount?: number
+          pricing_rule_id?: string | null
+          product_id?: string
+          purchase_price_id?: string | null
+          purchase_price_toman?: number
+          rounded_sale_price?: number
+          sale_price_type_id?: string
+          shipping_cost?: number
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_label_links: {
         Row: {
@@ -3968,6 +4061,16 @@ export type Database = {
       }
     }
     Views: {
+      effective_currencies_view: {
+        Row: {
+          code: string | null
+          is_active: boolean | null
+          sort_order: number | null
+          symbol: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       publish_recipients_view: {
         Row: {
           full_name: string | null
