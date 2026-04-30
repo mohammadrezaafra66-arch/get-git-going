@@ -2567,30 +2567,48 @@ export type Database = {
       league_seasons: {
         Row: {
           created_at: string
-          end_date: string
+          end_date: string | null
+          ends_at: string | null
           id: string
           is_active: boolean
-          season_name: string
+          season_name: string | null
           settled_at: string | null
-          start_date: string
+          start_date: string | null
+          starts_at: string | null
+          status: string
+          title_en: string | null
+          title_fa: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string
-          end_date: string
+          end_date?: string | null
+          ends_at?: string | null
           id?: string
           is_active?: boolean
-          season_name: string
+          season_name?: string | null
           settled_at?: string | null
-          start_date: string
+          start_date?: string | null
+          starts_at?: string | null
+          status?: string
+          title_en?: string | null
+          title_fa?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string
-          end_date?: string
+          end_date?: string | null
+          ends_at?: string | null
           id?: string
           is_active?: boolean
-          season_name?: string
+          season_name?: string | null
           settled_at?: string | null
-          start_date?: string
+          start_date?: string | null
+          starts_at?: string | null
+          status?: string
+          title_en?: string | null
+          title_fa?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2599,24 +2617,45 @@ export type Database = {
           created_at: string
           demotion_percent: number
           id: string
+          is_active: boolean
+          min_level: number
+          min_xp: number
           promotion_percent: number
-          season_duration_days: number
+          season_duration_days: number | null
+          sort_order: number
+          tier: Database["public"]["Enums"]["league_tier"] | null
+          title_en: string | null
+          title_fa: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           demotion_percent?: number
           id?: string
+          is_active?: boolean
+          min_level?: number
+          min_xp?: number
           promotion_percent?: number
-          season_duration_days?: number
+          season_duration_days?: number | null
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["league_tier"] | null
+          title_en?: string | null
+          title_fa?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           demotion_percent?: number
           id?: string
+          is_active?: boolean
+          min_level?: number
+          min_xp?: number
           promotion_percent?: number
-          season_duration_days?: number
+          season_duration_days?: number | null
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["league_tier"] | null
+          title_en?: string | null
+          title_fa?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -5440,6 +5479,39 @@ export type Database = {
         }
         Relationships: []
       }
+      v_league_tiers_public: {
+        Row: {
+          id: string | null
+          is_active: boolean | null
+          min_level: number | null
+          min_xp: number | null
+          sort_order: number | null
+          tier: Database["public"]["Enums"]["league_tier"] | null
+          title_en: string | null
+          title_fa: string | null
+        }
+        Insert: {
+          id?: string | null
+          is_active?: boolean | null
+          min_level?: number | null
+          min_xp?: number | null
+          sort_order?: number | null
+          tier?: Database["public"]["Enums"]["league_tier"] | null
+          title_en?: string | null
+          title_fa?: string | null
+        }
+        Update: {
+          id?: string | null
+          is_active?: boolean | null
+          min_level?: number | null
+          min_xp?: number | null
+          sort_order?: number | null
+          tier?: Database["public"]["Enums"]["league_tier"] | null
+          title_en?: string | null
+          title_fa?: string | null
+        }
+        Relationships: []
+      }
       v_promotion_suggestions: {
         Row: {
           channel_id: string | null
@@ -6200,6 +6272,18 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      preview_league_season_changes: {
+        Args: { _season_id: string }
+        Returns: {
+          current_tier: Database["public"]["Enums"]["league_tier"]
+          employee_id: string
+          full_name: string
+          rank_in_tier: number
+          score: number
+          suggested_action: string
+          target_tier: Database["public"]["Enums"]["league_tier"]
+        }[]
+      }
       query_dynamic_table_rows: {
         Args: {
           p_filters?: Json
