@@ -146,7 +146,7 @@ export async function fetchMyTodayEntry(userId: string): Promise<MoodEntry | nul
     .eq("mood_date", todayISO())
     .maybeSingle();
   if (error) throw error;
-  return (data as MoodEntry | null) ?? null;
+  return (data as unknown as MoodEntry | null) ?? null;
 }
 
 export async function upsertTodayEntry(
@@ -169,11 +169,11 @@ export async function upsertTodayEntry(
   };
   const { data, error } = await supabase
     .from("daily_mood_entries")
-    .upsert(row, { onConflict: "user_id,mood_date" })
+    .upsert(row as never, { onConflict: "user_id,mood_date" })
     .select("*")
     .single();
   if (error) throw error;
-  return data as MoodEntry;
+  return data as unknown as MoodEntry;
 }
 
 export async function fetchAdminEntries(params: {
@@ -199,7 +199,7 @@ export async function fetchAdminEntries(params: {
   if (params.search) q = q.ilike("free_text", `%${params.search}%`);
   const { data, error, count } = await q;
   if (error) throw error;
-  return { rows: (data ?? []) as MoodEntry[], total: count ?? 0 };
+  return { rows: (data ?? []) as unknown as MoodEntry[], total: count ?? 0 };
 }
 
 export async function updateEntryStatus(id: string, status: EntryStatus, reviewerId: string) {
