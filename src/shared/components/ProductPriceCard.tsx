@@ -109,8 +109,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
 
   const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
   const stockKey = product?.stock_status ?? "unknown";
-  const { roles: _roles } = useAuth();
-  const canSeeInternalLabels = _roles.includes("admin") || _roles.includes("manager");
+  const canSeeInternalLabels = roles.includes("admin") || roles.includes("manager");
   const visibleLabels = (labelsQuery.data ?? []).filter(
     (l: any) => canSeeInternalLabels || l?.visibility !== "internal",
   );
@@ -195,9 +194,9 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
             </SheetHeader>
 
             {/* Labels */}
-            {(labelsQuery.data?.length ?? 0) > 0 && (
+            {visibleLabels.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {labelsQuery.data!.map((l: any) => (
+                {visibleLabels.map((l: any) => (
                   <Badge key={l.id} variant="outline" className="text-[11px]">{l.title}</Badge>
                 ))}
               </div>
