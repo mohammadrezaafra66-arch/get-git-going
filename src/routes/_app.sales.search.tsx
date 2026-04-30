@@ -314,7 +314,7 @@ function SalesSearchPage() {
                   <FiltersPanel
                     brands={brands as { id: string; name: string }[]}
                     categories={categories as { id: string; name: string; parent_id: string | null }[]}
-                    labels={labels as { id: string; title: string; color: string | null }[]}
+                    labels={visibleLabels as { id: string; title: string; color: string | null }[]}
                     brandIds={brandIds} setBrandIds={setBrandIds}
                     categoryIds={categoryIds} setCategoryIds={setCategoryIds}
                     labelIds={labelIds} setLabelIds={setLabelIds}
@@ -384,7 +384,7 @@ function SalesSearchPage() {
             <FiltersPanel
               brands={brands as { id: string; name: string }[]}
               categories={categories as { id: string; name: string; parent_id: string | null }[]}
-              labels={labels as { id: string; title: string; color: string | null }[]}
+              labels={visibleLabels as { id: string; title: string; color: string | null }[]}
               brandIds={brandIds} setBrandIds={setBrandIds}
               categoryIds={categoryIds} setCategoryIds={setCategoryIds}
               labelIds={labelIds} setLabelIds={setLabelIds}
