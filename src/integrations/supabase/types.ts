@@ -2078,6 +2078,45 @@ export type Database = {
         }
         Relationships: []
       }
+      gamification_kpi_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_key: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title_en: string | null
+          title_fa: string
+          updated_at: string
+          xp_amount: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_key: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title_en?: string | null
+          title_fa: string
+          updated_at?: string
+          xp_amount?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_key?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title_en?: string | null
+          title_fa?: string
+          updated_at?: string
+          xp_amount?: number
+        }
+        Relationships: []
+      }
       gamification_kpis: {
         Row: {
           created_at: string

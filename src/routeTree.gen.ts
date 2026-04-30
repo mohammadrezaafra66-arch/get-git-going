@@ -110,6 +110,7 @@ import { Route as AppProductsIdEditRouteImport } from './routes/_app.products_.$
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
+import { Route as AppGamificationAdminKpiRulesRouteImport } from './routes/_app.gamification.admin.kpi-rules'
 import { Route as AppAdminGamificationMissionsRouteImport } from './routes/_app.admin.gamification.missions'
 import { Route as AppAdminGamificationAchievementsRouteImport } from './routes/_app.admin.gamification.achievements'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
@@ -642,6 +643,12 @@ const AppOperationsDailyMoodAdminRoute =
     path: '/admin',
     getParentRoute: () => AppOperationsDailyMoodRoute,
   } as any)
+const AppGamificationAdminKpiRulesRoute =
+  AppGamificationAdminKpiRulesRouteImport.update({
+    id: '/admin/kpi-rules',
+    path: '/admin/kpi-rules',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const AppAdminGamificationMissionsRoute =
   AppAdminGamificationMissionsRouteImport.update({
     id: '/missions',
@@ -816,6 +823,7 @@ export interface FileRoutesByFullPath {
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/admin/gamification/missions': typeof AppAdminGamificationMissionsRoute
+  '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -928,6 +936,7 @@ export interface FileRoutesByTo {
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/admin/gamification/missions': typeof AppAdminGamificationMissionsRoute
+  '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -1045,6 +1054,7 @@ export interface FileRoutesById {
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
   '/_app/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/_app/admin/gamification/missions': typeof AppAdminGamificationMissionsRoute
+  '/_app/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
@@ -1162,6 +1172,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts/create'
     | '/admin/gamification/achievements'
     | '/admin/gamification/missions'
+    | '/gamification/admin/kpi-rules'
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -1274,6 +1285,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts/create'
     | '/admin/gamification/achievements'
     | '/admin/gamification/missions'
+    | '/gamification/admin/kpi-rules'
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -1390,6 +1402,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receipts/create'
     | '/_app/admin/gamification/achievements'
     | '/_app/admin/gamification/missions'
+    | '/_app/gamification/admin/kpi-rules'
     | '/_app/operations/daily-mood/admin'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
@@ -2132,6 +2145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsDailyMoodAdminRouteImport
       parentRoute: typeof AppOperationsDailyMoodRoute
     }
+    '/_app/gamification/admin/kpi-rules': {
+      id: '/_app/gamification/admin/kpi-rules'
+      path: '/admin/kpi-rules'
+      fullPath: '/gamification/admin/kpi-rules'
+      preLoaderRoute: typeof AppGamificationAdminKpiRulesRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/admin/gamification/missions': {
       id: '/_app/admin/gamification/missions'
       path: '/missions'
@@ -2246,10 +2266,12 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
 
 interface AppGamificationRouteChildren {
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
+  AppGamificationAdminKpiRulesRoute: typeof AppGamificationAdminKpiRulesRoute
 }
 
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
+  AppGamificationAdminKpiRulesRoute: AppGamificationAdminKpiRulesRoute,
 }
 
 const AppGamificationRouteWithChildren = AppGamificationRoute._addFileChildren(

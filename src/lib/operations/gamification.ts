@@ -574,3 +574,105 @@ export async function deleteReward(id: string) {
   const { error } = await supabase.from("gamification_rewards" as never).delete().eq("id", id);
   if (error) throw error;
 }
+
+// =====================================================
+// Phase 10.1 — KPI Rules Engine (event → XP)
+// =====================================================
+
+export interface KpiRule {
+  id: string;
+  title_fa: string;
+  title_en: string | null;
+  description: string | null;
+  event_key: string;
+  xp_amount: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type KpiRuleInput = {
+  id?: string;
+  title_fa: string;
+  title_en?: string | null;
+  description?: string | null;
+  event_key: string;
+  xp_amount: number;
+  is_active: boolean;
+  sort_order: number;
+};
+
+async function logKpiRuleAudit(action: string, entityId: string, diff: Record<string, unknown>) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("audit_logs").insert({
+    actor_id: user.id,
+    entity_type: "gamification_kpi_rule",
+    entity_id: entityId,
+    action,
+    diff: diff as never,
+  } as never);
+}
+
+export async function listKpiRules(): Promise<KpiRule[]> {
+  const { data, error } = await supabase
+    .from("gamification_kpi_rules" as never)
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as KpiRule[];
+}
+
+export async function createKpiRule(input: KpiRuleInput): Promise<KpiRule> {
+  const { data, error } = await supabase
+    .from("gamification_kpi_rules" as never)
+    .insert({
+      title_fa: input.title_fa,
+      title_en: input.title_en ?? null,
+      description: input.description ?? null,
+      event_key: input.event_key,
+      xp_amount: input.xp_amount,
+      is_active: input.is_active,
+      sort_order: input.sort_order,
+    } as never)
+    .select("*")
+    .single();
+  if (error) throw error;
+  const row = data as unknown as KpiRule;
+  await logKpiRuleAudit("kpi_rule_created", row.id, { after: row });
+  return row;
+}
+
+export async function updateKpiRule(id: string, patch: Partial<KpiRuleInput>): Promise<KpiRule> {
+  const { data: before } = await supabase
+    .from("gamification_kpi_rules" as never).select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase
+    .from("gamification_kpi_rules" as never)
+    .update(patch as never)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  const row = data as unknown as KpiRule;
+  await logKpiRuleAudit("kpi_rule_updated", id, { before, after: row });
+  return row;
+}
+
+export async function toggleKpiRule(id: string, is_active: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("gamification_kpi_rules" as never)
+    .update({ is_active } as never)
+    .eq("id", id);
+  if (error) throw error;
+  await logKpiRuleAudit(is_active ? "kpi_rule_enabled" : "kpi_rule_disabled", id, { is_active });
+}
+
+export async function deleteKpiRule(id: string): Promise<void> {
+  const { data: before } = await supabase
+    .from("gamification_kpi_rules" as never).select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("gamification_kpi_rules" as never).delete().eq("id", id);
+  if (error) throw error;
+  await logKpiRuleAudit("kpi_rule_deleted", id, { before });
+}
