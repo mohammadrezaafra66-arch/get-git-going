@@ -190,11 +190,11 @@ function SalesSearchPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_sales_search_products", {
         p_search: term,
-        p_brand_ids: brandIds.length > 0 ? brandIds : null,
-        p_category_ids: categoryIds.length > 0 ? categoryIds : null,
-        p_label_ids: labelIds.length > 0 ? labelIds : null,
-        p_stock_status: stockStatus !== "__all" ? stockStatus : null,
-        p_product_type: productType !== "__all" ? productType : null,
+        p_brand_ids: brandIds.length > 0 ? brandIds : undefined,
+        p_category_ids: categoryIds.length > 0 ? categoryIds : undefined,
+        p_label_ids: labelIds.length > 0 ? labelIds : undefined,
+        p_stock_status: stockStatus !== "__all" ? stockStatus : undefined,
+        p_product_type: productType !== "__all" ? productType : undefined,
         p_only_with_price: onlyWithPrice,
         p_limit: RESULT_LIMIT,
         p_offset: 0,
