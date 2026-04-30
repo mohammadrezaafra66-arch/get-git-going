@@ -30,7 +30,8 @@ export type ModuleKey =
   | "data-tables"
   | "bot-api-keys"
   | "suppliers"
-  | "academy";
+  | "academy"
+  | "hr";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -74,6 +75,12 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     create: ["admin","manager"],
     update: ["admin","manager"],
     delete: ["admin","manager"],
+  },
+  hr: {
+    view: ["admin","manager"],
+    create: ALL_ROLES,
+    update: ["admin","manager"],
+    delete: ["admin"],
   },
 };
 

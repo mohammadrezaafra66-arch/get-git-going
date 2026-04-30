@@ -1156,6 +1156,171 @@ export type Database = {
           },
         ]
       }
+      daily_mood_entries: {
+        Row: {
+          answers: Json
+          created_at: string
+          free_text: string | null
+          hafez_poem_id: string | null
+          hafez_saved: boolean
+          id: string
+          manager_note: string | null
+          mood_date: string
+          mood_key: string
+          mood_label: string
+          mood_score: number | null
+          reasons: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scenario_key: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          visibility: string
+          wants_follow_up: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          free_text?: string | null
+          hafez_poem_id?: string | null
+          hafez_saved?: boolean
+          id?: string
+          manager_note?: string | null
+          mood_date?: string
+          mood_key: string
+          mood_label: string
+          mood_score?: number | null
+          reasons?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scenario_key?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+          wants_follow_up?: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          free_text?: string | null
+          hafez_poem_id?: string | null
+          hafez_saved?: boolean
+          id?: string
+          manager_note?: string | null
+          mood_date?: string
+          mood_key?: string
+          mood_label?: string
+          mood_score?: number | null
+          reasons?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scenario_key?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+          wants_follow_up?: string
+        }
+        Relationships: []
+      }
+      daily_mood_hafez_poems: {
+        Row: {
+          created_at: string
+          id: string
+          interpretation: string | null
+          is_active: boolean
+          poem_text: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interpretation?: string | null
+          is_active?: boolean
+          poem_text: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interpretation?: string | null
+          is_active?: boolean
+          poem_text?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
+      daily_mood_questions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          next_rules: Json
+          options: Json
+          question_key: string
+          question_text: string
+          question_type: string
+          scenario_key: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          next_rules?: Json
+          options?: Json
+          question_key: string
+          question_text: string
+          question_type: string
+          scenario_key: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          next_rules?: Json
+          options?: Json
+          question_key?: string
+          question_text?: string
+          question_type?: string
+          scenario_key?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      daily_mood_scenarios: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          mood_keys: string[]
+          scenario_key: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mood_keys: string[]
+          scenario_key: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mood_keys?: string[]
+          scenario_key?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       dynamic_table_cells: {
         Row: {
           column_id: string
@@ -4602,6 +4767,7 @@ export type Database = {
         Returns: boolean
       }
       is_board_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_hr_manager: { Args: { _user_id: string }; Returns: boolean }
       is_product_owner: {
         Args: { _product_id: string; _user_id: string }
         Returns: boolean

@@ -72,6 +72,7 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
@@ -101,6 +102,7 @@ import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products_.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
+import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
@@ -432,6 +434,11 @@ const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   path: '/operations/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
+  id: '/operations/daily-mood',
+  path: '/operations/daily-mood',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMarketingSuggestionsHistoryRoute =
   AppMarketingSuggestionsHistoryRouteImport.update({
     id: '/marketing/suggestions-history',
@@ -581,6 +588,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/pricing/sale-lists/$listId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOperationsDailyMoodAdminRoute =
+  AppOperationsDailyMoodAdminRouteImport.update({
+    id: '/admin',
+    path: '/admin',
+    getParentRoute: () => AppOperationsDailyMoodRoute,
+  } as any)
 const AppAccountingReceiptsCreateRoute =
   AppAccountingReceiptsCreateRouteImport.update({
     id: '/create',
@@ -690,6 +703,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -733,6 +747,7 @@ export interface FileRoutesByFullPath {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -792,6 +807,7 @@ export interface FileRoutesByTo {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -834,6 +850,7 @@ export interface FileRoutesByTo {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -897,6 +914,7 @@ export interface FileRoutesById {
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -940,6 +958,7 @@ export interface FileRoutesById {
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/_app/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/products_/$id/edit': typeof AppProductsIdEditRoute
@@ -1003,6 +1022,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/daily-mood'
     | '/operations/tasks'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
@@ -1046,6 +1066,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -1105,6 +1126,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/daily-mood'
     | '/operations/tasks'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
@@ -1147,6 +1169,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -1209,6 +1232,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
+    | '/_app/operations/daily-mood'
     | '/_app/operations/tasks'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/calculator'
@@ -1252,6 +1276,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/$courseId_/$lessonId'
     | '/_app/accounting/receipts/$receiptId'
     | '/_app/accounting/receipts/create'
+    | '/_app/operations/daily-mood/admin'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/products_/$id/edit'
@@ -1727,6 +1752,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/daily-mood': {
+      id: '/_app/operations/daily-mood'
+      path: '/operations/daily-mood'
+      fullPath: '/operations/daily-mood'
+      preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/suggestions-history': {
       id: '/_app/marketing/suggestions-history'
       path: '/marketing/suggestions-history'
@@ -1930,6 +1962,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/daily-mood/admin': {
+      id: '/_app/operations/daily-mood/admin'
+      path: '/admin'
+      fullPath: '/operations/daily-mood/admin'
+      preLoaderRoute: typeof AppOperationsDailyMoodAdminRouteImport
+      parentRoute: typeof AppOperationsDailyMoodRoute
+    }
     '/_app/accounting/receipts/create': {
       id: '/_app/accounting/receipts/create'
       path: '/create'
@@ -2099,6 +2138,20 @@ const AppAccountingReceiptsRouteWithChildren =
     AppAccountingReceiptsRouteChildren,
   )
 
+interface AppOperationsDailyMoodRouteChildren {
+  AppOperationsDailyMoodAdminRoute: typeof AppOperationsDailyMoodAdminRoute
+}
+
+const AppOperationsDailyMoodRouteChildren: AppOperationsDailyMoodRouteChildren =
+  {
+    AppOperationsDailyMoodAdminRoute: AppOperationsDailyMoodAdminRoute,
+  }
+
+const AppOperationsDailyMoodRouteWithChildren =
+  AppOperationsDailyMoodRoute._addFileChildren(
+    AppOperationsDailyMoodRouteChildren,
+  )
+
 interface AppPricingSaleListsListIdRouteChildren {
   AppPricingSaleListsListIdPublishRoute: typeof AppPricingSaleListsListIdPublishRoute
 }
@@ -2177,6 +2230,7 @@ interface AppRouteChildren {
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -2251,6 +2305,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
