@@ -280,6 +280,7 @@ function WorkbenchPage() {
               dirty={dirty[row.id]}
               stepPct={stepPct}
               saving={saving === row.id}
+              justSaved={!!savedFlash[row.id]}
               onPrice={(v) => setRowPrice(row, v)}
               onBump={(p) => bumpPrice(row, p)}
               onStock={(s) => setRowStock(row, s)}
