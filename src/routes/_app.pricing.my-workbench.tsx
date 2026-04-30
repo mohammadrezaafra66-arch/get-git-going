@@ -22,6 +22,7 @@ import {
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { EffectiveCurrenciesPanel } from "@/components/pricing/EffectiveCurrenciesPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,6 +196,8 @@ function WorkbenchPage() {
         title="کارگاه قیمت من"
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
+
+      <EffectiveCurrenciesPanel />
 
       {/* فیلترها */}
       <Card>

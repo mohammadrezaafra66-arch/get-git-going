@@ -94,7 +94,7 @@ export async function fetchLatestPurchasePrice(productId: string) {
 }
 
 /** آخرین نرخ ارز فعال. */
-export async function fetchLatestCurrencyRate(currency: "usd" | "aed") {
+export async function fetchLatestCurrencyRate(currency: string) {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("currency_rates")

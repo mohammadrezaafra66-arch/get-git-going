@@ -9,6 +9,7 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Card, CardContent } from "@/components/ui/card";
+import { EffectiveCurrenciesPanel } from "@/components/pricing/EffectiveCurrenciesPanel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -285,6 +286,8 @@ function LivePriceListPage() {
         }
       />
       <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
+
+      <EffectiveCurrenciesPanel />
 
       {/* summary */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
