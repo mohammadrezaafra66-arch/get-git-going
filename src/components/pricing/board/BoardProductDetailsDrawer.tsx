@@ -144,6 +144,15 @@ export function BoardProductDetailsDrawer({ open, onOpenChange, productId, saleP
                     <p className="text-muted-foreground whitespace-pre-wrap">{product.technical_notes}</p>
                   </div>
                 )}
+                <div className="pt-2">
+                  <CreatePriceAlertButton
+                    productId={product.id}
+                    productName={product.name}
+                    salePriceTypeId={salePriceTypeId}
+                    variant="outline"
+                    label="ایجاد هشدار قیمت"
+                  />
+                </div>
               </CardContent>
             </Card>
 
