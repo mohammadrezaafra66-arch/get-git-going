@@ -1044,6 +1044,7 @@ export type Database = {
         Row: {
           accounting_code: string | null
           address: string | null
+          birth_date: string | null
           city: string | null
           created_at: string
           email: string | null
@@ -1060,6 +1061,7 @@ export type Database = {
         Insert: {
           accounting_code?: string | null
           address?: string | null
+          birth_date?: string | null
           city?: string | null
           created_at?: string
           email?: string | null
@@ -1076,6 +1078,7 @@ export type Database = {
         Update: {
           accounting_code?: string | null
           address?: string | null
+          birth_date?: string | null
           city?: string | null
           created_at?: string
           email?: string | null
@@ -2621,6 +2624,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          birth_date: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -2633,6 +2637,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -2645,6 +2650,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          birth_date?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -4198,6 +4204,12 @@ export type Database = {
           out_row_number: number
           out_values: Json
           total_count: number
+        }[]
+      }
+      generate_birthday_notifications: {
+        Args: never
+        Returns: {
+          created_count: number
         }[]
       }
       generate_sale_price_type_code: { Args: never; Returns: string }
