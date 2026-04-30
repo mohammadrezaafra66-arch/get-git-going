@@ -95,6 +95,7 @@ import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.w
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
+import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
@@ -561,6 +562,11 @@ const AppAdminMarketingChannelsRoute =
     path: '/admin/marketing-channels',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminGamificationRoute = AppAdminGamificationRouteImport.update({
+  id: '/admin/gamification',
+  path: '/admin/gamification',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingReceiptsRoute = AppAccountingReceiptsRouteImport.update({
   id: '/accounting/receipts',
   path: '/accounting/receipts',
@@ -728,6 +734,7 @@ export interface FileRoutesByFullPath {
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
+  '/admin/gamification': typeof AppAdminGamificationRoute
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
@@ -838,6 +845,7 @@ export interface FileRoutesByTo {
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
+  '/admin/gamification': typeof AppAdminGamificationRoute
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
@@ -951,6 +959,7 @@ export interface FileRoutesById {
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
+  '/_app/admin/gamification': typeof AppAdminGamificationRoute
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
@@ -1065,6 +1074,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/receipts'
+    | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/roles'
     | '/admin/settings'
@@ -1175,6 +1185,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/receipts'
+    | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/roles'
     | '/admin/settings'
@@ -1287,6 +1298,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/accounting/receipts'
+    | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
@@ -1989,6 +2001,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminMarketingChannelsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/gamification': {
+      id: '/_app/admin/gamification'
+      path: '/admin/gamification'
+      fullPath: '/admin/gamification'
+      preLoaderRoute: typeof AppAdminGamificationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/receipts': {
       id: '/_app/accounting/receipts'
       path: '/accounting/receipts'
@@ -2348,6 +2367,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
+  AppAdminGamificationRoute: typeof AppAdminGamificationRoute
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
@@ -2428,6 +2448,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
+  AppAdminGamificationRoute: AppAdminGamificationRoute,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
