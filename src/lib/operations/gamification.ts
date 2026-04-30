@@ -378,3 +378,199 @@ export async function listEmployeeStreaks(employeeId: string): Promise<EmployeeS
   if (error) throw error;
   return (data ?? []) as unknown as EmployeeStreak[];
 }
+
+// =====================================================
+// Phase 8 — Admin Panel
+// =====================================================
+
+export interface AdminOverview {
+  total_employees: number;
+  avg_xp: number;
+  avg_level: number;
+  top_players: { employee_id: string; full_name: string | null; level: number; xp_total: number }[];
+  league_distribution: { league: string; count: number }[];
+  xp_distribution: { bucket: string; count: number }[];
+  missions_completion: { mission: string; completed: number; total: number }[];
+}
+
+export async function getAdminGamificationOverview(): Promise<AdminOverview> {
+  const { data, error } = await supabase.rpc("admin_gamification_overview" as never);
+  if (error) throw error;
+  return data as unknown as AdminOverview;
+}
+
+// ---- KPIs ----
+export interface GamificationKpi {
+  id: string;
+  key: string;
+  label_fa: string;
+  description: string | null;
+  weight: number;
+  enabled: boolean;
+  team_scope: string;
+  source: string;
+  unit: string | null;
+  direction: "higher_better" | "lower_better";
+  display_order: number;
+}
+
+export async function listKpis(): Promise<GamificationKpi[]> {
+  const { data, error } = await supabase
+    .from("gamification_kpis" as never)
+    .select("*")
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as GamificationKpi[];
+}
+
+export async function upsertKpi(input: Partial<GamificationKpi> & { key: string; label_fa: string }) {
+  const { error } = await supabase.from("gamification_kpis" as never).upsert(input, { onConflict: "key" });
+  if (error) throw error;
+}
+
+export async function toggleKpi(id: string, enabled: boolean) {
+  const { error } = await supabase.from("gamification_kpis" as never).update({ enabled }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteKpi(id: string) {
+  const { error } = await supabase.from("gamification_kpis" as never).delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---- Achievements (admin) ----
+export interface AchievementAdmin {
+  id: string;
+  key: string;
+  title_fa: string;
+  description: string | null;
+  icon: string | null;
+  xp_reward: number;
+  enabled: boolean;
+  display_order: number;
+  rule_type: "manual" | "level" | "streak" | "score" | "missions_completed";
+  rule_value: number | null;
+}
+
+export async function listAchievementsAdmin(): Promise<AchievementAdmin[]> {
+  const { data, error } = await supabase
+    .from("achievements" as never)
+    .select("*")
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as AchievementAdmin[];
+}
+
+export async function upsertAchievement(input: Partial<AchievementAdmin> & { key: string; title_fa: string }) {
+  const { error } = await supabase.from("achievements" as never).upsert(input, { onConflict: "key" });
+  if (error) throw error;
+}
+
+export async function toggleAchievement(id: string, enabled: boolean) {
+  const { error } = await supabase.from("achievements" as never).update({ enabled }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteAchievement(id: string) {
+  const { error } = await supabase.from("achievements" as never).delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---- Missions (admin) ----
+export interface MissionAdmin {
+  id: string;
+  key: string;
+  title_fa: string;
+  description: string | null;
+  target_value: number;
+  xp_reward: number;
+  frequency: "daily" | "weekly" | "monthly";
+  enabled: boolean;
+  display_order: number;
+}
+
+export async function listMissionsAdmin(): Promise<MissionAdmin[]> {
+  const { data, error } = await supabase
+    .from("missions" as never)
+    .select("*")
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as MissionAdmin[];
+}
+
+export async function upsertMission(input: Partial<MissionAdmin> & { key: string; title_fa: string }) {
+  const { error } = await supabase.from("missions" as never).upsert(input, { onConflict: "key" });
+  if (error) throw error;
+}
+
+export async function toggleMission(id: string, enabled: boolean) {
+  const { error } = await supabase.from("missions" as never).update({ enabled }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteMission(id: string) {
+  const { error } = await supabase.from("missions" as never).delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ---- League settings ----
+export interface LeagueSettings {
+  id: string;
+  promotion_percent: number;
+  demotion_percent: number;
+  season_duration_days: number;
+}
+
+export async function getLeagueSettings(): Promise<LeagueSettings | null> {
+  const { data, error } = await supabase
+    .from("league_settings" as never)
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as unknown as LeagueSettings | null;
+}
+
+export async function updateLeagueSettings(id: string, patch: Partial<LeagueSettings>) {
+  const { error } = await supabase.from("league_settings" as never).update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+// ---- Rewards ----
+export interface GamificationReward {
+  id: string;
+  key: string;
+  title_fa: string;
+  description: string | null;
+  trigger_type: "level" | "league" | "streak" | "manual";
+  trigger_value: number;
+  reward_type: "xp_bonus" | "badge" | "gift" | "custom";
+  reward_value: number | null;
+  notes: string | null;
+  enabled: boolean;
+  display_order: number;
+}
+
+export async function listRewards(): Promise<GamificationReward[]> {
+  const { data, error } = await supabase
+    .from("gamification_rewards" as never)
+    .select("*")
+    .order("display_order", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as GamificationReward[];
+}
+
+export async function upsertReward(input: Partial<GamificationReward> & { key: string; title_fa: string }) {
+  const { error } = await supabase.from("gamification_rewards" as never).upsert(input, { onConflict: "key" });
+  if (error) throw error;
+}
+
+export async function toggleReward(id: string, enabled: boolean) {
+  const { error } = await supabase.from("gamification_rewards" as never).update({ enabled }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteReward(id: string) {
+  const { error } = await supabase.from("gamification_rewards" as never).delete().eq("id", id);
+  if (error) throw error;
+}
