@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search, Filter, ArrowUpRight, ArrowDownRight, Tag, LineChart,
@@ -28,6 +28,7 @@ import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
+import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -259,6 +260,20 @@ function LivePriceListPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const isLoading = productsQuery.isLoading || (productIds.length > 0 && historyQuery.isLoading);
 
+  // ---------- analytics: track price_checked for products whose price is shown ----------
+  useEffect(() => {
+    for (const r of merged) {
+      if (!r.hasPrice) continue;
+      const sptId = r.histories[0]?.sale_price_type_id ?? null;
+      trackProductInteraction({
+        productId: r.product.id,
+        eventType: "price_checked",
+        source: "live_price_list",
+        salePriceTypeId: sptId,
+      });
+    }
+  }, [merged]);
+
   // ---------- summary ----------
   const summaryQuery = useQuery({
     queryKey: ["live-price-summary"],
@@ -420,7 +435,15 @@ function LivePriceListPage() {
                       {merged.flatMap((row) => renderProductRows(row, {
                         isSalesOnly,
                         isPrivileged,
-                        onOpenChart: (args) => setChartCtx(args),
+                        onOpenChart: (args) => {
+                          trackProductInteraction({
+                            productId: args.productId,
+                            eventType: "chart_opened",
+                            source: "live_price_list",
+                            salePriceTypeId: args.salePriceTypeId,
+                          });
+                          setChartCtx(args);
+                        },
                       }))}
                     </tbody>
                   </table>
@@ -437,7 +460,15 @@ function LivePriceListPage() {
                 row={row}
                 isSalesOnly={isSalesOnly}
                 isPrivileged={isPrivileged}
-                onOpenChart={(args) => setChartCtx(args)}
+                onOpenChart={(args) => {
+                  trackProductInteraction({
+                    productId: args.productId,
+                    eventType: "chart_opened",
+                    source: "live_price_list",
+                    salePriceTypeId: args.salePriceTypeId,
+                  });
+                  setChartCtx(args);
+                }}
               />
             ))}
           </div>

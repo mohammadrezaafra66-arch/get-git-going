@@ -3,7 +3,7 @@ import {
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
   MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
   CheckSquare, Workflow, Settings, Heart,
-  Megaphone, Edit3, Monitor,
+  Megaphone, Edit3, Monitor, TrendingUp,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
