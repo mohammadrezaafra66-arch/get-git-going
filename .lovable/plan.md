@@ -1,255 +1,159 @@
-# دستیار هوشمند افراکالا — فاز اول (Skeleton معماری)
 
-## هدف فاز اول
+## H-7 — Promotion Suggestion Engine
 
-ساخت **اسکلت کامل** برنامه: layout، routing، احراز هویت، RBAC، دیتابیس پایه، استانداردهای UI/UX، و route خالی برای همه ماژول‌ها. **در این فاز هیچ منطق تجاری پیچیده‌ای پیاده نمی‌شود** — فقط زیربنای محکم تا فازهای بعدی روی آن ساخته شود.
+### Scope (strict)
 
----
+- No new tables.
+- One batched migration: a Postgres RPC `compute_promotion_scores()` and a regular SQL view `v_promotion_suggestions`. (Regular view, not materialized — avoids a refresh job and keeps it simple. The RPC stays available for filtered/parametrized calls.)
+- One new page `_app.marketing.suggestions.tsx`.
+- Nav entry visible only to `admin`, `manager`, `accountant`.
+- "Mark as used" writes a row to `audit_logs` only.
 
-## ۱. تصمیمات کلیدی (تأییدشده)
+### Data sources reused
 
-- **Backend**: Lovable Cloud (Postgres + Auth + RLS + Realtime). Schema استاندارد SQL است و هر زمان لازم شد به Supabase self-hosted روی سرور اختصاصی قابل مهاجرت است.
-- **فونت**: Vazirmatn — به صورت local در `public/fonts/` (هیچ Google Fonts/CDN خارجی).
-- **نقش‌ها**: `admin`, `manager`, `sales`, `accountant`, `viewer`.
-- **ماژول‌ها**: همه ۱۲ ماژول از روز اول route و layout دارند.
-- **زبان/جهت**: کامل فارسی، `dir="rtl"`، mobile-first.
+| Concept | Source |
+|---|---|
+| label_weight_sum (per product) | `product_label_links` join `product_labels.weight` (sum, internal labels included for admin/manager/accountant — same audience as the page) |
+| channel_weight | `marketing_channels.weight` (only `is_active = true`) |
+| stock_factor | `products.stock_status` mapped: `available`=1.0, `limited`=0.6, `unknown`=0.4, `unavailable`=0.0 |
+| recency_factor | sales velocity in last 90 days from `invoice_items` join `invoices(issue_date, status<>'cancelled')`: `qty_90d`. Factor = `1 + ln(1 + qty_90d) / 5` (capped at 3.0). Products with no sales get 1.0. |
 
----
+Final score: `label_weight_sum * channel_weight * stock_factor * recency_factor`.
+Products with score = 0 (no labels, or unavailable stock, or no active channel) are excluded.
 
-## ۲. استک نهایی
-
-| لایه | انتخاب | دلیل |
-|---|---|---|
-| Framework | TanStack Start (موجود) | SSR + file-based routing + type-safe |
-| UI | shadcn/ui + Tailwind v4 (موجود) | کاملاً local، بدون CDN |
-| فونت | Vazirmatn (woff2 محلی) | فارسی، open-source، بدون وابستگی خارجی |
-| State سرور | TanStack Query | cache + debounce + کنترل بار |
-| فرم/اعتبارسنجی | react-hook-form + zod | استاندارد، type-safe |
-| دیتابیس | Lovable Cloud (Postgres + RLS) | self-host-able بعداً |
-| آیکون | lucide-react (محلی) | بدون CDN |
-| تاریخ شمسی | dayjs + dayjs-jalali | local، سبک |
-
----
-
-## ۳. ساختار پوشه‌ها (ماژولار)
-
-```
-src/
-  routes/                         # File-based routing
-    __root.tsx                    # shell + RTL + فونت + QueryProvider
-    index.tsx                     # ریدایرکت بر اساس auth
-    login.tsx
-    _app.tsx                      # layout محافظت‌شده (sidebar + header)
-    _app/
-      dashboard.tsx
-      products/index.tsx          # ماژول محصولات
-      pricing/index.tsx           # موتور قیمت‌گذاری
-      purchases/index.tsx         # خرید
-      sales/index.tsx             # فروش
-      invoices/index.tsx          # فاکتور
-      price-lists/index.tsx       # لیست قیمت
-      users/index.tsx             # کاربران
-      roles/index.tsx             # نقش‌ها و دسترسی‌ها
-      reports/index.tsx           # گزارش‌ها
-      knowledge/index.tsx         # دانش سازمانی
-      feedback/index.tsx          # بازخورد
-      messages/index.tsx          # پیام‌های داخلی
-    unauthorized.tsx
-
-  modules/                        # منطق هر ماژول جدا
-    products/    { components, hooks, queries, types, schemas }
-    pricing/     { engine/, rules/, components, ... }
-    purchases/   ...
-    sales/       ...
-    invoices/    ...
-    price-lists/ ...
-    users/       ...
-    roles/       ...
-    reports/     ...
-    knowledge/   ...
-    feedback/    ...
-    messages/    ...
-
-  components/
-    layout/      { AppShell, Sidebar, Header, MobileNav, Breadcrumbs }
-    ui/          # shadcn (موجود)
-    common/      { DataTable, EmptyState, PageHeader, ConfirmDialog, JalaliDatePicker }
-    rbac/        { RoleGuard, PermissionGate }
-
-  lib/
-    auth/        { useAuth, AuthProvider, permissions.ts }
-    rbac/        { roles.ts, permissions-matrix.ts, hasPermission.ts }
-    i18n/        { fa.ts, formatters.ts }
-    db/          { client wrappers, query helpers }
-    utils/       { jalali, currency, validation }
-
-  styles/
-    globals.css  (شامل @import فونت Vazirmatn local)
-
-public/
-  fonts/vazirmatn/  # woff2 وزن‌های 300-700
-```
-
----
-
-## ۴. مدل دیتابیس پایه
-
-### نقش‌ها (پترن امن، بدون recursion)
+### Migration (single file)
 
 ```sql
-create type app_role as enum ('admin','manager','sales','accountant','viewer');
+-- 1. View: cross-product of (active products) x (active channels) with computed score.
+create or replace view public.v_promotion_suggestions as
+with label_sums as (
+  select pll.product_id, coalesce(sum(pl.weight), 0)::numeric as label_weight_sum
+  from public.product_label_links pll
+  join public.product_labels pl on pl.id = pll.label_id and pl.is_active = true
+  group by pll.product_id
+),
+sales_90d as (
+  select ii.product_id, coalesce(sum(ii.quantity), 0)::numeric as qty_90d
+  from public.invoice_items ii
+  join public.invoices i on i.id = ii.invoice_id
+  where i.issue_date >= (current_date - interval '90 days')
+    and coalesce(i.status, '') <> 'cancelled'
+  group by ii.product_id
+)
+select
+  p.id as product_id,
+  p.name as product_name,
+  p.sku,
+  p.stock_status,
+  mc.id as channel_id,
+  mc.name as channel_name,
+  coalesce(ls.label_weight_sum, 0) as label_weight_sum,
+  mc.weight as channel_weight,
+  case p.stock_status
+    when 'available' then 1.0 when 'limited' then 0.6
+    when 'unknown' then 0.4 else 0.0 end as stock_factor,
+  least(3.0, 1 + ln(1 + coalesce(s90.qty_90d, 0)) / 5)::numeric as recency_factor,
+  (coalesce(ls.label_weight_sum,0)
+    * mc.weight
+    * (case p.stock_status when 'available' then 1.0 when 'limited' then 0.6 when 'unknown' then 0.4 else 0.0 end)
+    * least(3.0, 1 + ln(1 + coalesce(s90.qty_90d, 0)) / 5)
+  )::numeric as score,
+  coalesce(s90.qty_90d, 0) as qty_90d
+from public.products p
+cross join public.marketing_channels mc
+left join label_sums ls on ls.product_id = p.id
+left join sales_90d s90 on s90.product_id = p.id
+where p.is_active = true and mc.is_active = true;
 
-create table profiles (
-  id uuid primary key references auth.users on delete cascade,
-  full_name text,
-  phone text,
-  avatar_url text,
-  is_active boolean default true,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+-- RLS for the view: granted via underlying tables. Restrict with security_invoker.
+alter view public.v_promotion_suggestions set (security_invoker = true);
 
-create table user_roles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  role app_role not null,
-  assigned_by uuid references auth.users,
-  assigned_at timestamptz default now(),
-  unique(user_id, role)
-);
+-- 2. RPC with filters (used by the page).
+create or replace function public.compute_promotion_scores(
+  _channel_id uuid default null,
+  _min_score numeric default 0,
+  _limit int default 200
+)
+returns setof public.v_promotion_suggestions
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select * from public.v_promotion_suggestions
+  where score > 0
+    and (_channel_id is null or channel_id = _channel_id)
+    and score >= coalesce(_min_score, 0)
+  order by score desc
+  limit greatest(_limit, 1);
+$$;
 
--- security definer برای جلوگیری از RLS recursion
-create function has_role(_user_id uuid, _role app_role)
-returns boolean language sql stable security definer set search_path=public
-as $$ select exists(select 1 from user_roles where user_id=_user_id and role=_role) $$;
+-- 3. Restrict execution to the audience.
+revoke all on function public.compute_promotion_scores(uuid, numeric, int) from public, anon;
+grant execute on function public.compute_promotion_scores(uuid, numeric, int) to authenticated;
 ```
 
-### Audit log (مرکزی برای همه ماژول‌ها)
+Notes:
+- `security_invoker = true` makes the view honor the caller's RLS on `products` / `invoice_items` / `invoices` / `marketing_channels` / `product_labels` (all already restricted appropriately).
+- No realtime, no triggers, no new tables.
 
-```sql
-create table audit_logs (
-  id bigserial primary key,
-  actor_id uuid references auth.users,
-  entity_type text not null,    -- 'product','invoice',...
-  entity_id text not null,
-  action text not null,         -- 'create','update','delete'
-  diff jsonb,                   -- before/after
-  ip text,
-  created_at timestamptz default now()
-);
-create index on audit_logs(entity_type, entity_id);
-create index on audit_logs(actor_id, created_at desc);
+### Frontend — `src/routes/_app.marketing.suggestions.tsx`
+
+- Route guard via existing `RoleGuard` (`admin`, `manager`, `accountant`); fallback to `/unauthorized`.
+- Filters bar (matches existing FiltersBar/Select pattern):
+  - Channel: `<Select>` populated from `marketing_channels` (active only) + "همه کانال‌ها".
+  - Minimum score: numeric input, default `0`, debounced 400ms.
+  - Limit: fixed at 200 (no UI control).
+- Data fetched with TanStack Query: `supabase.rpc('compute_promotion_scores', { _channel_id, _min_score, _limit: 200 })`. `staleTime: 30s`.
+- Table columns (using existing `Table` primitives, RTL):
+  - محصول (name + SKU)
+  - کانال
+  - وزن برچسب‌ها
+  - وزن کانال
+  - موجودی (badge from `stock_status`)
+  - فروش ۹۰ روز
+  - امتیاز (rounded to 2 decimals, bold)
+  - عمل: «ثبت به‌عنوان استفاده‌شده»
+- "Mark as used" handler:
+  ```ts
+  await supabase.from('audit_logs').insert({
+    actor_id: user.id,
+    entity_type: 'promotion_suggestion',
+    entity_id: `${product_id}:${channel_id}`,
+    action: 'promotion_suggestion_used',
+    diff: { product_id, channel_id, score, channel_name, product_name } as never,
+  });
+  ```
+  Show a toast on success; row stays visible (no client-side hide — keeps logic trivial).
+- Empty state, loading skeleton, error fallback follow patterns from `_app.admin.marketing-channels.tsx`.
+- No charts. No realtime.
+
+### Navigation
+
+In `src/components/layout/nav-items.ts` add one entry:
+```ts
+{ to: "/marketing/suggestions", label: "پیشنهادهای تبلیغاتی", icon: Megaphone, module: "reports", group: "operations" },
 ```
+Visibility relies on existing `RoleGuard` inside the page; since `module: "reports"` is broadly visible, the page itself enforces the admin/manager/accountant restriction.
 
-### جداول stub برای هر ماژول (فقط ساختار حداقلی + RLS)
+### Files touched
 
-محصولات، دسته‌ها، واحدها، مشتریان، تأمین‌کنندگان، فاکتورها، اقلام فاکتور، لیست‌های قیمت، قوانین قیمت‌گذاری (با versioning)، پیام‌ها، بازخوردها، مقالات دانش. **در این فاز فقط جدول‌های پایه + RLS ساخته می‌شوند**؛ منطق در فازهای بعد.
+- **Created**: `supabase/migrations/<ts>_h7_promotion_suggestions.sql` (view + RPC + grants)
+- **Created**: `src/routes/_app.marketing.suggestions.tsx`
+- **Edited**: `src/components/layout/nav-items.ts` (one new line)
 
-همه جداول مهم یک ستون `created_at`, `updated_at`, و trigger برای ثبت در `audit_logs` خواهند داشت.
+No edits to `types.ts` needed by hand — it regenerates from the migration. No edits to `routeTree.gen.ts` needed by hand — TanStack plugin regenerates.
 
-### RLS policies پایه
+### Out of scope (explicit)
 
-- هر کاربر فقط profile خودش را می‌بیند/ویرایش می‌کند.
-- `admin` به همه چیز دسترسی دارد (از طریق `has_role`).
-- جداول business: خواندن برای `admin/manager/sales/accountant/viewer`، نوشتن بر اساس نقش (مثلاً فاکتور = sales/admin).
-- جدول `user_roles`: فقط `admin` می‌تواند نقش بدهد/بگیرد.
+- No new tables, no `promotion_uses` table.
+- No materialized view / cron refresh.
+- No edge functions.
+- No realtime subscription.
+- No charts / analytics dashboard.
+- No bulk actions, no export.
+- H-8, H-9, H-10 deferred.
 
----
+### After implementation
 
-## ۵. RBAC و کنترل دسترسی
-
-### ماتریس دسترسی (نمونه، کامل در `lib/rbac/permissions-matrix.ts`)
-
-| ماژول | admin | manager | sales | accountant | viewer |
-|---|---|---|---|---|---|
-| محصولات | CRUD | CRUD | R | R | R |
-| قیمت‌گذاری | CRUD | CRU | R | R | R |
-| خرید | CRUD | CRUD | – | R | R |
-| فروش/فاکتور | CRUD | CRUD | CRU | R | R |
-| کاربران/نقش‌ها | CRUD | – | – | – | – |
-| گزارش‌ها | All | All | Sales | Finance | All-R |
-| دانش | CRUD | CRU | R | R | R |
-| پیام/بازخورد | All | All | Own | Own | Own |
-
-### کامپوننت‌های guard
-
-- `<RoleGuard roles={['admin','manager']}>...</RoleGuard>` — render conditional
-- `<PermissionGate module="invoices" action="create">...</PermissionGate>`
-- در سطح route: `beforeLoad` با `redirect` به `/unauthorized` اگر نقش کافی ندارد.
-
----
-
-## ۶. UI/UX استاندارد
-
-### Layout
-
-- **AppShell** = Sidebar (راست در RTL) + Header + Main + (Mobile: Bottom Nav).
-- **Sidebar** قابل جمع‌شدن، گروه‌بندی ماژول‌ها: عملیات / مالی / مدیریت / ارتباطات.
-- **Header**: جستجوی سراسری، اعلان‌ها، پروفایل، تغییر کاربر.
-- **Mobile**: Drawer + bottom nav با ۵ مورد پراستفاده.
-
-### Design system
-
-- رنگ‌ها از `index.css` به‌صورت HSL token (روشن/تاریک از روز اول).
-- پالت پیشنهادی: primary سبز-آبی شرکتی، neutral گرم، accent برای هشدار/موفقیت.
-- Spacing/typography mobile-first (حداقل touch target 44px).
-- همه اعداد فارسی (`toLocaleString('fa-IR')`)، تاریخ شمسی.
-- کامپوننت‌های مشترک: `<DataTable>` با pagination/filter/sort + export، `<PageHeader>`، `<EmptyState>`، `<ConfirmDialog>`، `<JalaliDatePicker>`.
-
-### فونت Vazirmatn
-
-- فایل‌های `.woff2` (وزن‌های 300/400/500/700) در `public/fonts/vazirmatn/`.
-- در `globals.css` با `@font-face` و `font-display: swap` + در Tailwind theme به عنوان فونت پیش‌فرض.
-
----
-
-## ۷. رفتار real-time و کارایی
-
-- TanStack Query با `staleTime` معقول (مثلاً 30s برای لیست‌ها).
-- subscribe به Realtime فقط برای ماژول پیام‌ها و notification (نه برای جداول سنگین).
-- debounce روی جستجوها (400ms).
-- pagination سرور-side در همه DataTable ها.
-- index روی ستون‌های پراستفاده (`created_at`, FKها، فیلدهای جستجو).
-
----
-
-## ۸. self-host و GitHub sync
-
-- هیچ import از CDN در کد.
-- همه فونت‌ها/آیکون‌ها/کتابخانه‌ها از `node_modules` یا `public/`.
-- `.env` فقط شامل URL/Key (در self-host با مقادیر سرور خود جایگزین می‌شود).
-- ساختار پوشه تمیز و فلت در `src/modules/` تا هر تیمی روی ماژول جدا کار کند.
-- README با راهنمای اتصال به GitHub و نکات self-host (Docker در فاز بعد).
-
----
-
-## ۹. خروجی این فاز (چک‌لیست)
-
-1. نصب فونت Vazirmatn local + اعمال در Tailwind.
-2. تنظیم `<html lang="fa" dir="rtl">` و کامنت theme.
-3. فعال‌سازی Lovable Cloud + migration برای: `profiles`, `user_roles`, `app_role`, `has_role()`, `audit_logs` + جداول stub همه ۱۲ ماژول + RLS پایه.
-4. trigger خودکار ساخت `profile` و نقش `viewer` پیش‌فرض روی signup.
-5. صفحه `login` (email/password + Google) و `signup`.
-6. `AppShell` + `Sidebar` + `Header` + `MobileNav` با ناوبری همه ماژول‌ها.
-7. ساخت route خالی برای همه ۱۲ ماژول با `PageHeader` + `EmptyState` («به‌زودی»).
-8. `lib/rbac/` کامل + کامپوننت‌های `RoleGuard` و `PermissionGate`.
-9. صفحه‌های `/users` و `/roles` با عملکرد واقعی (مدیریت کاربران و تخصیص نقش — تنها ماژول کامل در فاز اول، چون پیش‌نیاز بقیه است).
-10. کامپوننت‌های مشترک: `DataTable`, `PageHeader`, `EmptyState`, `ConfirmDialog`, `JalaliDatePicker`.
-11. صفحه `unauthorized` و 404 فارسی.
-12. README فارسی با راهنمای اجرا، GitHub sync، و roadmap فازهای بعدی.
-
----
-
-## ۱۰. روی چه چیزی فاز اول کار **نمی‌کند** (به فازهای بعد)
-
-- منطق واقعی محصولات/فاکتور/قیمت‌گذاری (فقط جدول و route).
-- موتور rule-based قیمت‌گذاری با versioning (طراحی schema می‌شود اما UI و engine در فاز ۲).
-- گزارش‌های پیشرفته و chart.
-- پیام‌رسان/AI/integration خارجی (طبق قانون ۱۳).
-- Docker compose برای self-host (فاز جداگانه).
-
----
-
-## بعد از تأیید شما
-
-با تأیید این plan، وارد build mode می‌شوم و این ۱۲ مورد چک‌لیست را به ترتیب پیاده‌سازی می‌کنم. خروجی فاز اول یک skeleton کاملاً قابل اجرا با login، RBAC، مدیریت کاربر، و route همه ماژول‌ها خواهد بود — آماده برای ساخت منطق هر ماژول در iteration بعدی.
+I will stop and post a short summary listing: migration file, route file, nav line, and the score formula encoded in SQL.

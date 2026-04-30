@@ -1453,6 +1453,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
         ]
       }
       invoice_workflow_stages: {
@@ -2016,6 +2023,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "price_calculation_snapshots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
             foreignKeyName: "price_calculation_snapshots_purchase_price_id_fkey"
             columns: ["purchase_price_id"]
             isOneToOne: false
@@ -2101,6 +2115,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_list_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
         ]
       }
@@ -2291,6 +2312,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_label_links_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
         ]
       }
       product_labels: {
@@ -2359,6 +2387,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_owner_assignments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
         ]
       }
       product_sale_price_history: {
@@ -2405,6 +2440,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sale_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "product_sale_price_history_sale_price_type_id_fkey"
@@ -2472,6 +2514,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_suppliers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "product_suppliers_supplier_id_fkey"
@@ -2642,6 +2691,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
             foreignKeyName: "purchase_items_purchase_id_fkey"
             columns: ["purchase_id"]
             isOneToOne: false
@@ -2703,6 +2759,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "purchase_prices_reason_id_fkey"
@@ -2776,6 +2839,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "purchases_supplier_id_fkey"
@@ -2875,6 +2945,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_list_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "sale_list_items_sale_list_id_fkey"
@@ -3407,6 +3484,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "shipping_cost_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
         ]
       }
       shop_settings: {
@@ -3692,6 +3776,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "waybill_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
             foreignKeyName: "waybill_items_waybill_id_fkey"
             columns: ["waybill_id"]
             isOneToOne: false
@@ -3801,6 +3892,23 @@ export type Database = {
           full_name: string | null
           id: string | null
           roles: string[] | null
+        }
+        Relationships: []
+      }
+      v_promotion_suggestions: {
+        Row: {
+          channel_id: string | null
+          channel_name: string | null
+          channel_weight: number | null
+          label_weight_sum: number | null
+          product_id: string | null
+          product_name: string | null
+          qty_90d: number | null
+          recency_factor: number | null
+          score: number | null
+          sku: string | null
+          stock_factor: number | null
+          stock_status: Database["public"]["Enums"]["stock_status"] | null
         }
         Relationships: []
       }
@@ -3986,6 +4094,29 @@ export type Database = {
           to: "sales_quote_send_queue"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      compute_promotion_scores: {
+        Args: { _channel_id?: string; _limit?: number; _min_score?: number }
+        Returns: {
+          channel_id: string | null
+          channel_name: string | null
+          channel_weight: number | null
+          label_weight_sum: number | null
+          product_id: string | null
+          product_name: string | null
+          qty_90d: number | null
+          recency_factor: number | null
+          score: number | null
+          sku: string | null
+          stock_factor: number | null
+          stock_status: Database["public"]["Enums"]["stock_status"] | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_promotion_suggestions"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       create_bot_api_key: {
