@@ -4247,6 +4247,39 @@ export type Database = {
         }
         Relationships: []
       }
+      score_snapshots: {
+        Row: {
+          captured_at: string
+          daily_score: number
+          employee_id: string
+          id: number
+          monthly_score: number
+          normalized_score: number
+          total_score: number
+          weekly_score: number
+        }
+        Insert: {
+          captured_at?: string
+          daily_score?: number
+          employee_id: string
+          id?: number
+          monthly_score?: number
+          normalized_score?: number
+          total_score?: number
+          weekly_score?: number
+        }
+        Update: {
+          captured_at?: string
+          daily_score?: number
+          employee_id?: string
+          id?: number
+          monthly_score?: number
+          normalized_score?: number
+          total_score?: number
+          weekly_score?: number
+        }
+        Relationships: []
+      }
       settlement_types: {
         Row: {
           code: string
@@ -4960,6 +4993,7 @@ export type Database = {
         Returns: Json
       }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
+      capture_score_snapshots: { Args: never; Returns: number }
       check_price_alerts_for_product: {
         Args: {
           p_change_percent?: number
@@ -5149,6 +5183,92 @@ export type Database = {
           held_credit: number
           outstanding_balance: number
           total_purchases: number
+        }[]
+      }
+      get_leaderboard: {
+        Args: {
+          _department?: string
+          _limit?: number
+          _period?: string
+          _role?: string
+          _team?: string
+        }
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          rank: number
+          role: string
+          score: number
+          team: string
+        }[]
+      }
+      get_leaderboard_all_time: {
+        Args: {
+          _department?: string
+          _limit?: number
+          _role?: string
+          _team?: string
+        }
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          rank: number
+          role: string
+          score: number
+          team: string
+        }[]
+      }
+      get_leaderboard_daily: {
+        Args: {
+          _department?: string
+          _limit?: number
+          _role?: string
+          _team?: string
+        }
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          rank: number
+          role: string
+          score: number
+          team: string
+        }[]
+      }
+      get_leaderboard_monthly: {
+        Args: {
+          _department?: string
+          _limit?: number
+          _role?: string
+          _team?: string
+        }
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          rank: number
+          role: string
+          score: number
+          team: string
+        }[]
+      }
+      get_leaderboard_weekly: {
+        Args: {
+          _department?: string
+          _limit?: number
+          _role?: string
+          _team?: string
+        }
+        Returns: {
+          department: string
+          employee_id: string
+          full_name: string
+          rank: number
+          role: string
+          score: number
+          team: string
         }[]
       }
       get_product_recommendations: {
