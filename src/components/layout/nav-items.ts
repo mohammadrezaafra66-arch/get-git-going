@@ -50,7 +50,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/waybill-fields", label: "فیلدهای سفارشی بیجک", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/gamification", label: "مدیریت گیمیفیکیشن", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/achievements", label: "مدیریت مدال‌ها", icon: Trophy, module: "roles", group: "admin" },
-  { to: "/admin/gamification/missions", label: "مأموریت‌ها", icon: Trophy, module: "roles", group: "admin" },
+  { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "admin" },
   { to: "/marketing/suggestions", label: "پیشنهادهای تبلیغاتی", icon: Megaphone, module: "reports", group: "operations" },
   { to: "/marketing/suggestions-history", label: "تاریخچه پیشنهادها", icon: ScrollText, module: "reports", group: "operations" },
   { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
