@@ -221,14 +221,12 @@ export async function getEmployeeProgress(employeeId: string): Promise<EmployeeP
   return data as unknown as EmployeeProgress;
 }
 
-export async function addEmployeeXp(employeeId: string, xp: number): Promise<AddXpResult> {
-  const { data, error } = await supabase.rpc("add_employee_xp" as never, {
-    _employee_id: employeeId,
-    _xp: xp,
-  } as never);
-  if (error) throw error;
-  return data as unknown as AddXpResult;
-}
+// NOTE: `add_employee_xp` is intentionally NOT exposed via a frontend wrapper.
+// It is a privileged SECURITY DEFINER function that mutates XP and triggers
+// level-ups. It is invoked only from server-side engines
+// (`check_and_unlock_achievements_for_employee`, `award_xp_from_score`,
+// `check_and_update_mission_progress_for_employee`). Direct EXECUTE is
+// revoked from anon/authenticated/public to prevent privilege escalation.
 
 // =====================================================
 // Phase 3 — League System
