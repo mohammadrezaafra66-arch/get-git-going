@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Loader2, Plus, Trash2, Pencil } from "lucide-react";
+import { Loader2, Plus, Pencil } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Textarea } from "@/components/ui/textarea";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import {
-  listKpiRules, createKpiRule, updateKpiRule, toggleKpiRule, deleteKpiRule,
+  listKpiRules, createKpiRule, updateKpiRule, toggleKpiRule,
   type KpiRule,
 } from "@/lib/operations/gamification";
 
@@ -50,11 +50,6 @@ function KpiRulesPage() {
   const toggleMut = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => toggleKpiRule(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-kpi-rules"] }),
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const delMut = useMutation({
-    mutationFn: deleteKpiRule,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-kpi-rules"] }); toast.success("حذف شد"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -117,12 +112,6 @@ function KpiRulesPage() {
                     <TableCell className="space-x-1 space-x-reverse text-left">
                       <Button size="sm" variant="ghost" onClick={() => { setEditing(r); setOpen(true); }}>
                         <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm" variant="ghost"
-                        onClick={() => { if (confirm(`حذف قانون «${r.title_fa}»؟`)) delMut.mutate(r.id); }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
                   </TableRow>
