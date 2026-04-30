@@ -72,6 +72,7 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
@@ -432,6 +433,11 @@ const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   path: '/operations/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
+  id: '/operations/daily-mood',
+  path: '/operations/daily-mood',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMarketingSuggestionsHistoryRoute =
   AppMarketingSuggestionsHistoryRouteImport.update({
     id: '/marketing/suggestions-history',
@@ -690,6 +696,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -792,6 +799,7 @@ export interface FileRoutesByTo {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -897,6 +905,7 @@ export interface FileRoutesById {
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1003,6 +1012,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/daily-mood'
     | '/operations/tasks'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
@@ -1105,6 +1115,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/daily-mood'
     | '/operations/tasks'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
@@ -1209,6 +1220,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
+    | '/_app/operations/daily-mood'
     | '/_app/operations/tasks'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/calculator'
@@ -1727,6 +1739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/daily-mood': {
+      id: '/_app/operations/daily-mood'
+      path: '/operations/daily-mood'
+      fullPath: '/operations/daily-mood'
+      preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/suggestions-history': {
       id: '/_app/marketing/suggestions-history'
       path: '/marketing/suggestions-history'
@@ -2177,6 +2196,7 @@ interface AppRouteChildren {
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -2251,6 +2271,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsDailyMoodRoute: AppOperationsDailyMoodRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
