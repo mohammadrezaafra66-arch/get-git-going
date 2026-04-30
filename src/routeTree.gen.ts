@@ -80,6 +80,7 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
+import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
@@ -466,6 +467,11 @@ const AppAdminWorkflowStagesRoute = AppAdminWorkflowStagesRouteImport.update({
   path: '/admin/workflow-stages',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminWaybillFieldsRoute = AppAdminWaybillFieldsRouteImport.update({
+  id: '/admin/waybill-fields',
+  path: '/admin/waybill-fields',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -645,6 +651,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -742,6 +749,7 @@ export interface FileRoutesByTo {
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -842,6 +850,7 @@ export interface FileRoutesById {
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
+  '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -943,6 +952,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-channels'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/waybill-fields'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -1040,6 +1050,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-channels'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/waybill-fields'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -1139,6 +1150,7 @@ export interface FileRouteTypes {
     | '/_app/admin/marketing-channels'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
+    | '/_app/admin/waybill-fields'
     | '/_app/admin/workflow-stages'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -1721,6 +1733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWorkflowStagesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/waybill-fields': {
+      id: '/_app/admin/waybill-fields'
+      path: '/admin/waybill-fields'
+      fullPath: '/admin/waybill-fields'
+      preLoaderRoute: typeof AppAdminWaybillFieldsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/settings': {
       id: '/_app/admin/settings'
       path: '/admin/settings'
@@ -2082,6 +2101,7 @@ interface AppRouteChildren {
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
+  AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
   AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
@@ -2150,6 +2170,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
+  AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,
   AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,

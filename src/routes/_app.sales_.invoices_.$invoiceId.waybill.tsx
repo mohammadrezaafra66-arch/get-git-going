@@ -64,6 +64,19 @@ function WaybillViewPage() {
     },
   });
 
+  const { data: customFields } = useQuery({
+    queryKey: ["waybill-custom-fields", "active"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("waybill_custom_fields")
+        .select("field_key, field_label")
+        .eq("is_active", true);
+      if (error) throw error;
+      return (data ?? []) as { field_key: string; field_label: string }[];
+    },
+  });
+
   const changeStatus = async (newStatus: string) => {
     if (!waybill) return;
     setActing(true);
@@ -155,6 +168,26 @@ function WaybillViewPage() {
           )}
         </CardContent>
       </Card>
+
+      {(() => {
+        const cd = (waybill.custom_data ?? {}) as Record<string, unknown>;
+        const keys = Object.keys(cd).filter((k) => cd[k] !== null && cd[k] !== "");
+        if (keys.length === 0) return null;
+        const labelOf = (k: string) =>
+          customFields?.find((f) => f.field_key === k)?.field_label ?? k;
+        return (
+          <Card>
+            <CardContent className="p-6 space-y-3">
+              <div className="text-sm font-semibold">اطلاعات تکمیلی</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                {keys.map((k) => (
+                  <Field key={k} label={labelOf(k)}>{String(cd[k])}</Field>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <Card>
         <CardContent className="p-4 space-y-3">

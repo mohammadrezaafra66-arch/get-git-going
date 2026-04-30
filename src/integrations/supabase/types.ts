@@ -3738,6 +3738,45 @@ export type Database = {
         }
         Relationships: []
       }
+      waybill_custom_fields: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_label: string
+          field_options: Json | null
+          field_type: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_label: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_label?: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       waybill_items: {
         Row: {
           created_at: string
@@ -3816,6 +3855,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          custom_data: Json
           customer_accounting_code: string | null
           destination_address: string | null
           destination_city: string
@@ -3834,6 +3874,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          custom_data?: Json
           customer_accounting_code?: string | null
           destination_address?: string | null
           destination_city: string
@@ -3852,6 +3893,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          custom_data?: Json
           customer_accounting_code?: string | null
           destination_address?: string | null
           destination_city?: string
@@ -4169,6 +4211,10 @@ export type Database = {
           p_shipping_notes?: string
         }
         Returns: string
+      }
+      create_waybills_batch: {
+        Args: { p_invoice_id: string; p_register?: boolean; p_waybills: Json }
+        Returns: string[]
       }
       deactivate_user: { Args: { _user_id: string }; Returns: undefined }
       delete_bot_api_key_table_access: {

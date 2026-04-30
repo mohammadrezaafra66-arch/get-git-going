@@ -5,6 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import {
+  WaybillCustomFieldsInput,
+  validateCustomData,
+  type CustomFieldDef,
+  type CustomData,
+} from "./WaybillCustomFieldsInput";
 
 const phoneRe = /^[0-9+\-\s()]{4,40}$/;
 
@@ -32,27 +38,39 @@ export function WaybillForm({
   initial,
   submitting,
   onSubmit,
+  customFields = [],
+  initialCustomData = {},
 }: {
   initial?: Partial<WaybillFormValues>;
   submitting: boolean;
-  onSubmit: (values: WaybillFormValues, register: boolean) => Promise<void> | void;
+  onSubmit: (values: WaybillFormValues, register: boolean, customData: CustomData) => Promise<void> | void;
+  customFields?: CustomFieldDef[];
+  initialCustomData?: CustomData;
 }) {
   const [v, setV] = useState<WaybillFormValues>({ ...empty, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customData, setCustomData] = useState<CustomData>(initialCustomData);
+  const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
 
   const set = (k: keyof WaybillFormValues) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setV((p) => ({ ...p, [k]: e.target.value }));
 
   const submit = async (register: boolean) => {
     const r = waybillSchema.safeParse(v);
+    const cErrs = validateCustomData(customFields, customData);
+    setCustomErrors(cErrs);
     if (!r.success) {
       const errs: Record<string, string> = {};
       r.error.issues.forEach((i) => { errs[i.path.join(".")] = i.message; });
       setErrors(errs);
       return;
     }
+    if (Object.keys(cErrs).length > 0) {
+      setErrors({});
+      return;
+    }
     setErrors({});
-    await onSubmit(r.data, register);
+    await onSubmit(r.data, register, customData);
   };
 
   const Err = ({ k }: { k: string }) => errors[k] ? <p className="text-xs text-destructive">{errors[k]}</p> : null;
@@ -103,6 +121,15 @@ export function WaybillForm({
           <Textarea value={v.shipping_notes ?? ""} onChange={set("shipping_notes")} maxLength={500} rows={2} />
         </div>
       </div>
+
+      {customFields.length > 0 && (
+        <WaybillCustomFieldsInput
+          fields={customFields}
+          value={customData}
+          onChange={setCustomData}
+          errors={customErrors}
+        />
+      )}
 
       <div className="flex flex-col sm:flex-row gap-2 justify-end">
         <Button variant="outline" onClick={() => submit(false)} disabled={submitting}>
