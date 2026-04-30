@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Search, Filter, ArrowUpRight, ArrowDownRight, Tag,
+  Search, Filter, ArrowUpRight, ArrowDownRight, Tag, LineChart,
   PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles, UserPlus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -27,6 +27,7 @@ import { StockAlertButton } from "@/components/sales/StockAlertButton";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
+import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
@@ -74,6 +75,11 @@ function LivePriceListPage() {
   const { roles } = useAuth();
   const isPrivileged = hasPermissionEx(roles, "pricing", "view_sensitive");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
+
+  // ---------- chart drawer ----------
+  const [chartCtx, setChartCtx] = useState<{
+    productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
+  } | null>(null);
 
   // ---------- filters ----------
   const [search, setSearch] = useState("");
@@ -407,10 +413,15 @@ function LivePriceListPage() {
                         <th className="p-3 text-right font-medium">قیمت فعلی</th>
                         <th className="p-3 text-right font-medium">تغییر</th>
                         <th className="p-3 text-right font-medium">آخرین بروزرسانی</th>
+                        <th className="p-3 text-right font-medium">نمودار</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {merged.flatMap((row) => renderProductRows(row, { isSalesOnly, isPrivileged }))}
+                      {merged.flatMap((row) => renderProductRows(row, {
+                        isSalesOnly,
+                        isPrivileged,
+                        onOpenChart: (args) => setChartCtx(args),
+                      }))}
                     </tbody>
                   </table>
                 </div>
@@ -421,7 +432,13 @@ function LivePriceListPage() {
           {/* mobile cards */}
           <div className="space-y-3 md:hidden">
             {merged.map((row) => (
-              <MobileProductCard key={row.product.id} row={row} isSalesOnly={isSalesOnly} isPrivileged={isPrivileged} />
+              <MobileProductCard
+                key={row.product.id}
+                row={row}
+                isSalesOnly={isSalesOnly}
+                isPrivileged={isPrivileged}
+                onOpenChart={(args) => setChartCtx(args)}
+              />
             ))}
           </div>
 
@@ -441,15 +458,28 @@ function LivePriceListPage() {
           </div>
         </>
       )}
+
+      <ProductPriceHistoryDrawer
+        open={!!chartCtx}
+        onOpenChange={(v) => { if (!v) setChartCtx(null); }}
+        productId={chartCtx?.productId ?? null}
+        productName={chartCtx?.productName ?? null}
+        salePriceTypeId={chartCtx?.salePriceTypeId ?? null}
+        salePriceTypeTitle={chartCtx?.salePriceTypeTitle ?? null}
+      />
     </div>
   );
 }
 
 function renderProductRows(
   row: { product: ProductRow; histories: any[]; hasPrice: boolean },
-  ctx: { isSalesOnly: boolean; isPrivileged: boolean },
+  ctx: {
+    isSalesOnly: boolean;
+    isPrivileged: boolean;
+    onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+  },
 ) {
-  const colSpan = ctx.isSalesOnly ? 7 : 8;
+  const colSpan = ctx.isSalesOnly ? 8 : 9;
   const isUnavailable = row.product.stock_status === "unavailable";
   if (isUnavailable) {
     return [(
@@ -517,11 +547,36 @@ function renderProductRows(
       </td>
       <td className="p-3 align-top"><ChangeCell h={h} /></td>
       <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</td>
+      {idx === 0 && (
+        <td className="p-3 align-top" rowSpan={row.histories.length}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() => ctx.onOpenChart({
+              productId: row.product.id,
+              productName: row.product.name,
+              salePriceTypeId: h.sale_price_type_id ?? "",
+              salePriceTypeTitle: h.sale_price_type_title ?? "—",
+            })}
+            disabled={!h.sale_price_type_id}
+            title="نمودار قیمت"
+          >
+            <LineChart className="h-3.5 w-3.5" /> نمودار
+          </Button>
+        </td>
+      )}
     </tr>
   ));
 }
 
-function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product: ProductRow; histories: any[]; hasPrice: boolean }; isSalesOnly: boolean; isPrivileged: boolean }) {
+function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
+  row: { product: ProductRow; histories: any[]; hasPrice: boolean };
+  isSalesOnly: boolean;
+  isPrivileged: boolean;
+  onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+}) {
   const isUnavailable = row.product.stock_status === "unavailable";
   return (
     <Card>
@@ -573,6 +628,23 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product:
                     )}
                   </div>
                   <ChangeCell h={h} />
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 px-2 text-xs"
+                    onClick={() => onOpenChart({
+                      productId: row.product.id,
+                      productName: row.product.name,
+                      salePriceTypeId: h.sale_price_type_id ?? "",
+                      salePriceTypeTitle: h.sale_price_type_title ?? "—",
+                    })}
+                    disabled={!h.sale_price_type_id}
+                  >
+                    <LineChart className="h-3.5 w-3.5" /> نمودار قیمت
+                  </Button>
                 </div>
               </div>
             ))}
@@ -628,7 +700,8 @@ function ChangeCell({ h }: { h: HistoryRow }) {
   }
   const up = amt > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
-  const cls = up ? "text-red-600" : "text-emerald-600";
+  // قرارداد: افزایش = سبز، کاهش = قرمز
+  const cls = up ? "text-emerald-600" : "text-red-600";
   return (
     <div className={`flex flex-col text-xs ${cls}`}>
       <span className="inline-flex items-center gap-1 font-medium">

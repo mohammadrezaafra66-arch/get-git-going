@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -26,6 +26,9 @@ import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
+import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
+import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
+import { computeChangePercent, computeDirection } from "@/lib/pricing/price-history";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -52,6 +55,9 @@ interface HistoryRow {
   product_id: string;
   sale_price_type_id: string | null;
   new_sale_price: number;
+  old_sale_price?: number | null;
+  change_amount?: number | null;
+  change_percent?: number | null;
   created_at: string;
 }
 
@@ -89,6 +95,9 @@ function SalesSearchPage() {
   const [categoryFilterText, setCategoryFilterText] = useState("");
   const [labelFilterText, setLabelFilterText] = useState("");
   const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
+  const [chartCtx, setChartCtx] = useState<{
+    productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
+  } | null>(null);
 
   const term = normalizeSearchText(dSearch);
   const canSearch = term.length >= 2;
@@ -226,7 +235,7 @@ function SalesSearchPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_sale_price_history")
-        .select("id, product_id, sale_price_type_id, new_sale_price, created_at")
+        .select("id, product_id, sale_price_type_id, new_sale_price, old_sale_price, change_amount, change_percent, created_at")
         .in("product_id", productIds)
         .eq("sale_price_type_id", salePriceTypeId)
         .order("created_at", { ascending: false })
@@ -438,11 +447,30 @@ function SalesSearchPage() {
                 history={h}
                 isPrivileged={isPrivileged}
                 onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
+                onOpenChart={() => {
+                  if (!salePriceTypeId) return;
+                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)?.title ?? "—";
+                  setChartCtx({
+                    productId: p.id,
+                    productName: p.name,
+                    salePriceTypeId,
+                    salePriceTypeTitle: title,
+                  });
+                }}
               />
             );
           })}
         </div>
       )}
+
+      <ProductPriceHistoryDrawer
+        open={!!chartCtx}
+        onOpenChange={(v) => { if (!v) setChartCtx(null); }}
+        productId={chartCtx?.productId ?? null}
+        productName={chartCtx?.productName ?? null}
+        salePriceTypeId={chartCtx?.salePriceTypeId ?? null}
+        salePriceTypeTitle={chartCtx?.salePriceTypeTitle ?? null}
+      />
     </div>
   );
 }
@@ -452,11 +480,16 @@ interface ProductCardProps {
   history: HistoryRow | undefined;
   isPrivileged: boolean;
   onSelect: () => void;
+  onOpenChart: () => void;
 }
 
-function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardProps) {
+function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
+  const prev = history?.old_sale_price != null ? Number(history.old_sale_price) : null;
+  const cur = history ? Number(history.new_sale_price) : null;
+  const amt = (cur !== null && prev !== null) ? cur - prev : (history?.change_amount != null ? Number(history.change_amount) : null);
+  const pct = history?.change_percent != null ? Number(history.change_percent) : computeChangePercent(cur, prev);
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent
@@ -503,6 +536,12 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
                   {formatNumber(Number(history.new_sale_price))}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
+                {prev !== null && (
+                  <div className="text-[11px] text-muted-foreground line-through">{formatNumber(prev)} ت</div>
+                )}
+                <div className="mt-1">
+                  <PriceChangeBadge info={{ change_amount: amt, change_percent: pct, direction: computeDirection(amt) }} />
+                </div>
               </div>
               <div className="text-[11px] text-muted-foreground text-left">
                 آخرین بروزرسانی
@@ -529,6 +568,15 @@ function ProductCard({ product, history, isPrivileged, onSelect }: ProductCardPr
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { e.stopPropagation(); onOpenChart(); }}
+            disabled={!history}
+          >
+            <LineChart className="ms-1 h-4 w-4" /> نمودار قیمت
+          </Button>
           <Button
             type="button"
             variant="outline"
