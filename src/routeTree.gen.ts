@@ -102,6 +102,7 @@ import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales
 import { Route as AppProductsIdEditRouteImport } from './routes/_app.products_.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
+import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
@@ -587,6 +588,12 @@ const AppPricingSaleListsListIdRoute =
     path: '/pricing/sale-lists/$listId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOperationsDailyMoodAdminRoute =
+  AppOperationsDailyMoodAdminRouteImport.update({
+    id: '/admin',
+    path: '/admin',
+    getParentRoute: () => AppOperationsDailyMoodRoute,
+  } as any)
 const AppAccountingReceiptsCreateRoute =
   AppAccountingReceiptsCreateRouteImport.update({
     id: '/create',
@@ -696,7 +703,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
-  '/operations/daily-mood': typeof AppOperationsDailyMoodRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -740,6 +747,7 @@ export interface FileRoutesByFullPath {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -799,7 +807,7 @@ export interface FileRoutesByTo {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
-  '/operations/daily-mood': typeof AppOperationsDailyMoodRoute
+  '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -842,6 +850,7 @@ export interface FileRoutesByTo {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/products/$id/edit': typeof AppProductsIdEditRoute
@@ -905,7 +914,7 @@ export interface FileRoutesById {
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
-  '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRoute
+  '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -949,6 +958,7 @@ export interface FileRoutesById {
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/_app/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/products_/$id/edit': typeof AppProductsIdEditRoute
@@ -1056,6 +1066,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -1158,6 +1169,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/products/$id/edit'
@@ -1264,6 +1276,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/$courseId_/$lessonId'
     | '/_app/accounting/receipts/$receiptId'
     | '/_app/accounting/receipts/create'
+    | '/_app/operations/daily-mood/admin'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/products_/$id/edit'
@@ -1949,6 +1962,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/daily-mood/admin': {
+      id: '/_app/operations/daily-mood/admin'
+      path: '/admin'
+      fullPath: '/operations/daily-mood/admin'
+      preLoaderRoute: typeof AppOperationsDailyMoodAdminRouteImport
+      parentRoute: typeof AppOperationsDailyMoodRoute
+    }
     '/_app/accounting/receipts/create': {
       id: '/_app/accounting/receipts/create'
       path: '/create'
@@ -2118,6 +2138,20 @@ const AppAccountingReceiptsRouteWithChildren =
     AppAccountingReceiptsRouteChildren,
   )
 
+interface AppOperationsDailyMoodRouteChildren {
+  AppOperationsDailyMoodAdminRoute: typeof AppOperationsDailyMoodAdminRoute
+}
+
+const AppOperationsDailyMoodRouteChildren: AppOperationsDailyMoodRouteChildren =
+  {
+    AppOperationsDailyMoodAdminRoute: AppOperationsDailyMoodAdminRoute,
+  }
+
+const AppOperationsDailyMoodRouteWithChildren =
+  AppOperationsDailyMoodRoute._addFileChildren(
+    AppOperationsDailyMoodRouteChildren,
+  )
+
 interface AppPricingSaleListsListIdRouteChildren {
   AppPricingSaleListsListIdPublishRoute: typeof AppPricingSaleListsListIdPublishRoute
 }
@@ -2196,7 +2230,7 @@ interface AppRouteChildren {
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
-  AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRoute
+  AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -2271,7 +2305,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
-  AppOperationsDailyMoodRoute: AppOperationsDailyMoodRoute,
+  AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
