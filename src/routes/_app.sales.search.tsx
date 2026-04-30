@@ -98,10 +98,6 @@ function SalesSearchPage() {
   const [chartCtx, setChartCtx] = useState<{
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
-  const salePriceTypeTitle = useMemo(
-    () => (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)?.title ?? "—",
-    [salePriceTypes, salePriceTypeId],
-  );
 
   const term = normalizeSearchText(dSearch);
   const canSearch = term.length >= 2;
