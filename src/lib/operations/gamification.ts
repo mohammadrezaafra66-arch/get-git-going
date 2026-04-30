@@ -229,3 +229,52 @@ export async function addEmployeeXp(employeeId: string, xp: number): Promise<Add
   if (error) throw error;
   return data as unknown as AddXpResult;
 }
+
+// =====================================================
+// Phase 3 — League System
+// =====================================================
+
+export type LeagueTier = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond" | "Legend";
+
+export interface CurrentLeague {
+  employee_id: string;
+  season_id: string | null;
+  season_name: string | null;
+  league: LeagueTier | null;
+  rank: number | null;
+  score: number;
+  promoted: boolean;
+  demoted: boolean;
+}
+
+export interface LeagueLeaderboardRow {
+  employee_id: string;
+  full_name: string | null;
+  league: LeagueTier;
+  score: number;
+  rank: number;
+  promoted: boolean;
+  demoted: boolean;
+}
+
+export async function getCurrentLeague(employeeId: string): Promise<CurrentLeague> {
+  const { data, error } = await supabase.rpc("get_current_league" as never, {
+    _employee_id: employeeId,
+  } as never);
+  if (error) throw error;
+  return data as unknown as CurrentLeague;
+}
+
+export async function getLeagueLeaderboard(
+  league: LeagueTier,
+  limit = 100,
+  offset = 0,
+): Promise<LeagueLeaderboardRow[]> {
+  const { data, error } = await supabase.rpc("get_league_leaderboard" as never, {
+    _league: league,
+    _limit: limit,
+    _offset: offset,
+  } as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as LeagueLeaderboardRow[];
+}
