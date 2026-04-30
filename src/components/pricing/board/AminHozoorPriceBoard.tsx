@@ -113,7 +113,7 @@ export function AminHozoorPriceBoard() {
   useEffect(() => {
     if (!salePriceTypeId) return;
     for (const it of items as any[]) {
-      const pid = it?.product_id ?? it?.id;
+      const pid = it?.product?.id ?? it?.product_id ?? it?.id;
       if (!pid) continue;
       trackProductInteraction({
         productId: pid,
