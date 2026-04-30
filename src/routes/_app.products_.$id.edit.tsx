@@ -8,7 +8,7 @@ import { ProductForm } from "@/components/products/ProductForm";
 import { supabase } from "@/integrations/supabase/client";
 import type { ProductFormValues } from "@/lib/products/schemas";
 
-export const Route = createFileRoute("/_app/products_/$id/edit")({
+export const Route = createFileRoute("/_app/products/$id/edit")({
   beforeLoad: async () => { await requirePermission("products", "update"); },
   component: EditProductPage,
 });
