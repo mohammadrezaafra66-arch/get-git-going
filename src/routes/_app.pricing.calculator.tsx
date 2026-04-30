@@ -217,6 +217,7 @@ function CalculatorPage() {
                               {p.sku ?? "—"} · {p.product_type === "iranian" ? "ایرانی" : "خارجی"}
                             </div>
                           </div>
+                          <StockBadge status={p.stock_status ?? null} />
                         </button>
                       ))
                     )}
