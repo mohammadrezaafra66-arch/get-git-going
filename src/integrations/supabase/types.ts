@@ -1794,34 +1794,52 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           created_at: string
+          current_value: number
           employee_id: string
           id: string
           mission_id: string
+          period_end: string | null
           period_key: string
+          period_start: string | null
           progress: number
+          source_event_type: string | null
+          target_value: number | null
           updated_at: string
+          xp_awarded: number
         }
         Insert: {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          current_value?: number
           employee_id: string
           id?: string
           mission_id: string
+          period_end?: string | null
           period_key: string
+          period_start?: string | null
           progress?: number
+          source_event_type?: string | null
+          target_value?: number | null
           updated_at?: string
+          xp_awarded?: number
         }
         Update: {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          current_value?: number
           employee_id?: string
           id?: string
           mission_id?: string
+          period_end?: string | null
           period_key?: string
+          period_start?: string | null
           progress?: number
+          source_event_type?: string | null
+          target_value?: number | null
           updated_at?: string
+          xp_awarded?: number
         }
         Relationships: [
           {
@@ -5584,6 +5602,10 @@ export type Database = {
         Args: { _employee_id: string; _event_type: string }
         Returns: Json
       }
+      check_and_update_mission_progress_for_employee: {
+        Args: { _employee_id: string; _event_type: string }
+        Returns: Json
+      }
       check_price_alerts_for_product: {
         Args: {
           p_change_percent?: number
@@ -5650,6 +5672,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      compute_mission_period: {
+        Args: { _mission: Database["public"]["Tables"]["missions"]["Row"] }
+        Returns: {
+          period_end: string
+          period_key: string
+          period_start: string
+        }[]
       }
       compute_promotion_scores: {
         Args: { _channel_id?: string; _limit?: number; _min_score?: number }
