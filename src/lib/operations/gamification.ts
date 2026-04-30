@@ -399,37 +399,19 @@ export async function getAdminGamificationOverview(): Promise<AdminOverview> {
   return data as unknown as AdminOverview;
 }
 
-// ---- KPIs ----
-export interface GamificationKpi {
-  id: string;
-  key: string;
-  label_fa: string;
-  description: string | null;
-  weight: number;
-  enabled: boolean;
-  team_scope: string;
-  source: string;
-  unit: string | null;
-  direction: "higher_better" | "lower_better";
-  display_order: number;
-}
-
-export async function listKpis(): Promise<GamificationKpi[]> {
-  const { data, error } = await supabase
-    .from("gamification_kpis" as never)
-    .select("*")
-    .order("display_order", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as unknown as GamificationKpi[];
-}
-
+// ---- KPIs (admin extras; listKpis/updateKpi already defined above) ----
 export async function upsertKpi(input: Partial<GamificationKpi> & { key: string; label_fa: string }) {
-  const { error } = await supabase.from("gamification_kpis" as never).upsert(input, { onConflict: "key" });
+  const { error } = await supabase
+    .from("gamification_kpis" as never)
+    .upsert(input as never, { onConflict: "key" } as never);
   if (error) throw error;
 }
 
 export async function toggleKpi(id: string, enabled: boolean) {
-  const { error } = await supabase.from("gamification_kpis" as never).update({ enabled }).eq("id", id);
+  const { error } = await supabase
+    .from("gamification_kpis" as never)
+    .update({ enabled } as never)
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -462,12 +444,17 @@ export async function listAchievementsAdmin(): Promise<AchievementAdmin[]> {
 }
 
 export async function upsertAchievement(input: Partial<AchievementAdmin> & { key: string; title_fa: string }) {
-  const { error } = await supabase.from("achievements" as never).upsert(input, { onConflict: "key" });
+  const { error } = await supabase
+    .from("achievements" as never)
+    .upsert(input as never, { onConflict: "key" } as never);
   if (error) throw error;
 }
 
 export async function toggleAchievement(id: string, enabled: boolean) {
-  const { error } = await supabase.from("achievements" as never).update({ enabled }).eq("id", id);
+  const { error } = await supabase
+    .from("achievements" as never)
+    .update({ enabled } as never)
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -499,12 +486,17 @@ export async function listMissionsAdmin(): Promise<MissionAdmin[]> {
 }
 
 export async function upsertMission(input: Partial<MissionAdmin> & { key: string; title_fa: string }) {
-  const { error } = await supabase.from("missions" as never).upsert(input, { onConflict: "key" });
+  const { error } = await supabase
+    .from("missions" as never)
+    .upsert(input as never, { onConflict: "key" } as never);
   if (error) throw error;
 }
 
 export async function toggleMission(id: string, enabled: boolean) {
-  const { error } = await supabase.from("missions" as never).update({ enabled }).eq("id", id);
+  const { error } = await supabase
+    .from("missions" as never)
+    .update({ enabled } as never)
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -532,7 +524,10 @@ export async function getLeagueSettings(): Promise<LeagueSettings | null> {
 }
 
 export async function updateLeagueSettings(id: string, patch: Partial<LeagueSettings>) {
-  const { error } = await supabase.from("league_settings" as never).update(patch).eq("id", id);
+  const { error } = await supabase
+    .from("league_settings" as never)
+    .update(patch as never)
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -561,12 +556,17 @@ export async function listRewards(): Promise<GamificationReward[]> {
 }
 
 export async function upsertReward(input: Partial<GamificationReward> & { key: string; title_fa: string }) {
-  const { error } = await supabase.from("gamification_rewards" as never).upsert(input, { onConflict: "key" });
+  const { error } = await supabase
+    .from("gamification_rewards" as never)
+    .upsert(input as never, { onConflict: "key" } as never);
   if (error) throw error;
 }
 
 export async function toggleReward(id: string, enabled: boolean) {
-  const { error } = await supabase.from("gamification_rewards" as never).update({ enabled }).eq("id", id);
+  const { error } = await supabase
+    .from("gamification_rewards" as never)
+    .update({ enabled } as never)
+    .eq("id", id);
   if (error) throw error;
 }
 
