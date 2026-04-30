@@ -1577,6 +1577,64 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_leagues: {
+        Row: {
+          created_at: string
+          demoted: boolean
+          employee_id: string
+          id: string
+          league: Database["public"]["Enums"]["league_tier"]
+          promoted: boolean
+          rank: number | null
+          score: number
+          season_id: string
+        }
+        Insert: {
+          created_at?: string
+          demoted?: boolean
+          employee_id: string
+          id?: string
+          league?: Database["public"]["Enums"]["league_tier"]
+          promoted?: boolean
+          rank?: number | null
+          score?: number
+          season_id: string
+        }
+        Update: {
+          created_at?: string
+          demoted?: boolean
+          employee_id?: string
+          id?: string
+          league?: Database["public"]["Enums"]["league_tier"]
+          promoted?: boolean
+          rank?: number | null
+          score?: number
+          season_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_leagues_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_leagues_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_leagues_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_level_up_events: {
         Row: {
           created_at: string
@@ -2185,6 +2243,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      league_seasons: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          season_name: string
+          settled_at: string | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          season_name: string
+          settled_at?: string | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          season_name?: string
+          settled_at?: string | null
+          start_date?: string
+        }
+        Relationships: []
       }
       marketing_channels: {
         Row: {
@@ -5275,6 +5363,7 @@ export type Database = {
         }[]
       }
       generate_sale_price_type_code: { Args: never; Returns: string }
+      get_current_league: { Args: { _employee_id: string }; Returns: Json }
       get_customer_credit: {
         Args: { p_customer_id: string }
         Returns: {
@@ -5390,6 +5479,22 @@ export type Database = {
           team: string
         }[]
       }
+      get_league_leaderboard: {
+        Args: {
+          _league: Database["public"]["Enums"]["league_tier"]
+          _limit?: number
+          _offset?: number
+        }
+        Returns: {
+          demoted: boolean
+          employee_id: string
+          full_name: string
+          league: Database["public"]["Enums"]["league_tier"]
+          promoted: boolean
+          rank: number
+          score: number
+        }[]
+      }
       get_product_recommendations: {
         Args: { p_product_id: string }
         Returns: {
@@ -5501,6 +5606,14 @@ export type Database = {
       kd_role_can_view: {
         Args: { _access_level: string; _uid: string }
         Returns: boolean
+      }
+      league_tier_from_index: {
+        Args: { _idx: number }
+        Returns: Database["public"]["Enums"]["league_tier"]
+      }
+      league_tier_index: {
+        Args: { _tier: Database["public"]["Enums"]["league_tier"] }
+        Returns: number
       }
       log_event: {
         Args: {
@@ -5769,8 +5882,13 @@ export type Database = {
         Args: { p_is_active: boolean; p_row_id: string }
         Returns: undefined
       }
+      settle_league_season: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      start_league_season: {
+        Args: { _end: string; _name: string; _start: string }
+        Returns: string
+      }
       toggle_custom_role_status: {
         Args: { _is_active: boolean; _role_id: string }
         Returns: undefined
@@ -5811,6 +5929,13 @@ export type Database = {
         | "phone"
         | "tag"
         | "status"
+      league_tier:
+        | "Bronze"
+        | "Silver"
+        | "Gold"
+        | "Platinum"
+        | "Diamond"
+        | "Legend"
       margin_type: "fixed" | "percent" | "mixed"
       product_attribute_type:
         | "brand"
@@ -5975,6 +6100,14 @@ export const Constants = {
         "phone",
         "tag",
         "status",
+      ],
+      league_tier: [
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
+        "Legend",
       ],
       margin_type: ["fixed", "percent", "mixed"],
       product_attribute_type: [
