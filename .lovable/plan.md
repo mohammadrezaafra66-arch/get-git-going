@@ -1,159 +1,168 @@
 
-## H-7 — Promotion Suggestion Engine
+## فاز G-11 — کارگاه قیمت محصولات من (Workbench)
 
-### Scope (strict)
+### پاسخ به سؤال شما (وضعیت فعلی)
 
-- No new tables.
-- One batched migration: a Postgres RPC `compute_promotion_scores()` and a regular SQL view `v_promotion_suggestions`. (Regular view, not materialized — avoids a refresh job and keeps it simple. The RPC stays available for filtered/parametrized calls.)
-- One new page `_app.marketing.suggestions.tsx`.
-- Nav entry visible only to `admin`, `manager`, `accountant`.
-- "Mark as used" writes a row to `audit_logs` only.
-
-### Data sources reused
-
-| Concept | Source |
+| موضوع | وضعیت |
 |---|---|
-| label_weight_sum (per product) | `product_label_links` join `product_labels.weight` (sum, internal labels included for admin/manager/accountant — same audience as the page) |
-| channel_weight | `marketing_channels.weight` (only `is_active = true`) |
-| stock_factor | `products.stock_status` mapped: `available`=1.0, `limited`=0.6, `unknown`=0.4, `unavailable`=0.0 |
-| recency_factor | sales velocity in last 90 days from `invoice_items` join `invoices(issue_date, status<>'cancelled')`: `qty_90d`. Factor = `1 + ln(1 + qty_90d) / 5` (capped at 3.0). Products with no sales get 1.0. |
+| جدول `product_owner_assignments` (یک محصول → چند کارمند مسئول) | ✅ موجود |
+| دیالوگ انتساب مسئول `OwnerAssignDialog` | ✅ موجود — فقط در صفحه جزئیات محصول |
+| فضایی که مسئول محصول وارد بشه و **فقط محصولات خودش** را ببینه | ❌ وجود ندارد |
+| ویرایش inline قیمت + تغییر موجود/ناموجود سریع (موبایل/دسکتاپ) | ❌ وجود ندارد |
 
-Final score: `label_weight_sum * channel_weight * stock_factor * recency_factor`.
-Products with score = 0 (no labels, or unavailable stock, or no active channel) are excluded.
+تأمین‌کننده در این فاز اصلاً درگیر نیست. مسئول محصول فقط دو چیز را تغییر می‌دهد:
+۱) **قیمت خرید** محصولاتی که خودش مسئولشان است (بدون نیاز به انتخاب تأمین‌کننده — از تأمین‌کننده پیش‌فرض/آخرین تأمین‌کننده ثبت‌شده استفاده می‌شود؛ اگر هیچ تأمین‌کننده‌ای ثبت نشده، یک «تأمین‌کننده عمومی/داخلی» پیش‌فرض استفاده می‌شود)
+۲) **وضعیت موجودی** (موجود / ناموجود / محدود)
 
-### Migration (single file)
+---
+
+### هدف مرحله
+
+ایجاد یک صفحه «کارگاه من» (`/pricing/my-workbench`) که:
+- فقط محصولاتی را نشان دهد که کاربر فعلی در `product_owner_assignments` به‌عنوان مسئول آنها ثبت شده است
+- جدولی شبیه اکسل با ویرایش inline ارائه دهد
+- روی موبایل، تبلت و دسکتاپ کاملاً کارا و سریع باشد
+- با ۴ کلید بالا/پایین/Enter/Tab بتوان از یک ردیف به ردیف بعد رفت
+- قیمت با دکمه‌های `+` / `−` (قابل تنظیم با step) و یا تایپ مستقیم تغییر کند
+- موجود/ناموجود با یک Toggle/Select یک‌کلیکی عوض شود
+
+---
+
+### آنچه ساخته می‌شود
+
+#### ۱) Route جدید
+**`src/routes/_app.pricing.my-workbench.tsx`**
+- guard: کاربر باید لاگین باشد. هر کاربر فقط محصولات خودش را می‌بیند (admin/manager همه محصولات را با toggle «نمایش همه» می‌بینند)
+- هیچ محدودیت نقشی سختی نیست — فیلتر داده‌ای از طریق `product_owner_assignments` خودش امنیت را تأمین می‌کند
+
+#### ۲) منطق داده
+```
+products
+  ← join product_owner_assignments (user_id = auth.uid())
+  ← left join لازم برای آخرین purchase_prices (تأمین‌کننده پیش‌فرض/آخرین)
+  ← فیلتر: search (نام/SKU)، برند، دسته، وضعیت موجودی
+```
+- صفحه‌بندی ۲۵ ردیف
+- جستجو با debounce ۳۰۰ms
+- staleTime: 15s، realtime استفاده نمی‌شود
+
+#### ۳) UI کارگاه (دسکتاپ)
+جدول ساده با ستون‌ها:
+
+| محصول | SKU | برند | قیمت خرید فعلی | ارز | عملیات قیمت | موجودی | ذخیره |
+|---|---|---|---|---|---|---|---|
+| نام | کد | برند | عدد editable | T/USD/AED | `−` `+` `±%` | Select 3گزینه | ✓ |
+
+ویژگی‌ها:
+- کلیک روی سلول قیمت → ورودی فعال می‌شود
+- دکمه‌های `−` / `+` با step قابل تنظیم (پیش‌فرض ۱٪، قابل تغییر به ۰.۵٪، ۲٪، ۵٪، ۱۰٪ یا مبلغ ثابت)
+- Enter → ذخیره و رفتن به ردیف بعد
+- Tab → ستون بعدی
+- Esc → لغو
+- ردیف‌های تغییر یافته با پس‌زمینه زرد ملایم
+- دکمه «ذخیره همه» در نوار چسبان پایین + شمارنده dirty rows
+- Toast per-row برای موفقیت/خطا
+
+#### ۴) UI کارگاه (موبایل)
+به‌جای جدول، **کارت‌های stack شده** عمودی:
+```
+┌──────────────────────────────┐
+│ نام محصول                     │
+│ SKU · برند                    │
+├──────────────────────────────┤
+│ قیمت: [  1,250,000  ] تومان   │
+│  [−10%] [−1%] [+1%] [+10%]    │
+├──────────────────────────────┤
+│ موجودی:  [موجود ▼]            │
+├──────────────────────────────┤
+│        [ذخیره تغییرات]         │
+└──────────────────────────────┘
+```
+- اعداد بزرگ، دکمه‌های لمسی ۴۴×۴۴
+- swipe بین کارت‌ها (اختیاری در نسخه ۲)
+
+#### ۵) منطق ذخیره‌سازی
+- **تغییر موجودی**: `UPDATE products SET stock_status = ? WHERE id = ?`
+- **تغییر قیمت**: 
+  1. `UPDATE` ردیف فعلی purchase_prices: `expires_at = now()`، `is_active = false`
+  2. `INSERT` ردیف جدید: `effective_at = now()`، `is_active = true`، `registered_by = auth.uid()`، `supplier_id` = همان تأمین‌کننده ردیف قبلی (یا یک تأمین‌کننده پیش‌فرض «داخلی» اگر هیچ ردیفی نبود)
+  3. `INSERT` در `audit_logs` با `action = 'workbench_price_update'` یا `'workbench_stock_update'` و diff کامل (قیمت قبل/بعد، درصد تغییر)
+
+#### ۶) Migration کوچک (RLS)
+چون مسئول محصول معمولاً نقش admin/manager/accountant ندارد، باید RLS اجازه‌ی ویرایش به owner را بدهد:
 
 ```sql
--- 1. View: cross-product of (active products) x (active channels) with computed score.
-create or replace view public.v_promotion_suggestions as
-with label_sums as (
-  select pll.product_id, coalesce(sum(pl.weight), 0)::numeric as label_weight_sum
-  from public.product_label_links pll
-  join public.product_labels pl on pl.id = pll.label_id and pl.is_active = true
-  group by pll.product_id
-),
-sales_90d as (
-  select ii.product_id, coalesce(sum(ii.quantity), 0)::numeric as qty_90d
-  from public.invoice_items ii
-  join public.invoices i on i.id = ii.invoice_id
-  where i.issue_date >= (current_date - interval '90 days')
-    and coalesce(i.status, '') <> 'cancelled'
-  group by ii.product_id
-)
-select
-  p.id as product_id,
-  p.name as product_name,
-  p.sku,
-  p.stock_status,
-  mc.id as channel_id,
-  mc.name as channel_name,
-  coalesce(ls.label_weight_sum, 0) as label_weight_sum,
-  mc.weight as channel_weight,
-  case p.stock_status
-    when 'available' then 1.0 when 'limited' then 0.6
-    when 'unknown' then 0.4 else 0.0 end as stock_factor,
-  least(3.0, 1 + ln(1 + coalesce(s90.qty_90d, 0)) / 5)::numeric as recency_factor,
-  (coalesce(ls.label_weight_sum,0)
-    * mc.weight
-    * (case p.stock_status when 'available' then 1.0 when 'limited' then 0.6 when 'unknown' then 0.4 else 0.0 end)
-    * least(3.0, 1 + ln(1 + coalesce(s90.qty_90d, 0)) / 5)
-  )::numeric as score,
-  coalesce(s90.qty_90d, 0) as qty_90d
-from public.products p
-cross join public.marketing_channels mc
-left join label_sums ls on ls.product_id = p.id
-left join sales_90d s90 on s90.product_id = p.id
-where p.is_active = true and mc.is_active = true;
-
--- RLS for the view: granted via underlying tables. Restrict with security_invoker.
-alter view public.v_promotion_suggestions set (security_invoker = true);
-
--- 2. RPC with filters (used by the page).
-create or replace function public.compute_promotion_scores(
-  _channel_id uuid default null,
-  _min_score numeric default 0,
-  _limit int default 200
-)
-returns setof public.v_promotion_suggestions
-language sql
-stable
-security invoker
-set search_path = public
-as $$
-  select * from public.v_promotion_suggestions
-  where score > 0
-    and (_channel_id is null or channel_id = _channel_id)
-    and score >= coalesce(_min_score, 0)
-  order by score desc
-  limit greatest(_limit, 1);
+-- تابع کمکی: آیا این کاربر مسئول این محصول است؟
+CREATE OR REPLACE FUNCTION public.is_product_owner(_user_id uuid, _product_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.product_owner_assignments
+    WHERE user_id = _user_id AND product_id = _product_id
+  )
 $$;
 
--- 3. Restrict execution to the audience.
-revoke all on function public.compute_promotion_scores(uuid, numeric, int) from public, anon;
-grant execute on function public.compute_promotion_scores(uuid, numeric, int) to authenticated;
+-- اجازه به owner برای update روی stock_status
+CREATE POLICY "owners_update_product_stock" ON public.products
+FOR UPDATE TO authenticated
+USING (
+  public.is_product_owner(auth.uid(), id)
+  OR public.has_any_role(auth.uid(), ARRAY['admin','manager']::app_role[])
+)
+WITH CHECK (
+  public.is_product_owner(auth.uid(), id)
+  OR public.has_any_role(auth.uid(), ARRAY['admin','manager']::app_role[])
+);
+
+-- اجازه به owner برای insert/update روی purchase_prices محصول خودش
+CREATE POLICY "owners_write_purchase_prices" ON public.purchase_prices
+FOR INSERT TO authenticated
+WITH CHECK (
+  public.is_product_owner(auth.uid(), product_id)
+  OR public.has_any_role(auth.uid(), ARRAY['admin','manager','accountant']::app_role[])
+);
+
+CREATE POLICY "owners_update_purchase_prices" ON public.purchase_prices
+FOR UPDATE TO authenticated
+USING (
+  public.is_product_owner(auth.uid(), product_id)
+  OR public.has_any_role(auth.uid(), ARRAY['admin','manager','accountant']::app_role[])
+);
 ```
 
-Notes:
-- `security_invoker = true` makes the view honor the caller's RLS on `products` / `invoice_items` / `invoices` / `marketing_channels` / `product_labels` (all already restricted appropriately).
-- No realtime, no triggers, no new tables.
-
-### Frontend — `src/routes/_app.marketing.suggestions.tsx`
-
-- Route guard via existing `RoleGuard` (`admin`, `manager`, `accountant`); fallback to `/unauthorized`.
-- Filters bar (matches existing FiltersBar/Select pattern):
-  - Channel: `<Select>` populated from `marketing_channels` (active only) + "همه کانال‌ها".
-  - Minimum score: numeric input, default `0`, debounced 400ms.
-  - Limit: fixed at 200 (no UI control).
-- Data fetched with TanStack Query: `supabase.rpc('compute_promotion_scores', { _channel_id, _min_score, _limit: 200 })`. `staleTime: 30s`.
-- Table columns (using existing `Table` primitives, RTL):
-  - محصول (name + SKU)
-  - کانال
-  - وزن برچسب‌ها
-  - وزن کانال
-  - موجودی (badge from `stock_status`)
-  - فروش ۹۰ روز
-  - امتیاز (rounded to 2 decimals, bold)
-  - عمل: «ثبت به‌عنوان استفاده‌شده»
-- "Mark as used" handler:
-  ```ts
-  await supabase.from('audit_logs').insert({
-    actor_id: user.id,
-    entity_type: 'promotion_suggestion',
-    entity_id: `${product_id}:${channel_id}`,
-    action: 'promotion_suggestion_used',
-    diff: { product_id, channel_id, score, channel_name, product_name } as never,
-  });
-  ```
-  Show a toast on success; row stays visible (no client-side hide — keeps logic trivial).
-- Empty state, loading skeleton, error fallback follow patterns from `_app.admin.marketing-channels.tsx`.
-- No charts. No realtime.
-
-### Navigation
-
-In `src/components/layout/nav-items.ts` add one entry:
+#### ۷) آیتم منو
+در `nav-items.ts` زیر گروه «قیمت‌گذاری»:
 ```ts
-{ to: "/marketing/suggestions", label: "پیشنهادهای تبلیغاتی", icon: Megaphone, module: "reports", group: "operations" },
+{ to: "/pricing/my-workbench", label: "کارگاه من", icon: Edit3, module: "pricing", group: "pricing" }
 ```
-Visibility relies on existing `RoleGuard` inside the page; since `module: "reports"` is broadly visible, the page itself enforces the admin/manager/accountant restriction.
+نمایش این آیتم مشروط به این است که کاربر حداقل یک رکورد در `product_owner_assignments` داشته باشد (با یک query سبک هنگام بارگذاری sidebar).
 
-### Files touched
+---
 
-- **Created**: `supabase/migrations/<ts>_h7_promotion_suggestions.sql` (view + RPC + grants)
-- **Created**: `src/routes/_app.marketing.suggestions.tsx`
-- **Edited**: `src/components/layout/nav-items.ts` (one new line)
+### آنچه ساخته نمی‌شود (out of scope)
+- بدون تغییر در صفحات `pricing/purchase-prices` و `pricing/live-price-list`
+- بدون انتخاب تأمین‌کننده در فرم (تأمین‌کننده‌ی قبلی/پیش‌فرض حفظ می‌شود)
+- بدون تغییر در نقش‌ها یا اضافه کردن نقش جدید
+- بدون realtime، بدون edge function، بدون چت/notification
+- بدون paste از اکسل، بدون درگ‌اند‌دراپ (در فاز بعدی قابل افزودن)
+- بدون تغییر قیمت فروش (فقط قیمت خرید — قیمت فروش از pricing engine محاسبه می‌شود)
 
-No edits to `types.ts` needed by hand — it regenerates from the migration. No edits to `routeTree.gen.ts` needed by hand — TanStack plugin regenerates.
+---
 
-### Out of scope (explicit)
+### فایل‌های تأثیرگذار
+- **Created**: `supabase/migrations/<ts>_g11_owner_workbench_rls.sql`
+- **Created**: `src/routes/_app.pricing.my-workbench.tsx`
+- **Created**: `src/components/pricing/WorkbenchRowDesktop.tsx`
+- **Created**: `src/components/pricing/WorkbenchCardMobile.tsx`
+- **Created**: `src/lib/pricing/workbench.ts` (queryها + mutationها + helper درصد/مبلغ)
+- **Edited**: `src/components/layout/nav-items.ts` (یک خط)
 
-- No new tables, no `promotion_uses` table.
-- No materialized view / cron refresh.
-- No edge functions.
-- No realtime subscription.
-- No charts / analytics dashboard.
-- No bulk actions, no export.
-- H-8, H-9, H-10 deferred.
+---
 
-### After implementation
+### چند سؤال قبل از شروع
 
-I will stop and post a short summary listing: migration file, route file, nav line, and the score formula encoded in SQL.
+۱. **مرحله تأیید**: آیا تغییر قیمت توسط مسئول باید فوراً اعمال شود، یا نیاز به تأیید مدیر/حسابدار داشته باشد (مثلاً صف pending)؟
+۲. **محدودیت تغییر**: آیا سقفی برای درصد تغییر قیمت در یک بار وجود داشته باشد (مثلاً اگر بیشتر از ۲۰٪ تغییر داد، تأیید مدیر لازم باشد)؟
+۳. **پیش‌فرض step**: دکمه‌های افزایش/کاهش پیش‌فرض چه باشند؟ پیشنهاد: `−10%` `−1%` `+1%` `+10%` به‌علاوه فیلد عددی برای ورود مستقیم.
+۴. **دلیل تغییر**: آیا برای هر تغییر قیمت، انتخاب «دلیل تغییر» (از `price_change_reasons`) اجباری باشد یا اختیاری؟
+
+با پاسخ این ۴ سؤال، فاز G-11 آماده اجراست.
