@@ -48,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/settings", label: "تنظیمات فروشگاه", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/marketing-channels", label: "کانال‌های تبلیغاتی", icon: Megaphone, module: "roles", group: "admin" },
   { to: "/admin/waybill-fields", label: "فیلدهای سفارشی بیجک", icon: Settings, module: "roles", group: "admin" },
-  { to: "/admin/gamification", label: "مدیریت گیمیفیکیشن", icon: Trophy, module: "roles", group: "admin" },
+  { to: "/gamification/admin/kpi-rules", label: "قوانین KPI گیمیفیکیشن", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/achievements", label: "مدیریت مدال‌ها", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/leagues", label: "مدیریت لیگ‌ها", icon: Trophy, module: "roles", group: "admin" },
