@@ -478,6 +478,48 @@ export type Database = {
         }
         Relationships: []
       }
+      call_logs: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          direction: string
+          duration_seconds: number
+          employee_id: string
+          ended_at: string | null
+          external_id: string | null
+          id: string
+          metadata: Json
+          source: string
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          direction: string
+          duration_seconds?: number
+          employee_id: string
+          ended_at?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          source?: string
+          started_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          direction?: string
+          duration_seconds?: number
+          employee_id?: string
+          ended_at?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          source?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -1535,6 +1577,78 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_score_events: {
+        Row: {
+          employee_id: string
+          event_type: string
+          id: number
+          payload: Json | null
+          source_id: string | null
+          source_table: string | null
+          triggered_at: string
+        }
+        Insert: {
+          employee_id: string
+          event_type: string
+          id?: number
+          payload?: Json | null
+          source_id?: string | null
+          source_table?: string | null
+          triggered_at?: string
+        }
+        Update: {
+          employee_id?: string
+          event_type?: string
+          id?: number
+          payload?: Json | null
+          source_id?: string | null
+          source_table?: string | null
+          triggered_at?: string
+        }
+        Relationships: []
+      }
+      employee_scores: {
+        Row: {
+          active_work_minutes: number
+          breakdown: Json
+          created_at: string
+          daily_score: number
+          employee_id: string
+          last_calculated_at: string
+          monthly_score: number
+          normalized_score: number
+          total_score: number
+          updated_at: string
+          weekly_score: number
+        }
+        Insert: {
+          active_work_minutes?: number
+          breakdown?: Json
+          created_at?: string
+          daily_score?: number
+          employee_id: string
+          last_calculated_at?: string
+          monthly_score?: number
+          normalized_score?: number
+          total_score?: number
+          updated_at?: string
+          weekly_score?: number
+        }
+        Update: {
+          active_work_minutes?: number
+          breakdown?: Json
+          created_at?: string
+          daily_score?: number
+          employee_id?: string
+          last_calculated_at?: string
+          monthly_score?: number
+          normalized_score?: number
+          total_score?: number
+          updated_at?: string
+          weekly_score?: number
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           category: string | null
@@ -1622,6 +1736,54 @@ export type Database = {
           type?: string
           updated_at?: string
           where_occurred?: string | null
+        }
+        Relationships: []
+      }
+      gamification_kpis: {
+        Row: {
+          created_at: string
+          description: string | null
+          direction: string
+          display_order: number
+          enabled: boolean
+          id: string
+          key: string
+          label_fa: string
+          source: string
+          team_scope: string
+          unit: string | null
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          direction?: string
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          key: string
+          label_fa: string
+          source?: string
+          team_scope?: string
+          unit?: string | null
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          direction?: string
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          key?: string
+          label_fa?: string
+          source?: string
+          team_scope?: string
+          unit?: string | null
+          updated_at?: string
+          weight?: number
         }
         Relationships: []
       }
@@ -4792,6 +4954,10 @@ export type Database = {
           params: Json
           score: number
         }[]
+      }
+      calculate_employee_score: {
+        Args: { _employee_id: string }
+        Returns: Json
       }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       check_price_alerts_for_product: {

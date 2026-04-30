@@ -3,7 +3,7 @@ import {
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
   MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
   CheckSquare, Workflow, Settings, Heart,
-  Megaphone, Edit3, Monitor, TrendingUp,
+  Megaphone, Edit3, Monitor, TrendingUp, Trophy,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -35,6 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/operations/tasks", label: "برد وظایف", icon: CheckSquare, module: "invoices", group: "operations" },
   { to: "/operations/daily-mood", label: "حال‌وهوای امروز", icon: Heart, module: "feedback", group: "operations" },
   { to: "/operations/daily-mood/admin", label: "مدیریت حال‌وهوا", icon: Heart, module: "hr", group: "operations" },
+  { to: "/operations/gamification", label: "گیمیفیکیشن", icon: Trophy, module: "hr", group: "operations" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText,  module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },
