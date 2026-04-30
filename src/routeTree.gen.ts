@@ -82,6 +82,7 @@ import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_ap
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
+import { Route as AppGamificationLeaderboardRouteImport } from './routes/_app.gamification.leaderboard'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
 import { Route as AppFeedbackFeedbackIdRouteImport } from './routes/_app.feedback_.$feedbackId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
@@ -493,6 +494,12 @@ const AppKnowledgeDocumentIdRoute = AppKnowledgeDocumentIdRouteImport.update({
   path: '/knowledge/$documentId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGamificationLeaderboardRoute =
+  AppGamificationLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const AppFeedbackCreateRoute = AppFeedbackCreateRouteImport.update({
   id: '/feedback_/create',
   path: '/feedback/create',
@@ -706,7 +713,7 @@ export interface FileRoutesByFullPath {
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
-  '/gamification': typeof AppGamificationRoute
+  '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
@@ -733,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
@@ -816,7 +824,7 @@ export interface FileRoutesByTo {
   '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
   '/feedback': typeof AppFeedbackRoute
-  '/gamification': typeof AppGamificationRoute
+  '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/messages': typeof AppMessagesRoute
@@ -842,6 +850,7 @@ export interface FileRoutesByTo {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
@@ -927,7 +936,7 @@ export interface FileRoutesById {
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/feedback': typeof AppFeedbackRoute
-  '/_app/gamification': typeof AppGamificationRoute
+  '/_app/gamification': typeof AppGamificationRouteWithChildren
   '/_app/invoices': typeof AppInvoicesRoute
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/messages': typeof AppMessagesRoute
@@ -954,6 +963,7 @@ export interface FileRoutesById {
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/feedback_/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
+  '/_app/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
@@ -1067,6 +1077,7 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/leaderboard'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
@@ -1176,6 +1187,7 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/leaderboard'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
@@ -1287,6 +1299,7 @@ export interface FileRouteTypes {
     | '/_app/data-tables/new'
     | '/_app/feedback_/$feedbackId'
     | '/_app/feedback_/create'
+    | '/_app/gamification/leaderboard'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
@@ -1885,6 +1898,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKnowledgeDocumentIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/gamification/leaderboard': {
+      id: '/_app/gamification/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/gamification/leaderboard'
+      preLoaderRoute: typeof AppGamificationLeaderboardRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/feedback_/create': {
       id: '/_app/feedback_/create'
       path: '/feedback/create'
@@ -2165,6 +2185,18 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
   AppBotApiKeysRouteChildren,
 )
 
+interface AppGamificationRouteChildren {
+  AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
+}
+
+const AppGamificationRouteChildren: AppGamificationRouteChildren = {
+  AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
+}
+
+const AppGamificationRouteWithChildren = AppGamificationRoute._addFileChildren(
+  AppGamificationRouteChildren,
+)
+
 interface AppSalesQuotesRouteChildren {
   AppSalesQuotesQuoteIdRoute: typeof AppSalesQuotesQuoteIdRoute
   AppSalesQuotesNewRoute: typeof AppSalesQuotesNewRoute
@@ -2301,7 +2333,7 @@ interface AppRouteChildren {
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
-  AppGamificationRoute: typeof AppGamificationRoute
+  AppGamificationRoute: typeof AppGamificationRouteWithChildren
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMessagesRoute: typeof AppMessagesRoute
@@ -2381,7 +2413,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppFeedbackRoute: AppFeedbackRoute,
-  AppGamificationRoute: AppGamificationRoute,
+  AppGamificationRoute: AppGamificationRouteWithChildren,
   AppInvoicesRoute: AppInvoicesRoute,
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMessagesRoute: AppMessagesRoute,
