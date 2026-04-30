@@ -2197,6 +2197,144 @@ export type Database = {
           },
         ]
       }
+      price_alert_notifications: {
+        Row: {
+          alert_rule_id: string
+          change_percent: number | null
+          created_at: string
+          current_price: number | null
+          id: string
+          is_read: boolean
+          message: string
+          previous_price: number | null
+          product_id: string
+          sale_price_type_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          alert_rule_id: string
+          change_percent?: number | null
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          is_read?: boolean
+          message: string
+          previous_price?: number | null
+          product_id: string
+          sale_price_type_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          alert_rule_id?: string
+          change_percent?: number | null
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          previous_price?: number | null
+          product_id?: string
+          sale_price_type_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_alert_notifications_alert_rule_id_fkey"
+            columns: ["alert_rule_id"]
+            isOneToOne: false
+            referencedRelation: "price_alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_alert_rules: {
+        Row: {
+          baseline_change_percent: number | null
+          baseline_price: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_repeatable: boolean
+          last_triggered_at: string | null
+          note: string | null
+          operator: string
+          product_id: string
+          sale_price_type_id: string | null
+          stock_status_from: string | null
+          stock_status_to: string | null
+          target_currency: string
+          target_value: number | null
+          triggered_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_change_percent?: number | null
+          baseline_price?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_repeatable?: boolean
+          last_triggered_at?: string | null
+          note?: string | null
+          operator: string
+          product_id: string
+          sale_price_type_id?: string | null
+          stock_status_from?: string | null
+          stock_status_to?: string | null
+          target_currency?: string
+          target_value?: number | null
+          triggered_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_change_percent?: number | null
+          baseline_price?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_repeatable?: boolean
+          last_triggered_at?: string | null
+          note?: string | null
+          operator?: string
+          product_id?: string
+          sale_price_type_id?: string | null
+          stock_status_from?: string | null
+          stock_status_to?: string | null
+          target_currency?: string
+          target_value?: number | null
+          triggered_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_alert_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_alert_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "price_alert_rules_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_calculation_snapshots: {
         Row: {
           calculated_at: string
@@ -4469,6 +4607,7 @@ export type Database = {
         Returns: undefined
       }
       _mi_require_privileged: { Args: never; Returns: undefined }
+      _par_latest_usd_rate: { Args: never; Returns: number }
       add_dynamic_table_column: {
         Args: {
           p_column_key: string
@@ -4590,6 +4729,16 @@ export type Database = {
         }[]
       }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
+      check_price_alerts_for_product: {
+        Args: {
+          p_change_percent?: number
+          p_current_price: number
+          p_previous_price?: number
+          p_product_id: string
+          p_sale_price_type_id: string
+        }
+        Returns: number
+      }
       claim_next_quote_send_queue_item: {
         Args: never
         Returns: {

@@ -30,6 +30,7 @@ import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/Pr
 import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
 import { computeChangePercent, computeDirection } from "@/lib/pricing/price-history";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -608,6 +609,11 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
             productName={product.name}
             productSku={product.sku}
             stockStatus={stockKey}
+          />
+          <CreatePriceAlertButton
+            productId={product.id}
+            productName={product.name}
+            salePriceTypeId={primary?.sale_price_type_id ?? null}
           />
         </div>
       </CardContent>

@@ -53,6 +53,7 @@ function PricingHubPage() {
     { to: "/pricing/live-price-list", label: "لیست قیمت زنده", icon: ListChecks, desc: "مشاهده آخرین قیمت فروش محصولات", enabled: true },
     { to: "/pricing/amin-hozoor-board", label: "تابلوی قیمت فروش امین حضور", icon: Monitor, desc: "نمایش زنده قیمت‌های منتخب برای همکاران عمده‌فروش", enabled: true },
     { to: "/pricing/market-intelligence", label: "داشبورد هوشمند بازار", icon: BarChart3, desc: "محصولات داغ، تغییرات قیمت و شاخص بازار افراکالا", enabled: true },
+    { to: "/pricing/price-alerts", label: "مرکز هشدار قیمت", icon: AlertCircle, desc: "ساخت شرط هشدار سفارشی برای تغییرات قیمت محصولات", enabled: true },
     { to: "/pricing/quick-price", label: "محاسبه سریع قیمت", icon: Zap, desc: "محاسبه قیمت فروش برای کالای خارج از لیست", enabled: true },
     { to: "/pricing/sale-lists", label: "لیست‌های فروش", icon: FileText, desc: `مدیریت و انتشار لیست‌های رسمی فروش${data ? ` — ${formatNumber(data.saleListsTotal)} لیست (${formatNumber(data.saleListsPublished)} منتشرشده)` : ""}`, enabled: true },
   ] as const;
