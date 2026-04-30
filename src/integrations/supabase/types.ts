@@ -1826,6 +1826,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_events: {
+        Row: {
+          channel: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       notification_queue: {
         Row: {
           body: string
@@ -2208,6 +2241,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_board_access_requests: {
+        Row: {
+          board_key: string
+          created_at: string
+          id: string
+          requested_at: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          board_key: string
+          created_at?: string
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          board_key?: string
+          created_at?: string
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pricing_board_settings: {
         Row: {
           board_key: string
@@ -2248,6 +2320,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pricing_board_viewer_sessions: {
+        Row: {
+          board_key: string
+          created_at: string
+          entered_at: string
+          id: string
+          last_seen_at: string
+          left_at: string | null
+          sale_price_type_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          board_key: string
+          created_at?: string
+          entered_at?: string
+          id?: string
+          last_seen_at?: string
+          left_at?: string | null
+          sale_price_type_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          board_key?: string
+          created_at?: string
+          entered_at?: string
+          id?: string
+          last_seen_at?: string
+          left_at?: string | null
+          sale_price_type_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       pricing_rules: {
         Row: {
@@ -4489,6 +4597,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_board_approved: {
+        Args: { _board_key: string; _user_id: string }
+        Returns: boolean
+      }
+      is_board_manager: { Args: { _user_id: string }; Returns: boolean }
       is_product_owner: {
         Args: { _product_id: string; _user_id: string }
         Returns: boolean
