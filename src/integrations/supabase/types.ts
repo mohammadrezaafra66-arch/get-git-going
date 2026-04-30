@@ -4312,6 +4312,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_product_owner: {
+        Args: { _product_id: string; _user_id: string }
+        Returns: boolean
+      }
       kd_role_can_view: {
         Args: { _access_level: string; _uid: string }
         Returns: boolean
