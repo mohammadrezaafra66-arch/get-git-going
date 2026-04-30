@@ -1,31 +1,38 @@
-## هدف
-ساخت صفحه‌ی مدیریت ارزها در بخش قیمت‌گذاری، تا کاربر بتونه ارزهای جدید (مثل یورو، یوان و...) به سیستم اضافه کنه و این ارزها به‌صورت خودکار در فرم محصولات و فیلترها ظاهر بشن.
+## Phase 4 Status: Already Implemented ✅
 
-## مسیر دسترسی پیشنهادی
-صفحه جدید در این مسیر اضافه میشه:
+The Gamification Dashboard from Phase 4 was fully built in the previous turn and is live at `/gamification`. All requested sections, data sources, polling intervals, caching, and styling rules are already in place.
 
-**قیمت‌گذاری → ارزها** (`/pricing/currencies`)
+### What is currently in `src/routes/_app.gamification.tsx`
 
-و در منوی کناری زیر بخش «قیمت‌گذاری» در کنار «نرخ‌های ارز» و «منابع ارز» قرار می‌گیره.
+| # | Section | Status | Data source |
+|---|---------|--------|-------------|
+| 1 | Player Card (avatar, name, level, league, rank) | ✅ | `useAuth`, `getEmployeeProgress`, `getCurrentLeague`, `getEmployeeRank` |
+| 2 | XP Progress (animated glowing bar, %) | ✅ | `getEmployeeProgress` |
+| 3 | League Card (badge, tier name, season, rank, score) | ✅ | `getCurrentLeague` |
+| 4 | Rank Neighbors (3 above / self / 3 below) | ✅ | `getRankNeighbors` |
+| 5 | Top-5 Leaderboard + "نمایش کامل" link to `/gamification/leaderboard` | ✅ | `getLeaderboard("monthly", { limit: 5 })` |
+| 6 | Achievements grid | ✅ | `listEmployeeAchievements` |
+| 7 | Streaks (login / sales / calls) | ✅ | `listEmployeeStreaks` |
+| 8 | Daily Missions with progress bar + XP reward | ✅ | `listTodayMissions` |
 
-## امکانات صفحه
-- نمایش لیست ارزهای موجود (کد، عنوان، نماد، وضعیت فعال/غیرفعال، ترتیب نمایش)
-- دکمه «افزودن ارز جدید» با فرم شامل:
-  - کد ارز (مثلاً `eur`) — یکتا
-  - عنوان فارسی (مثلاً «یورو»)
-  - نماد (مثلاً `€`)
-  - وضعیت فعال
-  - ترتیب نمایش
-- ویرایش ارز موجود (تغییر عنوان، نماد، وضعیت، ترتیب)
-- فعال/غیرفعال‌سازی سریع با یک سوییچ
-- جلوگیری از حذف ارزی که در محصولات استفاده شده (با پیام خطای واضح)
+Plus: `/gamification/leaderboard` full-page leaderboard with Daily/Weekly/Monthly/All-time tabs is also live (`_app.gamification.leaderboard.tsx`).
 
-## نکات فنی
-- اضافه کردن آیتم منو در `src/components/layout/nav-items.ts`
-- ساخت route جدید `src/routes/_app.pricing.currencies.tsx` با محافظت RBAC (مثل بقیه صفحات pricing)
-- استفاده از جدول موجود `currencies` (نیازی به migration جدید نیست)
-- اضافه کردن RLS policy برای insert/update/delete توسط نقش‌های مجاز (admin) اگر هنوز تنظیم نشده باشه
-- بعد از افزودن ارز جدید، cache مربوط به `useQuery(["currencies"])` در فرم محصول invalidate بشه تا بلافاصله در dropdown ظاهر بشه
+### Cross-cutting requirements
 
-## نتیجه
-بعد از اجرا، شما می‌تونید از منوی **قیمت‌گذاری → ارزها** هر ارز جدیدی رو به سیستم اضافه کنید و بلافاصله موقع ساخت محصول جدید، اون ارز در dropdown «ارز پایه» قابل انتخاب خواهد بود.
+- **Polling**: every query uses `refetchInterval: 30_000` ✅
+- **Leaderboard cache**: top-5 query uses `staleTime: 60_000` ✅
+- **Auth/RBAC**: route lives under `_app/` layout which already enforces authentication via `beforeLoad` ✅
+- **UI style**: gradient hero, tier-colored gradient badges (Bronze→Legend), glowing XP bar with pulse overlay, hover-scale on achievements, soft shadows, card-based layout ✅
+- **Animations**: XP bar `transition-all duration-700 ease-out` + animated shimmer; achievement cards `hover:scale-105 hover:shadow-primary/20` ✅
+- **Navigation**: "داشبورد بازی" entry already added to ops nav ✅
+
+### What I propose to do now
+
+Since the page is complete and matches the spec, I see **no remaining build work for Phase 4**. Suggested next moves — pick what you want:
+
+1. **Proceed to Phase 5** (whatever you have planned next — achievement unlock engine, mission progress writers, league rollover cron, etc.). Tell me which.
+2. **Polish only** — add discrete level-up toast + badge-unlock confetti animation that fire when polling detects a delta (currently the bar animates smoothly but there is no celebratory burst).
+3. **Seed sample data** — the achievements/missions/streaks tables are empty stubs, so those sections render the empty state. I can seed a starter catalog (8–10 achievements, 3 daily missions, login streak tracker) so the dashboard looks alive.
+4. **No-op** — confirm Phase 4 done and wait for further instructions.
+
+If you'd like me to do (2) and (3) together as a "Phase 4 finishing pass," approve and I'll: add a toast-based level-up + achievement-unlock animation triggered by query deltas, and create a seed migration with a sensible starter catalog.
