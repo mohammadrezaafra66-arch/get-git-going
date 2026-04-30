@@ -10,6 +10,7 @@ import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
+import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import {
   RANGE_LABEL,
   computeChangePercent,
