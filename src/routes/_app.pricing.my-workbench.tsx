@@ -399,18 +399,17 @@ function DesktopRow({
           onKeyDown={(e) => { if (e.key === "Enter") onSave(); }}
           className="h-8 w-32 text-left"
           dir="ltr"
-          disabled={noSupplier}
         />
-        {noSupplier && <div className="mt-1 text-[10px] text-destructive">بدون تأمین‌کننده</div>}
+        {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
       <TableCell className="text-xs">{CURRENCY_LABELS[row.current_currency ?? row.base_currency]}</TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(-stepPct)} disabled={noSupplier}>
+          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(-stepPct)}>
             <Minus className="h-3 w-3" />
           </Button>
           <span className="min-w-[2.5rem] text-center text-xs text-muted-foreground">{stepPct}٪</span>
-          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(stepPct)} disabled={noSupplier}>
+          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(stepPct)}>
             <Plus className="h-3 w-3" />
           </Button>
         </div>
@@ -480,7 +479,6 @@ function MobileCard({
   const SWIPE_THRESHOLD = 50; // px per step
 
   function onTouchStart(e: React.TouchEvent) {
-    if (noSupplier) return;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }
@@ -517,10 +515,6 @@ function MobileCard({
   ) : isDirty ? (
     <Badge variant="outline" className="gap-1 border-amber-500 text-amber-700 dark:text-amber-400">
       <CircleDot className="h-3 w-3" /> تغییر ذخیره‌نشده
-    </Badge>
-  ) : noSupplier ? (
-    <Badge variant="outline" className="gap-1 border-destructive text-destructive">
-      <AlertCircle className="h-3 w-3" /> بدون تأمین‌کننده
     </Badge>
   ) : (
     <Badge variant="outline" className="gap-1 text-muted-foreground">
@@ -586,7 +580,6 @@ function MobileCard({
               onChange={(e) => onPrice(Number(e.target.value) || 0)}
               className="h-14 text-center text-xl font-semibold"
               dir="ltr"
-              disabled={noSupplier}
             />
             {/* Swipe hint overlays */}
             {swipeDelta > 20 && (
@@ -600,23 +593,23 @@ function MobileCard({
               </div>
             )}
           </div>
-          {!noSupplier && (
-            <div className="mt-1 text-center text-[10px] text-muted-foreground">
-              💡 برای تغییر سریع، کارت قیمت را به چپ یا راست بکشید
-            </div>
-          )}
+          <div className="mt-1 text-center text-[10px] text-muted-foreground">
+            {noSupplier
+              ? "بدون تأمین‌کننده ثبت‌شده — می‌توانید مستقیم قیمت را وارد کنید"
+              : "💡 برای تغییر سریع، کارت قیمت را به چپ یا راست بکشید"}
+          </div>
 
           <div className="mt-2 grid grid-cols-4 gap-2">
-            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-10)} disabled={noSupplier}>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-10)}>
               <TrendingDown className="h-3 w-3" />۱۰٪
             </Button>
-            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-stepPct)} disabled={noSupplier}>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-stepPct)}>
               <Minus className="h-3 w-3" />{stepPct}٪
             </Button>
-            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(stepPct)} disabled={noSupplier}>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(stepPct)}>
               <Plus className="h-3 w-3" />{stepPct}٪
             </Button>
-            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(10)} disabled={noSupplier}>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(10)}>
               <TrendingUp className="h-3 w-3" />۱۰٪
             </Button>
           </div>
