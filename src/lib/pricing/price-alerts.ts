@@ -131,13 +131,13 @@ export async function createAlertRule(input: CreateAlertInput) {
     }
     throw error;
   }
-  await supabase.from("audit_logs").insert({
+  await supabase.from("audit_logs").insert([{
     actor_id: uid,
     entity_type: "price_alert_rule",
     entity_id: data.id,
     action: "price_alert_created",
     diff: norm as unknown as Record<string, unknown>,
-  });
+  }]);
   return data.id as string;
 }
 
@@ -161,13 +161,13 @@ export async function updateAlertRule(id: string, input: CreateAlertInput) {
     })
     .eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert({
+  await supabase.from("audit_logs").insert([{
     actor_id: uid,
     entity_type: "price_alert_rule",
     entity_id: id,
     action: "price_alert_updated",
     diff: norm as unknown as Record<string, unknown>,
-  });
+  }]);
 }
 
 export async function toggleAlertRule(id: string, isActive: boolean) {
@@ -179,13 +179,13 @@ export async function toggleAlertRule(id: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert({
+  await supabase.from("audit_logs").insert([{
     actor_id: uid,
     entity_type: "price_alert_rule",
     entity_id: id,
     action: "price_alert_toggled",
     diff: { is_active: isActive },
-  });
+  }]);
 }
 
 export async function deleteAlertRule(id: string) {
@@ -194,13 +194,13 @@ export async function deleteAlertRule(id: string) {
   if (!uid) throw new Error("ابتدا وارد شوید.");
   const { error } = await supabase.from("price_alert_rules").delete().eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert({
+  await supabase.from("audit_logs").insert([{
     actor_id: uid,
     entity_type: "price_alert_rule",
     entity_id: id,
     action: "price_alert_deleted",
     diff: {},
-  });
+  }]);
 }
 
 export async function fetchMyAlerts(opts: { page: number; pageSize: number }) {
