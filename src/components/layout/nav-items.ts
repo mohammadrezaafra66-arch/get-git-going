@@ -36,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/operations/daily-mood", label: "حال‌وهوای امروز", icon: Heart, module: "feedback", group: "operations" },
   { to: "/operations/daily-mood/admin", label: "مدیریت حال‌وهوا", icon: Heart, module: "hr", group: "operations" },
   { to: "/operations/gamification", label: "گیمیفیکیشن", icon: Trophy, module: "hr", group: "operations" },
+  { to: "/gamification", label: "داشبورد بازی", icon: Trophy, module: "dashboard", group: "operations" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText,  module: "invoices",    group: "finance" },
   { to: "/reports",     label: "گزارش‌ها",         icon: BarChart3,       module: "reports",     group: "finance" },

@@ -278,3 +278,103 @@ export async function getLeagueLeaderboard(
   if (error) throw error;
   return (data ?? []) as unknown as LeagueLeaderboardRow[];
 }
+
+// =====================================================
+// Phase 4 — Achievements / Missions / Streaks
+// =====================================================
+
+export interface UnlockedAchievement {
+  id: string;
+  achievement_id: string;
+  unlocked_at: string;
+  key: string;
+  title_fa: string;
+  description: string | null;
+  icon: string | null;
+  xp_reward: number;
+}
+
+export async function listEmployeeAchievements(employeeId: string): Promise<UnlockedAchievement[]> {
+  const { data, error } = await supabase
+    .from("employee_achievements" as never)
+    .select("id, achievement_id, unlocked_at, achievements:achievement_id(key, title_fa, description, icon, xp_reward)")
+    .eq("employee_id", employeeId)
+    .order("unlocked_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  type Row = {
+    id: string; achievement_id: string; unlocked_at: string;
+    achievements: { key: string; title_fa: string; description: string | null; icon: string | null; xp_reward: number } | null;
+  };
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    id: r.id,
+    achievement_id: r.achievement_id,
+    unlocked_at: r.unlocked_at,
+    key: r.achievements?.key ?? "",
+    title_fa: r.achievements?.title_fa ?? "",
+    description: r.achievements?.description ?? null,
+    icon: r.achievements?.icon ?? null,
+    xp_reward: r.achievements?.xp_reward ?? 0,
+  }));
+}
+
+export interface MissionWithProgress {
+  id: string;
+  key: string;
+  title_fa: string;
+  description: string | null;
+  target_value: number;
+  xp_reward: number;
+  frequency: "daily" | "weekly";
+  progress: number;
+  completed: boolean;
+}
+
+export async function listTodayMissions(employeeId: string): Promise<MissionWithProgress[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: missions, error: mErr } = await supabase
+    .from("missions" as never)
+    .select("*")
+    .eq("enabled", true)
+    .eq("frequency", "daily")
+    .order("display_order", { ascending: true });
+  if (mErr) throw mErr;
+
+  const { data: progress, error: pErr } = await supabase
+    .from("employee_mission_progress" as never)
+    .select("mission_id, progress, completed")
+    .eq("employee_id", employeeId)
+    .eq("period_key", today);
+  if (pErr) throw pErr;
+
+  type M = { id: string; key: string; title_fa: string; description: string | null; target_value: number; xp_reward: number; frequency: "daily" | "weekly" };
+  type P = { mission_id: string; progress: number; completed: boolean };
+  const pMap = new Map(((progress ?? []) as unknown as P[]).map((p) => [p.mission_id, p]));
+  return ((missions ?? []) as unknown as M[]).map((m) => ({
+    id: m.id,
+    key: m.key,
+    title_fa: m.title_fa,
+    description: m.description,
+    target_value: Number(m.target_value),
+    xp_reward: m.xp_reward,
+    frequency: m.frequency,
+    progress: Number(pMap.get(m.id)?.progress ?? 0),
+    completed: pMap.get(m.id)?.completed ?? false,
+  }));
+}
+
+export interface EmployeeStreak {
+  streak_type: string;
+  current_count: number;
+  best_count: number;
+  last_event_date: string | null;
+}
+
+export async function listEmployeeStreaks(employeeId: string): Promise<EmployeeStreak[]> {
+  const { data, error } = await supabase
+    .from("employee_streaks" as never)
+    .select("streak_type, current_count, best_count, last_event_date")
+    .eq("employee_id", employeeId);
+  if (error) throw error;
+  return (data ?? []) as unknown as EmployeeStreak[];
+}
