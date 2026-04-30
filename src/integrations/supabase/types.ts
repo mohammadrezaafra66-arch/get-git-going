@@ -5185,10 +5185,25 @@ export type Database = {
           total_purchases: number
         }[]
       }
+      get_employee_rank: {
+        Args: { _employee_id: string }
+        Returns: {
+          all_time_rank: number
+          daily_rank: number
+          daily_score: number
+          employee_id: string
+          monthly_rank: number
+          monthly_score: number
+          total_score: number
+          weekly_rank: number
+          weekly_score: number
+        }[]
+      }
       get_leaderboard: {
         Args: {
           _department?: string
           _limit?: number
+          _offset?: number
           _period?: string
           _role?: string
           _team?: string
@@ -5207,6 +5222,7 @@ export type Database = {
         Args: {
           _department?: string
           _limit?: number
+          _offset?: number
           _role?: string
           _team?: string
         }
@@ -5224,6 +5240,7 @@ export type Database = {
         Args: {
           _department?: string
           _limit?: number
+          _offset?: number
           _role?: string
           _team?: string
         }
@@ -5241,6 +5258,7 @@ export type Database = {
         Args: {
           _department?: string
           _limit?: number
+          _offset?: number
           _role?: string
           _team?: string
         }
@@ -5258,6 +5276,7 @@ export type Database = {
         Args: {
           _department?: string
           _limit?: number
+          _offset?: number
           _role?: string
           _team?: string
         }
@@ -5289,6 +5308,16 @@ export type Database = {
       get_product_sale_price: {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
+      }
+      get_rank_neighbors: {
+        Args: { _employee_id: string; _period?: string; _window?: number }
+        Returns: {
+          employee_id: string
+          full_name: string
+          rank: number
+          relative_position: string
+          score: number
+        }[]
       }
       get_sales_search_products: {
         Args: {
