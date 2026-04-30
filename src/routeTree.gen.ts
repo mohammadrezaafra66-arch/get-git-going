@@ -111,6 +111,7 @@ import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricin
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminMissionsRouteImport } from './routes/_app.gamification.admin.missions'
+import { Route as AppGamificationAdminLeaguesRouteImport } from './routes/_app.gamification.admin.leagues'
 import { Route as AppGamificationAdminKpiRulesRouteImport } from './routes/_app.gamification.admin.kpi-rules'
 import { Route as AppGamificationAdminAchievementsRouteImport } from './routes/_app.gamification.admin.achievements'
 import { Route as AppAdminGamificationAchievementsRouteImport } from './routes/_app.admin.gamification.achievements'
@@ -650,6 +651,12 @@ const AppGamificationAdminMissionsRoute =
     path: '/admin/missions',
     getParentRoute: () => AppGamificationRoute,
   } as any)
+const AppGamificationAdminLeaguesRoute =
+  AppGamificationAdminLeaguesRouteImport.update({
+    id: '/admin/leagues',
+    path: '/admin/leagues',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const AppGamificationAdminKpiRulesRoute =
   AppGamificationAdminKpiRulesRouteImport.update({
     id: '/admin/kpi-rules',
@@ -831,6 +838,7 @@ export interface FileRoutesByFullPath {
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
+  '/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
   '/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -945,6 +953,7 @@ export interface FileRoutesByTo {
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
+  '/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
   '/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -1064,6 +1073,7 @@ export interface FileRoutesById {
   '/_app/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/_app/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/_app/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
+  '/_app/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
   '/_app/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -1183,6 +1193,7 @@ export interface FileRouteTypes {
     | '/admin/gamification/achievements'
     | '/gamification/admin/achievements'
     | '/gamification/admin/kpi-rules'
+    | '/gamification/admin/leagues'
     | '/gamification/admin/missions'
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
@@ -1297,6 +1308,7 @@ export interface FileRouteTypes {
     | '/admin/gamification/achievements'
     | '/gamification/admin/achievements'
     | '/gamification/admin/kpi-rules'
+    | '/gamification/admin/leagues'
     | '/gamification/admin/missions'
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
@@ -1415,6 +1427,7 @@ export interface FileRouteTypes {
     | '/_app/admin/gamification/achievements'
     | '/_app/gamification/admin/achievements'
     | '/_app/gamification/admin/kpi-rules'
+    | '/_app/gamification/admin/leagues'
     | '/_app/gamification/admin/missions'
     | '/_app/operations/daily-mood/admin'
     | '/_app/pricing/sale-lists_/$listId'
@@ -2165,6 +2178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGamificationAdminMissionsRouteImport
       parentRoute: typeof AppGamificationRoute
     }
+    '/_app/gamification/admin/leagues': {
+      id: '/_app/gamification/admin/leagues'
+      path: '/admin/leagues'
+      fullPath: '/gamification/admin/leagues'
+      preLoaderRoute: typeof AppGamificationAdminLeaguesRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/gamification/admin/kpi-rules': {
       id: '/_app/gamification/admin/kpi-rules'
       path: '/admin/kpi-rules'
@@ -2288,6 +2308,7 @@ interface AppGamificationRouteChildren {
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
   AppGamificationAdminAchievementsRoute: typeof AppGamificationAdminAchievementsRoute
   AppGamificationAdminKpiRulesRoute: typeof AppGamificationAdminKpiRulesRoute
+  AppGamificationAdminLeaguesRoute: typeof AppGamificationAdminLeaguesRoute
   AppGamificationAdminMissionsRoute: typeof AppGamificationAdminMissionsRoute
 }
 
@@ -2295,6 +2316,7 @@ const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
   AppGamificationAdminAchievementsRoute: AppGamificationAdminAchievementsRoute,
   AppGamificationAdminKpiRulesRoute: AppGamificationAdminKpiRulesRoute,
+  AppGamificationAdminLeaguesRoute: AppGamificationAdminLeaguesRoute,
   AppGamificationAdminMissionsRoute: AppGamificationAdminMissionsRoute,
 }
 
@@ -2638,12 +2660,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
