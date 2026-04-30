@@ -130,7 +130,7 @@ function ProductDetailPage() {
             <Info label="ظرفیت" value={p.capacity ?? "—"} />
             <Info label="مدل" value={p.model ?? "—"} />
             <Info label="نوع" value={PRODUCT_TYPE_LABELS[p.product_type as keyof typeof PRODUCT_TYPE_LABELS]} />
-            <Info label="ارز مبنا" value={BASE_CURRENCY_LABELS[p.base_currency as keyof typeof BASE_CURRENCY_LABELS]} />
+            <Info label="ارز مبنا" value={(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency as string] ?? String(p.base_currency).toUpperCase()} />
             <Info label="وضعیت موجودی">
               <Badge variant={STOCK_STATUS_VARIANTS[p.stock_status as keyof typeof STOCK_STATUS_VARIANTS]}>
                 {STOCK_STATUS_LABELS[p.stock_status as keyof typeof STOCK_STATUS_LABELS]}

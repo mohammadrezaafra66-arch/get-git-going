@@ -22,11 +22,11 @@ export interface WorkbenchRow {
   sku: string | null;
   brand_name: string | null;
   stock_status: StockStatus;
-  base_currency: Database["public"]["Enums"]["currency_code"];
+  base_currency: string;
   current_price: number | null;
   current_price_id: string | null;
   current_supplier_id: string | null;
-  current_currency: Database["public"]["Enums"]["currency_code"] | null;
+  current_currency: Database["public"]["Enums"]["currency_code"] | string | null;
 }
 
 /** بازگرداندن لیست محصولات تحت مسئولیت کاربر فعلی + آخرین قیمت خرید فعال هرکدام. */

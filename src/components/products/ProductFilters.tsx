@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite, fetchAttributesLite } from "@/lib/products/queries";
 import {
-  PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
   type ProductType, type BaseCurrency, type StockStatus, type ProductStatus,
 } from "@/lib/products/constants";
 
@@ -15,7 +16,7 @@ export interface ProductFilterState {
   brand_id: string | null;
   category_id: string | null;
   product_type: ProductType | null;
-  base_currency: BaseCurrency | null;
+  base_currency: string | null;
   stock_status: StockStatus | null;
   status: ProductStatus | null;
   label_ids: string[];
@@ -40,6 +41,19 @@ export function ProductFilters({ value, onChange }: Props) {
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
   const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite });
   const attrsQ = useQuery({ queryKey: ["product-attributes-lite"], queryFn: fetchAttributesLite });
+  const currenciesQ = useQuery({
+    queryKey: ["currencies-active"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("currencies")
+        .select("code, title, is_active, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const activeAttrs = (attrsQ.data ?? []).filter((a) => a.is_active);
   const colorOpts = activeAttrs.filter((a) => a.type === "color").map((a) => ({ value: a.name, label: a.name }));
@@ -94,8 +108,8 @@ export function ProductFilters({ value, onChange }: Props) {
         <FilterSelect
           label="ارز"
           value={value.base_currency}
-          onChange={(v) => set("base_currency", v as BaseCurrency | null)}
-          options={Object.entries(BASE_CURRENCY_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+          onChange={(v) => set("base_currency", v)}
+          options={(currenciesQ.data ?? []).map((c) => ({ value: c.code, label: `${c.title} (${c.code.toUpperCase()})` }))}
         />
         <FilterSelect
           label="موجودی"

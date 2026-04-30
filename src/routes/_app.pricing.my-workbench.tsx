@@ -143,7 +143,7 @@ function WorkbenchPage() {
         await upsertPurchasePrice({
           productId: row.id,
           newPrice: change.price,
-          currency: row.current_currency ?? row.base_currency,
+          currency: (row.current_currency ?? row.base_currency) as "toman" | "usd" | "aed",
           supplierId: row.current_supplier_id,
           previousPriceId: row.current_price_id,
           previousPrice: row.current_price,
@@ -420,7 +420,7 @@ function DesktopRow({
         </div>
         {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
-      <TableCell className="text-xs">{CURRENCY_LABELS[row.current_currency ?? row.base_currency]}</TableCell>
+      <TableCell className="text-xs">{(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)}</TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
           <SelectTrigger className="h-8 w-28">
@@ -557,7 +557,7 @@ function MobileCard({
 
         <div>
           <Label className="mb-1 flex items-center justify-between text-xs">
-            <span>قیمت خرید ({CURRENCY_LABELS[row.current_currency ?? row.base_currency]})</span>
+            <span>قیمت خرید ({(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)})</span>
             {priceDelta !== 0 && (
               <span
                 className={
