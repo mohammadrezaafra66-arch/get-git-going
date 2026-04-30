@@ -5871,6 +5871,118 @@ export type Database = {
           total_count: number
         }[]
       }
+      gamification_analytics_achievements: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          achievement_id: string
+          enabled: boolean
+          last_unlock: string
+          title_fa: string
+          unlocks: number
+          xp_reward: number
+        }[]
+      }
+      gamification_analytics_active_season: {
+        Args: never
+        Returns: {
+          ends_at: string
+          id: string
+          starts_at: string
+          title_fa: string
+        }[]
+      }
+      gamification_analytics_employees: {
+        Args: never
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
+      gamification_analytics_kpi_effectiveness: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          event_key: string
+          events_count: number
+          is_active: boolean
+          title_fa: string
+          xp_amount: number
+        }[]
+      }
+      gamification_analytics_league_distribution: {
+        Args: never
+        Returns: {
+          employees_count: number
+          league: string
+        }[]
+      }
+      gamification_analytics_missions: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          avg_progress: number
+          completions: number
+          enabled: boolean
+          mission_id: string
+          title_fa: string
+          unique_employees: number
+          xp_reward: number
+        }[]
+      }
+      gamification_analytics_risk: {
+        Args: { p_from: string; p_limit?: number; p_to: string }
+        Returns: {
+          current_league: string
+          employee_id: string
+          events_in_window: number
+          full_name: string
+          last_event_at: string
+          status: string
+        }[]
+      }
+      gamification_analytics_summary: {
+        Args: {
+          p_employee_id?: string
+          p_event_type?: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          active_employees: number
+          avg_events_per_employee: number
+          total_achievements: number
+          total_events: number
+          total_missions_completed: number
+        }[]
+      }
+      gamification_analytics_top_employees: {
+        Args: {
+          p_event_type?: string
+          p_from: string
+          p_limit?: number
+          p_to: string
+        }
+        Returns: {
+          achievements_count: number
+          current_league: string
+          employee_id: string
+          events_count: number
+          full_name: string
+          missions_count: number
+        }[]
+      }
+      gamification_analytics_trend: {
+        Args: {
+          p_employee_id?: string
+          p_event_type?: string
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          cnt: number
+          day: string
+          event_type: string
+        }[]
+      }
+      gamification_assert_manager: { Args: never; Returns: undefined }
       generate_birthday_notifications: {
         Args: never
         Returns: {

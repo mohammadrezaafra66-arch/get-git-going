@@ -53,6 +53,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/leagues", label: "مدیریت لیگ‌ها", icon: Trophy, module: "roles", group: "admin" },
   { to: "/gamification/admin/rewards", label: "مدیریت پاداش‌ها", icon: Trophy, module: "roles", group: "admin" },
+  { to: "/gamification/admin/analytics", label: "تحلیل گیمیفیکیشن", icon: BarChart3, module: "roles", group: "admin" },
   { to: "/marketing/suggestions", label: "پیشنهادهای تبلیغاتی", icon: Megaphone, module: "reports", group: "operations" },
   { to: "/marketing/suggestions-history", label: "تاریخچه پیشنهادها", icon: ScrollText, module: "reports", group: "operations" },
   { to: "/audit-logs",  label: "گزارش حسابرسی",    icon: ScrollText,      module: "audit-logs",  group: "admin" },
