@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_app/admin/settings")({
   component: ShopSettingsPage,
 });
 
-const TEXTAREA_KEYS: ShopSettingKey[] = ["shop_address", "default_seller_info"];
+const TEXTAREA_KEYS: ShopSettingKey[] = ["shop_address", "default_seller_info", "birthday_message_template"];
 
 const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   shop_name: "مثلاً فروشگاه افراکالا",
@@ -41,6 +41,7 @@ const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   shop_baleh: "https://ble.ir/...",
   default_seller_info: "نام، شماره تماس و سمت پیش‌فرض فروشنده",
   alert_threshold_percent: "مثلاً 5",
+  birthday_message_template: "🎂 تولدت مبارک! ...",
 };
 
 function ShopSettingsPage() {
@@ -69,6 +70,12 @@ function ShopSettingsPage() {
       const threshold = Number(values.alert_threshold_percent);
       if (values.alert_threshold_percent && (isNaN(threshold) || threshold < 1 || threshold > 100)) {
         toast.error("آستانه هشدار باید عددی بین ۱ تا ۱۰۰ باشد.");
+        setSaving(false);
+        return;
+      }
+      // Validate birthday message length
+      if ((values.birthday_message_template ?? "").length > 500) {
+        toast.error("متن پیام تولد نباید بیش از ۵۰۰ کاراکتر باشد.");
         setSaving(false);
         return;
       }

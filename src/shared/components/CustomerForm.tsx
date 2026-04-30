@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -59,6 +60,17 @@ const schema = z.object({
       },
       "لینک نامعتبر است (باید با http یا https شروع شود)",
     ),
+  birth_date: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine((v) => {
+      if (!v) return true;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      return d <= new Date();
+    }, "تاریخ تولد نمی‌تواند در آینده باشد"),
 });
 
 export type CustomerFormValues = z.infer<typeof schema>;
@@ -93,6 +105,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       responsible_id: defaultValues?.responsible_id ?? null,
       accounting_code: defaultValues?.accounting_code ?? "",
       link_group: defaultValues?.link_group ?? "",
+      birth_date: defaultValues?.birth_date ?? null,
     },
     mode: "onBlur",
   });
@@ -114,6 +127,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         responsible_id: values.responsible_id ?? null,
         accounting_code: values.accounting_code?.trim() || null,
         link_group: values.link_group?.trim() || null,
+        birth_date: values.birth_date ? values.birth_date : null,
       };
       if (customerId) {
         const { error } = await supabase
@@ -175,6 +189,17 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       <div className="space-y-2">
         <Label htmlFor="city">شهر</Label>
         <Input id="city" {...form.register("city")} placeholder="مثلاً تهران" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="birth_date">تاریخ تولد (اختیاری)</Label>
+        <BirthDatePicker
+          value={form.watch("birth_date") ?? null}
+          onChange={(iso) => form.setValue("birth_date", iso, { shouldValidate: true })}
+        />
+        {errors.birth_date && (
+          <p className="text-xs text-destructive">{errors.birth_date.message as string}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -244,6 +269,73 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
 }
 
 /* ------------- Responsible autocomplete ------------- */
+
+/* ------------- Birth-date picker (Gregorian shadcn DatePicker) ------------- */
+
+function BirthDatePicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (iso: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const dateValue = value ? new Date(value) : undefined;
+  const display = dateValue
+    ? dateValue.toLocaleDateString("fa-IR")
+    : "انتخاب تاریخ تولد";
+  return (
+    <div className="flex gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              "flex-1 justify-start font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="ml-2 h-4 w-4 opacity-60" />
+            {display}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={dateValue}
+            onSelect={(d) => {
+              if (!d) {
+                onChange(null);
+              } else {
+                // Use local YYYY-MM-DD (avoid TZ shift to previous day)
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                onChange(`${y}-${m}-${day}`);
+              }
+              setOpen(false);
+            }}
+            disabled={(date) => date > new Date()}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onChange(null)}
+          aria-label="پاک کردن"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 interface ResponsiblePickerProps {
   value: string | null;
