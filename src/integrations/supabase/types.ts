@@ -1577,6 +1577,99 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_level_up_events: {
+        Row: {
+          created_at: string
+          employee_id: string
+          id: string
+          new_level: number
+          old_level: number
+          xp_total: number
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          id?: string
+          new_level: number
+          old_level: number
+          xp_total: number
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          id?: string
+          new_level?: number
+          old_level?: number
+          xp_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_level_up_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_level_up_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_progress: {
+        Row: {
+          created_at: string
+          employee_id: string
+          last_level_up: string | null
+          last_score_converted: number
+          level: number
+          updated_at: string
+          xp_current: number
+          xp_next_level: number
+          xp_total: number
+        }
+        Insert: {
+          created_at?: string
+          employee_id: string
+          last_level_up?: string | null
+          last_score_converted?: number
+          level?: number
+          updated_at?: string
+          xp_current?: number
+          xp_next_level?: number
+          xp_total?: number
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string
+          last_level_up?: string | null
+          last_score_converted?: number
+          level?: number
+          updated_at?: string
+          xp_current?: number
+          xp_next_level?: number
+          xp_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_score_events: {
         Row: {
           employee_id: string
@@ -4880,6 +4973,10 @@ export type Database = {
         }
         Returns: string
       }
+      add_employee_xp: {
+        Args: { _employee_id: string; _xp: number }
+        Returns: Json
+      }
       api_dynamic_table_query_rows: {
         Args: {
           p_filters?: Json
@@ -4917,6 +5014,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      award_xp_from_score: { Args: { _employee_id: string }; Returns: Json }
       bot_authenticate_key: {
         Args: { p_raw_key: string }
         Returns: {
@@ -4980,6 +5078,7 @@ export type Database = {
           updated_count: number
         }[]
       }
+      calc_xp_for_level: { Args: { _level: number }; Returns: number }
       calculate_credit_score: {
         Args: { _customer_id: string }
         Returns: {
@@ -5185,6 +5284,7 @@ export type Database = {
           total_purchases: number
         }[]
       }
+      get_employee_progress: { Args: { _employee_id: string }; Returns: Json }
       get_employee_rank: {
         Args: { _employee_id: string }
         Returns: {
