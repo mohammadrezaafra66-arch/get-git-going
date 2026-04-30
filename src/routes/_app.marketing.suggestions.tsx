@@ -14,7 +14,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, CheckCircle2, Megaphone } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -87,11 +87,12 @@ function PromotionSuggestionsPage() {
     enabled: allowed,
     staleTime: 30_000,
     queryFn: async (): Promise<Suggestion[]> => {
-      const { data, error } = await supabase.rpc("compute_promotion_scores", {
-        _channel_id: channelId === "__all__" ? null : channelId,
+      const args: { _channel_id?: string; _min_score?: number; _limit?: number } = {
         _min_score: minScore,
         _limit: 200,
-      });
+      };
+      if (channelId !== "__all__") args._channel_id = channelId;
+      const { data, error } = await supabase.rpc("compute_promotion_scores", args);
       if (error) throw error;
       return (data ?? []) as Suggestion[];
     },
@@ -144,7 +145,6 @@ function PromotionSuggestionsPage() {
       <PageHeader
         title="پیشنهادهای تبلیغاتی"
         description="پیشنهاد محصولات برای تبلیغ در هر کانال بر اساس وزن برچسب‌ها، وزن کانال، موجودی و فروش اخیر."
-        icon={Megaphone}
       />
 
       <div className="flex flex-col gap-3 rounded-md border bg-card p-4 md:flex-row md:items-end">
