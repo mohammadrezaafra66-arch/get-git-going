@@ -11,6 +11,7 @@ import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
+import { ProductRecommendationsCard } from "@/components/products/recommendations/ProductRecommendationsCard";
 
 interface ProductLite {
   id: string;
@@ -264,6 +265,11 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
                   محاسبه دقیق‌تر (تست موتور قیمت)
                 </Link>
               </Button>
+            </div>
+
+            {/* Smart product recommendations */}
+            <div className="mt-4">
+              <ProductRecommendationsCard productId={product.id} compact />
             </div>
           </>
         )}
