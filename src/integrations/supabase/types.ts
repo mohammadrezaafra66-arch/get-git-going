@@ -290,6 +290,8 @@ export type Database = {
           icon: string | null
           id: string
           key: string
+          rule_type: string
+          rule_value: number | null
           title_fa: string
           xp_reward: number
         }
@@ -301,6 +303,8 @@ export type Database = {
           icon?: string | null
           id?: string
           key: string
+          rule_type?: string
+          rule_value?: number | null
           title_fa: string
           xp_reward?: number
         }
@@ -312,6 +316,8 @@ export type Database = {
           icon?: string | null
           id?: string
           key?: string
+          rule_type?: string
+          rule_value?: number | null
           title_fa?: string
           xp_reward?: number
         }
@@ -2120,6 +2126,54 @@ export type Database = {
         }
         Relationships: []
       }
+      gamification_rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          enabled: boolean
+          id: string
+          key: string
+          notes: string | null
+          reward_type: string
+          reward_value: number | null
+          title_fa: string
+          trigger_type: string
+          trigger_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          key: string
+          notes?: string | null
+          reward_type: string
+          reward_value?: number | null
+          title_fa: string
+          trigger_type: string
+          trigger_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          key?: string
+          notes?: string | null
+          reward_type?: string
+          reward_value?: number | null
+          title_fa?: string
+          trigger_type?: string
+          trigger_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           discount: number
@@ -2453,6 +2507,33 @@ export type Database = {
           season_name?: string
           settled_at?: string | null
           start_date?: string
+        }
+        Relationships: []
+      }
+      league_settings: {
+        Row: {
+          created_at: string
+          demotion_percent: number
+          id: string
+          promotion_percent: number
+          season_duration_days: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          demotion_percent?: number
+          id?: string
+          promotion_percent?: number
+          season_duration_days?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          demotion_percent?: number
+          id?: string
+          promotion_percent?: number
+          season_duration_days?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -5286,6 +5367,7 @@ export type Database = {
         Args: { _employee_id: string; _xp: number }
         Returns: Json
       }
+      admin_gamification_overview: { Args: never; Returns: Json }
       api_dynamic_table_query_rows: {
         Args: {
           p_filters?: Json
