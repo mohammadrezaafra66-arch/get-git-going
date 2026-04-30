@@ -298,7 +298,6 @@ function WorkbenchPage() {
                   <TableHead className="text-right">برند</TableHead>
                   <TableHead className="text-right">قیمت خرید</TableHead>
                   <TableHead className="text-right">ارز</TableHead>
-                  <TableHead className="text-right">تنظیم سریع</TableHead>
                   <TableHead className="text-right">موجودی</TableHead>
                   <TableHead className="text-right">عملیات</TableHead>
                 </TableRow>
@@ -390,29 +389,38 @@ function DesktopRow({
       </TableCell>
       <TableCell className="text-sm">{row.brand_name ?? "—"}</TableCell>
       <TableCell>
-        <Input
-          type="number"
-          min={0}
-          value={currentPrice || ""}
-          onChange={(e) => onPrice(Number(e.target.value) || 0)}
-          onKeyDown={(e) => { if (e.key === "Enter") onSave(); }}
-          className="h-8 w-32 text-left"
-          dir="ltr"
-        />
-        {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
-      </TableCell>
-      <TableCell className="text-xs">{CURRENCY_LABELS[row.current_currency ?? row.base_currency]}</TableCell>
-      <TableCell>
         <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(-stepPct)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2"
+            onClick={() => onBump(-stepPct)}
+            title={`کاهش ${stepPct}٪`}
+          >
             <Minus className="h-3 w-3" />
           </Button>
-          <span className="min-w-[2.5rem] text-center text-xs text-muted-foreground">{stepPct}٪</span>
-          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onBump(stepPct)}>
+          <Input
+            type="number"
+            min={0}
+            value={currentPrice || ""}
+            onChange={(e) => onPrice(Number(e.target.value) || 0)}
+            onKeyDown={(e) => { if (e.key === "Enter") onSave(); }}
+            className="h-8 w-32 text-center"
+            dir="ltr"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2"
+            onClick={() => onBump(stepPct)}
+            title={`افزایش ${stepPct}٪`}
+          >
             <Plus className="h-3 w-3" />
           </Button>
         </div>
+        {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
+      <TableCell className="text-xs">{CURRENCY_LABELS[row.current_currency ?? row.base_currency]}</TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
           <SelectTrigger className="h-8 w-28">
