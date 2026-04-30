@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search, Filter, ArrowUpRight, ArrowDownRight, Tag, LineChart,
@@ -28,6 +28,7 @@ import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
+import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
