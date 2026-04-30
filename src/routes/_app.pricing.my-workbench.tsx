@@ -143,7 +143,7 @@ function WorkbenchPage() {
         await upsertPurchasePrice({
           productId: row.id,
           newPrice: change.price,
-          currency: row.current_currency ?? row.base_currency,
+          currency: (row.current_currency ?? row.base_currency) as "toman" | "usd" | "aed",
           supplierId: row.current_supplier_id,
           previousPriceId: row.current_price_id,
           previousPrice: row.current_price,
