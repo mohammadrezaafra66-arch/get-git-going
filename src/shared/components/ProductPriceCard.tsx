@@ -99,7 +99,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_label_links")
-        .select("label:product_labels(id, title)")
+        .select("label:product_labels(id, title, visibility)")
         .eq("product_id", productId!);
       if (error) return [] as any[];
       return (data ?? []).map((r: any) => r.label).filter(Boolean);
@@ -109,6 +109,11 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
 
   const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
   const stockKey = product?.stock_status ?? "unknown";
+  const { roles: _roles } = useAuth();
+  const canSeeInternalLabels = _roles.includes("admin") || _roles.includes("manager");
+  const visibleLabels = (labelsQuery.data ?? []).filter(
+    (l: any) => canSeeInternalLabels || l?.visibility !== "internal",
+  );
 
   const handleCopy = async () => {
     if (!product) return;
