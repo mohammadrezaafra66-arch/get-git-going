@@ -4722,6 +4722,35 @@ export type Database = {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
       }
+      get_sales_search_products: {
+        Args: {
+          p_brand_ids?: string[]
+          p_category_ids?: string[]
+          p_label_ids?: string[]
+          p_limit?: number
+          p_offset?: number
+          p_only_with_price?: boolean
+          p_product_type?: string
+          p_search?: string
+          p_stock_status?: string
+        }
+        Returns: {
+          brand: Json
+          capacity: string
+          category: Json
+          color: string
+          description: string
+          id: string
+          is_unavailable_for_sales: boolean
+          labels: Json
+          model: string
+          name: string
+          prices: Json
+          product_type: string
+          sku: string
+          stock_status: string
+        }[]
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
