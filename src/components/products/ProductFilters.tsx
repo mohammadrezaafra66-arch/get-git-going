@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite, fetchAttributesLite } from "@/lib/products/queries";
 import {
-  PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
   type ProductType, type BaseCurrency, type StockStatus, type ProductStatus,
 } from "@/lib/products/constants";
 
