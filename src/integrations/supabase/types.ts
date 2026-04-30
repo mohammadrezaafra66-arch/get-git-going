@@ -1637,21 +1637,33 @@ export type Database = {
       employee_achievements: {
         Row: {
           achievement_id: string
+          created_at: string
           employee_id: string
           id: string
+          source_event_count: number | null
+          source_event_type: string | null
           unlocked_at: string
+          xp_awarded: number
         }
         Insert: {
           achievement_id: string
+          created_at?: string
           employee_id: string
           id?: string
+          source_event_count?: number | null
+          source_event_type?: string | null
           unlocked_at?: string
+          xp_awarded?: number
         }
         Update: {
           achievement_id?: string
+          created_at?: string
           employee_id?: string
           id?: string
+          source_event_count?: number | null
+          source_event_type?: string | null
           unlocked_at?: string
+          xp_awarded?: number
         }
         Relationships: [
           {
@@ -5538,6 +5550,10 @@ export type Database = {
       }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       capture_score_snapshots: { Args: never; Returns: number }
+      check_and_unlock_achievements_for_employee: {
+        Args: { _employee_id: string; _event_type: string }
+        Returns: Json
+      }
       check_price_alerts_for_product: {
         Args: {
           p_change_percent?: number
