@@ -669,6 +669,7 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
                   <ChangeCell h={h} />
                 </div>
                 <div className="mt-2 flex justify-end">
+                  <div className="flex gap-1">
                   <Button
                     type="button"
                     size="sm"
@@ -684,6 +685,12 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
                   >
                     <LineChart className="h-3.5 w-3.5" /> نمودار قیمت
                   </Button>
+                  <CreatePriceAlertButton
+                    productId={row.product.id}
+                    productName={row.product.name}
+                    salePriceTypeId={h.sale_price_type_id ?? null}
+                  />
+                  </div>
                 </div>
               </div>
             ))}
