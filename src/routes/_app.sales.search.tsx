@@ -632,6 +632,7 @@ interface FiltersPanelProps {
   categoryFilterText: string; setCategoryFilterText: (v: string) => void;
   labelFilterText: string; setLabelFilterText: (v: string) => void;
   dBrandText: string; dCategoryText: string; dLabelText: string;
+  onlyWithPrice: boolean; setOnlyWithPrice: (v: boolean) => void;
 }
 
 function FiltersPanel(props: FiltersPanelProps) {
@@ -643,6 +644,7 @@ function FiltersPanel(props: FiltersPanelProps) {
     categoryFilterText, setCategoryFilterText,
     labelFilterText, setLabelFilterText,
     dBrandText, dCategoryText, dLabelText,
+    onlyWithPrice, setOnlyWithPrice,
   } = props;
 
   const filteredBrands = useMemo(() => {
@@ -708,6 +710,13 @@ function FiltersPanel(props: FiltersPanelProps) {
             </Button>
           ))}
         </div>
+        <label className="flex items-center gap-2 text-sm pt-2 cursor-pointer">
+          <Checkbox
+            checked={onlyWithPrice}
+            onCheckedChange={(v) => setOnlyWithPrice(!!v)}
+          />
+          <span>فقط محصولات دارای قیمت معتبر</span>
+        </label>
       </div>
 
       {/* Brands */}
