@@ -32,7 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/sales/credit-rules", label: "اعتبارسنجی", icon: ShieldCheck,    module: "sales",       group: "finance" },
   { to: "/sales/credit-customers", label: "وضعیت اعتبار مشتریان", icon: ShieldCheck, module: "sales", group: "finance" },
   { to: "/operations/tasks", label: "برد وظایف", icon: CheckSquare, module: "invoices", group: "operations" },
-  { to: "/operations/daily-mood", label: "حال‌وهوای امروز", icon: Heart, module: "hr", group: "operations" },
+  { to: "/operations/daily-mood", label: "حال‌وهوای امروز", icon: Heart, module: "feedback", group: "operations" },
   { to: "/operations/daily-mood/admin", label: "مدیریت حال‌وهوا", icon: Heart, module: "hr", group: "operations" },
   { to: "/invoices",    label: "فاکتورها",        icon: FileText,        module: "invoices",    group: "finance" },
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText,  module: "invoices",    group: "finance" },
