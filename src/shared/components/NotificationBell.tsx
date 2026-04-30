@@ -122,7 +122,9 @@ export function NotificationBell() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-foreground">{n.title}</span>
+                  <span className="font-medium text-foreground">
+                    {n.type === "birthday" ? "🎂 " : ""}{n.title}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">{relativeFa(n.created_at)}</span>
                 </div>
                 <p className="mt-1 line-clamp-2 whitespace-pre-line text-muted-foreground">{n.body}</p>

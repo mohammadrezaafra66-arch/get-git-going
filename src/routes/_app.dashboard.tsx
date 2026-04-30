@@ -2,9 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, FileText, Users, DollarSign, Factory, GraduationCap } from "lucide-react";
+import { Package, FileText, Users, DollarSign, Factory, GraduationCap, Cake, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/rbac/roles";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
   beforeLoad: async () => { await requirePermission("dashboard", "view"); },
@@ -23,6 +27,22 @@ const STATS = [
 function DashboardPage() {
   const { user, roles } = useAuth();
   const roleText = roles.map((r) => ROLE_LABELS[r]).join("، ") || "بدون نقش";
+  const canRunBirthdays =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const [bdayLoading, setBdayLoading] = useState(false);
+
+  const runBirthdayCheck = async () => {
+    setBdayLoading(true);
+    const { data, error } = await supabase.rpc("generate_birthday_notifications");
+    setBdayLoading(false);
+    if (error) {
+      toast.error("خطا در بررسی تولدها");
+      return;
+    }
+    const created = Array.isArray(data) ? Number((data[0] as { created_count?: number })?.created_count ?? 0) : 0;
+    if (created > 0) toast.success(`${created.toLocaleString("fa-IR")} نوتیفیکیشن تولد ایجاد شد`);
+    else toast.success("امروز تولدی وجود ندارد یا قبلاً ثبت شده است");
+  };
 
   return (
     <div className="space-y-6">
@@ -30,6 +50,22 @@ function DashboardPage() {
         title={`خوش آمدید${user?.email ? "" : ""}`}
         description={`نقش شما: ${roleText}`}
       />
+
+      {canRunBirthdays && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={runBirthdayCheck}
+            disabled={bdayLoading}
+            className="gap-2"
+          >
+            {bdayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cake className="h-4 w-4" />}
+            بررسی تولدهای امروز
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         {STATS.map((s) => (
