@@ -118,6 +118,7 @@ export interface LeaderboardFilters {
   department?: string | null;
   role?: string | null;
   limit?: number;
+  offset?: number;
 }
 
 export async function getLeaderboard(
@@ -138,7 +139,51 @@ export async function getLeaderboard(
     _department: filters.department ?? null,
     _role: filters.role ?? null,
     _limit: filters.limit ?? 50,
+    _offset: filters.offset ?? 0,
   } as never);
   if (error) throw error;
   return (data ?? []) as unknown as LeaderboardRow[];
+}
+
+export interface EmployeeRank {
+  employee_id: string;
+  daily_score: number;
+  weekly_score: number;
+  monthly_score: number;
+  total_score: number;
+  daily_rank: number;
+  weekly_rank: number;
+  monthly_rank: number;
+  all_time_rank: number;
+}
+
+export async function getEmployeeRank(employeeId: string): Promise<EmployeeRank | null> {
+  const { data, error } = await supabase.rpc("get_employee_rank" as never, {
+    _employee_id: employeeId,
+  } as never);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as EmployeeRank[];
+  return rows[0] ?? null;
+}
+
+export interface RankNeighbor {
+  employee_id: string;
+  full_name: string | null;
+  score: number;
+  rank: number;
+  relative_position: "self" | "above" | "below";
+}
+
+export async function getRankNeighbors(
+  employeeId: string,
+  period: LeaderboardPeriod = "monthly",
+  windowSize = 3,
+): Promise<RankNeighbor[]> {
+  const { data, error } = await supabase.rpc("get_rank_neighbors" as never, {
+    _employee_id: employeeId,
+    _period: period,
+    _window: windowSize,
+  } as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as RankNeighbor[];
 }
