@@ -128,12 +128,18 @@ function SalesSearchPage() {
     queryKey: ["product-labels-lite-sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("product_labels").select("id, title, color").order("title").limit(500);
+        .from("product_labels").select("id, title, color, visibility").order("title").limit(500);
       if (error) throw error;
       return data ?? [];
     },
     staleTime: 5 * 60_000,
   });
+
+  const canSeeInternalLabels = roles.includes("admin") || roles.includes("manager");
+  const visibleLabels = useMemo(
+    () => (labels as any[]).filter((l) => canSeeInternalLabels || l?.visibility !== "internal"),
+    [labels, canSeeInternalLabels],
+  );
 
   const { data: salePriceTypes = [] } = useQuery({
     queryKey: ["sale-price-types-active"],
