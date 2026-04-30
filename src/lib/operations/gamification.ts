@@ -187,3 +187,45 @@ export async function getRankNeighbors(
   if (error) throw error;
   return (data ?? []) as unknown as RankNeighbor[];
 }
+
+// =====================================================
+// Phase 2 — XP Progression
+// =====================================================
+
+export interface EmployeeProgress {
+  employee_id: string;
+  level: number;
+  xp_current: number;
+  xp_total: number;
+  xp_next_level: number;
+  progress_percent: number;
+  last_level_up: string | null;
+}
+
+export interface AddXpResult {
+  employee_id: string;
+  level: number;
+  xp_current: number;
+  xp_total: number;
+  xp_next_level: number;
+  leveled_up: boolean;
+  old_level?: number;
+  new_level?: number;
+}
+
+export async function getEmployeeProgress(employeeId: string): Promise<EmployeeProgress> {
+  const { data, error } = await supabase.rpc("get_employee_progress" as never, {
+    _employee_id: employeeId,
+  } as never);
+  if (error) throw error;
+  return data as unknown as EmployeeProgress;
+}
+
+export async function addEmployeeXp(employeeId: string, xp: number): Promise<AddXpResult> {
+  const { data, error } = await supabase.rpc("add_employee_xp" as never, {
+    _employee_id: employeeId,
+    _xp: xp,
+  } as never);
+  if (error) throw error;
+  return data as unknown as AddXpResult;
+}
