@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Flame, Target, Medal, Zap, ChevronLeft, Lock } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +18,9 @@ import {
   listEmployeeAchievements,
   listTodayMissions,
   listEmployeeStreaks,
-  type LeagueTier,
 } from "@/lib/operations/gamification";
+import { LeagueBadge, getLeagueLabel, type LeagueTier } from "@/components/gamification/LeagueBadge";
+import { LevelUpOverlay } from "@/components/gamification/LevelUpOverlay";
 
 export const Route = createFileRoute("/_app/gamification")({
   component: GamificationDashboard,
@@ -27,30 +28,6 @@ export const Route = createFileRoute("/_app/gamification")({
 
 const REFETCH_MS = 30_000;
 const LEADERBOARD_STALE = 60_000;
-
-const TIER_GRADIENT: Record<LeagueTier, string> = {
-  Bronze:   "from-amber-700 to-amber-500",
-  Silver:   "from-slate-400 to-slate-200",
-  Gold:     "from-yellow-500 to-amber-300",
-  Platinum: "from-cyan-400 to-blue-300",
-  Diamond:  "from-sky-400 to-fuchsia-400",
-  Legend:   "from-fuchsia-500 via-purple-500 to-orange-400",
-};
-
-const TIER_FA: Record<LeagueTier, string> = {
-  Bronze: "برنز", Silver: "نقره", Gold: "طلا", Platinum: "پلاتین", Diamond: "الماس", Legend: "افسانه",
-};
-
-function TierBadge({ tier, size = "sm" }: { tier: LeagueTier | null; size?: "sm" | "lg" }) {
-  if (!tier) return null;
-  const grad = TIER_GRADIENT[tier];
-  const sizeCls = size === "lg" ? "h-16 w-16 text-2xl" : "h-7 w-7 text-xs";
-  return (
-    <div className={`relative ${sizeCls} flex items-center justify-center rounded-full bg-gradient-to-br ${grad} text-white shadow-lg ring-2 ring-white/40 transition-transform hover:scale-110`}>
-      <Crown className={size === "lg" ? "h-7 w-7" : "h-4 w-4"} />
-    </div>
-  );
-}
 
 function GamificationDashboard() {
   const { user, profile } = useAuth();
@@ -109,21 +86,21 @@ function GamificationDashboard() {
   const xpPct = progress.data?.progress_percent ?? 0;
   const tier = (league.data?.league as LeagueTier | null) ?? null;
 
-  // Level-up + achievement-unlock celebrations triggered by polling deltas
+  // Level-up celebration: full-screen overlay (replaces previous toast)
   const prevLevel = useRef<number | null>(null);
-  const prevAchievementIds = useRef<Set<string> | null>(null);
+  const [celebrateLevel, setCelebrateLevel] = useState<number | null>(null);
 
   useEffect(() => {
     const lvl = progress.data?.level;
     if (lvl == null) return;
     if (prevLevel.current != null && lvl > prevLevel.current) {
-      toast.success(`🎉 سطح ${lvl}!`, {
-        description: "تبریک! به سطح بالاتری ارتقا یافتید.",
-        duration: 6000,
-      });
+      setCelebrateLevel(lvl);
     }
     prevLevel.current = lvl;
   }, [progress.data?.level]);
+
+  // Achievement-unlock toast (kept from previous phase)
+  const prevAchievementIds = useRef<Set<string> | null>(null);
 
   useEffect(() => {
     const list = achievements.data;
@@ -144,6 +121,7 @@ function GamificationDashboard() {
 
   return (
     <div className="space-y-6 pb-10">
+      <LevelUpOverlay level={celebrateLevel} onDone={() => setCelebrateLevel(null)} />
       {/* HERO / Player Card */}
       <Card className="relative overflow-hidden border-0 bg-gradient-to-bl from-primary/20 via-background to-accent/20 shadow-xl">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent" />
@@ -166,8 +144,8 @@ function GamificationDashboard() {
                   <Zap className="h-3 w-3" /> سطح {progress.data?.level ?? 1}
                 </Badge>
                 {tier ? (
-                  <Badge className={`gap-1 bg-gradient-to-r ${TIER_GRADIENT[tier]} text-white border-0`}>
-                    <Crown className="h-3 w-3" /> لیگ {TIER_FA[tier]}
+                  <Badge variant="outline" className="gap-1 border-amber-500/40">
+                    <Crown className="h-3 w-3 text-amber-500" /> لیگ {getLeagueLabel(tier)}
                   </Badge>
                 ) : null}
                 {rank.data?.monthly_rank ? (
@@ -178,7 +156,7 @@ function GamificationDashboard() {
               </div>
             </div>
           </div>
-          <TierBadge tier={tier} size="lg" />
+          <LeagueBadge tier={tier} size="xl" animated />
         </CardContent>
       </Card>
 
@@ -223,9 +201,9 @@ function GamificationDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-3 text-center">
-            <TierBadge tier={tier} size="lg" />
+            <LeagueBadge tier={tier} size="lg" />
             <div>
-              <div className="text-lg font-bold">{tier ? TIER_FA[tier] : "—"}</div>
+              <div className="text-lg font-bold">{getLeagueLabel(tier)}</div>
               <div className="text-xs text-muted-foreground">
                 فصل {league.data?.season_name ?? "—"}
               </div>
