@@ -449,11 +449,12 @@ function SalesSearchPage() {
                 onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
                 onOpenChart={() => {
                   if (!salePriceTypeId) return;
+                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)?.title ?? "—";
                   setChartCtx({
                     productId: p.id,
                     productName: p.name,
                     salePriceTypeId,
-                    salePriceTypeTitle,
+                    salePriceTypeTitle: title,
                   });
                 }}
               />
