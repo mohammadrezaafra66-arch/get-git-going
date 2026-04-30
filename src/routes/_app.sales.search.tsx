@@ -29,6 +29,7 @@ import { formatProductDisplayNameWithFallback } from "@/lib/products/display-nam
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
 import { computeChangePercent, computeDirection } from "@/lib/pricing/price-history";
+import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -184,11 +185,20 @@ function SalesSearchPage() {
         p_offset: 0,
       });
       if (error) throw error;
-      return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         ...(row as object),
         labels: Array.isArray(row.labels) ? row.labels : [],
         prices: Array.isArray(row.prices) ? row.prices : [],
       })) as ProductRow[];
+      // Track that these products were viewed in search results
+      for (const r of rows) {
+        trackProductInteraction({
+          productId: r.id,
+          eventType: "search_result_viewed",
+          source: "sales_search",
+        });
+      }
+      return rows;
     },
     staleTime: 30_000,
   });
