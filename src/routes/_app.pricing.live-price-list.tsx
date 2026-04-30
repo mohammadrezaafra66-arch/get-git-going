@@ -260,6 +260,20 @@ function LivePriceListPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const isLoading = productsQuery.isLoading || (productIds.length > 0 && historyQuery.isLoading);
 
+  // ---------- analytics: track price_checked for products whose price is shown ----------
+  useEffect(() => {
+    for (const r of merged) {
+      if (!r.hasPrice) continue;
+      const sptId = r.histories[0]?.sale_price_type_id ?? null;
+      trackProductInteraction({
+        productId: r.product.id,
+        eventType: "price_checked",
+        source: "live_price_list",
+        salePriceTypeId: sptId,
+      });
+    }
+  }, [merged]);
+
   // ---------- summary ----------
   const summaryQuery = useQuery({
     queryKey: ["live-price-summary"],
