@@ -107,8 +107,8 @@ function ProductDetailPage() {
               <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canUpdate && (
-              <Button asChild size="sm">
-                <Link to="/products/$id/edit" params={{ id }}><Pencil className="ms-1 h-4 w-4" />ویرایش</Link>
+              <Button size="sm" onClick={() => navigate({ to: "/products/$id/edit", params: { id } })}>
+                <Pencil className="ms-1 h-4 w-4" />ویرایش
               </Button>
             )}
             {canDelete && (
