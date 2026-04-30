@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,19 @@ function LoginPage() {
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const urlEmail = url.searchParams.get("email");
+    const hasUnsafeAuthParams = url.searchParams.has("email") || url.searchParams.has("password");
+
+    if (urlEmail) setLoginEmail(urlEmail);
+    if (hasUnsafeAuthParams) {
+      url.searchParams.delete("email");
+      url.searchParams.delete("password");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, []);
 
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -98,7 +111,7 @@ function LoginPage() {
       // Refresh identity so profile/roles are loaded before redirect.
       try { await refreshRoles(); } catch { /* non-blocking */ }
       toast.success("خوش آمدید");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       const fa = translateAuthError(err instanceof Error ? err.message : null);
       setLoginError(fa);
@@ -198,7 +211,7 @@ function LoginPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4" noValidate>
+                <form method="post" action="/login" onSubmit={handleLogin} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="login-email">ایمیل</Label>
                     <Input id="login-email" name="email" type="email" required dir="ltr"
@@ -221,7 +234,7 @@ function LoginPage() {
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4" noValidate>
+                <form method="post" action="/login" onSubmit={handleSignup} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">نام و نام خانوادگی</Label>
                     <Input id="signup-name" name="full_name" required maxLength={100}
@@ -253,7 +266,7 @@ function LoginPage() {
               </TabsContent>
 
               <TabsContent value="reset">
-                <form onSubmit={handlePasswordReset} className="space-y-4" noValidate>
+                <form method="post" action="/login" onSubmit={handlePasswordReset} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="reset-email">ایمیل حساب مدیر</Label>
                     <Input
