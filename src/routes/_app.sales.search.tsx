@@ -448,19 +448,27 @@ function SalesSearchPage() {
 
 interface ProductCardProps {
   product: ProductRow;
-  history: HistoryRow | undefined;
+  primarySalePriceTypeId: string;
   isPrivileged: boolean;
   onSelect: () => void;
-  onOpenChart: () => void;
+  onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
-  const prev = history?.old_sale_price != null ? Number(history.old_sale_price) : null;
-  const cur = history ? Number(history.new_sale_price) : null;
-  const amt = (cur !== null && prev !== null) ? cur - prev : (history?.change_amount != null ? Number(history.change_amount) : null);
-  const pct = history?.change_percent != null ? Number(history.change_percent) : computeChangePercent(cur, prev);
+  const prices = product.prices ?? [];
+  const labels = product.labels ?? [];
+  // primary price = the one selected globally (if available for this product), otherwise the first.
+  const primary =
+    prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
+  const others = prices.filter((p) => p.sale_price_type_id !== (primary?.sale_price_type_id ?? ""));
+
+  const cur = primary?.current_price != null ? Number(primary.current_price) : null;
+  const prev = primary?.previous_price != null ? Number(primary.previous_price) : null;
+  const amt = cur !== null && prev !== null ? cur - prev : null;
+  const pct = computeChangePercent(cur, prev);
+
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent
@@ -482,6 +490,23 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
               {product.brand?.name && <span>برند: {product.brand.name}</span>}
               {product.category?.name && <span>· {product.category.name}</span>}
             </div>
+            {labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {labels.slice(0, 4).map((l) => (
+                  <span
+                    key={l.id}
+                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                    style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                  >
+                    <span
+                      className="inline-block h-2 w-2 rounded-full"
+                      style={l.color ? { backgroundColor: l.color } : undefined}
+                    />
+                    {l.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant={STOCK_VARIANT[stockKey] ?? "outline"}>
@@ -499,12 +524,12 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
               <PackageX className="h-4 w-4" />
               ناموجود — قیمت نمایش داده نمی‌شود
             </div>
-          ) : history ? (
+          ) : primary && cur !== null ? (
             <div className="flex items-end justify-between gap-2">
               <div>
-                <div className="text-xs text-muted-foreground">قیمت فروش</div>
+                <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
                 <div className="text-2xl font-bold text-primary">
-                  {formatNumber(Number(history.new_sale_price))}
+                  {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
                 {prev !== null && (
@@ -514,37 +539,57 @@ function ProductCard({ product, history, isPrivileged, onSelect, onOpenChart }: 
                   <PriceChangeBadge info={{ change_amount: amt, change_percent: pct, direction: computeDirection(amt) }} />
                 </div>
               </div>
-              <div className="text-[11px] text-muted-foreground text-left">
-                آخرین بروزرسانی
-                <div>{formatDateTimeFa(history.created_at)}</div>
-              </div>
+              {primary.last_updated_at && (
+                <div className="text-[11px] text-muted-foreground text-left">
+                  آخرین بروزرسانی
+                  <div>{formatDateTimeFa(primary.last_updated_at)}</div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Sparkles className="h-4 w-4" />
-                برای این نوع قیمت، قیمت فروش ثبت نشده است.
-              </div>
-              {isPrivileged && (
-                <Link
-                  to="/pricing/calculator"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
-                </Link>
-              )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              قیمت ثبت نشده
             </div>
           )}
         </div>
+
+        {/* Secondary prices grid */}
+        {!isUnavailable && others.length > 0 && (
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {others.map((p) => {
+              const c = p.current_price != null ? Number(p.current_price) : null;
+              const pv = p.previous_price != null ? Number(p.previous_price) : null;
+              const a = c !== null && pv !== null ? c - pv : null;
+              return (
+                <button
+                  key={p.sale_price_type_id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOpenChart(p.sale_price_type_id); }}
+                  className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
+                >
+                  <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
+                  <div className="text-sm font-semibold tabular-nums">
+                    {c !== null ? formatNumber(c) : <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>}
+                  </div>
+                  {a !== null && a !== 0 && (
+                    <div className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {a > 0 ? "+" : ""}{formatNumber(a)}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); onOpenChart(); }}
-            disabled={!history}
+            onClick={(e) => { e.stopPropagation(); onOpenChart(primary?.sale_price_type_id); }}
+            disabled={!primary || cur === null}
           >
             <LineChart className="ms-1 h-4 w-4" /> نمودار قیمت
           </Button>
