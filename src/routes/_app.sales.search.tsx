@@ -404,6 +404,12 @@ function SalesSearchPage() {
                   const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === targetId)?.title
                     ?? p.prices?.find((x) => x.sale_price_type_id === targetId)?.title
                     ?? "—";
+                  trackProductInteraction({
+                    productId: p.id,
+                    eventType: "chart_opened",
+                    source: "sales_search",
+                    salePriceTypeId: targetId,
+                  });
                   setChartCtx({
                     productId: p.id,
                     productName: p.name,
