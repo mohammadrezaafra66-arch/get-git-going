@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet } from "lucide-react";
+import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet, Monitor } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,6 +51,7 @@ function PricingHubPage() {
     { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: AlertCircle, desc: "مدیریت دلایل ثبت قیمت", enabled: true },
     { to: "/pricing/calculator", label: "تست محاسبه قیمت", icon: Calculator, desc: "اجرای موتور قیمت‌گذاری", enabled: true },
     { to: "/pricing/live-price-list", label: "لیست قیمت زنده", icon: ListChecks, desc: "مشاهده آخرین قیمت فروش محصولات", enabled: true },
+    { to: "/pricing/amin-hozoor-board", label: "تابلوی قیمت فروش امین حضور", icon: Monitor, desc: "نمایش زنده قیمت‌های منتخب برای همکاران عمده‌فروش", enabled: true },
     { to: "/pricing/quick-price", label: "محاسبه سریع قیمت", icon: Zap, desc: "محاسبه قیمت فروش برای کالای خارج از لیست", enabled: true },
     { to: "/pricing/sale-lists", label: "لیست‌های فروش", icon: FileText, desc: `مدیریت و انتشار لیست‌های رسمی فروش${data ? ` — ${formatNumber(data.saleListsTotal)} لیست (${formatNumber(data.saleListsPublished)} منتشرشده)` : ""}`, enabled: true },
   ] as const;

@@ -70,6 +70,7 @@ import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrenciesRouteImport } from './routes/_app.pricing.currencies'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
@@ -420,6 +421,12 @@ const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   path: '/pricing/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingAminHozoorBoardRoute =
+  AppPricingAminHozoorBoardRouteImport.update({
+    id: '/pricing/amin-hozoor-board',
+    path: '/pricing/amin-hozoor-board',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   id: '/operations/tasks',
   path: '/operations/tasks',
@@ -684,6 +691,7 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -785,6 +793,7 @@ export interface FileRoutesByTo {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -889,6 +898,7 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
+  '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -994,6 +1004,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/operations/tasks'
+    | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1095,6 +1106,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/operations/tasks'
+    | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1198,6 +1210,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/operations/tasks'
+    | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currencies'
@@ -1700,6 +1713,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/pricing/amin-hozoor-board': {
+      id: '/_app/pricing/amin-hozoor-board'
+      path: '/pricing/amin-hozoor-board'
+      fullPath: '/pricing/amin-hozoor-board'
+      preLoaderRoute: typeof AppPricingAminHozoorBoardRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/tasks': {
       id: '/_app/operations/tasks'
       path: '/operations/tasks'
@@ -2158,6 +2178,7 @@ interface AppRouteChildren {
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
+  AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrenciesRoute: typeof AppPricingCurrenciesRoute
@@ -2231,6 +2252,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
+  AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrenciesRoute: AppPricingCurrenciesRoute,
