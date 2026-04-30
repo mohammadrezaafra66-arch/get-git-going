@@ -2217,13 +2217,19 @@ export type Database = {
           display_order: number
           enabled: boolean
           id: string
+          is_active: boolean
           key: string
           notes: string | null
+          requires_manual_approval: boolean
           reward_type: string
+          reward_unit: string
           reward_value: number | null
+          sort_order: number
+          title_en: string | null
           title_fa: string
+          trigger_ref_id: string | null
           trigger_type: string
-          trigger_value: number
+          trigger_value: number | null
           updated_at: string
         }
         Insert: {
@@ -2232,13 +2238,19 @@ export type Database = {
           display_order?: number
           enabled?: boolean
           id?: string
+          is_active?: boolean
           key: string
           notes?: string | null
+          requires_manual_approval?: boolean
           reward_type: string
+          reward_unit?: string
           reward_value?: number | null
+          sort_order?: number
+          title_en?: string | null
           title_fa: string
+          trigger_ref_id?: string | null
           trigger_type: string
-          trigger_value?: number
+          trigger_value?: number | null
           updated_at?: string
         }
         Update: {
@@ -2247,13 +2259,19 @@ export type Database = {
           display_order?: number
           enabled?: boolean
           id?: string
+          is_active?: boolean
           key?: string
           notes?: string | null
+          requires_manual_approval?: boolean
           reward_type?: string
+          reward_unit?: string
           reward_value?: number | null
+          sort_order?: number
+          title_en?: string | null
           title_fa?: string
+          trigger_ref_id?: string | null
           trigger_type?: string
-          trigger_value?: number
+          trigger_value?: number | null
           updated_at?: string
         }
         Relationships: []
