@@ -24,8 +24,8 @@ export interface AnalyticsFilters extends AnalyticsRange {
   eventType?: string | null;
 }
 
-function nullable(v?: string | null) {
-  return v && v.length > 0 ? v : null;
+function nullable(v?: string | null): string | undefined {
+  return v && v.length > 0 ? v : undefined;
 }
 
 export async function getActiveSeason() {
