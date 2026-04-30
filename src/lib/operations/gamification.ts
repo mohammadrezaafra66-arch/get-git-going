@@ -24,7 +24,16 @@ export interface EmployeeScore {
   total_score: number;
   normalized_score: number;
   active_work_minutes: number;
-  breakdown: Record<string, { value: number; weight: number; contribution: number }>;
+  breakdown: Record<
+    string,
+    {
+      value: number;
+      weight: number;
+      contribution: number;
+      period?: "daily" | "weekly" | "monthly" | "total";
+      scaled?: boolean;
+    }
+  >;
   last_calculated_at: string;
 }
 

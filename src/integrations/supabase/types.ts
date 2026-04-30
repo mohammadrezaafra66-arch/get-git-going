@@ -5431,6 +5431,7 @@ export type Database = {
           total_count: number
         }[]
       }
+      recompute_all_employee_scores: { Args: never; Returns: number }
       record_currency_fetch: {
         Args: {
           p_currency: Database["public"]["Enums"]["currency_code"]
