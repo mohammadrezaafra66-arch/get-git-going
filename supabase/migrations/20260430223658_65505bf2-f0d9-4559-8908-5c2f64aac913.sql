@@ -1,0 +1,1 @@
+ALTER VIEW public.v_league_tiers_public SET (security_invoker = true);
