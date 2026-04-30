@@ -153,11 +153,6 @@ export async function upsertPurchasePrice(opts: {
 }): Promise<void> {
   const { productId, newPrice, currency, supplierId, previousPriceId, previousPrice, actorId } = opts;
 
-  if (!supplierId) {
-    throw new Error(
-      "این محصول تأمین‌کننده ثبت‌شده ندارد. لطفاً ابتدا از صفحه «قیمت‌های خرید» یک قیمت اولیه با تأمین‌کننده ثبت کنید.",
-    );
-  }
   if (!Number.isFinite(newPrice) || newPrice <= 0) {
     throw new Error("قیمت معتبر نیست.");
   }
@@ -175,7 +170,7 @@ export async function upsertPurchasePrice(opts: {
 
   const { error: insErr } = await supabase.from("purchase_prices").insert({
     product_id: productId,
-    supplier_id: supplierId,
+    supplier_id: supplierId ?? null,
     purchase_price: newPrice,
     currency,
     effective_at: nowIso,
