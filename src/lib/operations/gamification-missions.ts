@@ -113,7 +113,7 @@ export async function listMissions(): Promise<MissionRow[]> {
     .order("created_at", { ascending: true })
     .limit(500);
   if (error) throw error;
-  return (data ?? []).map((r) => mapRow(r as Record<string, unknown>));
+  return (data ?? []).map((r) => mapRow(r as unknown as Record<string, unknown>));
 }
 
 export async function listKpiOptions(): Promise<KpiOption[]> {
@@ -132,7 +132,7 @@ export async function createMission(input: MissionInput): Promise<MissionRow> {
     .select(MISSION_COLUMNS)
     .single();
   if (error) throw error;
-  const row = mapRow(data as Record<string, unknown>);
+  const row = mapRow(data as unknown as Record<string, unknown>);
   await logAudit("mission_created", row.id, { after: row });
   return row;
 }
@@ -146,9 +146,9 @@ export async function updateMission(id: string, input: MissionInput): Promise<Mi
     .select(MISSION_COLUMNS)
     .single();
   if (error) throw error;
-  const row = mapRow(data as Record<string, unknown>);
+  const row = mapRow(data as unknown as Record<string, unknown>);
   await logAudit("mission_updated", id, {
-    before: before ? mapRow(before as Record<string, unknown>) : null,
+    before: before ? mapRow(before as unknown as Record<string, unknown>) : null,
     after: row,
   });
   return row;
