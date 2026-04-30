@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -37,6 +37,16 @@ export const Route = createFileRoute("/_app/sales/search")({
 
 const RESULT_LIMIT = 20;
 
+interface PriceEntry {
+  sale_price_type_id: string;
+  code: string;
+  title: string;
+  sort_order: number;
+  current_price: number | null;
+  previous_price: number | null;
+  last_updated_at: string | null;
+}
+
 interface ProductRow {
   id: string;
   name: string;
@@ -46,19 +56,12 @@ interface ProductRow {
   color?: string | null;
   capacity?: string | null;
   model?: string | null;
+  description?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
-}
-
-interface HistoryRow {
-  id: string;
-  product_id: string;
-  sale_price_type_id: string | null;
-  new_sale_price: number;
-  old_sale_price?: number | null;
-  change_amount?: number | null;
-  change_percent?: number | null;
-  created_at: string;
+  labels?: Array<{ id: string; title: string; color: string | null; visibility?: string | null }>;
+  prices?: PriceEntry[];
+  is_unavailable_for_sales?: boolean;
 }
 
 const STOCK_LABEL: Record<string, string> = {
@@ -95,6 +98,7 @@ function SalesSearchPage() {
   const [categoryFilterText, setCategoryFilterText] = useState("");
   const [labelFilterText, setLabelFilterText] = useState("");
   const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
+  const [onlyWithPrice, setOnlyWithPrice] = useState<boolean>(false);
   const [chartCtx, setChartCtx] = useState<{
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
@@ -181,80 +185,32 @@ function SalesSearchPage() {
 
   // ---------- products query ----------
   const productsQuery = useQuery({
-    enabled: canSearch && (labelIds.length === 0 || !!labelProductIdsQuery.data),
-    queryKey: ["sales-search-products", { term, brandIds, categoryIds, stockStatus, productType, labelProductIds: labelProductIdsQuery.data ?? null }],
+    enabled: canSearch,
+    queryKey: ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }],
     queryFn: async () => {
-      const safe = term.replace(/[%_]/g, "");
-      const labelFilteredIds = labelIds.length > 0 ? (labelProductIdsQuery.data ?? []) : null;
-      if (labelFilteredIds && labelFilteredIds.length === 0) return [] as ProductRow[];
-      // search by name, SKU, brand name, category name
-      let q = supabase
-        .from("products")
-        .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
-        .eq("is_active", true)
-        .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,brands.name.ilike.%${safe}%,categories.name.ilike.%${safe}%`)
-        .order("name", { ascending: true })
-        .limit(RESULT_LIMIT);
-      if (brandIds.length > 0) q = q.in("brand_id", brandIds);
-      if (categoryIds.length > 0) q = q.in("category_id", categoryIds);
-      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
-      if (productType !== "__all") q = q.eq("product_type", productType as "iranian" | "foreign");
-      if (labelFilteredIds) q = q.in("id", labelFilteredIds);
-      const { data, error } = await q;
-      if (error) {
-        // fallback: some PostgREST setups don't allow OR across embedded relations.
-        // Retry with name+sku only.
-        let q2 = supabase
-          .from("products")
-          .select("id, name, sku, product_type, stock_status, color, capacity, model, brand:brands(id, name), category:categories(id, name)")
-          .eq("is_active", true)
-          .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
-          .order("name", { ascending: true })
-          .limit(RESULT_LIMIT);
-        if (brandIds.length > 0) q2 = q2.in("brand_id", brandIds);
-        if (categoryIds.length > 0) q2 = q2.in("category_id", categoryIds);
-        if (stockStatus !== "__all") q2 = q2.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
-        if (productType !== "__all") q2 = q2.eq("product_type", productType as "iranian" | "foreign");
-        if (labelFilteredIds) q2 = q2.in("id", labelFilteredIds);
-        const r2 = await q2;
-        if (r2.error) throw r2.error;
-        return (r2.data ?? []) as ProductRow[];
-      }
-      return (data ?? []) as ProductRow[];
+      const { data, error } = await supabase.rpc("get_sales_search_products", {
+        p_search: term,
+        p_brand_ids: brandIds.length > 0 ? brandIds : null,
+        p_category_ids: categoryIds.length > 0 ? categoryIds : null,
+        p_label_ids: labelIds.length > 0 ? labelIds : null,
+        p_stock_status: stockStatus !== "__all" ? stockStatus : null,
+        p_product_type: productType !== "__all" ? productType : null,
+        p_only_with_price: onlyWithPrice,
+        p_limit: RESULT_LIMIT,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+        ...(row as object),
+        labels: Array.isArray(row.labels) ? row.labels : [],
+        prices: Array.isArray(row.prices) ? row.prices : [],
+      })) as ProductRow[];
     },
     staleTime: 30_000,
   });
 
   const products = productsQuery.data ?? [];
-  const productIds = useMemo(() => products.map((p) => p.id), [products]);
-
-  // ---------- history (latest per product for selected sale_price_type) ----------
-  const historyQuery = useQuery({
-    enabled: productIds.length > 0 && !!salePriceTypeId,
-    queryKey: ["sales-search-history", productIds, salePriceTypeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_sale_price_history")
-        .select("id, product_id, sale_price_type_id, new_sale_price, old_sale_price, change_amount, change_percent, created_at")
-        .in("product_id", productIds)
-        .eq("sale_price_type_id", salePriceTypeId)
-        .order("created_at", { ascending: false })
-        .limit(productIds.length * 5);
-      if (error) throw error;
-      const seen = new Set<string>();
-      const latest = new Map<string, HistoryRow>();
-      for (const r of (data ?? []) as HistoryRow[]) {
-        if (seen.has(r.product_id)) continue;
-        seen.add(r.product_id);
-        latest.set(r.product_id, r);
-      }
-      return latest;
-    },
-    staleTime: 30_000,
-  });
-
-  const priceMap = historyQuery.data ?? new Map<string, HistoryRow>();
-  const isLoading = (canSearch && productsQuery.isLoading) || (productIds.length > 0 && historyQuery.isLoading);
+  const isLoading = canSearch && productsQuery.isLoading;
 
   return (
     <div className="space-y-5">
@@ -439,27 +395,42 @@ function SalesSearchPage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {
-            const h = priceMap.get(p.id);
             return (
               <ProductCard
                 key={p.id}
                 product={p}
-                history={h}
+                primarySalePriceTypeId={salePriceTypeId}
                 isPrivileged={isPrivileged}
                 onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
-                onOpenChart={() => {
-                  if (!salePriceTypeId) return;
-                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)?.title ?? "—";
+                onOpenChart={(typeId) => {
+                  const targetId = typeId ?? salePriceTypeId;
+                  if (!targetId) return;
+                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === targetId)?.title
+                    ?? p.prices?.find((x) => x.sale_price_type_id === targetId)?.title
+                    ?? "—";
                   setChartCtx({
                     productId: p.id,
                     productName: p.name,
-                    salePriceTypeId,
+                    salePriceTypeId: targetId,
                     salePriceTypeTitle: title,
                   });
                 }}
               />
             );
           })}
+        </div>
+      )}
+
+      {/* Secondary action: link to calculator (kept for privileged users) */}
+      {canSearch && isPrivileged && (
+        <div className="flex justify-center pt-2">
+          <Link
+            to="/pricing/calculator"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+          >
+            <Calculator className="h-3.5 w-3.5" />
+            محاسبه قیمت برای کالای خارج از لیست
+          </Link>
         </div>
       )}
 
