@@ -3,23 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 export type ConditionOperator = ">=" | ">" | "=" | "<=" | "<";
 export const CONDITION_OPERATORS: ConditionOperator[] = [">=", ">", "=", "<=", "<"];
 
-/**
- * Manually trigger the unlock engine for a single (employee, eventType) pair.
- * The engine is also wired as a DB trigger on employee_score_events, so app
- * code does not normally need to call this — it is provided for explicit
- * recheck flows (e.g. admin "recompute" tools).
- */
-export async function checkAndUnlockAchievementsForEmployee(
-  employeeId: string,
-  eventType: string,
-): Promise<{ unlocked: number; items: Array<Record<string, unknown>> }> {
-  const { data, error } = await supabase.rpc(
-    "check_and_unlock_achievements_for_employee" as never,
-    { _employee_id: employeeId, _event_type: eventType } as never,
-  );
-  if (error) throw error;
-  return (data ?? { unlocked: 0, items: [] }) as { unlocked: number; items: Array<Record<string, unknown>> };
-}
+// NOTE: `check_and_unlock_achievements_for_employee` is invoked automatically
+// by the AFTER INSERT trigger on `employee_score_events`. EXECUTE is revoked
+// from anon/authenticated/public, so a frontend wrapper is intentionally
+// not exported here.
 
 export interface AchievementRow {
   id: string;
