@@ -3029,6 +3029,71 @@ export type Database = {
           },
         ]
       }
+      product_recommendation_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_disabled: boolean
+          is_pinned: boolean
+          priority: number
+          product_id: string
+          recommended_product_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_disabled?: boolean
+          is_pinned?: boolean
+          priority?: number
+          product_id: string
+          recommended_product_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_disabled?: boolean
+          is_pinned?: boolean
+          priority?: number
+          product_id?: string
+          recommended_product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_recommendation_overrides_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recommendation_overrides_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_recommendation_overrides_recommended_product_id_fkey"
+            columns: ["recommended_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_recommendation_overrides_recommended_product_id_fkey"
+            columns: ["recommended_product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       product_sale_price_history: {
         Row: {
           change_amount: number | null
@@ -4918,6 +4983,21 @@ export type Database = {
           held_credit: number
           outstanding_balance: number
           total_purchases: number
+        }[]
+      }
+      get_product_recommendations: {
+        Args: { p_product_id: string }
+        Returns: {
+          brand_name: string
+          category_name: string
+          current_price: number
+          is_pinned: boolean
+          name: string
+          product_id: string
+          reason: string
+          recommendation_score: number
+          sku: string
+          stock_status: string
         }[]
       }
       get_product_sale_price: {

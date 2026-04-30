@@ -11,6 +11,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
+import { ProductRecommendationsCard } from "@/components/products/recommendations/ProductRecommendationsCard";
 import {
   RANGE_LABEL,
   computeChangePercent,
@@ -257,6 +258,9 @@ export function BoardProductDetailsDrawer({ open, onOpenChange, productId, saleP
                 )}
               </CardContent>
             </Card>
+
+            {/* پیشنهاد هوشمند محصولات */}
+            <ProductRecommendationsCard productId={product.id} />
           </div>
         )}
       </SheetContent>
