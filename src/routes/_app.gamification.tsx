@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Flame, Target, Medal, Zap, ChevronLeft, Lock } from "lucide-react";
-import { requireAuth } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import {
 } from "@/lib/operations/gamification";
 
 export const Route = createFileRoute("/_app/gamification")({
-  beforeLoad: async () => { await requireAuth(); },
   component: GamificationDashboard,
 });
 
