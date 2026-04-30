@@ -100,3 +100,45 @@ export async function listEmployeeScores(): Promise<EmployeeScore[]> {
   if (error) throw error;
   return (data ?? []) as unknown as EmployeeScore[];
 }
+
+export type LeaderboardPeriod = "daily" | "weekly" | "monthly" | "all_time";
+
+export interface LeaderboardRow {
+  employee_id: string;
+  full_name: string | null;
+  team: string | null;
+  department: string | null;
+  role: string | null;
+  score: number;
+  rank: number;
+}
+
+export interface LeaderboardFilters {
+  team?: string | null;
+  department?: string | null;
+  role?: string | null;
+  limit?: number;
+}
+
+export async function getLeaderboard(
+  period: LeaderboardPeriod,
+  filters: LeaderboardFilters = {},
+): Promise<LeaderboardRow[]> {
+  const fnName =
+    period === "daily"
+      ? "get_leaderboard_daily"
+      : period === "weekly"
+        ? "get_leaderboard_weekly"
+        : period === "all_time"
+          ? "get_leaderboard_all_time"
+          : "get_leaderboard_monthly";
+
+  const { data, error } = await supabase.rpc(fnName as never, {
+    _team: filters.team ?? null,
+    _department: filters.department ?? null,
+    _role: filters.role ?? null,
+    _limit: filters.limit ?? 50,
+  } as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as LeaderboardRow[];
+}
