@@ -2208,6 +2208,47 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_board_settings: {
+        Row: {
+          board_key: string
+          created_at: string
+          id: string
+          is_active: boolean
+          sale_price_type_id: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          board_key: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sale_price_type_id: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          board_key?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sale_price_type_id?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_board_settings_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_rules: {
         Row: {
           actions: Json
