@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Flame, Target, Medal, Zap, ChevronLeft, Lock } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,6 +108,39 @@ function GamificationDashboard() {
   const initials = (profile?.full_name ?? "؟").trim().slice(0, 2);
   const xpPct = progress.data?.progress_percent ?? 0;
   const tier = (league.data?.league as LeagueTier | null) ?? null;
+
+  // Level-up + achievement-unlock celebrations triggered by polling deltas
+  const prevLevel = useRef<number | null>(null);
+  const prevAchievementIds = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const lvl = progress.data?.level;
+    if (lvl == null) return;
+    if (prevLevel.current != null && lvl > prevLevel.current) {
+      toast.success(`🎉 سطح ${lvl}!`, {
+        description: "تبریک! به سطح بالاتری ارتقا یافتید.",
+        duration: 6000,
+      });
+    }
+    prevLevel.current = lvl;
+  }, [progress.data?.level]);
+
+  useEffect(() => {
+    const list = achievements.data;
+    if (!list) return;
+    const ids = new Set(list.map((a) => a.id));
+    if (prevAchievementIds.current) {
+      for (const a of list) {
+        if (!prevAchievementIds.current.has(a.id)) {
+          toast(`🏅 نشان جدید: ${a.title_fa}`, {
+            description: a.description ?? "نشان تازه‌ای باز شد!",
+            duration: 6000,
+          });
+        }
+      }
+    }
+    prevAchievementIds.current = ids;
+  }, [achievements.data]);
 
   return (
     <div className="space-y-6 pb-10">
