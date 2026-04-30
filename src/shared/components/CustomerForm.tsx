@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown, X } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -59,6 +60,17 @@ const schema = z.object({
       },
       "لینک نامعتبر است (باید با http یا https شروع شود)",
     ),
+  birth_date: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine((v) => {
+      if (!v) return true;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      return d <= new Date();
+    }, "تاریخ تولد نمی‌تواند در آینده باشد"),
 });
 
 export type CustomerFormValues = z.infer<typeof schema>;
@@ -93,6 +105,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       responsible_id: defaultValues?.responsible_id ?? null,
       accounting_code: defaultValues?.accounting_code ?? "",
       link_group: defaultValues?.link_group ?? "",
+      birth_date: defaultValues?.birth_date ?? null,
     },
     mode: "onBlur",
   });
@@ -114,6 +127,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         responsible_id: values.responsible_id ?? null,
         accounting_code: values.accounting_code?.trim() || null,
         link_group: values.link_group?.trim() || null,
+        birth_date: values.birth_date ? values.birth_date : null,
       };
       if (customerId) {
         const { error } = await supabase
