@@ -69,6 +69,7 @@ import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.prici
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
@@ -412,6 +413,12 @@ const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   path: '/operations/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingSuggestionsHistoryRoute =
+  AppMarketingSuggestionsHistoryRouteImport.update({
+    id: '/marketing/suggestions-history',
+    path: '/marketing/suggestions-history',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppMarketingSuggestionsRoute = AppMarketingSuggestionsRouteImport.update({
   id: '/marketing/suggestions',
   path: '/marketing/suggestions',
@@ -663,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
+  '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -761,6 +769,7 @@ export interface FileRoutesByTo {
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
+  '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -862,6 +871,7 @@ export interface FileRoutesById {
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
+  '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -964,6 +974,7 @@ export interface FileRouteTypes {
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
+    | '/marketing/suggestions-history'
     | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
@@ -1062,6 +1073,7 @@ export interface FileRouteTypes {
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
+    | '/marketing/suggestions-history'
     | '/operations/tasks'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
@@ -1162,6 +1174,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
+    | '/_app/marketing/suggestions-history'
     | '/_app/operations/tasks'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
@@ -1656,6 +1669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/suggestions-history': {
+      id: '/_app/marketing/suggestions-history'
+      path: '/marketing/suggestions-history'
+      fullPath: '/marketing/suggestions-history'
+      preLoaderRoute: typeof AppMarketingSuggestionsHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/marketing/suggestions': {
       id: '/_app/marketing/suggestions'
       path: '/marketing/suggestions'
@@ -2110,6 +2130,7 @@ interface AppRouteChildren {
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
+  AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
@@ -2179,6 +2200,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
+  AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
