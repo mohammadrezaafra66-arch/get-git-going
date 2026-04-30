@@ -23,12 +23,18 @@ import { BoardSettingsSelector } from "./BoardSettingsSelector";
 import { BoardPriceTable } from "./BoardPriceTable";
 import { BoardProductDetailsDrawer } from "./BoardProductDetailsDrawer";
 import { useAminHozoorBoardPrices } from "@/hooks/pricing/useAminHozoorBoardPrices";
+import { usePricingBoardAccess } from "@/hooks/pricing/usePricingBoardAccess";
+import { usePricingBoardPresence } from "@/hooks/pricing/usePricingBoardPresence";
+import { BoardAccessPendingState } from "./BoardAccessPendingState";
+import { BoardAccessRequestsCard } from "./BoardAccessRequestsCard";
+import { BoardOnlineUsersCard } from "./BoardOnlineUsersCard";
 
 const REFETCH_INTERVAL_MS = 20_000;
 const DEFAULT_PAGE_SIZE = 50;
 const KIOSK_PAGE_SIZE = 100;
 
 export function AminHozoorPriceBoard() {
+  const access = usePricingBoardAccess(AMIN_HOZOOR_BOARD_KEY);
   const [search, setSearch] = useState("");
   const dSearch = useDebounce(search, 350);
   const [brandId, setBrandId] = useState<string>("__all");
@@ -56,6 +62,13 @@ export function AminHozoorPriceBoard() {
   const salePriceTypeId = settingQuery.data?.sale_price_type_id ?? null;
   const salePriceTypeTitle =
     sptQuery.data?.find((t: any) => t.id === salePriceTypeId)?.title ?? "—";
+
+  // presence فقط برای کاربر approved
+  usePricingBoardPresence({
+    boardKey: AMIN_HOZOOR_BOARD_KEY,
+    enabled: access.isApproved,
+    salePriceTypeId,
+  });
 
   const { data: brands = [] } = useQuery({
     queryKey: ["brands-lite"],
@@ -109,6 +122,24 @@ export function AminHozoorPriceBoard() {
     ? "fixed inset-0 z-50 overflow-y-auto bg-background p-6"
     : "space-y-5";
 
+  // gating: اگر کاربر approved نیست، صفحه تابلو را نمایش نده
+  if (!access.isApproved) {
+    return (
+      <div className="space-y-5" dir="rtl">
+        <h1 className="text-2xl font-bold">تابلوی قیمت فروش امین حضور</h1>
+        <BoardAccessPendingState
+          status={
+            access.status === "rejected"
+              ? "rejected"
+              : access.status === "loading" || access.status === "unauthenticated"
+              ? "loading"
+              : "pending"
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={containerCls} dir="rtl">
       {/* Header */}
@@ -145,6 +176,13 @@ export function AminHozoorPriceBoard() {
             <BoardSettingsSelector />
           </CardContent>
         </Card>
+      )}
+
+      {!kioskMode && access.canManage && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <BoardAccessRequestsCard />
+          <BoardOnlineUsersCard />
+        </div>
       )}
 
       {/* Filters (در حالت کیوسک نمایش ندهیم) */}
