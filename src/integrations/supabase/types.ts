@@ -697,6 +697,39 @@ export type Database = {
           },
         ]
       }
+      currencies: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          symbol: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          symbol?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          symbol?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       currency_rate_fetches: {
         Row: {
           approved_at: string | null
@@ -2536,7 +2569,7 @@ export type Database = {
       }
       products: {
         Row: {
-          base_currency: Database["public"]["Enums"]["base_currency"]
+          base_currency: string
           brand_id: string | null
           capacity: string | null
           category: string | null
@@ -2559,7 +2592,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          base_currency?: Database["public"]["Enums"]["base_currency"]
+          base_currency?: string
           brand_id?: string | null
           capacity?: string | null
           category?: string | null
@@ -2582,7 +2615,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          base_currency?: Database["public"]["Enums"]["base_currency"]
+          base_currency?: string
           brand_id?: string | null
           capacity?: string | null
           category?: string | null
