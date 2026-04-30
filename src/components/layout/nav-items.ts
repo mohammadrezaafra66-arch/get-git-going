@@ -22,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing",     label: "قیمت‌گذاری",       icon: DollarSign,      module: "pricing",     group: "operations" },
   { to: "/pricing/my-workbench", label: "کارگاه قیمت من", icon: Edit3,    module: "pricing",     group: "operations" },
   { to: "/pricing/amin-hozoor-board", label: "تابلوی قیمت امین حضور", icon: Monitor, module: "pricing", group: "operations" },
+  { to: "/pricing/market-intelligence", label: "داشبورد هوشمند بازار", icon: TrendingUp, module: "pricing", group: "operations" },
   { to: "/pricing/currencies", label: "ارزها", icon: DollarSign, module: "pricing", group: "operations" },
   { to: "/pricing/currency-sources", label: "منابع ارز", icon: DollarSign, module: "pricing", group: "operations" },
   { to: "/purchases",   label: "خرید",            icon: ShoppingBag,     module: "purchases",   group: "finance" },
