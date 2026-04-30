@@ -75,6 +75,7 @@ function WorkbenchPage() {
   const [stepPct, setStepPct] = useState<number>(1);
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
 
@@ -156,6 +157,13 @@ function WorkbenchPage() {
       }
       toast.success(`«${row.name}» ذخیره شد`);
       clearRow(row.id);
+      setSavedFlash((s) => ({ ...s, [row.id]: Date.now() }));
+      setTimeout(() => {
+        setSavedFlash((s) => {
+          const { [row.id]: _, ...rest } = s;
+          return rest;
+        });
+      }, 2000);
       qc.invalidateQueries({ queryKey: ["workbench-rows"] });
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در ذخیره");
