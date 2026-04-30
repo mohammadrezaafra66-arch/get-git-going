@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calculator, Save, Search, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Calculator, Save, Search, Loader2, AlertCircle, CheckCircle2, PackageX } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +28,7 @@ interface ProductLite {
   name: string;
   sku: string | null;
   product_type: string;
+  stock_status: "available" | "limited" | "unavailable" | "unknown" | null;
 }
 
 function CalculatorPage() {
@@ -57,7 +58,17 @@ function CalculatorPage() {
 
   const { data: searchResults = [], isFetching: searching } = useQuery({
     queryKey: ["calc-product-search", debouncedQuery],
-    queryFn: () => searchProducts(debouncedQuery, 10),
+    queryFn: async () => {
+      const list = await searchProducts(debouncedQuery, 10);
+      if (!list.length) return list;
+      const ids = list.map((p: any) => p.id);
+      const { data } = await supabase
+        .from("products")
+        .select("id, stock_status")
+        .in("id", ids);
+      const map = new Map((data ?? []).map((r: any) => [r.id, r.stock_status]));
+      return list.map((p: any) => ({ ...p, stock_status: map.get(p.id) ?? null }));
+    },
     enabled: debouncedQuery.trim().length >= 2 && showResults,
     staleTime: 10_000,
   });
@@ -87,7 +98,13 @@ function CalculatorPage() {
   }, [salePriceTypes, salePriceTypeId]);
 
   function pickProduct(p: any) {
-    setSelectedProduct({ id: p.id, name: p.name, sku: p.sku, product_type: p.product_type });
+    setSelectedProduct({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      product_type: p.product_type,
+      stock_status: p.stock_status ?? null,
+    });
     setProductQuery(p.name);
     setShowResults(false);
     setBreakdown(null);
@@ -104,6 +121,12 @@ function CalculatorPage() {
     }
     if (!salePriceTypeId) {
       setErrorMsg("لطفاً نوع قیمت فروش را انتخاب کنید.");
+      return;
+    }
+    if (forceSnapshot && selectedProduct.stock_status === "unavailable") {
+      const msg = "برای محصول ناموجود امکان ثبت رسمی قیمت فروش وجود ندارد.";
+      setErrorMsg(msg);
+      toast.error(msg);
       return;
     }
     forceSnapshot ? setSaving(true) : setCalculating(true);
