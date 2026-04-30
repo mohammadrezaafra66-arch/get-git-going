@@ -35,6 +35,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ function LoginPage() {
       url.searchParams.delete("password");
       window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }
+    setHydrated(true);
   }, []);
 
   const [signupEmail, setSignupEmail] = useState("");
@@ -227,8 +229,8 @@ function LoginPage() {
                   {loginError && (
                     <p className="text-sm text-destructive" role="alert">{loginError}</p>
                   )}
-                  <Button type="submit" className="w-full" disabled={loginSubmitting} aria-busy={loginSubmitting}>
-                    {loginSubmitting ? "در حال ورود..." : "ورود"}
+                  <Button type="submit" className="w-full" disabled={loginSubmitting || !hydrated} aria-busy={loginSubmitting || !hydrated}>
+                    {!hydrated ? "در حال آماده‌سازی..." : loginSubmitting ? "در حال ورود..." : "ورود"}
                   </Button>
                 </form>
               </TabsContent>
@@ -256,8 +258,8 @@ function LoginPage() {
                   {signupError && (
                     <p className="text-sm text-destructive" role="alert">{signupError}</p>
                   )}
-                  <Button type="submit" className="w-full" disabled={signupSubmitting} aria-busy={signupSubmitting}>
-                    {signupSubmitting ? "در حال ثبت‌نام..." : "ایجاد حساب"}
+                  <Button type="submit" className="w-full" disabled={signupSubmitting || !hydrated} aria-busy={signupSubmitting || !hydrated}>
+                    {!hydrated ? "در حال آماده‌سازی..." : signupSubmitting ? "در حال ثبت‌نام..." : "ایجاد حساب"}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
                     کاربران جدید با نقش «بیننده» ثبت می‌شوند. مدیر می‌تواند بعداً نقش‌ها را تغییر دهد.
@@ -288,7 +290,7 @@ function LoginPage() {
                       لینک تنظیم رمز جدید ارسال شد. بعد از باز کردن لینک، رمز جدید را در صفحه بعد وارد کنید.
                     </p>
                   )}
-                  <Button type="submit" className="w-full" aria-busy={resetInFlight.current}>
+                  <Button type="submit" className="w-full" disabled={!hydrated} aria-busy={!hydrated || resetInFlight.current}>
                     {resetInFlight.current ? "در حال ارسال..." : "ارسال لینک تنظیم رمز"}
                   </Button>
                 </form>
