@@ -283,6 +283,9 @@ export type Database = {
       }
       achievements: {
         Row: {
+          condition_event_key: string | null
+          condition_operator: string | null
+          condition_value: number | null
           created_at: string
           description: string | null
           display_order: number
@@ -292,10 +295,15 @@ export type Database = {
           key: string
           rule_type: string
           rule_value: number | null
+          title_en: string | null
           title_fa: string
+          updated_at: string
           xp_reward: number
         }
         Insert: {
+          condition_event_key?: string | null
+          condition_operator?: string | null
+          condition_value?: number | null
           created_at?: string
           description?: string | null
           display_order?: number
@@ -305,10 +313,15 @@ export type Database = {
           key: string
           rule_type?: string
           rule_value?: number | null
+          title_en?: string | null
           title_fa: string
+          updated_at?: string
           xp_reward?: number
         }
         Update: {
+          condition_event_key?: string | null
+          condition_operator?: string | null
+          condition_value?: number | null
           created_at?: string
           description?: string | null
           display_order?: number
@@ -318,7 +331,9 @@ export type Database = {
           key?: string
           rule_type?: string
           rule_value?: number | null
+          title_en?: string | null
           title_fa?: string
+          updated_at?: string
           xp_reward?: number
         }
         Relationships: []
