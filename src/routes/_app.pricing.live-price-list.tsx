@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
+import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
@@ -580,6 +581,7 @@ function renderProductRows(
       <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</td>
       {idx === 0 && (
         <td className="p-3 align-top" rowSpan={row.histories.length}>
+          <div className="flex flex-col items-start gap-1">
           <Button
             type="button"
             size="sm"
@@ -596,6 +598,12 @@ function renderProductRows(
           >
             <LineChart className="h-3.5 w-3.5" /> نمودار
           </Button>
+          <CreatePriceAlertButton
+            productId={row.product.id}
+            productName={row.product.name}
+            salePriceTypeId={h.sale_price_type_id ?? null}
+          />
+          </div>
         </td>
       )}
     </tr>
