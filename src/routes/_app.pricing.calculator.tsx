@@ -224,9 +224,18 @@ function CalculatorPage() {
                 )}
               </div>
               {selectedProduct && (
-                <div className="rounded-md border border-border bg-muted/40 p-2 text-xs">
-                  <span className="font-medium text-foreground">{selectedProduct.name}</span>
-                  <span className="text-muted-foreground"> · {selectedProduct.sku ?? "—"}</span>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2 text-xs">
+                    <span className="font-medium text-foreground">{selectedProduct.name}</span>
+                    <span className="text-muted-foreground"> · {selectedProduct.sku ?? "—"}</span>
+                    <StockBadge status={selectedProduct.stock_status} />
+                  </div>
+                  {selectedProduct.stock_status === "unavailable" && (
+                    <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+                      <PackageX className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                      <span>این محصول ناموجود است و قیمت محاسبه‌شده قابل فروش نیست (فقط برای بررسی داخلی).</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -321,7 +330,13 @@ function CalculatorPage() {
                 <p className="text-sm">پس از انتخاب محصول و کلیک روی «محاسبه قیمت»، تفکیک محاسبه اینجا نمایش داده می‌شود.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className={`space-y-4 ${selectedProduct?.stock_status === "unavailable" ? "opacity-90" : ""}`}>
+                {selectedProduct?.stock_status === "unavailable" && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-400">
+                    <PackageX className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <span>این محصول ناموجود است و قیمت نمایش‌داده‌شده قابل فروش نیست — صرفاً برای تحلیل داخلی.</span>
+                  </div>
+                )}
                 <div>
                   <div className="text-xs text-muted-foreground">محصول</div>
                   <div className="font-semibold text-foreground">{breakdown.product_name}</div>
@@ -333,6 +348,7 @@ function CalculatorPage() {
                   {settlementLabel && <Badge variant="outline">{settlementLabel}</Badge>}
                   <Badge variant="outline">قانون: {breakdown.pricing_rule_name}</Badge>
                   <Badge variant="outline">{MARGIN_TYPE_LABELS[breakdown.margin_type]}</Badge>
+                  <StockBadge status={selectedProduct?.stock_status ?? null} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3 text-sm">
@@ -344,12 +360,21 @@ function CalculatorPage() {
                   <Row label="قیمت قبل از گرد کردن" value={`${formatNumber(breakdown.final_sale_price)} ت`} />
                 </div>
 
-                <div className="rounded-md border-2 border-primary bg-primary/5 p-3 text-center">
-                  <div className="text-xs text-muted-foreground">قیمت نهایی فروش (گرد شده)</div>
-                  <div className="mt-1 text-2xl font-bold text-primary">
-                    {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                {selectedProduct?.stock_status === "unavailable" ? (
+                  <div className="rounded-md border-2 border-dashed border-amber-500/60 bg-amber-500/5 p-3 text-center">
+                    <div className="text-xs text-amber-700 dark:text-amber-400">قیمت محاسبه‌شده (داخلی — غیرقابل فروش)</div>
+                    <div className="mt-1 text-2xl font-bold text-amber-700 line-through decoration-amber-500/70 dark:text-amber-400">
+                      {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-md border-2 border-primary bg-primary/5 p-3 text-center">
+                    <div className="text-xs text-muted-foreground">قیمت نهایی فروش (گرد شده)</div>
+                    <div className="mt-1 text-2xl font-bold text-primary">
+                      {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
                   {breakdown.steps.map((s, i) => (
@@ -372,4 +397,12 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="font-medium text-foreground">{value}</span>
     </div>
   );
+}
+
+function StockBadge({ status }: { status: ProductLite["stock_status"] }) {
+  if (!status) return null;
+  if (status === "available") return <Badge variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-400">موجود</Badge>;
+  if (status === "limited") return <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">موجودی محدود</Badge>;
+  if (status === "unavailable") return <Badge variant="outline" className="border-destructive/60 text-destructive">ناموجود</Badge>;
+  return <Badge variant="outline">نامشخص</Badge>;
 }
