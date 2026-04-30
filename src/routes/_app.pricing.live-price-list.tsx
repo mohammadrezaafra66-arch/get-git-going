@@ -416,7 +416,11 @@ function LivePriceListPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {merged.flatMap((row) => renderProductRows(row, { isSalesOnly, isPrivileged }))}
+                      {merged.flatMap((row) => renderProductRows(row, {
+                        isSalesOnly,
+                        isPrivileged,
+                        onOpenChart: (args) => setChartCtx(args),
+                      }))}
                     </tbody>
                   </table>
                 </div>
@@ -427,7 +431,13 @@ function LivePriceListPage() {
           {/* mobile cards */}
           <div className="space-y-3 md:hidden">
             {merged.map((row) => (
-              <MobileProductCard key={row.product.id} row={row} isSalesOnly={isSalesOnly} isPrivileged={isPrivileged} />
+              <MobileProductCard
+                key={row.product.id}
+                row={row}
+                isSalesOnly={isSalesOnly}
+                isPrivileged={isPrivileged}
+                onOpenChart={(args) => setChartCtx(args)}
+              />
             ))}
           </div>
 
@@ -536,11 +546,36 @@ function renderProductRows(
       </td>
       <td className="p-3 align-top"><ChangeCell h={h} /></td>
       <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</td>
+      {idx === 0 && (
+        <td className="p-3 align-top" rowSpan={row.histories.length}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={() => ctx.onOpenChart({
+              productId: row.product.id,
+              productName: row.product.name,
+              salePriceTypeId: h.sale_price_type_id ?? "",
+              salePriceTypeTitle: h.sale_price_type_title ?? "—",
+            })}
+            disabled={!h.sale_price_type_id}
+            title="نمودار قیمت"
+          >
+            <LineChart className="h-3.5 w-3.5" /> نمودار
+          </Button>
+        </td>
+      )}
     </tr>
   ));
 }
 
-function MobileProductCard({ row, isSalesOnly, isPrivileged }: { row: { product: ProductRow; histories: any[]; hasPrice: boolean }; isSalesOnly: boolean; isPrivileged: boolean }) {
+function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
+  row: { product: ProductRow; histories: any[]; hasPrice: boolean };
+  isSalesOnly: boolean;
+  isPrivileged: boolean;
+  onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+}) {
   const isUnavailable = row.product.stock_status === "unavailable";
   return (
     <Card>
