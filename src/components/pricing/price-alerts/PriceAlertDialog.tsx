@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
 import { fetchSalePriceTypes, searchProducts } from "@/lib/pricing/queries";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   createAlertRule, updateAlertRule,
   type CreateAlertInput, type PriceAlertOperator, type PriceAlertRule,
@@ -34,7 +34,6 @@ interface Props {
 
 export function PriceAlertDialog({ open, onOpenChange, prefill, editing }: Props) {
   const qc = useQueryClient();
-  const { toast } = useToast();
   const [productId, setProductId] = useState<string>("");
   const [productLabel, setProductLabel] = useState<string>("");
   const [productSearch, setProductSearch] = useState<string>("");
@@ -103,15 +102,15 @@ export function PriceAlertDialog({ open, onOpenChange, prefill, editing }: Props
       };
       if (editing) {
         await updateAlertRule(editing.id, input);
-        toast({ title: "هشدار با موفقیت بروزرسانی شد." });
+        toast.success("هشدار با موفقیت بروزرسانی شد.");
       } else {
         await createAlertRule(input);
-        toast({ title: "هشدار با موفقیت ساخته شد." });
+        toast.success("هشدار با موفقیت ساخته شد.");
       }
       await qc.invalidateQueries({ queryKey: ["my-price-alerts"] });
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "خطا", description: e?.message ?? "خطای نامشخص", variant: "destructive" });
+      toast.error(e?.message ?? "خطای نامشخص");
     } finally {
       setSubmitting(false);
     }
