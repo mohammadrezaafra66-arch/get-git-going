@@ -435,7 +435,15 @@ function LivePriceListPage() {
                       {merged.flatMap((row) => renderProductRows(row, {
                         isSalesOnly,
                         isPrivileged,
-                        onOpenChart: (args) => setChartCtx(args),
+                        onOpenChart: (args) => {
+                          trackProductInteraction({
+                            productId: args.productId,
+                            eventType: "chart_opened",
+                            source: "live_price_list",
+                            salePriceTypeId: args.salePriceTypeId,
+                          });
+                          setChartCtx(args);
+                        },
                       }))}
                     </tbody>
                   </table>
@@ -452,7 +460,15 @@ function LivePriceListPage() {
                 row={row}
                 isSalesOnly={isSalesOnly}
                 isPrivileged={isPrivileged}
-                onOpenChart={(args) => setChartCtx(args)}
+                onOpenChart={(args) => {
+                  trackProductInteraction({
+                    productId: args.productId,
+                    eventType: "chart_opened",
+                    source: "live_price_list",
+                    salePriceTypeId: args.salePriceTypeId,
+                  });
+                  setChartCtx(args);
+                }}
               />
             ))}
           </div>
