@@ -42,5 +42,7 @@ export const labelSchema = z.object({
   color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "کد رنگ باید مانند #RRGGBB باشد"),
   description: z.string().trim().max(500).optional().or(z.literal("")),
   is_active: z.boolean().default(true),
+  weight: z.number().int().min(0, "حداقل ۰").max(100, "حداکثر ۱۰۰").default(0),
+  visibility: z.enum(["public", "internal"]).default("public"),
 });
 export type LabelFormValues = z.infer<typeof labelSchema>;
