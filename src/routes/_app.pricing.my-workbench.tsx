@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,11 @@ import {
   PackageCheck,
   PackageX,
   Package,
+  TrendingUp,
+  TrendingDown,
+  Check,
+  CircleDot,
+  AlertCircle,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -70,6 +75,7 @@ function WorkbenchPage() {
   const [stepPct, setStepPct] = useState<number>(1);
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
 
@@ -151,6 +157,13 @@ function WorkbenchPage() {
       }
       toast.success(`«${row.name}» ذخیره شد`);
       clearRow(row.id);
+      setSavedFlash((s) => ({ ...s, [row.id]: Date.now() }));
+      setTimeout(() => {
+        setSavedFlash((s) => {
+          const { [row.id]: _, ...rest } = s;
+          return rest;
+        });
+      }, 2000);
       qc.invalidateQueries({ queryKey: ["workbench-rows"] });
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در ذخیره");
@@ -267,6 +280,7 @@ function WorkbenchPage() {
               dirty={dirty[row.id]}
               stepPct={stepPct}
               saving={saving === row.id}
+              justSaved={!!savedFlash[row.id]}
               onPrice={(v) => setRowPrice(row, v)}
               onBump={(p) => bumpPrice(row, p)}
               onStock={(s) => setRowStock(row, s)}
@@ -436,12 +450,13 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row, dirty, stepPct, saving, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, justSaved, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRow;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
+  justSaved: boolean;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
   onStock: (s: StockStatus) => void;
@@ -458,62 +473,235 @@ function MobileCard({
     : currentStock === "unavailable" ? <PackageX className="h-4 w-4 text-destructive" />
     : <Package className="h-4 w-4 text-amber-600" />;
 
+  // -------- Swipe gesture for ± price --------
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const [swipeDelta, setSwipeDelta] = useState(0);
+  const SWIPE_THRESHOLD = 50; // px per step
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (noSupplier) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setSwipeDelta(Math.max(-120, Math.min(120, dx)));
+    }
+  }
+  function onTouchEnd() {
+    if (touchStartX.current === null) return;
+    if (Math.abs(swipeDelta) >= SWIPE_THRESHOLD) {
+      // RTL: swipe right (positive dx) = decrease, swipe left = increase
+      // For better intuition: right swipe = +, left swipe = − (LTR semantic on numbers)
+      const dir = swipeDelta > 0 ? 1 : -1;
+      onBump(dir * stepPct);
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+    setSwipeDelta(0);
+  }
+
+  // -------- Save status badge --------
+  const statusBadge = saving ? (
+    <Badge variant="secondary" className="gap-1">
+      <Loader2 className="h-3 w-3 animate-spin" /> در حال ذخیره
+    </Badge>
+  ) : justSaved ? (
+    <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
+      <Check className="h-3 w-3" /> ذخیره شد
+    </Badge>
+  ) : isDirty ? (
+    <Badge variant="outline" className="gap-1 border-amber-500 text-amber-700 dark:text-amber-400">
+      <CircleDot className="h-3 w-3" /> تغییر ذخیره‌نشده
+    </Badge>
+  ) : noSupplier ? (
+    <Badge variant="outline" className="gap-1 border-destructive text-destructive">
+      <AlertCircle className="h-3 w-3" /> بدون تأمین‌کننده
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="gap-1 text-muted-foreground">
+      <Check className="h-3 w-3" /> همگام
+    </Badge>
+  );
+
+  const priceDelta =
+    isDirty && dirty?.price !== undefined && row.current_price
+      ? ((dirty.price - row.current_price) / row.current_price) * 100
+      : 0;
+
   return (
-    <Card className={isDirty ? "border-amber-400" : undefined}>
+    <Card
+      className={
+        justSaved
+          ? "border-emerald-500 transition-colors"
+          : isDirty
+          ? "border-amber-400 transition-colors"
+          : "transition-colors"
+      }
+    >
       <CardContent className="space-y-3 p-4">
-        <div>
-          <div className="font-medium">{row.name}</div>
-          <div className="text-xs text-muted-foreground" dir="ltr">{row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-medium">{row.name}</div>
+            <div className="truncate text-xs text-muted-foreground" dir="ltr">
+              {row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}
+            </div>
+          </div>
+          {statusBadge}
         </div>
 
         <div>
-          <Label className="mb-1 block text-xs">قیمت خرید ({CURRENCY_LABELS[row.current_currency ?? row.base_currency]})</Label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            value={currentPrice || ""}
-            onChange={(e) => onPrice(Number(e.target.value) || 0)}
-            className="h-12 text-center text-lg"
-            dir="ltr"
-            disabled={noSupplier}
-          />
-          {noSupplier && <div className="mt-1 text-xs text-destructive">این محصول هنوز تأمین‌کننده ثبت‌شده ندارد.</div>}
+          <Label className="mb-1 flex items-center justify-between text-xs">
+            <span>قیمت خرید ({CURRENCY_LABELS[row.current_currency ?? row.base_currency]})</span>
+            {priceDelta !== 0 && (
+              <span
+                className={
+                  priceDelta > 0
+                    ? "flex items-center gap-1 text-emerald-600"
+                    : "flex items-center gap-1 text-destructive"
+                }
+              >
+                {priceDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {priceDelta > 0 ? "+" : ""}{priceDelta.toFixed(1)}٪
+              </span>
+            )}
+          </Label>
+
+          {/* Swipe area: large pressable price field */}
+          <div
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            className="relative select-none touch-pan-y"
+            style={{ transform: `translateX(${swipeDelta * 0.3}px)`, transition: swipeDelta === 0 ? "transform 0.2s" : "none" }}
+          >
+            <Input
+              type="number"
+              inputMode="numeric"
+              value={currentPrice || ""}
+              onChange={(e) => onPrice(Number(e.target.value) || 0)}
+              className="h-14 text-center text-xl font-semibold"
+              dir="ltr"
+              disabled={noSupplier}
+            />
+            {/* Swipe hint overlays */}
+            {swipeDelta > 20 && (
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-emerald-600">
+                <Plus className="h-6 w-6" />
+              </div>
+            )}
+            {swipeDelta < -20 && (
+              <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-destructive">
+                <Minus className="h-6 w-6" />
+              </div>
+            )}
+          </div>
+          {!noSupplier && (
+            <div className="mt-1 text-center text-[10px] text-muted-foreground">
+              💡 برای تغییر سریع، کارت قیمت را به چپ یا راست بکشید
+            </div>
+          )}
+
           <div className="mt-2 grid grid-cols-4 gap-2">
-            <Button variant="outline" size="sm" className="h-10" onClick={() => onBump(-10)} disabled={noSupplier}>−۱۰٪</Button>
-            <Button variant="outline" size="sm" className="h-10" onClick={() => onBump(-stepPct)} disabled={noSupplier}>−{stepPct}٪</Button>
-            <Button variant="outline" size="sm" className="h-10" onClick={() => onBump(stepPct)} disabled={noSupplier}>+{stepPct}٪</Button>
-            <Button variant="outline" size="sm" className="h-10" onClick={() => onBump(10)} disabled={noSupplier}>+۱۰٪</Button>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-10)} disabled={noSupplier}>
+              <TrendingDown className="h-3 w-3" />۱۰٪
+            </Button>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-stepPct)} disabled={noSupplier}>
+              <Minus className="h-3 w-3" />{stepPct}٪
+            </Button>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(stepPct)} disabled={noSupplier}>
+              <Plus className="h-3 w-3" />{stepPct}٪
+            </Button>
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(10)} disabled={noSupplier}>
+              <TrendingUp className="h-3 w-3" />۱۰٪
+            </Button>
           </div>
         </div>
 
         <div>
           <Label className="mb-1 block text-xs">موجودی</Label>
-          <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
-            <SelectTrigger className="h-11">
-              <div className="flex items-center gap-2">{stockIcon}<SelectValue /></div>
-            </SelectTrigger>
-            <SelectContent>
-              {STOCK_STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-              <SelectItem value="unknown">نامشخص</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              type="button"
+              variant={currentStock === "available" ? "default" : "outline"}
+              className={
+                currentStock === "available"
+                  ? "h-12 gap-1 bg-emerald-600 hover:bg-emerald-700"
+                  : "h-12 gap-1"
+              }
+              onClick={() => onStock("available")}
+            >
+              <PackageCheck className="h-4 w-4" />
+              <span className="text-xs">موجود</span>
+            </Button>
+            <Button
+              type="button"
+              variant={currentStock === "unavailable" ? "default" : "outline"}
+              className={
+                currentStock === "unavailable"
+                  ? "h-12 gap-1 bg-destructive hover:bg-destructive/90"
+                  : "h-12 gap-1"
+              }
+              onClick={() => onStock("unavailable")}
+            >
+              <PackageX className="h-4 w-4" />
+              <span className="text-xs">ناموجود</span>
+            </Button>
+            <Button
+              type="button"
+              variant={currentStock !== "available" && currentStock !== "unavailable" ? "default" : "outline"}
+              className={
+                currentStock !== "available" && currentStock !== "unavailable"
+                  ? "h-12 gap-1 bg-amber-600 hover:bg-amber-700"
+                  : "h-12 gap-1"
+              }
+              onClick={() => onStock("unknown" as StockStatus)}
+            >
+              <Package className="h-4 w-4" />
+              <span className="text-xs">نامشخص</span>
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button className="flex-1 h-11" disabled={!isDirty || saving} onClick={onSave}>
-            {saving ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Save className="ms-1 h-4 w-4" />}
-            ذخیره
+          <Button
+            className={
+              justSaved
+                ? "h-12 flex-1 gap-2 bg-emerald-600 hover:bg-emerald-600"
+                : "h-12 flex-1 gap-2"
+            }
+            disabled={(!isDirty || saving) && !justSaved}
+            onClick={onSave}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> در حال ذخیره...
+              </>
+            ) : justSaved ? (
+              <>
+                <Check className="h-4 w-4" /> ذخیره شد
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" /> ذخیره تغییرات
+              </>
+            )}
           </Button>
           {isDirty && (
-            <Button variant="outline" className="h-11" onClick={onClear}>
+            <Button variant="outline" className="h-12" onClick={onClear} disabled={saving}>
               <RotateCcw className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <div className="text-center text-[11px] text-muted-foreground">
-          وضعیت فعلی: {STOCK_STATUS_LABELS[row.stock_status]} · قیمت قبلی: {row.current_price ? formatNumber(row.current_price) : "—"}
+        <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+          {stockIcon}
+          <span>قبلی: {STOCK_STATUS_LABELS[row.stock_status]}</span>
+          <span>·</span>
+          <span>قیمت قبلی: {row.current_price ? formatNumber(row.current_price) : "—"}</span>
         </div>
       </CardContent>
     </Card>
