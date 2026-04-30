@@ -31,7 +31,7 @@ interface ProductRow {
   name: string;
   sku: string | null;
   product_type: "iranian" | "foreign";
-  base_currency: "toman" | "usd" | "aed";
+  base_currency: string;
   stock_status: "available" | "unavailable" | "limited" | "unknown";
   status: "active" | "inactive" | "discontinued";
   updated_at: string;
@@ -199,7 +199,7 @@ function ProductsPage() {
                         <td className="p-3 text-muted-foreground">{p.capacity ?? "—"}</td>
                         <td className="p-3 text-muted-foreground">{p.model ?? "—"}</td>
                         <td className="p-3 text-xs text-muted-foreground">
-                          {PRODUCT_TYPE_LABELS[p.product_type]} / {BASE_CURRENCY_LABELS[p.base_currency]}
+                          {PRODUCT_TYPE_LABELS[p.product_type]} / {(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency] ?? p.base_currency.toUpperCase()}
                         </td>
                         <td className="p-3"><Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge></td>
                         <td className="p-3"><Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>{PRODUCT_STATUS_LABELS[p.status]}</Badge></td>
@@ -244,7 +244,7 @@ function ProductsPage() {
                     <div>رنگ: {p.color ?? "—"}</div>
                     <div>ظرفیت: {p.capacity ?? "—"}</div>
                     <div>مدل: {p.model ?? "—"}</div>
-                    <div>{PRODUCT_TYPE_LABELS[p.product_type]} / {BASE_CURRENCY_LABELS[p.base_currency]}</div>
+                    <div>{PRODUCT_TYPE_LABELS[p.product_type]} / {(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency] ?? p.base_currency.toUpperCase()}</div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge>
