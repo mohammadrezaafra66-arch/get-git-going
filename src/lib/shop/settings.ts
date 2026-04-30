@@ -11,6 +11,7 @@ export const SHOP_SETTING_KEYS = [
   "shop_baleh",
   "default_seller_info",
   "alert_threshold_percent",
+  "birthday_message_template",
 ] as const;
 
 export type ShopSettingKey = (typeof SHOP_SETTING_KEYS)[number];
@@ -27,6 +28,7 @@ export const SHOP_SETTING_LABELS: Record<ShopSettingKey, string> = {
   shop_baleh: "لینک بله",
   default_seller_info: "اطلاعات پیش‌فرض فروشنده",
   alert_threshold_percent: "آستانه هشدار تغییر نرخ ارز (٪)",
+  birthday_message_template: "متن پیام تولد",
 };
 
 export function emptyShopSettings(): ShopSettingsMap {
