@@ -4872,6 +4872,54 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      mi_get_demand_growth: {
+        Args: { p_days?: number }
+        Returns: {
+          current_event_count: number
+          current_score: number
+          growth_percent: number
+          previous_event_count: number
+          previous_score: number
+          range_days: number
+          status: string
+        }[]
+      }
+      mi_get_emerging_products: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          brand: Json
+          category: Json
+          current_score: number
+          growth_percent: number
+          name: string
+          previous_score: number
+          product_id: string
+          sku: string
+          stock_status: string
+        }[]
+      }
+      mi_get_hot_brands: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          brand_id: string
+          brand_name: string
+          growth_percent: number
+          interaction_count: number
+          previous_count: number
+          unique_product_count: number
+        }[]
+      }
+      mi_get_hot_categories: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          category_id: string
+          category_name: string
+          growth_percent: number
+          interaction_count: number
+          previous_count: number
+          unique_product_count: number
+        }[]
+      }
       mi_get_market_index: {
         Args: { p_days?: number }
         Returns: {
@@ -4918,6 +4966,35 @@ export type Database = {
           product_id: string
           sku: string
           stock_status: string
+        }[]
+      }
+      mi_get_seller_top_products: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          brand: Json
+          category: Json
+          last_interaction_at: string
+          name: string
+          product_id: string
+          seller_interaction_count: number
+          sku: string
+          stock_status: string
+          unique_seller_count: number
+        }[]
+      }
+      mi_get_top_checked_today: {
+        Args: { p_limit?: number }
+        Returns: {
+          brand: Json
+          category: Json
+          current_price: number
+          last_interaction_at: string
+          name: string
+          price_check_count: number
+          product_id: string
+          sku: string
+          stock_status: string
+          unique_user_count: number
         }[]
       }
       mi_get_trending_products: {
