@@ -462,7 +462,11 @@ function LivePriceListPage() {
 
 function renderProductRows(
   row: { product: ProductRow; histories: any[]; hasPrice: boolean },
-  ctx: { isSalesOnly: boolean; isPrivileged: boolean; onOpenChart?: (h: any, productName: string) => void; product?: ProductRow },
+  ctx: {
+    isSalesOnly: boolean;
+    isPrivileged: boolean;
+    onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+  },
 ) {
   const colSpan = ctx.isSalesOnly ? 7 : 8;
   const isUnavailable = row.product.stock_status === "unavailable";
