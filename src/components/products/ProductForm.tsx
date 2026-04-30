@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
 import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
 import {
-  PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
 } from "@/lib/products/constants";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -65,6 +65,21 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   });
   const attrsByType = (t: "color" | "capacity" | "model") =>
     (attrsQ.data ?? []).filter((a) => a.type === t);
+
+  const currenciesQ = useQuery({
+    queryKey: ["currencies-active"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("currencies")
+        .select("code, title, symbol, is_active, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("title", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const set = <K extends keyof ProductFormValues>(k: K, v: ProductFormValues[K]) =>
     setValues((s) => ({ ...s, [k]: v }));
@@ -146,12 +161,24 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
           </Field>
 
           <Field label="ارز مبنا">
-            <Select value={values.base_currency} onValueChange={(v) => set("base_currency", v as ProductFormValues["base_currency"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={values.base_currency || ""}
+              onValueChange={(v) => set("base_currency", v)}
+              disabled={currenciesQ.isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={currenciesQ.isLoading ? "در حال بارگذاری..." : "انتخاب ارز"} />
+              </SelectTrigger>
               <SelectContent>
-                {Object.entries(BASE_CURRENCY_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
-                ))}
+                {(currenciesQ.data ?? []).length === 0 && !currenciesQ.isLoading ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">هیچ ارز فعالی تعریف نشده است.</div>
+                ) : (
+                  (currenciesQ.data ?? []).map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.title} ({c.code.toUpperCase()})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </Field>
