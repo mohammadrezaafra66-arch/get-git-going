@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type PriceAlertOperator =
   | "below_price"
@@ -136,7 +137,7 @@ export async function createAlertRule(input: CreateAlertInput) {
     entity_type: "price_alert_rule",
     entity_id: data.id,
     action: "price_alert_created",
-    diff: norm as unknown as Record<string, unknown>,
+    diff: norm as unknown as Json,
   }]);
   return data.id as string;
 }
@@ -166,7 +167,7 @@ export async function updateAlertRule(id: string, input: CreateAlertInput) {
     entity_type: "price_alert_rule",
     entity_id: id,
     action: "price_alert_updated",
-    diff: norm as unknown as Record<string, unknown>,
+    diff: norm as unknown as Json,
   }]);
 }
 
