@@ -413,6 +413,7 @@ function LivePriceListPage() {
                         <th className="p-3 text-right font-medium">قیمت فعلی</th>
                         <th className="p-3 text-right font-medium">تغییر</th>
                         <th className="p-3 text-right font-medium">آخرین بروزرسانی</th>
+                        <th className="p-3 text-right font-medium">نمودار</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
