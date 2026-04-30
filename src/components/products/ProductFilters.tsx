@@ -16,7 +16,7 @@ export interface ProductFilterState {
   brand_id: string | null;
   category_id: string | null;
   product_type: ProductType | null;
-  base_currency: BaseCurrency | null;
+  base_currency: string | null;
   stock_status: StockStatus | null;
   status: ProductStatus | null;
   label_ids: string[];
