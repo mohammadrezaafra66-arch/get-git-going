@@ -162,3 +162,23 @@ export async function setMissionActive(id: string, is_active: boolean): Promise<
   if (error) throw error;
   await logAudit(is_active ? "mission_enabled" : "mission_disabled", id, { is_active });
 }
+
+/**
+ * Manually trigger the mission progress engine for a single (employee, eventType).
+ * Normally invoked automatically by an AFTER INSERT trigger on
+ * employee_score_events; exposed here for explicit recompute flows.
+ */
+export async function checkAndUpdateMissionProgressForEmployee(
+  employeeId: string,
+  eventType: string,
+): Promise<{ completed: number; items: Array<Record<string, unknown>> }> {
+  const { data, error } = await supabase.rpc(
+    "check_and_update_mission_progress_for_employee" as never,
+    { _employee_id: employeeId, _event_type: eventType } as never,
+  );
+  if (error) throw error;
+  return (data ?? { completed: 0, items: [] }) as {
+    completed: number;
+    items: Array<Record<string, unknown>>;
+  };
+}

@@ -1794,34 +1794,52 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           created_at: string
+          current_value: number
           employee_id: string
           id: string
           mission_id: string
+          period_end: string | null
           period_key: string
+          period_start: string | null
           progress: number
+          source_event_type: string | null
+          target_value: number | null
           updated_at: string
+          xp_awarded: number
         }
         Insert: {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          current_value?: number
           employee_id: string
           id?: string
           mission_id: string
+          period_end?: string | null
           period_key: string
+          period_start?: string | null
           progress?: number
+          source_event_type?: string | null
+          target_value?: number | null
           updated_at?: string
+          xp_awarded?: number
         }
         Update: {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          current_value?: number
           employee_id?: string
           id?: string
           mission_id?: string
+          period_end?: string | null
           period_key?: string
+          period_start?: string | null
           progress?: number
+          source_event_type?: string | null
+          target_value?: number | null
           updated_at?: string
+          xp_awarded?: number
         }
         Relationships: [
           {
@@ -5581,6 +5599,10 @@ export type Database = {
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       capture_score_snapshots: { Args: never; Returns: number }
       check_and_unlock_achievements_for_employee: {
+        Args: { _employee_id: string; _event_type: string }
+        Returns: Json
+      }
+      check_and_update_mission_progress_for_employee: {
         Args: { _employee_id: string; _event_type: string }
         Returns: Json
       }
