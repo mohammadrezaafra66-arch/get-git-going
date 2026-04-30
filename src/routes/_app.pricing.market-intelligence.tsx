@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, BarChart3 } from "lucide-react";
-import { requirePermission } from "@/lib/rbac/route-guards";
+import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,17 @@ import { TrendingProductsCard } from "@/components/management/market-intelligenc
 import { PriceMoversCard } from "@/components/management/market-intelligence/PriceMoversCard";
 import { AfraMarketIndexCard } from "@/components/management/market-intelligence/AfraMarketIndexCard";
 import { PlaceholderCard } from "@/components/management/market-intelligence/PlaceholderCard";
+import { TopCheckedTodayCard } from "@/components/management/market-intelligence/TopCheckedTodayCard";
+import { DemandGrowthCard } from "@/components/management/market-intelligence/DemandGrowthCard";
+import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
+import { HotBrandsCategoriesCard } from "@/components/management/market-intelligence/HotBrandsCategoriesCard";
+import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 
 export const Route = createFileRoute("/_app/pricing/market-intelligence")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: MarketIntelligencePage,
 });
 
@@ -110,24 +117,27 @@ function MarketIntelligencePage() {
         <PriceMoversCard days={days} direction="down" salePriceTypeId={salePriceTypeId === "__all" ? null : salePriceTypeId} />
       </div>
 
-      {/* Trending + future placeholders */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TrendingProductsCard days={days} />
-        <PlaceholderCard
-          title="بیشترین بررسی قیمت"
-          description="محصولاتی که کاربران بیشترین دفعات قیمتشان را چک کرده‌اند"
-        />
+      {/* Behavior analysis section */}
+      <div className="space-y-1 pt-2">
+        <h2 className="text-base font-bold">تحلیل رفتار همکاران بازار</h2>
+        <p className="text-xs text-muted-foreground">
+          سیگنال‌های رفتاری بر اساس تعاملات کاربران با محصولات (به‌صورت تجمیعی، بدون اطلاعات شخصی)
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PlaceholderCard
-          title="سریع‌ترین رشد تقاضا"
-          description="مقایسه تعاملات بازه فعلی با بازه قبل"
-        />
-        <PlaceholderCard
-          title="محصولات خواب بازار"
-          description="کالاهای فعال و موجود ولی بدون توجه بازار"
-        />
+        <TopCheckedTodayCard />
+        <DemandGrowthCard days={days} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TrendingProductsCard days={days} />
+        <EmergingProductsCard days={days} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <HotBrandsCategoriesCard days={days} />
+        <SellerFavoritesCard days={days} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
