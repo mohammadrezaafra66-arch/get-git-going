@@ -2724,6 +2724,58 @@ export type Database = {
           },
         ]
       }
+      product_interaction_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          product_id: string
+          sale_price_type_id: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          product_id: string
+          sale_price_type_id?: string | null
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          product_id?: string
+          sale_price_type_id?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_interaction_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_interaction_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_interaction_events_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_label_links: {
         Row: {
           created_at: string
@@ -4416,6 +4468,7 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: undefined
       }
+      _mi_require_privileged: { Args: never; Returns: undefined }
       add_dynamic_table_column: {
         Args: {
           p_column_key: string
@@ -4818,6 +4871,73 @@ export type Database = {
       mark_notification_read: {
         Args: { p_notification_id: string }
         Returns: undefined
+      }
+      mi_get_market_index: {
+        Args: { p_days?: number }
+        Returns: {
+          falling_count: number
+          flat_count: number
+          index_change_percent: number
+          product_count: number
+          range_days: number
+          rising_count: number
+          status: string
+        }[]
+      }
+      mi_get_price_movers: {
+        Args: {
+          p_days?: number
+          p_direction?: string
+          p_limit?: number
+          p_sale_price_type_id?: string
+        }
+        Returns: {
+          brand: Json
+          category: Json
+          change_amount: number
+          change_percent: number
+          end_price: number
+          name: string
+          product_id: string
+          sale_price_type_id: string
+          sale_price_type_title: string
+          sku: string
+          start_price: number
+          stock_status: string
+        }[]
+      }
+      mi_get_seller_favorite_products: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          brand: Json
+          category: Json
+          current_price: number
+          interaction_count: number
+          last_interaction_at: string
+          name: string
+          product_id: string
+          sku: string
+          stock_status: string
+        }[]
+      }
+      mi_get_trending_products: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: {
+          board_view_count: number
+          brand: Json
+          category: Json
+          change_percent: number
+          chart_view_count: number
+          current_price: number
+          name: string
+          previous_price: number
+          price_view_count: number
+          product_id: string
+          search_count: number
+          sku: string
+          stock_status: string
+          trend_score: number
+        }[]
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
