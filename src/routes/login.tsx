@@ -17,14 +17,24 @@ export const Route = createFileRoute("/login")({
     return r ? { redirect: r } : {};
   },
   beforeLoad: async ({ search }) => {
-    const auth = await ensureAuthReady();
-    if (auth.user) {
-      // Never redirect back to login itself — fall back to dashboard.
-      const target =
-        search.redirect && !search.redirect.startsWith("/login")
-          ? search.redirect
-          : "/dashboard";
-      throw redirect({ to: target });
+    // Only run the auth check on the client. During SSR the Supabase env
+    // vars may not be available in the Worker, and we must not throw a
+    // 500 on the login page itself.
+    if (typeof window === "undefined") return;
+    try {
+      const auth = await ensureAuthReady();
+      if (auth.user) {
+        const target =
+          search.redirect && !search.redirect.startsWith("/login")
+            ? search.redirect
+            : "/dashboard";
+        throw redirect({ to: target });
+      }
+    } catch (err) {
+      // Re-throw router redirects; swallow env/client init errors so the
+      // login form still renders.
+      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      console.error("[login] beforeLoad auth check failed", err);
     }
   },
   component: LoginPage,
