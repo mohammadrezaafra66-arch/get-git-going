@@ -6,13 +6,22 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (!auth.user) {
-      throw redirect({ to: "/login" });
-    }
-    const status = auth.profile?.status;
-    if (status && status !== "active") {
-      throw redirect({ to: "/pending-approval" });
+    // Skip the auth check during SSR — Supabase env vars may not be
+    // available in the Worker. The client-side AuthProvider/loading
+    // screen handles the redirect after hydration.
+    if (typeof window === "undefined") return;
+    try {
+      const auth = await ensureAuthReady();
+      if (!auth.user) {
+        throw redirect({ to: "/login" });
+      }
+      const status = auth.profile?.status;
+      if (status && status !== "active") {
+        throw redirect({ to: "/pending-approval" });
+      }
+    } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      console.error("[_app] beforeLoad auth check failed", err);
     }
   },
   pendingMs: 0,
