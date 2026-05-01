@@ -10,13 +10,28 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
 import { Sparkles } from "lucide-react";
 
-const GROUPS: NavItem["group"][] = ["main", "operations", "finance", "admin", "comms"];
+const GROUPS: NavItem["group"][] = [
+  "main",
+  "sales",
+  "pricing",
+  "operations",
+  "finance",
+  "gamification",
+  "gamification-admin",
+  "comms",
+  "admin",
+];
 
 export function AppSidebar() {
   const { roles } = useAuth();
   const location = useLocation();
-  const visible = NAV_ITEMS.filter((i) => hasPermissionEx(roles, i.module, "view"));
   const isAdmin = roles.includes("admin");
+  const isManager = roles.includes("manager");
+  const canSeeAdminOnly = isAdmin || isManager;
+  const visible = NAV_ITEMS.filter((i) => {
+    if (i.adminOnly && !canSeeAdminOnly) return false;
+    return hasPermissionEx(roles, i.module, "view");
+  });
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
