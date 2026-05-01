@@ -161,6 +161,14 @@ export function initializeAuthSession() {
 }
 
 export async function ensureAuthReady(force = false) {
+  // Auth must only run in the browser. During SSR the Supabase env vars
+  // may not be available in the Worker, and the supabase client would
+  // throw on initialization. Return the current (uninitialized) snapshot
+  // and let the client take over after hydration.
+  if (typeof window === "undefined") {
+    return snapshot;
+  }
+
   initializeAuthSession();
 
   if (
