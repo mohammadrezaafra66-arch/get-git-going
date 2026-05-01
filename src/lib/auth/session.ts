@@ -45,6 +45,10 @@ let snapshot: AuthSnapshot = {
 let initPromise: Promise<AuthSnapshot> | null = null;
 let subscribed = false;
 
+function getAuthClientError(error: unknown) {
+  return error instanceof Error ? error.message : "اتصال به سرویس احراز هویت برقرار نشد.";
+}
+
 function emit() {
   listeners.forEach((listener) => listener());
 }
@@ -145,9 +149,15 @@ async function applySession(session: Session | null, force = false) {
 export function initializeAuthSession() {
   if (subscribed) return;
   subscribed = true;
-  supabase.auth.onAuthStateChange((_event, session) => {
-    void applySession(session, true);
-  });
+  try {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session, true);
+    });
+  } catch (error) {
+    const message = getAuthClientError(error);
+    console.error("[auth] auth subscription failed", error);
+    setSnapshot({ initialized: true, loading: false, authError: message });
+  }
 }
 
 export async function ensureAuthReady(force = false) {
@@ -166,7 +176,16 @@ export async function ensureAuthReady(force = false) {
   if (!initPromise || force) {
     initPromise = (async () => {
       setSnapshot({ loading: true });
-      const { data, error } = await supabase.auth.getSession();
+      let result: Awaited<ReturnType<typeof supabase.auth.getSession>>;
+      try {
+        result = await supabase.auth.getSession();
+      } catch (error) {
+        const message = getAuthClientError(error);
+        console.error("[auth] getSession failed", error);
+        setSnapshot({ initialized: true, loading: false, authError: message });
+        return snapshot;
+      }
+      const { data, error } = result;
       if (error) {
         console.error("[auth] getSession failed", error);
         setSnapshot({ initialized: true, loading: false, authError: error.message });
