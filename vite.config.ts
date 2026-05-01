@@ -16,7 +16,7 @@ const cloudPublishableKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ??
   process.env.VITE_SUPABASE_ANON_KEY ??
   process.env.SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Imt3d2twcGtjaWhyYmV1cnd1ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzU5MTUsImV4cCI6MjA5MjYxMTkxNX0.oowSHbrAEL04u9DwGjyPYIlCc8MSL0c00Odv6UvM4bE";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3d2twcGtjaWhyYmV1cnd1ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzU5MTUsImV4cCI6MjA5MjYxMTkxNX0.oowSHbrAEL04u9DwGjyPYIlCc8MSL0c00Odv6UvM4bE";
 
 const cloudProjectId =
   process.env.VITE_SUPABASE_PROJECT_ID ??
