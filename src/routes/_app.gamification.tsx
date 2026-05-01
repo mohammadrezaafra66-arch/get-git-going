@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Crown, Flame, Target, Medal, Zap, ChevronLeft, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -23,11 +23,22 @@ import { LeagueBadge, getLeagueLabel, type LeagueTier } from "@/components/gamif
 import { LevelUpOverlay } from "@/components/gamification/LevelUpOverlay";
 
 export const Route = createFileRoute("/_app/gamification")({
-  component: GamificationDashboard,
+  component: GamificationRoutePage,
 });
 
 const REFETCH_MS = 30_000;
 const LEADERBOARD_STALE = 60_000;
+
+function GamificationRoutePage() {
+  const location = useLocation();
+  const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
+
+  if (normalizedPath !== "/gamification") {
+    return <Outlet />;
+  }
+
+  return <GamificationDashboard />;
+}
 
 function GamificationDashboard() {
   const { user, profile } = useAuth();
