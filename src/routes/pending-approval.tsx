@@ -7,10 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pending-approval")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (!auth.user) throw redirect({ to: "/login" });
-    const status = auth.profile?.status;
-    if (status === "active") throw redirect({ to: "/dashboard" });
+    if (typeof window === "undefined") return;
+    try {
+      const auth = await ensureAuthReady();
+      if (!auth.user) throw redirect({ to: "/login" });
+      const status = auth.profile?.status;
+      if (status === "active") throw redirect({ to: "/dashboard" });
+    } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      console.error("[pending-approval] beforeLoad auth check failed", err);
+    }
   },
   component: PendingApprovalPage,
 });

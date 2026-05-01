@@ -12,8 +12,14 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (auth.user) throw redirect({ to: "/dashboard" });
+    if (typeof window === "undefined") return;
+    try {
+      const auth = await ensureAuthReady();
+      if (auth.user) throw redirect({ to: "/dashboard" });
+    } catch (err) {
+      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      console.error("[register] beforeLoad auth check failed", err);
+    }
   },
   component: RegisterPage,
 });
