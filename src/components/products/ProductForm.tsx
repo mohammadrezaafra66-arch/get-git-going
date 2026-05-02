@@ -515,3 +515,76 @@ function Field({ label, required, error, children }: { label: string; required?:
     </div>
   );
 }
+
+function DynamicAttrField({
+  def, value, error, onChange,
+}: {
+  def: CategoryAttributeDef;
+  value: string;
+  error?: string;
+  onChange: (v: string) => void;
+}) {
+  let control: React.ReactNode;
+  switch (def.input_type) {
+    case "number":
+      control = (
+        <Input
+          type="number"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={500}
+        />
+      );
+      break;
+    case "select":
+      control = (
+        <Select value={value || "__none"} onValueChange={(v) => onChange(v === "__none" ? "" : v)}>
+          <SelectTrigger><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">— انتخاب نشده —</SelectItem>
+            {def.options.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+      break;
+    case "boolean":
+      control = (
+        <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3">
+          <Switch
+            checked={value === "true"}
+            onCheckedChange={(v) => onChange(v ? "true" : "false")}
+          />
+          <span className="text-sm text-muted-foreground">{value === "true" ? "بله" : "خیر"}</span>
+        </div>
+      );
+      break;
+    case "date":
+      control = (
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+      break;
+    case "text":
+    default:
+      control = (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={500}
+        />
+      );
+      break;
+  }
+  return (
+    <Field label={def.label_fa} required={def.is_required} error={error}>
+      {control}
+      {def.help_text && <p className="text-xs text-muted-foreground">{def.help_text}</p>}
+    </Field>
+  );
+}
