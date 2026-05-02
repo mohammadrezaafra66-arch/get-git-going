@@ -519,6 +519,17 @@ export function PaymentReceiptForm() {
         },
       } as never);
 
+      // Audit: security warnings confirmed
+      if (securityWarnings.length > 0) {
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt",
+          entity_id: receiptId,
+          action: "receipt_security_warning_confirmed",
+          diff: { warnings: securityWarnings },
+        } as never);
+      }
+
       // Upload attached documents (best-effort; per-file errors are toasted)
       if (stagedFiles.length > 0) {
         const result = await uploadReceiptDocuments(receiptId, user.id, stagedFiles);
