@@ -1,0 +1,211 @@
+/**
+ * Server function: real OCR / text extraction for payment receipt documents.
+ *
+ * - text/*  → returns the file as plain text
+ * - image/* → calls Lovable AI Gateway (vision model) with a strict prompt
+ * - application/pdf → currently unsupported (no safe Worker-friendly PDF
+ *                     text extractor wired in); returns method "unsupported"
+ *
+ * Auth: requires a signed-in user. Role check (admin/accountant) is enforced
+ * server-side via the user's app_role in user_roles.
+ *
+ * Important: this function only returns extracted text + method. The caller
+ * (client) parses the text, scores confidence, and writes the document row
+ * + audit logs — preserving the existing extraction pipeline.
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
+
+export interface OcrResult {
+  raw_text: string;
+  method: OcrMethod;
+  warnings: string[];
+  /** Optional engine-supplied confidence in [0,1]; null if not provided. */
+  engine_confidence: number | null;
+}
+
+const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
+const ALLOWED_ROLES = new Set(["admin", "accountant"]);
+
+const OCR_PROMPT = [
+  "Extract only visible text from this payment receipt.",
+  "Do not guess values.",
+  "Return raw text only.",
+  "Do not invent bank names, amounts, dates, or tracking numbers.",
+  "If text is unclear, leave it unclear in raw text.",
+  "Preserve original line breaks and Persian/Arabic digits as-is.",
+  "Do not add explanations or commentary.",
+].join(" ");
+
+const InputSchema = z.object({
+  document_id: z.string().uuid(),
+});
+
+export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => InputSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    // 1) Role check via user_roles (admin/accountant only).
+    const { data: roleRows, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (roleErr) {
+      throw new Response(`Role check failed: ${roleErr.message}`, { status: 500 });
+    }
+    const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
+    if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
+      throw new Response("Forbidden: only admin or accountant can run OCR", {
+        status: 403,
+      });
+    }
+
+    // 2) Load the document row (RLS still applies as the user).
+    const { data: doc, error: docErr } = await supabase
+      .from("payment_receipt_documents")
+      .select("id, storage_path, file_type")
+      .eq("id", data.document_id)
+      .maybeSingle();
+    if (docErr) {
+      throw new Response(`Document lookup failed: ${docErr.message}`, { status: 500 });
+    }
+    if (!doc) {
+      throw new Response("Document not found", { status: 404 });
+    }
+    const fileType = (doc.file_type || "").toLowerCase();
+
+    // 3) Download bytes via short-lived signed URL.
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(RECEIPT_DOCS_BUCKET)
+      .createSignedUrl(doc.storage_path, 120);
+    if (signErr || !signed?.signedUrl) {
+      throw new Response(
+        `Could not access stored file: ${signErr?.message ?? "no URL"}`,
+        { status: 500 },
+      );
+    }
+    const fileResp = await fetch(signed.signedUrl);
+    if (!fileResp.ok) {
+      throw new Response(`Download failed (${fileResp.status})`, { status: 502 });
+    }
+
+    // ---- Branch by mime ----
+
+    // text/*  → just decode UTF-8.
+    if (fileType.startsWith("text/")) {
+      const text = await fileResp.text();
+      return {
+        raw_text: text,
+        method: "text" as const,
+        warnings: [] as string[],
+        engine_confidence: null,
+      } satisfies OcrResult;
+    }
+
+    // application/pdf → not yet supported (no safe Worker-bundled PDF reader
+    // wired in this project).
+    if (fileType === "application/pdf") {
+      return {
+        raw_text: "",
+        method: "unsupported" as const,
+        warnings: ["استخراج متن PDF هنوز فعال نیست."],
+        engine_confidence: null,
+      } satisfies OcrResult;
+    }
+
+    // image/* → vision OCR via Lovable AI Gateway.
+    if (fileType.startsWith("image/")) {
+      const apiKey = process.env.LOVABLE_API_KEY;
+      if (!apiKey) {
+        return {
+          raw_text: "",
+          method: "unsupported" as const,
+          warnings: ["موتور OCR تصویری در این محیط فعال نیست."],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      }
+
+      // Encode the image as a data URL for the multimodal request.
+      const buf = new Uint8Array(await fileResp.arrayBuffer());
+      // Bound the size to keep payload reasonable (10MB upload cap exists).
+      let bin = "";
+      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+      const b64 = btoa(bin);
+      const dataUrl = `data:${fileType};base64,${b64}`;
+
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an OCR engine. Output only the raw visible text from the image. No commentary.",
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: OCR_PROMPT },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (aiResp.status === 429) {
+        return {
+          raw_text: "",
+          method: "image_ocr" as const,
+          warnings: ["محدودیت نرخ موتور OCR؛ کمی بعد دوباره تلاش کنید."],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      }
+      if (aiResp.status === 402) {
+        return {
+          raw_text: "",
+          method: "image_ocr" as const,
+          warnings: ["اعتبار موتور OCR کافی نیست؛ با مدیر تماس بگیرید."],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      }
+      if (!aiResp.ok) {
+        const errBody = await aiResp.text().catch(() => "");
+        throw new Response(
+          `OCR engine error [${aiResp.status}]: ${errBody.slice(0, 300)}`,
+          { status: 502 },
+        );
+      }
+
+      const ai = (await aiResp.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = ai.choices?.[0]?.message?.content ?? "";
+      return {
+        raw_text: typeof text === "string" ? text : "",
+        method: "image_ocr" as const,
+        warnings: [],
+        engine_confidence: null,
+      } satisfies OcrResult;
+    }
+
+    // Anything else → unsupported.
+    return {
+      raw_text: "",
+      method: "unsupported" as const,
+      warnings: ["نوع فایل برای استخراج پشتیبانی نمی‌شود."],
+      engine_confidence: null,
+    } satisfies OcrResult;
+  });

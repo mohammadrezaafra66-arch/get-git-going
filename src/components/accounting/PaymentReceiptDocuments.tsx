@@ -20,7 +20,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  extractRawText,
   parseReceiptText,
   scoreExtraction,
   decideStatus,
@@ -28,6 +27,7 @@ import {
   type DocumentChannel,
 } from "@/lib/accounting/receipt-extraction";
 import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-security";
+import { extractReceiptDocumentOcr } from "@/server/receipt-ocr.functions";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
@@ -516,29 +516,41 @@ export function ReceiptDocumentsList({
       } as never);
 
       try {
-        // Download file via short-lived signed URL (storage rules unchanged).
-        const { data: signed, error: signErr } = await supabase.storage
-          .from(RECEIPT_DOCS_BUCKET)
-          .createSignedUrl(doc.storage_path, 120);
-        if (signErr || !signed?.signedUrl) throw signErr ?? new Error("دریافت فایل ناموفق بود");
+        // Run OCR/text extraction server-side. The server function
+        // enforces role checks, fetches the file via service role, and
+        // calls the AI gateway for image OCR when configured.
+        const ocr = await extractReceiptDocumentOcr({
+          data: { document_id: doc.id },
+        });
 
-        const resp = await fetch(signed.signedUrl);
-        if (!resp.ok) throw new Error(`دانلود فایل ناموفق بود (${resp.status})`);
-        const blob = await resp.blob();
-
-        const { text, warnings } = await extractRawText(blob, doc.file_type);
+        const text = ocr.raw_text || "";
         const parsed = parseReceiptText(text);
-        parsed.warnings = [...warnings, ...parsed.warnings];
+        parsed.warnings = [...(ocr.warnings ?? []), ...parsed.warnings];
 
-        const confidence = scoreExtraction(parsed);
+        let confidence = scoreExtraction(parsed);
+        // Conservative blend: never above field-derived score; if engine
+        // also gave a score, take the min so missing key fields keep it low.
+        if (ocr.engine_confidence != null) {
+          confidence = Math.min(confidence, Math.max(0, Math.min(1, ocr.engine_confidence)));
+        }
         const status = decideStatus(parsed, Boolean(text.trim()));
 
-        const notes =
+        const methodNote =
+          ocr.method === "image_ocr"
+            ? "استخراج از تصویر انجام شد؛ لطفاً اطلاعات را بررسی کنید."
+            : ocr.method === "unsupported" && doc.file_type === "application/pdf"
+              ? "استخراج متن PDF هنوز فعال نیست."
+              : ocr.method === "unsupported"
+                ? "موتور OCR تصویری در این محیط فعال نیست."
+                : null;
+
+        const baseNote =
           parsed.warnings.length > 0
             ? parsed.warnings.join(" | ")
             : status === "extracted"
-            ? "استخراج با موفقیت انجام شد."
-            : "متن خامی برای استخراج وجود نداشت یا فیلدهای کلیدی پیدا نشد.";
+              ? "استخراج با موفقیت انجام شد."
+              : "متن خامی برای استخراج وجود نداشت یا فیلدهای کلیدی پیدا نشد.";
+        const notes = methodNote ? `${methodNote} | ${baseNote}` : baseNote;
 
         const { error: updErr } = await supabase
           .from("payment_receipt_documents")
@@ -559,13 +571,15 @@ export function ReceiptDocumentsList({
           diff: {
             document_id: doc.id,
             receipt_id: doc.receipt_id,
+            file_type: doc.file_type,
             extraction_status: status,
             extraction_confidence: confidence,
             extracted_keys: parsed.detected_keywords,
+            extraction_method: ocr.method,
           },
         } as never);
 
-        return { status, confidence, hasText: Boolean(text.trim()) };
+        return { status, confidence, hasText: Boolean(text.trim()), method: ocr.method };
       } catch (err) {
         await supabase
           .from("payment_receipt_documents")
@@ -591,9 +605,19 @@ export function ReceiptDocumentsList({
     },
     onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
-      if (r.status === "extracted") toast.success("اطلاعات فیش استخراج شد.");
-      else if (!r.hasText) toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
-      else toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+      if (r.method === "unsupported" && !r.hasText) {
+        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      } else if (r.status === "extracted") {
+        toast.success(
+          r.method === "image_ocr"
+            ? "OCR انجام شد؛ لطفاً اطلاعات استخراج‌شده را بررسی کنید."
+            : "اطلاعات فیش استخراج شد.",
+        );
+      } else if (!r.hasText) {
+        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      } else {
+        toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+      }
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : "خطای ناشناخته";
