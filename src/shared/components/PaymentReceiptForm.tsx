@@ -268,6 +268,7 @@ export function PaymentReceiptForm() {
       payer_name_on_receipt: "",
       receiver_name_on_receipt: "",
       has_perforation: false,
+      receipt_time: "",
       document_channel: "",
       is_typed_receipt: false,
       receipt_image_url: "",
