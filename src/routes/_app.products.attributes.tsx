@@ -18,6 +18,8 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
@@ -65,6 +67,7 @@ function ProductAttributesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<UnifiedRow | null>(null);
   const [createType, setCreateType] = useState<AttrType | null>(null);
+  const [tab, setTab] = useState<"attrs" | "naming">("attrs");
 
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
@@ -173,6 +176,12 @@ function ProductAttributesPage() {
         }
       />
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming")}>
+        <TabsList>
+          <TabsTrigger value="attrs">ویژگی‌ها</TabsTrigger>
+          <TabsTrigger value="naming">استاندارد نام‌گذاری</TabsTrigger>
+        </TabsList>
+        <TabsContent value="attrs" className="space-y-5">
       <Card>
         <CardContent className="grid gap-3 p-4 md:grid-cols-3">
           <div className="space-y-1.5">
@@ -271,6 +280,11 @@ function ProductAttributesPage() {
           onSaved={invalidateAll}
         />
       )}
+        </TabsContent>
+        <TabsContent value="naming" className="space-y-4">
+          <CategoryNamingSection canWrite={canWrite} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
