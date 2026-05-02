@@ -18,6 +18,8 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
@@ -65,6 +67,7 @@ function ProductAttributesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<UnifiedRow | null>(null);
   const [createType, setCreateType] = useState<AttrType | null>(null);
+  const [tab, setTab] = useState<"attrs" | "naming">("attrs");
 
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
@@ -173,6 +176,12 @@ function ProductAttributesPage() {
         }
       />
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming")}>
+        <TabsList>
+          <TabsTrigger value="attrs">ویژگی‌ها</TabsTrigger>
+          <TabsTrigger value="naming">استاندارد نام‌گذاری</TabsTrigger>
+        </TabsList>
+        <TabsContent value="attrs" className="space-y-5">
       <Card>
         <CardContent className="grid gap-3 p-4 md:grid-cols-3">
           <div className="space-y-1.5">
@@ -271,6 +280,11 @@ function ProductAttributesPage() {
           onSaved={invalidateAll}
         />
       )}
+        </TabsContent>
+        <TabsContent value="naming" className="space-y-4">
+          <CategoryNamingSection canWrite={canWrite} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -385,3 +399,272 @@ function AttrDialog({
 
 // keep DYN_TYPES referenced (used implicitly via TYPES filtering)
 void DYN_TYPES;
+
+// =====================================================================
+// Category Naming Standards (Phase 12.2)
+// =====================================================================
+
+const SAMPLE_VALUES: Record<string, string> = {
+  category: "کولر گازی",
+  brand: "جنرال گلد",
+  primary_spec: "24000",
+  model: "GG-S24000",
+  capacity: "24000",
+  color: "سفید",
+  sku: "AFK-2026-00001",
+};
+
+const ALLOWED_TOKENS = ["category", "brand", "primary_spec", "model", "capacity", "color", "sku"] as const;
+
+function renderTemplate(tpl: string, values: Record<string, string>): string {
+  if (!tpl) return "";
+  return tpl.replace(/\{(\w+)\}/g, (_m, key) => values[key] ?? "");
+}
+
+function sanitizePlain(s: string): string {
+  // strip control chars and angle brackets to avoid html/script injection
+  return s.replace(/[<>]/g, "").replace(/[\u0000-\u001F\u007F]/g, "").trim();
+}
+
+interface CategoryNamingRow {
+  id: string;
+  name: string;
+  is_active: boolean;
+  naming_template: string | null;
+  primary_spec_label: string | null;
+}
+
+function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
+  const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const q = useQuery({
+    queryKey: ["categories-naming"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, is_active, naming_template, primary_spec_label")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as CategoryNamingRow[];
+    },
+  });
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return q.data ?? [];
+    return (q.data ?? []).filter((c) => c.name.toLowerCase().includes(term));
+  }, [q.data, search]);
+
+  const editingRow = useMemo(
+    () => (editingId ? (q.data ?? []).find((c) => c.id === editingId) ?? null : null),
+    [q.data, editingId],
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="space-y-2 p-4 text-xs text-muted-foreground">
+          <div className="font-medium text-foreground">توکن‌های قابل استفاده در الگو:</div>
+          <div className="flex flex-wrap gap-1.5">
+            {ALLOWED_TOKENS.map((t) => (
+              <Badge key={t} variant="outline" className="font-mono text-[11px]">
+                {`{${t}}`}
+              </Badge>
+            ))}
+          </div>
+          <div>
+            مثال: <span className="font-mono">{"{category} {brand} {primary_spec} مدل {model}"}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative max-w-sm">
+            <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجوی دسته..."
+              className="pr-8"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {q.isLoading ? (
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Tag} title="دسته‌ای یافت نشد" description="هنوز دسته‌بندی‌ای ثبت نشده است." />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border">
+              {filtered.map((c) => {
+                const preview = c.naming_template
+                  ? renderTemplate(c.naming_template, SAMPLE_VALUES)
+                  : "—";
+                return (
+                  <li key={c.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>
+                          {c.name}
+                        </span>
+                        {!c.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        برچسب اسپک اصلی: <span className="text-foreground">{c.primary_spec_label || "—"}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        الگو: <span className="font-mono text-foreground">{c.naming_template || "—"}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        پیش‌نمایش: <span className="text-foreground">{preview}</span>
+                      </div>
+                    </div>
+                    {canWrite && (
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(c.id)}>
+                        <Pencil className="ms-1 h-4 w-4" />ویرایش
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {canWrite && editingRow && (
+        <NamingEditDialog
+          row={editingRow}
+          onClose={() => setEditingId(null)}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["categories-naming"] })}
+        />
+      )}
+    </div>
+  );
+}
+
+function NamingEditDialog({
+  row, onClose, onSaved,
+}: {
+  row: CategoryNamingRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [template, setTemplate] = useState(row.naming_template ?? "");
+  const [specLabel, setSpecLabel] = useState(row.primary_spec_label ?? "");
+
+  useEffect(() => {
+    setTemplate(row.naming_template ?? "");
+    setSpecLabel(row.primary_spec_label ?? "");
+  }, [row.id, row.naming_template, row.primary_spec_label]);
+
+  const cleanTemplate = sanitizePlain(template);
+  const cleanSpec = sanitizePlain(specLabel);
+  const tplTooLong = cleanTemplate.length > 300;
+  const specTooLong = cleanSpec.length > 80;
+  const preview = cleanTemplate ? renderTemplate(cleanTemplate, SAMPLE_VALUES) : "—";
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      if (tplTooLong) throw new Error("الگو نباید از ۳۰۰ کاراکتر بیشتر باشد");
+      if (specTooLong) throw new Error("برچسب اسپک نباید از ۸۰ کاراکتر بیشتر باشد");
+
+      const before = {
+        naming_template: row.naming_template,
+        primary_spec_label: row.primary_spec_label,
+      };
+      const after = {
+        naming_template: cleanTemplate ? cleanTemplate : null,
+        primary_spec_label: cleanSpec ? cleanSpec : null,
+      };
+
+      const { error } = await supabase
+        .from("categories")
+        .update(after)
+        .eq("id", row.id);
+      if (error) throw error;
+
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        await supabase.from("audit_logs").insert({
+          entity_type: "category",
+          entity_id: row.id,
+          action: "product_category_naming_settings_updated",
+          actor_id: u.user?.id ?? null,
+          diff: { before, after },
+        });
+      } catch {
+        // audit log failure should not block the save
+      }
+    },
+    onSuccess: () => {
+      toast.success("تنظیمات نام‌گذاری ذخیره شد");
+      onSaved();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>استاندارد نام‌گذاری — {row.name}</DialogTitle>
+          <DialogDescription>
+            الگوی نام‌گذاری و برچسب اسپک اصلی این دسته را تعیین کنید.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>برچسب اسپک اصلی</Label>
+            <Input
+              value={specLabel}
+              onChange={(e) => setSpecLabel(e.target.value)}
+              placeholder="مثلاً: ظرفیت، سایز، توان"
+              maxLength={120}
+            />
+            {specTooLong && <p className="text-xs text-destructive">حداکثر ۸۰ کاراکتر</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label>الگوی نام‌گذاری</Label>
+            <Textarea
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              placeholder="{category} {brand} {primary_spec} مدل {model}"
+              rows={3}
+              maxLength={400}
+              className="font-mono text-sm"
+            />
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span>توکن‌ها:</span>
+              {ALLOWED_TOKENS.map((t) => (
+                <Badge key={t} variant="outline" className="font-mono text-[10px]">{`{${t}}`}</Badge>
+              ))}
+            </div>
+            {tplTooLong && <p className="text-xs text-destructive">حداکثر ۳۰۰ کاراکتر</p>}
+            <p className="text-xs text-muted-foreground">
+              اگر خالی باشد، بعداً از الگوی پیش‌فرض سیستم استفاده می‌شود.
+            </p>
+          </div>
+          <div className="rounded-md border bg-muted/40 p-3">
+            <div className="mb-1 text-xs text-muted-foreground">پیش‌نمایش با مقادیر نمونه:</div>
+            <div className="text-sm">{preview}</div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || tplTooLong || specTooLong}>
+            {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+            ذخیره
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
