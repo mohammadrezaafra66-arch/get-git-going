@@ -601,6 +601,113 @@ export function ReceiptDocumentsList({
     },
   });
 
+  // ---- Apply extracted data to receipt fields -----------------------------
+  const openApplyDialog = (doc: ReceiptDocumentRow) => {
+    const ex = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
+    if (!ex) {
+      toast.error("داده‌ای برای اعمال وجود ندارد.");
+      return;
+    }
+    const next: Record<ApplyFieldKey, boolean> = {
+      tracking_number: false,
+      amount: false,
+      receipt_date: false,
+      receipt_time: false,
+      source_bank: false,
+      destination_bank: false,
+      payer_name_on_receipt: false,
+      receiver_name_on_receipt: false,
+      document_channel: false,
+    };
+    (Object.keys(next) as ApplyFieldKey[]).forEach((k) => {
+      next[k] = effectiveExtractedValue(k, ex) !== undefined;
+    });
+    setApplySelections(next);
+    setApplyDoc(doc);
+  };
+
+  const applyMutation = useMutation({
+    mutationFn: async (args: { doc: ReceiptDocumentRow; selected: ApplyFieldKey[] }) => {
+      if (!user?.id) throw new Error("کاربر شناسایی نشد");
+      const { doc, selected } = args;
+      if (selected.length === 0) throw new Error("هیچ فیلدی انتخاب نشده است");
+      const ex = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
+      if (!ex) throw new Error("داده‌ای برای اعمال وجود ندارد");
+
+      // Re-check posting status to avoid races.
+      const { data: receiptRow, error: rErr } = await supabase
+        .from("payment_receipts")
+        .select("id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel")
+        .eq("id", doc.receipt_id)
+        .single();
+      if (rErr || !receiptRow) throw rErr ?? new Error("فیش پیدا نشد");
+      if ((receiptRow as { posting_status?: string }).posting_status === "posted") {
+        throw new Error("این فیش قبلاً ثبت حسابداری شده و قابل ویرایش نیست");
+      }
+
+      const beforeMap = receiptRow as unknown as Record<string, unknown>;
+      const update: Record<string, unknown> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      const skipped: ApplyFieldKey[] = [];
+      const applied: ApplyFieldKey[] = [];
+
+      for (const key of selected) {
+        const v = effectiveExtractedValue(key, ex);
+        if (v === undefined) {
+          skipped.push(key);
+          continue;
+        }
+        const col = APPLY_FIELD_TO_COLUMN[key];
+        update[col] = v;
+        before[col] = beforeMap[col] ?? null;
+        after[col] = v;
+        applied.push(key);
+      }
+
+      if (applied.length === 0) {
+        throw new Error("مقادیر انتخاب‌شده قابل اعمال نیستند");
+      }
+
+      const { error: updErr } = await supabase
+        .from("payment_receipts")
+        .update(update as never)
+        .eq("id", doc.receipt_id);
+      if (updErr) throw updErr;
+
+      await supabase.from("audit_logs").insert({
+        actor_id: user.id,
+        entity_type: "payment_receipt",
+        entity_id: doc.receipt_id,
+        action: "receipt_extracted_data_applied",
+        diff: {
+          document_id: doc.id,
+          applied_fields: applied,
+          skipped_fields: skipped,
+          before,
+          after,
+          extraction_confidence: doc.extraction_confidence,
+        },
+      } as never);
+
+      return { applied, skipped };
+    },
+    onSuccess: (r) => {
+      toast.success("اطلاعات استخراج‌شده روی فیش اعمال شد.");
+      if (r.skipped.length > 0) {
+        toast.info(`برخی فیلدها قابل اعمال نبودند: ${r.skipped.map((k) => APPLY_FIELD_LABELS[k]).join("، ")}`);
+      }
+      setApplyDoc(null);
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-meta", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+      toast.error(`اعمال ناموفق بود: ${msg}`);
+    },
+  });
+
   return (
     <div className="space-y-3" dir="rtl">
       <div className="flex items-center justify-between">
