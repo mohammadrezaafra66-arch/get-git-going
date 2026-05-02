@@ -235,6 +235,23 @@ function ProductDetailPage() {
 
       <ProductSupplierManager productId={id} />
 
+      <Card>
+        <CardContent className="space-y-2 p-4">
+          <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی</h3>
+          {dynamicQ.isLoading ? (
+            <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+          ) : (dynamicQ.data ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">ویژگی اختصاصی ثبت نشده است.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {(dynamicQ.data ?? []).map((r) => (
+                <Info key={r.id} label={r.label} value={r.value} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
