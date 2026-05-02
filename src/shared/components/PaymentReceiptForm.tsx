@@ -385,9 +385,14 @@ export function PaymentReceiptForm() {
 
   const mutation = useMutation({
     mutationFn: async (
-      args: { values: FormValues; allocations: InvoiceAllocation[]; bypassDuplicate?: boolean },
+      args: {
+        values: FormValues;
+        allocations: InvoiceAllocation[];
+        bypassDuplicate?: boolean;
+        securityWarnings?: string[];
+      },
     ) => {
-      const { values, allocations: allocs, bypassDuplicate } = args;
+      const { values, allocations: allocs, bypassDuplicate, securityWarnings = [] } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
       // Front-end allocation validation (server has no constraint)
@@ -466,6 +471,7 @@ export function PaymentReceiptForm() {
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
+        security_warnings: securityWarnings,
         status: "pending_review" as const,
         created_by: user.id,
       };
