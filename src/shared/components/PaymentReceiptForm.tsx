@@ -882,6 +882,38 @@ export function PaymentReceiptForm() {
                 }}
               />
             </div>
+            <div className="space-y-1">
+              <Label>طرف حساب گیرنده (اختیاری)</Label>
+              <Select
+                value={form.watch("receiver_party_id") || "__none"}
+                onValueChange={(v) => {
+                  if (v === "__none") {
+                    form.setValue("receiver_party_id", "", { shouldDirty: true });
+                    return;
+                  }
+                  form.setValue("receiver_party_id", v, { shouldDirty: true });
+                  const p = externalParties.find((x) => x.id === v);
+                  if (p) {
+                    form.setValue("receiver_name", p.full_name, { shouldValidate: true });
+                    if (p.phone) form.setValue("receiver_phone", p.phone, { shouldValidate: true });
+                    if (p.accounting_code) form.setValue("receiver_accounting_code", p.accounting_code, { shouldValidate: true });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب از طرف‌های حساب ثبت‌شده" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                  {externalParties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name}
+                      {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام گیرنده <span className="text-destructive">*</span></Label>
