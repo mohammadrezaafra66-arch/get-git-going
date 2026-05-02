@@ -1006,13 +1006,66 @@ export function PaymentReceiptForm() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>بانک مبدا</Label>
-                <Input {...form.register("source_bank")} placeholder="مثلاً ملت" />
+                <Label>حساب مبدا (اختیاری)</Label>
+                <Select
+                  value={form.watch("source_bank_account_id") || "__none"}
+                  onValueChange={(v) => {
+                    if (v === "__none") {
+                      form.setValue("source_bank_account_id", "", { shouldDirty: true });
+                      return;
+                    }
+                    form.setValue("source_bank_account_id", v, { shouldDirty: true });
+                    const b = bankAccounts.find((x) => x.id === v);
+                    if (b && !form.getValues("source_bank")) {
+                      form.setValue("source_bank", b.bank_name, { shouldDirty: true });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                    {bankAccounts.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input className="mt-1" {...form.register("source_bank")} placeholder="نام بانک مبدا (متن)" />
               </div>
 
               <div className="space-y-1">
-                <Label>بانک مقصد (روی فیش)</Label>
-                <Input {...form.register("destination_bank")} placeholder="مثلاً ملی" />
+                <Label>حساب مقصد (اختیاری)</Label>
+                <Select
+                  value={form.watch("destination_bank_account_id") || "__none"}
+                  onValueChange={(v) => {
+                    if (v === "__none") {
+                      form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                      return;
+                    }
+                    form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                    const b = bankAccounts.find((x) => x.id === v);
+                    if (b) {
+                      if (!form.getValues("destination_bank")) {
+                        form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
+                      }
+                      if (!form.getValues("bank_name")) {
+                        form.setValue("bank_name", b.bank_name, { shouldDirty: true });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                    {bankAccounts.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input className="mt-1" {...form.register("destination_bank")} placeholder="نام بانک مقصد (متن)" />
               </div>
 
               <div className="space-y-1">
