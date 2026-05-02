@@ -380,10 +380,16 @@ export function PaymentReceiptForm() {
   const overAllocated = totalAllocated > watchedAmount;
   const allocationDiff = watchedAmount - totalAllocated;
 
-  const addAllocation = (inv: InvoiceOption) => {
+  const addAllocation = (
+    inv: InvoiceOption,
+    opts?: { amount?: number; suggestion?: InvoiceAllocation["suggestion"] },
+  ) => {
     if (allocations.some((a) => a.invoice_id === inv.id)) return;
     const remainingForReceipt = Math.max(0, watchedAmount - totalAllocated);
-    const suggested = Math.min(inv.remaining, remainingForReceipt || inv.remaining);
+    const suggested =
+      opts?.amount !== undefined
+        ? Math.min(inv.remaining, Math.max(0, opts.amount))
+        : Math.min(inv.remaining, remainingForReceipt || inv.remaining);
     setAllocations((prev) => [
       ...prev,
       {
@@ -392,10 +398,76 @@ export function PaymentReceiptForm() {
         total_amount: inv.total_amount,
         remaining: inv.remaining,
         amount: suggested,
+        suggestion: opts?.suggestion,
       },
     ]);
     setInvoicePickerOpen(false);
   };
+
+  // Smart matching suggestions (Phase 11.11)
+  const watchedPaymentDate = form.watch("payment_date");
+  const suggestions = useMemo(() => {
+    if (
+      watchedReceiptType !== "payment" ||
+      !watchedCustomerId ||
+      !watchedAmount ||
+      watchedAmount <= 0 ||
+      customerInvoices.length === 0
+    ) {
+      return [] as Array<{
+        invoice: InvoiceOption;
+        allocated_amount: number;
+        confidence: "high" | "medium" | "low";
+        reason: string;
+      }>;
+    }
+    const receiptDate = watchedPaymentDate ? new Date(watchedPaymentDate).getTime() : NaN;
+    const candidates = customerInvoices.filter((i) => i.remaining > 0.001);
+    if (candidates.length === 0) return [];
+
+    const scored = candidates.map((inv) => {
+      const diff = Math.abs(inv.remaining - watchedAmount);
+      const exact = diff < 0.5;
+      const closeness = inv.remaining > 0 ? diff / inv.remaining : 1;
+      const dateProximity =
+        Number.isFinite(receiptDate) && inv.issue_date
+          ? Math.abs(receiptDate - new Date(inv.issue_date).getTime()) / (1000 * 60 * 60 * 24)
+          : 9999;
+      const dueProximity =
+        Number.isFinite(receiptDate) && inv.due_date
+          ? Math.abs(receiptDate - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24)
+          : 9999;
+
+      let confidence: "high" | "medium" | "low" = "low";
+      let reason = "این جدیدترین پیش‌فاکتور پرداخت‌نشده مشتری است.";
+      let allocated = Math.min(inv.remaining, watchedAmount);
+
+      if (exact) {
+        confidence = "high";
+        reason = "مبلغ فیش دقیقاً با مانده این پیش‌فاکتور برابر است.";
+        allocated = inv.remaining;
+      } else if (closeness <= 0.1) {
+        confidence = "medium";
+        reason = "مبلغ فیش نزدیک‌ترین مقدار به مانده این پیش‌فاکتور است.";
+      } else if (dueProximity <= 7 || dateProximity <= 7) {
+        confidence = "medium";
+        reason = dueProximity <= 7
+          ? "تاریخ سررسید این پیش‌فاکتور نزدیک تاریخ فیش است."
+          : "تاریخ صدور این پیش‌فاکتور نزدیک تاریخ فیش است.";
+      }
+
+      // Composite rank: lower is better
+      const rank =
+        (exact ? 0 : 1) * 1000 +
+        closeness * 100 +
+        Math.min(dateProximity, 365) * 0.05;
+
+      return { invoice: inv, allocated_amount: allocated, confidence, reason, rank };
+    });
+
+    scored.sort((a, b) => a.rank - b.rank);
+    return scored.slice(0, 3).map(({ rank: _r, ...rest }) => rest);
+  }, [watchedReceiptType, watchedCustomerId, watchedAmount, customerInvoices, watchedPaymentDate]);
 
   const removeAllocation = (invoiceId: string) => {
     setAllocations((prev) => prev.filter((a) => a.invoice_id !== invoiceId));
