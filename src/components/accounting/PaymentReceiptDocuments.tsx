@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles } from "lucide-react";
+import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,10 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -74,6 +78,115 @@ const CHANNEL_LABELS: Record<DocumentChannel, string> = {
   other: "سایر",
   unknown: "نامشخص",
 };
+
+// ---------------------------------------------------------------------------
+// Apply-extracted-data: field map + value normalizers
+// ---------------------------------------------------------------------------
+
+type ApplyFieldKey =
+  | "tracking_number"
+  | "amount"
+  | "receipt_date"
+  | "receipt_time"
+  | "source_bank"
+  | "destination_bank"
+  | "payer_name_on_receipt"
+  | "receiver_name_on_receipt"
+  | "document_channel";
+
+const APPLY_FIELD_LABELS: Record<ApplyFieldKey, string> = {
+  tracking_number: "شماره پیگیری",
+  amount: "مبلغ",
+  receipt_date: "تاریخ فیش",
+  receipt_time: "ساعت فیش",
+  source_bank: "بانک مبدا",
+  destination_bank: "بانک مقصد",
+  payer_name_on_receipt: "نام واریزکننده روی فیش",
+  receiver_name_on_receipt: "نام گیرنده روی فیش",
+  document_channel: "کانال انتقال",
+};
+
+/** Maps the apply-field key (extraction side) to the receipts column name. */
+const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
+  tracking_number: "tracking_number",
+  amount: "amount",
+  receipt_date: "payment_date",
+  receipt_time: "receipt_time",
+  source_bank: "source_bank",
+  destination_bank: "destination_bank",
+  payer_name_on_receipt: "payer_name_on_receipt",
+  receiver_name_on_receipt: "receiver_name_on_receipt",
+  document_channel: "document_channel",
+};
+
+function normalizeGregorianDate(s: string): string | null {
+  // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
+  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
+  if (!m) return null;
+  const yyyy = m[1];
+  const mm = m[2].padStart(2, "0");
+  const dd = m[3].padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function normalizeReceiptTime(s: string): string | null {
+  // DB constraint requires exactly HH:MM.
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s.trim());
+  if (!m) return null;
+  const hh = m[1].padStart(2, "0");
+  if (Number(hh) > 23 || Number(m[2]) > 59) return null;
+  return `${hh}:${m[2]}`;
+}
+
+/**
+ * Build an effective value for a given field from extraction. Returns
+ * `undefined` when the field cannot be safely applied (empty, or fails
+ * server-side constraint).
+ */
+function effectiveExtractedValue(
+  key: ApplyFieldKey,
+  extracted: ReceiptExtractionResult,
+): string | number | undefined {
+  switch (key) {
+    case "tracking_number":
+      return extracted.tracking_number?.trim() || undefined;
+    case "amount":
+      return extracted.amount != null && extracted.amount > 0 ? extracted.amount : undefined;
+    case "receipt_date": {
+      if (!extracted.receipt_date) return undefined;
+      const norm = normalizeGregorianDate(extracted.receipt_date);
+      return norm ?? undefined;
+    }
+    case "receipt_time": {
+      if (!extracted.receipt_time) return undefined;
+      return normalizeReceiptTime(extracted.receipt_time) ?? undefined;
+    }
+    case "source_bank":
+      return extracted.source_bank?.trim() || undefined;
+    case "destination_bank":
+      return extracted.destination_bank?.trim() || undefined;
+    case "payer_name_on_receipt":
+      return extracted.payer_name_on_receipt?.trim() || undefined;
+    case "receiver_name_on_receipt":
+      return extracted.receiver_name_on_receipt?.trim() || undefined;
+    case "document_channel": {
+      const c = extracted.document_channel;
+      if (!c || c === "unknown") return undefined;
+      return c;
+    }
+  }
+}
+
+function displayValue(key: ApplyFieldKey, v: string | number | undefined | null): string {
+  if (v == null || v === "") return "—";
+  if (key === "amount" && typeof v === "number") {
+    return `${toFaDigits(v.toLocaleString("en-US"))} ریال`;
+  }
+  if (key === "document_channel") {
+    return CHANNEL_LABELS[v as DocumentChannel] ?? String(v);
+  }
+  return toFaDigits(String(v));
+}
 
 function ExtractionField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -287,6 +400,35 @@ export function ReceiptDocumentsList({
   const canManage = hasAnyRole(roles as AppRole[], ["admin", "accountant"]);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ReceiptDocumentRow | null>(null);
+  const [applyDoc, setApplyDoc] = useState<ReceiptDocumentRow | null>(null);
+  const [applySelections, setApplySelections] = useState<Record<ApplyFieldKey, boolean>>({
+    tracking_number: false,
+    amount: false,
+    receipt_date: false,
+    receipt_time: false,
+    source_bank: false,
+    destination_bank: false,
+    payer_name_on_receipt: false,
+    receiver_name_on_receipt: false,
+    document_channel: false,
+  });
+
+  const { data: receiptMeta } = useQuery<{
+    posting_status: string | null;
+    status: string | null;
+  } | null>({
+    queryKey: ["payment-receipt-meta", receiptId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_receipts")
+        .select("posting_status, status")
+        .eq("id", receiptId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as { posting_status: string | null; status: string | null } | null;
+    },
+  });
+  const isPosted = (receiptMeta?.posting_status ?? "unposted") === "posted";
 
   const { data: docs = [], isLoading } = useQuery<ReceiptDocumentRow[]>({
     queryKey: ["payment-receipt-documents", receiptId],
@@ -459,6 +601,113 @@ export function ReceiptDocumentsList({
     },
   });
 
+  // ---- Apply extracted data to receipt fields -----------------------------
+  const openApplyDialog = (doc: ReceiptDocumentRow) => {
+    const ex = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
+    if (!ex) {
+      toast.error("داده‌ای برای اعمال وجود ندارد.");
+      return;
+    }
+    const next: Record<ApplyFieldKey, boolean> = {
+      tracking_number: false,
+      amount: false,
+      receipt_date: false,
+      receipt_time: false,
+      source_bank: false,
+      destination_bank: false,
+      payer_name_on_receipt: false,
+      receiver_name_on_receipt: false,
+      document_channel: false,
+    };
+    (Object.keys(next) as ApplyFieldKey[]).forEach((k) => {
+      next[k] = effectiveExtractedValue(k, ex) !== undefined;
+    });
+    setApplySelections(next);
+    setApplyDoc(doc);
+  };
+
+  const applyMutation = useMutation({
+    mutationFn: async (args: { doc: ReceiptDocumentRow; selected: ApplyFieldKey[] }) => {
+      if (!user?.id) throw new Error("کاربر شناسایی نشد");
+      const { doc, selected } = args;
+      if (selected.length === 0) throw new Error("هیچ فیلدی انتخاب نشده است");
+      const ex = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
+      if (!ex) throw new Error("داده‌ای برای اعمال وجود ندارد");
+
+      // Re-check posting status to avoid races.
+      const { data: receiptRow, error: rErr } = await supabase
+        .from("payment_receipts")
+        .select("id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel")
+        .eq("id", doc.receipt_id)
+        .single();
+      if (rErr || !receiptRow) throw rErr ?? new Error("فیش پیدا نشد");
+      if ((receiptRow as { posting_status?: string }).posting_status === "posted") {
+        throw new Error("این فیش قبلاً ثبت حسابداری شده و قابل ویرایش نیست");
+      }
+
+      const beforeMap = receiptRow as unknown as Record<string, unknown>;
+      const update: Record<string, unknown> = {};
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      const skipped: ApplyFieldKey[] = [];
+      const applied: ApplyFieldKey[] = [];
+
+      for (const key of selected) {
+        const v = effectiveExtractedValue(key, ex);
+        if (v === undefined) {
+          skipped.push(key);
+          continue;
+        }
+        const col = APPLY_FIELD_TO_COLUMN[key];
+        update[col] = v;
+        before[col] = beforeMap[col] ?? null;
+        after[col] = v;
+        applied.push(key);
+      }
+
+      if (applied.length === 0) {
+        throw new Error("مقادیر انتخاب‌شده قابل اعمال نیستند");
+      }
+
+      const { error: updErr } = await supabase
+        .from("payment_receipts")
+        .update(update as never)
+        .eq("id", doc.receipt_id);
+      if (updErr) throw updErr;
+
+      await supabase.from("audit_logs").insert({
+        actor_id: user.id,
+        entity_type: "payment_receipt",
+        entity_id: doc.receipt_id,
+        action: "receipt_extracted_data_applied",
+        diff: {
+          document_id: doc.id,
+          applied_fields: applied,
+          skipped_fields: skipped,
+          before,
+          after,
+          extraction_confidence: doc.extraction_confidence,
+        },
+      } as never);
+
+      return { applied, skipped };
+    },
+    onSuccess: (r) => {
+      toast.success("اطلاعات استخراج‌شده روی فیش اعمال شد.");
+      if (r.skipped.length > 0) {
+        toast.info(`برخی فیلدها قابل اعمال نبودند: ${r.skipped.map((k) => APPLY_FIELD_LABELS[k]).join("، ")}`);
+      }
+      setApplyDoc(null);
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-meta", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+      toast.error(`اعمال ناموفق بود: ${msg}`);
+    },
+  });
+
   return (
     <div className="space-y-3" dir="rtl">
       <div className="flex items-center justify-between">
@@ -538,6 +787,20 @@ export function ReceiptDocumentsList({
                         <Sparkles className="ml-1 h-4 w-4" />
                       )}
                       استخراج اطلاعات از فیش
+                    </Button>
+                  )}
+                  {canManage
+                    && !isPosted
+                    && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review")
+                    && doc.extracted_data != null && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openApplyDialog(doc)}
+                    >
+                      <Wand2 className="ml-1 h-4 w-4" />
+                      اعمال اطلاعات استخراج‌شده روی فیش
                     </Button>
                   )}
                   <Button
@@ -622,6 +885,85 @@ export function ReceiptDocumentsList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={applyDoc !== null} onOpenChange={(open) => { if (!open) setApplyDoc(null); }}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>اعمال اطلاعات استخراج‌شده</DialogTitle>
+            <DialogDescription>
+              این اطلاعات از روی مستندات استخراج شده و باید توسط حسابدار بررسی شود.
+            </DialogDescription>
+          </DialogHeader>
+          {applyDoc && (() => {
+            const ex = (applyDoc.extracted_data ?? null) as ReceiptExtractionResult | null;
+            if (!ex) return <p className="text-sm text-muted-foreground">داده‌ای برای اعمال وجود ندارد.</p>;
+            const keys = Object.keys(APPLY_FIELD_LABELS) as ApplyFieldKey[];
+            return (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                {keys.map((key) => {
+                  const v = effectiveExtractedValue(key, ex);
+                  const disabled = v === undefined;
+                  const checked = applySelections[key];
+                  return (
+                    <label
+                      key={key}
+                      className={cn(
+                        "flex items-start gap-2 rounded-md border p-2 text-sm",
+                        disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
+                      )}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        disabled={disabled}
+                        onCheckedChange={(c) =>
+                          setApplySelections((prev) => ({ ...prev, [key]: c === true }))
+                        }
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{APPLY_FIELD_LABELS[key]}</div>
+                        <div className="text-xs text-muted-foreground" dir="auto">
+                          {disabled
+                            ? "مقداری استخراج نشده یا قابل اعمال نیست"
+                            : displayValue(key, v)}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setApplyDoc(null)}
+              disabled={applyMutation.isPending}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!applyDoc) return;
+                const selected = (Object.keys(applySelections) as ApplyFieldKey[]).filter(
+                  (k) => applySelections[k],
+                );
+                if (selected.length === 0) {
+                  toast.error("حداقل یک فیلد را برای اعمال انتخاب کنید.");
+                  return;
+                }
+                applyMutation.mutate({ doc: applyDoc, selected });
+              }}
+              disabled={applyMutation.isPending}
+            >
+              {applyMutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              اعمال
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
