@@ -97,6 +97,8 @@ import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
+import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
+import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
@@ -579,6 +581,18 @@ const AppAccountingReceiptsRoute = AppAccountingReceiptsRouteImport.update({
   path: '/accounting/receipts',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountingExternalPartiesRoute =
+  AppAccountingExternalPartiesRouteImport.update({
+    id: '/accounting/external-parties',
+    path: '/accounting/external-parties',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAccountingBankAccountsRoute =
+  AppAccountingBankAccountsRouteImport.update({
+    id: '/accounting/bank-accounts',
+    path: '/accounting/bank-accounts',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
   id: '/academy_/manage',
   path: '/academy/manage',
@@ -782,6 +796,8 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -900,6 +916,8 @@ export interface FileRoutesByTo {
   '/users': typeof AppUsersRouteWithChildren
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1021,6 +1039,8 @@ export interface FileRoutesById {
   '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
+  '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1143,6 +1163,8 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/bank-accounts'
+    | '/accounting/external-parties'
     | '/accounting/receipts'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -1261,6 +1283,8 @@ export interface FileRouteTypes {
     | '/users'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/bank-accounts'
+    | '/accounting/external-parties'
     | '/accounting/receipts'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -1381,6 +1405,8 @@ export interface FileRouteTypes {
     | '/_app/users'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
+    | '/_app/accounting/bank-accounts'
+    | '/_app/accounting/external-parties'
     | '/_app/accounting/receipts'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
@@ -2106,6 +2132,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingReceiptsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/external-parties': {
+      id: '/_app/accounting/external-parties'
+      path: '/accounting/external-parties'
+      fullPath: '/accounting/external-parties'
+      preLoaderRoute: typeof AppAccountingExternalPartiesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/accounting/bank-accounts': {
+      id: '/_app/accounting/bank-accounts'
+      path: '/accounting/bank-accounts'
+      fullPath: '/accounting/bank-accounts'
+      preLoaderRoute: typeof AppAccountingBankAccountsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/manage': {
       id: '/_app/academy_/manage'
       path: '/academy/manage'
@@ -2529,6 +2569,8 @@ interface AppRouteChildren {
   AppUsersRoute: typeof AppUsersRouteWithChildren
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
+  AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
+  AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
@@ -2610,6 +2652,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppUsersRoute: AppUsersRouteWithChildren,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
+  AppAccountingBankAccountsRoute: AppAccountingBankAccountsRoute,
+  AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,

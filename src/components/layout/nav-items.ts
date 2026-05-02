@@ -59,6 +59,8 @@ export const NAV_ITEMS: NavItem[] = [
 
   // مالی
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: FileText, module: "invoices", group: "finance" },
+  { to: "/accounting/bank-accounts", label: "حساب‌های بانکی", icon: DollarSign, module: "invoices", group: "finance" },
+  { to: "/accounting/external-parties", label: "طرف‌های حساب", icon: UserSquare2, module: "invoices", group: "finance" },
   { to: "/reports", label: "گزارش‌ها", icon: BarChart3, module: "reports", group: "finance" },
 
   // گیمیفیکیشن

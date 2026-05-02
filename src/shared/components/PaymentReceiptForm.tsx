@@ -209,6 +209,9 @@ const schema = z.object({
   is_typed_receipt: z.boolean(),
   receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
+  source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+  destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+  receiver_party_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -273,6 +276,9 @@ export function PaymentReceiptForm() {
       is_typed_receipt: false,
       receipt_image_url: "",
       description: "",
+      source_bank_account_id: "",
+      destination_bank_account_id: "",
+      receiver_party_id: "",
     },
     mode: "onBlur",
   });
@@ -390,6 +396,38 @@ export function PaymentReceiptForm() {
     );
   };
 
+  // Optional lookups for bank accounts and external parties (Phase 11.9B)
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ["receipt-form-bank-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bank_accounts")
+        .select("id, title, bank_name, is_active")
+        .eq("is_active", true)
+        .order("title", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; title: string; bank_name: string; is_active: boolean }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: externalParties = [] } = useQuery({
+    queryKey: ["receipt-form-external-parties"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("external_parties")
+        .select("id, full_name, phone, accounting_code, is_active")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string; full_name: string; phone: string | null;
+        accounting_code: string | null; is_active: boolean;
+      }[];
+    },
+    staleTime: 60_000,
+  });
+
   const mutation = useMutation({
     mutationFn: async (
       args: {
@@ -479,6 +517,9 @@ export function PaymentReceiptForm() {
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
+        source_bank_account_id: values.source_bank_account_id || null,
+        destination_bank_account_id: values.destination_bank_account_id || null,
+        receiver_party_id: values.receiver_party_id || null,
         security_warnings: securityWarnings,
         status: "pending_review" as const,
         created_by: user.id,
@@ -841,6 +882,38 @@ export function PaymentReceiptForm() {
                 }}
               />
             </div>
+            <div className="space-y-1">
+              <Label>طرف حساب گیرنده (اختیاری)</Label>
+              <Select
+                value={form.watch("receiver_party_id") || "__none"}
+                onValueChange={(v) => {
+                  if (v === "__none") {
+                    form.setValue("receiver_party_id", "", { shouldDirty: true });
+                    return;
+                  }
+                  form.setValue("receiver_party_id", v, { shouldDirty: true });
+                  const p = externalParties.find((x) => x.id === v);
+                  if (p) {
+                    form.setValue("receiver_name", p.full_name, { shouldValidate: true });
+                    if (p.phone) form.setValue("receiver_phone", p.phone, { shouldValidate: true });
+                    if (p.accounting_code) form.setValue("receiver_accounting_code", p.accounting_code, { shouldValidate: true });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب از طرف‌های حساب ثبت‌شده" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                  {externalParties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name}
+                      {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام گیرنده <span className="text-destructive">*</span></Label>
@@ -933,13 +1006,66 @@ export function PaymentReceiptForm() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>بانک مبدا</Label>
-                <Input {...form.register("source_bank")} placeholder="مثلاً ملت" />
+                <Label>حساب مبدا (اختیاری)</Label>
+                <Select
+                  value={form.watch("source_bank_account_id") || "__none"}
+                  onValueChange={(v) => {
+                    if (v === "__none") {
+                      form.setValue("source_bank_account_id", "", { shouldDirty: true });
+                      return;
+                    }
+                    form.setValue("source_bank_account_id", v, { shouldDirty: true });
+                    const b = bankAccounts.find((x) => x.id === v);
+                    if (b && !form.getValues("source_bank")) {
+                      form.setValue("source_bank", b.bank_name, { shouldDirty: true });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                    {bankAccounts.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input className="mt-1" {...form.register("source_bank")} placeholder="نام بانک مبدا (متن)" />
               </div>
 
               <div className="space-y-1">
-                <Label>بانک مقصد (روی فیش)</Label>
-                <Input {...form.register("destination_bank")} placeholder="مثلاً ملی" />
+                <Label>حساب مقصد (اختیاری)</Label>
+                <Select
+                  value={form.watch("destination_bank_account_id") || "__none"}
+                  onValueChange={(v) => {
+                    if (v === "__none") {
+                      form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                      return;
+                    }
+                    form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                    const b = bankAccounts.find((x) => x.id === v);
+                    if (b) {
+                      if (!form.getValues("destination_bank")) {
+                        form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
+                      }
+                      if (!form.getValues("bank_name")) {
+                        form.setValue("bank_name", b.bank_name, { shouldDirty: true });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                    {bankAccounts.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input className="mt-1" {...form.register("destination_bank")} placeholder="نام بانک مقصد (متن)" />
               </div>
 
               <div className="space-y-1">

@@ -368,6 +368,51 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_accounts: {
+        Row: {
+          account_no: string | null
+          bank_name: string
+          card_no: string | null
+          created_at: string
+          currency: string
+          iban: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          opening_balance: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          account_no?: string | null
+          bank_name: string
+          card_no?: string | null
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          opening_balance?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          account_no?: string | null
+          bank_name?: string
+          card_no?: string | null
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          opening_balance?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bot_api_key_table_access: {
         Row: {
           allowed_update_columns: string[]
@@ -2033,6 +2078,42 @@ export type Database = {
           },
         ]
       }
+      external_parties: {
+        Row: {
+          accounting_code: string | null
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          national_id: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          accounting_code?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          national_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accounting_code?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          national_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           category: string | null
@@ -2995,6 +3076,7 @@ export type Database = {
           customer_id: string
           description: string | null
           destination_bank: string | null
+          destination_bank_account_id: string | null
           document_channel: string | null
           has_perforation: boolean
           id: string
@@ -3013,10 +3095,12 @@ export type Database = {
           receiver_accounting_code: string | null
           receiver_name: string
           receiver_name_on_receipt: string | null
+          receiver_party_id: string | null
           receiver_phone: string | null
           rejection_reason: string | null
           security_warnings: Json
           source_bank: string | null
+          source_bank_account_id: string | null
           status: string
           tracking_number: string
           updated_at: string
@@ -3029,6 +3113,7 @@ export type Database = {
           customer_id: string
           description?: string | null
           destination_bank?: string | null
+          destination_bank_account_id?: string | null
           document_channel?: string | null
           has_perforation?: boolean
           id?: string
@@ -3047,10 +3132,12 @@ export type Database = {
           receiver_accounting_code?: string | null
           receiver_name: string
           receiver_name_on_receipt?: string | null
+          receiver_party_id?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
           security_warnings?: Json
           source_bank?: string | null
+          source_bank_account_id?: string | null
           status?: string
           tracking_number: string
           updated_at?: string
@@ -3063,6 +3150,7 @@ export type Database = {
           customer_id?: string
           description?: string | null
           destination_bank?: string | null
+          destination_bank_account_id?: string | null
           document_channel?: string | null
           has_perforation?: boolean
           id?: string
@@ -3081,10 +3169,12 @@ export type Database = {
           receiver_accounting_code?: string | null
           receiver_name?: string
           receiver_name_on_receipt?: string | null
+          receiver_party_id?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
           security_warnings?: Json
           source_bank?: string | null
+          source_bank_account_id?: string | null
           status?: string
           tracking_number?: string
           updated_at?: string
@@ -3095,6 +3185,27 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_destination_bank_account_id_fkey"
+            columns: ["destination_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_receiver_party_id_fkey"
+            columns: ["receiver_party_id"]
+            isOneToOne: false
+            referencedRelation: "external_parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipts_source_bank_account_id_fkey"
+            columns: ["source_bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
             referencedColumns: ["id"]
           },
         ]
