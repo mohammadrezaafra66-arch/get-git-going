@@ -538,11 +538,15 @@ export function ReceiptDocumentsList({
         const methodNote =
           ocr.method === "image_ocr"
             ? "استخراج از تصویر انجام شد؛ لطفاً اطلاعات را بررسی کنید."
-            : ocr.method === "unsupported" && doc.file_type === "application/pdf"
-              ? "استخراج متن PDF هنوز فعال نیست."
-              : ocr.method === "unsupported"
-                ? "موتور OCR تصویری در این محیط فعال نیست."
-                : null;
+            : ocr.method === "pdf_text"
+              ? "متن PDF استخراج شد؛ لطفاً اطلاعات را بررسی کنید."
+              : ocr.method === "pdf_image_ocr"
+                ? "استخراج از تصویر صفحات PDF انجام شد؛ لطفاً اطلاعات را بررسی کنید."
+                : ocr.method === "unsupported" && doc.file_type === "application/pdf"
+                  ? "استخراج متن PDF در این محیط پشتیبانی نمی‌شود."
+                  : ocr.method === "unsupported"
+                    ? "موتور OCR تصویری در این محیط فعال نیست."
+                    : null;
 
         const baseNote =
           parsed.warnings.length > 0
@@ -611,7 +615,9 @@ export function ReceiptDocumentsList({
         toast.success(
           r.method === "image_ocr"
             ? "OCR انجام شد؛ لطفاً اطلاعات استخراج‌شده را بررسی کنید."
-            : "اطلاعات فیش استخراج شد.",
+            : r.method === "pdf_text"
+              ? "متن PDF استخراج شد؛ لطفاً اطلاعات را بررسی کنید."
+              : "اطلاعات فیش استخراج شد.",
         );
       } else if (!r.hasText) {
         toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
