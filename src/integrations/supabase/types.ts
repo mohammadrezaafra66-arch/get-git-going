@@ -669,6 +669,65 @@ export type Database = {
           },
         ]
       }
+      category_product_attributes: {
+        Row: {
+          attribute_key: string
+          category_id: string
+          created_at: string
+          created_by: string | null
+          help_text: string | null
+          id: string
+          input_type: string
+          is_active: boolean
+          is_required: boolean
+          label_fa: string
+          options: Json
+          sort_order: number
+          updated_at: string
+          use_in_product_name: boolean
+        }
+        Insert: {
+          attribute_key: string
+          category_id: string
+          created_at?: string
+          created_by?: string | null
+          help_text?: string | null
+          id?: string
+          input_type?: string
+          is_active?: boolean
+          is_required?: boolean
+          label_fa: string
+          options?: Json
+          sort_order?: number
+          updated_at?: string
+          use_in_product_name?: boolean
+        }
+        Update: {
+          attribute_key?: string
+          category_id?: string
+          created_at?: string
+          created_by?: string | null
+          help_text?: string | null
+          id?: string
+          input_type?: string
+          is_active?: boolean
+          is_required?: boolean
+          label_fa?: string
+          options?: Json
+          sort_order?: number
+          updated_at?: string
+          use_in_product_name?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_product_attributes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credit_requests: {
         Row: {
           created_at: string

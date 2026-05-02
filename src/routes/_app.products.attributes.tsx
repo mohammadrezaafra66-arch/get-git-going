@@ -67,7 +67,7 @@ function ProductAttributesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<UnifiedRow | null>(null);
   const [createType, setCreateType] = useState<AttrType | null>(null);
-  const [tab, setTab] = useState<"attrs" | "naming">("attrs");
+  const [tab, setTab] = useState<"attrs" | "naming" | "category-attrs">("attrs");
 
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
@@ -176,10 +176,11 @@ function ProductAttributesPage() {
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming" | "category-attrs")}>
         <TabsList>
-          <TabsTrigger value="attrs">ویژگی‌ها</TabsTrigger>
+          <TabsTrigger value="attrs">ویژگی‌های عمومی</TabsTrigger>
           <TabsTrigger value="naming">استاندارد نام‌گذاری</TabsTrigger>
+          <TabsTrigger value="category-attrs">ویژگی‌های اختصاصی دسته‌بندی</TabsTrigger>
         </TabsList>
         <TabsContent value="attrs" className="space-y-5">
       <Card>
@@ -283,6 +284,9 @@ function ProductAttributesPage() {
         </TabsContent>
         <TabsContent value="naming" className="space-y-4">
           <CategoryNamingSection canWrite={canWrite} />
+        </TabsContent>
+        <TabsContent value="category-attrs" className="space-y-4">
+          <CategoryAttributesSection canWrite={canWrite} />
         </TabsContent>
       </Tabs>
     </div>
@@ -399,6 +403,455 @@ function AttrDialog({
 
 // keep DYN_TYPES referenced (used implicitly via TYPES filtering)
 void DYN_TYPES;
+
+// =====================================================================
+// Category-Specific Product Attribute Definitions (Phase 12.4)
+// =====================================================================
+
+const CPA_INPUT_TYPES = ["text", "number", "select", "boolean", "date"] as const;
+type CpaInputType = (typeof CPA_INPUT_TYPES)[number];
+const CPA_INPUT_LABELS: Record<CpaInputType, string> = {
+  text: "متن",
+  number: "عدد",
+  select: "انتخابی (لیست)",
+  boolean: "بله/خیر",
+  date: "تاریخ",
+};
+
+interface CpaRow {
+  id: string;
+  category_id: string;
+  attribute_key: string;
+  label_fa: string;
+  input_type: CpaInputType;
+  is_required: boolean;
+  is_active: boolean;
+  use_in_product_name: boolean;
+  sort_order: number;
+  options: unknown;
+  help_text: string | null;
+}
+
+function normalizeAttrKey(s: string): string {
+  return s
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 60);
+}
+
+function parseOptionsInput(text: string): string[] {
+  return text
+    .split(/[\n,]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+async function logCpaAudit(
+  action:
+    | "category_product_attribute_created"
+    | "category_product_attribute_updated"
+    | "category_product_attribute_enabled"
+    | "category_product_attribute_disabled",
+  entityId: string,
+  diff: Record<string, unknown>,
+) {
+  try {
+    const { data: u } = await supabase.auth.getUser();
+    await supabase.from("audit_logs").insert({
+      entity_type: "category_product_attribute",
+      entity_id: entityId,
+      action,
+      actor_id: u.user?.id ?? null,
+      diff: diff as any,
+    });
+  } catch {
+    // audit failure should not block UX
+  }
+}
+
+function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
+  const qc = useQueryClient();
+  const [categoryId, setCategoryId] = useState<string>("");
+  const [editing, setEditing] = useState<CpaRow | null>(null);
+  const [creating, setCreating] = useState<boolean>(false);
+
+  const catsQ = useQuery({
+    queryKey: ["cpa-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, is_active")
+        .order("name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const attrsQ = useQuery({
+    queryKey: ["cpa-attrs", categoryId],
+    enabled: !!categoryId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("category_product_attributes")
+        .select("id, category_id, attribute_key, label_fa, input_type, is_required, is_active, use_in_product_name, sort_order, options, help_text")
+        .eq("category_id", categoryId)
+        .order("sort_order")
+        .order("label_fa");
+      if (error) throw error;
+      return (data ?? []) as CpaRow[];
+    },
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: async (vars: { row: CpaRow; is_active: boolean }) => {
+      const { error } = await supabase
+        .from("category_product_attributes")
+        .update({ is_active: vars.is_active })
+        .eq("id", vars.row.id);
+      if (error) throw error;
+      await logCpaAudit(
+        vars.is_active ? "category_product_attribute_enabled" : "category_product_attribute_disabled",
+        vars.row.id,
+        {
+          category_id: vars.row.category_id,
+          before: { is_active: vars.row.is_active },
+          after: { is_active: vars.is_active },
+        },
+      );
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.is_active ? "فعال شد" : "غیرفعال شد");
+      qc.invalidateQueries({ queryKey: ["cpa-attrs", categoryId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          <div className="space-y-1.5 md:col-span-2">
+            <Label className="text-xs">انتخاب دسته‌بندی</Label>
+            <Select value={categoryId || undefined} onValueChange={(v) => setCategoryId(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="یک دسته‌بندی انتخاب کنید..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(catsQ.data ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}{!c.is_active ? " (غیرفعال)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-end">
+            {canWrite && (
+              <Button
+                size="sm"
+                disabled={!categoryId}
+                onClick={() => { setEditing(null); setCreating(true); }}
+              >
+                <Plus className="ms-1 h-4 w-4" />ویژگی جدید
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {!categoryId ? (
+        <EmptyState
+          icon={Tag}
+          title="ابتدا دسته‌بندی را انتخاب کنید"
+          description="ویژگی‌های اختصاصی برای هر دسته جداگانه تعریف می‌شوند."
+        />
+      ) : attrsQ.isLoading ? (
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
+      ) : (attrsQ.data ?? []).length === 0 ? (
+        <EmptyState
+          icon={Tag}
+          title="هیچ ویژگی‌ای برای این دسته تعریف نشده"
+          description="با دکمه «ویژگی جدید» اولین ویژگی را اضافه کنید."
+        />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border">
+              {(attrsQ.data ?? []).map((r) => {
+                const opts = Array.isArray(r.options) ? (r.options as unknown[]).map(String) : [];
+                return (
+                  <li key={r.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`font-medium ${r.is_active ? "" : "text-muted-foreground line-through"}`}>
+                          {r.label_fa}
+                        </span>
+                        <Badge variant="outline" className="font-mono text-[10px]">{r.attribute_key}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{CPA_INPUT_LABELS[r.input_type]}</Badge>
+                        {r.is_required && <Badge className="text-[10px]">الزامی</Badge>}
+                        {r.use_in_product_name && <Badge variant="outline" className="text-[10px]">در نام محصول</Badge>}
+                        {!r.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">ترتیب: {r.sort_order}</div>
+                      {r.input_type === "select" && opts.length > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          گزینه‌ها: <span className="text-foreground">{opts.join("، ")}</span>
+                        </div>
+                      )}
+                      {r.help_text && (
+                        <div className="text-xs text-muted-foreground">راهنما: {r.help_text}</div>
+                      )}
+                    </div>
+                    {canWrite && (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={r.is_active}
+                          onCheckedChange={(v) => toggleMut.mutate({ row: r, is_active: v })}
+                          disabled={toggleMut.isPending}
+                        />
+                        <Button size="sm" variant="outline" onClick={() => { setCreating(false); setEditing(r); }}>
+                          <Pencil className="ms-1 h-4 w-4" />ویرایش
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {canWrite && (creating || editing) && (
+        <CpaEditDialog
+          categoryId={categoryId}
+          row={editing}
+          onClose={() => { setEditing(null); setCreating(false); }}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["cpa-attrs", categoryId] })}
+        />
+      )}
+    </div>
+  );
+}
+
+function CpaEditDialog({
+  categoryId, row, onClose, onSaved,
+}: {
+  categoryId: string;
+  row: CpaRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!row;
+  const [labelFa, setLabelFa] = useState(row?.label_fa ?? "");
+  const [attrKey, setAttrKey] = useState(row?.attribute_key ?? "");
+  const [inputType, setInputType] = useState<CpaInputType>(row?.input_type ?? "text");
+  const [isRequired, setIsRequired] = useState<boolean>(row?.is_required ?? false);
+  const [useInName, setUseInName] = useState<boolean>(row?.use_in_product_name ?? false);
+  const [isActive, setIsActive] = useState<boolean>(row?.is_active ?? true);
+  const [sortOrder, setSortOrder] = useState<number>(row?.sort_order ?? 0);
+  const [optionsText, setOptionsText] = useState<string>(
+    Array.isArray(row?.options) ? (row?.options as unknown[]).map(String).join("\n") : "",
+  );
+  const [helpText, setHelpText] = useState<string>(row?.help_text ?? "");
+
+  // auto slug from label when creating and key untouched
+  useEffect(() => {
+    if (isEdit) return;
+    if (!attrKey || attrKey === normalizeAttrKey(attrKey)) {
+      // user hasn't deviated; suggest from label
+      const suggestion = normalizeAttrKey(labelFa.replace(/[\u0600-\u06FF]/g, ""));
+      // only auto-fill when key is empty
+      if (!attrKey && suggestion) setAttrKey(suggestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelFa]);
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const cleanLabel = labelFa.trim();
+      const cleanKey = normalizeAttrKey(attrKey);
+      const cleanHelp = helpText.trim();
+      const opts = inputType === "select" ? parseOptionsInput(optionsText) : [];
+
+      if (!cleanLabel) throw new Error("عنوان فارسی الزامی است");
+      if (!cleanKey) throw new Error("کلید ویژگی الزامی است (فقط حروف انگلیسی، عدد و _)");
+      if (cleanKey.length > 60) throw new Error("کلید نباید بیش از ۶۰ کاراکتر باشد");
+      if (cleanLabel.length > 120) throw new Error("عنوان نباید بیش از ۱۲۰ کاراکتر باشد");
+      if (cleanHelp.length > 500) throw new Error("راهنما نباید بیش از ۵۰۰ کاراکتر باشد");
+      if (sortOrder < 0 || !Number.isInteger(sortOrder)) throw new Error("ترتیب باید عدد صحیح غیرمنفی باشد");
+      if (inputType === "select" && opts.length === 0) {
+        throw new Error("برای نوع «انتخابی» حداقل یک گزینه وارد کنید");
+      }
+
+      const payload = {
+        category_id: categoryId,
+        attribute_key: cleanKey,
+        label_fa: cleanLabel,
+        input_type: inputType,
+        is_required: isRequired,
+        is_active: isActive,
+        use_in_product_name: useInName,
+        sort_order: sortOrder,
+        options: opts,
+        help_text: cleanHelp || null,
+      };
+
+      if (isEdit && row) {
+        const before = {
+          attribute_key: row.attribute_key,
+          label_fa: row.label_fa,
+          input_type: row.input_type,
+          is_required: row.is_required,
+          is_active: row.is_active,
+          use_in_product_name: row.use_in_product_name,
+          sort_order: row.sort_order,
+          options: row.options,
+          help_text: row.help_text,
+        };
+        const { error } = await supabase
+          .from("category_product_attributes")
+          .update(payload)
+          .eq("id", row.id);
+        if (error) throw error;
+        await logCpaAudit("category_product_attribute_updated", row.id, {
+          category_id: categoryId,
+          before,
+          after: payload,
+        });
+      } else {
+        const { data, error } = await supabase
+          .from("category_product_attributes")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) {
+          if ((error as any).code === "23505") {
+            throw new Error("این کلید قبلاً برای این دسته تعریف شده است");
+          }
+          throw error;
+        }
+        await logCpaAudit("category_product_attribute_created", data!.id, {
+          category_id: categoryId,
+          before: null,
+          after: payload,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success(isEdit ? "ذخیره شد" : "ویژگی جدید ساخته شد");
+      onSaved();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "ویرایش ویژگی" : "ویژگی جدید"}</DialogTitle>
+          <DialogDescription>
+            ویژگی فقط برای دسته انتخاب‌شده ذخیره می‌شود.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>عنوان فارسی</Label>
+              <Input value={labelFa} onChange={(e) => setLabelFa(e.target.value)} maxLength={120} placeholder="مثلاً: ظرفیت" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>کلید (لاتین)</Label>
+              <Input
+                value={attrKey}
+                dir="ltr"
+                onChange={(e) => setAttrKey(normalizeAttrKey(e.target.value))}
+                maxLength={60}
+                placeholder="capacity"
+                disabled={isEdit}
+                className="font-mono"
+              />
+              {!isEdit && <p className="text-[11px] text-muted-foreground">فقط حروف انگلیسی، عدد و _</p>}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>نوع ورودی</Label>
+              <Select value={inputType} onValueChange={(v) => setInputType(v as CpaInputType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CPA_INPUT_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{CPA_INPUT_LABELS[t]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>ترتیب نمایش</Label>
+              <Input
+                type="number"
+                min={0}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))}
+              />
+            </div>
+          </div>
+
+          {inputType === "select" && (
+            <div className="space-y-1.5">
+              <Label>گزینه‌ها</Label>
+              <Textarea
+                value={optionsText}
+                onChange={(e) => setOptionsText(e.target.value)}
+                rows={3}
+                placeholder={"هر گزینه در یک خط، یا با کاما جدا کنید\nمثال: اینورتر, معمولی"}
+              />
+              <p className="text-[11px] text-muted-foreground">حداقل یک گزینه لازم است.</p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>راهنما (اختیاری)</Label>
+            <Textarea
+              value={helpText}
+              onChange={(e) => setHelpText(e.target.value)}
+              rows={2}
+              maxLength={500}
+              placeholder="توضیح کوتاه برای کاربر..."
+            />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={isRequired} onCheckedChange={setIsRequired} />
+              الزامی
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={useInName} onCheckedChange={setUseInName} />
+              در نام محصول
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+              فعال
+            </label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+            {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+            ذخیره
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // =====================================================================
 // Category Naming Standards (Phase 12.2)
