@@ -937,6 +937,14 @@ export function PaymentReceiptForm() {
               </div>
 
               <div className="space-y-1">
+                <Label>ساعت فیش</Label>
+                <Input type="time" dir="ltr" {...form.register("receipt_time")} />
+                {errors.receipt_time && (
+                  <p className="text-xs text-destructive">{errors.receipt_time.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
                 <Label>نام واریزکننده روی فیش</Label>
                 <Input {...form.register("payer_name_on_receipt")} />
               </div>
