@@ -2993,6 +2993,8 @@ export type Database = {
           payer_phone: string | null
           payment_date: string
           payment_time: string
+          posted_at: string | null
+          posting_status: string
           receipt_image_url: string | null
           receipt_type: string
           receiver_accounting_code: string | null
@@ -3024,6 +3026,8 @@ export type Database = {
           payer_phone?: string | null
           payment_date: string
           payment_time: string
+          posted_at?: string | null
+          posting_status?: string
           receipt_image_url?: string | null
           receipt_type?: string
           receiver_accounting_code?: string | null
@@ -3055,6 +3059,8 @@ export type Database = {
           payer_phone?: string | null
           payment_date?: string
           payment_time?: string
+          posted_at?: string | null
+          posting_status?: string
           receipt_image_url?: string | null
           receipt_type?: string
           receiver_accounting_code?: string | null
@@ -6467,6 +6473,10 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      post_receipt_accounting: {
+        Args: { p_receipt_id: string; p_user_id: string }
+        Returns: Json
+      }
       preview_league_season_changes: {
         Args: { _season_id: string }
         Returns: {
