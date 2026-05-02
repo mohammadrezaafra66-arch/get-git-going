@@ -131,6 +131,34 @@ const ACCOUNT_KIND_LABEL: Record<string, string> = {
   other: "سایر",
 };
 
+const SEVERITY_BADGE_VARIANT: Record<WarningSeverity, "secondary" | "default" | "destructive"> = {
+  low: "secondary",
+  medium: "default",
+  high: "destructive",
+};
+
+function readStoredWarnings(raw: unknown): ReceiptSecurityWarning[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: ReceiptSecurityWarning[] = [];
+  for (const item of raw) {
+    if (
+      item &&
+      typeof item === "object" &&
+      typeof (item as { code?: unknown }).code === "string" &&
+      typeof (item as { message?: unknown }).message === "string" &&
+      typeof (item as { severity?: unknown }).severity === "string"
+    ) {
+      const r = item as { code: string; message: string; severity: string; source?: string };
+      const sev = (r.severity === "low" || r.severity === "medium" || r.severity === "high")
+        ? r.severity
+        : "medium";
+      const src = r.source === "manual" || r.source === "ocr" || r.source === "both" ? r.source : "manual";
+      out.push({ code: r.code, message: r.message, severity: sev as WarningSeverity, source: src as "manual" | "ocr" | "both" });
+    }
+  }
+  return out;
+}
+
 function Field({ label, children, dir }: { label: string; children: React.ReactNode; dir?: "ltr" | "rtl" }) {
   return (
     <div className="space-y-1">
