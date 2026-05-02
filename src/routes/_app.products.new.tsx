@@ -33,6 +33,7 @@ function NewProductPage() {
           color: v.color || null,
           capacity: v.capacity || null,
           model: v.model || null,
+          primary_spec: v.primary_spec || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
         })
