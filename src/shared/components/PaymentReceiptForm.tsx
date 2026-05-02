@@ -36,6 +36,96 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+/* ------------- Party (payer/receiver) lookup helper ------------- */
+
+type PartyMatch = {
+  id: string;
+  name: string;
+  phone: string | null;
+  accounting_code: string | null;
+};
+
+function PartyLookup({
+  label,
+  onPick,
+}: {
+  label: string;
+  onPick: (m: PartyMatch) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const debounced = useDebounce(search, 350);
+
+  const { data: matches = [], isFetching } = useQuery<PartyMatch[]>({
+    queryKey: ["party-lookup", debounced],
+    enabled: open && debounced.trim().length >= 2,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const term = debounced.trim().replace(/[%_]/g, "");
+      if (!term) return [];
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, phone, accounting_code")
+        .or(
+          `name.ilike.%${term}%,phone.ilike.%${term}%,accounting_code.ilike.%${term}%`,
+        )
+        .order("name", { ascending: true })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as PartyMatch[];
+    },
+  });
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="کد حسابداری، نام یا موبایل..."
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {debounced.trim().length < 2
+                ? "حداقل ۲ کاراکتر وارد کنید"
+                : isFetching
+                  ? "در حال جستجو..."
+                  : "موردی پیدا نشد"}
+            </CommandEmpty>
+            <CommandGroup>
+              {matches.map((m) => (
+                <CommandItem
+                  key={m.id}
+                  value={m.id}
+                  onSelect={() => {
+                    onPick(m);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  <div className="flex w-full flex-col">
+                    <span className="text-sm font-medium">{m.name}</span>
+                    <span className="text-xs text-muted-foreground" dir="ltr">
+                      {m.accounting_code ? toFaDigits(m.accounting_code) : "—"}
+                      {m.phone ? ` • ${toFaDigits(m.phone)}` : ""}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const BANKS = [
   "ملی", "ملت", "صادرات", "سپه", "تجارت", "رفاه", "مسکن",
   "کشاورزی", "پاسارگاد", "سامان", "پارسیان", "اقتصاد نوین", "آینده",
@@ -590,7 +680,17 @@ export function PaymentReceiptForm() {
 
           {/* اطلاعات واریزکننده */}
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
+              <PartyLookup
+                label="جستجو و تکمیل خودکار"
+                onPick={(m) => {
+                  form.setValue("payer_name", m.name, { shouldValidate: true });
+                  form.setValue("payer_phone", m.phone ?? "", { shouldValidate: true });
+                  form.setValue("payer_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام و نام‌خانوادگی <span className="text-destructive">*</span></Label>
@@ -612,7 +712,17 @@ export function PaymentReceiptForm() {
 
           {/* اطلاعات گیرنده */}
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
+              <PartyLookup
+                label="جستجو و تکمیل خودکار"
+                onPick={(m) => {
+                  form.setValue("receiver_name", m.name, { shouldValidate: true });
+                  form.setValue("receiver_phone", m.phone ?? "", { shouldValidate: true });
+                  form.setValue("receiver_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام گیرنده <span className="text-destructive">*</span></Label>
