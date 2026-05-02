@@ -27,7 +27,7 @@ import {
   type DocumentChannel,
 } from "@/lib/accounting/receipt-extraction";
 import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-security";
-import { extractReceiptDocumentOcr } from "@/server/receipt-ocr.functions";
+import { extractReceiptDocumentOcr, type OcrMethod } from "@/server/receipt-ocr.functions";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
@@ -535,16 +535,17 @@ export function ReceiptDocumentsList({
         }
         const status = decideStatus(parsed, Boolean(text.trim()));
 
+        const method: OcrMethod = ocr.method;
         const methodNote =
-          ocr.method === "image_ocr"
+          method === "image_ocr"
             ? "استخراج از تصویر انجام شد؛ لطفاً اطلاعات را بررسی کنید."
-            : ocr.method === "pdf_text"
+            : method === "pdf_text"
               ? "متن PDF استخراج شد؛ لطفاً اطلاعات را بررسی کنید."
-              : ocr.method === "pdf_image_ocr"
+              : method === "pdf_image_ocr"
                 ? "استخراج از تصویر صفحات PDF انجام شد؛ لطفاً اطلاعات را بررسی کنید."
-                : ocr.method === "unsupported" && doc.file_type === "application/pdf"
+                : method === "unsupported" && doc.file_type === "application/pdf"
                   ? "استخراج متن PDF در این محیط پشتیبانی نمی‌شود."
-                  : ocr.method === "unsupported"
+                  : method === "unsupported"
                     ? "موتور OCR تصویری در این محیط فعال نیست."
                     : null;
 
