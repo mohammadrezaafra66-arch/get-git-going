@@ -400,6 +400,35 @@ export function ReceiptDocumentsList({
   const canManage = hasAnyRole(roles as AppRole[], ["admin", "accountant"]);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ReceiptDocumentRow | null>(null);
+  const [applyDoc, setApplyDoc] = useState<ReceiptDocumentRow | null>(null);
+  const [applySelections, setApplySelections] = useState<Record<ApplyFieldKey, boolean>>({
+    tracking_number: false,
+    amount: false,
+    receipt_date: false,
+    receipt_time: false,
+    source_bank: false,
+    destination_bank: false,
+    payer_name_on_receipt: false,
+    receiver_name_on_receipt: false,
+    document_channel: false,
+  });
+
+  const { data: receiptMeta } = useQuery<{
+    posting_status: string | null;
+    status: string | null;
+  } | null>({
+    queryKey: ["payment-receipt-meta", receiptId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_receipts")
+        .select("posting_status, status")
+        .eq("id", receiptId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as { posting_status: string | null; status: string | null } | null;
+    },
+  });
+  const isPosted = (receiptMeta?.posting_status ?? "unposted") === "posted";
 
   const { data: docs = [], isLoading } = useQuery<ReceiptDocumentRow[]>({
     queryKey: ["payment-receipt-documents", receiptId],
