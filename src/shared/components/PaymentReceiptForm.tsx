@@ -687,16 +687,18 @@ export function PaymentReceiptForm() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label>تصویر فیش (URL)</Label>
-              <Input dir="ltr" placeholder="https://..." {...form.register("receipt_image_url")} />
-            </div>
           </div>
 
           <div className="space-y-1">
             <Label>توضیحات</Label>
             <Textarea rows={3} {...form.register("description")} />
           </div>
+
+          <ReceiptDocumentPicker
+            files={stagedFiles}
+            onChange={setStagedFiles}
+            disabled={mutation.isPending}
+          />
         </CardContent>
       </Card>
 
