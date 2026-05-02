@@ -163,9 +163,12 @@ const schema = z.object({
   destination_bank: z.string().trim().max(100).optional().or(z.literal("")),
   payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
   receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
-  has_perforation: z.boolean().default(false),
-  document_channel: z.enum(["card_to_card","paya","pol","satna","cash","other"]).optional().or(z.literal("")),
-  is_typed_receipt: z.boolean().default(false),
+  has_perforation: z.boolean(),
+  document_channel: z.union([
+    z.enum(["card_to_card","paya","pol","satna","cash","other"]),
+    z.literal(""),
+  ]),
+  is_typed_receipt: z.boolean(),
   receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
 });
