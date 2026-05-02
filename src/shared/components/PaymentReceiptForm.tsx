@@ -19,6 +19,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  ReceiptDocumentPicker,
+  uploadReceiptDocuments,
+} from "@/components/accounting/PaymentReceiptDocuments";
+import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import {
@@ -88,6 +92,7 @@ export function PaymentReceiptForm() {
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -346,6 +351,14 @@ export function PaymentReceiptForm() {
             : [],
         },
       } as never);
+
+      // Upload attached documents (best-effort; per-file errors are toasted)
+      if (stagedFiles.length > 0) {
+        const result = await uploadReceiptDocuments(receiptId, user.id, stagedFiles);
+        if (result.uploaded > 0) {
+          toast.success(`${toFaDigits(String(result.uploaded))} مستند پیوست شد`);
+        }
+      }
 
       return { duplicate: false as const, receiptId };
     },
@@ -674,16 +687,18 @@ export function PaymentReceiptForm() {
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label>تصویر فیش (URL)</Label>
-              <Input dir="ltr" placeholder="https://..." {...form.register("receipt_image_url")} />
-            </div>
           </div>
 
           <div className="space-y-1">
             <Label>توضیحات</Label>
             <Textarea rows={3} {...form.register("description")} />
           </div>
+
+          <ReceiptDocumentPicker
+            files={stagedFiles}
+            onChange={setStagedFiles}
+            disabled={mutation.isPending}
+          />
         </CardContent>
       </Card>
 
