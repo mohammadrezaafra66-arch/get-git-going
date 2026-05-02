@@ -442,6 +442,49 @@ function ReceiptDetailPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold">هشدارهای امنیتی</h3>
+              {(() => {
+                const stored = readStoredWarnings(receipt.security_warnings);
+                const warnings: ReceiptSecurityWarning[] =
+                  stored && stored.length > 0
+                    ? stored
+                    : evaluateReceiptSecurityWarnings({
+                        payment_date: receipt.payment_date,
+                        tracking_number: receipt.tracking_number,
+                        amount: receipt.amount,
+                        document_channel: receipt.document_channel,
+                        payer_name_on_receipt: receipt.payer_name_on_receipt,
+                        has_perforation: receipt.has_perforation,
+                        is_typed_receipt: receipt.is_typed_receipt,
+                      });
+                if (warnings.length === 0) {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      هشدار امنیتی فعالی برای این فیش ثبت نشده است.
+                    </p>
+                  );
+                }
+                return (
+                  <ul className="space-y-2">
+                    {warnings.map((w, i) => (
+                      <li
+                        key={`${w.code}-${i}`}
+                        className="flex items-start gap-2 rounded-md border p-2 text-sm"
+                      >
+                        <Badge variant={SEVERITY_BADGE_VARIANT[w.severity]}>
+                          {severityLabel(w.severity)}
+                        </Badge>
+                        <span className="flex-1">{w.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card className="lg:col-span-2">
               <CardContent className="p-4 space-y-4">
