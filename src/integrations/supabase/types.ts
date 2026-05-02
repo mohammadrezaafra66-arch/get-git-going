@@ -2897,6 +2897,10 @@ export type Database = {
       payment_receipt_documents: {
         Row: {
           created_at: string
+          extracted_data: Json | null
+          extraction_confidence: number | null
+          extraction_notes: string | null
+          extraction_status: string
           file_name: string
           file_size: number
           file_type: string
@@ -2907,6 +2911,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          extraction_notes?: string | null
+          extraction_status?: string
           file_name: string
           file_size: number
           file_type: string
@@ -2917,6 +2925,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          extracted_data?: Json | null
+          extraction_confidence?: number | null
+          extraction_notes?: string | null
+          extraction_status?: string
           file_name?: string
           file_size?: number
           file_type?: string
