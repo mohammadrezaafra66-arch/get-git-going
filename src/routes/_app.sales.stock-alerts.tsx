@@ -97,6 +97,13 @@ function StockAlertsPage() {
     queryKey: ["stock-alerts-product-search", term],
     queryFn: async () => {
       const safe = term.replace(/[%_]/g, "");
+      const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+        p_term: safe,
+        p_limit: 200,
+      });
+      if (!idsErr) {
+        return (idsData ?? []).map((r: { id: string }) => r.id);
+      }
       const { data, error } = await supabase
         .from("products")
         .select("id")
