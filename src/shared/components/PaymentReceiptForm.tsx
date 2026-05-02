@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ReceiptDocumentPicker,
   uploadReceiptDocuments,
@@ -131,6 +132,15 @@ const BANKS = [
   "کشاورزی", "پاسارگاد", "سامان", "پارسیان", "اقتصاد نوین", "آینده",
 ];
 
+const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
+  { value: "card_to_card", label: "کارت به کارت" },
+  { value: "paya", label: "پایا" },
+  { value: "pol", label: "پل" },
+  { value: "satna", label: "ساتنا" },
+  { value: "cash", label: "نقدی" },
+  { value: "other", label: "سایر" },
+];
+
 const today = new Date().toISOString().slice(0, 10);
 
 const schema = z.object({
@@ -149,6 +159,16 @@ const schema = z.object({
   payment_time: z.string().regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM"),
   tracking_number: z.string().trim().min(1, "شماره پیگیری الزامی است").max(100, "حداکثر ۱۰۰ کاراکتر"),
   bank_name: z.string().trim().max(100).optional().or(z.literal("")),
+  source_bank: z.string().trim().max(100).optional().or(z.literal("")),
+  destination_bank: z.string().trim().max(100).optional().or(z.literal("")),
+  payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+  receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+  has_perforation: z.boolean(),
+  document_channel: z.union([
+    z.enum(["card_to_card","paya","pol","satna","cash","other"]),
+    z.literal(""),
+  ]),
+  is_typed_receipt: z.boolean(),
   receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
 });
@@ -200,6 +220,13 @@ export function PaymentReceiptForm() {
       payment_time: new Date().toTimeString().slice(0, 5),
       tracking_number: "",
       bank_name: "",
+      source_bank: "",
+      destination_bank: "",
+      payer_name_on_receipt: "",
+      receiver_name_on_receipt: "",
+      has_perforation: false,
+      document_channel: "",
+      is_typed_receipt: false,
       receipt_image_url: "",
       description: "",
     },
@@ -393,6 +420,13 @@ export function PaymentReceiptForm() {
         payment_time: values.payment_time,
         tracking_number: values.tracking_number,
         bank_name: values.bank_name || null,
+        source_bank: values.source_bank || null,
+        destination_bank: values.destination_bank || null,
+        payer_name_on_receipt: values.payer_name_on_receipt || null,
+        receiver_name_on_receipt: values.receiver_name_on_receipt || null,
+        has_perforation: values.has_perforation,
+        document_channel: values.document_channel || null,
+        is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
         status: "pending_review" as const,
@@ -802,6 +836,84 @@ export function PaymentReceiptForm() {
           <div className="space-y-1">
             <Label>توضیحات</Label>
             <Textarea rows={3} {...form.register("description")} />
+          </div>
+
+          {/* اطلاعات استخراج‌شده از فیش (قابل ویرایش دستی) */}
+          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold">اطلاعات استخراج‌شده از فیش</h3>
+              <p className="text-xs text-muted-foreground">
+                این فیلدها در آینده می‌توانند به‌صورت خودکار از تصویر فیش استخراج شوند. در حال حاضر به‌صورت دستی توسط حسابدار قابل ویرایش هستند.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>بانک مبدا</Label>
+                <Input {...form.register("source_bank")} placeholder="مثلاً ملت" />
+              </div>
+
+              <div className="space-y-1">
+                <Label>بانک مقصد (روی فیش)</Label>
+                <Input {...form.register("destination_bank")} placeholder="مثلاً ملی" />
+              </div>
+
+              <div className="space-y-1">
+                <Label>نام واریزکننده روی فیش</Label>
+                <Input {...form.register("payer_name_on_receipt")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>نام گیرنده روی فیش</Label>
+                <Input {...form.register("receiver_name_on_receipt")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>روش انتقال</Label>
+                <Select
+                  value={form.watch("document_channel") || undefined}
+                  onValueChange={(v) =>
+                    form.setValue(
+                      "document_channel",
+                      v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
+                      { shouldDirty: true },
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_CHANNELS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.watch("has_perforation")}
+                    onCheckedChange={(c) =>
+                      form.setValue("has_perforation", c === true, { shouldDirty: true })
+                    }
+                  />
+                  پرفراژ دارد؟
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.watch("is_typed_receipt")}
+                    onCheckedChange={(c) =>
+                      form.setValue("is_typed_receipt", c === true, { shouldDirty: true })
+                    }
+                  />
+                  فیش تایپی است؟
+                </label>
+              </div>
+            </div>
           </div>
 
           <ReceiptDocumentPicker
