@@ -3941,6 +3941,55 @@ export type Database = {
         }
         Relationships: []
       }
+      product_category_attribute_values: {
+        Row: {
+          category_attribute_id: string
+          created_at: string
+          id: string
+          product_id: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          category_attribute_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          category_attribute_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_category_attribute_values_category_attribute_id_fkey"
+            columns: ["category_attribute_id"]
+            isOneToOne: false
+            referencedRelation: "category_product_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_category_attribute_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_category_attribute_values_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       product_computed_prices: {
         Row: {
           computed_at: string

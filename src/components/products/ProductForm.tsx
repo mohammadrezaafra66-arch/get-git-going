@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
 import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
@@ -16,6 +17,12 @@ import {
 } from "@/lib/products/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { composeProductName } from "@/lib/products/name-template";
+import {
+  fetchCategoryAttributes,
+  validateDynamicValues,
+  type CategoryAttributeDef,
+  type DynamicAttrValues,
+} from "@/lib/products/category-attrs";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -24,7 +31,14 @@ interface Props {
   loading?: boolean;
   /** When true, behave as edit form: do not auto-overwrite name on field changes. */
   isEdit?: boolean;
-  onSubmit: (values: ProductFormValues) => Promise<void> | void;
+  /** Initial dynamic attribute values keyed by category_attribute_id. */
+  initialDynamicValues?: DynamicAttrValues;
+  /** Initial category id at mount, used to detect a category change in edit mode. */
+  initialCategoryId?: string | null;
+  onSubmit: (
+    values: ProductFormValues,
+    dynamic: { values: DynamicAttrValues; defs: CategoryAttributeDef[]; categoryChanged: boolean },
+  ) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -46,17 +60,23 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
-export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, onSubmit, onCancel }: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, initialDynamicValues, initialCategoryId, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
   const lastAutoNameRef = useRef<string>("");
+  const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamicValues ?? {});
+  const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
+  const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
 
   useEffect(() => {
     setValues({ ...DEFAULTS, ...initial });
     setAutoName(!isEdit && !initial?.name);
     lastAutoNameRef.current = "";
-  }, [initial, isEdit]);
+    setDynValues(initialDynamicValues ?? {});
+    setDynErrors({});
+    initialCatRef.current = initialCategoryId ?? initial?.category_id ?? null;
+  }, [initial, isEdit, initialDynamicValues, initialCategoryId]);
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
@@ -93,6 +113,42 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
   const set = <K extends keyof ProductFormValues>(k: K, v: ProductFormValues[K]) =>
     setValues((s) => ({ ...s, [k]: v }));
+
+  // Detect category change vs initial: clear dynamic values, surface a notice.
+  const prevCategoryRef = useRef<string | null>(values.category_id ?? null);
+  const [categoryChangedNotice, setCategoryChangedNotice] = useState(false);
+  useEffect(() => {
+    const prev = prevCategoryRef.current;
+    const next = values.category_id ?? null;
+    if (prev !== next) {
+      // category actually changed by user interaction
+      if (prev !== null) {
+        setDynValues({});
+        setDynErrors({});
+        // Show notice only when the value differs from the original loaded category
+        setCategoryChangedNotice(next !== initialCatRef.current);
+      }
+      prevCategoryRef.current = next;
+    }
+  }, [values.category_id]);
+
+  // Load active dynamic attribute definitions for the selected category
+  const dynDefsQ = useQuery({
+    queryKey: ["product-form-cpa", values.category_id],
+    enabled: !!values.category_id,
+    queryFn: () => fetchCategoryAttributes(values.category_id as string),
+  });
+  const dynDefs: CategoryAttributeDef[] = dynDefsQ.data ?? [];
+
+  const setDyn = (id: string, v: string) => {
+    setDynValues((s) => ({ ...s, [id]: v }));
+    setDynErrors((s) => {
+      if (!s[id]) return s;
+      const copy = { ...s };
+      delete copy[id];
+      return copy;
+    });
+  };
 
   const selectedCategory = useMemo(() => {
     return (catsQ.data ?? []).find((c) => c.id === values.category_id) ?? null;
@@ -177,13 +233,23 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
     if (!parsed.success) {
       for (const issue of parsed.error.issues) flat[issue.path.join(".")] = issue.message;
     }
-    if (Object.keys(flat).length > 0) {
+    // Dynamic attribute validation
+    const dErrs = validateDynamicValues(dynDefs, dynValues);
+    if (Object.keys(flat).length > 0 || Object.keys(dErrs).length > 0) {
       setErrors(flat);
+      setDynErrors(dErrs);
       toast.error("لطفاً خطاهای فرم را اصلاح کنید");
       return;
     }
     setErrors({});
-    await onSubmit(parsed.success ? parsed.data : (values as ProductFormValues));
+    setDynErrors({});
+    const categoryChanged =
+      isEdit === true && (values.category_id ?? null) !== initialCatRef.current;
+    await onSubmit(parsed.success ? parsed.data : (values as ProductFormValues), {
+      values: dynValues,
+      defs: dynDefs,
+      categoryChanged,
+    });
   };
 
   return (
@@ -358,6 +424,38 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
       </Card>
 
       <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی دسته‌بندی</h3>
+          </div>
+          {categoryChangedNotice && (
+            <div className="rounded-md border border-amber-300/40 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              با تغییر دسته‌بندی، ویژگی‌های اختصاصی قبلی پاک می‌شوند.
+            </div>
+          )}
+          {!values.category_id ? (
+            <p className="text-xs text-muted-foreground">برای نمایش ویژگی‌های اختصاصی، ابتدا دسته‌بندی را انتخاب کنید.</p>
+          ) : dynDefsQ.isLoading ? (
+            <p className="text-xs text-muted-foreground">در حال بارگذاری ویژگی‌ها...</p>
+          ) : dynDefs.length === 0 ? (
+            <p className="text-xs text-muted-foreground">برای این دسته‌بندی ویژگی اختصاصی تعریف نشده است.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {dynDefs.map((d) => (
+                <DynamicAttrField
+                  key={d.id}
+                  def={d}
+                  value={dynValues[d.id] ?? ""}
+                  error={dynErrors[d.id]}
+                  onChange={(v) => setDyn(d.id, v)}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="space-y-4 p-4">
           <Field label="توضیحات">
             <Textarea value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3} />
@@ -415,5 +513,78 @@ function Field({ label, required, error, children }: { label: string; required?:
       {children}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
+  );
+}
+
+function DynamicAttrField({
+  def, value, error, onChange,
+}: {
+  def: CategoryAttributeDef;
+  value: string;
+  error?: string;
+  onChange: (v: string) => void;
+}) {
+  let control: React.ReactNode;
+  switch (def.input_type) {
+    case "number":
+      control = (
+        <Input
+          type="number"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={500}
+        />
+      );
+      break;
+    case "select":
+      control = (
+        <Select value={value || "__none"} onValueChange={(v) => onChange(v === "__none" ? "" : v)}>
+          <SelectTrigger><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none">— انتخاب نشده —</SelectItem>
+            {def.options.map((opt) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+      break;
+    case "boolean":
+      control = (
+        <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3">
+          <Switch
+            checked={value === "true"}
+            onCheckedChange={(v) => onChange(v ? "true" : "false")}
+          />
+          <span className="text-sm text-muted-foreground">{value === "true" ? "بله" : "خیر"}</span>
+        </div>
+      );
+      break;
+    case "date":
+      control = (
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+      break;
+    case "text":
+    default:
+      control = (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={500}
+        />
+      );
+      break;
+  }
+  return (
+    <Field label={def.label_fa} required={def.is_required} error={error}>
+      {control}
+      {def.help_text && <p className="text-xs text-muted-foreground">{def.help_text}</p>}
+    </Field>
   );
 }

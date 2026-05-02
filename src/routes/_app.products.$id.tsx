@@ -75,6 +75,28 @@ function ProductDetailPage() {
     },
   });
 
+  const dynamicQ = useQuery({
+    queryKey: ["product-dynamic-attrs", id],
+    queryFn: async () => {
+      const { data: vals, error } = await supabase
+        .from("product_category_attribute_values")
+        .select("value, category_attribute_id, def:category_product_attributes(id, label_fa, sort_order, is_active)")
+        .eq("product_id", id);
+      if (error) throw error;
+      const rows = (vals ?? [])
+        .map((r: any) => ({
+          id: r.def?.id ?? r.category_attribute_id,
+          label: r.def?.label_fa ?? "—",
+          sort_order: r.def?.sort_order ?? 0,
+          value: r.value ?? "",
+          is_active: r.def?.is_active ?? true,
+        }))
+        .filter((r) => r.value !== "");
+      rows.sort((a, b) => (a.sort_order - b.sort_order) || a.label.localeCompare(b.label, "fa"));
+      return rows;
+    },
+  });
+
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
   if (!data?.product) return <div className="py-10 text-center text-sm text-muted-foreground">محصول یافت نشد.</div>;
 
@@ -212,6 +234,23 @@ function ProductDetailPage() {
       />
 
       <ProductSupplierManager productId={id} />
+
+      <Card>
+        <CardContent className="space-y-2 p-4">
+          <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی</h3>
+          {dynamicQ.isLoading ? (
+            <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+          ) : (dynamicQ.data ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">ویژگی اختصاصی ثبت نشده است.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {(dynamicQ.data ?? []).map((r) => (
+                <Info key={r.id} label={r.label} value={r.value} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
