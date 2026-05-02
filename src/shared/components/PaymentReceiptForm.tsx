@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -222,6 +222,8 @@ type InvoiceOption = {
   total_amount: number;
   paid_so_far: number;
   remaining: number;
+  issue_date: string | null;
+  due_date: string | null;
 };
 
 type InvoiceAllocation = {
@@ -230,6 +232,10 @@ type InvoiceAllocation = {
   total_amount: number;
   remaining: number;
   amount: number;
+  suggestion?: {
+    confidence: "high" | "medium" | "low";
+    reason: string;
+  };
 };
 
 export function PaymentReceiptForm() {
@@ -329,14 +335,17 @@ export function PaymentReceiptForm() {
     queryFn: async () => {
       const { data: invs, error } = await supabase
         .from("invoices")
-        .select("id, number, total_amount, status")
+        .select("id, number, total_amount, status, issue_date, due_date")
         .eq("customer_id", watchedCustomerId)
         .eq("type", "pre_invoice")
         .in("status", ["draft", "final", "partially_paid"])
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      const list = (invs ?? []) as Array<{ id: string; number: string | null; total_amount: number; status: string }>;
+      const list = (invs ?? []) as Array<{
+        id: string; number: string | null; total_amount: number; status: string;
+        issue_date: string | null; due_date: string | null;
+      }>;
       if (list.length === 0) return [];
 
       const ids = list.map((i) => i.id);
@@ -359,6 +368,8 @@ export function PaymentReceiptForm() {
           total_amount: Number(i.total_amount),
           paid_so_far: paid,
           remaining: Math.max(0, Number(i.total_amount) - paid),
+          issue_date: i.issue_date ?? null,
+          due_date: i.due_date ?? null,
         };
       });
     },
@@ -369,10 +380,16 @@ export function PaymentReceiptForm() {
   const overAllocated = totalAllocated > watchedAmount;
   const allocationDiff = watchedAmount - totalAllocated;
 
-  const addAllocation = (inv: InvoiceOption) => {
+  const addAllocation = (
+    inv: InvoiceOption,
+    opts?: { amount?: number; suggestion?: InvoiceAllocation["suggestion"] },
+  ) => {
     if (allocations.some((a) => a.invoice_id === inv.id)) return;
     const remainingForReceipt = Math.max(0, watchedAmount - totalAllocated);
-    const suggested = Math.min(inv.remaining, remainingForReceipt || inv.remaining);
+    const suggested =
+      opts?.amount !== undefined
+        ? Math.min(inv.remaining, Math.max(0, opts.amount))
+        : Math.min(inv.remaining, remainingForReceipt || inv.remaining);
     setAllocations((prev) => [
       ...prev,
       {
@@ -381,10 +398,76 @@ export function PaymentReceiptForm() {
         total_amount: inv.total_amount,
         remaining: inv.remaining,
         amount: suggested,
+        suggestion: opts?.suggestion,
       },
     ]);
     setInvoicePickerOpen(false);
   };
+
+  // Smart matching suggestions (Phase 11.11)
+  const watchedPaymentDate = form.watch("payment_date");
+  const suggestions = useMemo(() => {
+    if (
+      watchedReceiptType !== "payment" ||
+      !watchedCustomerId ||
+      !watchedAmount ||
+      watchedAmount <= 0 ||
+      customerInvoices.length === 0
+    ) {
+      return [] as Array<{
+        invoice: InvoiceOption;
+        allocated_amount: number;
+        confidence: "high" | "medium" | "low";
+        reason: string;
+      }>;
+    }
+    const receiptDate = watchedPaymentDate ? new Date(watchedPaymentDate).getTime() : NaN;
+    const candidates = customerInvoices.filter((i) => i.remaining > 0.001);
+    if (candidates.length === 0) return [];
+
+    const scored = candidates.map((inv) => {
+      const diff = Math.abs(inv.remaining - watchedAmount);
+      const exact = diff < 0.5;
+      const closeness = inv.remaining > 0 ? diff / inv.remaining : 1;
+      const dateProximity =
+        Number.isFinite(receiptDate) && inv.issue_date
+          ? Math.abs(receiptDate - new Date(inv.issue_date).getTime()) / (1000 * 60 * 60 * 24)
+          : 9999;
+      const dueProximity =
+        Number.isFinite(receiptDate) && inv.due_date
+          ? Math.abs(receiptDate - new Date(inv.due_date).getTime()) / (1000 * 60 * 60 * 24)
+          : 9999;
+
+      let confidence: "high" | "medium" | "low" = "low";
+      let reason = "این جدیدترین پیش‌فاکتور پرداخت‌نشده مشتری است.";
+      let allocated = Math.min(inv.remaining, watchedAmount);
+
+      if (exact) {
+        confidence = "high";
+        reason = "مبلغ فیش دقیقاً با مانده این پیش‌فاکتور برابر است.";
+        allocated = inv.remaining;
+      } else if (closeness <= 0.1) {
+        confidence = "medium";
+        reason = "مبلغ فیش نزدیک‌ترین مقدار به مانده این پیش‌فاکتور است.";
+      } else if (dueProximity <= 7 || dateProximity <= 7) {
+        confidence = "medium";
+        reason = dueProximity <= 7
+          ? "تاریخ سررسید این پیش‌فاکتور نزدیک تاریخ فیش است."
+          : "تاریخ صدور این پیش‌فاکتور نزدیک تاریخ فیش است.";
+      }
+
+      // Composite rank: lower is better
+      const rank =
+        (exact ? 0 : 1) * 1000 +
+        closeness * 100 +
+        Math.min(dateProximity, 365) * 0.05;
+
+      return { invoice: inv, allocated_amount: allocated, confidence, reason, rank };
+    });
+
+    scored.sort((a, b) => a.rank - b.rank);
+    return scored.slice(0, 3).map(({ rank: _r, ...rest }) => rest);
+  }, [watchedReceiptType, watchedCustomerId, watchedAmount, customerInvoices, watchedPaymentDate]);
 
   const removeAllocation = (invoiceId: string) => {
     setAllocations((prev) => prev.filter((a) => a.invoice_id !== invoiceId));
@@ -569,7 +652,18 @@ export function PaymentReceiptForm() {
           },
           status: "pending_review",
           linked_invoices: values.receipt_type === "payment"
-            ? allocs.map((a) => ({ invoice_id: a.invoice_id, amount: Number(a.amount) }))
+            ? allocs.map((a) => ({
+                invoice_id: a.invoice_id,
+                amount: Number(a.amount),
+                ...(a.suggestion
+                  ? {
+                      matched_invoice_id: a.invoice_id,
+                      suggested_confidence: a.suggestion.confidence,
+                      suggested_reason: a.suggestion.reason,
+                      allocated_amount: Number(a.amount),
+                    }
+                  : {}),
+              }))
             : [],
         },
       } as never);
@@ -719,6 +813,68 @@ export function PaymentReceiptForm() {
           {/* اتصال به پیش‌فاکتورها */}
           {watchedReceiptType === "payment" && (
             <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              {suggestions.length > 0 && (
+                <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">پیشنهاد اتصال به پیش‌فاکتور</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    این پیشنهادها بر اساس مبلغ و تاریخ فیش محاسبه شده‌اند. پذیرش و یا تغییر مبلغ تخصیص با حسابدار است.
+                  </p>
+                  <div className="space-y-2">
+                    {suggestions.map((s) => {
+                      const already = allocations.some((a) => a.invoice_id === s.invoice.id);
+                      const confidenceLabel =
+                        s.confidence === "high" ? "اطمینان بالا"
+                        : s.confidence === "medium" ? "اطمینان متوسط"
+                        : "اطمینان پایین";
+                      const confidenceClass =
+                        s.confidence === "high"
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : s.confidence === "medium"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "border-muted-foreground/30 bg-muted text-muted-foreground";
+                      return (
+                        <div
+                          key={s.invoice.id}
+                          className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span dir="ltr" className="text-sm font-medium">
+                                {toFaDigits(s.invoice.number ?? s.invoice.id.slice(0, 8))}
+                              </span>
+                              <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", confidenceClass)}>
+                                {confidenceLabel}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              مانده: {formatNumber(s.invoice.remaining)} • تخصیص پیشنهادی: {formatNumber(s.allocated_amount)}
+                            </div>
+                            <div className="text-xs">{s.reason}</div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={already ? "outline" : "default"}
+                            disabled={already}
+                            onClick={() =>
+                              addAllocation(s.invoice, {
+                                amount: s.allocated_amount,
+                                suggestion: { confidence: s.confidence, reason: s.reason },
+                              })
+                            }
+                          >
+                            {already ? "افزوده شده" : "اعمال پیشنهاد"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">اتصال به پیش‌فاکتورها</h3>
                 <Popover open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
