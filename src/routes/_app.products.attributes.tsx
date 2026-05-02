@@ -465,7 +465,7 @@ async function logCpaAudit(
       entity_id: entityId,
       action,
       actor_id: u.user?.id ?? null,
-      diff,
+      diff: diff as any,
     });
   } catch {
     // audit failure should not block UX
