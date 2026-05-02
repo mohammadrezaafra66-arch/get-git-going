@@ -396,6 +396,38 @@ export function PaymentReceiptForm() {
     );
   };
 
+  // Optional lookups for bank accounts and external parties (Phase 11.9B)
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ["receipt-form-bank-accounts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bank_accounts")
+        .select("id, title, bank_name, is_active")
+        .eq("is_active", true)
+        .order("title", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { id: string; title: string; bank_name: string; is_active: boolean }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: externalParties = [] } = useQuery({
+    queryKey: ["receipt-form-external-parties"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("external_parties")
+        .select("id, full_name, phone, accounting_code, is_active")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string; full_name: string; phone: string | null;
+        accounting_code: string | null; is_active: boolean;
+      }[];
+    },
+    staleTime: 60_000,
+  });
+
   const mutation = useMutation({
     mutationFn: async (
       args: {
