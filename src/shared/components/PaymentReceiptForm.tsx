@@ -560,7 +560,23 @@ export function PaymentReceiptForm() {
   return (
     <>
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v, allocations }))}
+      onSubmit={form.handleSubmit((v) => {
+        const warnings = evaluateSecurityWarnings({
+          payment_date: v.payment_date,
+          tracking_number: v.tracking_number,
+          document_channel: v.document_channel,
+          payer_name_on_receipt: v.payer_name_on_receipt,
+          has_perforation: v.has_perforation,
+          is_typed_receipt: v.is_typed_receipt,
+        });
+        if (warnings.length > 0) {
+          setPendingWarnings(warnings);
+          setPendingWarningContext({ values: v, allocations });
+          setWarningsOpen(true);
+          return;
+        }
+        mutation.mutate({ values: v, allocations, securityWarnings: [] });
+      })}
       className="space-y-6"
       dir="rtl"
     >
