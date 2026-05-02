@@ -347,6 +347,107 @@ export function ReceiptDocumentsList({
     },
   });
 
+  // ---- Extraction (Stage 1: text-only) -------------------------------------
+  const extractMutation = useMutation({
+    mutationFn: async (doc: ReceiptDocumentRow) => {
+      if (!user?.id) throw new Error("کاربر شناسایی نشد");
+
+      // Audit: started
+      await supabase.from("audit_logs").insert({
+        actor_id: user.id,
+        entity_type: "payment_receipt_document",
+        entity_id: doc.id,
+        action: "receipt_document_extraction_started",
+        diff: { document_id: doc.id, receipt_id: doc.receipt_id, file_type: doc.file_type },
+      } as never);
+
+      try {
+        // Download file via short-lived signed URL (storage rules unchanged).
+        const { data: signed, error: signErr } = await supabase.storage
+          .from(RECEIPT_DOCS_BUCKET)
+          .createSignedUrl(doc.storage_path, 120);
+        if (signErr || !signed?.signedUrl) throw signErr ?? new Error("دریافت فایل ناموفق بود");
+
+        const resp = await fetch(signed.signedUrl);
+        if (!resp.ok) throw new Error(`دانلود فایل ناموفق بود (${resp.status})`);
+        const blob = await resp.blob();
+
+        const { text, warnings } = await extractRawText(blob, doc.file_type);
+        const parsed = parseReceiptText(text);
+        parsed.warnings = [...warnings, ...parsed.warnings];
+
+        const confidence = scoreExtraction(parsed);
+        const status = decideStatus(parsed, Boolean(text.trim()));
+
+        const notes =
+          parsed.warnings.length > 0
+            ? parsed.warnings.join(" | ")
+            : status === "extracted"
+            ? "استخراج با موفقیت انجام شد."
+            : "متن خامی برای استخراج وجود نداشت یا فیلدهای کلیدی پیدا نشد.";
+
+        const { error: updErr } = await supabase
+          .from("payment_receipt_documents")
+          .update({
+            extraction_status: status,
+            extracted_data: parsed as unknown as object,
+            extraction_confidence: confidence,
+            extraction_notes: notes,
+          } as never)
+          .eq("id", doc.id);
+        if (updErr) throw updErr;
+
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt_document",
+          entity_id: doc.id,
+          action: "receipt_document_extraction_completed",
+          diff: {
+            document_id: doc.id,
+            receipt_id: doc.receipt_id,
+            extraction_status: status,
+            extraction_confidence: confidence,
+            extracted_keys: parsed.detected_keywords,
+          },
+        } as never);
+
+        return { status, confidence, hasText: Boolean(text.trim()) };
+      } catch (err) {
+        await supabase
+          .from("payment_receipt_documents")
+          .update({
+            extraction_status: "failed",
+            extraction_notes: err instanceof Error ? err.message : "خطای ناشناخته",
+          } as never)
+          .eq("id", doc.id);
+
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt_document",
+          entity_id: doc.id,
+          action: "receipt_document_extraction_failed",
+          diff: {
+            document_id: doc.id,
+            receipt_id: doc.receipt_id,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        } as never);
+        throw err;
+      }
+    },
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
+      if (r.status === "extracted") toast.success("اطلاعات فیش استخراج شد.");
+      else if (!r.hasText) toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      else toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+      toast.error(`استخراج ناموفق بود: ${msg}`);
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
+    },
+  });
+
   return (
     <div className="space-y-3" dir="rtl">
       <div className="flex items-center justify-between">
