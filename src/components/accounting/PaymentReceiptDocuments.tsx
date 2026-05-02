@@ -58,6 +58,23 @@ const EXTRACTION_STATUS_LABELS: Record<ReceiptDocumentRow["extraction_status"], 
   failed: "ناموفق",
 };
 
+const EXTRACTION_STATUS_CLASSES: Record<ReceiptDocumentRow["extraction_status"], string> = {
+  pending: "bg-muted text-muted-foreground",
+  extracted: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
+  needs_review: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
+  failed: "bg-destructive/15 text-destructive",
+};
+
+const CHANNEL_LABELS: Record<DocumentChannel, string> = {
+  card_to_card: "کارت به کارت",
+  paya: "پایا",
+  pol: "پل",
+  satna: "ساتنا",
+  cash: "نقدی",
+  other: "سایر",
+  unknown: "نامشخص",
+};
+
 export function validateReceiptFile(file: File): string | null {
   if (file.size > MAX_DOC_SIZE_BYTES) {
     return `«${file.name}» بیش از حد مجاز (۱۰ مگابایت) است`;
