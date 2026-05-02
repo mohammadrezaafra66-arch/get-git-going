@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X } from "lucide-react";
+import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,17 @@ export type ReceiptDocumentRow = {
   file_size: number;
   uploaded_by: string;
   created_at: string;
+  extraction_status: "pending" | "extracted" | "needs_review" | "failed";
+  extracted_data: unknown | null;
+  extraction_confidence: number | null;
+  extraction_notes: string | null;
+};
+
+const EXTRACTION_STATUS_LABELS: Record<ReceiptDocumentRow["extraction_status"], string> = {
+  pending: "در انتظار استخراج",
+  extracted: "استخراج‌شده",
+  needs_review: "نیازمند بازبینی",
+  failed: "ناموفق",
 };
 
 export function validateReceiptFile(file: File): string | null {
