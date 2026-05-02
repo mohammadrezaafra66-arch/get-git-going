@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { ReceiptDocumentsList } from "@/components/accounting/PaymentReceiptDocuments";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -379,20 +380,14 @@ function ReceiptDetailPage() {
                     {toFaDigits(receipt.payment_time?.slice(0, 5) ?? "")}
                   </Field>
                   <Field label="بانک مقصد">{receipt.bank_name}</Field>
-                  <Field label="تصویر فیش">
-                    {receipt.receipt_image_url ? (
-                      <a
-                        href={receipt.receipt_image_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline"
-                        dir="ltr"
-                      >
-                        مشاهده تصویر
-                      </a>
-                    ) : "—"}
-                  </Field>
                 </div>
+
+                <Separator />
+
+                <ReceiptDocumentsList
+                  receiptId={receipt.id}
+                  legacyImageUrl={receipt.receipt_image_url}
+                />
 
                 <Separator />
 
