@@ -547,13 +547,13 @@ export function PaymentReceiptForm() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
-                <SelectItem value="prepayment">پیش‌پرداخت (اعتبار مثبت)</SelectItem>
+                <SelectItem value="prepayment">پیش واریز: اعتبار مثبت</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
               {watchedReceiptType === "payment"
                 ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
-                : "این فیش به‌عنوان اعتبار مثبت برای مشتری ثبت می‌شود (بدون اتصال به بدهی)."}
+                : "برای پیش‌واریز، نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان اعتبار مثبت مشتری ثبت می‌شود."}
             </p>
           </div>
 
