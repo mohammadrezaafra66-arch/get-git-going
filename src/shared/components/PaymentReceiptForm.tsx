@@ -813,6 +813,68 @@ export function PaymentReceiptForm() {
           {/* اتصال به پیش‌فاکتورها */}
           {watchedReceiptType === "payment" && (
             <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              {suggestions.length > 0 && (
+                <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">پیشنهاد اتصال به پیش‌فاکتور</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    این پیشنهادها بر اساس مبلغ و تاریخ فیش محاسبه شده‌اند. پذیرش و یا تغییر مبلغ تخصیص با حسابدار است.
+                  </p>
+                  <div className="space-y-2">
+                    {suggestions.map((s) => {
+                      const already = allocations.some((a) => a.invoice_id === s.invoice.id);
+                      const confidenceLabel =
+                        s.confidence === "high" ? "اطمینان بالا"
+                        : s.confidence === "medium" ? "اطمینان متوسط"
+                        : "اطمینان پایین";
+                      const confidenceClass =
+                        s.confidence === "high"
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : s.confidence === "medium"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "border-muted-foreground/30 bg-muted text-muted-foreground";
+                      return (
+                        <div
+                          key={s.invoice.id}
+                          className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span dir="ltr" className="text-sm font-medium">
+                                {toFaDigits(s.invoice.number ?? s.invoice.id.slice(0, 8))}
+                              </span>
+                              <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", confidenceClass)}>
+                                {confidenceLabel}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              مانده: {formatNumber(s.invoice.remaining)} • تخصیص پیشنهادی: {formatNumber(s.allocated_amount)}
+                            </div>
+                            <div className="text-xs">{s.reason}</div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={already ? "outline" : "default"}
+                            disabled={already}
+                            onClick={() =>
+                              addAllocation(s.invoice, {
+                                amount: s.allocated_amount,
+                                suggestion: { confidence: s.confidence, reason: s.reason },
+                              })
+                            }
+                          >
+                            {already ? "افزوده شده" : "اعمال پیشنهاد"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold">اتصال به پیش‌فاکتورها</h3>
                 <Popover open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
