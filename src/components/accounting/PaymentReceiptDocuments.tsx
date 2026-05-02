@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X } from "lucide-react";
+import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,17 @@ export type ReceiptDocumentRow = {
   file_size: number;
   uploaded_by: string;
   created_at: string;
+  extraction_status: "pending" | "extracted" | "needs_review" | "failed";
+  extracted_data: unknown | null;
+  extraction_confidence: number | null;
+  extraction_notes: string | null;
+};
+
+const EXTRACTION_STATUS_LABELS: Record<ReceiptDocumentRow["extraction_status"], string> = {
+  pending: "در انتظار استخراج",
+  extracted: "استخراج‌شده",
+  needs_review: "نیازمند بازبینی",
+  failed: "ناموفق",
 };
 
 export function validateReceiptFile(file: File): string | null {
@@ -246,7 +257,7 @@ export function ReceiptDocumentsList({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_receipt_documents")
-        .select("id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at")
+        .select("id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at, extraction_status, extracted_data, extraction_confidence, extraction_notes")
         .eq("receipt_id", receiptId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -360,9 +371,27 @@ export function ReceiptDocumentsList({
                     <div className="text-xs text-muted-foreground">
                       {formatBytes(doc.file_size)} • {doc.file_type}
                     </div>
+                    <div className="mt-1 text-xs">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                        وضعیت استخراج: {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {canManage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        toast.info("موتور استخراج خودکار در فاز بعدی فعال می‌شود.")
+                      }
+                    >
+                      <Sparkles className="ml-1 h-4 w-4" />
+                      استخراج اطلاعات از فیش
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
