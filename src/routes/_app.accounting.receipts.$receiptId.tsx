@@ -536,6 +536,84 @@ function ReceiptDetailPage() {
             </Card>
           </div>
 
+          {/* Journal entry (read-only) */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold">سند حسابداری</h3>
+              {!journal || !journal.entry ? (
+                <p className="text-xs text-muted-foreground">
+                  برای این فیش هنوز سند حسابداری ثبت نشده است.
+                </p>
+              ) : (() => {
+                const totalDebit = journal.lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+                const totalCredit = journal.lines.reduce((s, l) => s + Number(l.credit || 0), 0);
+                const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+                return (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <Field label="شماره سند" dir="ltr">{toFaDigits(journal.entry.id.slice(0, 8))}</Field>
+                      <Field label="تاریخ سند" dir="ltr">{toFaDigits(journal.entry.entry_date)}</Field>
+                      <Field label="وضعیت سند">
+                        <Badge variant={journal.entry.status === "posted" ? "default" : "secondary"}>
+                          {JOURNAL_STATUS_LABEL[journal.entry.status] ?? journal.entry.status}
+                        </Badge>
+                      </Field>
+                      <Field label="ثبت‌کننده">{journal.poster ?? "—"}</Field>
+                      <Field label="زمان ثبت" dir="ltr">
+                        {toFaDigits(new Date(journal.entry.posted_at).toLocaleString("fa-IR"))}
+                      </Field>
+                      <Field label="توضیحات">{journal.entry.description}</Field>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-right">ردیف</TableHead>
+                            <TableHead className="text-right">نوع حساب</TableHead>
+                            <TableHead className="text-right">شناسه حساب</TableHead>
+                            <TableHead className="text-right">شرح</TableHead>
+                            <TableHead className="text-right">بدهکار</TableHead>
+                            <TableHead className="text-right">بستانکار</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {journal.lines.map((l) => (
+                            <TableRow key={l.id}>
+                              <TableCell>{toFaDigits(String(l.line_no))}</TableCell>
+                              <TableCell>{ACCOUNT_KIND_LABEL[l.account_kind] ?? l.account_kind}</TableCell>
+                              <TableCell dir="ltr" className="text-xs text-muted-foreground">
+                                {l.account_ref_id ? toFaDigits(l.account_ref_id.slice(0, 8)) : "—"}
+                              </TableCell>
+                              <TableCell>{l.description ?? "—"}</TableCell>
+                              <TableCell>{Number(l.debit) > 0 ? formatNumber(Number(l.debit)) : "—"}</TableCell>
+                              <TableCell>{Number(l.credit) > 0 ? formatNumber(Number(l.credit)) : "—"}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/40 font-semibold">
+                            <TableCell colSpan={4}>جمع کل</TableCell>
+                            <TableCell>{formatNumber(totalDebit)}</TableCell>
+                            <TableCell>{formatNumber(totalCredit)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div
+                      className={
+                        isBalanced
+                          ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-sm text-emerald-700 dark:text-emerald-400"
+                          : "rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive"
+                      }
+                    >
+                      {isBalanced ? "سند متوازن است" : "سند نامتوازن است"}
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
           {/* Approve confirm */}
           <AlertDialog open={approveOpen} onOpenChange={setApproveOpen}>
             <AlertDialogContent dir="rtl">
