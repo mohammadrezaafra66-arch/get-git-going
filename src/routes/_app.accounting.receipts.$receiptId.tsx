@@ -210,14 +210,14 @@ function ReceiptDetailPage() {
         (entry as JournalEntry).posted_by
           ? supabase
               .from("profiles")
-              .select("display_name, email")
+              .select("full_name")
               .eq("id", (entry as JournalEntry).posted_by as string)
               .maybeSingle()
           : Promise.resolve({ data: null, error: null } as const),
       ]);
       if (linesErr) throw linesErr;
-      const poster = (posterRes.data as { display_name?: string | null; email?: string | null } | null) ?? null;
-      const posterLabel = poster?.display_name || poster?.email || null;
+      const poster = (posterRes.data as { full_name?: string | null } | null) ?? null;
+      const posterLabel = poster?.full_name || null;
       return {
         entry: entry as unknown as JournalEntry,
         lines: (lines ?? []) as unknown as JournalLine[],
