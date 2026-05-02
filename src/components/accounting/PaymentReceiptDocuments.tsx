@@ -535,7 +535,7 @@ export function ReceiptDocumentsList({
         }
         const status = decideStatus(parsed, Boolean(text.trim()));
 
-        const method: OcrMethod = ocr.method;
+        const method = ocr.method as OcrMethod;
         const methodNote =
           method === "image_ocr"
             ? "استخراج از تصویر انجام شد؛ لطفاً اطلاعات را بررسی کنید."
