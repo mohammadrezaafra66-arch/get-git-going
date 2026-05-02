@@ -209,6 +209,9 @@ const schema = z.object({
   is_typed_receipt: z.boolean(),
   receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
+  source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+  destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+  receiver_party_id: z.string().uuid().optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -273,6 +276,9 @@ export function PaymentReceiptForm() {
       is_typed_receipt: false,
       receipt_image_url: "",
       description: "",
+      source_bank_account_id: "",
+      destination_bank_account_id: "",
+      receiver_party_id: "",
     },
     mode: "onBlur",
   });
