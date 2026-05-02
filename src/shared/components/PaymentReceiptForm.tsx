@@ -1050,6 +1050,46 @@ export function PaymentReceiptForm() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <AlertDialog open={warningsOpen} onOpenChange={setWarningsOpen}>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>هشدارهای امنیتی فیش</AlertDialogTitle>
+          <AlertDialogDescription>
+            موارد زیر پیش از ثبت فیش نیاز به بررسی دارند:
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
+          {pendingWarnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPendingWarnings([]);
+              setPendingWarningContext(null);
+            }}
+          >
+            بازگشت و اصلاح
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingWarningContext) {
+                mutation.mutate({
+                  values: pendingWarningContext.values,
+                  allocations: pendingWarningContext.allocations,
+                  securityWarnings: pendingWarnings,
+                });
+              }
+              setWarningsOpen(false);
+            }}
+          >
+            ثبت با تأیید حسابدار
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
