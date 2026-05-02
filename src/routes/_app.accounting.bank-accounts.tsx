@@ -47,8 +47,8 @@ const schema = z.object({
   iban: z.string().trim().max(50).optional().or(z.literal("")),
   account_no: z.string().trim().max(50).optional().or(z.literal("")),
   card_no: z.string().trim().max(50).optional().or(z.literal("")),
-  currency: z.string().trim().min(2).max(10).default("IRR"),
-  opening_balance: z.number().default(0),
+  currency: z.string().trim().min(2).max(10),
+  opening_balance: z.number(),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 type FormValues = z.infer<typeof schema>;
