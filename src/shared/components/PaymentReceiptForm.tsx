@@ -143,6 +143,38 @@ const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
 
 const today = new Date().toISOString().slice(0, 10);
 
+/* ------------- Security warnings evaluator ------------- */
+
+function evaluateSecurityWarnings(values: {
+  payment_date: string;
+  tracking_number: string;
+  document_channel: string;
+  payer_name_on_receipt?: string;
+  has_perforation: boolean;
+  is_typed_receipt: boolean;
+}): string[] {
+  const warnings: string[] = [];
+  if (values.payment_date && values.payment_date !== today) {
+    warnings.push("تاریخ فیش مربوط به امروز نیست.");
+  }
+  if (!values.tracking_number || values.tracking_number.trim().length === 0) {
+    warnings.push("شماره پیگیری ثبت نشده است.");
+  }
+  if (values.document_channel === "pol") {
+    warnings.push("انتقال از طریق پل انجام شده است؛ نیازمند بررسی بیشتر.");
+  }
+  if (!values.payer_name_on_receipt || values.payer_name_on_receipt.trim().length === 0) {
+    warnings.push("نام واریزکننده روی فیش مشخص نیست.");
+  }
+  if (!values.has_perforation) {
+    warnings.push("فیش پرفراژ ندارد.");
+  }
+  if (values.is_typed_receipt) {
+    warnings.push("فیش تایپی است؛ نیازمند بررسی بیشتر.");
+  }
+  return warnings;
+}
+
 const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
   receipt_type: z.enum(["payment", "prepayment"]),
