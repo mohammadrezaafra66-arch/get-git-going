@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { ProductForm } from "@/components/products/ProductForm";
 import { supabase } from "@/integrations/supabase/client";
 import type { ProductFormValues } from "@/lib/products/schemas";
+import { saveProductDynamicValues } from "@/lib/products/category-attrs";
 
 export const Route = createFileRoute("/_app/products/new")({
   beforeLoad: async () => { await requirePermission("products", "create"); },
@@ -16,7 +17,10 @@ function NewProductPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (v: ProductFormValues) => {
+  const handleSubmit = async (
+    v: ProductFormValues,
+    dynamic: Parameters<Parameters<typeof ProductForm>[0]["onSubmit"]>[1],
+  ) => {
     setLoading(true);
     try {
       const { data: inserted, error } = await supabase
@@ -45,6 +49,11 @@ function NewProductPage() {
         const links = v.label_ids.map((label_id) => ({ product_id: inserted.id, label_id }));
         const { error: linkErr } = await supabase.from("product_label_links").insert(links);
         if (linkErr) throw linkErr;
+      }
+
+      // Save category-specific attribute values (only when category is set)
+      if (v.category_id && dynamic.defs.length > 0) {
+        await saveProductDynamicValues(inserted.id, dynamic.defs, dynamic.values);
       }
 
       toast.success("محصول با موفقیت ایجاد شد");
