@@ -680,7 +680,17 @@ export function PaymentReceiptForm() {
 
           {/* اطلاعات واریزکننده */}
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
+              <PartyLookup
+                label="جستجو و تکمیل خودکار"
+                onPick={(m) => {
+                  form.setValue("payer_name", m.name, { shouldValidate: true });
+                  form.setValue("payer_phone", m.phone ?? "", { shouldValidate: true });
+                  form.setValue("payer_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام و نام‌خانوادگی <span className="text-destructive">*</span></Label>
@@ -702,7 +712,17 @@ export function PaymentReceiptForm() {
 
           {/* اطلاعات گیرنده */}
           <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
+              <PartyLookup
+                label="جستجو و تکمیل خودکار"
+                onPick={(m) => {
+                  form.setValue("receiver_name", m.name, { shouldValidate: true });
+                  form.setValue("receiver_phone", m.phone ?? "", { shouldValidate: true });
+                  form.setValue("receiver_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>نام گیرنده <span className="text-destructive">*</span></Label>
