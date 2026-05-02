@@ -2982,9 +2982,14 @@ export type Database = {
           created_by: string
           customer_id: string
           description: string | null
+          destination_bank: string | null
+          document_channel: string | null
+          has_perforation: boolean
           id: string
+          is_typed_receipt: boolean
           payer_accounting_code: string | null
           payer_name: string
+          payer_name_on_receipt: string | null
           payer_phone: string | null
           payment_date: string
           payment_time: string
@@ -2992,8 +2997,10 @@ export type Database = {
           receipt_type: string
           receiver_accounting_code: string | null
           receiver_name: string
+          receiver_name_on_receipt: string | null
           receiver_phone: string | null
           rejection_reason: string | null
+          source_bank: string | null
           status: string
           tracking_number: string
           updated_at: string
@@ -3005,9 +3012,14 @@ export type Database = {
           created_by: string
           customer_id: string
           description?: string | null
+          destination_bank?: string | null
+          document_channel?: string | null
+          has_perforation?: boolean
           id?: string
+          is_typed_receipt?: boolean
           payer_accounting_code?: string | null
           payer_name: string
+          payer_name_on_receipt?: string | null
           payer_phone?: string | null
           payment_date: string
           payment_time: string
@@ -3015,8 +3027,10 @@ export type Database = {
           receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name: string
+          receiver_name_on_receipt?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
+          source_bank?: string | null
           status?: string
           tracking_number: string
           updated_at?: string
@@ -3028,9 +3042,14 @@ export type Database = {
           created_by?: string
           customer_id?: string
           description?: string | null
+          destination_bank?: string | null
+          document_channel?: string | null
+          has_perforation?: boolean
           id?: string
+          is_typed_receipt?: boolean
           payer_accounting_code?: string | null
           payer_name?: string
+          payer_name_on_receipt?: string | null
           payer_phone?: string | null
           payment_date?: string
           payment_time?: string
@@ -3038,8 +3057,10 @@ export type Database = {
           receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name?: string
+          receiver_name_on_receipt?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
+          source_bank?: string | null
           status?: string
           tracking_number?: string
           updated_at?: string
