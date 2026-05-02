@@ -18,7 +18,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
+export type OcrMethod =
+  | "text"
+  | "image_ocr"
+  | "pdf_text"
+  | "pdf_image_ocr"
+  | "unsupported";
 
 export interface OcrResult {
   raw_text: string;
@@ -111,12 +116,45 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
     // application/pdf → not yet supported (no safe Worker-bundled PDF reader
     // wired in this project).
     if (fileType === "application/pdf") {
-      return {
-        raw_text: "",
-        method: "unsupported" as const,
-        warnings: ["استخراج متن PDF هنوز فعال نیست."],
-        engine_confidence: null,
-      } satisfies OcrResult;
+      try {
+        const { extractText, getDocumentProxy } = await import("unpdf");
+        const buf = new Uint8Array(await fileResp.arrayBuffer());
+        const pdf = await getDocumentProxy(buf);
+        const result = await extractText(pdf, { mergePages: true });
+        const totalPages = result.totalPages;
+        const t: unknown = result.text;
+        const raw = typeof t === "string" ? t : Array.isArray(t) ? (t as string[]).join("\n") : "";
+        const trimmed = raw.trim();
+        if (trimmed.length > 0) {
+          // Embedded text PDF — direct extraction, no OCR needed.
+          return {
+            raw_text: raw,
+            method: "pdf_text" as const,
+            warnings:
+              totalPages > 2
+                ? [`PDF شامل ${totalPages} صفحه است؛ متن همه صفحات استخراج شد.`]
+                : [],
+            engine_confidence: null,
+          } satisfies OcrResult;
+        }
+        // No embedded text → likely scanned/image PDF.
+        // Rendering PDF pages to images requires native canvas / pdfium and
+        // is not safe in this Worker SSR runtime; report unsupported.
+        return {
+          raw_text: "",
+          method: "unsupported" as const,
+          warnings: ["استخراج متن PDF در این محیط پشتیبانی نمی‌شود."],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return {
+          raw_text: "",
+          method: "unsupported" as const,
+          warnings: [`استخراج متن PDF ناموفق بود: ${msg.slice(0, 200)}`],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      }
     }
 
     // image/* → vision OCR via Lovable AI Gateway.
