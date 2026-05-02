@@ -120,9 +120,10 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
         const { extractText, getDocumentProxy } = await import("unpdf");
         const buf = new Uint8Array(await fileResp.arrayBuffer());
         const pdf = await getDocumentProxy(buf);
-        const { text, totalPages } = await extractText(pdf, { mergePages: true });
-        const raw =
-          typeof text === "string" ? text : Array.isArray(text) ? text.join("\n") : "";
+        const result = await extractText(pdf, { mergePages: true });
+        const totalPages = result.totalPages;
+        const t: unknown = result.text;
+        const raw = typeof t === "string" ? t : Array.isArray(t) ? (t as string[]).join("\n") : "";
         const trimmed = raw.trim();
         if (trimmed.length > 0) {
           // Embedded text PDF — direct extraction, no OCR needed.
