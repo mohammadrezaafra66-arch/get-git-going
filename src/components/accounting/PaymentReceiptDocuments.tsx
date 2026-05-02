@@ -371,9 +371,27 @@ export function ReceiptDocumentsList({
                     <div className="text-xs text-muted-foreground">
                       {formatBytes(doc.file_size)} • {doc.file_type}
                     </div>
+                    <div className="mt-1 text-xs">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                        وضعیت استخراج: {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {canManage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        toast.info("موتور استخراج خودکار در فاز بعدی فعال می‌شود.")
+                      }
+                    >
+                      <Sparkles className="ml-1 h-4 w-4" />
+                      استخراج اطلاعات از فیش
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
