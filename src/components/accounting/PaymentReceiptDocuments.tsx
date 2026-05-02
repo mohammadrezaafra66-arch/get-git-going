@@ -15,6 +15,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  extractRawText,
+  parseReceiptText,
+  scoreExtraction,
+  decideStatus,
+  type ReceiptExtractionResult,
+  type DocumentChannel,
+} from "@/lib/accounting/receipt-extraction";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
@@ -49,6 +57,34 @@ const EXTRACTION_STATUS_LABELS: Record<ReceiptDocumentRow["extraction_status"], 
   needs_review: "نیازمند بازبینی",
   failed: "ناموفق",
 };
+
+const EXTRACTION_STATUS_CLASSES: Record<ReceiptDocumentRow["extraction_status"], string> = {
+  pending: "bg-muted text-muted-foreground",
+  extracted: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
+  needs_review: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
+  failed: "bg-destructive/15 text-destructive",
+};
+
+const CHANNEL_LABELS: Record<DocumentChannel, string> = {
+  card_to_card: "کارت به کارت",
+  paya: "پایا",
+  pol: "پل",
+  satna: "ساتنا",
+  cash: "نقدی",
+  other: "سایر",
+  unknown: "نامشخص",
+};
+
+function ExtractionField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="font-medium" dir="auto">
+        {value && String(value).trim() !== "" ? value : "—"}
+      </span>
+    </div>
+  );
+}
 
 export function validateReceiptFile(file: File): string | null {
   if (file.size > MAX_DOC_SIZE_BYTES) {
@@ -322,6 +358,107 @@ export function ReceiptDocumentsList({
     },
   });
 
+  // ---- Extraction (Stage 1: text-only) -------------------------------------
+  const extractMutation = useMutation({
+    mutationFn: async (doc: ReceiptDocumentRow) => {
+      if (!user?.id) throw new Error("کاربر شناسایی نشد");
+
+      // Audit: started
+      await supabase.from("audit_logs").insert({
+        actor_id: user.id,
+        entity_type: "payment_receipt_document",
+        entity_id: doc.id,
+        action: "receipt_document_extraction_started",
+        diff: { document_id: doc.id, receipt_id: doc.receipt_id, file_type: doc.file_type },
+      } as never);
+
+      try {
+        // Download file via short-lived signed URL (storage rules unchanged).
+        const { data: signed, error: signErr } = await supabase.storage
+          .from(RECEIPT_DOCS_BUCKET)
+          .createSignedUrl(doc.storage_path, 120);
+        if (signErr || !signed?.signedUrl) throw signErr ?? new Error("دریافت فایل ناموفق بود");
+
+        const resp = await fetch(signed.signedUrl);
+        if (!resp.ok) throw new Error(`دانلود فایل ناموفق بود (${resp.status})`);
+        const blob = await resp.blob();
+
+        const { text, warnings } = await extractRawText(blob, doc.file_type);
+        const parsed = parseReceiptText(text);
+        parsed.warnings = [...warnings, ...parsed.warnings];
+
+        const confidence = scoreExtraction(parsed);
+        const status = decideStatus(parsed, Boolean(text.trim()));
+
+        const notes =
+          parsed.warnings.length > 0
+            ? parsed.warnings.join(" | ")
+            : status === "extracted"
+            ? "استخراج با موفقیت انجام شد."
+            : "متن خامی برای استخراج وجود نداشت یا فیلدهای کلیدی پیدا نشد.";
+
+        const { error: updErr } = await supabase
+          .from("payment_receipt_documents")
+          .update({
+            extraction_status: status,
+            extracted_data: parsed as unknown as object,
+            extraction_confidence: confidence,
+            extraction_notes: notes,
+          } as never)
+          .eq("id", doc.id);
+        if (updErr) throw updErr;
+
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt_document",
+          entity_id: doc.id,
+          action: "receipt_document_extraction_completed",
+          diff: {
+            document_id: doc.id,
+            receipt_id: doc.receipt_id,
+            extraction_status: status,
+            extraction_confidence: confidence,
+            extracted_keys: parsed.detected_keywords,
+          },
+        } as never);
+
+        return { status, confidence, hasText: Boolean(text.trim()) };
+      } catch (err) {
+        await supabase
+          .from("payment_receipt_documents")
+          .update({
+            extraction_status: "failed",
+            extraction_notes: err instanceof Error ? err.message : "خطای ناشناخته",
+          } as never)
+          .eq("id", doc.id);
+
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt_document",
+          entity_id: doc.id,
+          action: "receipt_document_extraction_failed",
+          diff: {
+            document_id: doc.id,
+            receipt_id: doc.receipt_id,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        } as never);
+        throw err;
+      }
+    },
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
+      if (r.status === "extracted") toast.success("اطلاعات فیش استخراج شد.");
+      else if (!r.hasText) toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      else toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+      toast.error(`استخراج ناموفق بود: ${msg}`);
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
+    },
+  });
+
   return (
     <div className="space-y-3" dir="rtl">
       <div className="flex items-center justify-between">
@@ -353,13 +490,16 @@ export function ReceiptDocumentsList({
         <ul className="space-y-2">
           {docs.map((doc) => {
             const isImage = doc.file_type.startsWith("image/");
+            const extracting = extractMutation.isPending && extractMutation.variables?.id === doc.id;
+            const extracted = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
             return (
               <li
                 key={doc.id}
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background p-2 text-sm",
+                  "rounded-md border bg-background p-2 text-sm",
                 )}
               >
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   {isImage ? (
                     <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -372,9 +512,14 @@ export function ReceiptDocumentsList({
                       {formatBytes(doc.file_size)} • {doc.file_type}
                     </div>
                     <div className="mt-1 text-xs">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                        وضعیت استخراج: {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
+                      <span className={cn("rounded px-1.5 py-0.5", EXTRACTION_STATUS_CLASSES[doc.extraction_status])}>
+                        {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
                       </span>
+                      {doc.extraction_confidence != null && doc.extraction_status === "extracted" && (
+                        <span className="ms-2 text-muted-foreground">
+                          اطمینان: {toFaDigits(String(Math.round((doc.extraction_confidence ?? 0) * 100)))}٪
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -384,11 +529,14 @@ export function ReceiptDocumentsList({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        toast.info("موتور استخراج خودکار در فاز بعدی فعال می‌شود.")
-                      }
+                      onClick={() => extractMutation.mutate(doc)}
+                      disabled={extracting}
                     >
-                      <Sparkles className="ml-1 h-4 w-4" />
+                      {extracting ? (
+                        <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="ml-1 h-4 w-4" />
+                      )}
                       استخراج اطلاعات از فیش
                     </Button>
                   )}
@@ -419,6 +567,27 @@ export function ReceiptDocumentsList({
                     </Button>
                   )}
                 </div>
+              </div>
+              {extracted && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review") && (
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-muted/40 p-2 text-xs sm:grid-cols-3">
+                  <ExtractionField label="شماره پیگیری" value={extracted.tracking_number} />
+                  <ExtractionField label="مبلغ" value={extracted.amount != null ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال` : null} />
+                  <ExtractionField label="تاریخ" value={extracted.receipt_date ? toFaDigits(extracted.receipt_date) : null} />
+                  <ExtractionField label="ساعت" value={extracted.receipt_time ? toFaDigits(extracted.receipt_time) : null} />
+                  <ExtractionField label="بانک مبدا" value={extracted.source_bank} />
+                  <ExtractionField label="بانک مقصد" value={extracted.destination_bank} />
+                  <ExtractionField label="کانال انتقال" value={CHANNEL_LABELS[extracted.document_channel]} />
+                  <ExtractionField
+                    label="درصد اطمینان"
+                    value={doc.extraction_confidence != null ? `${toFaDigits(String(Math.round(doc.extraction_confidence * 100)))}٪` : null}
+                  />
+                  {doc.extraction_notes && (
+                    <div className="col-span-2 sm:col-span-3 mt-1 text-[11px] text-muted-foreground">
+                      یادداشت: {doc.extraction_notes}
+                    </div>
+                  )}
+                </div>
+              )}
               </li>
             );
           })}
