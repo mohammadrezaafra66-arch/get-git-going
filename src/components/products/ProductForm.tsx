@@ -424,6 +424,38 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
       </Card>
 
       <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی دسته‌بندی</h3>
+          </div>
+          {categoryChangedNotice && (
+            <div className="rounded-md border border-amber-300/40 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              با تغییر دسته‌بندی، ویژگی‌های اختصاصی قبلی پاک می‌شوند.
+            </div>
+          )}
+          {!values.category_id ? (
+            <p className="text-xs text-muted-foreground">برای نمایش ویژگی‌های اختصاصی، ابتدا دسته‌بندی را انتخاب کنید.</p>
+          ) : dynDefsQ.isLoading ? (
+            <p className="text-xs text-muted-foreground">در حال بارگذاری ویژگی‌ها...</p>
+          ) : dynDefs.length === 0 ? (
+            <p className="text-xs text-muted-foreground">برای این دسته‌بندی ویژگی اختصاصی تعریف نشده است.</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {dynDefs.map((d) => (
+                <DynamicAttrField
+                  key={d.id}
+                  def={d}
+                  value={dynValues[d.id] ?? ""}
+                  error={dynErrors[d.id]}
+                  onChange={(v) => setDyn(d.id, v)}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="space-y-4 p-4">
           <Field label="توضیحات">
             <Textarea value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3} />
