@@ -27,6 +27,7 @@ import {
   type ReceiptExtractionResult,
   type DocumentChannel,
 } from "@/lib/accounting/receipt-extraction";
+import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-security";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
