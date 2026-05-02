@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/table";
 import { ReceiptDocumentsList } from "@/components/accounting/PaymentReceiptDocuments";
 import {
+  evaluateReceiptSecurityWarnings,
+  severityLabel,
+  type ReceiptSecurityWarning,
+  type WarningSeverity,
+} from "@/lib/accounting/receipt-security";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -69,6 +75,11 @@ type ReceiptRow = {
   status: string;
   rejection_reason: string | null;
   created_at: string;
+  document_channel: string | null;
+  payer_name_on_receipt: string | null;
+  has_perforation: boolean | null;
+  is_typed_receipt: boolean | null;
+  security_warnings: unknown;
   customer: { id: string; name: string; phone: string | null } | null;
 };
 
@@ -120,6 +131,34 @@ const ACCOUNT_KIND_LABEL: Record<string, string> = {
   other: "سایر",
 };
 
+const SEVERITY_BADGE_VARIANT: Record<WarningSeverity, "secondary" | "default" | "destructive"> = {
+  low: "secondary",
+  medium: "default",
+  high: "destructive",
+};
+
+function readStoredWarnings(raw: unknown): ReceiptSecurityWarning[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: ReceiptSecurityWarning[] = [];
+  for (const item of raw) {
+    if (
+      item &&
+      typeof item === "object" &&
+      typeof (item as { code?: unknown }).code === "string" &&
+      typeof (item as { message?: unknown }).message === "string" &&
+      typeof (item as { severity?: unknown }).severity === "string"
+    ) {
+      const r = item as { code: string; message: string; severity: string; source?: string };
+      const sev = (r.severity === "low" || r.severity === "medium" || r.severity === "high")
+        ? r.severity
+        : "medium";
+      const src = r.source === "manual" || r.source === "ocr" || r.source === "both" ? r.source : "manual";
+      out.push({ code: r.code, message: r.message, severity: sev as WarningSeverity, source: src as "manual" | "ocr" | "both" });
+    }
+  }
+  return out;
+}
+
 function Field({ label, children, dir }: { label: string; children: React.ReactNode; dir?: "ltr" | "rtl" }) {
   return (
     <div className="space-y-1">
@@ -147,7 +186,7 @@ function ReceiptDetailPage() {
       const { data, error } = await supabase
         .from("payment_receipts")
         .select(
-          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, customer:customers(id, name, phone)",
+          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, document_channel, payer_name_on_receipt, has_perforation, is_typed_receipt, security_warnings, customer:customers(id, name, phone)",
         )
         .eq("id", receiptId)
         .maybeSingle();
@@ -400,6 +439,49 @@ function ReceiptDetailPage() {
                   {receipt.rejection_reason}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold">هشدارهای امنیتی</h3>
+              {(() => {
+                const stored = readStoredWarnings(receipt.security_warnings);
+                const warnings: ReceiptSecurityWarning[] =
+                  stored && stored.length > 0
+                    ? stored
+                    : evaluateReceiptSecurityWarnings({
+                        payment_date: receipt.payment_date,
+                        tracking_number: receipt.tracking_number,
+                        amount: receipt.amount,
+                        document_channel: receipt.document_channel,
+                        payer_name_on_receipt: receipt.payer_name_on_receipt,
+                        has_perforation: receipt.has_perforation,
+                        is_typed_receipt: receipt.is_typed_receipt,
+                      });
+                if (warnings.length === 0) {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      هشدار امنیتی فعالی برای این فیش ثبت نشده است.
+                    </p>
+                  );
+                }
+                return (
+                  <ul className="space-y-2">
+                    {warnings.map((w, i) => (
+                      <li
+                        key={`${w.code}-${i}`}
+                        className="flex items-start gap-2 rounded-md border p-2 text-sm"
+                      >
+                        <Badge variant={SEVERITY_BADGE_VARIANT[w.severity]}>
+                          {severityLabel(w.severity)}
+                        </Badge>
+                        <span className="flex-1">{w.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
             </CardContent>
           </Card>
 

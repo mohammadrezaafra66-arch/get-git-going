@@ -24,6 +24,10 @@ import {
   uploadReceiptDocuments,
 } from "@/components/accounting/PaymentReceiptDocuments";
 import {
+  evaluateReceiptSecurityWarnings,
+  type ReceiptSecurityWarning,
+} from "@/lib/accounting/receipt-security";
+import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import {
@@ -143,36 +147,26 @@ const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
 
 const today = new Date().toISOString().slice(0, 10);
 
-/* ------------- Security warnings evaluator ------------- */
+/* ------------- Security warnings evaluator (shared) ------------- */
 
-function evaluateSecurityWarnings(values: {
+function evaluateFormWarnings(values: {
   payment_date: string;
   tracking_number: string;
+  amount?: number;
   document_channel: string;
   payer_name_on_receipt?: string;
   has_perforation: boolean;
   is_typed_receipt: boolean;
-}): string[] {
-  const warnings: string[] = [];
-  if (values.payment_date && values.payment_date !== today) {
-    warnings.push("تاریخ فیش مربوط به امروز نیست.");
-  }
-  if (!values.tracking_number || values.tracking_number.trim().length === 0) {
-    warnings.push("شماره پیگیری ثبت نشده است.");
-  }
-  if (values.document_channel === "pol") {
-    warnings.push("انتقال از طریق پل انجام شده است؛ نیازمند بررسی بیشتر.");
-  }
-  if (!values.payer_name_on_receipt || values.payer_name_on_receipt.trim().length === 0) {
-    warnings.push("نام واریزکننده روی فیش مشخص نیست.");
-  }
-  if (!values.has_perforation) {
-    warnings.push("فیش پرفراژ ندارد.");
-  }
-  if (values.is_typed_receipt) {
-    warnings.push("فیش تایپی است؛ نیازمند بررسی بیشتر.");
-  }
-  return warnings;
+}): ReceiptSecurityWarning[] {
+  return evaluateReceiptSecurityWarnings({
+    payment_date: values.payment_date,
+    tracking_number: values.tracking_number,
+    amount: values.amount,
+    document_channel: values.document_channel,
+    payer_name_on_receipt: values.payer_name_on_receipt,
+    has_perforation: values.has_perforation,
+    is_typed_receipt: values.is_typed_receipt,
+  });
 }
 
 const schema = z.object({
@@ -248,7 +242,7 @@ export function PaymentReceiptForm() {
   >(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [warningsOpen, setWarningsOpen] = useState(false);
-  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
+  const [pendingWarnings, setPendingWarnings] = useState<ReceiptSecurityWarning[]>([]);
   const [pendingWarningContext, setPendingWarningContext] = useState<
     { values: FormValues; allocations: InvoiceAllocation[] } | null
   >(null);
@@ -517,7 +511,7 @@ export function PaymentReceiptForm() {
         values: FormValues;
         allocations: InvoiceAllocation[];
         bypassDuplicate?: boolean;
-        securityWarnings?: string[];
+        securityWarnings?: ReceiptSecurityWarning[];
       },
     ) => {
       const { values, allocations: allocs, bypassDuplicate, securityWarnings = [] } = args;
@@ -710,9 +704,10 @@ export function PaymentReceiptForm() {
     <>
     <form
       onSubmit={form.handleSubmit((v) => {
-        const warnings = evaluateSecurityWarnings({
+        const warnings = evaluateFormWarnings({
           payment_date: v.payment_date,
           tracking_number: v.tracking_number,
+          amount: v.amount,
           document_channel: v.document_channel,
           payer_name_on_receipt: v.payer_name_on_receipt,
           has_perforation: v.has_perforation,
@@ -1365,7 +1360,10 @@ export function PaymentReceiptForm() {
         </AlertDialogHeader>
         <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
           {pendingWarnings.map((w, i) => (
-            <li key={i}>{w}</li>
+            <li key={i}>
+              <span className="font-medium">[{w.severity === "high" ? "مهم" : w.severity === "medium" ? "متوسط" : "کم"}] </span>
+              {w.message}
+            </li>
           ))}
         </ul>
         <AlertDialogFooter>

@@ -27,6 +27,7 @@ import {
   type ReceiptExtractionResult,
   type DocumentChannel,
 } from "@/lib/accounting/receipt-extraction";
+import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-security";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
@@ -637,7 +638,7 @@ export function ReceiptDocumentsList({
       // Re-check posting status to avoid races.
       const { data: receiptRow, error: rErr } = await supabase
         .from("payment_receipts")
-        .select("id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel")
+        .select("id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, security_warnings")
         .eq("id", doc.receipt_id)
         .single();
       if (rErr || !receiptRow) throw rErr ?? new Error("فیش پیدا نشد");
@@ -669,6 +670,21 @@ export function ReceiptDocumentsList({
         throw new Error("مقادیر انتخاب‌شده قابل اعمال نیستند");
       }
 
+      // Recompute security warnings using the post-apply state.
+      const merged = { ...beforeMap, ...update } as Record<string, unknown>;
+      const newWarnings = evaluateReceiptSecurityWarnings({
+        payment_date: (merged.payment_date as string | null) ?? null,
+        tracking_number: (merged.tracking_number as string | null) ?? null,
+        amount: (merged.amount as number | null) ?? null,
+        document_channel: (merged.document_channel as string | null) ?? null,
+        payer_name_on_receipt: (merged.payer_name_on_receipt as string | null) ?? null,
+        has_perforation: (merged.has_perforation as boolean | null) ?? null,
+        is_typed_receipt: (merged.is_typed_receipt as boolean | null) ?? null,
+        extracted_data: ex,
+        extraction_confidence: doc.extraction_confidence,
+      });
+      update["security_warnings"] = newWarnings;
+
       const { error: updErr } = await supabase
         .from("payment_receipts")
         .update(update as never)
@@ -687,6 +703,7 @@ export function ReceiptDocumentsList({
           before,
           after,
           extraction_confidence: doc.extraction_confidence,
+          security_warning_codes: newWarnings.map((w) => w.code),
         },
       } as never);
 
