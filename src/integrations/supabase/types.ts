@@ -6796,6 +6796,7 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      normalize_fa_text: { Args: { input: string }; Returns: string }
       post_receipt_accounting: {
         Args: { p_receipt_id: string; p_user_id: string }
         Returns: Json
@@ -6896,6 +6897,12 @@ export type Database = {
           _target_user: string
         }
         Returns: undefined
+      }
+      search_product_ids: {
+        Args: { p_limit?: number; p_term: string }
+        Returns: {
+          id: string
+        }[]
       }
       send_invoice_to_accountant: {
         Args: { p_invoice_id: string }
