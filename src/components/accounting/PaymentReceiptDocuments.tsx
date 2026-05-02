@@ -605,9 +605,19 @@ export function ReceiptDocumentsList({
     },
     onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
-      if (r.status === "extracted") toast.success("اطلاعات فیش استخراج شد.");
-      else if (!r.hasText) toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
-      else toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+      if (r.method === "unsupported" && !r.hasText) {
+        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      } else if (r.status === "extracted") {
+        toast.success(
+          r.method === "image_ocr"
+            ? "OCR انجام شد؛ لطفاً اطلاعات استخراج‌شده را بررسی کنید."
+            : "اطلاعات فیش استخراج شد.",
+        );
+      } else if (!r.hasText) {
+        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+      } else {
+        toast.warning("استخراج انجام شد ولی نیازمند بررسی است.");
+      }
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : "خطای ناشناخته";
