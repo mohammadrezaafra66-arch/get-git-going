@@ -188,6 +188,45 @@ function ReceiptDetailPage() {
     staleTime: 30_000,
   });
 
+  const { data: journal } = useQuery({
+    queryKey: ["payment-receipt-journal", receiptId],
+    enabled: !!receipt,
+    queryFn: async () => {
+      const { data: entry, error: entryErr } = await supabase
+        .from("journal_entries")
+        .select("id, source_type, source_id, entry_date, description, status, posted_by, posted_at, created_at")
+        .eq("source_type", "payment_receipt")
+        .eq("source_id", receiptId)
+        .maybeSingle();
+      if (entryErr) throw entryErr;
+      if (!entry) return { entry: null as JournalEntry | null, lines: [] as JournalLine[], poster: null as string | null };
+
+      const [{ data: lines, error: linesErr }, posterRes] = await Promise.all([
+        supabase
+          .from("journal_lines")
+          .select("id, line_no, account_kind, account_ref_id, description, debit, credit")
+          .eq("journal_entry_id", (entry as JournalEntry).id)
+          .order("line_no", { ascending: true }),
+        (entry as JournalEntry).posted_by
+          ? supabase
+              .from("profiles")
+              .select("display_name, email")
+              .eq("id", (entry as JournalEntry).posted_by as string)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null } as const),
+      ]);
+      if (linesErr) throw linesErr;
+      const poster = (posterRes.data as { display_name?: string | null; email?: string | null } | null) ?? null;
+      const posterLabel = poster?.display_name || poster?.email || null;
+      return {
+        entry: entry as unknown as JournalEntry,
+        lines: (lines ?? []) as unknown as JournalLine[],
+        poster: posterLabel,
+      };
+    },
+    staleTime: 30_000,
+  });
+
   const approveMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id || !receipt) throw new Error("اطلاعات ناقص");
