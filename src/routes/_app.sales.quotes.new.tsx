@@ -341,12 +341,23 @@ function ProductTab(props: {
     queryKey: ["quote-product-search", term],
     queryFn: async () => {
       const safe = term.replace(/[%_]/g, "");
-      const { data, error } = await supabase
+      const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+        p_term: safe,
+        p_limit: 100,
+      });
+      let q = supabase
         .from("products")
         .select("id, name, sku")
-        .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
         .eq("is_active", true)
         .limit(20);
+      if (idsErr) {
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+      } else {
+        const ids = (idsData ?? []).map((r: { id: string }) => r.id);
+        if (ids.length === 0) return [];
+        q = q.in("id", ids);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },

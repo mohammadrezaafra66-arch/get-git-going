@@ -152,7 +152,19 @@ function LivePriceListPage() {
         .range(from, to);
       if (effectiveSearch) {
         const safe = effectiveSearch.replace(/[%_]/g, "");
-        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+        const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+          p_term: safe,
+          p_limit: 500,
+        });
+        if (idsErr) {
+          q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+        } else {
+          const ids = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (ids.length === 0) {
+            return { rows: [] as ProductRow[], total: 0 };
+          }
+          q = q.in("id", ids);
+        }
       }
       if (brandId !== "__all") q = q.eq("brand_id", brandId);
       if (categoryId !== "__all") q = q.eq("category_id", categoryId);
