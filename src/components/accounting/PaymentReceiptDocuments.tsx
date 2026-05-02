@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
@@ -584,7 +584,78 @@ export function ReceiptDocumentsList({
           },
         } as never);
 
-        return { status, confidence, hasText: Boolean(text.trim()), method: ocr.method };
+        // ---------------------------------------------------------------
+        // Auto-apply: silently push extracted amount + tracking_number to
+        // the receipt itself when available and the receipt is editable.
+        // Mismatches with manually-entered values are reported back so the
+        // UI can warn the accountant.
+        // ---------------------------------------------------------------
+        const autoMismatches: Array<{ field: "amount" | "tracking_number"; before: string | number | null; after: string | number }> = [];
+        const autoApplied: Array<"amount" | "tracking_number"> = [];
+        try {
+          const { data: rcpt } = await supabase
+            .from("payment_receipts")
+            .select("id, posting_status, amount, tracking_number")
+            .eq("id", doc.receipt_id)
+            .maybeSingle();
+          const row = rcpt as { posting_status?: string | null; amount?: number | null; tracking_number?: string | null } | null;
+          if (row && (row.posting_status ?? "unposted") !== "posted") {
+            const update: Record<string, unknown> = {};
+            const exAmount = effectiveExtractedValue("amount", parsed);
+            const exTracking = effectiveExtractedValue("tracking_number", parsed);
+            if (exAmount !== undefined && typeof exAmount === "number") {
+              const cur = row.amount ?? null;
+              if (cur != null && Number(cur) > 0 && Number(cur) !== exAmount) {
+                autoMismatches.push({ field: "amount", before: cur, after: exAmount });
+              }
+              if (cur == null || Number(cur) !== exAmount) {
+                update["amount"] = exAmount;
+                autoApplied.push("amount");
+              }
+            }
+            if (exTracking !== undefined && typeof exTracking === "string") {
+              const cur = (row.tracking_number ?? "").trim();
+              if (cur && cur !== exTracking) {
+                autoMismatches.push({ field: "tracking_number", before: cur, after: exTracking });
+              }
+              if (!cur || cur !== exTracking) {
+                update["tracking_number"] = exTracking;
+                autoApplied.push("tracking_number");
+              }
+            }
+            if (Object.keys(update).length > 0) {
+              const { error: rUpdErr } = await supabase
+                .from("payment_receipts")
+                .update(update as never)
+                .eq("id", doc.receipt_id);
+              if (!rUpdErr) {
+                await supabase.from("audit_logs").insert({
+                  actor_id: user.id,
+                  entity_type: "payment_receipt",
+                  entity_id: doc.receipt_id,
+                  action: "receipt_extracted_data_auto_applied",
+                  diff: {
+                    document_id: doc.id,
+                    applied_fields: autoApplied,
+                    mismatches: autoMismatches,
+                    extraction_confidence: confidence,
+                  },
+                } as never);
+              }
+            }
+          }
+        } catch {
+          // Silent: auto-apply is best-effort; manual apply remains available.
+        }
+
+        return {
+          status,
+          confidence,
+          hasText: Boolean(text.trim()),
+          method: ocr.method,
+          autoApplied,
+          autoMismatches,
+        };
       } catch (err) {
         await supabase
           .from("payment_receipt_documents")
@@ -610,6 +681,23 @@ export function ReceiptDocumentsList({
     },
     onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt-meta", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["payment-receipts"] });
+      // Auto-apply feedback
+      if (r.autoApplied && r.autoApplied.length > 0) {
+        const labels = r.autoApplied.map((k) => APPLY_FIELD_LABELS[k]).join("، ");
+        toast.success(`${labels} از روی فیش به‌صورت خودکار جایگذاری شد.`);
+      }
+      if (r.autoMismatches && r.autoMismatches.length > 0) {
+        for (const m of r.autoMismatches) {
+          const label = APPLY_FIELD_LABELS[m.field];
+          toast.warning(
+            `هشدار مغایرت ${label}: مقدار دستی «${displayValue(m.field, m.before)}» با مقدار استخراج‌شده «${displayValue(m.field, m.after)}» تفاوت دارد.`,
+            { duration: 8000 },
+          );
+        }
+      }
       if (r.method === "unsupported" && !r.hasText) {
         toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
       } else if (r.status === "extracted") {
@@ -632,6 +720,21 @@ export function ReceiptDocumentsList({
       queryClient.invalidateQueries({ queryKey: ["payment-receipt-documents", receiptId] });
     },
   });
+
+  // ---- Auto-extract for newly uploaded (pending) docs ---------------------
+  // Triggers the same server-side OCR pipeline silently right after upload,
+  // for accountants/admins. Each doc id is processed at most once per mount.
+  const autoTriedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!canManage || isPosted) return;
+    for (const d of docs) {
+      if (d.extraction_status !== "pending") continue;
+      if (autoTriedRef.current.has(d.id)) continue;
+      autoTriedRef.current.add(d.id);
+      extractMutation.mutate(d);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docs, canManage, isPosted]);
 
   // ---- Apply extracted data to receipt fields -----------------------------
   const openApplyDialog = (doc: ReceiptDocumentRow) => {
