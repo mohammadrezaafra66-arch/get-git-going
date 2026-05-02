@@ -474,6 +474,7 @@ export function PaymentReceiptForm() {
         payer_name_on_receipt: values.payer_name_on_receipt || null,
         receiver_name_on_receipt: values.receiver_name_on_receipt || null,
         has_perforation: values.has_perforation,
+        receipt_time: values.receipt_time || null,
         document_channel: values.document_channel || null,
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
