@@ -257,7 +257,7 @@ export function ReceiptDocumentsList({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_receipt_documents")
-        .select("id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at")
+        .select("id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at, extraction_status, extracted_data, extraction_confidence, extraction_notes")
         .eq("receipt_id", receiptId)
         .order("created_at", { ascending: true });
       if (error) throw error;
