@@ -7,6 +7,11 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { ProductForm } from "@/components/products/ProductForm";
 import { supabase } from "@/integrations/supabase/client";
 import type { ProductFormValues } from "@/lib/products/schemas";
+import {
+  fetchProductDynamicValues,
+  saveProductDynamicValues,
+  deleteAllDynamicValuesForProduct,
+} from "@/lib/products/category-attrs";
 
 export const Route = createFileRoute("/_app/products_/$id/edit")({
   beforeLoad: async () => { await requirePermission("products", "update"); },
@@ -20,7 +25,12 @@ function EditProductPage() {
 
   const { data: initial, isLoading } = useQuery({
     queryKey: ["product-edit", id],
-    queryFn: async (): Promise<{ values: Partial<ProductFormValues>; sku: string | null } | null> => {
+    queryFn: async (): Promise<{
+      values: Partial<ProductFormValues>;
+      sku: string | null;
+      dynamicValues: Record<string, string>;
+      categoryId: string | null;
+    } | null> => {
       const { data: p, error } = await supabase
         .from("products")
         .select("name, sku, brand_id, category_id, product_type, base_currency, stock_status, status, unit, color, capacity, model, primary_spec, description, technical_notes")
@@ -30,9 +40,12 @@ function EditProductPage() {
       if (!p) return null;
       const { data: links } = await supabase
         .from("product_label_links").select("label_id").eq("product_id", id);
+      const dynamicValues = await fetchProductDynamicValues(id);
       const { sku, ...rest } = p;
       return {
         sku: sku ?? null,
+        dynamicValues,
+        categoryId: p.category_id ?? null,
         values: {
           ...rest,
           unit: p.unit ?? "",
@@ -48,7 +61,10 @@ function EditProductPage() {
     },
   });
 
-  const handleSubmit = async (v: ProductFormValues) => {
+  const handleSubmit = async (
+    v: ProductFormValues,
+    dynamic: Parameters<Parameters<typeof ProductForm>[0]["onSubmit"]>[1],
+  ) => {
     setLoading(true);
     try {
       const { error } = await supabase.from("products").update({
@@ -88,6 +104,18 @@ function EditProductPage() {
         if (rmErr) throw rmErr;
       }
 
+      // Sync category-specific attribute values
+      if (dynamic.categoryChanged) {
+        // Drop everything tied to the previous category before saving new ones.
+        await deleteAllDynamicValuesForProduct(id);
+      }
+      if (v.category_id && dynamic.defs.length > 0) {
+        await saveProductDynamicValues(id, dynamic.defs, dynamic.values);
+      } else if (!v.category_id) {
+        // Category cleared entirely → wipe stale values
+        await deleteAllDynamicValuesForProduct(id);
+      }
+
       toast.success("تغییرات ذخیره شد");
       navigate({ to: "/products/$id", params: { id } });
     } catch (e: any) {
@@ -113,6 +141,8 @@ function EditProductPage() {
         initial={initial.values}
         existingSku={initial.sku}
         isEdit
+        initialDynamicValues={initial.dynamicValues}
+        initialCategoryId={initial.categoryId}
         onSubmit={handleSubmit}
         loading={loading}
         submitLabel="ذخیره تغییرات"
