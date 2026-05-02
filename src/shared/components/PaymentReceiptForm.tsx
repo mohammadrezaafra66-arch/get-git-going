@@ -652,7 +652,18 @@ export function PaymentReceiptForm() {
           },
           status: "pending_review",
           linked_invoices: values.receipt_type === "payment"
-            ? allocs.map((a) => ({ invoice_id: a.invoice_id, amount: Number(a.amount) }))
+            ? allocs.map((a) => ({
+                invoice_id: a.invoice_id,
+                amount: Number(a.amount),
+                ...(a.suggestion
+                  ? {
+                      matched_invoice_id: a.invoice_id,
+                      suggested_confidence: a.suggestion.confidence,
+                      suggested_reason: a.suggestion.reason,
+                      allocated_amount: Number(a.amount),
+                    }
+                  : {}),
+              }))
             : [],
         },
       } as never);
