@@ -163,6 +163,23 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
     return b?.name ?? "";
   }, [brandsQ.data, values.brand_id]);
 
+  // Build dynamic-attribute maps for name generation:
+  // - dynamic_attrs: attribute_key -> current value
+  // - use_in_name_keys: ordered keys flagged use_in_product_name=true
+  const dynamicAttrsForName = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const d of dynDefs) {
+      const v = (dynValues[d.id] ?? "").trim();
+      if (v) out[d.attribute_key] = v;
+    }
+    return out;
+  }, [dynDefs, dynValues]);
+
+  const useInNameKeys = useMemo(
+    () => dynDefs.filter((d) => d.use_in_product_name).map((d) => d.attribute_key),
+    [dynDefs],
+  );
+
   const computeName = (): string =>
     composeProductName({
       template: namingTemplate || null,
@@ -173,6 +190,8 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
       capacity: values.capacity ?? "",
       color: values.color ?? "",
       sku: existingSku ?? "",
+      dynamic_attrs: dynamicAttrsForName,
+      use_in_name_keys: useInNameKeys,
     });
 
   useEffect(() => {
@@ -195,6 +214,8 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
     selectedCategory?.name,
     selectedBrandName,
     existingSku,
+    dynamicAttrsForName,
+    useInNameKeys,
   ]);
 
   const onNameChange = (v: string) => {

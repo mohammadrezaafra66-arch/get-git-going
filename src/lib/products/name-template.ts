@@ -28,6 +28,15 @@ export interface ComposeNameInput {
   capacity?: string | null;
   color?: string | null;
   sku?: string | null;
+  /**
+   * Category-specific dynamic attributes keyed by `attribute_key`.
+   * Used for `{attr:<key>}` tokens. Attributes flagged with
+   * `use_in_product_name` are appended at the end if not already
+   * referenced in the template.
+   */
+  dynamic_attrs?: Record<string, string>;
+  /** Ordered list of attribute_keys flagged use_in_product_name=true. */
+  use_in_name_keys?: string[];
 }
 
 function clean(v: string | null | undefined): string {
@@ -48,12 +57,35 @@ export function composeProductName(input: ComposeNameInput): string {
     sku: clean(input.sku),
   };
 
-  const replaced = tpl.replace(/\{(\w+)\}/g, (_m, key: string) => {
+  const dyn = input.dynamic_attrs ?? {};
+  const referencedAttrKeys = new Set<string>();
+
+  // Replace {attr:key} tokens first so we can track which keys were used.
+  let replaced = tpl.replace(/\{attr:([A-Za-z0-9_]+)\}/g, (_m, key: string) => {
+    referencedAttrKeys.add(key);
+    return clean(dyn[key]);
+  });
+
+  // Replace simple tokens
+  replaced = replaced.replace(/\{(\w+)\}/g, (_m, key: string) => {
     if ((NAMING_TOKENS as readonly string[]).includes(key)) {
       return values[key as NamingToken] ?? "";
     }
     return "";
   });
+
+  // Append values flagged use_in_product_name that were NOT referenced explicitly.
+  const appendKeys = (input.use_in_name_keys ?? []).filter(
+    (k) => !referencedAttrKeys.has(k),
+  );
+  const appended: string[] = [];
+  for (const k of appendKeys) {
+    const v = clean(dyn[k]);
+    if (v) appended.push(v);
+  }
+  if (appended.length > 0) {
+    replaced = `${replaced} ${appended.join(" ")}`;
+  }
 
   // Collapse whitespace and trim
   return replaced.replace(/\s+/g, " ").trim();

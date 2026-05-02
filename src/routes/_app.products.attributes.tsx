@@ -930,6 +930,17 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
           <div>
             مثال: <span className="font-mono">{"{category} {brand} {primary_spec} مدل {model}"}</span>
           </div>
+          <div className="mt-2 border-t pt-2">
+            <div className="font-medium text-foreground">توکن ویژگی اختصاصی دسته:</div>
+            <div className="mt-1">
+              <span className="font-mono">{"{attr:attribute_key}"}</span>
+              <span className="mx-1">—</span>
+              مثال: <span className="font-mono">{"{attr:inverter_type}"}</span>
+            </div>
+            <div className="mt-1">
+              اگر ویژگی‌ای با گزینهٔ «استفاده در نام محصول» فعال باشد ولی در الگو نیامده باشد، مقدارش به‌صورت خودکار به انتهای نام افزوده می‌شود.
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -1099,6 +1110,7 @@ function NamingEditDialog({
               {ALLOWED_TOKENS.map((t) => (
                 <Badge key={t} variant="outline" className="font-mono text-[10px]">{`{${t}}`}</Badge>
               ))}
+              <Badge variant="outline" className="font-mono text-[10px]">{"{attr:attribute_key}"}</Badge>
             </div>
             {tplTooLong && <p className="text-xs text-destructive">حداکثر ۳۰۰ کاراکتر</p>}
             <p className="text-xs text-muted-foreground">
