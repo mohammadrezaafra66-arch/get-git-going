@@ -196,6 +196,12 @@ const schema = z.object({
   payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
   receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
   has_perforation: z.boolean(),
+  receipt_time: z
+    .string()
+    .trim()
+    .regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM")
+    .optional()
+    .or(z.literal("")),
   document_channel: z.union([
     z.enum(["card_to_card","paya","pol","satna","cash","other"]),
     z.literal(""),
@@ -262,6 +268,7 @@ export function PaymentReceiptForm() {
       payer_name_on_receipt: "",
       receiver_name_on_receipt: "",
       has_perforation: false,
+      receipt_time: "",
       document_channel: "",
       is_typed_receipt: false,
       receipt_image_url: "",
@@ -467,6 +474,7 @@ export function PaymentReceiptForm() {
         payer_name_on_receipt: values.payer_name_on_receipt || null,
         receiver_name_on_receipt: values.receiver_name_on_receipt || null,
         has_perforation: values.has_perforation,
+        receipt_time: values.receipt_time || null,
         document_channel: values.document_channel || null,
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
@@ -512,6 +520,12 @@ export function PaymentReceiptForm() {
           amount: values.amount,
           tracking_number: values.tracking_number,
           bank_name: values.bank_name || null,
+          receipt_time: values.receipt_time || null,
+          receiver: {
+            name: values.receiver_name,
+            phone: values.receiver_phone || null,
+            accounting_code: values.receiver_accounting_code || null,
+          },
           status: "pending_review",
           linked_invoices: values.receipt_type === "payment"
             ? allocs.map((a) => ({ invoice_id: a.invoice_id, amount: Number(a.amount) }))
@@ -926,6 +940,14 @@ export function PaymentReceiptForm() {
               <div className="space-y-1">
                 <Label>بانک مقصد (روی فیش)</Label>
                 <Input {...form.register("destination_bank")} placeholder="مثلاً ملی" />
+              </div>
+
+              <div className="space-y-1">
+                <Label>ساعت فیش</Label>
+                <Input type="time" dir="ltr" {...form.register("receipt_time")} />
+                {errors.receipt_time && (
+                  <p className="text-xs text-destructive">{errors.receipt_time.message}</p>
+                )}
               </div>
 
               <div className="space-y-1">

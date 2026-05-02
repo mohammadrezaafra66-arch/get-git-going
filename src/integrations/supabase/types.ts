@@ -3008,6 +3008,7 @@ export type Database = {
           posted_at: string | null
           posting_status: string
           receipt_image_url: string | null
+          receipt_time: string | null
           receipt_type: string
           receiver_accounting_code: string | null
           receiver_name: string
@@ -3041,6 +3042,7 @@ export type Database = {
           posted_at?: string | null
           posting_status?: string
           receipt_image_url?: string | null
+          receipt_time?: string | null
           receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name: string
@@ -3074,6 +3076,7 @@ export type Database = {
           posted_at?: string | null
           posting_status?: string
           receipt_image_url?: string | null
+          receipt_time?: string | null
           receipt_type?: string
           receiver_accounting_code?: string | null
           receiver_name?: string
