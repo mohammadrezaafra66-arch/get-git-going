@@ -2530,6 +2530,86 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          created_at: string
+          description: string | null
+          entry_date: string
+          id: string
+          posted_at: string
+          posted_by: string | null
+          source_id: string
+          source_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entry_date?: string
+          id?: string
+          posted_at?: string
+          posted_by?: string | null
+          source_id: string
+          source_type: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entry_date?: string
+          id?: string
+          posted_at?: string
+          posted_by?: string | null
+          source_id?: string
+          source_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      journal_lines: {
+        Row: {
+          account_kind: string
+          account_ref_id: string | null
+          created_at: string
+          credit: number
+          debit: number
+          description: string | null
+          id: string
+          journal_entry_id: string
+          line_no: number
+        }
+        Insert: {
+          account_kind: string
+          account_ref_id?: string | null
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          id?: string
+          journal_entry_id: string
+          line_no: number
+        }
+        Update: {
+          account_kind?: string
+          account_ref_id?: string | null
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          id?: string
+          journal_entry_id?: string
+          line_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_articles: {
         Row: {
           author_id: string | null
@@ -6754,6 +6834,14 @@ export type Database = {
       update_waybill_status: {
         Args: { p_new_status: string; p_waybill_id: string }
         Returns: undefined
+      }
+      validate_journal_entry_balance: {
+        Args: { p_journal_entry_id: string }
+        Returns: {
+          is_balanced: boolean
+          total_credit: number
+          total_debit: number
+        }[]
       }
     }
     Enums: {
