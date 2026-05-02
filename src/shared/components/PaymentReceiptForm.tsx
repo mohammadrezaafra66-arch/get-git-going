@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ReceiptDocumentPicker,
   uploadReceiptDocuments,
@@ -131,6 +132,15 @@ const BANKS = [
   "کشاورزی", "پاسارگاد", "سامان", "پارسیان", "اقتصاد نوین", "آینده",
 ];
 
+const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
+  { value: "card_to_card", label: "کارت به کارت" },
+  { value: "paya", label: "پایا" },
+  { value: "pol", label: "پل" },
+  { value: "satna", label: "ساتنا" },
+  { value: "cash", label: "نقدی" },
+  { value: "other", label: "سایر" },
+];
+
 const today = new Date().toISOString().slice(0, 10);
 
 const schema = z.object({
@@ -149,6 +159,13 @@ const schema = z.object({
   payment_time: z.string().regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM"),
   tracking_number: z.string().trim().min(1, "شماره پیگیری الزامی است").max(100, "حداکثر ۱۰۰ کاراکتر"),
   bank_name: z.string().trim().max(100).optional().or(z.literal("")),
+  source_bank: z.string().trim().max(100).optional().or(z.literal("")),
+  destination_bank: z.string().trim().max(100).optional().or(z.literal("")),
+  payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+  receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+  has_perforation: z.boolean().default(false),
+  document_channel: z.enum(["card_to_card","paya","pol","satna","cash","other"]).optional().or(z.literal("")),
+  is_typed_receipt: z.boolean().default(false),
   receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
 });
