@@ -257,7 +257,7 @@ function ReceiptsListPage() {
                       <TableCell dir="ltr">{toFaDigits(row.tracking_number)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {row.receipt_type === "prepayment" ? "پیش‌پرداخت" : "پرداخت"}
+                          {row.receipt_type === "prepayment" ? "پیش واریز: اعتبار مثبت" : "پرداخت بدهی"}
                         </Badge>
                       </TableCell>
                       <TableCell>
