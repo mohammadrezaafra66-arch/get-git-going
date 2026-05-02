@@ -222,6 +222,8 @@ type InvoiceOption = {
   total_amount: number;
   paid_so_far: number;
   remaining: number;
+  issue_date: string | null;
+  due_date: string | null;
 };
 
 type InvoiceAllocation = {
@@ -230,6 +232,10 @@ type InvoiceAllocation = {
   total_amount: number;
   remaining: number;
   amount: number;
+  suggestion?: {
+    confidence: "high" | "medium" | "low";
+    reason: string;
+  };
 };
 
 export function PaymentReceiptForm() {
