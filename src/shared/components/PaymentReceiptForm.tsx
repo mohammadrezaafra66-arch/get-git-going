@@ -232,6 +232,11 @@ export function PaymentReceiptForm() {
     { values: FormValues; allocations: InvoiceAllocation[] } | null
   >(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
+  const [pendingWarningContext, setPendingWarningContext] = useState<
+    { values: FormValues; allocations: InvoiceAllocation[] } | null
+  >(null);
   const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
