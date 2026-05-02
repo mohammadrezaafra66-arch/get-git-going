@@ -67,7 +67,7 @@ function ProductAttributesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<UnifiedRow | null>(null);
   const [createType, setCreateType] = useState<AttrType | null>(null);
-  const [tab, setTab] = useState<"attrs" | "naming">("attrs");
+  const [tab, setTab] = useState<"attrs" | "naming" | "category-attrs">("attrs");
 
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
@@ -176,10 +176,11 @@ function ProductAttributesPage() {
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "attrs" | "naming" | "category-attrs")}>
         <TabsList>
-          <TabsTrigger value="attrs">ویژگی‌ها</TabsTrigger>
+          <TabsTrigger value="attrs">ویژگی‌های عمومی</TabsTrigger>
           <TabsTrigger value="naming">استاندارد نام‌گذاری</TabsTrigger>
+          <TabsTrigger value="category-attrs">ویژگی‌های اختصاصی دسته‌بندی</TabsTrigger>
         </TabsList>
         <TabsContent value="attrs" className="space-y-5">
       <Card>
@@ -283,6 +284,9 @@ function ProductAttributesPage() {
         </TabsContent>
         <TabsContent value="naming" className="space-y-4">
           <CategoryNamingSection canWrite={canWrite} />
+        </TabsContent>
+        <TabsContent value="category-attrs" className="space-y-4">
+          <CategoryAttributesSection canWrite={canWrite} />
         </TabsContent>
       </Tabs>
     </div>
