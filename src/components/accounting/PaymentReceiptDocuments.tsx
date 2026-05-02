@@ -479,13 +479,16 @@ export function ReceiptDocumentsList({
         <ul className="space-y-2">
           {docs.map((doc) => {
             const isImage = doc.file_type.startsWith("image/");
+            const extracting = extractMutation.isPending && extractMutation.variables?.id === doc.id;
+            const extracted = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
             return (
               <li
                 key={doc.id}
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background p-2 text-sm",
+                  "rounded-md border bg-background p-2 text-sm",
                 )}
               >
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   {isImage ? (
                     <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -498,9 +501,14 @@ export function ReceiptDocumentsList({
                       {formatBytes(doc.file_size)} • {doc.file_type}
                     </div>
                     <div className="mt-1 text-xs">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                        وضعیت استخراج: {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
+                      <span className={cn("rounded px-1.5 py-0.5", EXTRACTION_STATUS_CLASSES[doc.extraction_status])}>
+                        {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
                       </span>
+                      {doc.extraction_confidence != null && doc.extraction_status === "extracted" && (
+                        <span className="ms-2 text-muted-foreground">
+                          اطمینان: {toFaDigits(String(Math.round((doc.extraction_confidence ?? 0) * 100)))}٪
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -510,11 +518,14 @@ export function ReceiptDocumentsList({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        toast.info("موتور استخراج خودکار در فاز بعدی فعال می‌شود.")
-                      }
+                      onClick={() => extractMutation.mutate(doc)}
+                      disabled={extracting}
                     >
-                      <Sparkles className="ml-1 h-4 w-4" />
+                      {extracting ? (
+                        <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="ml-1 h-4 w-4" />
+                      )}
                       استخراج اطلاعات از فیش
                     </Button>
                   )}
@@ -545,6 +556,27 @@ export function ReceiptDocumentsList({
                     </Button>
                   )}
                 </div>
+              </div>
+              {extracted && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review") && (
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-muted/40 p-2 text-xs sm:grid-cols-3">
+                  <ExtractionField label="شماره پیگیری" value={extracted.tracking_number} />
+                  <ExtractionField label="مبلغ" value={extracted.amount != null ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال` : null} />
+                  <ExtractionField label="تاریخ" value={extracted.receipt_date ? toFaDigits(extracted.receipt_date) : null} />
+                  <ExtractionField label="ساعت" value={extracted.receipt_time ? toFaDigits(extracted.receipt_time) : null} />
+                  <ExtractionField label="بانک مبدا" value={extracted.source_bank} />
+                  <ExtractionField label="بانک مقصد" value={extracted.destination_bank} />
+                  <ExtractionField label="کانال انتقال" value={CHANNEL_LABELS[extracted.document_channel]} />
+                  <ExtractionField
+                    label="درصد اطمینان"
+                    value={doc.extraction_confidence != null ? `${toFaDigits(String(Math.round(doc.extraction_confidence * 100)))}٪` : null}
+                  />
+                  {doc.extraction_notes && (
+                    <div className="col-span-2 sm:col-span-3 mt-1 text-[11px] text-muted-foreground">
+                      یادداشت: {doc.extraction_notes}
+                    </div>
+                  )}
+                </div>
+              )}
               </li>
             );
           })}
