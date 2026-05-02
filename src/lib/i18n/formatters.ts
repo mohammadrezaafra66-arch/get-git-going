@@ -18,7 +18,7 @@ export function formatDateFa(input: string | Date | null | undefined): string {
   if (!input) return "—";
   const d = typeof input === "string" ? new Date(input) : input;
   try {
-    return new Intl.DateTimeFormat("fa-IR", {
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -32,7 +32,7 @@ export function formatDateTimeFa(input: string | Date | null | undefined): strin
   if (!input) return "—";
   const d = typeof input === "string" ? new Date(input) : input;
   try {
-    return new Intl.DateTimeFormat("fa-IR", {
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(d);
