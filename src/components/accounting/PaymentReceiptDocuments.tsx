@@ -721,6 +721,21 @@ export function ReceiptDocumentsList({
     },
   });
 
+  // ---- Auto-extract for newly uploaded (pending) docs ---------------------
+  // Triggers the same server-side OCR pipeline silently right after upload,
+  // for accountants/admins. Each doc id is processed at most once per mount.
+  const autoTriedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!canManage || isPosted) return;
+    for (const d of docs) {
+      if (d.extraction_status !== "pending") continue;
+      if (autoTriedRef.current.has(d.id)) continue;
+      autoTriedRef.current.add(d.id);
+      extractMutation.mutate(d);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docs, canManage, isPosted]);
+
   // ---- Apply extracted data to receipt fields -----------------------------
   const openApplyDialog = (doc: ReceiptDocumentRow) => {
     const ex = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
