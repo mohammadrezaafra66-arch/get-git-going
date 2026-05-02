@@ -335,14 +335,17 @@ export function PaymentReceiptForm() {
     queryFn: async () => {
       const { data: invs, error } = await supabase
         .from("invoices")
-        .select("id, number, total_amount, status")
+        .select("id, number, total_amount, status, issue_date, due_date")
         .eq("customer_id", watchedCustomerId)
         .eq("type", "pre_invoice")
         .in("status", ["draft", "final", "partially_paid"])
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      const list = (invs ?? []) as Array<{ id: string; number: string | null; total_amount: number; status: string }>;
+      const list = (invs ?? []) as Array<{
+        id: string; number: string | null; total_amount: number; status: string;
+        issue_date: string | null; due_date: string | null;
+      }>;
       if (list.length === 0) return [];
 
       const ids = list.map((i) => i.id);
@@ -365,6 +368,8 @@ export function PaymentReceiptForm() {
           total_amount: Number(i.total_amount),
           paid_so_far: paid,
           remaining: Math.max(0, Number(i.total_amount) - paid),
+          issue_date: i.issue_date ?? null,
+          due_date: i.due_date ?? null,
         };
       });
     },
