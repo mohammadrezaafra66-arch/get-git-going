@@ -331,7 +331,7 @@ function ReceiptDetailPage() {
                     {STATUS_LABEL[receipt.status] ?? receipt.status}
                   </Badge>
                   <Badge variant="outline">
-                    {receipt.receipt_type === "prepayment" ? "پیش‌پرداخت" : "پرداخت بدهی"}
+                    {receipt.receipt_type === "prepayment" ? "پیش واریز: اعتبار مثبت" : "پرداخت بدهی"}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
                     شماره پیگیری: <span dir="ltr">{toFaDigits(receipt.tracking_number)}</span>
