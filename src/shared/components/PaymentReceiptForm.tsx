@@ -242,7 +242,7 @@ export function PaymentReceiptForm() {
   >(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [warningsOpen, setWarningsOpen] = useState(false);
-  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
+  const [pendingWarnings, setPendingWarnings] = useState<ReceiptSecurityWarning[]>([]);
   const [pendingWarningContext, setPendingWarningContext] = useState<
     { values: FormValues; allocations: InvoiceAllocation[] } | null
   >(null);
@@ -511,7 +511,7 @@ export function PaymentReceiptForm() {
         values: FormValues;
         allocations: InvoiceAllocation[];
         bypassDuplicate?: boolean;
-        securityWarnings?: string[];
+        securityWarnings?: ReceiptSecurityWarning[];
       },
     ) => {
       const { values, allocations: allocs, bypassDuplicate, securityWarnings = [] } = args;
@@ -704,9 +704,10 @@ export function PaymentReceiptForm() {
     <>
     <form
       onSubmit={form.handleSubmit((v) => {
-        const warnings = evaluateSecurityWarnings({
+        const warnings = evaluateFormWarnings({
           payment_date: v.payment_date,
           tracking_number: v.tracking_number,
+          amount: v.amount,
           document_channel: v.document_channel,
           payer_name_on_receipt: v.payer_name_on_receipt,
           has_perforation: v.has_perforation,
@@ -1359,7 +1360,10 @@ export function PaymentReceiptForm() {
         </AlertDialogHeader>
         <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
           {pendingWarnings.map((w, i) => (
-            <li key={i}>{w}</li>
+            <li key={i}>
+              <span className="font-medium">[{w.severity === "high" ? "مهم" : w.severity === "medium" ? "متوسط" : "کم"}] </span>
+              {w.message}
+            </li>
           ))}
         </ul>
         <AlertDialogFooter>
