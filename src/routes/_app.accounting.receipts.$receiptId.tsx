@@ -18,6 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { ReceiptDocumentsList } from "@/components/accounting/PaymentReceiptDocuments";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
