@@ -196,6 +196,12 @@ const schema = z.object({
   payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
   receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
   has_perforation: z.boolean(),
+  receipt_time: z
+    .string()
+    .trim()
+    .regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM")
+    .optional()
+    .or(z.literal("")),
   document_channel: z.union([
     z.enum(["card_to_card","paya","pol","satna","cash","other"]),
     z.literal(""),
