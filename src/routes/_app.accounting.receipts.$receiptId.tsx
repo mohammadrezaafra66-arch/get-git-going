@@ -161,73 +161,29 @@ function ReceiptDetailPage() {
         .eq("status", "pending_review");
       if (updErr) throw updErr;
 
-      // 2) Increase credit (always — both prepayment and payment add credit; payment then settles invoices)
-      const { error: rpcErr } = await supabase.rpc("increase_credit", {
-        p_customer_id: receipt.customer_id,
-        p_amount: Number(receipt.amount),
-        p_receipt_id: receipt.id,
-        p_user_id: user.id,
-      });
+      // 2) Atomic accounting posting via RPC (idempotent, prevents duplicate posting)
+      const { data: postResult, error: rpcErr } = await supabase.rpc(
+        "post_receipt_accounting",
+        { p_receipt_id: receipt.id, p_user_id: user.id },
+      );
       if (rpcErr) {
+        // Roll back the approval if posting failed
         await supabase
           .from("payment_receipts")
           .update({ status: "pending_review" } as never)
           .eq("id", receipt.id);
-        throw new Error(rpcErr.message || "خطا در افزایش اعتبار");
+        throw new Error(rpcErr.message || "خطا در ثبت سند حسابداری فیش");
       }
+      const linkedInvoiceUpdates =
+        ((postResult as { invoice_updates?: unknown })?.invoice_updates as Array<{
+          invoice_id: string;
+          from: string;
+          to: string;
+          paid_total: number;
+          invoice_total: number;
+        }>) ?? [];
 
-      // 3) Update linked invoice statuses if payment-type
-      const linkedInvoiceUpdates: Array<{ invoice_id: string; new_status: string; total: number; paid: number }> = [];
-      if (receipt.receipt_type === "payment" && linkedInvoices.length > 0) {
-        for (const link of linkedInvoices) {
-          if (!link.invoice) continue;
-          const invoiceId = link.invoice.id;
-          const total = Number(link.invoice.total_amount);
-
-          // Sum approved-receipt allocations for this invoice (now includes current one)
-          const { data: allLinks, error: allErr } = await supabase
-            .from("payment_receipt_links")
-            .select("amount, receipt:payment_receipts!inner(status)")
-            .eq("invoice_id", invoiceId);
-          if (allErr) continue;
-          const paid = ((allLinks ?? []) as Array<{ amount: number; receipt: { status: string } | null }>)
-            .filter((l) => l.receipt?.status === "approved")
-            .reduce((s, l) => s + Number(l.amount), 0);
-
-          let newStatus: string | null = null;
-          if (paid >= total - 0.001) newStatus = "paid";
-          else if (paid > 0) newStatus = "partially_paid";
-
-          if (newStatus && newStatus !== link.invoice.status) {
-            const { error: upErr } = await supabase
-              .from("invoices")
-              .update({ status: newStatus } as never)
-              .eq("id", invoiceId);
-            if (!upErr) {
-              linkedInvoiceUpdates.push({ invoice_id: invoiceId, new_status: newStatus, total, paid });
-              // Audit per invoice
-              await supabase.from("audit_logs").insert({
-                actor_id: user.id,
-                entity_type: "invoice",
-                entity_id: invoiceId,
-                action: "invoice_status_updated",
-                diff: { from: link.invoice.status, to: newStatus, paid_total: paid, invoice_total: total, by_receipt: receipt.id },
-              } as never);
-            }
-          }
-
-          // Always log the linkage event
-          await supabase.from("audit_logs").insert({
-            actor_id: user.id,
-            entity_type: "invoice",
-            entity_id: invoiceId,
-            action: "invoice_payment_linked",
-            diff: { invoice_id: invoiceId, receipt_id: receipt.id, amount: Number(link.amount) },
-          } as never);
-        }
-      }
-
-      // 4) Top-level audit
+      // 3) Top-level audit (in addition to the receipt_accounting_posted entry written by the RPC)
       await supabase.from("audit_logs").insert({
         actor_id: user.id,
         entity_type: "payment_receipt",
