@@ -79,6 +79,115 @@ const CHANNEL_LABELS: Record<DocumentChannel, string> = {
   unknown: "نامشخص",
 };
 
+// ---------------------------------------------------------------------------
+// Apply-extracted-data: field map + value normalizers
+// ---------------------------------------------------------------------------
+
+type ApplyFieldKey =
+  | "tracking_number"
+  | "amount"
+  | "receipt_date"
+  | "receipt_time"
+  | "source_bank"
+  | "destination_bank"
+  | "payer_name_on_receipt"
+  | "receiver_name_on_receipt"
+  | "document_channel";
+
+const APPLY_FIELD_LABELS: Record<ApplyFieldKey, string> = {
+  tracking_number: "شماره پیگیری",
+  amount: "مبلغ",
+  receipt_date: "تاریخ فیش",
+  receipt_time: "ساعت فیش",
+  source_bank: "بانک مبدا",
+  destination_bank: "بانک مقصد",
+  payer_name_on_receipt: "نام واریزکننده روی فیش",
+  receiver_name_on_receipt: "نام گیرنده روی فیش",
+  document_channel: "کانال انتقال",
+};
+
+/** Maps the apply-field key (extraction side) to the receipts column name. */
+const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
+  tracking_number: "tracking_number",
+  amount: "amount",
+  receipt_date: "payment_date",
+  receipt_time: "receipt_time",
+  source_bank: "source_bank",
+  destination_bank: "destination_bank",
+  payer_name_on_receipt: "payer_name_on_receipt",
+  receiver_name_on_receipt: "receiver_name_on_receipt",
+  document_channel: "document_channel",
+};
+
+function normalizeGregorianDate(s: string): string | null {
+  // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
+  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
+  if (!m) return null;
+  const yyyy = m[1];
+  const mm = m[2].padStart(2, "0");
+  const dd = m[3].padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function normalizeReceiptTime(s: string): string | null {
+  // DB constraint requires exactly HH:MM.
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(s.trim());
+  if (!m) return null;
+  const hh = m[1].padStart(2, "0");
+  if (Number(hh) > 23 || Number(m[2]) > 59) return null;
+  return `${hh}:${m[2]}`;
+}
+
+/**
+ * Build an effective value for a given field from extraction. Returns
+ * `undefined` when the field cannot be safely applied (empty, or fails
+ * server-side constraint).
+ */
+function effectiveExtractedValue(
+  key: ApplyFieldKey,
+  extracted: ReceiptExtractionResult,
+): string | number | undefined {
+  switch (key) {
+    case "tracking_number":
+      return extracted.tracking_number?.trim() || undefined;
+    case "amount":
+      return extracted.amount != null && extracted.amount > 0 ? extracted.amount : undefined;
+    case "receipt_date": {
+      if (!extracted.receipt_date) return undefined;
+      const norm = normalizeGregorianDate(extracted.receipt_date);
+      return norm ?? undefined;
+    }
+    case "receipt_time": {
+      if (!extracted.receipt_time) return undefined;
+      return normalizeReceiptTime(extracted.receipt_time) ?? undefined;
+    }
+    case "source_bank":
+      return extracted.source_bank?.trim() || undefined;
+    case "destination_bank":
+      return extracted.destination_bank?.trim() || undefined;
+    case "payer_name_on_receipt":
+      return extracted.payer_name_on_receipt?.trim() || undefined;
+    case "receiver_name_on_receipt":
+      return extracted.receiver_name_on_receipt?.trim() || undefined;
+    case "document_channel": {
+      const c = extracted.document_channel;
+      if (!c || c === "unknown") return undefined;
+      return c;
+    }
+  }
+}
+
+function displayValue(key: ApplyFieldKey, v: string | number | undefined | null): string {
+  if (v == null || v === "") return "—";
+  if (key === "amount" && typeof v === "number") {
+    return `${toFaDigits(v.toLocaleString("en-US"))} ریال`;
+  }
+  if (key === "document_channel") {
+    return CHANNEL_LABELS[v as DocumentChannel] ?? String(v);
+  }
+  return toFaDigits(String(v));
+}
+
 function ExtractionField({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex flex-col">
