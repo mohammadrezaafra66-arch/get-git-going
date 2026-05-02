@@ -885,6 +885,85 @@ export function ReceiptDocumentsList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={applyDoc !== null} onOpenChange={(open) => { if (!open) setApplyDoc(null); }}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>اعمال اطلاعات استخراج‌شده</DialogTitle>
+            <DialogDescription>
+              این اطلاعات از روی مستندات استخراج شده و باید توسط حسابدار بررسی شود.
+            </DialogDescription>
+          </DialogHeader>
+          {applyDoc && (() => {
+            const ex = (applyDoc.extracted_data ?? null) as ReceiptExtractionResult | null;
+            if (!ex) return <p className="text-sm text-muted-foreground">داده‌ای برای اعمال وجود ندارد.</p>;
+            const keys = Object.keys(APPLY_FIELD_LABELS) as ApplyFieldKey[];
+            return (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                {keys.map((key) => {
+                  const v = effectiveExtractedValue(key, ex);
+                  const disabled = v === undefined;
+                  const checked = applySelections[key];
+                  return (
+                    <label
+                      key={key}
+                      className={cn(
+                        "flex items-start gap-2 rounded-md border p-2 text-sm",
+                        disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
+                      )}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        disabled={disabled}
+                        onCheckedChange={(c) =>
+                          setApplySelections((prev) => ({ ...prev, [key]: c === true }))
+                        }
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{APPLY_FIELD_LABELS[key]}</div>
+                        <div className="text-xs text-muted-foreground" dir="auto">
+                          {disabled
+                            ? "مقداری استخراج نشده یا قابل اعمال نیست"
+                            : displayValue(key, v)}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setApplyDoc(null)}
+              disabled={applyMutation.isPending}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!applyDoc) return;
+                const selected = (Object.keys(applySelections) as ApplyFieldKey[]).filter(
+                  (k) => applySelections[k],
+                );
+                if (selected.length === 0) {
+                  toast.error("حداقل یک فیلد را برای اعمال انتخاب کنید.");
+                  return;
+                }
+                applyMutation.mutate({ doc: applyDoc, selected });
+              }}
+              disabled={applyMutation.isPending}
+            >
+              {applyMutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              اعمال
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
