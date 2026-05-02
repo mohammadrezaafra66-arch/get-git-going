@@ -789,6 +789,20 @@ export function ReceiptDocumentsList({
                       استخراج اطلاعات از فیش
                     </Button>
                   )}
+                  {canManage
+                    && !isPosted
+                    && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review")
+                    && doc.extracted_data != null && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openApplyDialog(doc)}
+                    >
+                      <Wand2 className="ml-1 h-4 w-4" />
+                      اعمال اطلاعات استخراج‌شده روی فیش
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
