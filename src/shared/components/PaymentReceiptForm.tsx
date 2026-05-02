@@ -520,6 +520,12 @@ export function PaymentReceiptForm() {
           amount: values.amount,
           tracking_number: values.tracking_number,
           bank_name: values.bank_name || null,
+          receipt_time: values.receipt_time || null,
+          receiver: {
+            name: values.receiver_name,
+            phone: values.receiver_phone || null,
+            accounting_code: values.receiver_accounting_code || null,
+          },
           status: "pending_review",
           linked_invoices: values.receipt_type === "payment"
             ? allocs.map((a) => ({ invoice_id: a.invoice_id, amount: Number(a.amount) }))
