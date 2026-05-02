@@ -143,6 +143,38 @@ const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
 
 const today = new Date().toISOString().slice(0, 10);
 
+/* ------------- Security warnings evaluator ------------- */
+
+function evaluateSecurityWarnings(values: {
+  payment_date: string;
+  tracking_number: string;
+  document_channel: string;
+  payer_name_on_receipt?: string;
+  has_perforation: boolean;
+  is_typed_receipt: boolean;
+}): string[] {
+  const warnings: string[] = [];
+  if (values.payment_date && values.payment_date !== today) {
+    warnings.push("تاریخ فیش مربوط به امروز نیست.");
+  }
+  if (!values.tracking_number || values.tracking_number.trim().length === 0) {
+    warnings.push("شماره پیگیری ثبت نشده است.");
+  }
+  if (values.document_channel === "pol") {
+    warnings.push("انتقال از طریق پل انجام شده است؛ نیازمند بررسی بیشتر.");
+  }
+  if (!values.payer_name_on_receipt || values.payer_name_on_receipt.trim().length === 0) {
+    warnings.push("نام واریزکننده روی فیش مشخص نیست.");
+  }
+  if (!values.has_perforation) {
+    warnings.push("فیش پرفراژ ندارد.");
+  }
+  if (values.is_typed_receipt) {
+    warnings.push("فیش تایپی است؛ نیازمند بررسی بیشتر.");
+  }
+  return warnings;
+}
+
 const schema = z.object({
   customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
   receipt_type: z.enum(["payment", "prepayment"]),
@@ -200,6 +232,11 @@ export function PaymentReceiptForm() {
     { values: FormValues; allocations: InvoiceAllocation[] } | null
   >(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
+  const [pendingWarningContext, setPendingWarningContext] = useState<
+    { values: FormValues; allocations: InvoiceAllocation[] } | null
+  >(null);
   const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
@@ -348,9 +385,14 @@ export function PaymentReceiptForm() {
 
   const mutation = useMutation({
     mutationFn: async (
-      args: { values: FormValues; allocations: InvoiceAllocation[]; bypassDuplicate?: boolean },
+      args: {
+        values: FormValues;
+        allocations: InvoiceAllocation[];
+        bypassDuplicate?: boolean;
+        securityWarnings?: string[];
+      },
     ) => {
-      const { values, allocations: allocs, bypassDuplicate } = args;
+      const { values, allocations: allocs, bypassDuplicate, securityWarnings = [] } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
       // Front-end allocation validation (server has no constraint)
@@ -429,6 +471,7 @@ export function PaymentReceiptForm() {
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
+        security_warnings: securityWarnings,
         status: "pending_review" as const,
         created_by: user.id,
       };
@@ -476,6 +519,17 @@ export function PaymentReceiptForm() {
         },
       } as never);
 
+      // Audit: security warnings confirmed
+      if (securityWarnings.length > 0) {
+        await supabase.from("audit_logs").insert({
+          actor_id: user.id,
+          entity_type: "payment_receipt",
+          entity_id: receiptId,
+          action: "receipt_security_warning_confirmed",
+          diff: { warnings: securityWarnings },
+        } as never);
+      }
+
       // Upload attached documents (best-effort; per-file errors are toasted)
       if (stagedFiles.length > 0) {
         const result = await uploadReceiptDocuments(receiptId, user.id, stagedFiles);
@@ -506,7 +560,23 @@ export function PaymentReceiptForm() {
   return (
     <>
     <form
-      onSubmit={form.handleSubmit((v) => mutation.mutate({ values: v, allocations }))}
+      onSubmit={form.handleSubmit((v) => {
+        const warnings = evaluateSecurityWarnings({
+          payment_date: v.payment_date,
+          tracking_number: v.tracking_number,
+          document_channel: v.document_channel,
+          payer_name_on_receipt: v.payer_name_on_receipt,
+          has_perforation: v.has_perforation,
+          is_typed_receipt: v.is_typed_receipt,
+        });
+        if (warnings.length > 0) {
+          setPendingWarnings(warnings);
+          setPendingWarningContext({ values: v, allocations });
+          setWarningsOpen(true);
+          return;
+        }
+        mutation.mutate({ values: v, allocations, securityWarnings: [] });
+      })}
       className="space-y-6"
       dir="rtl"
     >
@@ -976,6 +1046,46 @@ export function PaymentReceiptForm() {
             }}
           >
             ادامه و ثبت
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={warningsOpen} onOpenChange={setWarningsOpen}>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>هشدارهای امنیتی فیش</AlertDialogTitle>
+          <AlertDialogDescription>
+            موارد زیر پیش از ثبت فیش نیاز به بررسی دارند:
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
+          {pendingWarnings.map((w, i) => (
+            <li key={i}>{w}</li>
+          ))}
+        </ul>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setPendingWarnings([]);
+              setPendingWarningContext(null);
+            }}
+          >
+            بازگشت و اصلاح
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              if (pendingWarningContext) {
+                mutation.mutate({
+                  values: pendingWarningContext.values,
+                  allocations: pendingWarningContext.allocations,
+                  securityWarnings: pendingWarnings,
+                });
+              }
+              setWarningsOpen(false);
+            }}
+          >
+            ثبت با تأیید حسابدار
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

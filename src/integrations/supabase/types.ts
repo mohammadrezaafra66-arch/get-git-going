@@ -3000,6 +3000,7 @@ export type Database = {
           receiver_name_on_receipt: string | null
           receiver_phone: string | null
           rejection_reason: string | null
+          security_warnings: Json
           source_bank: string | null
           status: string
           tracking_number: string
@@ -3030,6 +3031,7 @@ export type Database = {
           receiver_name_on_receipt?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
+          security_warnings?: Json
           source_bank?: string | null
           status?: string
           tracking_number: string
@@ -3060,6 +3062,7 @@ export type Database = {
           receiver_name_on_receipt?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
+          security_warnings?: Json
           source_bank?: string | null
           status?: string
           tracking_number?: string
