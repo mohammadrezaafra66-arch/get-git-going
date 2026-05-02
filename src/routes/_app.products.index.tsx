@@ -76,7 +76,22 @@ function ProductsPage() {
 
       if (stableFilters.q.trim()) {
         const term = stableFilters.q.trim().replace(/[%_]/g, "");
-        query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+        // Use server-side multi-field search RPC to also match brand, category,
+        // model, color, capacity, primary_spec, and dynamic attribute values.
+        const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+          p_term: term,
+          p_limit: 500,
+        });
+        if (idsErr) {
+          // Fallback to legacy name/sku search if RPC is unavailable
+          query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+        } else {
+          const ids = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (ids.length === 0) {
+            return { rows: [] as ProductRow[], total: 0 };
+          }
+          query = query.in("id", ids);
+        }
       }
       if (stableFilters.brand_id) query = query.eq("brand_id", stableFilters.brand_id);
       if (stableFilters.category_id) query = query.eq("category_id", stableFilters.category_id);
