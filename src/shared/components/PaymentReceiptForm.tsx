@@ -838,6 +838,84 @@ export function PaymentReceiptForm() {
             <Textarea rows={3} {...form.register("description")} />
           </div>
 
+          {/* اطلاعات استخراج‌شده از فیش (قابل ویرایش دستی) */}
+          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold">اطلاعات استخراج‌شده از فیش</h3>
+              <p className="text-xs text-muted-foreground">
+                این فیلدها در آینده می‌توانند به‌صورت خودکار از تصویر فیش استخراج شوند. در حال حاضر به‌صورت دستی توسط حسابدار قابل ویرایش هستند.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>بانک مبدا</Label>
+                <Input {...form.register("source_bank")} placeholder="مثلاً ملت" />
+              </div>
+
+              <div className="space-y-1">
+                <Label>بانک مقصد (روی فیش)</Label>
+                <Input {...form.register("destination_bank")} placeholder="مثلاً ملی" />
+              </div>
+
+              <div className="space-y-1">
+                <Label>نام واریزکننده روی فیش</Label>
+                <Input {...form.register("payer_name_on_receipt")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>نام گیرنده روی فیش</Label>
+                <Input {...form.register("receiver_name_on_receipt")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>روش انتقال</Label>
+                <Select
+                  value={form.watch("document_channel") || undefined}
+                  onValueChange={(v) =>
+                    form.setValue(
+                      "document_channel",
+                      v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
+                      { shouldDirty: true },
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_CHANNELS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.watch("has_perforation")}
+                    onCheckedChange={(c) =>
+                      form.setValue("has_perforation", c === true, { shouldDirty: true })
+                    }
+                  />
+                  پرفراژ دارد؟
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={form.watch("is_typed_receipt")}
+                    onCheckedChange={(c) =>
+                      form.setValue("is_typed_receipt", c === true, { shouldDirty: true })
+                    }
+                  />
+                  فیش تایپی است؟
+                </label>
+              </div>
+            </div>
+          </div>
+
           <ReceiptDocumentPicker
             files={stagedFiles}
             onChange={setStagedFiles}
