@@ -13,6 +13,7 @@ export const productSchema = z.object({
   color: z.string().trim().max(120).optional().or(z.literal("")),
   capacity: z.string().trim().max(120).optional().or(z.literal("")),
   model: z.string().trim().max(120).optional().or(z.literal("")),
+  primary_spec: z.string().trim().max(100, "حداکثر ۱۰۰ کاراکتر").optional().or(z.literal("")),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   technical_notes: z.string().trim().max(4000).optional().or(z.literal("")),
   label_ids: z.array(z.string().uuid()).default([]),

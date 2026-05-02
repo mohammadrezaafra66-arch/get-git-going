@@ -4343,6 +4343,7 @@ export type Database = {
           is_active: boolean
           model: string | null
           name: string
+          primary_spec: string | null
           product_type: Database["public"]["Enums"]["product_type"]
           sku: string | null
           status: Database["public"]["Enums"]["product_status"]
@@ -4366,6 +4367,7 @@ export type Database = {
           is_active?: boolean
           model?: string | null
           name: string
+          primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]
@@ -4389,6 +4391,7 @@ export type Database = {
           is_active?: boolean
           model?: string | null
           name?: string
+          primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]

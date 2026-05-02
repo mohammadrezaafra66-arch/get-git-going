@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Save, X } from "lucide-react";
+import { Loader2, Save, X, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,15 @@ import {
   PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
 } from "@/lib/products/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { composeProductName } from "@/lib/products/name-template";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
   existingSku?: string | null;
   submitLabel?: string;
   loading?: boolean;
+  /** When true, behave as edit form: do not auto-overwrite name on field changes. */
+  isEdit?: boolean;
   onSubmit: (values: ProductFormValues) => Promise<void> | void;
   onCancel?: () => void;
 }
@@ -37,16 +40,23 @@ const DEFAULTS: ProductFormValues = {
   color: "",
   capacity: "",
   model: "",
+  primary_spec: "",
   description: "",
   technical_notes: "",
   label_ids: [],
 };
 
-export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, onSubmit, onCancel }: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
+  const lastAutoNameRef = useRef<string>("");
 
-  useEffect(() => { setValues({ ...DEFAULTS, ...initial }); }, [initial]);
+  useEffect(() => {
+    setValues({ ...DEFAULTS, ...initial });
+    setAutoName(!isEdit && !initial?.name);
+    lastAutoNameRef.current = "";
+  }, [initial, isEdit]);
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
@@ -84,6 +94,72 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   const set = <K extends keyof ProductFormValues>(k: K, v: ProductFormValues[K]) =>
     setValues((s) => ({ ...s, [k]: v }));
 
+  const selectedCategory = useMemo(() => {
+    return (catsQ.data ?? []).find((c) => c.id === values.category_id) ?? null;
+  }, [catsQ.data, values.category_id]);
+
+  const primarySpecLabel = ((selectedCategory as any)?.primary_spec_label?.toString().trim() ?? "") as string;
+  const namingTemplate = ((selectedCategory as any)?.naming_template?.toString() ?? "") as string;
+  const primarySpecRequired = primarySpecLabel.length > 0;
+
+  const selectedBrandName = useMemo(() => {
+    const b = (brandsQ.data ?? []).find((x) => x.id === values.brand_id);
+    return b?.name ?? "";
+  }, [brandsQ.data, values.brand_id]);
+
+  const computeName = (): string =>
+    composeProductName({
+      template: namingTemplate || null,
+      category: selectedCategory?.name ?? "",
+      brand: selectedBrandName,
+      primary_spec: values.primary_spec ?? "",
+      model: values.model ?? "",
+      capacity: values.capacity ?? "",
+      color: values.color ?? "",
+      sku: existingSku ?? "",
+    });
+
+  useEffect(() => {
+    if (!autoName) return;
+    const next = computeName();
+    if (!next) return;
+    if (next === values.name) return;
+    lastAutoNameRef.current = next;
+    setValues((s) => ({ ...s, name: next }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    autoName,
+    values.category_id,
+    values.brand_id,
+    values.primary_spec,
+    values.model,
+    values.capacity,
+    values.color,
+    namingTemplate,
+    selectedCategory?.name,
+    selectedBrandName,
+    existingSku,
+  ]);
+
+  const onNameChange = (v: string) => {
+    if (autoName && v !== lastAutoNameRef.current) {
+      setAutoName(false);
+    }
+    set("name", v);
+  };
+
+  const regenerateName = () => {
+    const next = computeName();
+    if (!next) {
+      toast.warning("ابتدا دسته‌بندی و فیلدهای مرتبط را پر کنید");
+      return;
+    }
+    lastAutoNameRef.current = next;
+    setValues((s) => ({ ...s, name: next }));
+    setAutoName(true);
+    toast.success("نام محصول دوباره ساخته شد");
+  };
+
   const toggleLabel = (id: string) => {
     setValues((s) => ({
       ...s,
@@ -93,16 +169,21 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const flat: Record<string, string> = {};
+    if (primarySpecRequired && !(values.primary_spec ?? "").trim()) {
+      flat.primary_spec = `${primarySpecLabel} الزامی است`;
+    }
     const parsed = productSchema.safeParse(values);
     if (!parsed.success) {
-      const flat: Record<string, string> = {};
       for (const issue of parsed.error.issues) flat[issue.path.join(".")] = issue.message;
+    }
+    if (Object.keys(flat).length > 0) {
       setErrors(flat);
       toast.error("لطفاً خطاهای فرم را اصلاح کنید");
       return;
     }
     setErrors({});
-    await onSubmit(parsed.data);
+    await onSubmit(parsed.success ? parsed.data : (values as ProductFormValues));
   };
 
   return (
@@ -110,7 +191,20 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
       <Card>
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <Field label="نام محصول" required error={errors.name}>
-            <Input value={values.name} onChange={(e) => set("name", e.target.value)} placeholder="مثلاً: موتور القایی ۳ کیلووات" />
+            <div className="flex gap-2">
+              <Input
+                value={values.name}
+                onChange={(e) => onNameChange(e.target.value)}
+                placeholder="مثلاً: موتور القایی ۳ کیلووات"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={regenerateName} title="ساخت نام خودکار">
+                <Wand2 className="ms-1 h-4 w-4" />ساخت نام خودکار
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              نام محصول بر اساس الگوی استاندارد دسته‌بندی ساخته می‌شود و برای جستجوی سریع قیمت استفاده خواهد شد.
+            </p>
           </Field>
           <Field label="کد محصول (SKU)">
             <Input
@@ -243,6 +337,22 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+
+          <Field
+            label={primarySpecLabel || "مشخصه اصلی"}
+            required={primarySpecRequired}
+            error={errors.primary_spec}
+          >
+            <Input
+              value={values.primary_spec ?? ""}
+              onChange={(e) => set("primary_spec", e.target.value)}
+              maxLength={100}
+              placeholder={primarySpecLabel ? `مثلاً مقدار ${primarySpecLabel}` : "مشخصه اصلی محصول"}
+            />
+            <p className="text-xs text-muted-foreground">
+              این مقدار در نام استاندارد محصول استفاده می‌شود.
+            </p>
           </Field>
         </CardContent>
       </Card>

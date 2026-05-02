@@ -12,7 +12,7 @@ export async function fetchBrandsLite() {
 export async function fetchCategoriesLite() {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, parent_id, is_active")
+    .select("id, name, parent_id, is_active, naming_template, primary_spec_label")
     .order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
