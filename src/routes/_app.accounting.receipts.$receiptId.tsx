@@ -83,6 +83,43 @@ type LinkedInvoice = {
   } | null;
 };
 
+type JournalEntry = {
+  id: string;
+  source_type: string;
+  source_id: string;
+  entry_date: string;
+  description: string | null;
+  status: string;
+  posted_by: string | null;
+  posted_at: string;
+  created_at: string;
+};
+
+type JournalLine = {
+  id: string;
+  line_no: number;
+  account_kind: string;
+  account_ref_id: string | null;
+  description: string | null;
+  debit: number;
+  credit: number;
+};
+
+const JOURNAL_STATUS_LABEL: Record<string, string> = {
+  draft: "پیش‌نویس",
+  posted: "ثبت‌شده",
+  void: "ابطال‌شده",
+};
+
+const ACCOUNT_KIND_LABEL: Record<string, string> = {
+  customer_credit: "اعتبار مشتری",
+  bank: "حساب بانکی",
+  external_party: "طرف حساب خارجی",
+  invoice_ar: "حساب دریافتنی فاکتور",
+  clearing: "حساب موقت تسویه",
+  other: "سایر",
+};
+
 function Field({ label, children, dir }: { label: string; children: React.ReactNode; dir?: "ltr" | "rtl" }) {
   return (
     <div className="space-y-1">
