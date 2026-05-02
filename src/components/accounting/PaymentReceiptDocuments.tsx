@@ -75,6 +75,17 @@ const CHANNEL_LABELS: Record<DocumentChannel, string> = {
   unknown: "نامشخص",
 };
 
+function ExtractionField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="font-medium" dir="auto">
+        {value && String(value).trim() !== "" ? value : "—"}
+      </span>
+    </div>
+  );
+}
+
 export function validateReceiptFile(file: File): string | null {
   if (file.size > MAX_DOC_SIZE_BYTES) {
     return `«${file.name}» بیش از حد مجاز (۱۰ مگابایت) است`;
