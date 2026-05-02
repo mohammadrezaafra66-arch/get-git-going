@@ -15,6 +15,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  extractRawText,
+  parseReceiptText,
+  scoreExtraction,
+  decideStatus,
+  type ReceiptExtractionResult,
+  type DocumentChannel,
+} from "@/lib/accounting/receipt-extraction";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 export const ALLOWED_DOC_MIMES = [
