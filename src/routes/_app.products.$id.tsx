@@ -22,6 +22,7 @@ import {
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
+import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -234,6 +235,8 @@ function ProductDetailPage() {
       />
 
       <ProductSupplierManager productId={id} />
+
+      <ProductPublishPricesCard productId={id} />
 
       <Card>
         <CardContent className="space-y-2 p-4">
