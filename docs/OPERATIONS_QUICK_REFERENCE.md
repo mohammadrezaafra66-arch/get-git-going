@@ -77,8 +77,9 @@ DRY_RUN=false bash scripts/verify-restore.sh
 
 ```bash
 cd /opt/afrakala/deploy/backups
-DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-postgres.sh   # دو تأیید دستی APPLY/RESTORE
-DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-storage.sh    # safety snapshot خودکار
+# هر دو اسکریپت یک آرگومان مسیر فایل می‌خواهند. خطرناک — فقط روی staging/production با تأیید devops/admin.
+DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-postgres.sh /opt/afrakala/backups/pg/2025-01-15/postgres-YYYYMMDD-HHMMSS.dump   # دو تأیید دستی APPLY/RESTORE
+DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-storage.sh  /opt/afrakala/backups/storage/2025-01-15/storage-YYYYMMDD-HHMMSS.tar.gz   # safety snapshot خودکار
 ```
 
 ---
@@ -130,7 +131,7 @@ docker compose up -d --build
 
 # دیتابیس به آخرین snapshot سالم
 cd /opt/afrakala/deploy/backups
-DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-postgres.sh
+DRY_RUN=false CONFIRM_RESTORE=true bash scripts/restore-postgres.sh /opt/afrakala/backups/pg/<DATE>/postgres-<TS>.dump
 
 # DNS rollback: کاهش TTL از قبل، بازگشت رکورد A به IP قبلی
 ```
