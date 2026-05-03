@@ -1,0 +1,109 @@
+# AfraKala — Caddy reverse proxy (نمونه)
+# این فایل را به Caddyfile کپی کنید و دامنه‌ها را با مقادیر واقعی جایگزین کنید.
+# هیچ certificate یا secret واقعی نباید در ریپو commit شود.
+
+{
+	# گزینه A — ACME خودکار (نیاز به دسترسی Let's Encrypt/ZeroSSL):
+	email admin@afrakala.ir
+
+	# گزینه B — اگر ACME در شبکه ایران ناپایدار است، خط بالا را حذف کنید
+	# و در هر site از `tls /etc/caddy/certs/...` استفاده کنید (پایین).
+
+	# Admin API فقط داخل کانتینر در دسترس است.
+	admin 127.0.0.1:2019
+}
+
+# ---------- snippet: security headers ----------
+(security_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# اطلاعات نسخه Caddy را پنهان کن
+		-Server
+	}
+}
+
+# ---------- snippet: manual TLS (مسیر ایران-safe) ----------
+# اگر می‌خواهید از certificate صادرشده توسط CA داخلی/DV ایرانی استفاده کنید،
+# فایل‌ها را در deploy/proxy/certs/ روی سرور قرار دهید (هرگز commit نکنید)
+# و در هر site بلاک زیر را به‌جای ACME پیش‌فرض قرار دهید:
+#
+#   tls /etc/caddy/certs/fullchain.pem /etc/caddy/certs/privkey.pem
+
+# ============================================================
+# 1) اپلیکیشن — app.afrakala.ir → web:3000
+# ============================================================
+app.afrakala.ir {
+	import security_headers
+	encode gzip zstd
+
+	# مسیر سلامت از سمت reverse proxy
+	@health path /api/healthz
+	handle @health {
+		reverse_proxy web:3000
+	}
+
+	reverse_proxy web:3000 {
+		# header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# اختیاری: TLS دستی (در صورت عدم استفاده از ACME):
+	# tls /etc/caddy/certs/app/fullchain.pem /etc/caddy/certs/app/privkey.pem
+}
+
+# ============================================================
+# 2) API Supabase — api.afrakala.ir → kong:8000
+# (kong در فاز SH.5 با supabase stack بالا می‌آید — این فقط placeholder است)
+# ============================================================
+api.afrakala.ir {
+	import security_headers
+	encode gzip zstd
+
+	reverse_proxy kong:8000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# tls /etc/caddy/certs/api/fullchain.pem /etc/caddy/certs/api/privkey.pem
+}
+
+# ============================================================
+# 3) Studio — studio.afrakala.ir → studio:3000
+# ⚠️ هشدار: Studio هرگز نباید عمومی باشد.
+#   — حالت پیشنهادی: این بلاک را غیرفعال نگه دارید و فقط از طریق
+#     SSH tunnel به آن دسترسی پیدا کنید:
+#         ssh -L 3001:studio:3000 user@server
+#   — اگر چاره‌ای جز publish نیست، حداقل basic auth + IP allowlist را فعال کنید.
+# ============================================================
+studio.afrakala.ir {
+	import security_headers
+	encode gzip zstd
+
+	# IP allowlist — فقط IP ادمین اجازه ورود داشته باشد.
+	# آدرس واقعی را روی سرور تنظیم کنید (به‌عنوان متغیر محیطی ADMIN_ALLOWED_IP).
+	@admin_only {
+		remote_ip {$ADMIN_ALLOWED_IP}
+	}
+	handle @admin_only {
+		# basic auth — مقدار hash را با `caddy hash-password` روی سرور تولید کنید.
+		# هرگز رمز یا hash واقعی را در ریپو قرار ندهید.
+		basic_auth {
+			{$STUDIO_BASIC_AUTH_USER} {$STUDIO_BASIC_AUTH_HASH}
+		}
+		reverse_proxy studio:3000 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle {
+		respond "Forbidden" 403
+	}
+
+	# tls /etc/caddy/certs/studio/fullchain.pem /etc/caddy/certs/studio/privkey.pem
+}
