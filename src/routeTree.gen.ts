@@ -51,6 +51,7 @@ import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.
 import { Route as AppSalesCreditRulesRouteImport } from './routes/_app.sales.credit-rules'
 import { Route as AppSalesCreditCustomersRouteImport } from './routes/_app.sales.credit-customers'
 import { Route as AppPurchasesCreateRouteImport } from './routes/_app.purchases_.create'
+import { Route as AppProductsRegenerateNamesRouteImport } from './routes/_app.products.regenerate-names'
 import { Route as AppProductsNewRouteImport } from './routes/_app.products.new'
 import { Route as AppProductsLabelsRouteImport } from './routes/_app.products.labels'
 import { Route as AppProductsCategoriesRouteImport } from './routes/_app.products.categories'
@@ -341,6 +342,12 @@ const AppPurchasesCreateRoute = AppPurchasesCreateRouteImport.update({
   path: '/purchases/create',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProductsRegenerateNamesRoute =
+  AppProductsRegenerateNamesRouteImport.update({
+    id: '/products/regenerate-names',
+    path: '/products/regenerate-names',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppProductsNewRoute = AppProductsNewRouteImport.update({
   id: '/products/new',
   path: '/products/new',
@@ -852,6 +859,7 @@ export interface FileRoutesByFullPath {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
@@ -973,6 +981,7 @@ export interface FileRoutesByTo {
   '/products/categories': typeof AppProductsCategoriesRoute
   '/products/labels': typeof AppProductsLabelsRoute
   '/products/new': typeof AppProductsNewRoute
+  '/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
@@ -1097,6 +1106,7 @@ export interface FileRoutesById {
   '/_app/products/categories': typeof AppProductsCategoriesRoute
   '/_app/products/labels': typeof AppProductsLabelsRoute
   '/_app/products/new': typeof AppProductsNewRoute
+  '/_app/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/_app/purchases_/create': typeof AppPurchasesCreateRoute
   '/_app/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/_app/sales/credit-rules': typeof AppSalesCreditRulesRoute
@@ -1222,6 +1232,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/products/regenerate-names'
     | '/purchases/create'
     | '/sales/credit-customers'
     | '/sales/credit-rules'
@@ -1343,6 +1354,7 @@ export interface FileRouteTypes {
     | '/products/categories'
     | '/products/labels'
     | '/products/new'
+    | '/products/regenerate-names'
     | '/purchases/create'
     | '/sales/credit-customers'
     | '/sales/credit-rules'
@@ -1466,6 +1478,7 @@ export interface FileRouteTypes {
     | '/_app/products/categories'
     | '/_app/products/labels'
     | '/_app/products/new'
+    | '/_app/products/regenerate-names'
     | '/_app/purchases_/create'
     | '/_app/sales/credit-customers'
     | '/_app/sales/credit-rules'
@@ -1821,6 +1834,13 @@ declare module '@tanstack/react-router' {
       path: '/purchases/create'
       fullPath: '/purchases/create'
       preLoaderRoute: typeof AppPurchasesCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/products/regenerate-names': {
+      id: '/_app/products/regenerate-names'
+      path: '/products/regenerate-names'
+      fullPath: '/products/regenerate-names'
+      preLoaderRoute: typeof AppProductsRegenerateNamesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/products/new': {
@@ -2634,6 +2654,7 @@ interface AppRouteChildren {
   AppProductsCategoriesRoute: typeof AppProductsCategoriesRoute
   AppProductsLabelsRoute: typeof AppProductsLabelsRoute
   AppProductsNewRoute: typeof AppProductsNewRoute
+  AppProductsRegenerateNamesRoute: typeof AppProductsRegenerateNamesRoute
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSalesInvoicesRoute: typeof AppSalesInvoicesRoute
@@ -2718,6 +2739,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsCategoriesRoute: AppProductsCategoriesRoute,
   AppProductsLabelsRoute: AppProductsLabelsRoute,
   AppProductsNewRoute: AppProductsNewRoute,
+  AppProductsRegenerateNamesRoute: AppProductsRegenerateNamesRoute,
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSalesInvoicesRoute: AppSalesInvoicesRoute,
