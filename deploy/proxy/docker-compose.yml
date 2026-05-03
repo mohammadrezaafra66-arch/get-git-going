@@ -1,0 +1,36 @@
+# Stack: Caddy reverse proxy (Phase SH.4 — scaffold only).
+# Only Caddy is exposed to the public internet on ports 80/443.
+# `web` (app) and Supabase services live on the shared external network
+# `afrakala-net` and are NEVER published to the host.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: afrakala-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - afrakala-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  afrakala-net:
+    external: true
