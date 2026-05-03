@@ -1,30 +1,57 @@
+# syntax=docker/dockerfile:1.7
+
 # ====== Build stage ======
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-RUN corepack enable && npm install -g bun@1.1.38 || true
+RUN apk add --no-cache libc6-compat \
+ && npm install -g bun@1.1.38
 
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile || bun install
 
 COPY . .
 
+# Public client-safe build args (baked into client bundle)
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_SUPABASE_PROJECT_ID
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
-ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
+    VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+    NODE_ENV=production
 
 RUN bun run build
+
+# Security guard: ensure no server-only secrets leaked into the client bundle.
+RUN set -e; \
+    if [ -d ".output/public" ]; then \
+      if grep -REIn --binary-files=without-match \
+          -e 'SERVICE_ROLE' -e 'SUPABASE_SERVICE_ROLE_KEY' \
+          -e 'JWT_SECRET' -e 'POSTGRES_PASSWORD' -e 'LOVABLE_API_KEY' \
+          .output/public; then \
+        echo "FATAL: secret-like token found in client bundle" >&2; exit 1; \
+      fi; \
+    fi
 
 # ====== Runtime stage (Node SSR) ======
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0
 
-COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/package.json ./package.json
+RUN apk add --no-cache wget tini \
+ && addgroup -S app && adduser -S app -G app
 
+COPY --from=builder --chown=app:app /app/.output ./.output
+COPY --from=builder --chown=app:app /app/package.json ./package.json
+
+USER app
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/healthz || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", ".output/server/index.mjs"]
