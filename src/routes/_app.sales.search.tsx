@@ -33,6 +33,7 @@ import { computeChangePercent, computeDirection } from "@/lib/pricing/price-hist
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
+import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -696,6 +697,9 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
             })}
           </div>
         )}
+
+        {/* Alternative / recommended products with their 3 cheapest prices */}
+        <SalesProductRecommendations productId={product.id} />
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
