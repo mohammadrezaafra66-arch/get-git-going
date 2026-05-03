@@ -29,6 +29,7 @@
 - PostgREST (REST API)
 - Storage API
 - Kong (API gateway)
+- Meta (`postgres-meta` — backend موردنیاز Studio)
 - Studio — فقط برای ادمین، پشت basic auth + IP allowlist یا SSH tunnel
 - Database RLS فعال روی همه جدول‌های دامنه
 - Database functions / RPCهای پروژه
@@ -139,7 +140,8 @@ docker compose version
 sudo mkdir -p /opt/afrakala
 sudo chown -R "$USER":"$USER" /opt/afrakala
 cd /opt/afrakala
-git clone git@github.com:<org>/afrakala.git repo
+# <OWNER>/<REPO> را با مسیر واقعی GitHub جایگزین کن (مثلاً afrakala-org/afrakala)
+git clone git@github.com:<OWNER>/<REPO>.git repo
 ln -s /opt/afrakala/repo/deploy /opt/afrakala/deploy
 ```
 
@@ -181,11 +183,12 @@ grep -nE "(\.env$|\.env\.production$|certs/|\.pem$|\.key$|\.crt$)" .gitignore
 ## ۹) ساخت Docker network
 
 ```bash
+# فقط `afrakala-net` external است و باید دستی ساخته شود.
+# `supabase-internal` خودکار توسط compose استک Supabase ساخته می‌شود (driver: bridge).
 docker network create afrakala-net || true
-docker network create supabase-internal || true
 ```
 
-در `docker-compose.yml` هر استک، این networkها به‌صورت `external: true` رفرنس می‌شوند.
+`afrakala-net` در composeهای app/proxy/supabase به‌صورت `external: true` رفرنس می‌شود؛ `supabase-internal` فقط داخل استک Supabase تعریف می‌شود.
 
 ---
 
@@ -218,7 +221,7 @@ docker compose logs -f caddy
 ```
 
 - compression در Caddy فعال باشد (`encode zstd gzip`).
-- HSTS، X-Content-Type-Options، Referrer-Policy، CSP در `Caddyfile` تنظیم شده.
+- در `Caddyfile.example` این هدرها تنظیم شده‌اند: `Strict-Transport-Security` (HSTS)، `X-Content-Type-Options`، `X-Frame-Options`، `Referrer-Policy`. (CSP فعلاً تنظیم نشده — در صورت نیاز به‌صورت آگاهانه افزوده شود.)
 - Studio پشت `basic_auth` + `@allowed_ips` قرار گیرد.
 
 مرجع: `deploy/proxy/README.md`.
@@ -230,13 +233,14 @@ docker compose logs -f caddy
 ```bash
 cd /opt/afrakala/deploy/supabase
 cp .env.example .env
-cp kong.yml.example volumes/kong/kong.yml
+mkdir -p volumes/api
+cp kong.yml.example volumes/api/kong.yml
 chmod 600 .env
 docker compose up -d
 docker compose ps
 ```
 
-سرویس‌های فعال: `db, auth, rest, storage, kong, studio`.
+سرویس‌های فعال: `db, auth, rest, storage, meta, kong, studio`.
 سرویس‌های `realtime, functions, imgproxy, analytics, vector, inbucket` در compose comment باشند تا با تصمیم آگاهانه فعال شوند.
 
 مرجع: `deploy/supabase/README.md`.
