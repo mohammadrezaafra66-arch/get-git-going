@@ -65,3 +65,14 @@ deploy/migration/dumps/
 deploy/migration/storage-export/
 deploy/migration/**/*.dump
 deploy/migration/**/storage-manifest*.json
+
+# AfraKala backup runtime outputs
+deploy/backups/.env
+deploy/backups/pg/
+deploy/backups/storage/
+deploy/backups/storage-safety/
+deploy/backups/env/
+deploy/backups/**/*.dump
+deploy/backups/**/*.tar
+deploy/backups/**/*.tar.gz
+deploy/backups/**/*.age
