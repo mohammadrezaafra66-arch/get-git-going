@@ -35,3 +35,26 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+# AfraKala self-host runtime files (never commit real secrets)
+deploy/app/.env.production
+deploy/app/.env
+deploy/proxy/.env
+deploy/proxy/Caddyfile
+deploy/proxy/certs/
+deploy/supabase/.env
+deploy/supabase/volumes/
+
+# TLS / certificate secrets
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Allow example templates
+!deploy/app/.env.production.example
+!deploy/proxy/.env.example
+!deploy/proxy/Caddyfile.example
+!deploy/supabase/.env.example
+!deploy/supabase/kong.yml.example
