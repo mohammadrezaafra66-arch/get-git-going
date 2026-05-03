@@ -16,6 +16,7 @@ deploy/**/.env.*
 # Proxy runtime files / TLS material — never bake into images
 deploy/proxy/Caddyfile
 deploy/proxy/certs/
+deploy/supabase/volumes/
 *.pem
 *.key
 *.crt
