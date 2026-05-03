@@ -25,11 +25,11 @@ RUN bun run build
 
 # Security guard: ensure no server-only secrets leaked into the client bundle.
 RUN set -e; \
-    if [ -d ".output/public" ]; then \
+    if [ -d "dist/client" ]; then \
       if grep -REIn --binary-files=without-match \
           -e 'SERVICE_ROLE' -e 'SUPABASE_SERVICE_ROLE_KEY' \
           -e 'JWT_SECRET' -e 'POSTGRES_PASSWORD' -e 'LOVABLE_API_KEY' \
-          .output/public; then \
+          dist/client; then \
         echo "FATAL: secret-like token found in client bundle" >&2; exit 1; \
       fi; \
     fi
@@ -44,7 +44,8 @@ ENV NODE_ENV=production \
 RUN apk add --no-cache wget tini \
  && addgroup -S app && adduser -S app -G app
 
-COPY --from=builder --chown=app:app /app/.output ./.output
+COPY --from=builder --chown=app:app /app/dist ./dist
+COPY --from=builder --chown=app:app /app/server ./server
 COPY --from=builder --chown=app:app /app/package.json ./package.json
 
 USER app
@@ -54,4 +55,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", ".output/server/index.mjs"]
+CMD ["node", "server/node-entry.mjs"]
