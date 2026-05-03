@@ -110,27 +110,6 @@ function SalesSearchPage() {
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
 
-  useEffect(() => {
-    const hideLegacyAllPricesButton = () => {
-      document.querySelectorAll<HTMLButtonElement | HTMLAnchorElement>("button,a").forEach((node) => {
-        const text = (node.textContent ?? "")
-          .replace(/[\s\u200c]+/g, "")
-          .replace(/ي/g, "ی")
-          .replace(/ك/g, "ک");
-        if (text.includes("مشاهدههمهقیمت")) {
-          node.hidden = true;
-          node.setAttribute("aria-hidden", "true");
-          node.style.display = "none";
-        }
-      });
-    };
-
-    hideLegacyAllPricesButton();
-    const observer = new MutationObserver(hideLegacyAllPricesButton);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, []);
-
   const term = normalizeSearchText(dSearch);
   const canSearch = term.length >= 2;
 
