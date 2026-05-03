@@ -12,3 +12,17 @@ README.md
 deploy/**/.env
 deploy/**/.env.*
 !deploy/**/.env.*.example
+
+# Proxy runtime files / TLS material — never bake into images
+deploy/proxy/Caddyfile
+deploy/proxy/certs/
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Allow example templates
+!deploy/proxy/Caddyfile.example
+!deploy/proxy/.env.example
