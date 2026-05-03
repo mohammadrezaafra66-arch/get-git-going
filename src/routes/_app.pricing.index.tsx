@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet, Monitor, BarChart3, Sparkles } from "lucide-react";
+import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet, Monitor, BarChart3, Sparkles, RefreshCw } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +56,7 @@ function PricingHubPage() {
     { to: "/pricing/price-alerts", label: "مرکز هشدار قیمت", icon: AlertCircle, desc: "ساخت شرط هشدار سفارشی برای تغییرات قیمت محصولات", enabled: true },
     { to: "/pricing/product-recommendations", label: "مدیریت پیشنهاد محصولات", icon: Sparkles, desc: "پین/حذف/اولویت پیشنهادهای خودکار سیستم برای هر محصول (admin/manager)", enabled: true },
     { to: "/pricing/quick-price", label: "محاسبه سریع قیمت", icon: Zap, desc: "محاسبه قیمت فروش برای کالای خارج از لیست", enabled: true },
+    { to: "/pricing/recompute-prices", label: "انتشار قیمت فروش (دسته‌ای)", icon: RefreshCw, desc: "محاسبه و ذخیرهٔ قیمت فروش برای همهٔ محصولات تا در /sales/search دیده شود", enabled: true },
     { to: "/pricing/sale-lists", label: "لیست‌های فروش", icon: FileText, desc: `مدیریت و انتشار لیست‌های رسمی فروش${data ? ` — ${formatNumber(data.saleListsTotal)} لیست (${formatNumber(data.saleListsPublished)} منتشرشده)` : ""}`, enabled: true },
   ] as const;
 

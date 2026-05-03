@@ -62,6 +62,7 @@ import { Route as AppPricingSettlementTypesRouteImport } from './routes/_app.pri
 import { Route as AppPricingSalePriceTypesRouteImport } from './routes/_app.pricing.sale-price-types'
 import { Route as AppPricingSaleListsRouteImport } from './routes/_app.pricing.sale-lists'
 import { Route as AppPricingRulesRouteImport } from './routes/_app.pricing.rules'
+import { Route as AppPricingRecomputePricesRouteImport } from './routes/_app.pricing.recompute-prices'
 import { Route as AppPricingQuickPriceRouteImport } from './routes/_app.pricing.quick-price'
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
 import { Route as AppPricingProductRecommendationsRouteImport } from './routes/_app.pricing.product-recommendations'
@@ -397,6 +398,12 @@ const AppPricingRulesRoute = AppPricingRulesRouteImport.update({
   path: '/pricing/rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingRecomputePricesRoute =
+  AppPricingRecomputePricesRouteImport.update({
+    id: '/pricing/recompute-prices',
+    path: '/pricing/recompute-prices',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingQuickPriceRoute = AppPricingQuickPriceRouteImport.update({
   id: '/pricing/quick-price',
   path: '/pricing/quick-price',
@@ -833,6 +840,7 @@ export interface FileRoutesByFullPath {
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
+  '/pricing/recompute-prices': typeof AppPricingRecomputePricesRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -953,6 +961,7 @@ export interface FileRoutesByTo {
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/pricing/quick-price': typeof AppPricingQuickPriceRoute
+  '/pricing/recompute-prices': typeof AppPricingRecomputePricesRoute
   '/pricing/rules': typeof AppPricingRulesRoute
   '/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -1076,6 +1085,7 @@ export interface FileRoutesById {
   '/_app/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
   '/_app/pricing/quick-price': typeof AppPricingQuickPriceRoute
+  '/_app/pricing/recompute-prices': typeof AppPricingRecomputePricesRoute
   '/_app/pricing/rules': typeof AppPricingRulesRoute
   '/_app/pricing/sale-lists': typeof AppPricingSaleListsRoute
   '/_app/pricing/sale-price-types': typeof AppPricingSalePriceTypesRoute
@@ -1200,6 +1210,7 @@ export interface FileRouteTypes {
     | '/pricing/product-recommendations'
     | '/pricing/purchase-prices'
     | '/pricing/quick-price'
+    | '/pricing/recompute-prices'
     | '/pricing/rules'
     | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
@@ -1320,6 +1331,7 @@ export interface FileRouteTypes {
     | '/pricing/product-recommendations'
     | '/pricing/purchase-prices'
     | '/pricing/quick-price'
+    | '/pricing/recompute-prices'
     | '/pricing/rules'
     | '/pricing/sale-lists'
     | '/pricing/sale-price-types'
@@ -1442,6 +1454,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/product-recommendations'
     | '/_app/pricing/purchase-prices'
     | '/_app/pricing/quick-price'
+    | '/_app/pricing/recompute-prices'
     | '/_app/pricing/rules'
     | '/_app/pricing/sale-lists'
     | '/_app/pricing/sale-price-types'
@@ -1885,6 +1898,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/rules'
       fullPath: '/pricing/rules'
       preLoaderRoute: typeof AppPricingRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/recompute-prices': {
+      id: '/_app/pricing/recompute-prices'
+      path: '/pricing/recompute-prices'
+      fullPath: '/pricing/recompute-prices'
+      preLoaderRoute: typeof AppPricingRecomputePricesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/quick-price': {
@@ -2602,6 +2622,7 @@ interface AppRouteChildren {
   AppPricingProductRecommendationsRoute: typeof AppPricingProductRecommendationsRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
   AppPricingQuickPriceRoute: typeof AppPricingQuickPriceRoute
+  AppPricingRecomputePricesRoute: typeof AppPricingRecomputePricesRoute
   AppPricingRulesRoute: typeof AppPricingRulesRoute
   AppPricingSaleListsRoute: typeof AppPricingSaleListsRoute
   AppPricingSalePriceTypesRoute: typeof AppPricingSalePriceTypesRoute
@@ -2685,6 +2706,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingProductRecommendationsRoute: AppPricingProductRecommendationsRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,
   AppPricingQuickPriceRoute: AppPricingQuickPriceRoute,
+  AppPricingRecomputePricesRoute: AppPricingRecomputePricesRoute,
   AppPricingRulesRoute: AppPricingRulesRoute,
   AppPricingSaleListsRoute: AppPricingSaleListsRoute,
   AppPricingSalePriceTypesRoute: AppPricingSalePriceTypesRoute,
