@@ -58,3 +58,10 @@ deploy/supabase/volumes/
 !deploy/proxy/Caddyfile.example
 !deploy/supabase/.env.example
 !deploy/supabase/kong.yml.example
+
+# AfraKala migration runtime outputs
+deploy/migration/.env
+deploy/migration/dumps/
+deploy/migration/storage-export/
+deploy/migration/**/*.dump
+deploy/migration/**/storage-manifest*.json
