@@ -1,23 +1,34 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    // During SSR the Supabase client may not have env vars available in the
-    // Worker. Skip the session check there and just send the user to /login;
-    // the client-side guards on /login and /_app will route them correctly
-    // after hydration.
-    if (typeof window === "undefined") {
-      throw redirect({ to: "/login" });
-    }
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) throw redirect({ to: "/dashboard" });
-    } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
-      console.error("[/] beforeLoad session check failed", err);
-    }
-    throw redirect({ to: "/login" });
-  },
-  component: () => null,
+  component: IndexRedirect,
 });
+
+function IndexRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+        navigate({ to: session ? "/dashboard" : "/login", replace: true });
+      } catch {
+        if (!cancelled) navigate({ to: "/login", replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+  return (
+    <div
+      dir="rtl"
+      className="flex min-h-screen items-center justify-center bg-background text-muted-foreground"
+    >
+      <span className="text-sm">در حال بارگذاری…</span>
+    </div>
+  );
+}
