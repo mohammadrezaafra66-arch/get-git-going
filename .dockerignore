@@ -34,3 +34,13 @@ deploy/migration/**/storage-manifest*.json
 # Allow example templates
 !deploy/proxy/Caddyfile.example
 !deploy/proxy/.env.example
+# Backup artifacts
+deploy/backups/.env
+deploy/backups/pg/
+deploy/backups/storage/
+deploy/backups/storage-safety/
+deploy/backups/env/
+deploy/backups/**/*.dump
+deploy/backups/**/*.tar
+deploy/backups/**/*.tar.gz
+deploy/backups/**/*.age
