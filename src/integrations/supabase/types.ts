@@ -6563,12 +6563,14 @@ export type Database = {
           category: Json
           color: string
           description: string
+          has_purchase_price: boolean
           id: string
           is_unavailable_for_sales: boolean
           labels: Json
           model: string
           name: string
           prices: Json
+          primary_spec: string
           product_type: string
           sku: string
           stock_status: string

@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -59,11 +60,13 @@ interface ProductRow {
   capacity?: string | null;
   model?: string | null;
   description?: string | null;
+  primary_spec?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
   labels?: Array<{ id: string; title: string; color: string | null; visibility?: string | null }>;
   prices?: PriceEntry[];
   is_unavailable_for_sales?: boolean;
+  has_purchase_price?: boolean;
 }
 
 const STOCK_LABEL: Record<string, string> = {
@@ -472,6 +475,52 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
   const amt = cur !== null && prev !== null ? cur - prev : null;
   const pct = computeChangePercent(cur, prev);
 
+  const hasAnyPrice = prices.some((p) => p.current_price != null);
+  const noPriceReason = !hasAnyPrice
+    ? (isUnavailable
+        ? "ناموجود — قیمت نمایش داده نمی‌شود"
+        : product.has_purchase_price === false
+          ? "قیمت خرید فعالی ثبت نشده است"
+          : "قیمت فروش هنوز محاسبه نشده است")
+    : null;
+
+  const specChips: Array<{ label: string; value: string }> = [];
+  if (product.primary_spec) specChips.push({ label: "ظرفیت", value: product.primary_spec });
+  else if (product.capacity) specChips.push({ label: "ظرفیت", value: product.capacity });
+  if (product.model) specChips.push({ label: "مدل", value: product.model });
+  if (product.color) specChips.push({ label: "رنگ", value: product.color });
+
+  const handleCopySalesText = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const lines: string[] = [];
+    lines.push(formatProductDisplayNameWithFallback(product));
+    if (product.sku) lines.push(`کد: ${product.sku}`);
+    if (specChips.length > 0) {
+      lines.push(specChips.map((s) => `${s.label}: ${s.value}`).join("  •  "));
+    }
+    lines.push(`وضعیت: ${STOCK_LABEL[stockKey] ?? stockKey}`);
+    lines.push("");
+    if (hasAnyPrice) {
+      lines.push("قیمت‌ها:");
+      for (const p of prices) {
+        if (p.current_price != null) {
+          lines.push(`• ${p.title}: ${formatNumber(Number(p.current_price))} تومان`);
+        } else {
+          lines.push(`• ${p.title}: قیمت ثبت نشده`);
+        }
+      }
+    } else {
+      lines.push(`قیمت: ${noPriceReason ?? "ثبت نشده"}`);
+    }
+    const text = lines.join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("متن فروش کپی شد");
+    } catch {
+      toast.error("کپی انجام نشد");
+    }
+  };
+
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent
@@ -493,6 +542,19 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
               {product.brand?.name && <span>برند: {product.brand.name}</span>}
               {product.category?.name && <span>· {product.category.name}</span>}
             </div>
+            {specChips.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1 text-xs">
+                {specChips.map((s) => (
+                  <span
+                    key={s.label}
+                    className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
+                  >
+                    <span className="text-muted-foreground">{s.label}:</span>
+                    <span className="font-medium">{s.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             {labels.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {labels.slice(0, 4).map((l) => (
@@ -552,7 +614,7 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
           ) : (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="h-4 w-4" />
-              قیمت ثبت نشده
+              {noPriceReason ?? "قیمت ثبت نشده"}
             </div>
           )}
         </div>
@@ -587,6 +649,14 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleCopySalesText}
+          >
+            <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
+          </Button>
           <Button
             type="button"
             variant="ghost"
