@@ -1,196 +1,315 @@
-## گزارش فاز SH.1 — ممیزی Self-Hosting افراکالا
+## فاز SH.2 — نقشه معماری استقرار Self-Host افراکالا
 
-این صرفاً گزارش است؛ هیچ کد یا دیتابیسی تغییر نمی‌کند.
-
----
-
-### ۱) آمادگی استقرار اپ
-
-**موجود:**
-- `Dockerfile` دومرحله‌ای (Node 20 alpine + Bun) که خروجی TanStack Start را روی پورت **3000** اجرا می‌کند (`node .output/server/index.mjs`).
-- `docker-compose.yml` با سرویس `app` و `postgres:16-alpine` (volume `pgdata`).
-- `.dockerignore` تمیز.
-- اسکریپت `bun run build` و SSR کامل (TanStack Start، نه static).
-
-**ندارد / ریسک:**
-- `vite.config.ts` از `@lovable.dev/vite-tanstack-config` استفاده می‌کند که داخلش پلاگین **Cloudflare Workers** فعال است. خروجی build روی Worker هدف می‌گیرد ولی همزمان `.output/server/index.mjs` (Node SSR) هم تولید می‌کند — باید روی سرور Linux فقط مسیر Node اجرا شود. ریسک: متوسط (نیاز به تست build روی هاست).
-- `wrangler.jsonc` در پروژه هست (مخصوص Cloudflare) — برای self-host بی‌اثر اما باید نادیده گرفته شود.
-- Healthcheck در Docker Compose تعریف نشده.
-- Reverse proxy / SSL تعریف نشده.
+گزارش معماری است. هیچ کد، migration یا فایل پیکربندی تغییر نمی‌کند.
 
 ---
 
-### ۲) ممیزی وابستگی به Supabase
-
-استفاده‌های فعلی:
-- **Auth** ایمیل/رمز (`supabase.auth`) — وابسته به GoTrue.
-- **Database + RLS** سنگین (۱۲۹ migration، نقش‌ها، `has_role`، policy گسترده).
-- **Storage** بصورت bucket خصوصی `payment-receipt-documents` با policy روی `storage.objects` — نیاز به Storage API کامل.
-- **Edge/Server functions:** اپ از `createServerFn` (TanStack) استفاده می‌کند، نه Edge Function سوپابیس. بنابراین Deno runtime لازم نیست. **پلاس بزرگ**.
-- **Realtime:** استفاده نشده (هیچ `.channel(` در کد یافت نشد).
-- **RPC/triggers/functions:** زیاد (مثلاً `bot_authenticate_key`, `create_bot_api_key`).
-
-**نتیجه:** PostgreSQL تنها کافی **نیست**. حداقل به این اجزای Supabase نیاز است:
-- PostgreSQL + extensions
-- **GoTrue** (Auth)
-- **PostgREST** (پایه REST و RLS از کلاینت)
-- **Storage API** (bucket و RLS روی storage.objects)
-- **Kong/Gateway** (روتر استاندارد جلوی این‌ها) — یا یک پراکسی سبک معادل
-
-به Edge Runtime, Realtime, Studio (اختیاری برای ادمین)، Image transformer نیاز نیست.
-
-**توصیه:** Supabase self-hosted رسمی از طریق `supabase/docker` (نسخه استاندارد) با غیرفعال‌سازی سرویس‌های غیرضروری.
-
----
-
-### ۳) ممیزی Migration ها
-
-- تعداد: **۱۲۹** فایل، نام‌گذاری زمان‌مند، ترتیب درست.
-- **Extensionها:** `pgcrypto` (با schema=extensions), `pg_trgm`, و تلاش اختیاری `pg_cron` (با fallback). همگی در self-hosted Supabase پیش‌فرض موجود/قابل نصب‌اند.
-- **Bucket:** فقط `payment-receipt-documents` (private) داخل migration ساخته می‌شود — قابل اجرا روی self-hosted.
-- **RLS و policy:** کامل و خودکفا، بدون وابستگی به feature خاص Lovable Cloud.
-- **Triggerها:** `updated_at`، audit log، gamification و... — همه استاندارد plpgsql.
-- **وابستگی Lovable Cloud اختصاصی:** یافت نشد. ✅
-
-ریسک کلی: **پایین**.
-
----
-
-### ۴) ممیزی مهاجرت Auth
-
-- جدول `auth.users` (مدیریت GoTrue) + جداول اپ: `profiles`, `user_roles` (با enum `app_role`).
-- نقش‌ها از طریق تابع `has_role()` چک می‌شوند.
-- **Export پسوردها:** هش‌های bcrypt در `auth.users.encrypted_password` قابل dump/restore به GoTrue self-hosted **هستند** (هر دو bcrypt). نیازی به reset عمومی نیست **اگر** نسخه GoTrue سازگار باشد.
-- **Reset لازم؟** فقط در صورت ناسازگاری نسخه — توصیه: ارسال لینک reset برای کاربران فعال به‌عنوان احتیاط.
-- OAuth provider خاصی فعال نیست (فقط ایمیل/رمز).
-
-ریسک: **متوسط** (تست restore در staging قبل از پروداکشن).
-
----
-
-### ۵) ممیزی مهاجرت Storage
-
-- یک bucket: `payment-receipt-documents` (خصوصی).
-- جدول `payment_receipt_documents` با ستون `storage_path` به فایل اشاره می‌کند.
-- **مهاجرت فایل‌ها:** دانلود کل bucket از Supabase managed با `supabase storage` CLI یا اسکریپت Node + سرویس‌رل، سپس آپلود مشابه به نمونه self-hosted با حفظ همان `storage_path`.
-- **اعتبارسنجی:** مقایسه چک‌سام (sha256) فایل‌ها + شمارش رکورد در `payment_receipt_documents` با تعداد objectها.
-
-ریسک: **پایین** (یک bucket کوچک و ساختار مسطح).
-
----
-
-### ۶) متغیرهای محیطی و Secrets
-
-| متغیر | مکان | حساسیت |
-|---|---|---|
-| `VITE_SUPABASE_URL` | فرانت | عمومی |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | فرانت | عمومی (anon) |
-| `VITE_SUPABASE_PROJECT_ID` | فرانت | عمومی |
-| `SUPABASE_URL` | سرور (SSR) | عمومی |
-| `SUPABASE_PUBLISHABLE_KEY` | سرور | عمومی |
-| `SUPABASE_SERVICE_ROLE_KEY` | فقط سرور | **مخفی** |
-| `LOVABLE_API_KEY` | فقط سرور (`receipt-ocr.functions.ts`) | **مخفی + خارجی** |
-
-برای self-host Supabase، اضافه می‌شوند: `POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY`, `SITE_URL`, `SMTP_*` (برای ایمیل reset/تأیید).
-
-OCR/AI/SMS/Currency: تنها سرویس بیرونی فعال = **Lovable AI Gateway** برای OCR رسید.
-
----
-
-### ۷) وابستگی‌های خارجی و سازگاری اینترنت ملی
-
-| منبع | استفاده | وضعیت برای ایران |
-|---|---|---|
-| `cdn.gpteng.co` (preconnect در `__root.tsx`) | ویجت‌های ادیتور Lovable | فقط در preview؛ در build پروداکشن خودکار حذف می‌شود (`componentTagger` فقط در dev). preconnect باقی‌مانده بی‌خطر اما **بی‌فایده** — توصیه به حذف برای سلف‌هاست. |
-| `ai.gateway.lovable.dev` (OCR رسید) | فعال | **فیلتر ایران**. باید جایگزین شود با: Tesseract محلی، یا API ایرانی (مثل Hamravesh OCR / پارس‌AI)، یا اختیاری کردن OCR. |
-| فونت Vazirmatn | کاملاً local در `public/fonts/vazirmatn/` ✅ | بدون مشکل |
-| Google Fonts/Gstatic | یافت نشد ✅ | — |
-| Supabase managed (`*.supabase.co`) | فعال | بعد از self-host حذف |
-| `rubika.ir`, `wa.me`, `eitaa.com`, `ble.ir`, `chat.whatsapp.com` | فقط لینک‌های UI به پلتفرم پیام‌رسان | بی‌اثر روی عملکرد |
-
-**اقدامات اجباری برای ایران:**
-1. حذف یا جایگزینی OCR Gateway.
-2. حذف preconnect به `cdn.gpteng.co` در `__root.tsx`.
-3. ست‌کردن cache headers روی Nginx برای فونت‌های `/fonts/vazirmatn/*` (طبق Lighthouse، الان `cacheLifetimeMs=0`).
-
----
-
-### ۸) Backup
-
-اهداف:
-- **Postgres:** `pg_dump -Fc` روزانه + WAL (در صورت لزوم).
-- **Storage:** rsync/restic از volume `storage` به مخزن دوم.
-- **env / secrets:** ذخیره‌ی جداگانه و رمزگذاری‌شده (مثلاً `age` یا `sops`).
-- **migrations:** در ریپو git (موجود ✅).
-- **uploaded files (همان bucket):** پوشش با backup storage.
-
-پیشنهاد: cron روزانه ۰۲:۰۰، نگهداری ۱۴ روز local + ۳۰ روز offsite. تست restore ماهانه روی محیط staging.
-
----
-
-### ۹) معماری پیشنهادی روی سرور Linux
+### ۱) ساختار پوشه‌ها روی سرور Linux
 
 ```text
 /opt/afrakala/
-├─ app/                  # docker-compose اپ (port 3000)
-├─ supabase/             # supabase/docker (postgres, gotrue, postgrest, storage, kong)
-├─ proxy/                # nginx یا caddy + certbot/acme (SSL)
+├─ app/
+│  ├─ docker-compose.yml          # فقط سرویس web app (TanStack SSR، پورت 3000 داخلی)
+│  ├─ .env                        # VITE_* + SUPABASE_URL داخلی
+│  └─ image/                      # Dockerfile build context (یا pull از registry خصوصی)
+│
+├─ supabase/
+│  ├─ docker-compose.yml          # کلون از supabase/docker (نسخه stable پین‌شده)
+│  ├─ .env                        # POSTGRES_PASSWORD, JWT_SECRET, ANON_KEY, SERVICE_ROLE_KEY, SMTP_*
+│  ├─ volumes/
+│  │  ├─ db/data/                 # دیتای Postgres
+│  │  ├─ storage/                 # فایل‌های bucketها
+│  │  ├─ api/kong.yml             # روتر Kong
+│  │  └─ functions/               # خالی (استفاده نمی‌کنیم)
+│  └─ migrations/                 # کپی از repo برای اجرای دستی
+│
+├─ proxy/                         # Caddy (پیشنهاد اصلی) — ساده‌ترین SSL
+│  ├─ Caddyfile
+│  └─ data/                       # گواهی‌های ACME
+│
 ├─ backups/
-│  ├─ pg/
-│  └─ storage/
+│  ├─ pg/                        # daily pg_dump -Fc
+│  ├─ storage/                   # rsync/restic snapshot
+│  ├─ env/                       # نسخه رمزشده env (sops/age)
+│  └─ scripts/                   # backup.sh, restore.sh, verify.sh
+│
 └─ logs/
+   ├─ app/
+   ├─ supabase/
+   └─ proxy/
 ```
 
-- **Reverse proxy:** Caddy (ساده‌ترین SSL) یا Nginx + acme.sh.
-- دامنه: `app.example.ir` → اپ، `api.example.ir` → kong (Supabase).
-- Firewall: فقط 80/443 باز، پایگاه‌داده فقط داخل docker network.
-- مانیتورینگ سبک: `docker logs` + logrotate (بدون Grafana برای کاهش بار).
+سه stack (`app`, `supabase`, `proxy`) compose مجزا و شبکه docker مشترک خارجی `afrakala-net` دارند تا مستقل به‌روزرسانی شوند.
 
 ---
 
-### ۱۰) جمع‌بندی نهایی
+### ۲) سرویس‌های Docker
 
-**آنچه داریم ✅**
-- Dockerfile + docker-compose پایه.
-- فونت محلی، بدون CDN در رانتایم پروداکشن.
-- Migrationهای کامل و خودکفا، بدون قفل به Lovable Cloud.
-- صفر استفاده از Realtime و Edge Function.
-- معماری بک‌اند تمیز با `createServerFn` (Node-friendly).
+**Stack `app`:**
+| سرویس | تصویر | پورت | یادداشت |
+|---|---|---|---|
+| `web` | build از Dockerfile پروژه | 3000 داخلی | TanStack Start SSR (Node 20). فقط در شبکه داخلی |
 
-**آنچه نداریم / بلاکر ❌**
-1. **OCR رسید وابسته به `ai.gateway.lovable.dev`** — بلاکر برای ایران.
-2. **پشته self-host Supabase** (GoTrue/PostgREST/Storage/Kong) آماده نیست — باید از `supabase/docker` افزوده شود.
-3. **Reverse proxy + SSL** پیکربندی نشده.
-4. **Healthcheck** در docker-compose نیست.
-5. **Cache headers فونت‌ها** صفر است (هشدار Lighthouse).
-6. **Backup script** آماده نیست.
-7. **پلاگین Cloudflare** در vite config — نیاز به تأیید build روی Node target.
-
-**آنچه Lovable می‌تواند انجام دهد**
-- حذف preconnect خارجی، اختیاری/local کردن OCR (با fallback به Tesseract.js یا پراویدر ایرانی).
-- اضافه‌کردن healthcheck و cache headers (در Nginx config sample).
-- نوشتن اسکریپت‌های backup/restore و راهنمای migration.
-- جداکردن build target (Node-only) از Cloudflare config.
-- اسکریپت اتوماتیک مهاجرت Auth و Storage.
-
-**آنچه دستی روی سرور لازم است**
-- نصب Docker + docker compose.
-- بالاآوردن `supabase/docker` و تنظیم secrets.
-- DNS، SSL (Let’s Encrypt یا گواهی داخلی)، Firewall.
-- اجرای migrations و import داده‌ها.
-- تنظیم cron برای backup.
-
-**فازهای پیشنهادی بعدی**
-
-| فاز | عنوان | ریسک |
+**Stack `supabase` (کلون از supabase/docker):**
+| سرویس | لازم؟ | دلیل |
 |---|---|---|
-| SH.2 | حذف وابستگی OCR خارجی (Tesseract.js محلی یا پراویدر ایرانی + fallback) | متوسط |
-| SH.3 | پاکسازی build برای Node-only (حذف Cloudflare plugin، تست `.output/server`) | متوسط |
-| SH.4 | افزودن Healthcheck + Nginx/Caddy reverse proxy + SSL در docker-compose | پایین |
-| SH.5 | افزودن compose سرویس‌های Supabase (gotrue/postgrest/storage/kong) با env نمونه | متوسط |
-| SH.6 | اسکریپت Migration Auth (dump/restore `auth.users`) و راهنمای reset احتیاطی | متوسط |
-| SH.7 | اسکریپت Migration Storage + اعتبارسنجی sha256 | پایین |
-| SH.8 | اسکریپت Backup روزانه (pg_dump + rsync storage) + تست restore | پایین |
-| SH.9 | مستندسازی نهایی فارسی استقرار + Runbook عملیات | پایین |
+| `db` (Postgres 15) | ✅ | پایگاه‌داده اصلی |
+| `auth` (GoTrue) | ✅ | `supabase.auth` ایمیل/رمز |
+| `rest` (PostgREST) | ✅ | کلاینت اپ مستقیم کوئری می‌زند |
+| `storage` (storage-api) | ✅ | bucket `payment-receipt-documents` |
+| `kong` | ✅ | gateway استاندارد |
+| `meta` (postgres-meta) | ✅ | لازم برای Studio |
+| `studio` | ⚠️ اختیاری | فقط bind روی `127.0.0.1` و SSH tunnel |
+| `realtime` | ❌ | استفاده نمی‌شود — غیرفعال شود |
+| `imgproxy` | ❌ | استفاده نمی‌شود |
+| `edge-functions` (Deno) | ❌ | اپ از `createServerFn` استفاده می‌کند |
+| `analytics` (Logflare) | ❌ | حذف برای کاهش بار |
+| `vector` | ❌ | حذف |
+| `inbucket` | ❌ پروداکشن | فقط dev |
 
-منتظر تأیید برای ورود به فاز SH.2.
+**Stack `proxy`:**
+| سرویس | پورت | یادداشت |
+|---|---|---|
+| `caddy` | 80, 443 | تنها سرویس exposed به اینترنت |
+
+**Stack `backups`:**
+| سرویس | یادداشت |
+|---|---|
+| `ofelia` یا host cron | اجرای روزانه `pg_dump`, `rsync storage`, چرخش لاگ |
+
+---
+
+### ۳) دامنه‌ها و URLها
+
+پیشنهاد تک‌دامنه با subdomain:
+- `app.afrakala.ir` → Caddy → `web:3000`
+- `api.afrakala.ir` → Caddy → `kong:8000` (Auth + REST + Storage پشت یک دامنه)
+- `studio.afrakala.ir` → فقط داخل VPN/IP allowlist یا SSH tunnel، بدون exposure عمومی
+
+`VITE_SUPABASE_URL` در build = `https://api.afrakala.ir`.
+
+**سازگاری اینترنت ایران:**
+- همه دامنه‌ها روی IP داخلی ایران میزبانی شوند (نه Cloudflare، نه CDN خارجی).
+- گزینه LAN-only: Caddy روی IP خصوصی + DNS داخلی + گواهی self-signed یا CA داخلی.
+- Let’s Encrypt ممکن است در ایران محدود باشد؛ گزینه‌ها: ZeroSSL، گواهی DV ایرانی، یا CA داخلی mount در Caddy.
+
+---
+
+### ۴) متغیرهای محیطی
+
+**Frontend (build-time، در `app/.env`):**
+```
+VITE_SUPABASE_URL=https://api.afrakala.ir
+VITE_SUPABASE_PUBLISHABLE_KEY=<ANON_KEY>
+VITE_SUPABASE_PROJECT_ID=afrakala-self
+```
+
+**App SSR (runtime):**
+```
+SUPABASE_URL=http://kong:8000          # داخل docker network
+SUPABASE_PUBLISHABLE_KEY=<ANON_KEY>
+SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>   # فقط سرور
+LOVABLE_API_KEY=<اختیاری؛ تا فاز حذف OCR>
+```
+
+**Supabase stack (در `supabase/.env`):**
+```
+POSTGRES_PASSWORD=
+JWT_SECRET=                           # ≥ 32 کاراکتر
+ANON_KEY=                             # JWT امضاشده با JWT_SECRET
+SERVICE_ROLE_KEY=                     # JWT امضاشده با JWT_SECRET
+SITE_URL=https://app.afrakala.ir
+ADDITIONAL_REDIRECT_URLS=
+DISABLE_SIGNUP=false
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_SENDER_NAME="افراکالا"
+SMTP_ADMIN_EMAIL=
+DASHBOARD_USERNAME=
+DASHBOARD_PASSWORD=
+```
+
+**حساس (هرگز به فرانت نرود):**
+`SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `POSTGRES_PASSWORD`, `SMTP_PASS`, `DASHBOARD_PASSWORD`, `LOVABLE_API_KEY`.
+
+نمونه `*.env.example` بدون مقدار واقعی در ریپو git؛ مقادیر واقعی روی سرور با مالکیت `root:600` و backup رمزشده (sops/age).
+
+---
+
+### ۵) شبکه و امنیت
+
+**پورت‌های exposed به اینترنت:** فقط `80` و `443` (Caddy).
+**پورت‌های داخلی (در docker network):** Postgres 5432، Kong 8000، web 3000، meta 8080.
+
+**شبکه:**
+- `afrakala-net` (bridge، external) — همه stackها متصل.
+- Postgres روی هیچ پورت host bind نشود.
+
+**Firewall (ufw / nftables):**
+```
+allow 22/tcp   from <admin-ip>
+allow 80/tcp
+allow 443/tcp
+deny  incoming default
+allow outgoing default
+```
+
+**SSL:**
+- مسیر اول: Caddy + ACME (ZeroSSL یا Let’s Encrypt اگر دسترس‌پذیر).
+- مسیر دوم (ایران-safe): گواهی صادرشده توسط CA داخلی یا گواهی DV ایرانی، mount در Caddy.
+
+**محدودسازی Studio:**
+- بدون publish پورت روی host.
+- دسترسی فقط از طریق `ssh -L 3001:studio:3000 user@server` و `http://localhost:3001`.
+- یا Caddy روی `studio.afrakala.ir` با `basicauth` + IP allowlist.
+
+**حفاظت Service Role Key:**
+- فقط در `app/.env` (سرور SSR) و `supabase/.env`.
+- چون پیشوند `VITE_` ندارد، خودکار از باندل کلاینت خارج است.
+- Audit پیش از deploy: `grep -r SERVICE_ROLE` روی dist باید خالی برگردد.
+
+**Hardening Postgres:**
+- `pg_hba.conf` فقط از داخل docker network.
+- پسوردهای قوی، چرخش `JWT_SECRET` هر ۶ ماه (با re-issue کلیدهای ANON/SERVICE).
+
+---
+
+### ۶) Backup
+
+| هدف | ابزار | تناوب | نگهداری |
+|---|---|---|---|
+| Postgres | `pg_dump -Fc -j 2` داخل کانتینر db | روزانه ۰۲:۰۰ | ۱۴ روز local + ۳۰ روز offsite |
+| Storage volume | `restic` (یا rsync + tar) از `volumes/storage` | روزانه ۰۲:۳۰ | همان |
+| env/secrets | `sops` با کلید `age` | هنگام تغییر + هفتگی | نامحدود (encrypted) |
+| migrations | git (در ریپو) | هر تغییر | نامحدود |
+
+**Offsite:** سرور دوم داخل ایران (آروان/پارس‌پک) با `rclone` روی WebDAV یا S3-compatible.
+
+**Restore-test:** اسکریپت ماهانه `verify-restore.sh` یک کانتینر موقت بالا می‌آورد، آخرین dump را restore می‌کند، تعداد رکوردهای `payment_receipts`, `profiles`, `user_roles`, `payment_receipt_documents` را با پروداکشن مقایسه و گزارش می‌دهد.
+
+---
+
+### ۷) مسیر مهاجرت از Lovable Cloud
+
+**۷.۱ Migrations:**
+- پس از بالا آمدن `db`، اجرای ترتیبی همه ۱۲۹ فایل:
+  ```
+  for f in supabase/migrations/*.sql; do psql -f "$f"; done
+  ```
+- یا `supabase db push` (CLI) با `supabase/config.toml` موجود.
+
+**۷.۲ Auth users:**
+- روی Lovable Cloud با service role، `pg_dump --data-only -t auth.users -t auth.identities`.
+- روی self-host پس از init، restore. هش‌های bcrypt سازگار → کاربران بدون reset لاگین می‌کنند.
+- پس از تست، ایمیل اطلاع‌رسانی + reset اختیاری.
+
+**۷.۳ Storage files:**
+- اسکریپت Node با service role: list همه objectهای bucket `payment-receipt-documents`، download، upload با همان `path` به self-host.
+- بدون تغییر `storage_path` در دیتابیس → لینک‌های موجود کار می‌کنند.
+- اعتبارسنجی: sha256 مبدا/مقصد + شمارش رکورد.
+
+**۷.۴ Rebuild اپ:**
+- `app/.env` با `VITE_SUPABASE_URL=https://api.afrakala.ir` و `ANON_KEY` جدید.
+- `docker compose -f app/docker-compose.yml build --no-cache web && up -d`.
+- DNS cutover پس از smoke test.
+
+**۷.۵ ترتیب اجرا (downtime ~۳۰ دقیقه):**
+```
+1) freeze writes روی Lovable Cloud (maintenance flag)
+2) dump auth + data + storage
+3) restore روی self-host
+4) verify
+5) DNS switch
+6) unfreeze
+```
+
+---
+
+### ۸) استراتژی وابستگی‌های خارجی (فقط گزارش)
+
+**OCR رسید (`ai.gateway.lovable.dev`):**
+- وضعیت: تنها وابستگی خارجی فعال در رانتایم. در ایران فیلتر/کند است.
+- استراتژی پیشنهادی برای فاز بعد (نه اکنون):
+  - گزینه A: Tesseract.js در سرور SSR (fa+eng)، رایگان، کیفیت متوسط.
+  - گزینه B: PaddleOCR/EasyOCR در سرویس Python جدا (کیفیت بالاتر).
+  - گزینه C: API ایرانی (هم‌راوش/پارس‌AI) با کلید سرور-only.
+  - گزینه D: Feature flag `OCR_ENABLED=false` + ورودی دستی به‌عنوان fallback.
+- در SH.2 هیچ تغییری اعمال نمی‌شود.
+
+**سایر external:**
+- لینک‌های UI به `wa.me`, `eitaa.com`, `ble.ir`, `rubika.ir` — anchor هستند، روی عملکرد بی‌اثر، نگه‌داری شود.
+- `cdn.gpteng.co` فقط در dev/preview Lovable. در باندل پروداکشن خودکار حذف می‌شود؛ preconnect باقی‌مانده در `__root.tsx` در فاز SH.3 پاک می‌شود.
+
+---
+
+### ۹) استراتژی Docker Compose (سه stack مجزا)
+
+```text
+docker network create afrakala-net   # یک‌بار
+
+docker compose -f /opt/afrakala/supabase/docker-compose.yml up -d
+docker compose -f /opt/afrakala/app/docker-compose.yml up -d
+docker compose -f /opt/afrakala/proxy/docker-compose.yml up -d
+```
+
+مزیت تفکیک:
+- آپدیت Supabase بدون restart اپ.
+- rollback مستقل proxy.
+- backup/restore فقط روی stack دیتابیس.
+
+Healthchecks:
+- `web`: `wget -qO- http://localhost:3000/ || exit 1`
+- `kong`: `curl -f http://localhost:8000/`
+- `db`: `pg_isready -U postgres`
+
+---
+
+### ۱۰) فازهای پیشنهادی بعدی
+
+| فاز | عنوان | خروجی | ریسک |
+|---|---|---|---|
+| **SH.3** | پاکسازی build برای Node-only + حذف preconnect خارجی + Healthcheck Docker | `vite.config.ts`, `__root.tsx`, `docker-compose.yml` | متوسط |
+| **SH.4** | ایجاد stack `proxy` (Caddyfile نمونه) و راهنمای SSL | `deploy/proxy/` | پایین |
+| **SH.5** | ایجاد stack `supabase` (نسخه پین‌شده supabase/docker با سرویس‌های لازم) | `deploy/supabase/` | متوسط |
+| **SH.6** | جایگزینی OCR خارجی (Tesseract.js + flag) | `src/server/receipt-ocr.functions.ts` | متوسط |
+| **SH.7** | اسکریپت‌های مهاجرت Auth + Storage | `deploy/migration/` | متوسط |
+| **SH.8** | اسکریپت‌های Backup + Restore + Verify | `deploy/backups/` | پایین |
+| **SH.9** | Runbook فارسی استقرار + Operations + Disaster Recovery | `docs/SELF_HOSTING.md` | پایین |
+
+---
+
+### ۱۱) ریسک‌ها و بلاکرها
+
+| مورد | ریسک | کاهش |
+|---|---|---|
+| دسترسی Let’s Encrypt از ایران | متوسط | ZeroSSL یا گواهی DV داخلی |
+| سازگاری نسخه GoTrue با hashهای فعلی | پایین (هر دو bcrypt) | تست restore در staging |
+| build اپ روی Node-only با Cloudflare plugin موجود | متوسط | SH.3 تأیید build روی Linux |
+| حجم image سرویس‌های Supabase (~۱.۵GB) | پایین | pull-once، registry mirror در صورت نیاز |
+| pg_cron در self-host همیشه قابل نصب نیست | پایین | کد فعلی fallback دارد |
+| OCR خارجی تا SH.6 فعال می‌ماند | متوسط | flag `OCR_ENABLED` در همان فاز |
+
+---
+
+### ۱۲) نقش‌ها
+
+**Lovable در فازهای بعد می‌سازد:**
+- پیکربندی `vite.config.ts` Node-only + healthcheck Docker.
+- نمونه `Caddyfile`، `docker-compose.yml` پراکسی، supabase stack.
+- اسکریپت مهاجرت Auth/Storage و Backup.
+- جایگزین OCR محلی.
+- مستندات runbook فارسی.
+
+**روی سرور دستی:**
+- نصب OS، Docker، Docker Compose.
+- DNS و گواهی SSL (یا CA داخلی).
+- پر کردن `.env` با مقادیر واقعی + قفل دسترسی فایل.
+- اجرای اولیه stackها به ترتیب، اجرای migrationها.
+- پیکربندی firewall و SSH hardening.
+- کرون‌های backup و آزمون restore ماهانه.
+
+---
+
+منتظر تأیید برای ورود به **SH.3** (پاکسازی build و پراکسی) هستم.
