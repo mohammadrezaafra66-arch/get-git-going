@@ -67,3 +67,13 @@ docker compose -f deploy/app/docker-compose.yml down
 - Supabase self-host stack ساخته نشده.
 - Caddy/Nginx و SSL پیاده‌سازی نشده.
 - OCR خارجی هنوز فعال است (تا فاز SH.6).
+
+## نتیجه Smoke Test (Phase SH.3A)
+
+- `vite.config.ts`: پلاگین Cloudflare در زمان build غیرفعال شد (`cloudflare: false`). dev/preview در Lovable تحت تأثیر نیست.
+- خروجی build: `dist/client/` (assets) و `dist/server/server.js` (web `fetch` handler).
+- آداپتر Node خام: `server/node-entry.mjs` — request/response را به Web Fetch تبدیل می‌کند، روی `HOST:PORT` listen می‌کند، SIGTERM/SIGINT را تمیز handle می‌کند.
+- اجرا: `node server/node-entry.mjs` ✅ (تست‌شده با Node 20).
+- `/api/healthz` → `{"ok":true}` با status 200.
+- secret-leak scan روی `dist/client/`: **CLEAN** (هیچ‌یک از `SERVICE_ROLE / JWT_SECRET / POSTGRES_PASSWORD / LOVABLE_API_KEY` در client bundle نیست).
+- خروجی build هیچ وابستگی Worker/Cloudflare runtime ندارد.
