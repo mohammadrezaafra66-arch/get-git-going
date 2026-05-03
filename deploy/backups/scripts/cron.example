@@ -1,0 +1,11 @@
+# AfraKala — نمونه cron برای backup. این فایل فقط نمونه است.
+# نصب واقعی: `crontab -e` به‌عنوان root و این خطوط را با مسیرهای واقعی اضافه کنید.
+
+# Daily full backup at 02:00 UTC
+0 2 * * * cd /opt/afrakala/deploy/backups && DRY_RUN=false bash scripts/backup-all.sh >> /var/log/afrakala-backup.log 2>&1
+
+# Weekly verify drill reminder (Saturday 04:00 UTC)
+0 4 * * 6 cd /opt/afrakala/deploy/backups && DRY_RUN=false bash scripts/verify-restore.sh >> /var/log/afrakala-verify-restore.log 2>&1
+
+# Optional: daily offsite sync at 03:30 UTC (only if OFFSITE_ENABLED=true)
+# 30 3 * * * cd /opt/afrakala/deploy/backups && DRY_RUN=false bash scripts/offsite-sync.example.sh >> /var/log/afrakala-offsite.log 2>&1
