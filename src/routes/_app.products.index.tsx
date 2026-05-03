@@ -159,6 +159,9 @@ function ProductsPage() {
         <Link to="/products/categories" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">دسته‌بندی‌ها</Link>
         <Link to="/products/labels" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">برچسب‌ها</Link>
         <Link to="/products/attributes" className="rounded-md border border-border bg-card px-3 py-1.5 text-foreground hover:bg-muted">ویژگی‌های محصول</Link>
+        {canUpdate && (
+          <Link to="/products/regenerate-names" className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-primary hover:bg-primary/20">ساخت خودکار نام محصولات</Link>
+        )}
       </div>
 
       <ProductFilters value={filters} onChange={onFiltersChange} />
