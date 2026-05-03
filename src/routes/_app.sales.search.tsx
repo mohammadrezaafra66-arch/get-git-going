@@ -455,15 +455,17 @@ interface ProductCardProps {
   product: ProductRow;
   primarySalePriceTypeId: string;
   isPrivileged: boolean;
-  onSelect: () => void;
+  canRecalcPrice: boolean;
+  onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, onOpenChart }: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalcDone, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
   const prices = product.prices ?? [];
   const labels = product.labels ?? [];
+  const [recalcing, setRecalcing] = useState(false);
   // primary price = the one selected globally (if available for this product), otherwise the first.
   const primary =
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
@@ -488,14 +490,25 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
   else if (product.capacity) specChips.push({ label: "ظرفیت", value: product.capacity });
   if (product.model) specChips.push({ label: "مدل", value: product.model });
   if (product.color) specChips.push({ label: "رنگ", value: product.color });
+  if (product.brand?.name) specChips.push({ label: "برند", value: product.brand.name });
+  if (product.category?.name) specChips.push({ label: "دسته", value: product.category.name });
+  if (product.product_type === "iranian" || product.product_type === "foreign") {
+    specChips.push({ label: "نوع", value: product.product_type === "foreign" ? "خارجی" : "ایرانی" });
+  }
 
   const handleCopySalesText = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const lines: string[] = [];
     lines.push(formatProductDisplayNameWithFallback(product));
     if (product.sku) lines.push(`کد: ${product.sku}`);
+    if (product.brand?.name) lines.push(`برند: ${product.brand.name}`);
+    if (product.category?.name) lines.push(`دسته: ${product.category.name}`);
+    if (product.product_type === "iranian" || product.product_type === "foreign") {
+      lines.push(`نوع کالا: ${product.product_type === "foreign" ? "خارجی" : "ایرانی"}`);
+    }
     if (specChips.length > 0) {
-      lines.push(specChips.map((s) => `${s.label}: ${s.value}`).join("  •  "));
+      const tech = specChips.filter((s) => !["برند", "دسته", "نوع"].includes(s.label));
+      if (tech.length > 0) lines.push(tech.map((s) => `${s.label}: ${s.value}`).join("  •  "));
     }
     lines.push(`وضعیت: ${STOCK_LABEL[stockKey] ?? stockKey}`);
     lines.push("");
@@ -520,15 +533,28 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
     }
   };
 
+  const handleRecalc = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecalcing(true);
+    try {
+      const r = await publishProductPrices({ productId: product.id, source: "sales_search" });
+      if (r.succeeded > 0) {
+        toast.success(`${r.succeeded} قیمت محاسبه و ذخیره شد` + (r.failed > 0 ? ` — ${r.failed} خطا` : ""));
+        onRecalcDone();
+      } else {
+        const firstErr = r.results.find((x) => !x.ok)?.error;
+        toast.error(firstErr ?? "هیچ قیمتی محاسبه نشد");
+      }
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message ?? "خطا در محاسبه قیمت");
+    } finally {
+      setRecalcing(false);
+    }
+  };
+
   return (
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
-      <CardContent
-        className="p-4 space-y-3"
-        role="button"
-        tabIndex={0}
-        onClick={onSelect}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
-      >
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
             <h3 className="font-semibold text-foreground truncate">{formatProductDisplayNameWithFallback(product)}</h3>
@@ -641,13 +667,16 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
                       {a > 0 ? "+" : ""}{formatNumber(a)}
                     </div>
                   )}
+                  {p.last_updated_at && (
+                    <div className="text-[9px] text-muted-foreground truncate">{formatDateTimeFa(p.last_updated_at)}</div>
+                  )}
                 </button>
               );
             })}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="secondary"
@@ -656,6 +685,18 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
           >
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
+          {canRecalcPrice && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRecalc}
+              disabled={recalcing}
+            >
+              {recalcing ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Wand2 className="ms-1 h-4 w-4" />}
+              محاسبه دقیق قیمت
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -664,14 +705,6 @@ function ProductCard({ product, primarySalePriceTypeId, isPrivileged, onSelect, 
             disabled={!primary || cur === null}
           >
             <LineChart className="ms-1 h-4 w-4" /> نمودار قیمت
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); onSelect(); }}
-          >
-            مشاهده همه قیمت‌ها
           </Button>
           <StockAlertButton
             productId={product.id}
