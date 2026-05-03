@@ -16,6 +16,7 @@ import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
@@ -165,6 +166,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthzRoute = ApiHealthzRouteImport.update({
+  id: '/api/healthz',
+  path: '/api/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppUsersRoute = AppUsersRouteImport.update({
@@ -808,6 +814,7 @@ export interface FileRoutesByFullPath {
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
+  '/api/healthz': typeof ApiHealthzRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -930,6 +937,7 @@ export interface FileRoutesByTo {
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
+  '/api/healthz': typeof ApiHealthzRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -1055,6 +1063,7 @@ export interface FileRoutesById {
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRouteWithChildren
+  '/api/healthz': typeof ApiHealthzRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -1181,6 +1190,7 @@ export interface FileRouteTypes {
     | '/sales'
     | '/suppliers'
     | '/users'
+    | '/api/healthz'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
@@ -1303,6 +1313,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/suppliers'
     | '/users'
+    | '/api/healthz'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
@@ -1427,6 +1438,7 @@ export interface FileRouteTypes {
     | '/_app/sales'
     | '/_app/suppliers'
     | '/_app/users'
+    | '/api/healthz'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/accounting/bank-accounts'
@@ -1536,6 +1548,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  ApiHealthzRoute: typeof ApiHealthzRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
 }
@@ -1589,6 +1602,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/healthz': {
+      id: '/api/healthz'
+      path: '/api/healthz'
+      fullPath: '/api/healthz'
+      preLoaderRoute: typeof ApiHealthzRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/users': {
@@ -2785,6 +2805,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  ApiHealthzRoute: ApiHealthzRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
