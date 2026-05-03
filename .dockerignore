@@ -18,6 +18,13 @@ deploy/proxy/Caddyfile
 deploy/proxy/certs/
 deploy/supabase/volumes/
 *.pem
+
+# Migration artifacts — never bake into images
+deploy/migration/.env
+deploy/migration/dumps/
+deploy/migration/storage-export/
+deploy/migration/**/*.dump
+deploy/migration/**/storage-manifest*.json
 *.key
 *.crt
 *.csr
