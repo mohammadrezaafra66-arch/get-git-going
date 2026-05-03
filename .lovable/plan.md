@@ -1,110 +1,79 @@
-# Phase 11.1 — مستندات فیش واریزی (Document Upload for Payment Receipts)
+## فاز ۱۳.۲ — تبدیل کارت نتایج جستجوی فروش به کارت کامل فروش
 
-## Scope (strict)
-- Only touches `PaymentReceiptForm.tsx` (create) and `_app.accounting.receipts.$receiptId.tsx` (view).
-- No OCR, no AI extraction, no auto-detection of bank/date/payer, no auto accounting entries.
-- No external paid APIs, no redesign of accounting.
-- Existing receipt insert/approve/reject logic stays intact.
+### وضعیت فعلی (پس از بررسی)
 
-## What exists today
-- Route: `/_app/accounting/receipts/create` → renders `PaymentReceiptForm`.
-- Table `public.payment_receipts` with field `receipt_image_url text` (single URL textbox today). We keep it for backward compatibility but stop showing/using it in the form (replaced by the new multi-file uploader). Detail page keeps a fallback display for legacy rows.
-- `audit_logs` table is already used by the form (`payment_receipt_created`, `duplicate_receipt_warning`, etc.).
-- No Supabase Storage buckets exist yet. This will be the project's first bucket.
-- Roles: `admin`, `manager`, `accountant`, `sales` (RLS on `payment_receipts` already restricts to admin/manager/accountant for select; sales does NOT currently see receipts, so docs follow the same rule).
+**فایل‌های دخیل:**
+- `src/routes/_app.sales.search.tsx` — صفحه و کامپوننت `ProductCard` (همه‌چیز در همین یک فایل است، خط ۴۶۳ به بعد).
+- `src/shared/components/ProductPriceCard.tsx` — پنل کناری «مشاهده همه قیمت‌ها» (Sheet).
+- `src/lib/pricing/publish-prices.ts` — تابع `publishProductPrices` از فاز ۱۳.۱ (موجود و قابل استفادهٔ مجدد).
+- `src/components/pricing/price-history/ProductPriceHistoryDrawer.tsx` — نمودار قیمت.
+- `src/components/pricing/price-alerts/CreatePriceAlertButton.tsx` — هشدار قیمت.
+- `src/components/sales/StockAlertButton.tsx` — هشدار موجودی.
 
-## Database changes (single migration)
+**منبع داده:** RPC `get_sales_search_products` که هر سطر شامل: `id, name, sku, product_type, stock_status, color, capacity, model, primary_spec, brand{id,name}, category{id,name}, labels[], prices[] (همهٔ نوع‌قیمت‌های فعال با current_price/previous_price/last_updated_at), is_unavailable_for_sales, has_purchase_price`.
 
-### 1. Storage bucket `payment-receipt-documents` (private)
-```sql
-insert into storage.buckets (id, name, public)
-values ('payment-receipt-documents', 'payment-receipt-documents', false);
-```
+**یافته مهم:** قیمت‌های ثانویه و چیپس‌های مشخصات و دکمهٔ «کپی متن فروش» الان هم در کارت هستند، ولی:
+- دکمهٔ «مشاهده همه قیمت‌ها» همچنان وجود دارد و پنل کناری همان اطلاعات را تکرار می‌کند.
+- دکمهٔ «محاسبه دقیق قیمت» (انتشار تک‌محصولی) داخل کارت نیست.
+- مشخصات فنی محدود به ظرفیت/مدل/رنگ است؛ نوع کالا به‌صورت متن کوچک است نه چیپ منظم.
 
-### 2. New table `public.payment_receipt_documents`
-```
-id              uuid pk default gen_random_uuid()
-receipt_id      uuid not null references payment_receipts(id) on delete cascade
-storage_path    text not null         -- object key inside the bucket
-file_name       text not null
-file_type       text not null         -- mime type
-file_size       bigint not null       -- bytes
-uploaded_by     uuid not null         -- profiles/auth user id
-created_at      timestamptz not null default now()
-```
-Indexes: `(receipt_id)`, `(uploaded_by)`.
+---
 
-We store `storage_path` (not a public URL) because the bucket is private; the client generates short-lived signed URLs on demand.
+### تغییرات این فاز
 
-### 3. RLS on `payment_receipt_documents`
-Mirrors `payment_receipts` access exactly via the existing `has_role` function:
+تنها فایل تغییریافته: `src/routes/_app.sales.search.tsx` (ویرایش کامپوننت `ProductCard`).
 
-- **SELECT**: `has_role(auth.uid(),'admin') OR has_role(auth.uid(),'manager') OR has_role(auth.uid(),'accountant')`
-- **INSERT**: `has_role(auth.uid(),'admin') OR has_role(auth.uid(),'accountant')` AND `uploaded_by = auth.uid()`
-- **DELETE**: `has_role(auth.uid(),'admin') OR has_role(auth.uid(),'accountant')`
-- **UPDATE**: not allowed (documents are immutable; remove + re-upload).
+**۱. حذف دکمهٔ «مشاهده همه قیمت‌ها»**
+- چون همهٔ `prices[]` داخل کارت دیده می‌شوند، دکمه حذف می‌شود.
+- کلیک روی خود کارت (`onSelect`) که پنل کناری را باز می‌کرد نیز غیرفعال می‌شود تا تجربه ساده بماند. `ProductPriceCard` و state مربوطه (`selectedProduct`, `panelOpen`) از صفحه حذف می‌شوند (مسیر/کامپوننت پنل دست‌نخورده می‌ماند برای استفادهٔ احتمالی صفحات دیگر).
 
-Sales users intentionally cannot read these (they already cannot read `payment_receipts`). Public/anon: no policy → no access.
+**۲. بازچینش بخش قیمت‌ها داخل کارت**
+- قیمت اصلی (بر اساس `salePriceTypeId` انتخابی صفحه) در بالا، بزرگ و واضح.
+- زیر آن، گرید فشرده شامل **همهٔ** نوع‌قیمت‌های دیگر با: عنوان، قیمت فعلی، قیمت قبلی (خط‌خورده) در صورت وجود، و زمان آخرین بروزرسانی به‌صورت کوچک.
+- در صورت نبود هر قیمت، متن فارسی واضح: «قیمت ثبت نشده» + در سطح کارت، علت کلی (`noPriceReason`: ناموجود / قیمت خرید فعال نیست / هنوز محاسبه نشده).
 
-### 4. RLS on `storage.objects` for the new bucket
-Restrict the bucket so only privileged roles can read/write its objects:
+**۳. بخش مشخصات فنی فشرده**
+- یک ردیف چیپ شامل: برند، دسته، نوع کالا (ایرانی/خارجی)، مدل، ظرفیت=`primary_spec`، رنگ، SKU.
+- وضعیت موجودی به‌عنوان Badge بالا-راست (همان حالت فعلی).
+- بدون کوئری اضافی؛ فقط فیلدهای موجود در پاسخ RPC.
 
-- SELECT/INSERT/DELETE policies scoped to `bucket_id = 'payment-receipt-documents'` AND `has_role(...)` (admin/manager/accountant for read; admin/accountant for write/delete).
-- No public read.
+**۴. دکمهٔ «محاسبه دقیق قیمت» (تک‌محصولی)**
+- داخل نوار اکشن کارت اضافه می‌شود.
+- از `publishProductPrices({ productId })` در `src/lib/pricing/publish-prices.ts` استفاده می‌کند.
+- محدود به نقش‌های دارای مجوز (`pricing.update` یا `pricing.create`) با `hasPermission` — برای سایرین مخفی.
+- حالت‌ها: لودینگ روی همان دکمه، توست موفقیت با تعداد قیمت‌های ذخیره‌شده، توست خطا با پیام فارسی.
+- پس از موفقیت: `queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] })` تا کارت تازه شود.
+- محدودهٔ اثر: فقط همان محصول؛ هیچ تغییری در فرمول‌های قیمت‌گذاری انجام نمی‌شود.
 
-## Frontend changes
+**۵. حفظ اکشن‌های موجود و سازماندهی بهتر**
+ردیف اکشن کارت به این ترتیب از راست به چپ (RTL):
+- کپی متن فروش (Primary)
+- محاسبه دقیق قیمت (Secondary، فقط نقش‌های مجاز)
+- نمودار قیمت
+- هشدار قیمت
+- هشدار موجودی (در صورت فعال‌بودن وضعیت)
 
-### Files modified
-1. **`src/shared/components/PaymentReceiptForm.tsx`**
-   - Remove the `receipt_image_url` text input from the visible UI (keep field in schema as optional/empty for backward compat; do not send a value).
-   - Add a new section titled **«مستندات فیش»** containing:
-     - Drag-and-drop / click input. Labels: «آپلود تصویر یا فایل»، «فایل‌های مجاز: JPG, PNG, WEBP, PDF, TXT — حداکثر ۱۰ مگابایت برای هر فایل، حداکثر ۵ فایل».
-     - Client-side validation (mime + size). Allowed mimes: `image/jpeg`, `image/png`, `image/webp`, `application/pdf`, `text/plain`.
-     - Local list of staged files with name, size, remove button. Files are uploaded only AFTER the receipt insert succeeds.
-   - In `mutation.mutationFn`, after a successful `payment_receipts` insert (and before the success toast):
-     1. For each staged file: upload to `payment-receipt-documents` at path `${receiptId}/${crypto.randomUUID()}-${safeName}` using `supabase.storage.from(...).upload(...)`.
-     2. Insert one row into `payment_receipt_documents` per uploaded file.
-     3. Insert one `audit_logs` row per file with `action: 'receipt_document_uploaded'`, `entity_type: 'payment_receipt'`, `entity_id: receiptId`, diff `{ document_id, file_name, file_type, file_size, storage_path }`.
-   - On any per-file failure: show toast, but don't roll back the receipt (the user can re-attach from the detail page).
+**۶. متن «کپی متن فروش» (بهبود)**
+خروجی شامل: نام نمایشی محصول، برند، دسته، SKU، نوع کالا، وضعیت موجودی، مدل، ظرفیت=`primary_spec`، رنگ، و سپس فهرست همهٔ قیمت‌های فعال با مقدار یا «قیمت ثبت نشده». در صورت نبود کامل قیمت‌ها، علت فارسی نوشته می‌شود. (همان منطق فعلی + برند/دسته/نوع کالا اضافه می‌شود.)
 
-2. **`src/routes/_app.accounting.receipts.$receiptId.tsx`**
-   - New section **«مستندات فیش»** below the existing details:
-     - Lists rows from `payment_receipt_documents` for this receipt.
-     - For each: show file name, size, type icon, and a button **«مشاهده مستندات»** that calls `supabase.storage.from('payment-receipt-documents').createSignedUrl(storage_path, 300)` and opens the URL in a new tab.
-     - Image MIME types render a small thumbnail via signed URL.
-     - For admin/accountant: a delete button that:
-       1. Removes the storage object,
-       2. Deletes the table row,
-       3. Inserts an audit log with `action: 'receipt_document_removed'`.
-   - Keep legacy `receipt.receipt_image_url` rendering as a fallback only when no `payment_receipt_documents` rows exist (so old data still works).
+**۷. مواردی که تغییر نمی‌کنند**
+- RPC `get_sales_search_products` بدون تغییر.
+- موتور قیمت‌گذاری، فرمول‌ها، `publishProductPrices` بدون تغییر.
+- فیلترها، جستجو، انبار، حسابداری، OCR، گیمیفیکیشن، صفحهٔ جزئیات محصول، Workbench، تاریخچه قیمت — دست‌نخورده.
+- بدون تصویر محصول، بدون محصولات پیشنهادی/مشابه (فاز ۱۳.۳ و ۱۳.۴).
+- بدون آیتم منو جدید.
 
-### Persian labels (verbatim)
-- «مستندات فیش»
-- «آپلود تصویر یا فایل»
-- «فایل‌های مجاز: JPG, PNG, WEBP, PDF, TXT»
-- «مشاهده مستندات»
-- «حذف مستند»
-- «هیچ مستندی پیوست نشده است»
+---
 
-## Audit log actions added
-- `receipt_document_uploaded` — on each successful upload.
-- `receipt_document_removed` — on delete from detail page.
+### ملاحظات کارایی
+- بدون N+1: فقط از داده‌های موجود در پاسخ `get_sales_search_products` استفاده می‌شود.
+- «محاسبه دقیق قیمت» on-demand و فقط برای همان یک محصول است.
+- پس از publish فقط همان query لیست invalidate می‌شود.
 
-Both use `entity_type = 'payment_receipt'`, `entity_id = receipt.id`.
-
-## Out of scope (explicitly NOT doing now)
-- OCR / text extraction from images or PDFs.
-- Auto-creating accounting entries from documents.
-- Auto-detecting bank, tracking number, date, payer, receiver.
-- Migrating existing `receipt_image_url` rows into `payment_receipt_documents`.
-- Any change to other pages (purchases, invoices, sales, etc.).
-
-## Verification steps after implementation
-1. `bunx tsc --noEmit`
-2. `bun run build`
-3. Manual: as accountant — create a receipt with 2 attachments → confirm files in bucket, rows in `payment_receipt_documents`, audit logs present, signed URLs open correctly. As sales — confirm no access (existing behavior unchanged).
-
-## Expected deliverables
-- 1 SQL migration (bucket + table + RLS on table + RLS on storage.objects scoped to bucket).
-- 2 modified TSX files (form + detail page).
-- Typecheck + build results reported back.
+### راستی‌آزمایی
+- اجرای `bunx tsc --noEmit` و `bun run build`.
+- جستجوی محصول دارای چند قیمت → همه دیده می‌شوند.
+- محصول بدون قیمت → «قیمت ثبت نشده» با علت فارسی.
+- کلیک «محاسبه دقیق قیمت» → publish اجرا، توست، رفرش کارت.
+- کلیک نمودار/هشدار قیمت/کپی → بدون تغییر کار می‌کنند.
+- فیلترها و سایر صفحات دست‌نخورده.
