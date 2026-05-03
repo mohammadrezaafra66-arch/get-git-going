@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/_app/products_/$id/edit")({
 function EditProductPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   const { data: initial, isLoading } = useQuery({
@@ -117,6 +118,12 @@ function EditProductPage() {
       }
 
       toast.success("تغییرات ذخیره شد");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["product", id] }),
+        queryClient.invalidateQueries({ queryKey: ["product-edit", id] }),
+        queryClient.invalidateQueries({ queryKey: ["product-dynamic-attrs", id] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+      ]);
       navigate({ to: "/products/$id", params: { id } });
     } catch (e: any) {
       const code = e?.code ?? "";
