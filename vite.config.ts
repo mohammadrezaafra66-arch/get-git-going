@@ -24,6 +24,11 @@ const cloudProjectId =
   "kwwkppkcihrbeurwudjh";
 
 export default defineConfig({
+  // Disable the Cloudflare Workers build plugin so that `vite build` produces a
+  // pure Node SSR output (.output/server/index.mjs) suitable for self-hosted
+  // Linux + Docker (Phase SH.3A). The plugin is build-only, so dev/preview in
+  // Lovable is unaffected.
+  cloudflare: false,
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
