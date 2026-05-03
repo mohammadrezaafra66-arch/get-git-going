@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -14,13 +14,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
-import { ProductPriceCard } from "@/shared/components/ProductPriceCard";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasPermission } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
@@ -32,6 +32,7 @@ import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChange
 import { computeChangePercent, computeDirection } from "@/lib/pricing/price-history";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
+import { publishProductPrices } from "@/lib/pricing/publish-prices";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -86,11 +87,11 @@ const STOCK_VARIANT: Record<string, "default" | "secondary" | "destructive" | "o
 function SalesSearchPage() {
   const { roles } = useAuth();
   const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const canRecalcPrice = hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
   const [brandIds, setBrandIds] = useState<string[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
@@ -225,11 +226,6 @@ function SalesSearchPage() {
         }
       />
       <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
-      <ProductPriceCard
-        product={selectedProduct}
-        open={panelOpen}
-        onOpenChange={(v) => { setPanelOpen(v); if (!v) setSelectedProduct(null); }}
-      />
 
       {/* search & price type */}
       <Card>
@@ -401,7 +397,10 @@ function SalesSearchPage() {
                 product={p}
                 primarySalePriceTypeId={salePriceTypeId}
                 isPrivileged={isPrivileged}
-                onSelect={() => { setSelectedProduct(p); setPanelOpen(true); }}
+                canRecalcPrice={canRecalcPrice}
+                onRecalcDone={() => {
+                  queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
+                }}
                 onOpenChart={(typeId) => {
                   const targetId = typeId ?? salePriceTypeId;
                   if (!targetId) return;
