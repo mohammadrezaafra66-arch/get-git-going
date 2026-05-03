@@ -1,0 +1,214 @@
+# AfraKala — Supabase Self-Host Stack (scaffold)
+# فاز SH.5 — فقط اسکلت. هیچ migration/seed/secret واقعی اجرا نمی‌شود.
+#
+# قواعد امنیتی:
+#  - Postgres / Studio / Kong هیچ پورتی روی هاست publish نمی‌کنند.
+#  - دسترسی خارجی فقط از طریق Caddy (شبکه external: afrakala-net).
+#  - مقادیر واقعی از deploy/supabase/.env خوانده می‌شوند (در .gitignore).
+#
+# پیش‌نیاز روی سرور:
+#   docker network create afrakala-net   # اگر قبلاً ساخته نشده
+#   cp .env.example .env                 # و مقادیر واقعی را پر کن
+#   cp kong.yml.example volumes/api/kong.yml
+
+name: afrakala-supabase
+
+networks:
+  afrakala-net:
+    external: true
+  supabase-internal:
+    driver: bridge
+
+volumes:
+  db-data:
+  storage-data:
+
+services:
+  # ---------------------------------------------------------------
+  # Postgres — هرگز پورت publish نمی‌کند
+  # ---------------------------------------------------------------
+  db:
+    image: supabase/postgres:15.6.1.139
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # migrations در فاز SH.7 از طریق این پوشه اعمال می‌شوند (الان خالی است)
+      - ./migrations:/docker-entrypoint-initdb.d/migrations:ro
+    networks:
+      - supabase-internal
+    # هیچ ports: عمداً تعریف نشده — دسترسی فقط داخل docker network
+
+  # ---------------------------------------------------------------
+  # Auth (GoTrue)
+  # ---------------------------------------------------------------
+  auth:
+    image: supabase/gotrue:v2.158.1
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+    networks:
+      - supabase-internal
+
+  # ---------------------------------------------------------------
+  # PostgREST
+  # ---------------------------------------------------------------
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+    networks:
+      - supabase-internal
+
+  # ---------------------------------------------------------------
+  # Storage API
+  # ---------------------------------------------------------------
+  storage:
+    image: supabase/storage-api:v1.11.13
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+    networks:
+      - supabase-internal
+
+  # ---------------------------------------------------------------
+  # Postgres Meta — برای Studio
+  # ---------------------------------------------------------------
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - supabase-internal
+
+  # ---------------------------------------------------------------
+  # Studio — فقط داخلی، بدون publish پورت
+  # دسترسی صرفاً از طریق SSH tunnel یا Caddy با basic_auth + IP allowlist
+  # ---------------------------------------------------------------
+  studio:
+    image: supabase/studio:20240729-ce42139
+    depends_on:
+      meta:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: AfraKala
+      DEFAULT_PROJECT_NAME: afrakala
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    networks:
+      - supabase-internal
+      - afrakala-net  # تا Caddy بتواند به آن برسد (با محافظت basic_auth)
+
+  # ---------------------------------------------------------------
+  # Kong — API gateway. بدون publish پورت روی هاست.
+  # Caddy از طریق afrakala-net به kong:8000 می‌رسد.
+  # ---------------------------------------------------------------
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    volumes:
+      - ./volumes/api/kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      - auth
+      - rest
+      - storage
+      - meta
+    networks:
+      - supabase-internal
+      - afrakala-net
+
+# ---------------------------------------------------------------
+# سرویس‌های عمداً غیرفعال (تا زمانی که نیاز اثبات شود):
+#   - realtime
+#   - edge-functions (functions)
+#   - imgproxy
+#   - analytics / logflare / vector
+#   - inbucket
+# اگر در آینده لازم شد، بلاک سرویس آن‌ها را اضافه کن و در kong.yml route بساز.
+# ---------------------------------------------------------------

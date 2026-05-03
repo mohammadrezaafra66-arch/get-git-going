@@ -1,0 +1,91 @@
+# AfraKala — Kong declarative config (نمونه)
+# این فایل را به volumes/api/kong.yml کپی و در صورت نیاز ویرایش کنید.
+# هیچ کلید واقعی اینجا نباشد — مقادیر از env در زمان start تزریق می‌شوند.
+
+_format_version: "2.1"
+_transform: true
+
+###
+### Consumers — anon و service_role
+###
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: $SUPABASE_ANON_KEY
+  - username: service_role
+    keyauth_credentials:
+      - key: $SUPABASE_SERVICE_KEY
+
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+###
+### Services & Routes
+###
+services:
+  ## Auth (GoTrue)
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-all
+        strip_path: true
+        paths:
+          - /auth/v1/
+    plugins:
+      - name: cors
+
+  ## REST (PostgREST)
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## Storage
+  - name: storage-v1
+    url: http://storage:5000/
+    routes:
+      - name: storage-v1-all
+        strip_path: true
+        paths:
+          - /storage/v1/
+    plugins:
+      - name: cors
+
+  ## Postgres Meta — فقط service_role
+  - name: meta
+    url: http://meta:8080/
+    routes:
+      - name: meta-all
+        strip_path: true
+        paths:
+          - /pg/
+    plugins:
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+
+# سرویس‌های غیرفعال (realtime, functions, imgproxy, analytics) عمداً
+# در این config وجود ندارند تا attack surface کاهش یابد. اگر در فاز بعد
+# نیاز شد، service و route مربوطه را اضافه کنید.
