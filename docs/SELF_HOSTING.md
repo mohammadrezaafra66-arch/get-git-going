@@ -426,18 +426,33 @@ grep -R "POSTGRES_PASSWORD=" deploy 2>/dev/null || true
 
 ---
 
-## ۲۵) کارهای باقی‌مانده برای ۱۰۰٪ self-host (مهم — SH.6 / OCR)
+## ۲۵) OCR در self-host (SH.6 — اعمال شد)
 
-نسخه self-host عملیاتی با SH.3 تا SH.9 بالا می‌آید، **اما** اگر OCR خارجی هنوز فعال باشد، سیستم از نظر strict self-host صددرصد نیست (وابستگی به API ابری خارج از ایران).
+در فاز **SH.6** وابستگی به OCR خارجی به یک flag سرور-only تبدیل شد. وضعیت فعلی:
 
-برای تحویل نهایی ۱۰۰٪ self-host، فاز **SH.6** باید انجام شود:
+- متغیر محیطی `OCR_ENABLED` در `deploy/app/.env.production.example` با پیش‌فرض **`false`** تعریف شده.
+- وقتی `OCR_ENABLED=false` باشد، server function `extractReceiptDocumentOcr` برای فایل‌های تصویری **هیچ درخواستی به `ai.gateway.lovable.dev` ارسال نمی‌کند** و پاسخ زیر را برمی‌گرداند:
 
-- حذف OCR خارجی، یا
-- اختیاری کردن OCR با `OCR_ENABLED=false` به‌عنوان پیش‌فرض، یا
-- جایگزینی با راهکار داخلی: **Tesseract.js** (سبک، کلاینت)، **PaddleOCR** (سرور، فارسی)، یا میکروسرویس OCR self-host.
-- Fallback به **ورود دستی** اطلاعات وقتی OCR در دسترس نیست.
+  > «OCR در نسخه self-host غیرفعال است. لطفاً اطلاعات رسید را دستی وارد کنید.»
 
-در فاز SH.9 کد OCR تغییر نمی‌کند؛ این بخش صرفاً documentation است.
+- مسیرهای `text/*` و `application/pdf` (با متن embedded از طریق `unpdf`) همچنان لوکال و بدون API خارجی کار می‌کنند.
+- فرم ثبت رسید (`PaymentReceiptForm`) از قبل ورود **دستی** همه فیلدها (شماره پیگیری، مبلغ، تاریخ، توضیحات، فایل) را پشتیبانی می‌کند؛ OCR صرفاً helper اختیاری است و مسیر اصلی به آن وابسته نیست.
+- `LOVABLE_API_KEY` فقط server-side است؛ هرگز با پیشوند `VITE_` و در client bundle قرار نگیرد.
+
+**برای فعال‌سازی موقت OCR ابری** (در محیط‌هایی که اینترنت آزاد دارند و کاربر آگاهانه پذیرفته):
+
+```env
+OCR_ENABLED=true
+LOVABLE_API_KEY=...   # فقط در .env سرور، هرگز در repo
+```
+
+**برای ۱۰۰٪ strict self-host (پیش‌فرض):** `OCR_ENABLED=false` نگه دار. هیچ external request انجام نمی‌شود.
+
+### گزینه‌های آینده برای OCR لوکال (فقط مستندات — در این فاز پیاده نشد)
+
+- **Tesseract.js** — کلاینت‌سایه، سبک، فارسی متوسط.
+- **PaddleOCR / EasyOCR** به‌صورت میکروسرویس Docker روی همان سرور.
+- سرویس OCR ایرانی server-side — فقط به‌عنوان گزینه غیرهسته‌ای و با تأیید آگاهانه.
 
 ---
 
