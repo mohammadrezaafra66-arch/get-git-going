@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -59,11 +60,13 @@ interface ProductRow {
   capacity?: string | null;
   model?: string | null;
   description?: string | null;
+  primary_spec?: string | null;
   brand?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
   labels?: Array<{ id: string; title: string; color: string | null; visibility?: string | null }>;
   prices?: PriceEntry[];
   is_unavailable_for_sales?: boolean;
+  has_purchase_price?: boolean;
 }
 
 const STOCK_LABEL: Record<string, string> = {
