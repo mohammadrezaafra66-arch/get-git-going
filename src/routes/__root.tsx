@@ -45,15 +45,6 @@ export const Route = createRootRoute({
         href: appCss,
       },
       {
-        rel: "preconnect",
-        href: "https://cdn.gpteng.co",
-        crossOrigin: "anonymous",
-      },
-      {
-        rel: "dns-prefetch",
-        href: "https://cdn.gpteng.co",
-      },
-      {
         rel: "preload",
         href: "/fonts/vazirmatn/Vazirmatn-400.woff2",
         as: "font",
