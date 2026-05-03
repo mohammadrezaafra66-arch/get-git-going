@@ -8,4 +8,7 @@ dist
 .env.*.local
 *.log
 .DS_Store
-README.mdas
+README.md
+deploy/**/.env
+deploy/**/.env.*
+!deploy/**/.env.*.example
