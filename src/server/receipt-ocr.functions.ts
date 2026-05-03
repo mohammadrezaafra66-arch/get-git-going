@@ -159,12 +159,29 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
 
     // image/* → vision OCR via Lovable AI Gateway.
     if (fileType.startsWith("image/")) {
+      // SH.6: feature flag — strict self-host pipeline must not reach the
+      // external Lovable AI Gateway unless the operator explicitly opts in
+      // by setting OCR_ENABLED=true on the server. Default is OFF.
+      const ocrEnabled = (process.env.OCR_ENABLED ?? "false").toLowerCase() === "true";
+      if (!ocrEnabled) {
+        return {
+          raw_text: "",
+          method: "unsupported" as const,
+          warnings: [
+            "OCR در نسخه self-host غیرفعال است. لطفاً اطلاعات رسید را دستی وارد کنید.",
+          ],
+          engine_confidence: null,
+        } satisfies OcrResult;
+      }
+
       const apiKey = process.env.LOVABLE_API_KEY;
       if (!apiKey) {
         return {
           raw_text: "",
           method: "unsupported" as const,
-          warnings: ["موتور OCR تصویری در این محیط فعال نیست."],
+          warnings: [
+            "موتور OCR تصویری در این محیط فعال نیست (LOVABLE_API_KEY تنظیم نشده).",
+          ],
           engine_confidence: null,
         } satisfies OcrResult;
       }
