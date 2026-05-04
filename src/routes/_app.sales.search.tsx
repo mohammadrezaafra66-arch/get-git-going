@@ -799,7 +799,7 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h3 className="font-semibold text-foreground truncate">{formatProductDisplayNameWithFallback(product)}</h3>
+            <h3 className="font-semibold text-foreground break-words">{formatProductDisplayNameWithFallback(product)}</h3>
             <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {product.sku && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
