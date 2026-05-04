@@ -134,6 +134,19 @@ async function applySession(session: Session | null, force = false) {
     return snapshot;
   }
 
+  // Token refresh / same-user re-emit: just update tokens silently.
+  // Do NOT toggle global loading or re-fetch profile/roles, otherwise the
+  // entire app tree unmounts and component state (forms, search inputs)
+  // is lost when the user switches tabs and comes back.
+  if (
+    !force &&
+    snapshot.initialized &&
+    snapshot.lastLoadedUserId === session.user.id
+  ) {
+    setSnapshot({ session, user: session.user });
+    return snapshot;
+  }
+
   setSnapshot({
     initialized: true,
     loading: true,
@@ -150,8 +163,15 @@ export function initializeAuthSession() {
   if (subscribed) return;
   subscribed = true;
   try {
-    supabase.auth.onAuthStateChange((_event, session) => {
-      void applySession(session, true);
+    supabase.auth.onAuthStateChange((event, session) => {
+      // Only force a full identity reload on real sign-in / sign-out / user change.
+      // TOKEN_REFRESHED and USER_UPDATED happen frequently (incl. on tab focus)
+      // and must not trigger a global loading screen.
+      const isFullReload =
+        event === "SIGNED_IN" &&
+        (!snapshot.user || snapshot.user.id !== session?.user?.id);
+      const isSignOut = event === "SIGNED_OUT";
+      void applySession(session, isFullReload || isSignOut);
     });
   } catch (error) {
     const message = getAuthClientError(error);
