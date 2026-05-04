@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -25,6 +26,7 @@ const GROUPS: NavItem["group"][] = [
 export function AppSidebar() {
   const { roles } = useAuth();
   const location = useLocation();
+  const qc = useQueryClient();
   const isAdmin = roles.includes("admin");
   const isManager = roles.includes("manager");
   const canSeeAdminOnly = isAdmin || isManager;
@@ -35,7 +37,6 @@ export function AppSidebar() {
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
-    refetchInterval: 60_000,
     queryFn: async () => {
       const { count } = await supabase
         .from("profiles")
@@ -44,6 +45,19 @@ export function AppSidebar() {
       return count ?? 0;
     },
   });
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const ch = supabase
+      .channel("sidebar-pending-users")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => { qc.invalidateQueries({ queryKey: ["pending-users-count"] }); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [isAdmin, qc]);
 
   return (
     <Sidebar side="right" collapsible="icon">
@@ -70,7 +84,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                   {items.map((item) => {
                     const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
-                    const showBadge = item.to === "/users/pending" && (pendingCount ?? 0) > 0;
+                    const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
