@@ -196,6 +196,42 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const total = values.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
+      // ===== Price bounds pre-flight (per item) =====
+      // Re-check via RPC to avoid stale client cache; trigger is final defense.
+      for (const it of values.items) {
+        const { data: bData, error: bErr } = await supabase.rpc("get_product_price_bounds", {
+          _product_id: it.product_id,
+          _sale_price_type_id: values.sale_price_type_id,
+        });
+        if (bErr) throw bErr;
+        const b = (Array.isArray(bData) ? bData[0] : bData) as {
+          min_price: number | null;
+          max_price: number | null;
+          cap_price: number | null;
+          selected_price: number | null;
+          has_any: boolean;
+        } | null;
+        const label = it.product_label || "محصول";
+        if (!b || !b.has_any) {
+          throw new Error(`برای «${label}» هنوز قیمت فروشی ثبت نشده — ابتدا قیمت‌گذاری کنید.`);
+        }
+        if (b.min_price != null && it.unit_price < Number(b.min_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) از کمترین قیمت فروش ثبت‌شده (${formatNumber(Number(b.min_price))}) کمتر است.`,
+          );
+        }
+        if (b.selected_price != null && it.unit_price < Number(b.selected_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) از قیمت قانون نوع قیمت انتخاب‌شده (${formatNumber(Number(b.selected_price))}) کمتر است.`,
+          );
+        }
+        if (b.cap_price != null && it.unit_price > Number(b.cap_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) بیش از سقف مجاز (${formatNumber(Number(b.cap_price))} = ۱.۰۵×بالاترین قیمت) است.`,
+          );
+        }
+      }
+
       // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
         const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
@@ -639,6 +675,42 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
     },
   });
 
+  // Bounds for price validation (floor + 5% cap)
+  const { data: bounds } = useQuery({
+    queryKey: ["price-bounds", productId, salePriceTypeId],
+    enabled: !!productId && !!salePriceTypeId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_product_price_bounds", {
+        _product_id: productId,
+        _sale_price_type_id: salePriceTypeId,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as {
+        min_price: number | null;
+        max_price: number | null;
+        cap_price: number | null;
+        selected_price: number | null;
+        has_any: boolean;
+      } | null;
+    },
+  });
+
+  // Compute violation (if any) for current price
+  let priceViolation: string | null = null;
+  if (bounds && productId && salePriceTypeId && price > 0) {
+    if (!bounds.has_any) {
+      priceViolation = "برای این محصول هیچ قیمت فروشی ثبت نشده — ابتدا قیمت‌گذاری کنید.";
+    } else if (bounds.min_price != null && price < Number(bounds.min_price)) {
+      priceViolation = `کمتر از کف مجاز (${formatNumber(Number(bounds.min_price))}) است.`;
+    } else if (bounds.selected_price != null && price < Number(bounds.selected_price)) {
+      priceViolation = `کمتر از قیمت قانون نوع قیمت انتخاب‌شده (${formatNumber(Number(bounds.selected_price))}) است.`;
+    } else if (bounds.cap_price != null && price > Number(bounds.cap_price)) {
+      priceViolation = `بیش از سقف مجاز (${formatNumber(Number(bounds.cap_price))} = ۱.۰۵×بالاترین قیمت) است.`;
+    }
+  }
+
   const errors = form.formState.errors.items?.[index];
 
   return (
@@ -725,6 +797,20 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
             {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })}
           />
           {errors?.unit_price && <p className="text-xs text-destructive">{errors.unit_price.message}</p>}
+          {priceViolation && (
+            <p className="text-xs text-destructive">{priceViolation}</p>
+          )}
+          {bounds && bounds.has_any && (
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              کف: {formatNumber(Number(bounds.min_price ?? 0))}
+              {bounds.selected_price != null && (
+                <> — کف نوع قیمت: {formatNumber(Number(bounds.selected_price))}</>
+              )}
+              {bounds.cap_price != null && (
+                <> — سقف ۱.۰۵×: {formatNumber(Number(bounds.cap_price))}</>
+              )}
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">جمع ردیف</Label>

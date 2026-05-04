@@ -1,75 +1,68 @@
-## بازطراحی «قوانین هزینه حمل» — اعمال مستقیم روی محصول
+## هدف
+محافظت از ثبت پیش‌فاکتور با قیمت‌های نامعتبر، طبق سه قانون کسب‌وکار:
 
-### آنچه تغییر می‌کند (نمای کاربر)
+1. **کف مطلق:** قیمت واحد هر ردیف نباید کمتر از **کمترین قیمت فروش** ثبت‌شده برای آن محصول (روی همه‌ی `sale_price_types` فعال) باشد.
+2. **کف نوع قیمت انتخاب‌شده:** قیمت واحد نباید کمتر از آخرین قیمت فروش محصول برای **همان `sale_price_type_id` انتخاب‌شده در پیش‌فاکتور** باشد (مثلاً «تسویه ۲ روزه»).
+3. **سقف ۵٪:** قیمت واحد نباید بیش از **۱.۰۵ × بیشترین قیمت فروش** ثبت‌شده برای آن محصول (روی همه‌ی `sale_price_types` فعال) باشد.
 
-فرم «قانون حمل جدید/ویرایش» ساده‌تر و دقیق‌تر می‌شود:
+این قوانین برای همه‌ی کاربران بدون استثنا اعمال می‌شوند (طبق درخواست: «هیچ کاربری»).
 
-1. **ویرایش کامل** — دکمه ویرایش از قبل در جدول هست؛ مطمئن می‌شویم همه مقادیر (از جمله نوع ارز جدید) به‌درستی pre-fill شوند.
-2. **حذف فیلدهای غیرضروری از فرم**: «دسته‌بندی»، «برند»، «نوع کالا»، «ترتیب نمایش» از UI فرم برداشته می‌شوند. (ستون‌های دیتابیس می‌مانند تا داده قبلی از بین نرود؛ مقدار `sort_order` به‌صورت خودکار `0` ست می‌شود.)
-3. **نوع محاسبه**: سه گزینه
-   - ثابت (تومان) — بدون تغییر
-   - درصدی — بدون تغییر
-   - **ارزی (جدید)** — کاربر مبلغ + نوع ارز (دلار/درهم/...) را وارد می‌کند. هنگام محاسبه قیمت، آخرین نرخ فعال آن ارز از `currency_rates` ضرب می‌شود.
-4. **انتخاب محصول الزامی و برجسته** — جستجوی محصول بالای فرم قرار می‌گیرد و انتخاب آن اجباری می‌شود؛ هر قانون به‌صورت مستقیم به یک محصول مشخص بسته می‌شود.
-5. **عنوان قانون** اختیاری می‌شود (در صورت خالی بودن، خودکار از نام محصول ساخته می‌شود).
+## منبع داده
+آخرین قیمت فروش هر محصول به ازای هر `sale_price_type` در `product_sale_price_history` نگه‌داری می‌شود. «کمترین/بیشترین» = `MIN/MAX` از آخرین رکورد هر `sale_price_type` فعال برای آن محصول.
 
-### تغییرات دیتابیس (migration جدید)
+## تغییرات
 
-- افزودن مقدار `'currency'` به enum `public.shipping_cost_type`.
-- افزودن ستون‌های جدید به `public.shipping_cost_rules`:
-  - `cost_currency text NULL` با FK نرم به `currencies(code)` (یا CHECK سازگار با مقادیر `usd/aed/...`).
-  - فقط زمانی پر می‌شود که `cost_type = 'currency'`.
-- Validation Trigger (نه CHECK زمان‌محور): اگر `cost_type='currency'` بود، `cost_currency` نباید NULL باشد.
-- ایندکس: `CREATE INDEX IF NOT EXISTS idx_shipping_rules_product_active ON shipping_cost_rules(product_id) WHERE is_active = true AND product_id IS NOT NULL;`
-- RLS موجود دست‌نخورده می‌ماند (admin/accountant write، بقیه read).
-- Audit log موجود کافی است؛ تغییر نمی‌کند.
-- migration کاملاً idempotent و reversible (down notes داخل کامنت).
+### ۱) RPC جدید در دیتابیس (migration)
+ساخت `public.get_product_price_bounds(_product_id uuid, _sale_price_type_id uuid)`:
+- محاسبه‌ی per-type latest price با `DISTINCT ON (sale_price_type_id)` روی `product_sale_price_history` محدود به `sale_price_types.is_active = true`.
+- بازگرداندن یک ردیف:
+  - `min_price` (کف مطلق)
+  - `max_price` (سقف مطلق)
+  - `cap_price` = `round(max_price * 1.05)`
+  - `selected_price` (آخرین قیمت برای `_sale_price_type_id`)
+  - `has_any` (boolean)
+- `SECURITY DEFINER`, `STABLE`, `search_path=public`, `GRANT EXECUTE ... TO authenticated`.
 
-### تغییرات کد
+### ۲) اعتبارسنجی client-side در `InvoiceForm.tsx`
+در `ItemRow`:
+- یک `useQuery` جدید با کلید `["price-bounds", productId, salePriceTypeId]` که RPC بالا را صدا می‌زند (وقتی هردو انتخاب شدند).
+- زیر فیلد «قیمت واحد» نمایش راهنما: «کف: X — کف نوع قیمت انتخابی: Y — سقف مجاز (۱.۰۵×): Z».
+- اگر `unit_price` خارج از بازه باشد، خطای فارسی و رنگ destructive نمایش داده و submit بلاک شود.
 
-**Schema (`src/lib/pricing/schemas.ts`)**
-- `cost_type` به `z.enum(["fixed","percent","currency"])` گسترش.
-- فیلد جدید `cost_currency: z.string().nullable().optional()`.
-- refine: اگر `cost_type==='currency'` → `cost_currency` الزامی.
-- refine: `product_id` الزامی (به‌جای حداقل یکی از چهار اسکوپ).
-- `title` به `optional` تبدیل می‌شود؛ در submit اگر خالی بود از نام محصول پر می‌شود.
+در `mutationFn` (قبل از insert):
+- برای هر آیتم، RPC را دوباره صدا بزن (race-safe، چون قیمت ممکن است تغییر کرده باشد).
+- در صورت تخلف، `throw new Error("...")` با پیام دقیق فارسی شامل نام محصول و مقدار مجاز.
+- اگر `has_any = false` (محصول هیچ قیمت ثبت‌شده‌ای ندارد): اجازه ندهد و پیام «برای این محصول هنوز قیمت فروشی ثبت نشده است» بدهد — این یک رفتار محافظه‌کارانه و سازگار با سه قانون است.
 
-**Constants (`src/lib/pricing/constants.ts`)**
-- افزودن `currency: "ارزی"` به `SHIPPING_COST_TYPE_LABELS`.
+### ۳) Defense-in-depth در دیتابیس (migration)
+چون regulation تجاری حساس است و فقط client-side کافی نیست، یک تریگر `BEFORE INSERT/UPDATE` روی `invoice_items`:
+- فقط برای فاکتورهایی با `invoices.type = 'pre_invoice'` فعال شود.
+- `sale_price_type_id` را از جدول `invoices` بخواند.
+- همان bounds را محاسبه و در صورت تخلف `RAISE EXCEPTION` با کد `P0001` و پیام فارسی بیاندازد.
+- این تضمین می‌کند هیچ مسیر دیگری (API, future quote→invoice, bulk insert) نتواند قانون را دور بزند.
 
-**Form (`src/shared/components/ShippingCostRuleForm.tsx`)**
-- حذف بلوک‌های دسته/برند/نوع کالا/ترتیب نمایش از JSX.
-- بالا بردن جستجوی محصول و قرار دادن آن به‌صورت required.
-- افزودن Select «نوع ارز» که فقط وقتی `cost_type==='currency'` نمایش داده می‌شود؛ گزینه‌ها از `currencies` فعال (`fetchActiveCurrencies` یا یک query ساده روی جدول `currencies`).
-- برچسب پویا برای فیلد مقدار: ثابت → «مبلغ (تومان)»، درصدی → «درصد (%)»، ارزی → «مبلغ (به ارز انتخابی)».
-- `emptyShippingRule` به‌روزرسانی: `cost_currency: null`.
+### ۴) Audit log
+در صورت بلاک‌شدن سمت سرور، تریگر یک ردیف در `audit_logs` با `action='invoice_price_blocked'` و جزئیات (product_id, attempted_price, min/max/cap) می‌نویسد.
 
-**List page (`src/routes/_app.pricing.shipping-rules.tsx`)**
-- ستون «محدوده اعمال» به «محصول» تغییر؛ همیشه نام محصول نمایش داده می‌شود.
-- ستون «ترتیب» حذف.
-- نمایش مقدار: اگر `currency` بود → `{value} {CURRENCY_LABELS[cost_currency]}`.
-- در `editing` map، `cost_currency` هم منتقل شود.
+## پیام‌های خطای پیشنهادی (فارسی)
+- زیر کف مطلق: «قیمت ردیف «{نام محصول}» ({X}) از کمترین قیمت فروش ثبت‌شده ({MIN}) کمتر است.»
+- زیر کف نوع قیمت: «قیمت ردیف «{نام محصول}» ({X}) از قیمت قانون «{نوع قیمت}» ({SELECTED}) کمتر است.»
+- بالای سقف ۵٪: «قیمت ردیف «{نام محصول}» ({X}) بیش از سقف مجاز ({CAP} = ۱.۰۵×بالاترین قیمت) است.»
+- بدون قیمت: «برای محصول «{نام}» هیچ قیمت فروشی ثبت نشده — ابتدا قیمت‌گذاری کنید.»
 
-**Pricing engine (`src/lib/pricing/engine.ts`)**
-- در بلوک shipping (خط ۱۴۹‑۱۸۰):
-  - اضافه کردن `cost_currency` به `select`.
-  - اگر `cost_type==='currency'`: گرفتن آخرین نرخ فعال آن ارز از `currency_rates` (همان الگویی که در محاسبه قیمت خرید ارزی استفاده می‌شود) و محاسبه `shipping_cost = round(value * rate)`.
-  - اگر نرخ پیدا نشد → `PricingError("NO_SHIPPING_RATE", ...)`.
-- در `steps` توضیح ارز و نرخ افزوده شود.
+## نکات سازگاری با AFRAKALA_ACCEPTANCE_CRITERIA
+- migration جدید با timestamp تازه در `supabase/migrations/`.
+- استفاده از validation trigger به‌جای CHECK constraint (به دلیل وابستگی به جداول دیگر).
+- پایبند به RLS — RPC با `SECURITY DEFINER` و `search_path=public`.
+- بدون CDN/asset خارجی، بدون secret سمت client.
+- audit log برای رویدادهای بلاک‌شده.
+- متن کاملاً فارسی، RTL، mobile-first (راهنمای زیر فیلد قیمت).
 
-**Quick price (`src/lib/pricing/quick-price.ts`)** — همان منطق جدید برای پیش‌نمایش سریع.
+## فایل‌های تحت تغییر
+- `supabase/migrations/<timestamp>_invoice_price_bounds.sql` (جدید)
+- `src/shared/components/InvoiceForm.tsx` (اعتبارسنجی + UI bounds)
 
-### معیار پذیرش (طبق AFRAKALA_ACCEPTANCE_CRITERIA)
-
-- migration در `supabase/migrations/` با timestamp جدید، idempotent، RLS حفظ‌شده.
-- بدون CDN/فونت خارجی، بدون secret در client.
-- `currency_rates` query با `limit(1)` و ایندکس فعلی پاسخ می‌دهد.
-- UI فارسی، RTL، responsive (همان grid فعلی).
-- audit trigger موجود به‌صورت خودکار تغییرات جدید را لاگ می‌کند.
-- قابلیت ویرایش روی هر ردیف موجود و جدید.
-
-### نکته سازگاری با داده قدیمی
-
-ردیف‌های قدیمی که فقط `category_id` یا `brand_id` یا `product_type` دارند **بدون تغییر** باقی می‌مانند و engine همچنان آن‌ها را به‌عنوان fallback تطبیق می‌دهد (منطق specificity فعلی حفظ می‌شود). فقط فرم جدید فقط بر اساس محصول قانون می‌سازد.
-
-اگر بخواهید قوانین قدیمی (غیر مرتبط با محصول مشخص) به‌صورت ماسبق پاک یا migrate شوند، در پیام بعدی اعلام کنید — به‌صورت پیش‌فرض حفظ می‌شوند.
+## خارج از scope (در صورت تأیید جداگانه قابل افزودن)
+- اعمال همین قواعد روی `quotes` (پیش‌نمایش قیمت).
+- اعمال روی `invoice_items.UPDATE` در ماژول‌های آینده — تریگر این را خودکار پوشش می‌دهد.
+- نقش‌های استثنا (مثلاً admin override) — طبق درخواست شما «هیچ کاربری» اجازه ندارد، پس استثنا گذاشته نشد.
