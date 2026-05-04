@@ -137,9 +137,15 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
     const sRule = candidates[0];
     if (sRule) {
       shipping_rule_used = { id: sRule.id, title: sRule.title };
-      shipping_cost = sRule.cost_type === "percent"
-        ? Math.round(purchase_price_toman * Number(sRule.cost_value) / 100)
-        : Math.round(Number(sRule.cost_value));
+      if (sRule.cost_type === "percent") {
+        shipping_cost = Math.round(purchase_price_toman * Number(sRule.cost_value) / 100);
+      } else if (sRule.cost_type === "currency") {
+        // قوانین ارزی نیازمند نرخ ارز هستند و در quick-price (بدون product) صرفاً نادیده می‌گیریم
+        shipping_cost = 0;
+        shipping_rule_used = null;
+      } else {
+        shipping_cost = Math.round(Number(sRule.cost_value));
+      }
     }
   }
 
