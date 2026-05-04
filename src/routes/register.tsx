@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureAuthReady } from "@/lib/auth/session";
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { DynamicProfileFields, type DynamicValues } from "@/components/profile/DynamicProfileFields";
+import { fetchActiveProfileFields, saveProfileFieldValues } from "@/lib/profile-fields/queries";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
@@ -40,6 +43,11 @@ function RegisterPage() {
   const [form, setForm] = useState({
     first_name: "", last_name: "", phone: "", email: "", position_proposed: "", password: "",
   });
+  const [dynValues, setDynValues] = useState<DynamicValues>({});
+  const { data: dynFields = [] } = useQuery({
+    queryKey: ["profile-fields-register"],
+    queryFn: () => fetchActiveProfileFields({ registerOnly: true }),
+  });
 
   const upd = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
 
@@ -59,7 +67,7 @@ function RegisterPage() {
     setSubmitting(true);
     try {
       const fullName = `${parsed.data.first_name} ${parsed.data.last_name}`.trim();
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
@@ -80,6 +88,15 @@ function RegisterPage() {
           toast.error("ثبت‌نام ناموفق", { description: error.message });
         }
         return;
+      }
+      // Save dynamic profile field values while we still have a session
+      const newUserId = signUpData?.user?.id;
+      if (newUserId && Object.keys(dynValues).length > 0) {
+        try {
+          await saveProfileFieldValues(newUserId, dynValues);
+        } catch (e) {
+          console.warn("[register] failed to save dynamic fields", e);
+        }
       }
       // Sign out in case Supabase auto-created a session (so user must wait for approval).
       await supabase.auth.signOut();
@@ -138,6 +155,17 @@ function RegisterPage() {
                 <Input id="password" type="password" dir="ltr" value={form.password} onChange={(e) => upd("password", e.target.value)} />
                 {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
               </div>
+              {dynFields.length > 0 && (
+                <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                  <p className="text-xs font-medium text-muted-foreground">اطلاعات تکمیلی</p>
+                  <DynamicProfileFields
+                    fields={dynFields}
+                    values={dynValues}
+                    onChange={(name, value) => setDynValues((s) => ({ ...s, [name]: value }))}
+                    registerMode
+                  />
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={submitting} aria-busy={submitting}>
                 {submitting ? "در حال ثبت‌نام..." : "ثبت‌نام"}
               </Button>
