@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
+import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye, Tag } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/products/constants";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
+import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -50,6 +51,7 @@ function ProductsPage() {
 
   const [filters, setFilters] = useState<ProductFilterState>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
+  const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
@@ -232,6 +234,17 @@ function ProductsPage() {
                                 <Link to="/products/$id/edit" params={{ id: p.id }}><Pencil className="h-4 w-4" /></Link>
                               </Button>
                             )}
+                            {canUpdate && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="برچسب‌زدن"
+                                title="برچسب‌زدن"
+                                onClick={() => setLabelTarget({ id: p.id, name: formatProductDisplayNameWithFallback(p) })}
+                              >
+                                <Tag className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -267,9 +280,18 @@ function ProductsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge>
                     {canUpdate && (
-                      <Button asChild variant="outline" size="sm">
-                        <Link to="/products/$id/edit" params={{ id: p.id }}><Pencil className="ms-1 h-3.5 w-3.5" />ویرایش</Link>
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLabelTarget({ id: p.id, name: formatProductDisplayNameWithFallback(p) })}
+                        >
+                          <Tag className="ms-1 h-3.5 w-3.5" />برچسب
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/products/$id/edit" params={{ id: p.id }}><Pencil className="ms-1 h-3.5 w-3.5" />ویرایش</Link>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -297,6 +319,13 @@ function ProductsPage() {
           </div>
         </>
       )}
+
+      <ProductLabelsQuickDialog
+        productId={labelTarget?.id ?? null}
+        productName={labelTarget?.name ?? ""}
+        open={!!labelTarget}
+        onOpenChange={(o) => { if (!o) setLabelTarget(null); }}
+      />
     </div>
   );
 }
