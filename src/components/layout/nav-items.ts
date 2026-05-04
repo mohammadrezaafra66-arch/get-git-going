@@ -87,6 +87,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/users/pending", label: "کاربران در انتظار", icon: Users, module: "users", group: "admin" },
   { to: "/roles", label: "نقش‌ها و دسترسی", icon: ShieldCheck, module: "roles", group: "admin" },
   { to: "/admin/roles", label: "مجوزهای پویا", icon: ShieldCheck, module: "roles", group: "admin" },
+  { to: "/admin/profile-fields", label: "فیلدهای کاربر", icon: UserSquare2, module: "users", group: "admin" },
   { to: "/admin/workflow-stages", label: "مراحل گردش‌کار", icon: Workflow, module: "roles", group: "admin" },
   { to: "/admin/settings", label: "تنظیمات فروشگاه", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/marketing-channels", label: "کانال‌های تبلیغاتی", icon: Megaphone, module: "roles", group: "admin" },
