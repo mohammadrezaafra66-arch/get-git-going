@@ -184,28 +184,52 @@ function SalesSearchPage() {
     }
   }, [salePriceTypes, salePriceTypeId]);
 
+  // reset page when label-mode filters change
+  useEffect(() => { setLabelModePage(1); }, [labelMode, labelModeIds]);
+
+  // Effective label ids for the current label-mode (always within visibleLabels)
+  const visibleLabelIds = useMemo(
+    () => (visibleLabels as Array<{ id: string }>).map((l) => l.id),
+    [visibleLabels],
+  );
+  const effectiveLabelIds = useMemo<string[]>(() => {
+    if (labelMode === "off") return [];
+    if (labelMode === "all") return visibleLabelIds;
+    // "selected": intersect with visibleLabelIds for safety
+    const set = new Set(visibleLabelIds);
+    return labelModeIds.filter((id) => set.has(id));
+  }, [labelMode, labelModeIds, visibleLabelIds]);
+
   // ---------- products query ----------
   const productsQuery = useQuery({
-    enabled: canSearch,
-    queryKey: ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }],
+    enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
+    queryKey: labelMode === "off"
+      ? ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }]
+      : ["sales-search-products-rpc-label-mode", { effectiveLabelIds, labelModePage }],
     queryFn: async () => {
+      const isLabelMode = labelMode !== "off";
       const { data, error } = await supabase.rpc("get_sales_search_products", {
-        p_search: term,
-        p_brand_ids: brandIds.length > 0 ? brandIds : undefined,
-        p_category_ids: categoryIds.length > 0 ? categoryIds : undefined,
-        p_label_ids: labelIds.length > 0 ? labelIds : undefined,
-        p_stock_status: stockStatus !== "__all" ? stockStatus : undefined,
-        p_product_type: productType !== "__all" ? productType : undefined,
-        p_only_with_price: onlyWithPrice,
-        p_limit: RESULT_LIMIT,
-        p_offset: 0,
+        p_search: isLabelMode ? "" : term,
+        p_brand_ids: !isLabelMode && brandIds.length > 0 ? brandIds : undefined,
+        p_category_ids: !isLabelMode && categoryIds.length > 0 ? categoryIds : undefined,
+        p_label_ids: isLabelMode ? effectiveLabelIds : (labelIds.length > 0 ? labelIds : undefined),
+        // In label-mode we pull both available + limited by leaving stock filter open
+        // and filter client-side below to stay consistent with the user's intent.
+        p_stock_status: isLabelMode ? undefined : (stockStatus !== "__all" ? stockStatus : undefined),
+        p_product_type: isLabelMode ? undefined : (productType !== "__all" ? productType : undefined),
+        p_only_with_price: isLabelMode ? false : onlyWithPrice,
+        p_limit: isLabelMode ? LABEL_PAGE_SIZE : RESULT_LIMIT,
+        p_offset: isLabelMode ? (labelModePage - 1) * LABEL_PAGE_SIZE : 0,
       });
       if (error) throw error;
-      const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      let rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         ...(row as object),
         labels: Array.isArray(row.labels) ? row.labels : [],
         prices: Array.isArray(row.prices) ? row.prices : [],
       })) as ProductRow[];
+      if (isLabelMode) {
+        rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
+      }
       // Track that these products were viewed in search results
       for (const r of rows) {
         trackProductInteraction({
@@ -221,6 +245,43 @@ function SalesSearchPage() {
 
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
+
+  // ---------- label-mode total count (only enabled in label-mode) ----------
+  const labelModeCountQuery = useQuery({
+    enabled: labelMode !== "off" && effectiveLabelIds.length > 0,
+    queryKey: ["sales-search-label-mode-count", { effectiveLabelIds }],
+    queryFn: async () => {
+      // Get distinct product_ids that are linked to any of the selected labels
+      // and are available/limited and active. Page-side count via head:true + count:exact.
+      const { data: linkRows, error: linkErr } = await supabase
+        .from("product_label_links")
+        .select("product_id")
+        .in("label_id", effectiveLabelIds);
+      if (linkErr) throw linkErr;
+      const productIds = Array.from(new Set((linkRows ?? []).map((r: any) => r.product_id as string)));
+      if (productIds.length === 0) return 0;
+      const { count, error: cntErr } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .in("id", productIds)
+        .eq("is_active", true)
+        .in("stock_status", ["available", "limited"]);
+      if (cntErr) throw cntErr;
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+  });
+
+  const labelModeTotal = labelModeCountQuery.data ?? 0;
+  const labelModeTotalPages = Math.max(1, Math.ceil(labelModeTotal / LABEL_PAGE_SIZE));
+  const salePriceTypeTitle = (salePriceTypes as Array<{ id: string; title: string }>)
+    .find((t) => t.id === salePriceTypeId)?.title ?? "—";
+
+  const exitLabelMode = () => {
+    setLabelMode("off");
+    setLabelModeIds([]);
+    setLabelModePage(1);
+  };
 
   return (
     <div className="space-y-5">
