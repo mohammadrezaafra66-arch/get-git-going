@@ -3911,10 +3911,50 @@ export type Database = {
           },
         ]
       }
+      product_attribute_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          key: string
+          label_fa: string
+          sort_order: number
+          updated_at: string
+          value_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key: string
+          label_fa: string
+          sort_order?: number
+          updated_at?: string
+          value_type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          key?: string
+          label_fa?: string
+          sort_order?: number
+          updated_at?: string
+          value_type?: string
+        }
+        Relationships: []
+      }
       product_attributes: {
         Row: {
           created_at: string
           created_by: string | null
+          group_id: string | null
           id: string
           is_active: boolean
           name: string
@@ -3924,6 +3964,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          group_id?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -3933,13 +3974,22 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          group_id?: string | null
           id?: string
           is_active?: boolean
           name?: string
           type?: Database["public"]["Enums"]["product_attribute_type"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_attributes_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "product_attribute_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_category_attribute_values: {
         Row: {
