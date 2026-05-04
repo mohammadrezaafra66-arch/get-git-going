@@ -113,8 +113,15 @@ function SalesSearchPage() {
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
 
+  // Labeled-products mode (shortcut to show all labeled products with the selected price type)
+  const [labelMode, setLabelMode] = useState<LabelMode>("off");
+  const [labelModeIds, setLabelModeIds] = useState<string[]>([]);
+  const [labelModePage, setLabelModePage] = useState<number>(1);
+  const [labelPickerOpen, setLabelPickerOpen] = useState(false);
+  const [labelPickerDraft, setLabelPickerDraft] = useState<string[]>([]);
+
   const term = normalizeSearchText(dSearch);
-  const canSearch = term.length >= 2;
+  const canSearch = term.length >= 2 || labelMode !== "off";
 
   const dBrandText = useDebounce(normalizeSearchText(brandFilterText), 200);
   const dCategoryText = useDebounce(normalizeSearchText(categoryFilterText), 200);
