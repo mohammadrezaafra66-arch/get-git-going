@@ -1,54 +1,57 @@
-# افزودن دکمه میانبر «برچسب‌زدن» در صفحه محصولات
+# ادغام مدیریت کاربران در یک صفحه + بَج realtime
 
-## بررسی معیارهای پذیرش (AFRAKALA_ACCEPTANCE_CRITERIA.md)
-این تغییر کاملاً UI/UX است:
-- بدون migration جدید (از همان جدول `product_label_links` و RLS موجود استفاده می‌شود)
-- بدون secret یا CDN خارجی
-- RBAC: دکمه فقط برای کاربران با `products.update` نمایش داده می‌شود
-- فارسی، RTL، mobile-first
-- بدون افزایش وابستگی
-✅ همه معیارها رعایت می‌شود.
+## وضعیت فعلی (یافته‌های بررسی)
 
-## هدف
-کاربر می‌خواهد دکمه «برچسب‌زدن» مستقیماً در ستون «عملیات» جدول محصولات (و کارت موبایل) قرار بگیرد، تا بدون ورود به فرم کامل ویرایش محصول، فقط برچسب‌های آن محصول قابل ویرایش باشد. خود فرم ویرایش محصول هم بدون تغییر باقی می‌ماند (همانطور که کاربر تأکید کرد: «داخل فرم همه‌چیز مثل قبل باشد»).
+- صفحهٔ `/users` فقط لیست read-only است (نام، تلفن، نقش، وضعیت).
+- صفحهٔ `/users/pending` نسخهٔ کامل با تأیید/تأیید سریع/رد/غیرفعال‌سازی/فعال‌سازی + فیلتر وضعیت + جستجو + جزئیات + RPCهای امن سمت سرور (`approve_pending_user`, `quick_approve_user`, `reject_pending_user`, `deactivate_user`, `reactivate_user`).
+- در منوی ادمین هر دو آیتم جداگانه وجود دارد و کاربر را گیج می‌کند.
+- تأیید کاربر تازه ثبت‌نام‌شده فقط از `/users/pending` ممکن است و نیازی به دیتابیس یا جای دیگر نیست.
 
 ## تغییرات
 
-### 1) کامپوننت جدید: دیالوگ برچسب‌زدن سریع
-فایل جدید: `src/components/products/ProductLabelsQuickDialog.tsx`
+### ۱) ادغام دو صفحه در `/users`
+- محتوای کامل `_app.users.pending.tsx` (همراه با همهٔ دیالوگ‌ها، RPCها، فیلتر وضعیت، تأیید سریع، تأیید با نقش، رد، غیرفعال/فعال‌سازی، جزئیات با فیلدهای پویا) به `_app.users.tsx` منتقل می‌شود.
+- عنوان صفحه: «مدیریت کاربران» با توضیح: «تأیید ثبت‌نام‌ها، تخصیص نقش، فعال/غیرفعال‌سازی و مشاهدهٔ همهٔ کاربران».
+- فیلتر وضعیت پیش‌فرض روی **«همه»** (نه pending) تا هم نقش لیست کلی و هم نقش صف تأیید را داشته باشد.
+- مسیر `/users/pending` به‌صورت redirect به `/users?status=pending` تبدیل می‌شود تا لینک‌های قدیمی نشکنند.
+- `status` به search-param اضافه می‌شود تا بَج منو بتواند مستقیماً به فیلتر pending لینک کند.
 
-- یک `Dialog` shadcn با عنوان «مدیریت برچسب‌های محصول» و نام محصول در توضیحات
-- بارگیری همه برچسب‌های موجود از `product_labels`
-- بارگیری برچسب‌های فعلی این محصول از `product_label_links`
-- نمایش به‌صورت لیست checkbox با رنگ هر برچسب (مشابه آنچه در فرم ویرایش محصول هست)
-- دکمه‌های «انصراف» و «ذخیره»
-- در ذخیره: diff بین انتخاب فعلی و قبلی → insert/delete روی `product_label_links` (دقیقاً همان منطق صفحه edit، خطوط ۸۹–۱۰۶)
-- پس از موفقیت: `toast.success` + `queryClient.invalidateQueries({ queryKey: ["products"] })` تا برچسب‌های جدید بلافاصله در جدول دیده شوند
-- Guard: اگر کاربر `products.update` ندارد، دکمه باز کننده اصلاً نمایش داده نمی‌شود (در صفحه index)
+### ۲) به‌روزرسانی منو
+- آیتم `/users/pending` از `nav-items.ts` حذف می‌شود.
+- یک آیتم تنها باقی می‌ماند: **«کاربران»** → `/users`.
 
-### 2) صفحه محصولات: افزودن دکمه در ستون عملیات
-فایل: `src/routes/_app.products.index.tsx`
+### ۳) بَج realtime تعداد کاربران در انتظار
+- یک کامپوننت کوچک `PendingUsersBadge` ساخته می‌شود که کنار آیتم منوی «کاربران» در سایدبار و در bottom-nav موبایل (در صورت وجود) عدد را نشان می‌دهد.
+- منبع داده:
+  - بار اول: `select count from profiles where status='pending'` (با React Query، فقط برای ادمین).
+  - به‌روزرسانی: subscribe به کانال Supabase realtime روی جدول `profiles` با فیلتر `status=eq.pending` برای رویدادهای INSERT/UPDATE/DELETE → `invalidateQueries(['pending-users-count'])`.
+- بَج فقط برای کاربران دارای نقش admin رندر می‌شود (`useAuth().roles.includes('admin')`).
+- اگر عدد صفر باشد بَج نمایش داده نمی‌شود.
 
-- import آیکن `Tag` از `lucide-react` و کامپوننت دیالوگ جدید
-- state محلی: `labelTarget: { id: string; name: string } | null`
-- در ستون «عملیات» (دسکتاپ، خطوط ۲۲۵–۲۳۶) بعد از دکمه ویرایش، یک `Button` آیکنی با `<Tag />` و `aria-label="برچسب‌زدن"` اضافه می‌شود — فقط وقتی `canUpdate`
-- در کارت موبایل (خطوط ۲۶۷–۲۷۴) نیز یک دکمه «برچسب» در کنار دکمه ویرایش
-- یک نمونه `<ProductLabelsQuickDialog>` در انتهای صفحه که با `labelTarget` کنترل می‌شود
-- onClick دکمه‌ها: `setLabelTarget({ id: p.id, name: formatProductDisplayNameWithFallback(p) })`
+### ۴) فعال‌سازی realtime روی جدول profiles
+- migration کوچک: `ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;` (idempotent با چک `pg_publication_tables`).
+- چون RLS روی profiles فعال است و فقط ادمین می‌تواند ردیف‌ها را ببیند، payload realtime هم برای غیرادمین خالی می‌ماند → امن.
 
-### 3) مواردی که تغییر **نمی‌کنند**
-- `src/routes/_app.products_.$id.edit.tsx` (فرم ویرایش محصول دقیقاً مثل قبل، شامل بخش برچسب‌ها)
-- `src/routes/_app.products.labels.tsx` (مدیریت تعریف برچسب‌ها)
-- schema یا RLS
+## فایل‌های تأثیرپذیر
 
-## فایل‌های تحت تأثیر
-- ایجاد: `src/components/products/ProductLabelsQuickDialog.tsx`
-- ویرایش: `src/routes/_app.products.index.tsx`
+| فایل | تغییر |
+|---|---|
+| `src/routes/_app.users.tsx` | بازنویسی کامل با محتوای صفحهٔ pending + پیش‌فرض «همه» + search-param `status` |
+| `src/routes/_app.users.pending.tsx` | تبدیل به redirect ساده به `/users?status=pending` |
+| `src/components/layout/nav-items.ts` | حذف آیتم `/users/pending` |
+| `src/components/layout/PendingUsersBadge.tsx` | جدید — بَج realtime |
+| `src/components/layout/AppSidebar.tsx` (و در صورت نیاز `MobileBottomNav.tsx`) | رندر بَج کنار آیتم «کاربران» |
+| `supabase/migrations/<timestamp>_realtime_profiles.sql` | افزودن profiles به publication realtime |
 
-## گزارش Self-Host Acceptance
-- ✅ بدون CDN/secret/API خارجی
-- ✅ بدون migration یا تغییر RLS
-- ✅ RBAC رعایت شده (products.update)
-- ✅ Persian + RTL + mobile-first
-- ✅ بدون dependency جدید
-- ✅ سازگار با Docker/Linux self-host
+## معیارهای پذیرش (طبق AFRAKALA_ACCEPTANCE_CRITERIA)
+
+- بدون وابستگی خارجی جدید، بدون secret در frontend.
+- RLS موجود روی `profiles` و `user_roles` دست نمی‌خورد؛ فقط publication realtime اضافه می‌شود.
+- migration idempotent و reversible.
+- query‌ها همان pagination/limit موجود را دارند.
+- UI همچنان RTL، فارسی و mobile-first.
+- realtime در صورت قطعی به‌صورت graceful degrade می‌شود (داده اولیه از REST می‌آید).
+
+## بعد از تأیید این پلن
+
+پاسخ کوتاه به سؤال شما: **«کاربر تازه ثبت‌نام‌شده را از منوی «کاربران» (بعد از ادغام) و با دکمهٔ «تأیید» یا «تأیید سریع» در ردیف همان کاربر فعال می‌کنید — هیچ ورود به دیتابیس یا جای دیگری لازم نیست.»** بعد از این تغییر، بَج قرمز کنار «کاربران» در سایدبار به شما می‌گوید چند نفر منتظرند.
