@@ -1,74 +1,45 @@
+## Problem
 
-## مشکل
+In Quick Sales Search, the "Show Labeled Products" shortcut is correctly sending the selected `p_label_ids` to the database with an empty `p_search`. However, the database function `get_sales_search_products` has a hard guard:
 
-پیش‌نمایش (و سایت published) با خطای **`Internal server error / 502`** برمی‌گردد. لاگ‌های worker این پیام تکرار شونده را نشان می‌دهد:
-
-```
-Error: No such module "h3-v2". imported from "server.js"
-```
-
-## ریشه
-
-در فاز SH.3A فایل `vite.config.ts` این خط را گرفت:
-
-```ts
-cloudflare: false,
+```sql
+IF length(v_term) < 2 THEN
+  RETURN;
+END IF;
 ```
 
-با این تنظیم، Vite خروجی Node-SSR تولید می‌کند (مناسب Docker self-host)، اما **پیش‌نمایش و سایت منتشر شده Lovable روی Cloudflare Workers اجرا می‌شوند** و به bundling مخصوص Worker (که `h3-v2` و سایر ماژول‌ها را inline می‌کند) نیاز دارند. نتیجه: bundle برای Lovable نامعتبر است → Worker در زمان اجرا fail می‌کند → 502.
+So whenever the search box is empty (which is exactly the intended behavior of the labeled-products shortcut), the RPC returns zero rows — even though the product (`AFK-2026-00013`) is active, available, and correctly linked to the labels `تبلیغات` and `سایت ها`.
 
-پس هم‌زمان هر دو هدف لازم است:
-- **Lovable preview / published** → باید `cloudflare` plugin **روشن** باشد.
-- **Self-host Docker (SH.3A)** → باید `cloudflare` plugin **خاموش** باشد تا خروجی Node SSR ساخته شود.
+I confirmed the data in the database:
+- Product is `is_active = true`, `status = active`, `stock_status = available`.
+- Both label links exist in `product_label_links`.
+- Both labels are `public` and active.
 
-## راه‌حل
+So the only blocker is the 2-character minimum inside the RPC.
 
-این رفتار را به یک **متغیر محیطی build-time** گره می‌زنیم به جای ثابت بودن.
+## Fix
 
-### تغییر ۱ — `vite.config.ts`
+Update the RPC `public.get_sales_search_products` so the 2-character minimum applies **only when no label filter is supplied**. When `p_label_ids` is provided (even with empty search), the function should proceed normally and apply the label filter.
 
-`cloudflare` را شرطی کنیم:
+New guard logic:
 
-```ts
-// SELF_HOST_NODE=1 → خروجی Node SSR برای Docker
-// در غیر این صورت (پیش‌فرض) → Cloudflare Workers برای Lovable preview/published
-cloudflare: process.env.SELF_HOST_NODE === "1" ? false : undefined,
+```text
+if p_label_ids IS NULL or empty:
+    require length(v_term) >= 2  (return empty otherwise)
+else:
+    skip the length check (label browse mode)
 ```
 
-پیش‌فرض = Worker (همان رفتار اصلی Lovable). فقط وقتی `SELF_HOST_NODE=1` ست شود، plugin خاموش می‌شود.
+The rest of the function (auth/role checks, filters, pagination, label visibility, price visibility) stays exactly the same.
 
-### تغییر ۲ — `Dockerfile`
+## Steps
 
-قبل از `bun run build` این flag را ست کنیم:
+1. Create a migration that replaces `public.get_sales_search_products` with the same body, changing only the early-return guard so it is bypassed when `p_label_ids` is provided.
+2. No client changes needed — `src/routes/_app.sales.search.tsx` already sends `p_label_ids` and `p_search=""` in label mode, and already filters results to `available + limited` on the client.
+3. Verify in the preview by clicking "نمایش محصولات برچسب‌دار" — the product `AFK-2026-00013` should now appear, alongside any other labeled, available/limited products.
 
-```dockerfile
-ENV SELF_HOST_NODE=1
-RUN bun run build
-```
+## Out of scope
 
-این تضمین می‌کند:
-- build در Docker → خروجی Node SSR (`server/node-entry.mjs` کار می‌کند).
-- build در Lovable cloud → خروجی Cloudflare Worker (preview و published کار می‌کنند).
-
-### تغییر ۳ — به‌روزرسانی مستندات self-host
-
-در `docs/SELF_HOSTING.md` و `deploy/app/README.md` ذکر شود که build دستی خارج از Docker نیاز به `SELF_HOST_NODE=1 bun run build` دارد.
-
-## اثرات جانبی
-
-- هیچ تغییر داده‌ای، migration یا تغییر سطح دسترسی نیست — صرفاً تنظیم build.
-- استراتژی self-host strict دست‌نخورده می‌ماند: Dockerfile همچنان خروجی pure Node می‌سازد.
-- پس از اعمال، preview در عرض چند ثانیه باید سالم بالا بیاید (rebuild خودکار).
-
-## فایل‌های تحت تأثیر
-
-- `vite.config.ts` — شرطی کردن `cloudflare`
-- `Dockerfile` — افزودن `ENV SELF_HOST_NODE=1`
-- `docs/SELF_HOSTING.md` — یادداشت کوتاه درباره flag
-- `deploy/app/README.md` — همان یادداشت
-
-## تأیید پس از اجرا
-
-پس از تأیید، در حالت default این موارد را چک می‌کنم:
-1. preview باز می‌شود و صفحه اصلی بدون 502 لود می‌شود.
-2. لاگ worker دیگر `No such module "h3-v2"` ندارد.
+- No UI changes.
+- No changes to label-mode pagination, label visibility rules, or price-type selection.
+- No changes to RLS or roles.
