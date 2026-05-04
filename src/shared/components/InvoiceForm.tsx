@@ -196,6 +196,42 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const total = values.items.reduce((s, it) => s + it.quantity * it.unit_price, 0);
 
+      // ===== Price bounds pre-flight (per item) =====
+      // Re-check via RPC to avoid stale client cache; trigger is final defense.
+      for (const it of values.items) {
+        const { data: bData, error: bErr } = await supabase.rpc("get_product_price_bounds", {
+          _product_id: it.product_id,
+          _sale_price_type_id: values.sale_price_type_id,
+        });
+        if (bErr) throw bErr;
+        const b = (Array.isArray(bData) ? bData[0] : bData) as {
+          min_price: number | null;
+          max_price: number | null;
+          cap_price: number | null;
+          selected_price: number | null;
+          has_any: boolean;
+        } | null;
+        const label = it.product_label || "محصول";
+        if (!b || !b.has_any) {
+          throw new Error(`برای «${label}» هنوز قیمت فروشی ثبت نشده — ابتدا قیمت‌گذاری کنید.`);
+        }
+        if (b.min_price != null && it.unit_price < Number(b.min_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) از کمترین قیمت فروش ثبت‌شده (${formatNumber(Number(b.min_price))}) کمتر است.`,
+          );
+        }
+        if (b.selected_price != null && it.unit_price < Number(b.selected_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) از قیمت قانون نوع قیمت انتخاب‌شده (${formatNumber(Number(b.selected_price))}) کمتر است.`,
+          );
+        }
+        if (b.cap_price != null && it.unit_price > Number(b.cap_price)) {
+          throw new Error(
+            `قیمت «${label}» (${formatNumber(it.unit_price)}) بیش از سقف مجاز (${formatNumber(Number(b.cap_price))} = ۱.۰۵×بالاترین قیمت) است.`,
+          );
+        }
+      }
+
       // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
         const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
