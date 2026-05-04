@@ -425,14 +425,9 @@ function GroupDialog({
 
       if (isEdit && group) {
         // Editing: system groups can only change label / sort / active
-        const payload: Record<string, unknown> = {
-          label_fa: cleanLabel,
-          is_active: isActive,
-          sort_order: sortOrder,
-        };
-        if (!group.is_system) {
-          payload.value_type = valueType;
-        }
+        const payload = group.is_system
+          ? { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder }
+          : { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder, value_type: valueType };
         const { error } = await supabase
           .from("product_attribute_groups")
           .update(payload)
