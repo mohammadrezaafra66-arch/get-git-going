@@ -23,6 +23,9 @@ import { ROLE_LABELS, ALL_ROLES, type AppRole } from "@/lib/rbac/roles";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "sonner";
+import { fetchProfileFieldValues, fetchActiveProfileFields } from "@/lib/profile-fields/queries";
+import { WEEK_DAYS } from "@/lib/profile-fields/types";
+import { Zap } from "lucide-react";
 
 export const Route = createFileRoute("/_app/users/pending")({
   beforeLoad: async () => { await requireAdmin(); },
@@ -60,6 +63,8 @@ function PendingUsersPage() {
   const [approveTarget, setApproveTarget] = useState<Row | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Row | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<Row | null>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<Row | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<Row | null>(null);
   const [selRole, setSelRole] = useState<AppRole>("viewer");
   const [selPosition, setSelPosition] = useState("");
   const [rejectNotes, setRejectNotes] = useState("");
@@ -125,6 +130,34 @@ function PendingUsersPage() {
       qc.invalidateQueries({ queryKey: ["pending-users"] });
     },
     onError: (e: Error) => toast.error("غیرفعال‌سازی ناموفق", { description: e.message }),
+  });
+
+  const quickApproveMut = useMutation({
+    mutationFn: async (args: { userId: string; role: AppRole }) => {
+      const { error } = await supabase.rpc("quick_approve_user" as never, {
+        _user_id: args.userId, _role: args.role,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("کاربر با نقش پیش‌فرض تأیید شد.");
+      qc.invalidateQueries({ queryKey: ["pending-users"] });
+      qc.invalidateQueries({ queryKey: ["pending-users-count"] });
+    },
+    onError: (e: Error) => toast.error("تأیید سریع ناموفق", { description: e.message }),
+  });
+
+  const reactivateMut = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("reactivate_user" as never, { _user_id: userId } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("کاربر فعال شد.");
+      setReactivateTarget(null);
+      qc.invalidateQueries({ queryKey: ["pending-users"] });
+    },
+    onError: (e: Error) => toast.error("فعال‌سازی ناموفق", { description: e.message }),
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE)) : 1;
@@ -197,8 +230,20 @@ function PendingUsersPage() {
                         <td className="p-3 text-xs text-muted-foreground">{formatDateFa(u.registered_at)}</td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setDetailsTarget(u)}>
+                              جزئیات
+                            </Button>
                             {u.status === "pending" && (
                               <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => quickApproveMut.mutate({ userId: u.id, role: "sales" })}
+                                  disabled={quickApproveMut.isPending}
+                                >
+                                  <Zap className="ml-1 h-3.5 w-3.5" />
+                                  تأیید سریع
+                                </Button>
                                 <Button size="sm" onClick={() => { setApproveTarget(u); setSelPosition(u.position ?? ""); }}>
                                   تأیید
                                 </Button>
@@ -210,6 +255,11 @@ function PendingUsersPage() {
                             {u.status === "active" && (
                               <Button size="sm" variant="outline" onClick={() => setDeactivateTarget(u)}>
                                 غیرفعال‌سازی
+                              </Button>
+                            )}
+                            {(u.status === "inactive" || u.status === "rejected") && (
+                              <Button size="sm" variant="outline" onClick={() => setReactivateTarget(u)}>
+                                فعال‌سازی
                               </Button>
                             )}
                           </div>
@@ -314,6 +364,86 @@ function PendingUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reactivate Dialog */}
+      <AlertDialog open={!!reactivateTarget} onOpenChange={(o) => !o && setReactivateTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>فعال‌سازی مجدد کاربر</AlertDialogTitle>
+            <AlertDialogDescription>
+              «{reactivateTarget?.full_name}» می‌تواند دوباره وارد سامانه شود (نقش‌های قبلی حفظ می‌شوند).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reactivateTarget && reactivateMut.mutate(reactivateTarget.id)}
+            >
+              فعال‌سازی
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <UserDetailsDialog target={detailsTarget} onClose={() => setDetailsTarget(null)} />
     </div>
+  );
+}
+
+function UserDetailsDialog({ target, onClose }: { target: Row | null; onClose: () => void }) {
+  const { data: fields = [] } = useQuery({
+    queryKey: ["profile-fields-all"],
+    queryFn: () => fetchActiveProfileFields(),
+    enabled: !!target,
+  });
+  const { data: values = {} } = useQuery({
+    queryKey: ["profile-field-values", target?.id],
+    queryFn: () => fetchProfileFieldValues(target!.id),
+    enabled: !!target,
+  });
+
+  if (!target) return null;
+
+  const renderValue = (fieldName: string, type: string, raw: unknown) => {
+    if (raw == null || raw === "") return "—";
+    if (type === "days" && Array.isArray(raw)) {
+      return raw.map((v) => WEEK_DAYS.find((d) => d.value === v)?.label ?? v).join("، ");
+    }
+    if (Array.isArray(raw)) return raw.join("، ");
+    return String(raw);
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent dir="rtl" className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>جزئیات کاربر</DialogTitle>
+          <DialogDescription>{target.full_name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 text-sm">
+          <div><span className="text-muted-foreground">تلفن: </span><span dir="ltr">{target.phone ?? "—"}</span></div>
+          <div><span className="text-muted-foreground">سمت: </span>{target.position ?? "—"}</div>
+          <div><span className="text-muted-foreground">وضعیت: </span>{target.status}</div>
+          <div className="border-t pt-2">
+            <p className="mb-2 font-medium">اطلاعات تکمیلی</p>
+            {fields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">فیلد فعالی تعریف نشده.</p>
+            ) : (
+              <dl className="space-y-1.5">
+                {fields.map((f) => (
+                  <div key={f.id} className="flex justify-between gap-2 border-b border-dashed pb-1.5 last:border-0">
+                    <dt className="text-muted-foreground">{f.label}</dt>
+                    <dd className="font-medium">{renderValue(f.name, f.field_type, (values as Record<string, unknown>)[f.name])}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>بستن</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
