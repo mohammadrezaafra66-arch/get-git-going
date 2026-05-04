@@ -70,7 +70,8 @@ docker compose -f deploy/app/docker-compose.yml down
 
 ## نتیجه Smoke Test (Phase SH.3A)
 
-- `vite.config.ts`: پلاگین Cloudflare در زمان build غیرفعال شد (`cloudflare: false`). dev/preview در Lovable تحت تأثیر نیست.
+- `vite.config.ts`: پلاگین Cloudflare به صورت شرطی غیرفعال می‌شود (`cloudflare: process.env.SELF_HOST_NODE === "1" ? false : undefined`). در Dockerfile متغیر `SELF_HOST_NODE=1` ست شده تا خروجی Node SSR ساخته شود؛ build داخل Lovable (preview/published) همچنان روی Cloudflare Workers اجرا می‌شود.
+- برای build دستی self-host خارج از Docker از `SELF_HOST_NODE=1 bun run build` استفاده شود.
 - خروجی build: `dist/client/` (assets) و `dist/server/server.js` (web `fetch` handler).
 - آداپتر Node خام: `server/node-entry.mjs` — request/response را به Web Fetch تبدیل می‌کند، روی `HOST:PORT` listen می‌کند، SIGTERM/SIGINT را تمیز handle می‌کند.
 - اجرا: `node server/node-entry.mjs` ✅ (تست‌شده با Node 20).
