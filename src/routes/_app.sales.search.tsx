@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2 } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
@@ -41,6 +42,8 @@ export const Route = createFileRoute("/_app/sales/search")({
 });
 
 const RESULT_LIMIT = 20;
+const LABEL_PAGE_SIZE = 50;
+type LabelMode = "off" | "all" | "selected";
 
 interface PriceEntry {
   sale_price_type_id: string;
