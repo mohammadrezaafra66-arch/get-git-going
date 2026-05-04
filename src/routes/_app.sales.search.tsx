@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2 } from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
@@ -41,6 +42,8 @@ export const Route = createFileRoute("/_app/sales/search")({
 });
 
 const RESULT_LIMIT = 20;
+const LABEL_PAGE_SIZE = 50;
+type LabelMode = "off" | "all" | "selected";
 
 interface PriceEntry {
   sale_price_type_id: string;
@@ -110,8 +113,15 @@ function SalesSearchPage() {
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
 
+  // Labeled-products mode (shortcut to show all labeled products with the selected price type)
+  const [labelMode, setLabelMode] = useState<LabelMode>("off");
+  const [labelModeIds, setLabelModeIds] = useState<string[]>([]);
+  const [labelModePage, setLabelModePage] = useState<number>(1);
+  const [labelPickerOpen, setLabelPickerOpen] = useState(false);
+  const [labelPickerDraft, setLabelPickerDraft] = useState<string[]>([]);
+
   const term = normalizeSearchText(dSearch);
-  const canSearch = term.length >= 2;
+  const canSearch = term.length >= 2 || labelMode !== "off";
 
   const dBrandText = useDebounce(normalizeSearchText(brandFilterText), 200);
   const dCategoryText = useDebounce(normalizeSearchText(categoryFilterText), 200);
@@ -174,28 +184,52 @@ function SalesSearchPage() {
     }
   }, [salePriceTypes, salePriceTypeId]);
 
+  // reset page when label-mode filters change
+  useEffect(() => { setLabelModePage(1); }, [labelMode, labelModeIds]);
+
+  // Effective label ids for the current label-mode (always within visibleLabels)
+  const visibleLabelIds = useMemo(
+    () => (visibleLabels as Array<{ id: string }>).map((l) => l.id),
+    [visibleLabels],
+  );
+  const effectiveLabelIds = useMemo<string[]>(() => {
+    if (labelMode === "off") return [];
+    if (labelMode === "all") return visibleLabelIds;
+    // "selected": intersect with visibleLabelIds for safety
+    const set = new Set(visibleLabelIds);
+    return labelModeIds.filter((id) => set.has(id));
+  }, [labelMode, labelModeIds, visibleLabelIds]);
+
   // ---------- products query ----------
   const productsQuery = useQuery({
-    enabled: canSearch,
-    queryKey: ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }],
+    enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
+    queryKey: labelMode === "off"
+      ? ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }]
+      : ["sales-search-products-rpc-label-mode", { effectiveLabelIds, labelModePage }],
     queryFn: async () => {
+      const isLabelMode = labelMode !== "off";
       const { data, error } = await supabase.rpc("get_sales_search_products", {
-        p_search: term,
-        p_brand_ids: brandIds.length > 0 ? brandIds : undefined,
-        p_category_ids: categoryIds.length > 0 ? categoryIds : undefined,
-        p_label_ids: labelIds.length > 0 ? labelIds : undefined,
-        p_stock_status: stockStatus !== "__all" ? stockStatus : undefined,
-        p_product_type: productType !== "__all" ? productType : undefined,
-        p_only_with_price: onlyWithPrice,
-        p_limit: RESULT_LIMIT,
-        p_offset: 0,
+        p_search: isLabelMode ? "" : term,
+        p_brand_ids: !isLabelMode && brandIds.length > 0 ? brandIds : undefined,
+        p_category_ids: !isLabelMode && categoryIds.length > 0 ? categoryIds : undefined,
+        p_label_ids: isLabelMode ? effectiveLabelIds : (labelIds.length > 0 ? labelIds : undefined),
+        // In label-mode we pull both available + limited by leaving stock filter open
+        // and filter client-side below to stay consistent with the user's intent.
+        p_stock_status: isLabelMode ? undefined : (stockStatus !== "__all" ? stockStatus : undefined),
+        p_product_type: isLabelMode ? undefined : (productType !== "__all" ? productType : undefined),
+        p_only_with_price: isLabelMode ? false : onlyWithPrice,
+        p_limit: isLabelMode ? LABEL_PAGE_SIZE : RESULT_LIMIT,
+        p_offset: isLabelMode ? (labelModePage - 1) * LABEL_PAGE_SIZE : 0,
       });
       if (error) throw error;
-      const rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      let rows = ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         ...(row as object),
         labels: Array.isArray(row.labels) ? row.labels : [],
         prices: Array.isArray(row.prices) ? row.prices : [],
       })) as ProductRow[];
+      if (isLabelMode) {
+        rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
+      }
       // Track that these products were viewed in search results
       for (const r of rows) {
         trackProductInteraction({
@@ -211,6 +245,43 @@ function SalesSearchPage() {
 
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
+
+  // ---------- label-mode total count (only enabled in label-mode) ----------
+  const labelModeCountQuery = useQuery({
+    enabled: labelMode !== "off" && effectiveLabelIds.length > 0,
+    queryKey: ["sales-search-label-mode-count", { effectiveLabelIds }],
+    queryFn: async () => {
+      // Get distinct product_ids that are linked to any of the selected labels
+      // and are available/limited and active. Page-side count via head:true + count:exact.
+      const { data: linkRows, error: linkErr } = await supabase
+        .from("product_label_links")
+        .select("product_id")
+        .in("label_id", effectiveLabelIds);
+      if (linkErr) throw linkErr;
+      const productIds = Array.from(new Set((linkRows ?? []).map((r: any) => r.product_id as string)));
+      if (productIds.length === 0) return 0;
+      const { count, error: cntErr } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .in("id", productIds)
+        .eq("is_active", true)
+        .in("stock_status", ["available", "limited"]);
+      if (cntErr) throw cntErr;
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+  });
+
+  const labelModeTotal = labelModeCountQuery.data ?? 0;
+  const labelModeTotalPages = Math.max(1, Math.ceil(labelModeTotal / LABEL_PAGE_SIZE));
+  const salePriceTypeTitle = (salePriceTypes as Array<{ id: string; title: string }>)
+    .find((t) => t.id === salePriceTypeId)?.title ?? "—";
+
+  const exitLabelMode = () => {
+    setLabelMode("off");
+    setLabelModeIds([]);
+    setLabelModePage(1);
+  };
 
   return (
     <div className="space-y-5">
@@ -254,8 +325,142 @@ function SalesSearchPage() {
             </Select>
           </div>
 
+          {/* Labeled-products shortcut */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={labelMode !== "off" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => {
+                setLabelMode("all");
+                setLabelModeIds([]);
+                setLabelModePage(1);
+              }}
+              className="gap-2"
+            >
+              <Tag className="h-4 w-4" />
+              نمایش محصولات برچسب‌دار
+            </Button>
+
+            <Popover
+              open={labelPickerOpen}
+              onOpenChange={(o) => {
+                setLabelPickerOpen(o);
+                if (o) {
+                  // initialize draft from current selection
+                  setLabelPickerDraft(labelMode === "selected" ? labelModeIds : []);
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="gap-1" aria-label="انتخاب برچسب خاص">
+                  <ChevronDown className="h-4 w-4" />
+                  انتخاب برچسب خاص
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 p-3">
+                <div className="mb-2 text-sm font-medium">انتخاب برچسب‌ها</div>
+                {visibleLabels.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">برچسبی برای نمایش وجود ندارد.</div>
+                ) : (
+                  <ScrollArea className="h-56 pr-1">
+                    <div className="space-y-1">
+                      {(visibleLabels as Array<{ id: string; title: string; color?: string | null }>).map((l) => {
+                        const checked = labelPickerDraft.includes(l.id);
+                        return (
+                          <label
+                            key={l.id}
+                            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted/50"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setLabelPickerDraft((prev) =>
+                                  v ? Array.from(new Set([...prev, l.id])) : prev.filter((x) => x !== l.id),
+                                );
+                              }}
+                            />
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: l.color ?? "#0ea5e9" }}
+                            />
+                            <span className="text-sm">{l.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLabelPickerDraft([])}
+                  >
+                    پاک کردن
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLabelPickerOpen(false)}
+                    >
+                      انصراف
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        if (labelPickerDraft.length === 0) {
+                          // empty selection => fall back to "all"
+                          setLabelMode("all");
+                          setLabelModeIds([]);
+                        } else {
+                          setLabelMode("selected");
+                          setLabelModeIds(labelPickerDraft);
+                        }
+                        setLabelModePage(1);
+                        setLabelPickerOpen(false);
+                      }}
+                    >
+                      اعمال
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {labelMode !== "off" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={exitLabelMode}
+                className="text-muted-foreground"
+              >
+                <X className="ml-1 h-3.5 w-3.5" /> خروج از حالت برچسب‌دار
+              </Button>
+            )}
+          </div>
+
+          {labelMode !== "off" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+              <Badge variant="secondary" className="gap-1">
+                <Tag className="h-3 w-3" />
+                {labelMode === "all"
+                  ? "حالت برچسب‌دار: همه برچسب‌ها"
+                  : `حالت برچسب‌دار: ${formatNumber(effectiveLabelIds.length)} برچسب`}
+              </Badge>
+              <span className="text-muted-foreground">نوع قیمت نمایشی:</span>
+              <Badge variant="outline">{salePriceTypeTitle}</Badge>
+              <span className="text-muted-foreground">فقط موجود + محدود</span>
+            </div>
+          )}
+
           {/* mobile filters trigger */}
-          <div className="flex items-center justify-between md:hidden">
+          <div className={`flex items-center justify-between md:hidden ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
@@ -318,7 +523,7 @@ function SalesSearchPage() {
           </div>
 
           {/* desktop horizontal filters */}
-          <div className="hidden md:block space-y-2">
+          <div className={`hidden md:block space-y-2 ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Filter className="h-4 w-4" />
@@ -366,7 +571,7 @@ function SalesSearchPage() {
         <EmptyState
           icon={Search}
           title="برای جستجو حداقل ۲ کاراکتر وارد کنید"
-          description="می‌توانید با نام محصول، کد SKU، نام برند یا دسته‌بندی جستجو کنید."
+          description="می‌توانید با نام محصول، کد SKU، نام برند یا دسته‌بندی جستجو کنید. یا روی «نمایش محصولات برچسب‌دار» بزنید."
         />
       ) : isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center text-sm text-muted-foreground">
@@ -376,8 +581,12 @@ function SalesSearchPage() {
         <div className="space-y-3">
           <EmptyState
             icon={PackageX}
-            title="محصولی پیدا نشد"
-            description="محصولی با این عبارت پیدا نشد."
+            title={labelMode !== "off" ? "محصول برچسب‌داری پیدا نشد" : "محصولی پیدا نشد"}
+            description={
+              labelMode !== "off"
+                ? "هیچ محصول برچسب‌دار موجود/محدودی برای فیلتر فعلی پیدا نشد."
+                : "محصولی با این عبارت پیدا نشد."
+            }
           />
           <div className="flex justify-center">
             <Link
@@ -390,6 +599,7 @@ function SalesSearchPage() {
           </div>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {
             return (
@@ -401,6 +611,7 @@ function SalesSearchPage() {
                 canRecalcPrice={canRecalcPrice}
                 onRecalcDone={() => {
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
+                  queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc-label-mode"] });
                 }}
                 onOpenChart={(typeId) => {
                   const targetId = typeId ?? salePriceTypeId;
@@ -425,6 +636,35 @@ function SalesSearchPage() {
             );
           })}
         </div>
+        {labelMode !== "off" && (
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 sm:flex-row">
+            <div className="text-xs text-muted-foreground">
+              نمایش {formatNumber(products.length)} از {formatNumber(labelModeTotal)} محصول
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.max(1, p - 1))}
+                disabled={labelModePage <= 1 || productsQuery.isFetching}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span className="text-xs">
+                صفحه {formatNumber(labelModePage)} از {formatNumber(labelModeTotalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.min(labelModeTotalPages, p + 1))}
+                disabled={labelModePage >= labelModeTotalPages || productsQuery.isFetching}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Secondary action: link to calculator (kept for privileged users) */}
