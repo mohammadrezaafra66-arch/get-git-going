@@ -1,45 +1,40 @@
-## Problem
+## هدف
+ذخیره فایل قوانین ثابت پروژه افراکالا در کدبیس و حافظه Lovable برای رعایت خودکار در تمام توسعه‌های آینده.
 
-In Quick Sales Search, the "Show Labeled Products" shortcut is correctly sending the selected `p_label_ids` to the database with an empty `p_search`. However, the database function `get_sales_search_products` has a hard guard:
+## چرا کدبیس و نه دیتابیس
+سند acceptance criteria یک **قانون توسعه** است نه دیتای اپلیکیشن:
+- در `docs/` با git قابل ردیابی است
+- Lovable می‌تواند هنگام کد زدن آن را مستقیم بخواند
+- backupهای دیتابیس را بی‌دلیل سنگین نمی‌کند
+- استاندارد رایج (مثل `docs/SELF_HOSTING.md` موجود)
 
-```sql
-IF length(v_term) < 2 THEN
-  RETURN;
-END IF;
+## مراحل
+
+### ۱. کپی فایل به کدبیس
+```
+user-uploads://AFRAKALA_SELF_HOST_ACCEPTANCE_CRITERIA-2.md
+  → docs/AFRAKALA_ACCEPTANCE_CRITERIA.md
 ```
 
-So whenever the search box is empty (which is exactly the intended behavior of the labeled-products shortcut), the RPC returns zero rows — even though the product (`AFK-2026-00013`) is active, available, and correctly linked to the labels `تبلیغات` and `سایت ها`.
+### ۲. ثبت در حافظه پروژه Lovable (`mem://`)
+- **`mem://index.md`** — Core rules همیشه در context:
+  - اپ self-host روی Linux + Docker + Supabase
+  - هیچ secret در frontend/GitHub
+  - هیچ CDN/API خارجی حیاتی
+  - RLS + RBAC هرگز دور زده نشود
+  - migration reversible و سازگار با self-host
+  - بهینه برای اینترنت ضعیف ایران
+  - مرجع کامل: `docs/AFRAKALA_ACCEPTANCE_CRITERIA.md`
 
-I confirmed the data in the database:
-- Product is `is_active = true`, `status = active`, `stock_status = available`.
-- Both label links exist in `product_label_links`.
-- Both labels are `public` and active.
+- **`mem://constraints/self-host.md`** — جزئیات معیارهای پذیرش (لیست سرویس‌های Supabase موردنیاز، قوانین storage، migration و …)
 
-So the only blocker is the 2-character minimum inside the RPC.
+### ۳. متن آماده برای کادر Knowledge
+متن کوتاه (~۵۰۰ کاراکتر، زیر سقف ۱۰،۰۰۰) را در پایان پاسخ می‌دهم تا در Settings → Knowledge → «دانش پروژه» paste کنید. این متن فقط به فایل اشاره می‌کند و اصول حیاتی را خلاصه می‌گوید.
 
-## Fix
+## خارج از scope
+- ذخیره در دیتابیس (نامناسب برای این نوع سند)
+- هیچ تغییر کد، migration، RLS، یا auth
+- هیچ تغییر UI
 
-Update the RPC `public.get_sales_search_products` so the 2-character minimum applies **only when no label filter is supplied**. When `p_label_ids` is provided (even with empty search), the function should proceed normally and apply the label filter.
-
-New guard logic:
-
-```text
-if p_label_ids IS NULL or empty:
-    require length(v_term) >= 2  (return empty otherwise)
-else:
-    skip the length check (label browse mode)
-```
-
-The rest of the function (auth/role checks, filters, pagination, label visibility, price visibility) stays exactly the same.
-
-## Steps
-
-1. Create a migration that replaces `public.get_sales_search_products` with the same body, changing only the early-return guard so it is bypassed when `p_label_ids` is provided.
-2. No client changes needed — `src/routes/_app.sales.search.tsx` already sends `p_label_ids` and `p_search=""` in label mode, and already filters results to `available + limited` on the client.
-3. Verify in the preview by clicking "نمایش محصولات برچسب‌دار" — the product `AFK-2026-00013` should now appear, alongside any other labeled, available/limited products.
-
-## Out of scope
-
-- No UI changes.
-- No changes to label-mode pagination, label visibility rules, or price-type selection.
-- No changes to RLS or roles.
+## نتیجه
+از این پس در هر گفتگو با Lovable در این پروژه، قوانین self-host به‌صورت خودکار رعایت می‌شوند و فایل کامل به‌عنوان مرجع در `docs/` در دسترس تیم و Lovable است.
