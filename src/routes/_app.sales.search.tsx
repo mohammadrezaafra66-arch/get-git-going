@@ -325,8 +325,142 @@ function SalesSearchPage() {
             </Select>
           </div>
 
+          {/* Labeled-products shortcut */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={labelMode !== "off" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => {
+                setLabelMode("all");
+                setLabelModeIds([]);
+                setLabelModePage(1);
+              }}
+              className="gap-2"
+            >
+              <Tag className="h-4 w-4" />
+              نمایش محصولات برچسب‌دار
+            </Button>
+
+            <Popover
+              open={labelPickerOpen}
+              onOpenChange={(o) => {
+                setLabelPickerOpen(o);
+                if (o) {
+                  // initialize draft from current selection
+                  setLabelPickerDraft(labelMode === "selected" ? labelModeIds : []);
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="gap-1" aria-label="انتخاب برچسب خاص">
+                  <ChevronDown className="h-4 w-4" />
+                  انتخاب برچسب خاص
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-72 p-3">
+                <div className="mb-2 text-sm font-medium">انتخاب برچسب‌ها</div>
+                {visibleLabels.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">برچسبی برای نمایش وجود ندارد.</div>
+                ) : (
+                  <ScrollArea className="h-56 pr-1">
+                    <div className="space-y-1">
+                      {(visibleLabels as Array<{ id: string; title: string; color?: string | null }>).map((l) => {
+                        const checked = labelPickerDraft.includes(l.id);
+                        return (
+                          <label
+                            key={l.id}
+                            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted/50"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setLabelPickerDraft((prev) =>
+                                  v ? Array.from(new Set([...prev, l.id])) : prev.filter((x) => x !== l.id),
+                                );
+                              }}
+                            />
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: l.color ?? "#0ea5e9" }}
+                            />
+                            <span className="text-sm">{l.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setLabelPickerDraft([])}
+                  >
+                    پاک کردن
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLabelPickerOpen(false)}
+                    >
+                      انصراف
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        if (labelPickerDraft.length === 0) {
+                          // empty selection => fall back to "all"
+                          setLabelMode("all");
+                          setLabelModeIds([]);
+                        } else {
+                          setLabelMode("selected");
+                          setLabelModeIds(labelPickerDraft);
+                        }
+                        setLabelModePage(1);
+                        setLabelPickerOpen(false);
+                      }}
+                    >
+                      اعمال
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {labelMode !== "off" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={exitLabelMode}
+                className="text-muted-foreground"
+              >
+                <X className="ml-1 h-3.5 w-3.5" /> خروج از حالت برچسب‌دار
+              </Button>
+            )}
+          </div>
+
+          {labelMode !== "off" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+              <Badge variant="secondary" className="gap-1">
+                <Tag className="h-3 w-3" />
+                {labelMode === "all"
+                  ? "حالت برچسب‌دار: همه برچسب‌ها"
+                  : `حالت برچسب‌دار: ${formatNumber(effectiveLabelIds.length)} برچسب`}
+              </Badge>
+              <span className="text-muted-foreground">نوع قیمت نمایشی:</span>
+              <Badge variant="outline">{salePriceTypeTitle}</Badge>
+              <span className="text-muted-foreground">فقط موجود + محدود</span>
+            </div>
+          )}
+
           {/* mobile filters trigger */}
-          <div className="flex items-center justify-between md:hidden">
+          <div className={`flex items-center justify-between md:hidden ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
