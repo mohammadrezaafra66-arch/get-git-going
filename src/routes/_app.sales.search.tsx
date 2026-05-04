@@ -523,7 +523,7 @@ function SalesSearchPage() {
           </div>
 
           {/* desktop horizontal filters */}
-          <div className="hidden md:block space-y-2">
+          <div className={`hidden md:block space-y-2 ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Filter className="h-4 w-4" />
