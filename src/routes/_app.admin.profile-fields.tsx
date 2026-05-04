@@ -257,13 +257,13 @@ function FieldFormDialog({
       if (editing) {
         const { error } = await supabase
           .from("profile_field_definitions")
-          .update(payload)
+          .update(payload as never)
           .eq("id", editing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("profile_field_definitions")
-          .insert(payload);
+          .insert(payload as never);
         if (error) throw error;
       }
     },
