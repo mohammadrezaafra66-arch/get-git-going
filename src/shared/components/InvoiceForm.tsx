@@ -639,6 +639,42 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
     },
   });
 
+  // Bounds for price validation (floor + 5% cap)
+  const { data: bounds } = useQuery({
+    queryKey: ["price-bounds", productId, salePriceTypeId],
+    enabled: !!productId && !!salePriceTypeId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_product_price_bounds", {
+        _product_id: productId,
+        _sale_price_type_id: salePriceTypeId,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as {
+        min_price: number | null;
+        max_price: number | null;
+        cap_price: number | null;
+        selected_price: number | null;
+        has_any: boolean;
+      } | null;
+    },
+  });
+
+  // Compute violation (if any) for current price
+  let priceViolation: string | null = null;
+  if (bounds && productId && salePriceTypeId && price > 0) {
+    if (!bounds.has_any) {
+      priceViolation = "برای این محصول هیچ قیمت فروشی ثبت نشده — ابتدا قیمت‌گذاری کنید.";
+    } else if (bounds.min_price != null && price < Number(bounds.min_price)) {
+      priceViolation = `کمتر از کف مجاز (${formatNumber(Number(bounds.min_price))}) است.`;
+    } else if (bounds.selected_price != null && price < Number(bounds.selected_price)) {
+      priceViolation = `کمتر از قیمت قانون نوع قیمت انتخاب‌شده (${formatNumber(Number(bounds.selected_price))}) است.`;
+    } else if (bounds.cap_price != null && price > Number(bounds.cap_price)) {
+      priceViolation = `بیش از سقف مجاز (${formatNumber(Number(bounds.cap_price))} = ۱.۰۵×بالاترین قیمت) است.`;
+    }
+  }
+
   const errors = form.formState.errors.items?.[index];
 
   return (
@@ -725,6 +761,20 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
             {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })}
           />
           {errors?.unit_price && <p className="text-xs text-destructive">{errors.unit_price.message}</p>}
+          {priceViolation && (
+            <p className="text-xs text-destructive">{priceViolation}</p>
+          )}
+          {bounds && bounds.has_any && (
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              کف: {formatNumber(Number(bounds.min_price ?? 0))}
+              {bounds.selected_price != null && (
+                <> — کف نوع قیمت: {formatNumber(Number(bounds.selected_price))}</>
+              )}
+              {bounds.cap_price != null && (
+                <> — سقف ۱.۰۵×: {formatNumber(Number(bounds.cap_price))}</>
+              )}
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">جمع ردیف</Label>
