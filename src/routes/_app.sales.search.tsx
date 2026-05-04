@@ -20,6 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,29 +95,29 @@ function SalesSearchPage() {
   const canRecalcPrice = hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
   const queryClient = useQueryClient();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useSessionStorageState<string>("sales-search:q", "");
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const dSearch = useDebounce(search, 350);
-  const [brandIds, setBrandIds] = useState<string[]>([]);
-  const [categoryIds, setCategoryIds] = useState<string[]>([]);
-  const [labelIds, setLabelIds] = useState<string[]>([]);
-  const [stockStatus, setStockStatus] = useState<string>("__all");
-  const [productType, setProductType] = useState<string>("__all");
+  const [brandIds, setBrandIds] = useSessionStorageState<string[]>("sales-search:brandIds", []);
+  const [categoryIds, setCategoryIds] = useSessionStorageState<string[]>("sales-search:categoryIds", []);
+  const [labelIds, setLabelIds] = useSessionStorageState<string[]>("sales-search:labelIds", []);
+  const [stockStatus, setStockStatus] = useSessionStorageState<string>("sales-search:stockStatus", "__all");
+  const [productType, setProductType] = useSessionStorageState<string>("sales-search:productType", "__all");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // local search inputs inside filter panels
   const [brandFilterText, setBrandFilterText] = useState("");
   const [categoryFilterText, setCategoryFilterText] = useState("");
   const [labelFilterText, setLabelFilterText] = useState("");
-  const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
-  const [onlyWithPrice, setOnlyWithPrice] = useState<boolean>(false);
+  const [salePriceTypeId, setSalePriceTypeId] = useSessionStorageState<string>("sales-search:salePriceTypeId", "");
+  const [onlyWithPrice, setOnlyWithPrice] = useSessionStorageState<boolean>("sales-search:onlyWithPrice", false);
   const [chartCtx, setChartCtx] = useState<{
     productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
 
   // Labeled-products mode (shortcut to show all labeled products with the selected price type)
-  const [labelMode, setLabelMode] = useState<LabelMode>("off");
-  const [labelModeIds, setLabelModeIds] = useState<string[]>([]);
-  const [labelModePage, setLabelModePage] = useState<number>(1);
+  const [labelMode, setLabelMode] = useSessionStorageState<LabelMode>("sales-search:labelMode", "off");
+  const [labelModeIds, setLabelModeIds] = useSessionStorageState<string[]>("sales-search:labelModeIds", []);
+  const [labelModePage, setLabelModePage] = useSessionStorageState<number>("sales-search:labelModePage", 1);
   const [labelPickerOpen, setLabelPickerOpen] = useState(false);
   const [labelPickerDraft, setLabelPickerDraft] = useState<string[]>([]);
 
