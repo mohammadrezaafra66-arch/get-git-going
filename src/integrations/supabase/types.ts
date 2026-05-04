@@ -6533,6 +6533,16 @@ export type Database = {
           score: number
         }[]
       }
+      get_product_price_bounds: {
+        Args: { _product_id: string; _sale_price_type_id?: string }
+        Returns: {
+          cap_price: number
+          has_any: boolean
+          max_price: number
+          min_price: number
+          selected_price: number
+        }[]
+      }
       get_product_recommendations: {
         Args: { p_product_id: string }
         Returns: {
