@@ -4526,6 +4526,100 @@ export type Database = {
           },
         ]
       }
+      profile_field_definitions: {
+        Row: {
+          created_at: string
+          field_type: Database["public"]["Enums"]["profile_field_type"]
+          help_text: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          name: string
+          options: Json
+          show_on_register: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_type?: Database["public"]["Enums"]["profile_field_type"]
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          name: string
+          options?: Json
+          show_on_register?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_type?: Database["public"]["Enums"]["profile_field_type"]
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          name?: string
+          options?: Json
+          show_on_register?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profile_field_values: {
+        Row: {
+          created_at: string
+          field_name: string
+          id: string
+          updated_at: string
+          user_id: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          field_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          field_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_field_values_field_name_fkey"
+            columns: ["field_name"]
+            isOneToOne: false
+            referencedRelation: "profile_field_definitions"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "profile_field_values_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_field_values_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -6860,6 +6954,11 @@ export type Database = {
           total_count: number
         }[]
       }
+      quick_approve_user: {
+        Args: { _role?: string; _user_id: string }
+        Returns: undefined
+      }
+      reactivate_user: { Args: { _user_id: string }; Returns: undefined }
       recompute_all_employee_scores: { Args: never; Returns: number }
       record_currency_fetch: {
         Args: {
@@ -6955,6 +7054,10 @@ export type Database = {
         Args: { p_is_active: boolean; p_row_id: string }
         Returns: undefined
       }
+      set_profile_field_value: {
+        Args: { _field_name: string; _user_id: string; _value: Json }
+        Returns: undefined
+      }
       settle_league_season: { Args: never; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -7026,6 +7129,15 @@ export type Database = {
         | "model"
       product_status: "active" | "inactive" | "discontinued"
       product_type: "iranian" | "foreign"
+      profile_field_type:
+        | "text"
+        | "number"
+        | "select"
+        | "multiselect"
+        | "time"
+        | "days"
+        | "textarea"
+        | "date"
       sales_quote_item_source: "product_price" | "quick_price" | "manual"
       sales_quote_status:
         | "draft"
@@ -7200,6 +7312,16 @@ export const Constants = {
       ],
       product_status: ["active", "inactive", "discontinued"],
       product_type: ["iranian", "foreign"],
+      profile_field_type: [
+        "text",
+        "number",
+        "select",
+        "multiselect",
+        "time",
+        "days",
+        "textarea",
+        "date",
+      ],
       sales_quote_item_source: ["product_price", "quick_price", "manual"],
       sales_quote_status: ["draft", "sent", "accepted", "rejected", "canceled"],
       shipping_cost_type: ["fixed", "percent", "currency"],
