@@ -69,9 +69,10 @@ export type SalePriceTypeFormValues = z.infer<typeof salePriceTypeSchema>;
 
 export const shippingRuleSchema = z
   .object({
-    title: z.string().trim().min(1, "عنوان الزامی است").max(160),
-    cost_type: z.enum(["fixed", "percent"]),
+    title: z.string().trim().max(160).optional().or(z.literal("")),
+    cost_type: z.enum(["fixed", "percent", "currency"]),
     cost_value: z.coerce.number().nonnegative("مقدار نمی‌تواند منفی باشد"),
+    cost_currency: z.string().trim().min(2).max(20).nullable().optional(),
     product_type: z.enum(["iranian", "foreign"]).nullable().optional(),
     product_id: z.string().uuid().nullable().optional(),
     brand_id: z.string().uuid().nullable().optional(),
@@ -90,7 +91,11 @@ export const shippingRuleSchema = z
     { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price"] }
   )
   .refine(
-    (v) => Boolean(v.product_id || v.category_id || v.brand_id || v.product_type),
-    { message: "حداقل یکی از محصول، دسته، برند یا نوع کالا را انتخاب کنید", path: ["title"] }
+    (v) => Boolean(v.product_id),
+    { message: "انتخاب محصول الزامی است", path: ["product_id"] }
+  )
+  .refine(
+    (v) => v.cost_type !== "currency" || Boolean(v.cost_currency && v.cost_currency.length > 0),
+    { message: "نوع ارز را انتخاب کنید", path: ["cost_currency"] }
   );
 export type ShippingRuleFormValues = z.infer<typeof shippingRuleSchema>;

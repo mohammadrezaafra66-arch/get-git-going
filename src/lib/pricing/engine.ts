@@ -152,7 +152,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   let shipping_rule_used: { id: string; title: string } | null = null;
   const { data: shippingRows, error: shippingErr } = await supabase
     .from("shipping_cost_rules")
-    .select("id, title, cost_type, cost_value, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
+    .select("id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("priority", { ascending: true })
@@ -172,11 +172,31 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
     (s.product_id ? 1000 : 0) + (s.category_id ? 100 : 0) + (s.brand_id ? 10 : 0) + (s.product_type ? 1 : 0);
   candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
   const sRule = candidates[0];
+  let shipping_currency_rate: number | null = null;
   if (sRule) {
     shipping_rule_used = { id: sRule.id, title: sRule.title };
-    shipping_cost = sRule.cost_type === "percent"
-      ? Math.round(purchase_price_toman * Number(sRule.cost_value) / 100)
-      : Math.round(Number(sRule.cost_value));
+    if (sRule.cost_type === "percent") {
+      shipping_cost = Math.round(purchase_price_toman * Number(sRule.cost_value) / 100);
+    } else if (sRule.cost_type === "currency") {
+      const code = (sRule.cost_currency ?? "").toString().toLowerCase();
+      if (!code) throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
+      const { data: rateRows, error: rateErr } = await supabase
+        .from("currency_rates")
+        .select("rate_to_toman")
+        .eq("currency", code)
+        .eq("is_active", true)
+        .order("effective_at", { ascending: false })
+        .limit(1);
+      if (rateErr) throw rateErr;
+      const rate = rateRows && rateRows[0] ? Number(rateRows[0].rate_to_toman) : 0;
+      if (!rate || rate <= 0) {
+        throw new PricingError("NO_SHIPPING_RATE", `نرخ فعال برای ارز ${code} پیدا نشد.`);
+      }
+      shipping_currency_rate = rate;
+      shipping_cost = Math.round(Number(sRule.cost_value) * rate);
+    } else {
+      shipping_cost = Math.round(Number(sRule.cost_value));
+    }
   }
 
   // 6) سود
@@ -201,7 +221,9 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
       ? `ارز پایه تومان است؛ نرخ ارز ۱`
       : `نرخ ارز: ${fmt(currency_rate)} → قیمت خرید تومانی: ${fmt(purchase_price_toman)} تومان`,
     sRule
-      ? `هزینه حمل (${sRule.title}): ${fmt(shipping_cost)} تومان`
+      ? sRule.cost_type === "currency"
+        ? `هزینه حمل (${sRule.title}) — ${fmt(Number(sRule.cost_value))} ${sRule.cost_currency} × نرخ ${fmt(shipping_currency_rate ?? 0)} = ${fmt(shipping_cost)} تومان`
+        : `هزینه حمل (${sRule.title}): ${fmt(shipping_cost)} تومان`
       : "هزینه حمل: ۰ (قانون منطبق پیدا نشد)",
     m.margin_type === "fixed"
       ? `سود (مبلغ ثابت): ${fmt(margin_amount)} تومان`

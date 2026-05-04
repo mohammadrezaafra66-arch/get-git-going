@@ -13,9 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { type ShippingRuleFormValues } from "@/lib/pricing/schemas";
-import { SHIPPING_COST_TYPE_LABELS } from "@/lib/pricing/constants";
+import { SHIPPING_COST_TYPE_LABELS, CURRENCY_LABELS, type CurrencyCode } from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
-import { PRODUCT_TYPE_LABELS } from "@/lib/products/constants";
 import {
   ShippingCostRuleForm,
   emptyShippingRule,
@@ -28,7 +27,8 @@ export const Route = createFileRoute("/_app/pricing/shipping-rules")({
 });
 
 interface SRule {
-  id: string; title: string; cost_type: "fixed" | "percent"; cost_value: number;
+  id: string; title: string; cost_type: "fixed" | "percent" | "currency"; cost_value: number;
+  cost_currency: string | null;
   product_type: "iranian" | "foreign" | null;
   product_id: string | null; brand_id: string | null; category_id: string | null;
   product_name?: string | null; brand_name?: string | null; category_name?: string | null;
@@ -53,7 +53,7 @@ function ShippingRulesPage() {
       const { data, error } = await supabase
         .from("shipping_cost_rules")
         .select(`
-          id, title, cost_type, cost_value, product_type,
+          id, title, cost_type, cost_value, cost_currency, product_type,
           product_id, brand_id, category_id,
           min_purchase_price, max_purchase_price,
           is_active, priority, sort_order,
@@ -94,12 +94,17 @@ function ShippingRulesPage() {
   };
 
   const scopeLabel = (r: SRule) => {
-    const parts: string[] = [];
-    if (r.product_name) parts.push(`محصول: ${r.product_name}`);
-    if (r.category_name) parts.push(`دسته: ${r.category_name}`);
-    if (r.brand_name) parts.push(`برند: ${r.brand_name}`);
-    if (r.product_type) parts.push(`نوع: ${PRODUCT_TYPE_LABELS[r.product_type]}`);
-    return parts.length ? parts.join(" • ") : "همه";
+    if (r.product_name) return r.product_name;
+    return "—";
+  };
+
+  const renderCostValue = (r: SRule) => {
+    if (r.cost_type === "percent") return `%${formatNumber(Number(r.cost_value))}`;
+    if (r.cost_type === "currency") {
+      const label = r.cost_currency ? (CURRENCY_LABELS[r.cost_currency as CurrencyCode] ?? r.cost_currency) : "—";
+      return `${formatNumber(Number(r.cost_value))} ${label}`;
+    }
+    return `${formatNumber(Number(r.cost_value))} ت`;
   };
 
   return (
@@ -126,11 +131,10 @@ function ShippingRulesPage() {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                   <tr>
-                    <th className="p-3">عنوان</th>
+                    <th className="p-3">محصول</th>
                     <th className="p-3">نوع</th>
                     <th className="p-3">مقدار</th>
-                    <th className="p-3">محدوده اعمال</th>
-                    <th className="p-3">ترتیب</th>
+                    <th className="p-3">عنوان</th>
                     <th className="p-3">وضعیت</th>
                     <th className="p-3">عملیات</th>
                   </tr>
@@ -138,11 +142,10 @@ function ShippingRulesPage() {
                 <tbody>
                   {(data ?? []).map((r) => (
                     <tr key={r.id} className="border-b last:border-0">
-                      <td className="p-3 font-medium">{r.title}</td>
+                      <td className="p-3 font-medium">{scopeLabel(r)}</td>
                       <td className="p-3 text-xs">{SHIPPING_COST_TYPE_LABELS[r.cost_type]}</td>
-                      <td className="p-3">{r.cost_type === "percent" ? `%${formatNumber(Number(r.cost_value))}` : `${formatNumber(Number(r.cost_value))} ت`}</td>
-                      <td className="p-3 text-xs text-muted-foreground">{scopeLabel(r)}</td>
-                      <td className="p-3 text-xs">{formatNumber(r.sort_order ?? 0)}</td>
+                      <td className="p-3">{renderCostValue(r)}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{r.title || "—"}</td>
                       <td className="p-3">{r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}</td>
                       <td className="p-3">
                         {canWrite && (
@@ -190,7 +193,8 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
   const handleOpenChange = (v: boolean) => {
     if (v) {
       setValues(editing ? {
-        title: editing.title, cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
+        title: editing.title ?? "", cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
+        cost_currency: editing.cost_currency ?? null,
         product_type: editing.product_type,
         product_id: editing.product_id, brand_id: editing.brand_id, category_id: editing.category_id,
         min_purchase_price: editing.min_purchase_price, max_purchase_price: editing.max_purchase_price,
@@ -210,12 +214,23 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
     }
     setErrors({}); setLoading(true);
     try {
-      const payload = { ...parsed.data };
+      const data = parsed.data;
+      // اگر عنوان خالی است، از نام محصول استفاده کن
+      let title = (data.title ?? "").trim();
+      if (!title && data.product_id) {
+        const { data: p } = await supabase.from("products").select("name").eq("id", data.product_id).maybeSingle();
+        title = p?.name ?? "قانون حمل";
+      }
+      const payload = {
+        ...data,
+        title: title || "قانون حمل",
+        cost_currency: data.cost_type === "currency" ? data.cost_currency ?? null : null,
+      };
       if (editing) {
         const { error } = await supabase.from("shipping_cost_rules").update(payload).eq("id", editing.id);
         if (error) throw error; toast.success("به‌روزرسانی شد");
       } else {
-        const { error } = await supabase.from("shipping_cost_rules").insert(payload);
+        const { error } = await supabase.from("shipping_cost_rules").insert([payload]);
         if (error) throw error; toast.success("ثبت شد");
       }
       onSaved(); onOpenChange(false);

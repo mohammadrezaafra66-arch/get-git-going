@@ -1,95 +1,75 @@
-# رفع مشکل Session و Persistence
+## بازطراحی «قوانین هزینه حمل» — اعمال مستقیم روی محصول
 
-## تحلیل ریشه
+### آنچه تغییر می‌کند (نمای کاربر)
 
-### مشکل ۱: درخواست لاگین بعد از رفرش
-Supabase client با `persistSession: true` و `localStorage` تنظیم شده، پس session واقعاً ذخیره می‌شود. اما در `src/routes/_app.tsx` در `beforeLoad`:
+فرم «قانون حمل جدید/ویرایش» ساده‌تر و دقیق‌تر می‌شود:
 
-```ts
-const auth = await ensureAuthReady();
-if (!auth.user) throw redirect({ to: "/login" });
-```
+1. **ویرایش کامل** — دکمه ویرایش از قبل در جدول هست؛ مطمئن می‌شویم همه مقادیر (از جمله نوع ارز جدید) به‌درستی pre-fill شوند.
+2. **حذف فیلدهای غیرضروری از فرم**: «دسته‌بندی»، «برند»، «نوع کالا»، «ترتیب نمایش» از UI فرم برداشته می‌شوند. (ستون‌های دیتابیس می‌مانند تا داده قبلی از بین نرود؛ مقدار `sort_order` به‌صورت خودکار `0` ست می‌شود.)
+3. **نوع محاسبه**: سه گزینه
+   - ثابت (تومان) — بدون تغییر
+   - درصدی — بدون تغییر
+   - **ارزی (جدید)** — کاربر مبلغ + نوع ارز (دلار/درهم/...) را وارد می‌کند. هنگام محاسبه قیمت، آخرین نرخ فعال آن ارز از `currency_rates` ضرب می‌شود.
+4. **انتخاب محصول الزامی و برجسته** — جستجوی محصول بالای فرم قرار می‌گیرد و انتخاب آن اجباری می‌شود؛ هر قانون به‌صورت مستقیم به یک محصول مشخص بسته می‌شود.
+5. **عنوان قانون** اختیاری می‌شود (در صورت خالی بودن، خودکار از نام محصول ساخته می‌شود).
 
-اگر `getSession()` در همان رندر اول کندتر از انتظار جواب بدهد، یا قبل از hydration کامل اجرا شود، `auth.user` ممکن است `null` باشد و کاربر به `/login` پرت شود. علاوه بر این، در `src/routes/index.tsx` نیز همین race condition وجود دارد (`getSession` بدون انتظار برای hydration).
+### تغییرات دیتابیس (migration جدید)
 
-**علامت کاربر:** «بعد از رفرش، صفحه لاگین نشان داده می‌شود.»
+- افزودن مقدار `'currency'` به enum `public.shipping_cost_type`.
+- افزودن ستون‌های جدید به `public.shipping_cost_rules`:
+  - `cost_currency text NULL` با FK نرم به `currencies(code)` (یا CHECK سازگار با مقادیر `usd/aed/...`).
+  - فقط زمانی پر می‌شود که `cost_type = 'currency'`.
+- Validation Trigger (نه CHECK زمان‌محور): اگر `cost_type='currency'` بود، `cost_currency` نباید NULL باشد.
+- ایندکس: `CREATE INDEX IF NOT EXISTS idx_shipping_rules_product_active ON shipping_cost_rules(product_id) WHERE is_active = true AND product_id IS NOT NULL;`
+- RLS موجود دست‌نخورده می‌ماند (admin/accountant write، بقیه read).
+- Audit log موجود کافی است؛ تغییر نمی‌کند.
+- migration کاملاً idempotent و reversible (down notes داخل کامنت).
 
-### مشکل ۲: درخواست لاگین بعد از سویچ تب
-هنگام برگشتن از تب دیگر، Supabase auth یک رویداد `TOKEN_REFRESHED` یا `SIGNED_IN` صادر می‌کند. در `applySession()` فایل `src/lib/auth/session.ts`:
+### تغییرات کد
 
-```ts
-setSnapshot({ initialized: true, loading: true, session, user: session.user });
-await loadIdentity(session.user, force); // force=true در onAuthStateChange
-```
+**Schema (`src/lib/pricing/schemas.ts`)**
+- `cost_type` به `z.enum(["fixed","percent","currency"])` گسترش.
+- فیلد جدید `cost_currency: z.string().nullable().optional()`.
+- refine: اگر `cost_type==='currency'` → `cost_currency` الزامی.
+- refine: `product_id` الزامی (به‌جای حداقل یکی از چهار اسکوپ).
+- `title` به `optional` تبدیل می‌شود؛ در submit اگر خالی بود از نام محصول پر می‌شود.
 
-با `force=true`، profile و roles دوباره fetch می‌شوند و `loading` کل اپ true می‌شود → AppLayout صفحه «در حال بررسی جلسه کاربری» را نشان می‌دهد. این باعث **unmount کامل درخت کامپوننت** می‌شود و تمام useState ها (شامل سرچ، فرم نیمه‌پر و …) از بین می‌روند.
+**Constants (`src/lib/pricing/constants.ts`)**
+- افزودن `currency: "ارزی"` به `SHIPPING_COST_TYPE_LABELS`.
 
-**علامت کاربر:** «وقتی برمی‌گردم، نتیجه سرچ ۲۴ پاک شده و صفحه اول جستجو نمایش داده می‌شود.»
+**Form (`src/shared/components/ShippingCostRuleForm.tsx`)**
+- حذف بلوک‌های دسته/برند/نوع کالا/ترتیب نمایش از JSX.
+- بالا بردن جستجوی محصول و قرار دادن آن به‌صورت required.
+- افزودن Select «نوع ارز» که فقط وقتی `cost_type==='currency'` نمایش داده می‌شود؛ گزینه‌ها از `currencies` فعال (`fetchActiveCurrencies` یا یک query ساده روی جدول `currencies`).
+- برچسب پویا برای فیلد مقدار: ثابت → «مبلغ (تومان)»، درصدی → «درصد (%)»، ارزی → «مبلغ (به ارز انتخابی)».
+- `emptyShippingRule` به‌روزرسانی: `cost_currency: null`.
 
-### مشکل ۳: state داخل کامپوننت volatile است
-حتی اگر unmount نشود، رفرش صفحه هم state را پاک می‌کند. برای راه‌حل کامل نیاز به **persist کردن state مهم در sessionStorage** داریم.
+**List page (`src/routes/_app.pricing.shipping-rules.tsx`)**
+- ستون «محدوده اعمال» به «محصول» تغییر؛ همیشه نام محصول نمایش داده می‌شود.
+- ستون «ترتیب» حذف.
+- نمایش مقدار: اگر `currency` بود → `{value} {CURRENCY_LABELS[cost_currency]}`.
+- در `editing` map، `cost_currency` هم منتقل شود.
 
----
+**Pricing engine (`src/lib/pricing/engine.ts`)**
+- در بلوک shipping (خط ۱۴۹‑۱۸۰):
+  - اضافه کردن `cost_currency` به `select`.
+  - اگر `cost_type==='currency'`: گرفتن آخرین نرخ فعال آن ارز از `currency_rates` (همان الگویی که در محاسبه قیمت خرید ارزی استفاده می‌شود) و محاسبه `shipping_cost = round(value * rate)`.
+  - اگر نرخ پیدا نشد → `PricingError("NO_SHIPPING_RATE", ...)`.
+- در `steps` توضیح ارز و نرخ افزوده شود.
 
-## راه‌حل
+**Quick price (`src/lib/pricing/quick-price.ts`)** — همان منطق جدید برای پیش‌نمایش سریع.
 
-### ۱. حذف unmount/loading screen هنگام token refresh و تب‌سویچ
+### معیار پذیرش (طبق AFRAKALA_ACCEPTANCE_CRITERIA)
 
-در `src/lib/auth/session.ts`:
-- در `applySession`، اگر session جدید همان user قبلی باشد (token refresh)، **فقط session را به‌روز کن**؛ profile/roles را re-fetch نکن و `loading=true` نگذار.
-- در `onAuthStateChange`، event را بررسی کن: برای `TOKEN_REFRESHED` فقط session را آپدیت کن، نه force reload.
-- فقط برای `SIGNED_IN` (با userId متفاوت) و `SIGNED_OUT` reload کامل انجام شود.
+- migration در `supabase/migrations/` با timestamp جدید، idempotent، RLS حفظ‌شده.
+- بدون CDN/فونت خارجی، بدون secret در client.
+- `currency_rates` query با `limit(1)` و ایندکس فعلی پاسخ می‌دهد.
+- UI فارسی، RTL، responsive (همان grid فعلی).
+- audit trigger موجود به‌صورت خودکار تغییرات جدید را لاگ می‌کند.
+- قابلیت ویرایش روی هر ردیف موجود و جدید.
 
-نتیجه: AppLayout دیگر unmount نمی‌شود → state کامپوننت‌ها حفظ می‌شود.
+### نکته سازگاری با داده قدیمی
 
-### ۲. مقاوم‌سازی auth check در رفرش
+ردیف‌های قدیمی که فقط `category_id` یا `brand_id` یا `product_type` دارند **بدون تغییر** باقی می‌مانند و engine همچنان آن‌ها را به‌عنوان fallback تطبیق می‌دهد (منطق specificity فعلی حفظ می‌شود). فقط فرم جدید فقط بر اساس محصول قانون می‌سازد.
 
-در `src/routes/_app.tsx` و `src/routes/index.tsx`:
-- بجای `getSession()` خام، از `supabase.auth.getUser()` استفاده شود که منتظر hydration می‌ماند.
-- در `beforeLoad`، اگر session در حال restore است، صبر کن (max 2s timeout) قبل از redirect.
-
-### ۳. Persist کردن state در sessionStorage برای صفحات مهم
-
-برای جلوگیری از پاک شدن state حتی در رفرش:
-- ساخت hook عمومی `useSessionStorageState<T>(key, initialValue)` در `src/hooks/use-session-storage-state.ts` (مثل useState ولی با sync به sessionStorage).
-- اعمال آن روی state های کلیدی صفحه `src/routes/_app.sales.search.tsx`:
-  - `search`, `brandIds`, `categoryIds`, `labelIds`, `stockStatus`, `productType`, `salePriceTypeId`, `onlyWithPrice`, `labelMode`, `labelModeIds`, `labelModePage`
-- React Query با `staleTime: 30_000` خودش cache نتایج را نگه می‌دارد، پس با persist شدن سرچ‌ترم، نتیجه فوری برمی‌گردد.
-
-**برای فرم‌های نیمه‌پر:** فعلاً فقط روی صفحه «جستجوی سریع فروش» تمرکز می‌کنیم (مثال صریح کاربر). بعد از تأیید این الگو، می‌توان آن را روی فرم‌های ساخت محصول/فاکتور/فیش نیز اعمال کرد (در فاز جداگانه، چون هر فرم باید جداگانه refactor شود).
-
----
-
-## فایل‌های تغییر
-
-| فایل | تغییر |
-|---|---|
-| `src/lib/auth/session.ts` | تشخیص TOKEN_REFRESHED، عدم reload roles روی refresh، عدم نمایش loading screen |
-| `src/routes/_app.tsx` | gate قوی‌تر با getUser + timeout |
-| `src/routes/index.tsx` | استفاده از getUser به‌جای getSession |
-| `src/hooks/use-session-storage-state.ts` | hook جدید |
-| `src/routes/_app.sales.search.tsx` | جایگزینی useState با useSessionStorageState برای فیلترها/سرچ |
-
-## فایل‌های بدون تغییر
-- `src/integrations/supabase/client.ts` (auto-generated)
-- migrationها (نیاز به migration نیست — فقط client-side)
-- RLS/RBAC دست‌نخورده
-
----
-
-## Self-Host Acceptance Check
-
-| معیار | وضعیت |
-|---|---|
-| بدون secret جدید / بدون VITE_ secret | ✅ |
-| بدون CDN خارجی، بدون dependency جدید | ✅ |
-| RLS/RBAC حفظ — auth flow فقط بهبود UX | ✅ |
-| migration لازم نیست | ✅ |
-| سازگار با Linux + Docker + Supabase self-host | ✅ |
-| audit log دست‌نخورده | ✅ |
-| Mobile-first / RTL حفظ | ✅ |
-| signup با تایید ادمین حفظ | ✅ |
-
-## محدودیت‌ها
-- فاز اول فقط صفحه «جستجوی سریع فروش» persist می‌شود. اگر کاربر می‌خواهد همین رفتار روی فرم‌های دیگر (محصول جدید، فاکتور، فیش) هم اعمال شود، در فاز بعد جداگانه انجام می‌دهیم — چون refactor فرم‌های پیچیده با react-hook-form الگوی متفاوتی دارد و باید با احتیاط انجام شود.
-- داده‌های persist شده در sessionStorage فقط در همان tab زنده‌اند (با بستن tab پاک می‌شوند) — این رفتار درست برای UX است.
+اگر بخواهید قوانین قدیمی (غیر مرتبط با محصول مشخص) به‌صورت ماسبق پاک یا migrate شوند، در پیام بعدی اعلام کنید — به‌صورت پیش‌فرض حفظ می‌شوند.

@@ -9,7 +9,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
 import { shippingRuleSchema, type ShippingRuleFormValues } from "@/lib/pricing/schemas";
 
 type ProductLite = { id: string; name: string };
@@ -18,6 +17,7 @@ export const emptyShippingRule: ShippingRuleFormValues = {
   title: "",
   cost_type: "fixed",
   cost_value: 0,
+  cost_currency: null,
   product_type: null,
   product_id: null,
   brand_id: null,
@@ -68,13 +68,29 @@ interface Props {
 export function ShippingCostRuleForm({
   values, onChange, errors, loading, onSubmit, onCancel, isEditing, initialProductLabel,
 }: Props) {
-  const { data: brands } = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
-  const { data: categories } = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
+  const { data: currencies } = useQuery({
+    queryKey: ["currencies-active-lite"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("currencies")
+        .select("code, title")
+        .eq("is_active", true)
+        .neq("code", "toman")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as { code: string; title: string }[];
+    },
+  });
 
   const [productTerm, setProductTerm] = useState(initialProductLabel ?? "");
   const productSearch = useProductSearch(productTerm);
 
-  const amountLabel = values.cost_type === "fixed" ? "مبلغ (تومان)" : "درصد (%)";
+  const amountLabel =
+    values.cost_type === "fixed"
+      ? "مبلغ (تومان)"
+      : values.cost_type === "percent"
+        ? "درصد (%)"
+        : "مبلغ (به ارز انتخابی)";
   const amountHint = useMemo(
     () => "این مقدار به عنوان هزینه حمل به قیمت پایه محصول اضافه می‌شود.",
     []
@@ -89,40 +105,7 @@ export function ShippingCostRuleForm({
       className="grid gap-3 sm:grid-cols-2"
     >
       <div className="sm:col-span-2">
-        <Label>عنوان قانون *</Label>
-        <Input value={values.title} onChange={(e) => set("title", e.target.value)} />
-        {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
-      </div>
-
-      <div>
-        <Label>نوع محاسبه *</Label>
-        <Select
-          value={values.cost_type}
-          onValueChange={(v) => set("cost_type", v as "fixed" | "percent")}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="fixed">ثابت (تومان)</SelectItem>
-            <SelectItem value="percent">درصدی</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label>{amountLabel} *</Label>
-        <Input
-          type="number"
-          inputMode="decimal"
-          dir="ltr"
-          value={values.cost_value || ""}
-          onChange={(e) => set("cost_value", Number(e.target.value))}
-        />
-        <p className="mt-1 text-[11px] text-muted-foreground">{amountHint}</p>
-        {errors.cost_value && <p className="mt-1 text-xs text-destructive">{errors.cost_value}</p>}
-      </div>
-
-      <div className="sm:col-span-2">
-        <Label>محصول (اختیاری)</Label>
+        <Label>محصول *</Label>
         <Input
           dir="rtl"
           placeholder="نام محصول را برای جستجو تایپ کنید..."
@@ -154,64 +137,74 @@ export function ShippingCostRuleForm({
             انتخاب‌شده — برای حذف، فیلد را خالی کنید.
           </p>
         )}
+        {errors.product_id && <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>}
+      </div>
+
+      <div className="sm:col-span-2">
+        <Label>عنوان قانون (اختیاری)</Label>
+        <Input
+          value={values.title ?? ""}
+          onChange={(e) => set("title", e.target.value)}
+          placeholder="در صورت خالی، نام محصول استفاده می‌شود"
+        />
+        {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
       </div>
 
       <div>
-        <Label>دسته‌بندی (اختیاری)</Label>
+        <Label>نوع محاسبه *</Label>
         <Select
-          value={values.category_id ?? "all"}
-          onValueChange={(v) => set("category_id", v === "all" ? null : v)}
+          value={values.cost_type}
+          onValueChange={(v) => {
+            const next = v as "fixed" | "percent" | "currency";
+            onChange({
+              ...values,
+              cost_type: next,
+              cost_currency: next === "currency" ? values.cost_currency ?? null : null,
+            });
+          }}
         >
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">— هیچ —</SelectItem>
-            {(categories ?? []).filter((c: any) => c.is_active !== false).map((c: any) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
+            <SelectItem value="fixed">ثابت (تومان)</SelectItem>
+            <SelectItem value="percent">درصدی</SelectItem>
+            <SelectItem value="currency">ارزی</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div>
-        <Label>برند (اختیاری)</Label>
-        <Select
-          value={values.brand_id ?? "all"}
-          onValueChange={(v) => set("brand_id", v === "all" ? null : v)}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">— هیچ —</SelectItem>
-            {(brands ?? []).filter((b: any) => b.is_active !== false).map((b: any) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label>نوع کالا (اختیاری)</Label>
-        <Select
-          value={values.product_type ?? "all"}
-          onValueChange={(v) => set("product_type", v === "all" ? null : (v as "iranian" | "foreign"))}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">— هیچ —</SelectItem>
-            <SelectItem value="iranian">ایرانی</SelectItem>
-            <SelectItem value="foreign">خارجی</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div>
-        <Label>ترتیب نمایش</Label>
+        <Label>{amountLabel} *</Label>
         <Input
           type="number"
+          inputMode="decimal"
           dir="ltr"
-          value={values.sort_order}
-          onChange={(e) => set("sort_order", Number(e.target.value))}
+          value={values.cost_value || ""}
+          onChange={(e) => set("cost_value", Number(e.target.value))}
         />
+        <p className="mt-1 text-[11px] text-muted-foreground">{amountHint}</p>
+        {errors.cost_value && <p className="mt-1 text-xs text-destructive">{errors.cost_value}</p>}
       </div>
+
+      {values.cost_type === "currency" && (
+        <div className="sm:col-span-2">
+          <Label>نوع ارز *</Label>
+          <Select
+            value={values.cost_currency ?? ""}
+            onValueChange={(v) => set("cost_currency", v)}
+          >
+            <SelectTrigger><SelectValue placeholder="انتخاب ارز" /></SelectTrigger>
+            <SelectContent>
+              {(currencies ?? []).map((c) => (
+                <SelectItem key={c.code} value={c.code}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            هنگام محاسبه قیمت، آخرین نرخ فعال این ارز اعمال می‌شود.
+          </p>
+          {errors.cost_currency && <p className="mt-1 text-xs text-destructive">{errors.cost_currency}</p>}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 sm:col-span-2">
         <Switch checked={values.is_active} onCheckedChange={(v) => set("is_active", v)} />

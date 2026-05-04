@@ -5365,6 +5365,7 @@ export type Database = {
         Row: {
           brand_id: string | null
           category_id: string | null
+          cost_currency: string | null
           cost_type: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value: number
           created_at: string
@@ -5382,6 +5383,7 @@ export type Database = {
         Insert: {
           brand_id?: string | null
           category_id?: string | null
+          cost_currency?: string | null
           cost_type: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value: number
           created_at?: string
@@ -5399,6 +5401,7 @@ export type Database = {
         Update: {
           brand_id?: string | null
           category_id?: string | null
+          cost_currency?: string | null
           cost_type?: Database["public"]["Enums"]["shipping_cost_type"]
           cost_value?: number
           created_at?: string
@@ -5420,6 +5423,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "brands"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rules_cost_currency_fkey"
+            columns: ["cost_currency"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rules_cost_currency_fkey"
+            columns: ["cost_currency"]
+            isOneToOne: false
+            referencedRelation: "effective_currencies_view"
+            referencedColumns: ["code"]
           },
           {
             foreignKeyName: "shipping_cost_rules_product_id_fkey"
@@ -7006,7 +7023,7 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "canceled"
-      shipping_cost_type: "fixed" | "percent"
+      shipping_cost_type: "fixed" | "percent" | "currency"
       stock_alert_priority: "low" | "normal" | "high"
       stock_alert_status:
         | "open"
@@ -7175,7 +7192,7 @@ export const Constants = {
       product_type: ["iranian", "foreign"],
       sales_quote_item_source: ["product_price", "quick_price", "manual"],
       sales_quote_status: ["draft", "sent", "accepted", "rejected", "canceled"],
-      shipping_cost_type: ["fixed", "percent"],
+      shipping_cost_type: ["fixed", "percent", "currency"],
       stock_alert_priority: ["low", "normal", "high"],
       stock_alert_status: [
         "open",

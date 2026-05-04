@@ -19,6 +19,7 @@ export const MARGIN_TYPE_LABELS: Record<MarginType, string> = {
 export const SHIPPING_COST_TYPE_LABELS: Record<ShippingCostType, string> = {
   fixed: "مبلغ ثابت",
   percent: "درصد قیمت خرید",
+  currency: "ارزی",
 };
 
 export const PRICING_PAGE_SIZE = 20;
