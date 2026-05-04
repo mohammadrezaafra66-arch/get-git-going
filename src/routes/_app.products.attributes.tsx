@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Search, Tag } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Pencil, Search, Tag, Lock, Trash2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -29,33 +29,37 @@ export const Route = createFileRoute("/_app/products/attributes")({
   component: ProductAttributesPage,
 });
 
-type AttrType = "brand" | "category" | "color" | "capacity" | "model";
+type ValueType = "select" | "text" | "number";
 
-const TYPE_LABELS: Record<AttrType, string> = {
-  brand: "برند",
-  category: "دسته‌بندی",
-  color: "رنگ",
-  capacity: "ظرفیت",
-  model: "مدل",
+const VALUE_TYPE_LABELS: Record<ValueType, string> = {
+  select: "کشویی",
+  text: "متنی",
+  number: "عددی",
 };
 
-const TYPES: AttrType[] = ["brand", "category", "color", "capacity", "model"];
-const DYN_TYPES: Exclude<AttrType, "brand" | "category">[] = ["color", "capacity", "model"];
-
-interface UnifiedRow {
+interface AttrGroup {
   id: string;
-  type: AttrType;
-  name: string;
+  key: string;
+  label_fa: string;
+  value_type: ValueType;
   is_active: boolean;
-  source: "brands" | "categories" | "product_attributes";
+  is_system: boolean;
+  sort_order: number;
 }
 
-function slugify(s: string) {
-  return s.trim().toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "") || `item-${Date.now().toString(36)}`;
+interface AttrValue {
+  id: string;
+  group_id: string | null;
+  type: string; // legacy enum, kept for backward compat
+  name: string;
+  is_active: boolean;
+}
+
+function normalizeKey(s: string): string {
+  return s.toString().trim().toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 60);
 }
 
 function ProductAttributesPage() {
@@ -63,17 +67,31 @@ function ProductAttributesPage() {
   const canWrite = hasPermission(roles, "products", "update");
   const qc = useQueryClient();
 
-  const [filterType, setFilterType] = useState<AttrType | "all">("all");
+  const [filterGroupId, setFilterGroupId] = useState<string | "all">("all");
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<UnifiedRow | null>(null);
-  const [createType, setCreateType] = useState<AttrType | null>(null);
   const [tab, setTab] = useState<"attrs" | "naming" | "category-attrs">("attrs");
+
+  const [editingGroup, setEditingGroup] = useState<AttrGroup | null>(null);
+  const [creatingGroup, setCreatingGroup] = useState<boolean>(false);
+  const [valueDialog, setValueDialog] = useState<{ group: AttrGroup; value: AttrValue | null } | null>(null);
+
+  const groupsQ = useQuery({
+    queryKey: ["product-attribute-groups"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_attribute_groups")
+        .select("id, key, label_fa, value_type, is_active, is_system, sort_order")
+        .order("sort_order")
+        .order("label_fa");
+      if (error) throw error;
+      return (data ?? []) as AttrGroup[];
+    },
+  });
 
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("brands").select("id, name, is_active").order("name");
+      const { data, error } = await supabase.from("brands").select("id, name, is_active").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -81,57 +99,59 @@ function ProductAttributesPage() {
   const catsQ = useQuery({
     queryKey: ["attr-categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories").select("id, name, is_active").order("name");
+      const { data, error } = await supabase.from("categories").select("id, name, is_active").order("name");
       if (error) throw error;
       return data ?? [];
     },
   });
-  const dynQ = useQuery({
+  const valuesQ = useQuery({
     queryKey: ["product-attributes-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_attributes")
-        .select("id, type, name, is_active")
-        .order("type").order("name");
+        .select("id, type, name, is_active, group_id")
+        .order("name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as AttrValue[];
     },
   });
 
-  const isLoading = brandsQ.isLoading || catsQ.isLoading || dynQ.isLoading;
+  const isLoading = groupsQ.isLoading || brandsQ.isLoading || catsQ.isLoading || valuesQ.isLoading;
 
-  const allRows: UnifiedRow[] = useMemo(() => {
-    const rows: UnifiedRow[] = [];
-    for (const b of brandsQ.data ?? []) {
-      rows.push({ id: b.id, type: "brand", name: b.name, is_active: b.is_active, source: "brands" });
-    }
-    for (const c of catsQ.data ?? []) {
-      rows.push({ id: c.id, type: "category", name: c.name, is_active: c.is_active, source: "categories" });
-    }
-    for (const a of dynQ.data ?? []) {
-      rows.push({ id: a.id, type: a.type as AttrType, name: a.name, is_active: a.is_active, source: "product_attributes" });
-    }
-    return rows;
-  }, [brandsQ.data, catsQ.data, dynQ.data]);
-
-  const filtered = useMemo(() => {
+  const valuesByGroup = useMemo(() => {
+    const map = new Map<string, AttrValue[]>();
+    const groups = groupsQ.data ?? [];
     const term = search.trim().toLowerCase();
-    return allRows.filter((r) => {
-      if (filterType !== "all" && r.type !== filterType) return false;
-      if (term && !r.name.toLowerCase().includes(term)) return false;
-      return true;
-    });
-  }, [allRows, filterType, search]);
+    const matches = (name: string) => !term || name.toLowerCase().includes(term);
 
-  const grouped = useMemo(() => {
-    const map = new Map<AttrType, UnifiedRow[]>();
-    for (const t of TYPES) map.set(t, []);
-    for (const r of filtered) map.get(r.type)?.push(r);
+    for (const g of groups) {
+      if (g.key === "brand") {
+        const rows: AttrValue[] = (brandsQ.data ?? [])
+          .filter((b) => matches(b.name))
+          .map((b) => ({ id: b.id, group_id: g.id, type: "brand", name: b.name, is_active: b.is_active }));
+        map.set(g.id, rows);
+      } else if (g.key === "category") {
+        const rows: AttrValue[] = (catsQ.data ?? [])
+          .filter((c) => matches(c.name))
+          .map((c) => ({ id: c.id, group_id: g.id, type: "category", name: c.name, is_active: c.is_active }));
+        map.set(g.id, rows);
+      } else {
+        const rows = (valuesQ.data ?? [])
+          .filter((v) => (v.group_id === g.id || v.type === g.key) && matches(v.name));
+        map.set(g.id, rows);
+      }
+    }
     return map;
-  }, [filtered]);
+  }, [groupsQ.data, brandsQ.data, catsQ.data, valuesQ.data, search]);
+
+  const visibleGroups = useMemo(() => {
+    const groups = groupsQ.data ?? [];
+    if (filterGroupId === "all") return groups;
+    return groups.filter((g) => g.id === filterGroupId);
+  }, [groupsQ.data, filterGroupId]);
 
   const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["product-attribute-groups"] });
     qc.invalidateQueries({ queryKey: ["attr-brands"] });
     qc.invalidateQueries({ queryKey: ["attr-categories"] });
     qc.invalidateQueries({ queryKey: ["product-attributes-all"] });
@@ -142,12 +162,13 @@ function ProductAttributesPage() {
     qc.invalidateQueries({ queryKey: ["categories"] });
   };
 
-  const toggleMut = useMutation({
-    mutationFn: async (vars: { row: UnifiedRow; is_active: boolean }) => {
-      const { error } = await supabase
-        .from(vars.row.source)
-        .update({ is_active: vars.is_active })
-        .eq("id", vars.row.id);
+  const toggleValueMut = useMutation({
+    mutationFn: async (vars: { group: AttrGroup; value: AttrValue; is_active: boolean }) => {
+      const table =
+        vars.group.key === "brand" ? "brands" :
+        vars.group.key === "category" ? "categories" :
+        "product_attributes";
+      const { error } = await supabase.from(table).update({ is_active: vars.is_active }).eq("id", vars.value.id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
@@ -157,19 +178,44 @@ function ProductAttributesPage() {
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
+  const toggleGroupMut = useMutation({
+    mutationFn: async (vars: { group: AttrGroup; is_active: boolean }) => {
+      const { error } = await supabase
+        .from("product_attribute_groups")
+        .update({ is_active: vars.is_active })
+        .eq("id", vars.group.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.is_active ? "گروه فعال شد" : "گروه غیرفعال شد");
+      invalidateAll();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
+  const deleteGroupMut = useMutation({
+    mutationFn: async (group: AttrGroup) => {
+      if (group.is_system) throw new Error("گروه سیستمی قابل حذف نیست");
+      const { error } = await supabase.from("product_attribute_groups").delete().eq("id", group.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("گروه حذف شد"); invalidateAll(); },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="ویژگی‌های محصول"
-        description="مدیریت برند، دسته‌بندی، رنگ، ظرفیت و مدل برای فرم محصولات"
+        description="مدیریت گروه‌های ویژگی محصول (پویا) با نوع مقدار کشویی، متنی یا عددی"
         actions={
           <>
             <Button asChild variant="outline" size="sm">
               <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button size="sm" onClick={() => setCreateType("color")}>
-                <Plus className="ms-1 h-4 w-4" />ویژگی جدید
+              <Button size="sm" onClick={() => { setEditingGroup(null); setCreatingGroup(true); }}>
+                <Plus className="ms-1 h-4 w-4" />گروه ویژگی جدید
               </Button>
             )}
           </>
@@ -192,19 +238,19 @@ function ProductAttributesPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="جستجوی نام ویژگی..."
+                placeholder="جستجوی نام مقدار..."
                 className="pr-8"
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">فیلتر بر اساس نوع</Label>
-            <Select value={filterType} onValueChange={(v) => setFilterType(v as AttrType | "all")}>
+            <Label className="text-xs">فیلتر بر اساس گروه</Label>
+            <Select value={filterGroupId} onValueChange={(v) => setFilterGroupId(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه انواع</SelectItem>
-                {TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {(groupsQ.data ?? []).map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.label_fa}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -214,56 +260,98 @@ function ProductAttributesPage() {
 
       {isLoading ? (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
-      ) : filtered.length === 0 && !canWrite ? (
-        <EmptyState icon={Tag} title="ویژگی‌ای یافت نشد" description="هنوز ویژگی‌ای ثبت نشده است." />
+      ) : visibleGroups.length === 0 ? (
+        <EmptyState icon={Tag} title="گروهی یافت نشد" description="هنوز گروه ویژگی‌ای تعریف نشده است." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {TYPES.map((t) => {
-            const rows = grouped.get(t) ?? [];
-            if (filterType !== "all" && filterType !== t) return null;
+          {visibleGroups.map((g) => {
+            const rows = valuesByGroup.get(g.id) ?? [];
             return (
-              <Card key={t}>
+              <Card key={g.id} className={g.is_active ? "" : "opacity-60"}>
                 <CardContent className="space-y-3 p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <Tag className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-semibold">{TYPE_LABELS[t]}</h3>
-                      <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>
+                      <h3 className="truncate font-semibold">{g.label_fa}</h3>
+                      <Badge variant="secondary" className="text-[10px]">{VALUE_TYPE_LABELS[g.value_type]}</Badge>
+                      {g.is_system && <Lock className="h-3 w-3 text-muted-foreground" aria-label="گروه سیستمی" />}
+                      {g.value_type === "select" && <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>}
+                      {!g.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
                     </div>
                     {canWrite && (
-                      <Button size="sm" variant="ghost" onClick={() => setCreateType(t)}>
-                        <Plus className="ms-1 h-4 w-4" />افزودن
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => { setCreatingGroup(false); setEditingGroup(g); }} aria-label="ویرایش گروه">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Switch
+                          checked={g.is_active}
+                          onCheckedChange={(v) => toggleGroupMut.mutate({ group: g, is_active: v })}
+                          disabled={toggleGroupMut.isPending}
+                        />
+                        {!g.is_system && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm(`گروه «${g.label_fa}» حذف شود؟`)) deleteGroupMut.mutate(g);
+                            }}
+                            aria-label="حذف گروه"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {rows.length === 0 ? (
-                    <p className="py-4 text-center text-xs text-muted-foreground">موردی نیست</p>
+
+                  {g.value_type !== "select" ? (
+                    <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                      {g.value_type === "text"
+                        ? "این گروه مقدار متنی آزاد می‌گیرد — نیازی به تعریف لیست مقادیر نیست."
+                        : "این گروه مقدار عددی می‌گیرد — کاربر در فرم محصول عدد وارد می‌کند."}
+                    </p>
+                  ) : rows.length === 0 ? (
+                    <div className="space-y-2">
+                      <p className="py-4 text-center text-xs text-muted-foreground">موردی نیست</p>
+                      {canWrite && (
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => setValueDialog({ group: g, value: null })}>
+                          <Plus className="ms-1 h-4 w-4" />افزودن مقدار
+                        </Button>
+                      )}
+                    </div>
                   ) : (
-                    <ul className="divide-y divide-border">
-                      {rows.map((r) => (
-                        <li key={`${r.source}-${r.id}`} className="flex items-center justify-between gap-2 py-2">
-                          <div className="min-w-0 flex-1">
-                            <span className={`text-sm ${r.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
-                              {r.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {canWrite && (
-                              <>
-                                <Switch
-                                  checked={r.is_active}
-                                  onCheckedChange={(v) => toggleMut.mutate({ row: r, is_active: v })}
-                                  disabled={toggleMut.isPending}
-                                />
-                                <Button size="icon" variant="ghost" onClick={() => setEditing(r)} aria-label="ویرایش">
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    <>
+                      <ul className="divide-y divide-border">
+                        {rows.map((r) => (
+                          <li key={`${g.key}-${r.id}`} className="flex items-center justify-between gap-2 py-2">
+                            <div className="min-w-0 flex-1">
+                              <span className={`text-sm ${r.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+                                {r.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {canWrite && (
+                                <>
+                                  <Switch
+                                    checked={r.is_active}
+                                    onCheckedChange={(v) => toggleValueMut.mutate({ group: g, value: r, is_active: v })}
+                                    disabled={toggleValueMut.isPending}
+                                  />
+                                  <Button size="icon" variant="ghost" onClick={() => setValueDialog({ group: g, value: r })} aria-label="ویرایش">
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                      {canWrite && (
+                        <Button size="sm" variant="ghost" className="w-full" onClick={() => setValueDialog({ group: g, value: null })}>
+                          <Plus className="ms-1 h-4 w-4" />افزودن مقدار
+                        </Button>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -272,12 +360,18 @@ function ProductAttributesPage() {
         </div>
       )}
 
-      {canWrite && (
-        <AttrDialog
-          mode={createType ? "create" : editing ? "edit" : null}
-          initial={editing}
-          defaultType={createType ?? undefined}
-          onClose={() => { setCreateType(null); setEditing(null); }}
+      {canWrite && (creatingGroup || editingGroup) && (
+        <GroupDialog
+          group={editingGroup}
+          onClose={() => { setCreatingGroup(false); setEditingGroup(null); }}
+          onSaved={invalidateAll}
+        />
+      )}
+      {canWrite && valueDialog && (
+        <ValueDialog
+          group={valueDialog.group}
+          value={valueDialog.value}
+          onClose={() => setValueDialog(null)}
           onSaved={invalidateAll}
         />
       )}
@@ -293,93 +387,235 @@ function ProductAttributesPage() {
   );
 }
 
-function AttrDialog({
-  mode, initial, defaultType, onClose, onSaved,
+// =====================================================================
+// Group create/edit dialog
+// =====================================================================
+function GroupDialog({
+  group, onClose, onSaved,
 }: {
-  mode: "create" | "edit" | null;
-  initial: UnifiedRow | null;
-  defaultType?: AttrType;
+  group: AttrGroup | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const open = mode !== null;
-  const [name, setName] = useState("");
-  const [type, setType] = useState<AttrType>("color");
-  const [isActive, setIsActive] = useState<boolean>(true);
+  const isEdit = !!group;
+  const [labelFa, setLabelFa] = useState(group?.label_fa ?? "");
+  const [key, setKey] = useState(group?.key ?? "");
+  const [valueType, setValueType] = useState<ValueType>(group?.value_type ?? "select");
+  const [isActive, setIsActive] = useState<boolean>(group?.is_active ?? true);
+  const [sortOrder, setSortOrder] = useState<number>(group?.sort_order ?? 100);
 
+  // Auto-suggest key from label when creating
   useEffect(() => {
-    if (!open) return;
-    setName(initial?.name ?? "");
-    setType(initial?.type ?? defaultType ?? "color");
-    setIsActive(initial?.is_active ?? true);
-  }, [initial, defaultType, mode, open]);
+    if (isEdit) return;
+    if (!key) {
+      const stripped = labelFa.replace(/[\u0600-\u06FF\s]+/g, "_");
+      const sug = normalizeKey(stripped);
+      if (sug) setKey(sug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelFa]);
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const trimmed = name.trim();
-      if (!trimmed) throw new Error("نام الزامی است");
+      const cleanLabel = labelFa.trim();
+      const cleanKey = normalizeKey(key);
+      if (!cleanLabel) throw new Error("عنوان فارسی الزامی است");
+      if (cleanLabel.length > 80) throw new Error("عنوان نباید بیش از ۸۰ کاراکتر باشد");
+      if (!isEdit && !cleanKey) throw new Error("شناسه (لاتین) الزامی است");
 
-      if (mode === "edit" && initial) {
+      if (isEdit && group) {
+        // Editing: system groups can only change label / sort / active
+        const payload = group.is_system
+          ? { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder }
+          : { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder, value_type: valueType };
         const { error } = await supabase
-          .from(initial.source)
-          .update({ name: trimmed, is_active: isActive })
-          .eq("id", initial.id);
-        if (error) throw error;
-        return;
-      }
-
-      // create
-      if (type === "brand") {
-        const { error } = await supabase
-          .from("brands")
-          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
-        if (error) throw error;
-      } else if (type === "category") {
-        const { error } = await supabase
-          .from("categories")
-          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
+          .from("product_attribute_groups")
+          .update(payload)
+          .eq("id", group.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("product_attributes")
-          .insert({ name: trimmed, type, is_active: isActive });
-        if (error) throw error;
+          .from("product_attribute_groups")
+          .insert({
+            key: cleanKey,
+            label_fa: cleanLabel,
+            value_type: valueType,
+            is_active: isActive,
+            sort_order: sortOrder,
+            is_system: false,
+          });
+        if (error) {
+          if ((error as any).code === "23505") throw new Error("این شناسه قبلاً استفاده شده است");
+          throw error;
+        }
       }
     },
     onSuccess: () => {
-      toast.success(mode === "edit" ? "ذخیره شد" : "ویژگی جدید ساخته شد");
+      toast.success(isEdit ? "گروه ذخیره شد" : "گروه جدید ساخته شد");
       onSaved();
       onClose();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
-  // when editing, type is fixed; when creating, allow choosing among all 5
-  const typeOptions: AttrType[] = mode === "edit" ? [type] : TYPES;
-
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "ویرایش ویژگی" : "ویژگی جدید"}</DialogTitle>
+          <DialogTitle>{isEdit ? "ویرایش گروه ویژگی" : "گروه ویژگی جدید"}</DialogTitle>
           <DialogDescription>
-            {type === "brand" || type === "category"
-              ? "این مقدار در جدول مرجع ذخیره می‌شود."
-              : "مقدار جدیدی برای استفاده در فرم محصولات تعریف کنید."}
+            عنوان فارسی، شناسه ماشینی و نوع مقدار را تعیین کنید.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>نوع</Label>
-            <Select value={type} onValueChange={(v) => setType(v as AttrType)} disabled={mode === "edit"}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {typeOptions.map((t) => (
-                  <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>عنوان فارسی</Label>
+            <Input value={labelFa} onChange={(e) => setLabelFa(e.target.value)} maxLength={80} placeholder="مثلاً: گارانتی" />
           </div>
+          <div className="space-y-1.5">
+            <Label>شناسه (لاتین)</Label>
+            <Input
+              value={key}
+              dir="ltr"
+              onChange={(e) => setKey(normalizeKey(e.target.value))}
+              maxLength={60}
+              placeholder="warranty"
+              disabled={isEdit}
+              className="font-mono"
+            />
+            {!isEdit && <p className="text-[11px] text-muted-foreground">فقط حروف انگلیسی، عدد و _ . پس از ساخت قابل تغییر نیست.</p>}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>نوع مقدار</Label>
+              <Select
+                value={valueType}
+                onValueChange={(v) => setValueType(v as ValueType)}
+                disabled={isEdit && group?.is_system}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="select">کشویی (لیست مقادیر)</SelectItem>
+                  <SelectItem value="text">متنی (مقدار آزاد)</SelectItem>
+                  <SelectItem value="number">عددی</SelectItem>
+                </SelectContent>
+              </Select>
+              {isEdit && group?.is_system && (
+                <p className="text-[11px] text-muted-foreground">گروه سیستمی — نوع مقدار قابل تغییر نیست.</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>ترتیب نمایش</Label>
+              <Input
+                type="number"
+                min={0}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))}
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+            فعال
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !labelFa.trim()}>
+            {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+            ذخیره
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// =====================================================================
+// Value create/edit dialog (only for select-type groups)
+// =====================================================================
+function ValueDialog({
+  group, value, onClose, onSaved,
+}: {
+  group: AttrGroup;
+  value: AttrValue | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!value;
+  const [name, setName] = useState(value?.name ?? "");
+  const [isActive, setIsActive] = useState<boolean>(value?.is_active ?? true);
+
+  const slugify = (s: string) =>
+    s.trim().toLowerCase()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || `item-${Date.now().toString(36)}`;
+
+  const saveMut = useMutation({
+    mutationFn: async () => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("نام الزامی است");
+
+      if (isEdit && value) {
+        const table =
+          group.key === "brand" ? "brands" :
+          group.key === "category" ? "categories" :
+          "product_attributes";
+        const { error } = await supabase
+          .from(table)
+          .update({ name: trimmed, is_active: isActive })
+          .eq("id", value.id);
+        if (error) throw error;
+        return;
+      }
+
+      // Create
+      if (group.key === "brand") {
+        const { error } = await supabase
+          .from("brands")
+          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
+        if (error) throw error;
+      } else if (group.key === "category") {
+        const { error } = await supabase
+          .from("categories")
+          .insert({ name: trimmed, slug: slugify(trimmed), is_active: isActive });
+        if (error) throw error;
+      } else {
+        // Legacy types are 'color' | 'capacity' | 'model'; for other custom keys we still insert
+        // but `type` enum will reject. Therefore only seeded select groups support values for now.
+        const legacyTypes = ["color", "capacity", "model"];
+        if (!legacyTypes.includes(group.key)) {
+          throw new Error("افزودن مقدار برای گروه‌های جدید کشویی هنوز پشتیبانی نمی‌شود (فاز بعد).");
+        }
+        const { error } = await supabase
+          .from("product_attributes")
+          .insert({
+            name: trimmed,
+            type: group.key as "color" | "capacity" | "model",
+            group_id: group.id,
+            is_active: isActive,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(isEdit ? "ذخیره شد" : "مقدار جدید اضافه شد");
+      onSaved();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا"),
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "ویرایش مقدار" : `افزودن مقدار جدید به «${group.label_fa}»`}</DialogTitle>
+          <DialogDescription>این مقدار در فرم محصولات قابل انتخاب خواهد بود.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>نام</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: قرمز، ۱۰۰ لیتری، X200" />
@@ -400,9 +636,6 @@ function AttrDialog({
     </Dialog>
   );
 }
-
-// keep DYN_TYPES referenced (used implicitly via TYPES filtering)
-void DYN_TYPES;
 
 // =====================================================================
 // Category-Specific Product Attribute Definitions (Phase 12.4)
