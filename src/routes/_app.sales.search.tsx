@@ -571,7 +571,7 @@ function SalesSearchPage() {
         <EmptyState
           icon={Search}
           title="برای جستجو حداقل ۲ کاراکتر وارد کنید"
-          description="می‌توانید با نام محصول، کد SKU، نام برند یا دسته‌بندی جستجو کنید."
+          description="می‌توانید با نام محصول، کد SKU، نام برند یا دسته‌بندی جستجو کنید. یا روی «نمایش محصولات برچسب‌دار» بزنید."
         />
       ) : isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center text-sm text-muted-foreground">
@@ -581,8 +581,12 @@ function SalesSearchPage() {
         <div className="space-y-3">
           <EmptyState
             icon={PackageX}
-            title="محصولی پیدا نشد"
-            description="محصولی با این عبارت پیدا نشد."
+            title={labelMode !== "off" ? "محصول برچسب‌داری پیدا نشد" : "محصولی پیدا نشد"}
+            description={
+              labelMode !== "off"
+                ? "هیچ محصول برچسب‌دار موجود/محدودی برای فیلتر فعلی پیدا نشد."
+                : "محصولی با این عبارت پیدا نشد."
+            }
           />
           <div className="flex justify-center">
             <Link
@@ -595,6 +599,7 @@ function SalesSearchPage() {
           </div>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {
             return (
@@ -606,6 +611,7 @@ function SalesSearchPage() {
                 canRecalcPrice={canRecalcPrice}
                 onRecalcDone={() => {
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
+                  queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc-label-mode"] });
                 }}
                 onOpenChart={(typeId) => {
                   const targetId = typeId ?? salePriceTypeId;
@@ -630,6 +636,35 @@ function SalesSearchPage() {
             );
           })}
         </div>
+        {labelMode !== "off" && (
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 sm:flex-row">
+            <div className="text-xs text-muted-foreground">
+              نمایش {formatNumber(products.length)} از {formatNumber(labelModeTotal)} محصول
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.max(1, p - 1))}
+                disabled={labelModePage <= 1 || productsQuery.isFetching}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span className="text-xs">
+                صفحه {formatNumber(labelModePage)} از {formatNumber(labelModeTotalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.min(labelModeTotalPages, p + 1))}
+                disabled={labelModePage >= labelModeTotalPages || productsQuery.isFetching}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Secondary action: link to calculator (kept for privileged users) */}
