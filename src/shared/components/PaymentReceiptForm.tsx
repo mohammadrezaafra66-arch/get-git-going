@@ -194,6 +194,7 @@ const schema = z.object({
   receiver_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
   receiver_phone: z.string().trim().max(30).optional().or(z.literal("")),
   receiver_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
+  beneficiary_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
   amount: z.number({ message: "مبلغ الزامی است" }).positive("مبلغ باید مثبت باشد"),
   payment_date: z.string()
     .min(1, "تاریخ الزامی است")
