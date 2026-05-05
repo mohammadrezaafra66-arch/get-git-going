@@ -820,6 +820,7 @@ export function PaymentReceiptForm() {
         receiver_name: values.receiver_name,
         receiver_phone: values.receiver_phone || null,
         receiver_accounting_code: values.receiver_accounting_code || null,
+        beneficiary_accounting_code: values.beneficiary_accounting_code || null,
         amount: values.amount,
         payment_date: values.payment_date,
         payment_time: values.payment_time,
