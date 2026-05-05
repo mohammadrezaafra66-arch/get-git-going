@@ -15,7 +15,6 @@ const bidi = bidiFactory();
  */
 function shapeRtl(text: string): string {
   if (!text) return text;
-  // Skip if no RTL/Arabic chars and no digits-mixed-with-rtl situation.
   const hasRtl = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(text);
   if (!hasRtl) return text;
   try {
@@ -23,14 +22,7 @@ function shapeRtl(text: string): string {
     return lines
       .map((line) => {
         const embed = bidi.getEmbeddingLevels(line, "rtl");
-        const order = bidi.getReorderSegments(line, embed);
-        const chars = line.split("");
-        for (const seg of order) {
-          const [start, end] = seg;
-          const slice = chars.slice(start, end + 1).reverse();
-          for (let i = start; i <= end; i++) chars[i] = slice[i - start];
-        }
-        return chars.join("");
+        return bidi.getReorderedString(line, embed);
       })
       .join("\n");
   } catch {
