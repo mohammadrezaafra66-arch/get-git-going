@@ -95,6 +95,7 @@ import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-a
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
 import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
+import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
@@ -577,6 +578,11 @@ const AppAdminWaybillFieldsRoute = AppAdminWaybillFieldsRouteImport.update({
   path: '/admin/waybill-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminValidationRulesRoute = AppAdminValidationRulesRouteImport.update({
+  id: '/admin/validation-rules',
+  path: '/admin/validation-rules',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -838,6 +844,7 @@ export interface FileRoutesByFullPath {
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -963,6 +970,7 @@ export interface FileRoutesByTo {
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -1091,6 +1099,7 @@ export interface FileRoutesById {
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
+  '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
@@ -1220,6 +1229,7 @@ export interface FileRouteTypes {
     | '/admin/receipt-fields'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/validation-rules'
     | '/admin/waybill-fields'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
@@ -1345,6 +1355,7 @@ export interface FileRouteTypes {
     | '/admin/receipt-fields'
     | '/admin/roles'
     | '/admin/settings'
+    | '/admin/validation-rules'
     | '/admin/waybill-fields'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
@@ -1472,6 +1483,7 @@ export interface FileRouteTypes {
     | '/_app/admin/receipt-fields'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
+    | '/_app/admin/validation-rules'
     | '/_app/admin/waybill-fields'
     | '/_app/admin/workflow-stages'
     | '/_app/bot-api-keys/docs'
@@ -2181,6 +2193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWaybillFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/validation-rules': {
+      id: '/_app/admin/validation-rules'
+      path: '/admin/validation-rules'
+      fullPath: '/admin/validation-rules'
+      preLoaderRoute: typeof AppAdminValidationRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/settings': {
       id: '/_app/admin/settings'
       path: '/admin/settings'
@@ -2676,6 +2695,7 @@ interface AppRouteChildren {
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
+  AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
   AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
@@ -2763,6 +2783,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
+  AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,
   AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
