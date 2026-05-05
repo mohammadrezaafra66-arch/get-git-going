@@ -124,7 +124,9 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
 
     // image/* → vision OCR
     if (mime.startsWith("image/")) {
-      const ocrEnabled = (process.env.OCR_ENABLED ?? "false").toLowerCase() === "true";
+      // Default ON (Lovable hosted). Self-host operators can opt out by
+      // setting OCR_ENABLED=false explicitly on the server.
+      const ocrEnabled = (process.env.OCR_ENABLED ?? "true").toLowerCase() === "true";
       if (!ocrEnabled) {
         return {
           raw_text: "",
