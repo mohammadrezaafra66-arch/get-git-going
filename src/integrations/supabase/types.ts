@@ -7235,6 +7235,14 @@ export type Database = {
         Args: { _end: string; _name: string; _start: string }
         Returns: string
       }
+      submit_quiz_attempt: {
+        Args: { _answers: Json; _quiz_id: string }
+        Returns: {
+          attempt_id: string
+          passed: boolean
+          score: number
+        }[]
+      }
       toggle_custom_role_status: {
         Args: { _is_active: boolean; _role_id: string }
         Returns: undefined
