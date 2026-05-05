@@ -85,7 +85,7 @@ function LessonPage() {
       const raw = marked.parse(data.lesson.content) as string;
       return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
     }
-    catch { return data.lesson.content; }
+    catch { return DOMPurify.sanitize(data.lesson.content); }
   }, [data?.lesson?.content]);
 
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;

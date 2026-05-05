@@ -87,7 +87,7 @@ function KnowledgeDocumentPage() {
       const raw = marked.parse(doc.content) as string;
       return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
     }
-    catch { return doc.content; }
+    catch { return DOMPurify.sanitize(doc.content); }
   }, [doc?.content]);
 
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
