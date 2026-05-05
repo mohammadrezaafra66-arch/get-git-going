@@ -193,12 +193,91 @@ function ProductDetailPage() {
         await deleteAllDynamicValuesForProduct(id);
       }
 
+      // Build audit diff and log it
+      try {
+        if (user?.id) {
+          const prevValues = {
+            name: p.name,
+            brand_id: p.brand?.id ?? null,
+            category_id: p.category?.id ?? null,
+            product_type: p.product_type,
+            base_currency: p.base_currency,
+            stock_status: p.stock_status,
+            status: p.status,
+            unit: p.unit ?? null,
+            color: p.color ?? null,
+            capacity: p.capacity ?? null,
+            model: p.model ?? null,
+            primary_spec: p.primary_spec ?? null,
+            description: p.description ?? null,
+            technical_notes: p.technical_notes ?? null,
+          };
+          const nextValues = {
+            name: v.name,
+            brand_id: v.brand_id || null,
+            category_id: v.category_id || null,
+            product_type: v.product_type,
+            base_currency: v.base_currency,
+            stock_status: v.stock_status,
+            status: v.status,
+            unit: v.unit || null,
+            color: v.color || null,
+            capacity: v.capacity || null,
+            model: v.model || null,
+            primary_spec: v.primary_spec || null,
+            description: v.description || null,
+            technical_notes: v.technical_notes || null,
+          };
+          // brand/category name lookup
+          const brandIds = [prevValues.brand_id, nextValues.brand_id].filter(Boolean) as string[];
+          const catIds = [prevValues.category_id, nextValues.category_id].filter(Boolean) as string[];
+          const [brandsRes, catsRes] = await Promise.all([
+            brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : Promise.resolve({ data: [] as any[] }),
+            catIds.length ? supabase.from("categories").select("id,name").in("id", catIds) : Promise.resolve({ data: [] as any[] }),
+          ]);
+          const brandMap: Record<string, string> = {};
+          (brandsRes.data ?? []).forEach((b: any) => { brandMap[b.id] = b.name; });
+          const catMap: Record<string, string> = {};
+          (catsRes.data ?? []).forEach((c: any) => { catMap[c.id] = c.name; });
+
+          const changes = diffProductFields(prevValues, nextValues, brandMap, catMap);
+
+          // labels diff
+          const prevLabelIds = editDataQ.data?.labelIds ?? [];
+          const labelTitleMap: Record<string, string> = {};
+          (p.product_label_links ?? []).forEach((x: any) => {
+            if (x.label) labelTitleMap[x.label.id] = x.label.title;
+          });
+          const newLabelIds = v.label_ids.filter((id) => !labelTitleMap[id]);
+          if (newLabelIds.length > 0) {
+            const { data: lbls } = await supabase.from("product_labels").select("id,title").in("id", newLabelIds);
+            (lbls ?? []).forEach((l: any) => { labelTitleMap[l.id] = l.title; });
+          }
+          const labels = diffLabels(prevLabelIds, v.label_ids, labelTitleMap);
+
+          // dynamic attribute diff
+          const prevDyn = editDataQ.data?.dynamicValues ?? {};
+          const nextDyn = dynamic.values ?? {};
+          const attributes = diffDynamicValues(prevDyn, nextDyn, dynamic.defs ?? []);
+
+          const fullDiff: ProductAuditDiff = {
+            changes: Object.keys(changes).length ? changes : undefined,
+            labels: (labels.added.length || labels.removed.length) ? labels : undefined,
+            attributes: Object.keys(attributes).length ? attributes : undefined,
+          };
+          await logProductUpdate(id, user.id, fullDiff);
+        }
+      } catch (logErr) {
+        console.warn("[product-history] log failed", logErr);
+      }
+
       toast.success("تغییرات ذخیره شد");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-dynamic-attrs", id] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product-history", id] }),
       ]);
       setEditMode(false);
     } catch (e: any) {
