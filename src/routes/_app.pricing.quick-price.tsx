@@ -20,7 +20,7 @@ import { calculateQuickSalePrice, type QuickPriceBreakdown } from "@/lib/pricing
 import { PricingError } from "@/lib/pricing/engine";
 import { formatNumber } from "@/lib/i18n/formatters";
 
-const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "accountant", "sales"];
+export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "accountant", "sales"];
 
 export const Route = createFileRoute("/_app/pricing/quick-price")({
   beforeLoad: async () => {

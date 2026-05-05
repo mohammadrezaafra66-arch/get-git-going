@@ -34,7 +34,7 @@ export const Route = createFileRoute("/_app/sales/send-queue")({
   component: SendQueuePage,
 });
 
-const STALE_LOCK_MINUTES = 10;
+export const STALE_LOCK_MINUTES = 10;
 
 type QuickFilter = "none" | "pending" | "failed" | "processing" | "retry" | "stale";
 
