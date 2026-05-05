@@ -1569,21 +1569,6 @@ export function PaymentReceiptForm() {
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label>بانک مقصد</Label>
-              <Select
-                value={form.watch("bank_name") || undefined}
-                onValueChange={(v) => form.setValue("bank_name", v)}
-              >
-                <SelectTrigger><SelectValue placeholder="انتخاب بانک" /></SelectTrigger>
-                <SelectContent>
-                  {BANKS.map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
           </div>
 
           <div className="space-y-1">
@@ -1591,18 +1576,18 @@ export function PaymentReceiptForm() {
             <Textarea rows={3} {...form.register("description")} />
           </div>
 
-          {/* اطلاعات استخراج‌شده از فیش (قابل ویرایش دستی) */}
+          {/* جزئیات تکمیلی فیش (قابل استخراج خودکار از تصویر) */}
           <div className="space-y-3 rounded-md border bg-muted/20 p-3">
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold">اطلاعات استخراج‌شده از فیش</h3>
+              <h3 className="text-sm font-semibold">جزئیات تکمیلی فیش</h3>
               <p className="text-xs text-muted-foreground">
-                این فیلدها در آینده می‌توانند به‌صورت خودکار از تصویر فیش استخراج شوند. در حال حاضر به‌صورت دستی توسط حسابدار قابل ویرایش هستند.
+                در صورت آپلود تصویر فیش، این فیلدها به‌صورت خودکار از روی فیش پر می‌شوند. در صورت نیاز قابل ویرایش دستی هستند.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>حساب مبدا (اختیاری)</Label>
+                <Label>حساب مبدأ ما (اختیاری)</Label>
                 <Select
                   value={form.watch("source_bank_account_id") || "__none"}
                   onValueChange={(v) => {
@@ -1627,67 +1612,20 @@ export function PaymentReceiptForm() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Input className="mt-1" {...form.register("source_bank")} placeholder="نام بانک مبدا (متن)" />
+                <Input className="mt-1" {...form.register("source_bank")} placeholder="نام بانک مبدأ (متن)" />
               </div>
 
               <div className="space-y-1">
-                <Label>
-                  حساب مقصد (بانک ما){" "}
-                  <span className="text-[10px] text-muted-foreground">
-                    — یا این، یا «طرف حساب گیرنده»
-                  </span>
-                </Label>
-                <Select
-                  value={form.watch("destination_bank_account_id") || "__none"}
-                  disabled={Boolean(form.watch("receiver_party_id"))}
-                  onValueChange={(v) => {
-                    if (v === "__none") {
-                      form.setValue("destination_bank_account_id", "", { shouldDirty: true });
-                      return;
-                    }
-                    form.setValue("destination_bank_account_id", v, { shouldDirty: true });
-                    // mutually exclusive with external party
-                    form.setValue("receiver_party_id", "", { shouldDirty: true });
-                    const b = bankAccounts.find((x) => x.id === v);
-                    if (b) {
-                      if (!form.getValues("destination_bank")) {
-                        form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
-                      }
-                      if (!form.getValues("bank_name")) {
-                        form.setValue("bank_name", b.bank_name, { shouldDirty: true });
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
-                    {bankAccounts.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input className="mt-1" {...form.register("destination_bank")} placeholder="نام بانک مقصد (متن)" />
+                <Label>نام بانک مقصد (متن)</Label>
+                <Input {...form.register("destination_bank")} placeholder="مثلاً: بانک ملت" />
               </div>
 
               <div className="space-y-1">
-                <Label>ساعت فیش</Label>
+                <Label>ساعت روی فیش</Label>
                 <Input type="time" dir="ltr" {...form.register("receipt_time")} />
                 {errors.receipt_time && (
                   <p className="text-xs text-destructive">{errors.receipt_time.message}</p>
                 )}
-              </div>
-
-              <div className="space-y-1">
-                <Label>نام واریزکننده روی فیش</Label>
-                <Input {...form.register("payer_name_on_receipt")} />
-              </div>
-
-              <div className="space-y-1">
-                <Label>نام گیرنده روی فیش</Label>
-                <Input {...form.register("receiver_name_on_receipt")} />
               </div>
 
               <div className="space-y-1">
@@ -1715,7 +1653,17 @@ export function PaymentReceiptForm() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-2 pt-1">
+              <div className="space-y-1">
+                <Label>نام واریزکننده روی فیش</Label>
+                <Input {...form.register("payer_name_on_receipt")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>نام گیرنده روی فیش</Label>
+                <Input {...form.register("receiver_name_on_receipt")} />
+              </div>
+
+              <div className="flex flex-col gap-2 pt-1 sm:col-span-2">
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={form.watch("has_perforation")}
