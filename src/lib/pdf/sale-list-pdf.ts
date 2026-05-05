@@ -1,9 +1,41 @@
 import pdfMake from "pdfmake/build/pdfmake";
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+import bidiFactory from "bidi-js";
 import vazirRegularB64 from "@/assets/fonts/vazirmatn-regular.b64?raw";
 import vazirBoldB64 from "@/assets/fonts/vazirmatn-bold.b64?raw";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import { STOCK_STATUS_LABELS, PRODUCT_TYPE_LABELS, type StockStatus, type ProductType } from "@/lib/products/constants";
+
+const bidi = bidiFactory();
+/**
+ * Reorder a logical-order Persian/Arabic string into visual order so that
+ * pdfmake (which has no built-in BiDi engine) renders numbers and Latin
+ * fragments in the correct on-screen position inside RTL text.
+ */
+function shapeRtl(text: string): string {
+  if (!text) return text;
+  // Skip if no RTL/Arabic chars and no digits-mixed-with-rtl situation.
+  const hasRtl = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(text);
+  if (!hasRtl) return text;
+  try {
+    const lines = text.split("\n");
+    return lines
+      .map((line) => {
+        const embed = bidi.getEmbeddingLevels(line, "rtl");
+        const order = bidi.getReorderSegments(line, embed);
+        const chars = line.split("");
+        for (const seg of order) {
+          const [start, end] = seg;
+          const slice = chars.slice(start, end + 1).reverse();
+          for (let i = start; i <= end; i++) chars[i] = slice[i - start];
+        }
+        return chars.join("");
+      })
+      .join("\n");
+  } catch {
+    return text;
+  }
+}
 
 const VFS = {
   "Vazirmatn-Regular.ttf": vazirRegularB64.trim(),
