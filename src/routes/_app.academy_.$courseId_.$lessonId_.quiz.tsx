@@ -31,12 +31,12 @@ function QuizPage() {
         .maybeSingle();
       if (error) throw error;
       if (!quiz) return null;
-      const { data: questions } = await supabase
-        .from("academy_quiz_questions_public" as any)
+      const { data: questions } = await (supabase as any)
+        .from("academy_quiz_questions_public")
         .select("id, question_text, options, order_index")
         .eq("quiz_id", quiz.id)
         .order("order_index", { ascending: true });
-      return { quiz, questions: questions ?? [] };
+      return { quiz, questions: (questions ?? []) as Array<{ id: string; question_text: string; options: unknown }> };
     },
   });
 
