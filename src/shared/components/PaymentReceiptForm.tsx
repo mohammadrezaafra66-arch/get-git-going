@@ -1383,6 +1383,71 @@ export function PaymentReceiptForm() {
             </div>
           </div>
 
+          {/* ذینفع حسابداری (طلبکار / صاحب بدهی) */}
+          <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold">ذینفع حسابداری (طلبکار)</h3>
+              <p className="text-[11px] text-muted-foreground">
+                طرفی که بدهی ما به او با این پرداخت کم می‌شود. ممکن است با «گیرنده وجه» (صاحب حساب مقصد فیش) متفاوت باشد.
+                مثلاً اگر افرا به حساب حسن‌زاده پول می‌فرستد تا بدهی ما به ترابی تسویه شود، ذینفع = ترابی.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>کد آسان ذینفع</Label>
+                <Input
+                  dir="ltr"
+                  placeholder="کد حسابداری طلبکار"
+                  {...form.register("beneficiary_accounting_code", { onBlur: handleBeneficiaryCodeBlur })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>نام ذینفع (خودکار)</Label>
+                <Input value={beneficiaryName} readOnly disabled className="bg-muted/50" />
+              </div>
+            </div>
+          </div>
+
+          {/* پیش‌نمایش سند حسابداری خودکار */}
+          {(() => {
+            const payerCode = form.watch("payer_accounting_code");
+            const benefCode = form.watch("beneficiary_accounting_code") || form.watch("receiver_accounting_code");
+            const amt = form.watch("amount") || 0;
+            if (!payerCode || !benefCode || amt <= 0) return null;
+            return (
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <h3 className="text-sm font-semibold">پیش‌نمایش سند حسابداری خودکار</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  پس از تأیید این فیش، سند زیر به‌صورت خودکار ثبت می‌شود.
+                </p>
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="p-2 text-right">شرح</th>
+                      <th className="p-2 text-right">کد آسان</th>
+                      <th className="p-2 text-left">بدهکار</th>
+                      <th className="p-2 text-left">بستانکار</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t">
+                      <td className="p-2">ذینفع (طلبکار) {beneficiaryName ? `- ${beneficiaryName}` : ""}</td>
+                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(benefCode)}</td>
+                      <td className="p-2 text-left">{formatNumber(amt)}</td>
+                      <td className="p-2 text-left">—</td>
+                    </tr>
+                    <tr className="border-t">
+                      <td className="p-2">پرداخت‌کننده {form.watch("payer_name") ? `- ${form.watch("payer_name")}` : ""}</td>
+                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(payerCode)}</td>
+                      <td className="p-2 text-left">—</td>
+                      <td className="p-2 text-left">{formatNumber(amt)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
           {/* جزئیات تراکنش */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
