@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
