@@ -730,6 +730,12 @@ export function PaymentReceiptForm() {
     <>
     <form
       onSubmit={form.handleSubmit((v) => {
+        const cErrs = validateCustomData(customFields, customData);
+        setCustomErrors(cErrs);
+        if (Object.keys(cErrs).length > 0) {
+          toast.error("لطفاً فیلدهای اطلاعات تکمیلی را تکمیل کنید");
+          return;
+        }
         const warnings = evaluateFormWarnings({
           payment_date: v.payment_date,
           tracking_number: v.tracking_number,
@@ -745,7 +751,7 @@ export function PaymentReceiptForm() {
           setWarningsOpen(true);
           return;
         }
-        mutation.mutate({ values: v, allocations, securityWarnings: [] });
+        mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
       })}
       className="space-y-6"
       dir="rtl"
