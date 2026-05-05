@@ -5,24 +5,22 @@ import vazirBoldB64 from "@/assets/fonts/vazirmatn-bold.b64?raw";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import { STOCK_STATUS_LABELS, PRODUCT_TYPE_LABELS, type StockStatus, type ProductType } from "@/lib/products/constants";
 
-let fontsRegistered = false;
+const VFS = {
+  "Vazirmatn-Regular.ttf": vazirRegularB64.trim(),
+  "Vazirmatn-Bold.ttf": vazirBoldB64.trim(),
+};
+const FONTS = {
+  Vazirmatn: {
+    normal: "Vazirmatn-Regular.ttf",
+    bold: "Vazirmatn-Bold.ttf",
+    italics: "Vazirmatn-Regular.ttf",
+    bolditalics: "Vazirmatn-Bold.ttf",
+  },
+};
 function ensureFonts() {
-  if (fontsRegistered) return;
-  // Inject font files into pdfmake virtual file system as base64
-  (pdfMake as any).vfs = {
-    ...((pdfMake as any).vfs ?? {}),
-    "Vazirmatn-Regular.ttf": vazirRegularB64.trim(),
-    "Vazirmatn-Bold.ttf": vazirBoldB64.trim(),
-  };
-  (pdfMake as any).fonts = {
-    Vazirmatn: {
-      normal: "Vazirmatn-Regular.ttf",
-      bold: "Vazirmatn-Bold.ttf",
-      italics: "Vazirmatn-Regular.ttf",
-      bolditalics: "Vazirmatn-Bold.ttf",
-    },
-  };
-  fontsRegistered = true;
+  // Also set globally for safety (some pdfmake builds read from these)
+  (pdfMake as any).vfs = { ...((pdfMake as any).vfs ?? {}), ...VFS };
+  (pdfMake as any).fonts = FONTS;
 }
 
 export type SaleListPdfColumn =
@@ -260,8 +258,8 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
 
 export function previewSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
-  const doc = pdfMake.createPdf(buildDocDefinition(input));
-  (doc as any).getBlob((blob: Blob) => {
+  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS);
+  doc.getBlob((blob: Blob) => {
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -272,5 +270,5 @@ export function downloadSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
   const safe = input.listName.replace(/[\\/:*?"<>|]/g, "_");
   const filename = `SaleList-${safe}-v${input.versionNumber}.pdf`;
-  pdfMake.createPdf(buildDocDefinition(input)).download(filename);
+  (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS).download(filename);
 }
