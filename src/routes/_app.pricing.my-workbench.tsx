@@ -48,6 +48,7 @@ import {
 } from "@/lib/pricing/workbench";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 
 export const Route = createFileRoute("/_app/pricing/my-workbench")({
   component: WorkbenchPage,
@@ -196,6 +197,9 @@ function WorkbenchPage() {
         title="کارگاه قیمت من"
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
+      <div className="flex justify-end">
+        <QuickAddCustomerDialog />
+      </div>
 
       <EffectiveCurrenciesPanel />
 
