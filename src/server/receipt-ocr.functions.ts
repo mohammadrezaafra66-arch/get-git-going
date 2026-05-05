@@ -62,7 +62,8 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       .select("role")
       .eq("user_id", userId);
     if (roleErr) {
-      throw new Response(`Role check failed: ${roleErr.message}`, { status: 500 });
+      console.error("[ocr] role check failed:", roleErr.message);
+      throw new Response("Internal server error", { status: 500 });
     }
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
@@ -78,7 +79,8 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       .eq("id", data.document_id)
       .maybeSingle();
     if (docErr) {
-      throw new Response(`Document lookup failed: ${docErr.message}`, { status: 500 });
+      console.error("[ocr] document lookup failed:", docErr.message);
+      throw new Response("Internal server error", { status: 500 });
     }
     if (!doc) {
       throw new Response("Document not found", { status: 404 });
@@ -90,10 +92,8 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       .from(RECEIPT_DOCS_BUCKET)
       .createSignedUrl(doc.storage_path, 120);
     if (signErr || !signed?.signedUrl) {
-      throw new Response(
-        `Could not access stored file: ${signErr?.message ?? "no URL"}`,
-        { status: 500 },
-      );
+      console.error("[ocr] signed URL failed:", signErr?.message ?? "no URL");
+      throw new Response("Could not access stored file", { status: 500 });
     }
     const fileResp = await fetch(signed.signedUrl);
     if (!fileResp.ok) {
@@ -240,10 +240,8 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       }
       if (!aiResp.ok) {
         const errBody = await aiResp.text().catch(() => "");
-        throw new Response(
-          `OCR engine error [${aiResp.status}]: ${errBody.slice(0, 300)}`,
-          { status: 502 },
-        );
+        console.error(`[ocr] AI gateway error ${aiResp.status}:`, errBody.slice(0, 500));
+        throw new Response("OCR engine unavailable", { status: 502 });
       }
 
       const ai = (await aiResp.json()) as {

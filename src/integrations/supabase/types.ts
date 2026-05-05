@@ -6121,6 +6121,38 @@ export type Database = {
       }
     }
     Views: {
+      academy_quiz_questions_public: {
+        Row: {
+          id: string | null
+          options: Json | null
+          order_index: number | null
+          question_text: string | null
+          quiz_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question_text?: string | null
+          quiz_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question_text?: string | null
+          quiz_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "academy_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       effective_currencies_view: {
         Row: {
           code: string | null

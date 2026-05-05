@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, Loader2, Download, FileQuestion } from "lucide-react";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,8 +81,11 @@ function LessonPage() {
 
   const html = useMemo(() => {
     if (!data?.lesson?.content) return "";
-    try { return marked.parse(data.lesson.content) as string; }
-    catch { return data.lesson.content; }
+    try {
+      const raw = marked.parse(data.lesson.content) as string;
+      return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+    }
+    catch { return DOMPurify.sanitize(data.lesson.content); }
   }, [data?.lesson?.content]);
 
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
