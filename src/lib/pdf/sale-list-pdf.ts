@@ -258,7 +258,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
 
 export function previewSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
-  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS);
+  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {}, FONTS, VFS);
   doc.getBlob((blob: Blob) => {
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
@@ -270,5 +270,5 @@ export function downloadSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
   const safe = input.listName.replace(/[\\/:*?"<>|]/g, "_");
   const filename = `SaleList-${safe}-v${input.versionNumber}.pdf`;
-  (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS).download(filename);
+  (pdfMake as any).createPdf(buildDocDefinition(input), {}, FONTS, VFS).download(filename);
 }
