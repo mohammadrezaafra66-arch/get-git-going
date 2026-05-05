@@ -3120,6 +3120,45 @@ export type Database = {
           },
         ]
       }
+      payment_receipt_custom_fields: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_label: string
+          field_options: Json | null
+          field_type: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_label: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_label?: string
+          field_options?: Json | null
+          field_type?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_receipt_documents: {
         Row: {
           created_at: string
@@ -3218,6 +3257,7 @@ export type Database = {
           bank_name: string | null
           created_at: string
           created_by: string
+          custom_data: Json
           customer_id: string
           description: string | null
           destination_bank: string | null
@@ -3255,6 +3295,7 @@ export type Database = {
           bank_name?: string | null
           created_at?: string
           created_by: string
+          custom_data?: Json
           customer_id: string
           description?: string | null
           destination_bank?: string | null
@@ -3292,6 +3333,7 @@ export type Database = {
           bank_name?: string | null
           created_at?: string
           created_by?: string
+          custom_data?: Json
           customer_id?: string
           description?: string | null
           destination_bank?: string | null
