@@ -342,14 +342,20 @@ export function PaymentReceiptForm() {
               data: { file_name: file.name, mime: file.type || "application/octet-stream", base64: b64 },
             });
           } catch (err) {
-            const msg = err instanceof Error ? err.message : "خطای ناشناخته";
-            toast.error(`استخراج خودکار «${file.name}» ناموفق: ${msg}`);
+            let msg = "خطای ناشناخته";
+            if (err instanceof Response) {
+              try { msg = await err.text(); } catch { /* noop */ }
+            } else if (err instanceof Error) {
+              msg = err.message;
+            }
+            toast.error(`استخراج خودکار «${file.name}» ناموفق: ${msg.slice(0, 200)}`);
             continue;
           }
           if (cancelled) return;
-          if (!ocr.raw_text || !ocr.raw_text.trim()) {
-            if (ocr.warnings.length > 0) {
-              toast.info(ocr.warnings[0]);
+          if (!ocr || !ocr.raw_text || !ocr.raw_text.trim()) {
+            const warnings = ocr?.warnings ?? [];
+            if (warnings.length > 0) {
+              toast.info(warnings[0]);
             }
             continue;
           }
