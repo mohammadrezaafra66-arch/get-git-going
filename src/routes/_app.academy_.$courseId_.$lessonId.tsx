@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, CheckCircle2, Loader2, Download, FileQuestion } from "lucide-react";
 import { marked } from "marked";
-import DOMPurify from "isomorphic-dompurify";
 import { requirePermission } from "@/lib/rbac/route-guards";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,9 +83,9 @@ function LessonPage() {
     if (!data?.lesson?.content) return "";
     try {
       const raw = marked.parse(data.lesson.content) as string;
-      return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+      return sanitizeHtml(raw);
     }
-    catch { return DOMPurify.sanitize(data.lesson.content); }
+    catch { return sanitizeHtml(data.lesson.content); }
   }, [data?.lesson?.content]);
 
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
