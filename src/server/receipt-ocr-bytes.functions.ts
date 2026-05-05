@@ -55,7 +55,8 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
       .select("role")
       .eq("user_id", userId);
     if (roleErr) {
-      throw new Response(`Role check failed: ${roleErr.message}`, { status: 500 });
+      console.error("[ocr-bytes] role check failed:", roleErr.message);
+      throw new Response("Internal server error", { status: 500 });
     }
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
@@ -187,10 +188,8 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
       }
       if (!aiResp.ok) {
         const body = await aiResp.text().catch(() => "");
-        throw new Response(
-          `OCR engine error [${aiResp.status}]: ${body.slice(0, 200)}`,
-          { status: 502 },
-        );
+        console.error(`[ocr-bytes] AI gateway error ${aiResp.status}:`, body.slice(0, 500));
+        throw new Response("OCR engine unavailable", { status: 502 });
       }
       const ai = (await aiResp.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
