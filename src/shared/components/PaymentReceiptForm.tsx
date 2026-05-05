@@ -1268,7 +1268,10 @@ export function PaymentReceiptForm() {
               </div>
               <div className="space-y-1">
                 <Label>کد حسابداری</Label>
-                <Input dir="ltr" {...form.register("payer_accounting_code")} />
+                <Input
+                  dir="ltr"
+                  {...form.register("payer_accounting_code", { onBlur: handlePayerCodeBlur })}
+                />
               </div>
             </div>
           </div>
