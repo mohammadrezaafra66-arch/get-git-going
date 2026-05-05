@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
+export function AuthLoadingScreen() {
+  return (
+    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="text-center text-sm text-muted-foreground">در حال بررسی جلسه کاربری...</div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/_app")({
   beforeLoad: async () => {
     // Skip the auth check during SSR — Supabase env vars may not be
@@ -54,13 +62,5 @@ function AppLayout() {
     <AppShell>
       <Outlet />
     </AppShell>
-  );
-}
-
-function AuthLoadingScreen() {
-  return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="text-center text-sm text-muted-foreground">در حال بررسی جلسه کاربری...</div>
-    </div>
   );
 }
