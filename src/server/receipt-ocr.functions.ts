@@ -162,7 +162,9 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       // SH.6: feature flag — strict self-host pipeline must not reach the
       // external Lovable AI Gateway unless the operator explicitly opts in
       // by setting OCR_ENABLED=true on the server. Default is OFF.
-      const ocrEnabled = (process.env.OCR_ENABLED ?? "false").toLowerCase() === "true";
+      // Default ON (Lovable hosted). Self-host operators can opt out by
+      // setting OCR_ENABLED=false explicitly on the server.
+      const ocrEnabled = (process.env.OCR_ENABLED ?? "true").toLowerCase() === "true";
       if (!ocrEnabled) {
         return {
           raw_text: "",
