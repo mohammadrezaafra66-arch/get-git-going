@@ -1261,12 +1261,26 @@ export function PaymentReceiptForm() {
 
             <div className="space-y-1">
               <Label>تاریخ روی فیش واریزی <span className="text-destructive">*</span></Label>
-              <Input type="date" max={today} {...form.register("payment_date")} />
+              <Input
+                type="date"
+                max={today}
+                {...form.register("payment_date")}
+                className={
+                  !watchedPaymentDate || errors.payment_date
+                    ? "border-destructive ring-1 ring-destructive bg-destructive/5"
+                    : ""
+                }
+              />
+              {!watchedPaymentDate && !errors.payment_date && (
+                <p className="text-xs text-destructive font-medium">
+                  تاریخ از روی فیش استخراج نشد — لطفاً دستی وارد کنید (اجباری).
+                </p>
+              )}
               {errors.payment_date && (
                 <p className="text-xs text-destructive">{errors.payment_date.message}</p>
               )}
               <p className="text-[10px] text-muted-foreground">
-                تاریخ واریز روی خود فیش (در صورت آپلود به‌صورت خودکار از فیش استخراج می‌شود).
+                در صورت آپلود فیش، به‌صورت خودکار از فیش استخراج می‌شود.
               </p>
             </div>
 
