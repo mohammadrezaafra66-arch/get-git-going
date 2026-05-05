@@ -23,7 +23,7 @@ import {
   type SettlementTypeFormValues,
 } from "@/shared/components/SettlementTypeForm";
 
-const ALLOWED: AppRole[] = ["admin", "accountant"];
+export const ALLOWED: AppRole[] = ["admin", "accountant"];
 
 export const Route = createFileRoute("/_app/pricing/settlement-types")({
   beforeLoad: async () => {
