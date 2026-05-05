@@ -194,6 +194,7 @@ const schema = z.object({
   receiver_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
   receiver_phone: z.string().trim().max(30).optional().or(z.literal("")),
   receiver_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
+  beneficiary_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
   amount: z.number({ message: "مبلغ الزامی است" }).positive("مبلغ باید مثبت باشد"),
   payment_date: z.string()
     .min(1, "تاریخ الزامی است")
@@ -292,6 +293,7 @@ export function PaymentReceiptForm() {
       receiver_name: "",
       receiver_phone: "",
       receiver_accounting_code: "",
+      beneficiary_accounting_code: "",
       amount: undefined as unknown as number,
       payment_date: today,
       payment_time: new Date().toTimeString().slice(0, 5),
@@ -486,6 +488,20 @@ export function PaymentReceiptForm() {
       if (!form.getValues("receiver_name") && r.name) form.setValue("receiver_name", r.name, { shouldValidate: true });
       if (!form.getValues("receiver_phone") && r.phone) form.setValue("receiver_phone", r.phone, { shouldValidate: true });
       toast.success(`گیرنده شناسایی شد: ${r.name}`);
+    }
+  }
+
+  const [beneficiaryName, setBeneficiaryName] = useState<string>("");
+  async function handleBeneficiaryCodeBlur() {
+    const code = (form.getValues("beneficiary_accounting_code") || "").trim();
+    if (!code) { setBeneficiaryName(""); return; }
+    const r = await resolveByAccountingCode(code);
+    if (r.valid && r.name) {
+      setBeneficiaryName(r.name);
+      toast.success(`ذینفع شناسایی شد: ${r.name}`);
+    } else {
+      setBeneficiaryName("");
+      toast.warning("کد آسان ذینفع پیدا نشد. می‌توانید همچنان ثبت کنید.");
     }
   }
 
@@ -818,6 +834,7 @@ export function PaymentReceiptForm() {
         receiver_name: values.receiver_name,
         receiver_phone: values.receiver_phone || null,
         receiver_accounting_code: values.receiver_accounting_code || null,
+        beneficiary_accounting_code: values.beneficiary_accounting_code || null,
         amount: values.amount,
         payment_date: values.payment_date,
         payment_time: values.payment_time,
@@ -1365,6 +1382,71 @@ export function PaymentReceiptForm() {
               </div>
             </div>
           </div>
+
+          {/* ذینفع حسابداری (طلبکار / صاحب بدهی) */}
+          <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold">ذینفع حسابداری (طلبکار)</h3>
+              <p className="text-[11px] text-muted-foreground">
+                طرفی که بدهی ما به او با این پرداخت کم می‌شود. ممکن است با «گیرنده وجه» (صاحب حساب مقصد فیش) متفاوت باشد.
+                مثلاً اگر افرا به حساب حسن‌زاده پول می‌فرستد تا بدهی ما به ترابی تسویه شود، ذینفع = ترابی.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>کد آسان ذینفع</Label>
+                <Input
+                  dir="ltr"
+                  placeholder="کد حسابداری طلبکار"
+                  {...form.register("beneficiary_accounting_code", { onBlur: handleBeneficiaryCodeBlur })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>نام ذینفع (خودکار)</Label>
+                <Input value={beneficiaryName} readOnly disabled className="bg-muted/50" />
+              </div>
+            </div>
+          </div>
+
+          {/* پیش‌نمایش سند حسابداری خودکار */}
+          {(() => {
+            const payerCode = form.watch("payer_accounting_code");
+            const benefCode = form.watch("beneficiary_accounting_code") || form.watch("receiver_accounting_code");
+            const amt = form.watch("amount") || 0;
+            if (!payerCode || !benefCode || amt <= 0) return null;
+            return (
+              <div className="space-y-2 rounded-md border bg-background p-3">
+                <h3 className="text-sm font-semibold">پیش‌نمایش سند حسابداری خودکار</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  پس از تأیید این فیش، سند زیر به‌صورت خودکار ثبت می‌شود.
+                </p>
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="p-2 text-right">شرح</th>
+                      <th className="p-2 text-right">کد آسان</th>
+                      <th className="p-2 text-left">بدهکار</th>
+                      <th className="p-2 text-left">بستانکار</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t">
+                      <td className="p-2">ذینفع (طلبکار) {beneficiaryName ? `- ${beneficiaryName}` : ""}</td>
+                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(benefCode)}</td>
+                      <td className="p-2 text-left">{formatNumber(amt)}</td>
+                      <td className="p-2 text-left">—</td>
+                    </tr>
+                    <tr className="border-t">
+                      <td className="p-2">پرداخت‌کننده {form.watch("payer_name") ? `- ${form.watch("payer_name")}` : ""}</td>
+                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(payerCode)}</td>
+                      <td className="p-2 text-left">—</td>
+                      <td className="p-2 text-left">{formatNumber(amt)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           {/* جزئیات تراکنش */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
