@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, BookOpen, CheckCircle2, Loader2 } from "lucide-react";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,7 +83,10 @@ function KnowledgeDocumentPage() {
 
   const html = useMemo(() => {
     if (!doc?.content) return "";
-    try { return marked.parse(doc.content) as string; }
+    try {
+      const raw = marked.parse(doc.content) as string;
+      return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+    }
     catch { return doc.content; }
   }, [doc?.content]);
 
