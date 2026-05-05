@@ -1427,6 +1427,12 @@ export function PaymentReceiptForm() {
             onChange={setStagedFiles}
             disabled={mutation.isPending}
           />
+          {autoFilling && (
+            <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              در حال استخراج خودکار اطلاعات از فایل آپلودشده…
+            </div>
+          )}
 
           {customFields.length > 0 && (
             <div className="rounded-md border bg-muted/30 p-3">
