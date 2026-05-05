@@ -1741,16 +1741,28 @@ export function PaymentReceiptForm() {
         >
           انصراف
         </Button>
-        <Button
-          type="submit"
-          disabled={
-            mutation.isPending ||
-            (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
-          }
-        >
-          {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-          ثبت فیش
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            type="submit"
+            disabled={
+              mutation.isPending ||
+              (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
+            }
+          >
+            {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            ثبت فیش
+          </Button>
+          {watchedReceiptType === "payment" && allocations.length === 0 && (
+            <p className="text-xs text-destructive">
+              برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
+            </p>
+          )}
+          {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
+            <p className="text-xs text-destructive">
+              مجموع تخصیص بیشتر از مبلغ فیش است.
+            </p>
+          )}
+        </div>
       </div>
     </form>
 
