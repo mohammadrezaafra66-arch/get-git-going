@@ -491,6 +491,20 @@ export function PaymentReceiptForm() {
     }
   }
 
+  const [beneficiaryName, setBeneficiaryName] = useState<string>("");
+  async function handleBeneficiaryCodeBlur() {
+    const code = (form.getValues("beneficiary_accounting_code") || "").trim();
+    if (!code) { setBeneficiaryName(""); return; }
+    const r = await resolveByAccountingCode(code);
+    if (r.valid && r.name) {
+      setBeneficiaryName(r.name);
+      toast.success(`ذینفع شناسایی شد: ${r.name}`);
+    } else {
+      setBeneficiaryName("");
+      toast.warning("کد آسان ذینفع پیدا نشد. می‌توانید همچنان ثبت کنید.");
+    }
+  }
+
   async function buildValidCodesSet(values: FormValues): Promise<Set<string>> {
     const codes = [values.payer_accounting_code, values.receiver_accounting_code]
       .map((c) => (c || "").trim())
