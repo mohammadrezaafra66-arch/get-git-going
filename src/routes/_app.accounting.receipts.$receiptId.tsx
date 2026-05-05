@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -493,7 +494,7 @@ function ReceiptDetailPage() {
                   <Field label="مبلغ (تومان)">
                     <span className="text-base">{formatNumber(Number(receipt.amount))}</span>
                   </Field>
-                  <Field label="تاریخ" dir="ltr">{toFaDigits(receipt.payment_date)}</Field>
+                  <Field label="تاریخ فیش" dir="ltr">{isoToJalaliDisplay(receipt.payment_date)}</Field>
                   <Field label="ساعت" dir="ltr">
                     {toFaDigits(receipt.payment_time?.slice(0, 5) ?? "")}
                   </Field>
@@ -634,7 +635,7 @@ function ReceiptDetailPage() {
                   <>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <Field label="شماره سند" dir="ltr">{toFaDigits(journal.entry.id.slice(0, 8))}</Field>
-                      <Field label="تاریخ سند" dir="ltr">{toFaDigits(journal.entry.entry_date)}</Field>
+                      <Field label="تاریخ سند" dir="ltr">{isoToJalaliDisplay(journal.entry.entry_date)}</Field>
                       <Field label="وضعیت سند">
                         <Badge variant={journal.entry.status === "posted" ? "default" : "secondary"}>
                           {JOURNAL_STATUS_LABEL[journal.entry.status] ?? journal.entry.status}
