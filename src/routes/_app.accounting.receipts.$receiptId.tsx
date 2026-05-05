@@ -493,7 +493,7 @@ function ReceiptDetailPage() {
                   <Field label="مبلغ (تومان)">
                     <span className="text-base">{formatNumber(Number(receipt.amount))}</span>
                   </Field>
-                  <Field label="تاریخ" dir="ltr">{toFaDigits(receipt.payment_date)}</Field>
+                  <Field label="تاریخ فیش" dir="ltr">{isoToJalaliDisplay(receipt.payment_date)}</Field>
                   <Field label="ساعت" dir="ltr">
                     {toFaDigits(receipt.payment_time?.slice(0, 5) ?? "")}
                   </Field>
@@ -634,7 +634,7 @@ function ReceiptDetailPage() {
                   <>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <Field label="شماره سند" dir="ltr">{toFaDigits(journal.entry.id.slice(0, 8))}</Field>
-                      <Field label="تاریخ سند" dir="ltr">{toFaDigits(journal.entry.entry_date)}</Field>
+                      <Field label="تاریخ سند" dir="ltr">{isoToJalaliDisplay(journal.entry.entry_date)}</Field>
                       <Field label="وضعیت سند">
                         <Badge variant={journal.entry.status === "posted" ? "default" : "secondary"}>
                           {JOURNAL_STATUS_LABEL[journal.entry.status] ?? journal.entry.status}

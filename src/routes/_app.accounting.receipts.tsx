@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,13 +204,17 @@ function ReceiptsListPage() {
             </div>
             <div className="space-y-1">
               <Label>از تاریخ</Label>
-              <Input type="date" value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPage(0); }} />
+              <JalaliDateInput
+                value={dateFrom}
+                onChange={(iso) => { setDateFrom(iso); setPage(0); }}
+              />
             </div>
             <div className="space-y-1">
               <Label>تا تاریخ</Label>
-              <Input type="date" value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPage(0); }} />
+              <JalaliDateInput
+                value={dateTo}
+                onChange={(iso) => { setDateTo(iso); setPage(0); }}
+              />
             </div>
           </div>
         </CardContent>
@@ -252,7 +258,7 @@ function ReceiptsListPage() {
                     <TableRow key={row.id}>
                       <TableCell>{row.customer?.name ?? "—"}</TableCell>
                       <TableCell className="font-medium">{formatNumber(Number(row.amount))}</TableCell>
-                      <TableCell dir="ltr">{toFaDigits(row.payment_date)}</TableCell>
+                      <TableCell dir="ltr">{isoToJalaliDisplay(row.payment_date)}</TableCell>
                       <TableCell dir="ltr">{toFaDigits(row.payment_time?.slice(0, 5) ?? "")}</TableCell>
                       <TableCell dir="ltr">{toFaDigits(row.tracking_number)}</TableCell>
                       <TableCell>
