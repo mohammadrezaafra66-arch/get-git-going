@@ -215,7 +215,15 @@ const schema = z.object({
   source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
   destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
   receiver_party_id: z.string().uuid().optional().or(z.literal("")),
-});
+}).refine(
+  (v) =>
+    Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id),
+  {
+    message:
+      "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
+    path: ["receiver_party_id"],
+  },
+);
 
 type FormValues = z.infer<typeof schema>;
 
