@@ -266,15 +266,15 @@ function SaleListDetailPage() {
     };
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (items.length === 0) { toast.error("لیست خالی است."); return; }
-    try { previewSaleListPdf(buildPdfInput()); }
-    catch (e) { toast.error("خطا در ساخت پیش‌نمایش PDF."); console.error(e); }
+    try { await previewSaleListPdf(buildPdfInput()); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "خطا در ساخت پیش‌نمایش PDF."); console.error(e); }
   };
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (items.length === 0) { toast.error("لیست خالی است."); return; }
-    try { downloadSaleListPdf(buildPdfInput()); }
-    catch (e) { toast.error("خطا در دانلود PDF."); console.error(e); }
+    try { await downloadSaleListPdf(buildPdfInput()); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "خطا در دانلود PDF."); console.error(e); }
   };
 
   return (

@@ -18,9 +18,18 @@ const FONTS = {
   },
 };
 function ensureFonts() {
-  // Also set globally for safety (some pdfmake builds read from these)
-  (pdfMake as any).vfs = { ...((pdfMake as any).vfs ?? {}), ...VFS };
-  (pdfMake as any).fonts = FONTS;
+  const pdf = pdfMake as any;
+  if (typeof pdf.addVirtualFileSystem === "function") {
+    pdf.addVirtualFileSystem(VFS);
+  } else {
+    pdf.vfs = { ...(pdf.vfs ?? {}), ...VFS };
+  }
+
+  if (typeof pdf.addFonts === "function") {
+    pdf.addFonts(FONTS);
+  } else {
+    pdf.fonts = FONTS;
+  }
 }
 
 export type SaleListPdfColumn =
@@ -256,19 +265,17 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
   };
 }
 
-export function previewSaleListPdf(input: SaleListPdfInput): void {
+export async function previewSaleListPdf(input: SaleListPdfInput): Promise<void> {
   ensureFonts();
-  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS);
-  doc.getBlob((blob: Blob) => {
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  });
+  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {});
+  const win = window.open("", "_blank");
+  if (!win) throw new Error("مرورگر اجازه باز کردن پنجره پیش‌نمایش PDF را نداد.");
+  await doc.open(win);
 }
 
-export function downloadSaleListPdf(input: SaleListPdfInput): void {
+export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void> {
   ensureFonts();
   const safe = input.listName.replace(/[\\/:*?"<>|]/g, "_");
   const filename = `SaleList-${safe}-v${input.versionNumber}.pdf`;
-  (pdfMake as any).createPdf(buildDocDefinition(input), null, FONTS, VFS).download(filename);
+  await (pdfMake as any).createPdf(buildDocDefinition(input), {}).download(filename);
 }
