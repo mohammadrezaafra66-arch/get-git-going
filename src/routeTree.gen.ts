@@ -114,7 +114,6 @@ import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
-import { Route as AppProductsIdEditRouteImport } from './routes/_app.products_.$id.edit'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
@@ -677,11 +676,6 @@ const AppSalesCustomersImportRoute = AppSalesCustomersImportRouteImport.update({
   path: '/customers/import',
   getParentRoute: () => AppSalesRoute,
 } as any)
-const AppProductsIdEditRoute = AppProductsIdEditRouteImport.update({
-  id: '/products_/$id/edit',
-  path: '/products/$id/edit',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppPricingSaleListsNewRoute = AppPricingSaleListsNewRouteImport.update({
   id: '/pricing/sale-lists_/new',
   path: '/pricing/sale-lists/new',
@@ -919,7 +913,6 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
-  '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
@@ -1044,7 +1037,6 @@ export interface FileRoutesByTo {
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
-  '/products/$id/edit': typeof AppProductsIdEditRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
@@ -1174,7 +1166,6 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
-  '/_app/products_/$id/edit': typeof AppProductsIdEditRoute
   '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
@@ -1304,7 +1295,6 @@ export interface FileRouteTypes {
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
-    | '/products/$id/edit'
     | '/sales/customers/import'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
@@ -1429,7 +1419,6 @@ export interface FileRouteTypes {
     | '/operations/daily-mood/admin'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
-    | '/products/$id/edit'
     | '/sales/customers/import'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
@@ -1558,7 +1547,6 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood/admin'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
-    | '/_app/products_/$id/edit'
     | '/_app/sales/customers_/import'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
@@ -2326,13 +2314,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersImportRouteImport
       parentRoute: typeof AppSalesRoute
     }
-    '/_app/products_/$id/edit': {
-      id: '/_app/products_/$id/edit'
-      path: '/products/$id/edit'
-      fullPath: '/products/$id/edit'
-      preLoaderRoute: typeof AppProductsIdEditRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/pricing/sale-lists_/new': {
       id: '/_app/pricing/sale-lists_/new'
       path: '/pricing/sale-lists/new'
@@ -2745,7 +2726,6 @@ interface AppRouteChildren {
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
-  AppProductsIdEditRoute: typeof AppProductsIdEditRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
   AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
@@ -2833,7 +2813,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
-  AppProductsIdEditRoute: AppProductsIdEditRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
   AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRouteWithChildren,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
@@ -2876,3 +2855,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
