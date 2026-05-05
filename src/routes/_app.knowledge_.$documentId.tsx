@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, BookOpen, CheckCircle2, Loader2 } from "lucide-react";
 import { marked } from "marked";
-import DOMPurify from "isomorphic-dompurify";
 import { requirePermission } from "@/lib/rbac/route-guards";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,9 +85,9 @@ function KnowledgeDocumentPage() {
     if (!doc?.content) return "";
     try {
       const raw = marked.parse(doc.content) as string;
-      return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+      return sanitizeHtml(raw);
     }
-    catch { return DOMPurify.sanitize(doc.content); }
+    catch { return sanitizeHtml(doc.content); }
   }, [doc?.content]);
 
   if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
