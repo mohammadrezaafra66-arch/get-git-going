@@ -94,6 +94,18 @@ export interface SaleListPdfInput {
     eitaa?: string | null;
     baleh?: string | null;
   } | null;
+  /**
+   * Visual density options for the generated PDF.
+   * - fontSize: base body font size (header = base+1, footer/info ~= base-1).
+   * - rowPaddingY: vertical padding inside each table row (top/bottom).
+   * - cellPaddingX: horizontal padding inside each cell (left/right).
+   * Sensible defaults are applied when omitted.
+   */
+  options?: {
+    fontSize?: number;
+    rowPaddingY?: number;
+    cellPaddingX?: number;
+  } | null;
 }
 
 const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
@@ -139,10 +151,17 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
   // Always include name; preserve order from selected_columns but ensure 'name' first
   const cols: SaleListPdfColumn[] = ["name", ...input.selectedColumns.filter((c) => c !== "name")];
 
+  const baseFont = Math.max(6, Math.min(20, Number(input.options?.fontSize ?? 10)));
+  const padY = Math.max(0, Math.min(20, Number(input.options?.rowPaddingY ?? 2)));
+  const padX = Math.max(0, Math.min(20, Number(input.options?.cellPaddingX ?? 4)));
+  const headerFont = baseFont;
+  const cellFont = Math.max(6, baseFont - 1);
+
   const headerRow = cols.map((c) => ({
     text: shapeRtl(COLUMN_LABELS[c]),
     style: "tableHeader",
     alignment: "right" as const,
+    fontSize: headerFont,
   }));
 
   const bodyRows = input.items.map((it) =>
@@ -166,7 +185,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
         case "labels": text = it.labels && it.labels.length ? it.labels.join("، ") : "—"; break;
         case "description": text = it.description || "—"; break;
       }
-      return { text: shapeRtl(text), alignment: "right", fontSize: 9 };
+      return { text: shapeRtl(text), alignment: "right", fontSize: cellFont };
     }),
   );
 
@@ -181,6 +200,10 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
       fillColor: (rowIndex: number) => (rowIndex === 0 ? "#eef2ff" : rowIndex % 2 === 0 ? "#fafafa" : null),
       hLineColor: () => "#e5e7eb",
       vLineColor: () => "#e5e7eb",
+      paddingLeft: () => padX,
+      paddingRight: () => padX,
+      paddingTop: () => padY,
+      paddingBottom: () => padY,
     },
   };
 
@@ -238,7 +261,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
     pageSize: "A4",
     pageMargins: [25, 80, 25, 60],
     // RTL document — explicit direction + right alignment for all default text
-    defaultStyle: { font: "Vazirmatn", fontSize: 10, alignment: "right", direction: "rtl" } as any,
+    defaultStyle: { font: "Vazirmatn", fontSize: baseFont, alignment: "right", direction: "rtl" } as any,
     info: {
       title: `لیست فروش - ${input.listName}`,
       author: "افراکالا",
@@ -285,7 +308,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
     styles: {
       brand: { fontSize: 14, bold: true, color: "#1e293b" },
       title: { fontSize: 12, bold: true, color: "#334155" },
-      tableHeader: { bold: true, fontSize: 10, color: "#1e293b" },
+      tableHeader: { bold: true, fontSize: headerFont, color: "#1e293b" },
     },
   };
 }
