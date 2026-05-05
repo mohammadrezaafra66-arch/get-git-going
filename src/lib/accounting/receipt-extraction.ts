@@ -130,7 +130,12 @@ function findFirst(re: RegExp, text: string): string | null {
 function parseAmountToNumber(s: string): number | null {
   const cleaned = normalizeDigits(s).replace(/[,،\s]/g, "");
   const n = Number(cleaned);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  // اعداد با ۱۰ رقم یا بیشتر بدون جداکننده (شماره کارت/حساب/شبا/پیگیری) رد می‌شوند
+  if (/^\d{10,}$/.test(cleaned)) return null;
+  // سقف منطقی: ۱۰۰۰ میلیارد تومان (۱e12). بیشتر از این قطعاً مبلغ نیست.
+  if (n > 1e12) return null;
+  return n;
 }
 
 /** Parse normalized text into receipt fields. */
@@ -161,9 +166,13 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
     }
   }
 
-  // Amount: prefer labeled amounts; fall back to a large number followed by ریال/تومان.
+  // Amount: فقط با لیبل صریح «مبلغ/amount» یا واحد صریح «ریال/تومان» قبول می‌شود.
+  // عدد تنها بدون قرینه قبول نمی‌شود (جلوگیری از خواندن شماره کارت/حساب به‌عنوان مبلغ).
+  // برای جلوگیری از تداخل، خطوطی که شامل کلیدواژه‌های زیر هستند نادیده گرفته می‌شوند.
+  const NON_AMOUNT_HINT = /(شماره\s*کارت|شماره\s*حساب|شبا|iban|sheba|card|شناسه\s*پرداخت|کد\s*پیگیری|شماره\s*پیگیری|reference|tracking)/i;
+
   const amountLabeled = findFirst(
-    /(?:مبلغ|مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|amount)\s*[:#\-]?\s*([0-9][0-9,،\s]{2,})/i,
+    /(?:مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|مبلغ|amount)\s*[:#\-]?\s*([0-9][0-9,،\s]{2,20})\s*(?:ریال|تومان|rial|toman)?/i,
     text,
   );
   if (amountLabeled) {
@@ -174,12 +183,23 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
     }
   }
   if (result.amount == null) {
-    const tail = findFirst(/([0-9][0-9,،\s]{4,})\s*(?:ریال|تومان|rial|toman)/i, text);
-    if (tail) {
-      const n = parseAmountToNumber(tail);
+    // عدد + واحد. ابتدا بررسی می‌کنیم که در همان خط hint مزاحم نباشد.
+    const lines = text.split(/\n+/);
+    for (const line of lines) {
+      if (NON_AMOUNT_HINT.test(line)) continue;
+      const m = /([0-9][0-9,،\s]{4,20})\s*(ریال|تومان|rial|toman)/i.exec(line);
+      if (!m) continue;
+      const n = parseAmountToNumber(m[1]);
       if (n) {
-        result.amount = n;
-        detected.add("amount");
+        const unit = m[2].toLowerCase();
+        const isRial = unit === "ریال" || unit === "rial";
+        const value = isRial ? Math.round(n / 10) : n;
+        if (value > 0 && value <= 1e12) {
+          result.amount = value;
+          detected.add("amount");
+          if (isRial) result.warnings.push("مبلغ به ریال بود؛ به تومان تبدیل شد.");
+          break;
+        }
       }
     }
   }
