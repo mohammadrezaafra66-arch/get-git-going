@@ -30,6 +30,13 @@ import {
   saveProductDynamicValues,
   deleteAllDynamicValuesForProduct,
 } from "@/lib/products/category-attrs";
+import {
+  diffProductFields,
+  diffLabels,
+  diffDynamicValues,
+  logProductUpdate,
+  type ProductAuditDiff,
+} from "@/lib/products/audit";
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -41,6 +48,7 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles } = useAuth();
+  const { user } = useAuth();
   const canUpdate = hasPermission(roles, "products", "update");
   const canDelete = hasPermission(roles, "products", "delete");
   const [ownerOpen, setOwnerOpen] = useState(false);
