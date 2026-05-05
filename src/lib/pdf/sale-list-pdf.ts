@@ -18,9 +18,18 @@ const FONTS = {
   },
 };
 function ensureFonts() {
-  // Also set globally for safety (some pdfmake builds read from these)
-  (pdfMake as any).vfs = { ...((pdfMake as any).vfs ?? {}), ...VFS };
-  (pdfMake as any).fonts = FONTS;
+  const pdf = pdfMake as any;
+  if (typeof pdf.addVirtualFileSystem === "function") {
+    pdf.addVirtualFileSystem(VFS);
+  } else {
+    pdf.vfs = { ...(pdf.vfs ?? {}), ...VFS };
+  }
+
+  if (typeof pdf.addFonts === "function") {
+    pdf.addFonts(FONTS);
+  } else {
+    pdf.fonts = FONTS;
+  }
 }
 
 export type SaleListPdfColumn =
@@ -258,7 +267,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
 
 export function previewSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
-  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {}, FONTS, VFS);
+  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {});
   doc.getBlob((blob: Blob) => {
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
@@ -270,5 +279,5 @@ export function downloadSaleListPdf(input: SaleListPdfInput): void {
   ensureFonts();
   const safe = input.listName.replace(/[\\/:*?"<>|]/g, "_");
   const filename = `SaleList-${safe}-v${input.versionNumber}.pdf`;
-  (pdfMake as any).createPdf(buildDocDefinition(input), {}, FONTS, VFS).download(filename);
+  (pdfMake as any).createPdf(buildDocDefinition(input), {}).download(filename);
 }
