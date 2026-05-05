@@ -1,4 +1,4 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
@@ -21,6 +21,32 @@ function NotFoundComponent() {
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             بازگشت به خانه
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RootErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error(error);
+  const router = useRouter();
+  return (
+    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md space-y-3 text-center">
+        <h1 className="text-lg font-semibold text-foreground">خطا در بارگذاری برنامه</h1>
+        <p className="text-sm text-muted-foreground">
+          مشکلی هنگام بارگذاری رخ داد. لطفاً دوباره تلاش کنید.
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => { router.invalidate(); reset(); }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            تلاش دوباره
+          </button>
+          <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            ورود
           </Link>
         </div>
       </div>
@@ -69,6 +95,7 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootShell,
   component: RootComponent,
+  errorComponent: RootErrorComponent,
   notFoundComponent: NotFoundComponent,
 });
 
