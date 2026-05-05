@@ -25,7 +25,8 @@ import {
 } from "@/components/accounting/PaymentReceiptDocuments";
 import { extractReceiptFromBytes } from "@/server/receipt-ocr-bytes.functions";
 import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
-import { parseDateToGregorianIso } from "@/lib/i18n/jalali";
+import { parseDateToGregorianIso, isoToJalaliDisplay } from "@/lib/i18n/jalali";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import {
   WaybillCustomFieldsInput,
   validateCustomData,
