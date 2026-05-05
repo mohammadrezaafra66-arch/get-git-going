@@ -215,7 +215,15 @@ const schema = z.object({
   source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
   destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
   receiver_party_id: z.string().uuid().optional().or(z.literal("")),
-});
+}).refine(
+  (v) =>
+    Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id),
+  {
+    message:
+      "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
+    path: ["receiver_party_id"],
+  },
+);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -1171,15 +1179,23 @@ export function PaymentReceiptForm() {
               />
             </div>
             <div className="space-y-1">
-              <Label>طرف حساب گیرنده (اختیاری)</Label>
+              <Label>
+                طرف حساب گیرنده (شخص خارجی){" "}
+                <span className="text-[10px] text-muted-foreground">
+                  — یا این، یا «حساب مقصد» در پایین را انتخاب کنید
+                </span>
+              </Label>
               <Select
                 value={form.watch("receiver_party_id") || "__none"}
+                disabled={Boolean(form.watch("destination_bank_account_id"))}
                 onValueChange={(v) => {
                   if (v === "__none") {
                     form.setValue("receiver_party_id", "", { shouldDirty: true });
                     return;
                   }
                   form.setValue("receiver_party_id", v, { shouldDirty: true });
+                  // mutually exclusive with our bank account
+                  form.setValue("destination_bank_account_id", "", { shouldDirty: true });
                   const p = externalParties.find((x) => x.id === v);
                   if (p) {
                     form.setValue("receiver_name", p.full_name, { shouldValidate: true });
@@ -1201,6 +1217,9 @@ export function PaymentReceiptForm() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.receiver_party_id && (
+                <p className="text-xs text-destructive">{errors.receiver_party_id.message}</p>
+              )}
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-1">
@@ -1354,15 +1373,23 @@ export function PaymentReceiptForm() {
               </div>
 
               <div className="space-y-1">
-                <Label>حساب مقصد (اختیاری)</Label>
+                <Label>
+                  حساب مقصد (بانک ما){" "}
+                  <span className="text-[10px] text-muted-foreground">
+                    — یا این، یا «طرف حساب گیرنده»
+                  </span>
+                </Label>
                 <Select
                   value={form.watch("destination_bank_account_id") || "__none"}
+                  disabled={Boolean(form.watch("receiver_party_id"))}
                   onValueChange={(v) => {
                     if (v === "__none") {
                       form.setValue("destination_bank_account_id", "", { shouldDirty: true });
                       return;
                     }
                     form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                    // mutually exclusive with external party
+                    form.setValue("receiver_party_id", "", { shouldDirty: true });
                     const b = bankAccounts.find((x) => x.id === v);
                     if (b) {
                       if (!form.getValues("destination_bank")) {
