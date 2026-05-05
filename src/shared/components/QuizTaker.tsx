@@ -14,15 +14,13 @@ interface Props {
   questions: TakerQuestion[];
   passingScore: number;
   submitting?: boolean;
-  onSubmit: (payload: { answers: Record<string, number>; score: number; passed: boolean }) => Promise<void> | void;
+  onSubmit: (payload: { answers: Record<string, number> }) => Promise<void> | void;
   /** نتیجه آزمون اخیر (برای نمایش پس از ثبت) */
   result?: { score: number; passed: boolean } | null;
   onRetry?: () => void;
-  /** پاسخ‌های صحیح برای محاسبه نمره (لازم در همان کامپوننت) */
-  correctValues: Record<string, number>;
 }
 
-export function QuizTaker({ questions, passingScore, submitting, onSubmit, result, onRetry, correctValues }: Props) {
+export function QuizTaker({ questions, passingScore, submitting, onSubmit, result, onRetry }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -33,12 +31,7 @@ export function QuizTaker({ questions, passingScore, submitting, onSubmit, resul
       setError("لطفاً به همه سؤالات پاسخ دهید");
       return;
     }
-    const correctCount = questions.reduce((sum, q) => {
-      return sum + (answers[q.id] === correctValues[q.id] ? 1 : 0);
-    }, 0);
-    const score = Math.round((correctCount / questions.length) * 100);
-    const passed = score >= passingScore;
-    await onSubmit({ answers, score, passed });
+    await onSubmit({ answers });
   };
 
   if (result) {
