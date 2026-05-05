@@ -24,6 +24,12 @@ import {
   uploadReceiptDocuments,
 } from "@/components/accounting/PaymentReceiptDocuments";
 import {
+  WaybillCustomFieldsInput,
+  validateCustomData,
+  type CustomFieldDef,
+  type CustomData,
+} from "@/shared/components/WaybillCustomFieldsInput";
+import {
   evaluateReceiptSecurityWarnings,
   type ReceiptSecurityWarning,
 } from "@/lib/accounting/receipt-security";
@@ -249,6 +255,8 @@ export function PaymentReceiptForm() {
   const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [customData, setCustomData] = useState<CustomData>({});
+  const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -505,6 +513,22 @@ export function PaymentReceiptForm() {
     staleTime: 60_000,
   });
 
+  // Dynamic custom fields defined by admin/accountant
+  const { data: customFields = [] } = useQuery<CustomFieldDef[]>({
+    queryKey: ["payment-receipt-custom-fields", "active"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_receipt_custom_fields")
+        .select("id, field_key, field_label, field_type, field_options, is_required, is_active, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as unknown as CustomFieldDef[];
+    },
+  });
+
   const mutation = useMutation({
     mutationFn: async (
       args: {
@@ -512,9 +536,10 @@ export function PaymentReceiptForm() {
         allocations: InvoiceAllocation[];
         bypassDuplicate?: boolean;
         securityWarnings?: ReceiptSecurityWarning[];
+        customData?: CustomData;
       },
     ) => {
-      const { values, allocations: allocs, bypassDuplicate, securityWarnings = [] } = args;
+      const { values, allocations: allocs, bypassDuplicate, securityWarnings = [], customData: cData = {} } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
       // Front-end allocation validation (server has no constraint)
@@ -598,6 +623,7 @@ export function PaymentReceiptForm() {
         destination_bank_account_id: values.destination_bank_account_id || null,
         receiver_party_id: values.receiver_party_id || null,
         security_warnings: securityWarnings,
+        custom_data: cData,
         status: "pending_review" as const,
         created_by: user.id,
       };
