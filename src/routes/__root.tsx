@@ -1,8 +1,9 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { Component, useState, type ErrorInfo, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 
 import appCss from "../styles.css?url";
 
@@ -52,6 +53,43 @@ function RootErrorComponent({ error, reset }: { error: Error; reset: () => void 
       </div>
     </div>
   );
+}
+
+class AuthErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    logAuthDiagnostic("AuthProvider.boundary", error.message, {
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="max-w-md space-y-3 text-center">
+            <h1 className="text-lg font-semibold text-foreground">خطا در سیستم احراز هویت</h1>
+            <p className="text-sm text-muted-foreground">{this.state.error.message}</p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => { this.setState({ error: null }); }}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+              >
+                تلاش دوباره
+              </button>
+              <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground">
+                ورود
+              </Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export const Route = createRootRoute({
@@ -119,10 +157,12 @@ function RootComponent() {
   );
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Outlet />
-        <Toaster richColors position="top-center" />
-      </AuthProvider>
+      <AuthErrorBoundary>
+        <AuthProvider>
+          <Outlet />
+          <Toaster richColors position="top-center" />
+        </AuthProvider>
+      </AuthErrorBoundary>
     </QueryClientProvider>
   );
 }
