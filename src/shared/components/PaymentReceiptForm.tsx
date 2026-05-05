@@ -38,6 +38,12 @@ import {
   type ReceiptSecurityWarning,
 } from "@/lib/accounting/receipt-security";
 import {
+  fetchValidationRules,
+  evaluateRules,
+  splitViolations,
+  type RuleViolation,
+} from "@/lib/validation/rules";
+import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import {
@@ -261,6 +267,9 @@ export function PaymentReceiptForm() {
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [pendingWarnings, setPendingWarnings] = useState<ReceiptSecurityWarning[]>([]);
+  const [pendingRuleWarnings, setPendingRuleWarnings] = useState<RuleViolation[]>([]);
+  const [blockingViolations, setBlockingViolations] = useState<RuleViolation[]>([]);
+  const [blockingOpen, setBlockingOpen] = useState(false);
   const [pendingWarningContext, setPendingWarningContext] = useState<
     { values: FormValues; allocations: InvoiceAllocation[] } | null
   >(null);
@@ -411,6 +420,85 @@ export function PaymentReceiptForm() {
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const debouncedCustomer = useDebounce(customerSearch, 350);
+
+  // Validation rules for receipt scope
+  const { data: receiptRules = [] } = useQuery({
+    queryKey: ["validation-rules", "receipt"],
+    queryFn: () => fetchValidationRules("receipt"),
+    staleTime: 5 * 60_000,
+  });
+  const { data: journalRules = [] } = useQuery({
+    queryKey: ["validation-rules", "journal_entry"],
+    queryFn: () => fetchValidationRules("journal_entry"),
+    staleTime: 5 * 60_000,
+  });
+
+  // Resolve party by accounting code (autofill name/phone)
+  async function resolveByAccountingCode(code: string): Promise<{
+    name?: string;
+    phone?: string | null;
+    valid: boolean;
+  }> {
+    const c = code.trim();
+    if (!c) return { valid: false };
+    const { data: cust } = await supabase
+      .from("customers")
+      .select("id, name, phone")
+      .eq("accounting_code" as never, c as never)
+      .maybeSingle();
+    if (cust) return { name: (cust as { name: string }).name, phone: (cust as { phone: string | null }).phone, valid: true };
+    const { data: ext } = await supabase
+      .from("external_parties")
+      .select("id, full_name, phone")
+      .eq("accounting_code" as never, c as never)
+      .maybeSingle();
+    if (ext) return { name: (ext as { full_name: string }).full_name, phone: (ext as { phone: string | null }).phone, valid: true };
+    return { valid: false };
+  }
+
+  async function handlePayerCodeBlur() {
+    const code = (form.getValues("payer_accounting_code") || "").trim();
+    if (!code) return;
+    const r = await resolveByAccountingCode(code);
+    if (r.valid) {
+      if (!form.getValues("payer_name") && r.name) form.setValue("payer_name", r.name, { shouldValidate: true });
+      if (!form.getValues("payer_phone") && r.phone) form.setValue("payer_phone", r.phone, { shouldValidate: true });
+      toast.success(`واریزکننده شناسایی شد: ${r.name}`);
+    }
+  }
+  async function handleReceiverCodeBlur() {
+    const code = (form.getValues("receiver_accounting_code") || "").trim();
+    if (!code) return;
+    const r = await resolveByAccountingCode(code);
+    if (r.valid) {
+      if (!form.getValues("receiver_name") && r.name) form.setValue("receiver_name", r.name, { shouldValidate: true });
+      if (!form.getValues("receiver_phone") && r.phone) form.setValue("receiver_phone", r.phone, { shouldValidate: true });
+      toast.success(`گیرنده شناسایی شد: ${r.name}`);
+    }
+  }
+
+  async function buildValidCodesSet(values: FormValues): Promise<Set<string>> {
+    const codes = [values.payer_accounting_code, values.receiver_accounting_code]
+      .map((c) => (c || "").trim())
+      .filter(Boolean);
+    if (codes.length === 0) return new Set();
+    const set = new Set<string>();
+    const { data: cs } = await supabase
+      .from("customers").select("accounting_code")
+      .in("accounting_code" as never, codes as never);
+    (cs ?? []).forEach((r) => {
+      const c = (r as { accounting_code: string | null }).accounting_code;
+      if (c) set.add(c);
+    });
+    const { data: ex } = await supabase
+      .from("external_parties").select("accounting_code")
+      .in("accounting_code" as never, codes as never);
+    (ex ?? []).forEach((r) => {
+      const c = (r as { accounting_code: string | null }).accounting_code;
+      if (c) set.add(c);
+    });
+    return set;
+  }
 
   const { data: customers = [] } = useQuery({
     queryKey: ["receipt-form-customers", debouncedCustomer],
@@ -850,7 +938,24 @@ export function PaymentReceiptForm() {
           toast.error("لطفاً فیلدهای اطلاعات تکمیلی را تکمیل کنید");
           return;
         }
-        const warnings = evaluateFormWarnings({
+        // Async path: evaluate validation_rules then security warnings
+        (async () => {
+          const validCodes = await buildValidCodesSet(v);
+          const allRules = [...receiptRules, ...journalRules];
+          const fieldValues: Record<string, unknown> = {
+            receiver_name: v.receiver_name,
+            payer_name: v.payer_name,
+            payer_accounting_code: v.payer_accounting_code,
+            receiver_accounting_code: v.receiver_accounting_code,
+          };
+          const violations = evaluateRules(allRules, fieldValues, validCodes);
+          const { blocking, warnings: ruleWarnings } = splitViolations(violations);
+          if (blocking.length > 0) {
+            setBlockingViolations(blocking);
+            setBlockingOpen(true);
+            return;
+          }
+          const warnings = evaluateFormWarnings({
           payment_date: v.payment_date,
           tracking_number: v.tracking_number,
           amount: v.amount,
@@ -859,13 +964,15 @@ export function PaymentReceiptForm() {
           has_perforation: v.has_perforation,
           is_typed_receipt: v.is_typed_receipt,
         });
-        if (warnings.length > 0) {
-          setPendingWarnings(warnings);
-          setPendingWarningContext({ values: v, allocations });
-          setWarningsOpen(true);
-          return;
-        }
-        mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
+          if (warnings.length > 0 || ruleWarnings.length > 0) {
+            setPendingWarnings(warnings);
+            setPendingRuleWarnings(ruleWarnings);
+            setPendingWarningContext({ values: v, allocations });
+            setWarningsOpen(true);
+            return;
+          }
+          mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
+        })();
       })}
       className="space-y-6"
       dir="rtl"
