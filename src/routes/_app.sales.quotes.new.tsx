@@ -27,7 +27,7 @@ import {
   type DraftQuoteItem,
 } from "@/lib/sales/quotes";
 
-const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
+export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
 export const Route = createFileRoute("/_app/sales/quotes/new")({
   beforeLoad: async () => {

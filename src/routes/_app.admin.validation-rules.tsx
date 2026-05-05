@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_app/admin/validation-rules")({
   component: ValidationRulesPage,
 });
 
-const SCOPES: { value: ValidationScope; label: string }[] = [
+export const SCOPES: { value: ValidationScope; label: string }[] = [
   { value: "receipt", label: "فیش واریزی" },
   { value: "journal_entry", label: "سند حسابداری" },
   { value: "invoice", label: "فاکتور" },

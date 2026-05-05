@@ -30,7 +30,7 @@ type EndpointDef = {
   defaultBody?: string;
 };
 
-const ENDPOINTS: EndpointDef[] = [
+export const ENDPOINTS: EndpointDef[] = [
   {
     id: "bot-get-rows",
     group: "Bot API – Dynamic Tables",

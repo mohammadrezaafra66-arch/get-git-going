@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_app/admin/profile-fields")({
   component: ProfileFieldsAdminPage,
 });
 
-const TYPE_LABELS: Record<ProfileFieldType, string> = {
+export const TYPE_LABELS: Record<ProfileFieldType, string> = {
   text: "متن",
   number: "عدد",
   textarea: "متن چندخطی",
