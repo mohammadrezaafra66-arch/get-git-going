@@ -30,6 +30,13 @@ import {
   saveProductDynamicValues,
   deleteAllDynamicValuesForProduct,
 } from "@/lib/products/category-attrs";
+import {
+  diffProductFields,
+  diffLabels,
+  diffDynamicValues,
+  logProductUpdate,
+  type ProductAuditDiff,
+} from "@/lib/products/audit";
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -40,7 +47,7 @@ function ProductDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const canUpdate = hasPermission(roles, "products", "update");
   const canDelete = hasPermission(roles, "products", "delete");
   const [ownerOpen, setOwnerOpen] = useState(false);
@@ -186,12 +193,91 @@ function ProductDetailPage() {
         await deleteAllDynamicValuesForProduct(id);
       }
 
+      // Build audit diff and log it
+      try {
+        if (user?.id) {
+          const prevValues = {
+            name: p.name,
+            brand_id: p.brand?.id ?? null,
+            category_id: p.category?.id ?? null,
+            product_type: p.product_type,
+            base_currency: p.base_currency,
+            stock_status: p.stock_status,
+            status: p.status,
+            unit: p.unit ?? null,
+            color: p.color ?? null,
+            capacity: p.capacity ?? null,
+            model: p.model ?? null,
+            primary_spec: p.primary_spec ?? null,
+            description: p.description ?? null,
+            technical_notes: p.technical_notes ?? null,
+          };
+          const nextValues = {
+            name: v.name,
+            brand_id: v.brand_id || null,
+            category_id: v.category_id || null,
+            product_type: v.product_type,
+            base_currency: v.base_currency,
+            stock_status: v.stock_status,
+            status: v.status,
+            unit: v.unit || null,
+            color: v.color || null,
+            capacity: v.capacity || null,
+            model: v.model || null,
+            primary_spec: v.primary_spec || null,
+            description: v.description || null,
+            technical_notes: v.technical_notes || null,
+          };
+          // brand/category name lookup
+          const brandIds = [prevValues.brand_id, nextValues.brand_id].filter(Boolean) as string[];
+          const catIds = [prevValues.category_id, nextValues.category_id].filter(Boolean) as string[];
+          const [brandsRes, catsRes] = await Promise.all([
+            brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : Promise.resolve({ data: [] as any[] }),
+            catIds.length ? supabase.from("categories").select("id,name").in("id", catIds) : Promise.resolve({ data: [] as any[] }),
+          ]);
+          const brandMap: Record<string, string> = {};
+          (brandsRes.data ?? []).forEach((b: any) => { brandMap[b.id] = b.name; });
+          const catMap: Record<string, string> = {};
+          (catsRes.data ?? []).forEach((c: any) => { catMap[c.id] = c.name; });
+
+          const changes = diffProductFields(prevValues, nextValues, brandMap, catMap);
+
+          // labels diff
+          const prevLabelIds = editDataQ.data?.labelIds ?? [];
+          const labelTitleMap: Record<string, string> = {};
+          (p.product_label_links ?? []).forEach((x: any) => {
+            if (x.label) labelTitleMap[x.label.id] = x.label.title;
+          });
+          const newLabelIds = v.label_ids.filter((id) => !labelTitleMap[id]);
+          if (newLabelIds.length > 0) {
+            const { data: lbls } = await supabase.from("product_labels").select("id,title").in("id", newLabelIds);
+            (lbls ?? []).forEach((l: any) => { labelTitleMap[l.id] = l.title; });
+          }
+          const labels = diffLabels(prevLabelIds, v.label_ids, labelTitleMap);
+
+          // dynamic attribute diff
+          const prevDyn = editDataQ.data?.dynamicValues ?? {};
+          const nextDyn = dynamic.values ?? {};
+          const attributes = diffDynamicValues(prevDyn, nextDyn, dynamic.defs ?? []);
+
+          const fullDiff: ProductAuditDiff = {
+            changes: Object.keys(changes).length ? changes : undefined,
+            labels: (labels.added.length || labels.removed.length) ? labels : undefined,
+            attributes: Object.keys(attributes).length ? attributes : undefined,
+          };
+          await logProductUpdate(id, user.id, fullDiff);
+        }
+      } catch (logErr) {
+        console.warn("[product-history] log failed", logErr);
+      }
+
       toast.success("تغییرات ذخیره شد");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-dynamic-attrs", id] }),
         queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product-history", id] }),
       ]);
       setEditMode(false);
     } catch (e: any) {
@@ -366,6 +452,8 @@ function ProductDetailPage() {
 
       <ProductPublishPricesCard productId={id} />
 
+      <ProductHistoryCard productId={id} />
+
       <Card>
         <CardContent className="space-y-2 p-4">
           <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی</h3>
@@ -427,5 +515,90 @@ function RemoveOwnerButton({ productId, userId, onDone }: { productId: string; u
     <Button variant="ghost" size="sm" onClick={remove} disabled={loading}>
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
     </Button>
+  );
+}
+
+function ProductHistoryCard({ productId }: { productId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["product-history", productId],
+    queryFn: async () => {
+      const { data: logs, error } = await supabase
+        .from("audit_logs")
+        .select("id, action, actor_id, diff, created_at")
+        .eq("entity_type", "product")
+        .eq("entity_id", productId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const actorIds = Array.from(new Set((logs ?? []).map((l: any) => l.actor_id).filter(Boolean)));
+      let profiles: { id: string; full_name: string | null }[] = [];
+      if (actorIds.length > 0) {
+        const { data: prof } = await supabase.from("profiles").select("id, full_name").in("id", actorIds);
+        profiles = prof ?? [];
+      }
+      const nameMap = new Map(profiles.map((p) => [p.id, p.full_name ?? "—"]));
+      return (logs ?? []).map((l: any) => ({
+        ...l,
+        actor_name: nameMap.get(l.actor_id) ?? "—",
+      }));
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">تاریخچه تغییرات</h3>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">تغییری ثبت نشده است.</p>
+        ) : (
+          <ul className="space-y-3">
+            {(data ?? []).map((row: any) => {
+              const d = (row.diff ?? {}) as any;
+              const changes = d.changes ?? {};
+              const labels = d.labels ?? {};
+              const attrs = d.attributes ?? {};
+              return (
+                <li key={row.id} className="rounded-md border border-border bg-background p-3 text-sm">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{row.actor_name}</span>
+                    <span>{formatDateFa(row.created_at)}</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {Object.entries(changes).map(([k, c]: [string, any]) => (
+                      <li key={k} className="text-xs">
+                        <span className="font-medium">{c.label}:</span>{" "}
+                        <span className="text-muted-foreground line-through">{c.from ?? "—"}</span>
+                        {" → "}
+                        <span className="text-foreground">{c.to ?? "—"}</span>
+                      </li>
+                    ))}
+                    {(labels.added ?? []).map((l: any) => (
+                      <li key={`la-${l.id}`} className="text-xs">
+                        <span className="font-medium">برچسب افزوده شد:</span> {l.title}
+                      </li>
+                    ))}
+                    {(labels.removed ?? []).map((l: any) => (
+                      <li key={`lr-${l.id}`} className="text-xs">
+                        <span className="font-medium">برچسب حذف شد:</span> {l.title}
+                      </li>
+                    ))}
+                    {Object.entries(attrs).map(([k, c]: [string, any]) => (
+                      <li key={`a-${k}`} className="text-xs">
+                        <span className="font-medium">{c.label}:</span>{" "}
+                        <span className="text-muted-foreground line-through">{c.from ?? "—"}</span>
+                        {" → "}
+                        <span className="text-foreground">{c.to ?? "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
