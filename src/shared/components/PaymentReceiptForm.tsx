@@ -1322,6 +1322,17 @@ export function PaymentReceiptForm() {
             onChange={setStagedFiles}
             disabled={mutation.isPending}
           />
+
+          {customFields.length > 0 && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <WaybillCustomFieldsInput
+                fields={customFields}
+                value={customData}
+                onChange={setCustomData}
+                errors={customErrors}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
