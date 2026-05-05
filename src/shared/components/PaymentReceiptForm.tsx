@@ -1329,43 +1329,85 @@ export function PaymentReceiptForm() {
             </div>
             <div className="space-y-1">
               <Label>
-                طرف حساب گیرنده (شخص خارجی){" "}
+                گیرنده وجه{" "}
                 <span className="text-[10px] text-muted-foreground">
-                  — یا این، یا «حساب مقصد» در پایین را انتخاب کنید
+                  — یکی از دو حالت زیر را انتخاب کنید
                 </span>
               </Label>
-              <Select
-                value={form.watch("receiver_party_id") || "__none"}
-                disabled={Boolean(form.watch("destination_bank_account_id"))}
-                onValueChange={(v) => {
-                  if (v === "__none") {
-                    form.setValue("receiver_party_id", "", { shouldDirty: true });
-                    return;
-                  }
-                  form.setValue("receiver_party_id", v, { shouldDirty: true });
-                  // mutually exclusive with our bank account
-                  form.setValue("destination_bank_account_id", "", { shouldDirty: true });
-                  const p = externalParties.find((x) => x.id === v);
-                  if (p) {
-                    form.setValue("receiver_name", p.full_name, { shouldValidate: true });
-                    if (p.phone) form.setValue("receiver_phone", p.phone, { shouldValidate: true });
-                    if (p.accounting_code) form.setValue("receiver_accounting_code", p.accounting_code, { shouldValidate: true });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="انتخاب از طرف‌های حساب ثبت‌شده" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none">— بدون انتخاب —</SelectItem>
-                  {externalParties.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name}
-                      {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    حالت ۱: حساب بانکی خودِ ما
+                  </Label>
+                  <Select
+                    value={form.watch("destination_bank_account_id") || "__none"}
+                    disabled={Boolean(form.watch("receiver_party_id"))}
+                    onValueChange={(v) => {
+                      if (v === "__none") {
+                        form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                        return;
+                      }
+                      form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                      form.setValue("receiver_party_id", "", { shouldDirty: true });
+                      const b = bankAccounts.find((x) => x.id === v);
+                      if (b) {
+                        if (!form.getValues("destination_bank")) {
+                          form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
+                        }
+                        if (!form.getValues("bank_name")) {
+                          form.setValue("bank_name", b.bank_name, { shouldDirty: true });
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب حساب بانکی ما" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                      {bankAccounts.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    حالت ۲: شخص/طرف حساب خارجی
+                  </Label>
+                  <Select
+                    value={form.watch("receiver_party_id") || "__none"}
+                    disabled={Boolean(form.watch("destination_bank_account_id"))}
+                    onValueChange={(v) => {
+                      if (v === "__none") {
+                        form.setValue("receiver_party_id", "", { shouldDirty: true });
+                        return;
+                      }
+                      form.setValue("receiver_party_id", v, { shouldDirty: true });
+                      form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                      const p = externalParties.find((x) => x.id === v);
+                      if (p) {
+                        form.setValue("receiver_name", p.full_name, { shouldValidate: true });
+                        if (p.phone) form.setValue("receiver_phone", p.phone, { shouldValidate: true });
+                        if (p.accounting_code) form.setValue("receiver_accounting_code", p.accounting_code, { shouldValidate: true });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب طرف حساب خارجی" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                      {externalParties.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.full_name}
+                          {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               {errors.receiver_party_id && (
                 <p className="text-xs text-destructive">{errors.receiver_party_id.message}</p>
               )}
