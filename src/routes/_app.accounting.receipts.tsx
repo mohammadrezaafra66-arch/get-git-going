@@ -93,9 +93,8 @@ function ReceiptsListPage() {
           `id, amount, payment_date, payment_time, receipt_time, tracking_number, status,
            receipt_type, posting_status, posted_at, description, rejection_reason, bank_name,
            source_bank, destination_bank, payer_name, payer_phone, payer_accounting_code,
-           receiver_name, receiver_phone, receiver_accounting_code, created_at,
+           receiver_name, receiver_phone, receiver_accounting_code, created_at, created_by,
            customer:customers(id, name, phone, accounting_code),
-           created_by_profile:profiles!payment_receipts_created_by_fkey(id, full_name),
            destination_bank_account:bank_accounts!payment_receipts_destination_bank_account_id_fkey(id, title),
            receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, name)`
         )
@@ -137,13 +136,30 @@ function ReceiptsListPage() {
         receiver_phone: string | null;
         receiver_accounting_code: string | null;
         created_at: string;
+        created_by: string | null;
         customer: { name: string | null; phone: string | null; accounting_code: string | null } | null;
-        created_by_profile: { full_name: string | null } | null;
         destination_bank_account: { title: string | null } | null;
         receiver_party: { name: string | null } | null;
       };
 
-      const rows = (data as unknown as Row[]).map((r) => {
+      const typed = data as unknown as Row[];
+
+      // Resolve creator names in a single batched query
+      const creatorIds = Array.from(
+        new Set(typed.map((r) => r.created_by).filter((x): x is string => Boolean(x))),
+      );
+      const creatorMap = new Map<string, string>();
+      if (creatorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", creatorIds);
+        (profs ?? []).forEach((p) => {
+          creatorMap.set((p as { id: string }).id, (p as { full_name: string | null }).full_name ?? "");
+        });
+      }
+
+      const rows = typed.map((r) => {
         const receiverTarget = r.destination_bank_account?.title
           ? `بانک ما: ${r.destination_bank_account.title}`
           : r.receiver_party?.name
@@ -153,7 +169,7 @@ function ReceiptsListPage() {
           "تاریخ ثبت (شمسی)": isoToJalaliDisplay(r.created_at?.slice(0, 10)),
           "تاریخ فیش (شمسی)": isoToJalaliDisplay(r.payment_date),
           "ساعت فیش": r.payment_time?.slice(0, 5) ?? "",
-          "ثبت‌کننده (کاربر)": r.created_by_profile?.full_name ?? "—",
+          "ثبت‌کننده (کاربر)": (r.created_by && creatorMap.get(r.created_by)) || "—",
           "مشتری مرتبط": r.customer?.name ?? "—",
           "تلفن مشتری": r.customer?.phone ?? "",
           "کد آسان مشتری": r.customer?.accounting_code ?? "",
