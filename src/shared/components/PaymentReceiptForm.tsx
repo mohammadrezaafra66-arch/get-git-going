@@ -257,7 +257,7 @@ type InvoiceAllocation = {
 };
 
 export function PaymentReceiptForm() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -338,8 +338,14 @@ export function PaymentReceiptForm() {
           const b64 = btoa(bin);
           let ocr;
           try {
+            const token = session?.access_token;
+            if (!token) {
+              toast.error("برای استخراج خودکار باید وارد شده باشید.");
+              continue;
+            }
             ocr = await extractReceiptFromBytes({
               data: { file_name: file.name, mime: file.type || "application/octet-stream", base64: b64 },
+              headers: { Authorization: `Bearer ${token}` },
             });
           } catch (err) {
             let msg = "خطای ناشناخته";
