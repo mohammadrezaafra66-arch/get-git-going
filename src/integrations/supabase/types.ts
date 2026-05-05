@@ -2601,8 +2601,10 @@ export type Database = {
           description: string | null
           entry_date: string
           id: string
+          payer_accounting_code: string | null
           posted_at: string
           posted_by: string | null
+          receiver_accounting_code: string | null
           source_id: string
           source_type: string
           status: string
@@ -2612,8 +2614,10 @@ export type Database = {
           description?: string | null
           entry_date?: string
           id?: string
+          payer_accounting_code?: string | null
           posted_at?: string
           posted_by?: string | null
+          receiver_accounting_code?: string | null
           source_id: string
           source_type: string
           status?: string
@@ -2623,8 +2627,10 @@ export type Database = {
           description?: string | null
           entry_date?: string
           id?: string
+          payer_accounting_code?: string | null
           posted_at?: string
           posted_by?: string | null
+          receiver_accounting_code?: string | null
           source_id?: string
           source_type?: string
           status?: string
@@ -5876,6 +5882,42 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      validation_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          field_key: string
+          id: string
+          message: string
+          rule_type: string
+          scope: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          field_key: string
+          id?: string
+          message: string
+          rule_type: string
+          scope: string
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          field_key?: string
+          id?: string
+          message?: string
+          rule_type?: string
+          scope?: string
+          severity?: string
+          updated_at?: string
         }
         Relationships: []
       }
