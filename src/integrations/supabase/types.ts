@@ -3261,6 +3261,7 @@ export type Database = {
         Row: {
           amount: number
           bank_name: string | null
+          beneficiary_accounting_code: string | null
           created_at: string
           created_by: string
           custom_data: Json
@@ -3299,6 +3300,7 @@ export type Database = {
         Insert: {
           amount: number
           bank_name?: string | null
+          beneficiary_accounting_code?: string | null
           created_at?: string
           created_by: string
           custom_data?: Json
@@ -3337,6 +3339,7 @@ export type Database = {
         Update: {
           amount?: number
           bank_name?: string | null
+          beneficiary_accounting_code?: string | null
           created_at?: string
           created_by?: string
           custom_data?: Json
@@ -7058,6 +7061,7 @@ export type Database = {
         Args: { p_receipt_id: string; p_user_id: string }
         Returns: Json
       }
+      post_receipt_journal: { Args: { _receipt_id: string }; Returns: string }
       preview_league_season_changes: {
         Args: { _season_id: string }
         Returns: {
