@@ -1691,11 +1691,18 @@ export function PaymentReceiptForm() {
               {w.message}
             </li>
           ))}
+          {pendingRuleWarnings.map((rv) => (
+            <li key={rv.rule.id}>
+              <span className="font-medium">[استاندارد] </span>
+              {rv.rule.message}
+            </li>
+          ))}
         </ul>
         <AlertDialogFooter>
           <AlertDialogCancel
             onClick={() => {
               setPendingWarnings([]);
+              setPendingRuleWarnings([]);
               setPendingWarningContext(null);
             }}
           >
@@ -1716,6 +1723,25 @@ export function PaymentReceiptForm() {
           >
             ثبت با تأیید حسابدار
           </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog open={blockingOpen} onOpenChange={setBlockingOpen}>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>ثبت ممکن نیست</AlertDialogTitle>
+          <AlertDialogDescription>
+            موارد زیر طبق استانداردهای سیستم اجباری هستند و باید اصلاح شوند:
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <ul className="list-disc space-y-1 pr-6 text-sm text-destructive">
+          {blockingViolations.map((rv) => (
+            <li key={rv.rule.id}>{rv.rule.message}</li>
+          ))}
+        </ul>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setBlockingOpen(false)}>متوجه شدم</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
