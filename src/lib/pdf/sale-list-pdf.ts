@@ -1,5 +1,6 @@
 import pdfMake from "pdfmake/build/pdfmake";
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+// @ts-expect-error - no bundled types
 import bidiFactory from "bidi-js";
 import vazirRegularB64 from "@/assets/fonts/vazirmatn-regular.b64?raw";
 import vazirBoldB64 from "@/assets/fonts/vazirmatn-bold.b64?raw";
