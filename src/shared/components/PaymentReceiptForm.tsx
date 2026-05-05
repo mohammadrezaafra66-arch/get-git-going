@@ -195,7 +195,10 @@ const schema = z.object({
   receiver_phone: z.string().trim().max(30).optional().or(z.literal("")),
   receiver_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
   beneficiary_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
-  amount: z.number({ message: "مبلغ الزامی است" }).positive("مبلغ باید مثبت باشد"),
+  amount: z
+    .number({ message: "مبلغ الزامی است" })
+    .positive("مبلغ باید مثبت باشد")
+    .max(1e12, "مبلغ نامعتبر است (حداکثر ۱۰۰۰ میلیارد تومان)"),
   payment_date: z.string()
     .min(1, "تاریخ الزامی است")
     .refine((d) => d <= today, "تاریخ نمی‌تواند در آینده باشد"),
@@ -371,7 +374,13 @@ export function PaymentReceiptForm() {
           const filled: string[] = [];
 
           // Only fill empty fields to avoid overriding manual edits.
-          if (parsed.amount != null && !form.getValues("amount")) {
+          // گارد اضافی: مبالغ غیرمنطقی (مثل شماره کارت تشخیص داده‌شده اشتباه) را نادیده بگیر.
+          if (
+            parsed.amount != null &&
+            parsed.amount > 0 &&
+            parsed.amount <= 1e12 &&
+            !form.getValues("amount")
+          ) {
             form.setValue("amount", parsed.amount, { shouldValidate: true, shouldDirty: true });
             filled.push("مبلغ");
           }
