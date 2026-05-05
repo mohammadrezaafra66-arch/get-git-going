@@ -1006,6 +1006,32 @@ export function PaymentReceiptForm() {
           }
           mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
         })();
+      }, (errors) => {
+        console.warn("[receipt-form] validation failed", errors);
+        const labels: Record<string, string> = {
+          customer_id: "مشتری",
+          payer_name: "نام پرداخت‌کننده",
+          receiver_name: "نام گیرنده",
+          amount: "مبلغ",
+          payment_date: "تاریخ پرداخت",
+          payment_time: "ساعت پرداخت",
+          tracking_number: "شماره پیگیری",
+          receiver_party_id: "گیرنده (حساب بانکی ما یا طرف خارجی)",
+          destination_bank_account_id: "حساب بانکی مقصد",
+        };
+        const fields = Object.keys(errors);
+        const named = fields.map((f) => labels[f] ?? f);
+        const first = fields[0];
+        toast.error(
+          named.length
+            ? `فیلدهای ناقص: ${named.join("، ")}`
+            : "فرم نامعتبر است",
+        );
+        if (first) {
+          const el = document.querySelector(`[name="${first}"]`) as HTMLElement | null;
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          el?.focus?.();
+        }
       })}
       className="space-y-6"
       dir="rtl"
