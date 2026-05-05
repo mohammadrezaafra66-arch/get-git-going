@@ -147,11 +147,6 @@ function PartyLookup({
   );
 }
 
-const BANKS = [
-  "ملی", "ملت", "صادرات", "سپه", "تجارت", "رفاه", "مسکن",
-  "کشاورزی", "پاسارگاد", "سامان", "پارسیان", "اقتصاد نوین", "آینده",
-];
-
 const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
   { value: "card_to_card", label: "کارت به کارت" },
   { value: "paya", label: "پایا" },
