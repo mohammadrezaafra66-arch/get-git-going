@@ -32,8 +32,8 @@ function QuizPage() {
       if (error) throw error;
       if (!quiz) return null;
       const { data: questions } = await supabase
-        .from("academy_quiz_questions")
-        .select("id, question_text, options, correct_value, order_index")
+        .from("academy_quiz_questions_public" as any)
+        .select("id, question_text, options, order_index")
         .eq("quiz_id", quiz.id)
         .order("order_index", { ascending: true });
       return { quiz, questions: questions ?? [] };
@@ -41,25 +41,15 @@ function QuizPage() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: async ({ answers, score, passed }: { answers: Record<string, number>; score: number; passed: boolean }) => {
+    mutationFn: async ({ answers }: { answers: Record<string, number> }) => {
       if (!user?.id || !data?.quiz) throw new Error("اطلاعات ناقص");
-      const { error } = await supabase.from("academy_quiz_attempts").insert({
-        user_id: user.id,
-        quiz_id: data.quiz.id,
-        score,
-        passed,
-        answers: answers as any,
+      const { data: res, error } = await supabase.rpc("submit_quiz_attempt" as any, {
+        _quiz_id: data.quiz.id,
+        _answers: answers as any,
       });
       if (error) throw error;
-      const { error: aErr } = await supabase.from("audit_logs").insert({
-        action: "academy_quiz_attempt",
-        entity_type: "academy_quiz",
-        entity_id: data.quiz.id,
-        actor_id: user.id,
-        diff: { lesson_id: lessonId, score, passed },
-      });
-      if (aErr) console.warn("audit insert failed:", aErr);
-      return { score, passed };
+      const row = Array.isArray(res) ? (res[0] as any) : (res as any);
+      return { score: row?.score ?? 0, passed: !!row?.passed };
     },
     onSuccess: (r) => {
       setResult(r);
@@ -86,8 +76,6 @@ function QuizPage() {
     question_text: q.question_text,
     options: Array.isArray(q.options) ? (q.options as { text: string }[]) : [],
   }));
-  const correctValues: Record<string, number> = {};
-  data.questions.forEach((q) => { correctValues[q.id] = q.correct_value; });
 
   return (
     <div className="space-y-5">
@@ -107,7 +95,6 @@ function QuizPage() {
         <QuizTaker
           key={attemptKey}
           questions={takerQuestions}
-          correctValues={correctValues}
           passingScore={data.quiz.passing_score}
           submitting={submitMutation.isPending}
           result={result}
