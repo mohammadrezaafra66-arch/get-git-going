@@ -517,3 +517,88 @@ function RemoveOwnerButton({ productId, userId, onDone }: { productId: string; u
     </Button>
   );
 }
+
+function ProductHistoryCard({ productId }: { productId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["product-history", productId],
+    queryFn: async () => {
+      const { data: logs, error } = await supabase
+        .from("audit_logs")
+        .select("id, action, actor_id, diff, created_at")
+        .eq("entity_type", "product")
+        .eq("entity_id", productId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const actorIds = Array.from(new Set((logs ?? []).map((l: any) => l.actor_id).filter(Boolean)));
+      let profiles: { id: string; full_name: string | null }[] = [];
+      if (actorIds.length > 0) {
+        const { data: prof } = await supabase.from("profiles").select("id, full_name").in("id", actorIds);
+        profiles = prof ?? [];
+      }
+      const nameMap = new Map(profiles.map((p) => [p.id, p.full_name ?? "—"]));
+      return (logs ?? []).map((l: any) => ({
+        ...l,
+        actor_name: nameMap.get(l.actor_id) ?? "—",
+      }));
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">تاریخچه تغییرات</h3>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">تغییری ثبت نشده است.</p>
+        ) : (
+          <ul className="space-y-3">
+            {(data ?? []).map((row: any) => {
+              const d = (row.diff ?? {}) as any;
+              const changes = d.changes ?? {};
+              const labels = d.labels ?? {};
+              const attrs = d.attributes ?? {};
+              return (
+                <li key={row.id} className="rounded-md border border-border bg-background p-3 text-sm">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{row.actor_name}</span>
+                    <span>{formatDateFa(row.created_at)}</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {Object.entries(changes).map(([k, c]: [string, any]) => (
+                      <li key={k} className="text-xs">
+                        <span className="font-medium">{c.label}:</span>{" "}
+                        <span className="text-muted-foreground line-through">{c.from ?? "—"}</span>
+                        {" → "}
+                        <span className="text-foreground">{c.to ?? "—"}</span>
+                      </li>
+                    ))}
+                    {(labels.added ?? []).map((l: any) => (
+                      <li key={`la-${l.id}`} className="text-xs">
+                        <span className="font-medium">برچسب افزوده شد:</span> {l.title}
+                      </li>
+                    ))}
+                    {(labels.removed ?? []).map((l: any) => (
+                      <li key={`lr-${l.id}`} className="text-xs">
+                        <span className="font-medium">برچسب حذف شد:</span> {l.title}
+                      </li>
+                    ))}
+                    {Object.entries(attrs).map(([k, c]: [string, any]) => (
+                      <li key={`a-${k}`} className="text-xs">
+                        <span className="font-medium">{c.label}:</span>{" "}
+                        <span className="text-muted-foreground line-through">{c.from ?? "—"}</span>
+                        {" → "}
+                        <span className="text-foreground">{c.to ?? "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
