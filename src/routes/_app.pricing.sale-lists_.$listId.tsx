@@ -350,6 +350,52 @@ function SaleListDetailPage() {
         }
       />
 
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-4 p-3 text-xs">
+          <div className="text-muted-foreground">تنظیمات ظاهر PDF:</div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">اندازه فونت ({pdfFontSize})</Label>
+            <input
+              type="range"
+              min={7}
+              max={16}
+              step={1}
+              value={pdfFontSize}
+              onChange={(e) => setPdfFontSize(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">فاصله ردیف‌ها ({pdfRowPadY})</Label>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={pdfRowPadY}
+              onChange={(e) => setPdfRowPadY(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">فاصله ستون‌ها ({pdfCellPadX})</Label>
+            <input
+              type="range"
+              min={0}
+              max={12}
+              step={1}
+              value={pdfCellPadX}
+              onChange={(e) => setPdfCellPadX(Number(e.target.value))}
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setPdfFontSize(10); setPdfRowPadY(2); setPdfCellPadX(4); }}
+          >
+            بازنشانی
+          </Button>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="items" dir="rtl">
         <TabsList>
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
