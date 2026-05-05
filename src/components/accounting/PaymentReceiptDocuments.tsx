@@ -382,7 +382,7 @@ export function ReceiptDocumentPicker({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        فایل‌های مجاز: JPG, PNG, WEBP, PDF, TXT — حداکثر ۱۰ مگابایت برای هر فایل، حداکثر {toFaDigits(String(MAX_DOC_COUNT))} فایل.
+        تصویر، اسکرین‌شات، PDF، Word، Excel، متن یا فایل فشرده. حداکثر ۲۰ مگابایت برای هر فایل، تا {toFaDigits(String(MAX_DOC_COUNT))} فایل.
       </p>
       {files.length === 0 ? (
         <p className="text-xs text-muted-foreground">هیچ مستندی انتخاب نشده است.</p>
