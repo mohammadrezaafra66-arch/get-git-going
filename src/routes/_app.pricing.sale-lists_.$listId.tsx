@@ -155,6 +155,7 @@ function SaleListDetailPage() {
   const { listId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { roles } = useAuth();
 
   const listQ = useQuery({
     queryKey: ["sale-list", listId],
@@ -225,7 +226,6 @@ function SaleListDetailPage() {
   const items = itemsQ.data ?? [];
   const versions = versionsQ.data ?? [];
 
-  const { roles } = useAuth();
   const canPublish = hasAnyRole(roles, ["admin", "manager", "accountant"]);
 
   const buildPdfInput = (): SaleListPdfInput => {
