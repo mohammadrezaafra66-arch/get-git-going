@@ -30,16 +30,35 @@ import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-securi
 import { extractReceiptDocumentOcr, type OcrMethod } from "@/server/receipt-ocr.functions";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
-export const ALLOWED_DOC_MIMES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-  "text/plain",
+
+/**
+ * Accept any common format a customer might send: images (JPG/PNG/WEBP/HEIC/GIF/BMP/TIFF),
+ * PDFs, plain text, Office documents (DOC/DOCX/XLS/XLSX), and ZIP archives.
+ * MIME and extension are checked together since browsers/phones often report
+ * empty or non-standard MIME types for screenshots and forwarded files.
+ */
+export const ALLOWED_DOC_EXTENSIONS = [
+  // images
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "heic", "heif", "svg",
+  // documents
+  "pdf", "txt", "rtf", "csv",
+  "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  // archives (in case customer sends multiple receipts together)
+  "zip", "rar", "7z",
 ] as const;
-export const ALLOWED_DOC_ACCEPT = ".jpg,.jpeg,.png,.webp,.pdf,.txt,image/jpeg,image/png,image/webp,application/pdf,text/plain";
-export const MAX_DOC_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-export const MAX_DOC_COUNT = 5;
+
+export const ALLOWED_DOC_ACCEPT = [
+  "image/*",
+  "application/pdf",
+  "text/*",
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".rtf", ".csv",
+  ".heic", ".heif",
+  ".zip", ".rar", ".7z",
+].join(",");
+
+export const MAX_DOC_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+export const MAX_DOC_COUNT = 10;
 
 export type ReceiptDocumentRow = {
   id: string;
@@ -202,13 +221,28 @@ function ExtractionField({ label, value }: { label: string; value: string | null
 
 export function validateReceiptFile(file: File): string | null {
   if (file.size > MAX_DOC_SIZE_BYTES) {
-    return `«${file.name}» بیش از حد مجاز (۱۰ مگابایت) است`;
+    return `«${file.name}» بیش از حد مجاز (۲۰ مگابایت) است`;
   }
-  const mime = file.type.toLowerCase();
-  if (!ALLOWED_DOC_MIMES.includes(mime as (typeof ALLOWED_DOC_MIMES)[number])) {
+  const mime = (file.type || "").toLowerCase();
+  // Accept any image/*, text/*, application/pdf, audio/* even if the
+  // browser reports an unusual MIME (common on mobile screenshots).
+  if (
+    mime.startsWith("image/") ||
+    mime.startsWith("text/") ||
+    mime === "application/pdf"
+  ) {
+    return null;
+  }
+  // Fallback: check extension for documents/archives or empty MIME
+  const ext = file.name.toLowerCase().split(".").pop() ?? "";
+  if ((ALLOWED_DOC_EXTENSIONS as readonly string[]).includes(ext)) {
+    return null;
+  }
+  // Block executables and unknown binaries explicitly
+  if (/\.(exe|bat|cmd|sh|msi|apk|dll|js|jar)$/i.test(file.name)) {
     return `نوع فایل «${file.name}» مجاز نیست`;
   }
-  return null;
+  return `نوع فایل «${file.name}» پشتیبانی نمی‌شود`;
 }
 
 function safeFileName(name: string) {
