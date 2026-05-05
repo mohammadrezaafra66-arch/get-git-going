@@ -47,8 +47,7 @@ function ProductDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { roles } = useAuth();
-  const { user } = useAuth();
+  const { roles, user } = useAuth();
   const canUpdate = hasPermission(roles, "products", "update");
   const canDelete = hasPermission(roles, "products", "delete");
   const [ownerOpen, setOwnerOpen] = useState(false);
