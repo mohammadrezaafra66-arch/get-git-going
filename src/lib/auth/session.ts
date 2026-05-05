@@ -1,6 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/lib/rbac/roles";
+import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 
 export interface AuthProfile {
   id: string;
@@ -93,6 +94,8 @@ async function loadIdentity(user: User, force = false) {
 
   if (profileResult.error) console.error("[auth] profile fetch failed", profileResult.error);
   if (rolesResult.error) console.error("[auth] roles fetch failed", rolesResult.error);
+  if (profileResult.error) logAuthDiagnostic("session.loadIdentity.profile", profileResult.error.message, profileResult.error);
+  if (rolesResult.error) logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
 
   const roles = (rolesResult.data ?? []).map((row) => row.role as AppRole);
   const normalizedRoles = !rolesError && roles.length === 0 ? (["viewer"] as AppRole[]) : roles;
@@ -176,6 +179,7 @@ export function initializeAuthSession() {
   } catch (error) {
     const message = getAuthClientError(error);
     console.error("[auth] auth subscription failed", error);
+    logAuthDiagnostic("session.subscribe", message, error);
     setSnapshot({ initialized: true, loading: false, authError: message });
   }
 }
@@ -210,12 +214,14 @@ export async function ensureAuthReady(force = false) {
       } catch (error) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);
+        logAuthDiagnostic("session.getSession.throw", message, error);
         setSnapshot({ initialized: true, loading: false, authError: message });
         return snapshot;
       }
       const { data, error } = result;
       if (error) {
         console.error("[auth] getSession failed", error);
+        logAuthDiagnostic("session.getSession.error", error.message, error);
         setSnapshot({ initialized: true, loading: false, authError: error.message });
         return snapshot;
       }
