@@ -21,6 +21,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import {
   computeTotals, lineTotal, validateQuote,
   type DraftQuoteItem,
@@ -139,6 +140,14 @@ function NewQuotePage() {
       {/* header */}
       <Card>
         <CardContent className="p-4 space-y-4">
+          <div className="flex justify-end">
+            <QuickAddCustomerDialog
+              onCreated={(c) => {
+                setCustomerName(c.name);
+                setCustomerPhone(c.phone);
+              }}
+            />
+          </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="customer_name">نام مشتری *</Label>
