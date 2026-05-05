@@ -430,7 +430,7 @@ export function ReceiptDocumentsList({
   receiptId: string;
   legacyImageUrl?: string | null;
 }) {
-  const { user, roles } = useAuth();
+  const { user, session, roles } = useAuth();
   const queryClient = useQueryClient();
   const canManage = hasAnyRole(roles as AppRole[], ["admin", "accountant"]);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -553,8 +553,13 @@ export function ReceiptDocumentsList({
         // Run OCR/text extraction server-side. The server function
         // enforces role checks, fetches the file via service role, and
         // calls the AI gateway for image OCR when configured.
+        const token = session?.access_token;
+        if (!token) {
+          throw new Error("برای استخراج باید وارد شده باشید.");
+        }
         const ocr = await extractReceiptDocumentOcr({
           data: { document_id: doc.id },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         const text = ocr.raw_text || "";
