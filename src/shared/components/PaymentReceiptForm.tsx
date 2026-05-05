@@ -1382,6 +1382,7 @@ export function PaymentReceiptForm() {
                   values: pendingValues.values,
                   allocations: pendingValues.allocations,
                   bypassDuplicate: true,
+                  customData,
                 });
               }
               setDuplicateOpen(false);
@@ -1425,6 +1426,7 @@ export function PaymentReceiptForm() {
                   values: pendingWarningContext.values,
                   allocations: pendingWarningContext.allocations,
                   securityWarnings: pendingWarnings,
+                  customData,
                 });
               }
               setWarningsOpen(false);
