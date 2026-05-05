@@ -206,6 +206,11 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  // PDF density / font controls
+  const [pdfFontSize, setPdfFontSize] = useState<number>(10);
+  const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
+  const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
@@ -263,6 +268,11 @@ function SaleListDetailPage() {
         change_percent: it.change_percent !== null ? Number(it.change_percent) : null,
         stock_status: it.stock_status,
       })),
+      options: {
+        fontSize: pdfFontSize,
+        rowPaddingY: pdfRowPadY,
+        cellPaddingX: pdfCellPadX,
+      },
     };
   };
 
@@ -339,6 +349,52 @@ function SaleListDetailPage() {
           </div>
         }
       />
+
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-4 p-3 text-xs">
+          <div className="text-muted-foreground">تنظیمات ظاهر PDF:</div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">اندازه فونت ({pdfFontSize})</Label>
+            <input
+              type="range"
+              min={7}
+              max={16}
+              step={1}
+              value={pdfFontSize}
+              onChange={(e) => setPdfFontSize(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">فاصله ردیف‌ها ({pdfRowPadY})</Label>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={pdfRowPadY}
+              onChange={(e) => setPdfRowPadY(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">فاصله ستون‌ها ({pdfCellPadX})</Label>
+            <input
+              type="range"
+              min={0}
+              max={12}
+              step={1}
+              value={pdfCellPadX}
+              onChange={(e) => setPdfCellPadX(Number(e.target.value))}
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setPdfFontSize(10); setPdfRowPadY(2); setPdfCellPadX(4); }}
+          >
+            بازنشانی
+          </Button>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="items" dir="rtl">
         <TabsList>
