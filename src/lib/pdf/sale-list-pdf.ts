@@ -132,15 +132,15 @@ const COLUMN_WIDTHS: Record<SaleListPdfColumn, string | number> = {
 
 function fmtPrice(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
-  return `${formatNumber(Number(n))} ت`;
+  return shapeRtl(`${formatNumber(Number(n))} ت`);
 }
 function fmtChange(amount: number | null | undefined, percent: number | null | undefined): string {
   if (amount === null || amount === undefined) return "—";
   const a = Number(amount);
-  if (a === 0) return "بدون تغییر";
+  if (a === 0) return shapeRtl("بدون تغییر");
   const sign = a > 0 ? "+" : "";
   const pct = percent !== null && percent !== undefined ? ` (${formatNumber(Number(percent))}٪)` : "";
-  return `${sign}${formatNumber(a)} ت${pct}`;
+  return shapeRtl(`${sign}${formatNumber(a)} ت${pct}`);
 }
 
 function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
@@ -148,7 +148,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
   const cols: SaleListPdfColumn[] = ["name", ...input.selectedColumns.filter((c) => c !== "name")];
 
   const headerRow = cols.map((c) => ({
-    text: COLUMN_LABELS[c],
+    text: shapeRtl(COLUMN_LABELS[c]),
     style: "tableHeader",
     alignment: "right" as const,
   }));
@@ -174,7 +174,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
         case "labels": text = it.labels && it.labels.length ? it.labels.join("، ") : "—"; break;
         case "description": text = it.description || "—"; break;
       }
-      return { text, alignment: "right", fontSize: 9 };
+      return { text: shapeRtl(text), alignment: "right", fontSize: 9 };
     }),
   );
 
@@ -218,10 +218,10 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
         body: [[{
           stack: [
             ...(sellerInfoText
-              ? [{ text: `فروشنده: ${sellerInfoText}`, fontSize: 9, bold: true, alignment: "right" as const, margin: [0, 0, 0, 4] as [number, number, number, number] }]
+              ? [{ text: shapeRtl(`فروشنده: ${sellerInfoText}`), fontSize: 9, bold: true, alignment: "right" as const, margin: [0, 0, 0, 4] as [number, number, number, number] }]
               : []),
             ...infoLines.map((line) => ({
-              text: line,
+              text: shapeRtl(line),
               fontSize: 9,
               color: "#374151",
               alignment: "right" as const,
@@ -256,21 +256,21 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
       stack: [
         {
           columns: [
-            { text: "افراکالا", style: "brand", alignment: "right" },
-            { text: "لیست فروش", style: "title", alignment: "left" },
+            { text: shapeRtl("افراکالا"), style: "brand", alignment: "right" },
+            { text: shapeRtl("لیست فروش"), style: "title", alignment: "left" },
           ],
         },
         {
           columns: [
-            { text: `${input.listName} — نسخه ${formatNumber(input.versionNumber)}`, alignment: "right", fontSize: 10 },
-            { text: `تاریخ: ${formatDateFa(new Date())}`, alignment: "left", fontSize: 9, color: "#666" },
+            { text: shapeRtl(`${input.listName} — نسخه ${formatNumber(input.versionNumber)}`), alignment: "right", fontSize: 10 },
+            { text: shapeRtl(`تاریخ: ${formatDateFa(new Date())}`), alignment: "left", fontSize: 9, color: "#666" },
           ],
           margin: [0, 4, 0, 0],
         },
         {
           columns: [
-            { text: `نوع قیمت: ${input.salePriceTypeTitle}`, alignment: "right", fontSize: 9, color: "#666" },
-            { text: `ایجادکننده: ${input.createdByName}`, alignment: "left", fontSize: 9, color: "#666" },
+            { text: shapeRtl(`نوع قیمت: ${input.salePriceTypeTitle}`), alignment: "right", fontSize: 9, color: "#666" },
+            { text: shapeRtl(`ایجادکننده: ${input.createdByName}`), alignment: "left", fontSize: 9, color: "#666" },
           ],
         },
       ],
@@ -279,10 +279,10 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
       margin: [25, 10, 25, 20],
       stack: [
         ...(input.termsText
-          ? [{ text: input.termsText, fontSize: 8, color: "#555", alignment: "right" as const, margin: [0, 0, 0, 4] as [number, number, number, number] }]
+          ? [{ text: shapeRtl(input.termsText), fontSize: 8, color: "#555", alignment: "right" as const, margin: [0, 0, 0, 4] as [number, number, number, number] }]
           : []),
         {
-          text: `صفحه ${formatNumber(currentPage)} از ${formatNumber(pageCount)}`,
+          text: shapeRtl(`صفحه ${formatNumber(currentPage)} از ${formatNumber(pageCount)}`),
           alignment: "center",
           fontSize: 8,
           color: "#888",
@@ -301,14 +301,34 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
 export async function previewSaleListPdf(input: SaleListPdfInput): Promise<void> {
   ensureFonts();
   const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {});
-  const win = window.open("", "_blank");
-  if (!win) throw new Error("مرورگر اجازه باز کردن پنجره پیش‌نمایش PDF را نداد.");
-  await doc.open(win);
+  return new Promise<void>((resolve, reject) => {
+    try {
+      doc.getBlob((blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank");
+        if (!win) {
+          // Fallback: navigate same tab if popup blocked
+          window.location.href = url;
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        resolve();
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
 
 export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void> {
   ensureFonts();
   const safe = input.listName.replace(/[\\/:*?"<>|]/g, "_");
   const filename = `SaleList-${safe}-v${input.versionNumber}.pdf`;
-  await (pdfMake as any).createPdf(buildDocDefinition(input), {}).download(filename);
+  const doc = (pdfMake as any).createPdf(buildDocDefinition(input), {});
+  return new Promise<void>((resolve, reject) => {
+    try {
+      doc.download(filename, () => resolve());
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
