@@ -1,35 +1,55 @@
-مشکل را در preview بازتولید کردم: صفحه `/` روی «در حال بارگذاری…» می‌ماند و hydration کامل نمی‌شود. در Network هم ده‌ها درخواست route با `net::ERR_ABORTED` دیده می‌شود؛ یعنی زنجیره بارگذاری route tree قبل از اجرای کامل کامپوننت اصلی قطع می‌شود. علت محتمل، ترکیب route tree بسیار بزرگ با importهای سنگین/ناسازگار اخیر است؛ مخصوصاً `isomorphic-dompurify` که `jsdom` را هم وارد dependency graph می‌کند و برای runtime/browser preview مناسب نیست.
+# ادغام نمایش و ویرایش محصول در یک صفحه
 
-برنامه اصلاح:
+## چرا الان دو صفحه جدا هست؟
 
-1. سبک‌سازی و امن‌سازی sanitization
-   - `isomorphic-dompurify` را از routeهای `knowledge` و `academy` حذف می‌کنم.
-   - به‌جایش یک helper داخلی سبک می‌سازم که فقط در مرورگر از `DOMParser` و allowlist محدود HTML استفاده کند و در SSR هم بدون وابستگی Node-only/سنگین کار کند.
-   - `marked` حفظ می‌شود، اما خروجی HTML قبل از `dangerouslySetInnerHTML` با allowlist پاکسازی می‌شود.
-   - در صورت امکان وابستگی `isomorphic-dompurify` را از `package.json` حذف می‌کنم تا `jsdom` وارد bundle/SSR نشود.
+دو route مستقل وجود دارد:
 
-2. رفع گیر کردن صفحه اصلی
-   - route `/` را از redirect صرفاً داخل `useEffect` به یک مسیر مقاوم‌تر تبدیل می‌کنم: در `beforeLoad` سمت client وضعیت auth بررسی شود و به `/dashboard` یا `/login` redirect کند.
-   - کامپوننت fallback فقط برای لحظه کوتاه hydration باقی می‌ماند، نه اینکه اگر effect اجرا نشد برای همیشه گیر کند.
-   - اگر auth check خطا داد، redirect امن به `/login` انجام می‌شود و صفحه سفید/لودینگ دائمی نمی‌ماند.
+- `src/routes/_app.products.$id.tsx` → آدرس `/products/:id` (نمایش)
+- `src/routes/_app.products_.$id.edit.tsx` → آدرس `/products/:id/edit` (ویرایش)
 
-3. بهبود fallback خطاهای root
-   - برای root route یک `errorComponent` فارسی/RTL اضافه می‌کنم تا اگر خطای render/hydration رخ داد، کاربر صفحه قابل فهم با «تلاش دوباره» و «رفتن به ورود/خانه» ببیند.
-   - `console.error(error)` خام حفظ می‌شود تا خطا در لاگ‌ها قابل ردیابی بماند.
+نکته مهم در نام‌گذاری TanStack: پیشوند `products_` (با underline) یعنی این route از layout والد `products` **جدا** می‌شود. در نتیجه وقتی روی «ویرایش» می‌زنید:
 
-4. کنترل regression روی دکمه ثبت فیش
-   - چون قبل از این مشکل، دکمه ثبت فیش هم اصلاح شده بود، فایل `PaymentReceiptForm.tsx` را فقط در حد بررسی نگه می‌دارم و تغییر غیرضروری نمی‌دهم.
-   - اگر بعد از باز شدن برنامه هنوز ثبت فیش مشکل داشت، علت را جداگانه از مسیر form/validation/RLS بررسی می‌کنم.
+1. مرورگر از یک شاخه‌ی routing خارج می‌شود و وارد شاخه‌ی دیگر می‌شود.
+2. کوئری‌های `useQuery` با `queryKey` متفاوت (`product` در مقابل `product-edit`) دوباره از صفر اجرا می‌شوند.
+3. در نتیجه صفحه‌ی ویرایش با تأخیر mount می‌شود، و رفتار «باید انصراف بزنم تا صفحه بعدی بیاید» به همین خاطر دیده می‌شود (در واقع navigation اول stuck نیست، بلکه ProductForm منتظر داده‌ی fetch جدید است و چیزی روی صفحه نمایان نیست تا چند ثانیه).
 
-5. اعتبارسنجی پس از اعمال
-   - preview را روی `/` تست می‌کنم تا دیگر روی «در حال بارگذاری…» نماند و به login/dashboard برسد.
-   - console و network را چک می‌کنم تا خطای dynamic import/route abort تکرار نشود.
-   - مسیرهای مرتبط با markdown (`/knowledge/...` و `/academy/...`) از نظر import و sanitization بررسی می‌شوند تا dependency سنگین جدیدی وارد نشود.
+این جدا بودن **هیچ مزیت کاربردی** ندارد — هر دو صفحه دقیقاً یک محصول را نشان می‌دهند، فقط یکی فقط‌خواندنی است.
 
-Self-Host Acceptance Check برنامه‌ریزی‌شده:
-- بدون secret در frontend یا repo.
-- بدون CDN/API خارجی جدید.
-- سازگار با Linux + Docker + self-host؛ حذف `jsdom/isomorphic-dompurify` حتی سازگاری Worker/Docker را بهتر می‌کند.
-- بدون migration دیتابیس، چون اصلاح فعلی کد/وابستگی است.
-- RBAC/RLS دور زده نمی‌شود؛ guardهای موجود حفظ می‌شوند.
-- UI فارسی، RTL و mobile-first حفظ می‌شود.
+## راه‌حل پیشنهادی: یک صفحه با دو حالت
+
+حذف صفحه‌ی جداگانه‌ی ویرایش و افزودن حالت ویرایش درون‌خطی به همان صفحه‌ی محصول، شبیه pattern موجود در سایر بخش‌های پروژه.
+
+### تغییرات
+
+1. **`src/routes/_app.products.$id.tsx`**
+   - افزودن state داخلی `mode: "view" | "edit"` (پیش‌فرض `view`).
+   - دکمه‌ی «ویرایش» به‌جای `navigate(...)` فقط `setMode("edit")` می‌کند → هیچ تغییر URL، هیچ refetch، فوری.
+   - وقتی `mode === "edit"` کارت اطلاعات بالا با `<ProductForm />` جایگزین می‌شود (همان دیتای از قبل بارگذاری‌شده به‌عنوان `initial` پاس می‌شود — بدون کوئری دوم).
+   - بعد از ذخیره موفق: `setMode("view")` + `queryClient.invalidateQueries(["product", id])`.
+   - دکمه‌ی «انصراف» در فرم → `setMode("view")`.
+   - برای حفظ deep-link، می‌توان از search param `?edit=1` استفاده کرد (اختیاری) تا کاربر بتواند مستقیم در حالت ویرایش وارد شود.
+
+2. **`src/routes/_app.products_.$id.edit.tsx`**
+   - حذف فایل. (یا تبدیل به redirect به `/products/$id?edit=1` برای سازگاری با لینک‌های قدیمی.)
+
+3. **`src/routeTree.gen.ts`**
+   - خودکار با حذف فایل بازتولید می‌شود — دستی ویرایش نمی‌شود.
+
+4. **سایر مکان‌هایی که به `/products_/$id/edit` لینک می‌دهند**
+   - با `rg` پیدا و به `/products/$id` (با state ویرایش) به‌روزرسانی می‌شوند.
+
+### مزایا
+
+- یک کلیک روی «ویرایش» → فوری فرم باز می‌شود، بدون refetch و بدون تأخیر صفحه‌ی سفید.
+- دیتا یک بار fetch می‌شود؛ بار شبکه و سرور کمتر.
+- UX روان‌تر و سازگار با سایر pageهای پروژه.
+- bundle کوچک‌تر (یک route کمتر).
+
+### ملاحظات
+
+- `ProductForm` همین الان طوری ساخته شده که `initial` می‌گیرد و در ویرایش کار می‌کند — هیچ refactor عمیقی لازم ندارد.
+- تمام دیتای لازم (`brand`, `category`, `labels`, `dynamicValues`) در همان کوئری اولیه‌ی صفحه نمایش fetch می‌شود تا حالت edit بدون تأخیر باز شود.
+- منطق ذخیره (`update products` + sync labels + dynamic values) از `_app.products_.$id.edit.tsx` به handler داخلی صفحه‌ی واحد منتقل می‌شود.
+- RLS، RBAC (`requirePermission("products","update")`)، و audit log دست‌نخورده باقی می‌مانند — همان guardهای موجود حفظ می‌شوند، فقط در حالت ویرایش بررسی `canUpdate` انجام می‌شود (که الان هم هست).
+
+تأیید کنید تا اجرا کنم.

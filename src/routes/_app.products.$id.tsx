@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
@@ -23,6 +23,13 @@ import { formatDateFa } from "@/lib/i18n/formatters";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
 import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
+import { ProductForm } from "@/components/products/ProductForm";
+import type { ProductFormValues } from "@/lib/products/schemas";
+import {
+  fetchProductDynamicValues,
+  saveProductDynamicValues,
+  deleteAllDynamicValuesForProduct,
+} from "@/lib/products/category-attrs";
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -32,12 +39,15 @@ export const Route = createFileRoute("/_app/products/$id")({
 function ProductDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { roles } = useAuth();
   const canUpdate = hasPermission(roles, "products", "update");
   const canDelete = hasPermission(roles, "products", "delete");
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["product", id],
@@ -73,6 +83,17 @@ function ProductDetailPage() {
         full_name: profiles.find((x) => x.id === o.user_id)?.full_name ?? "—",
         created_at: o.created_at,
       })) };
+    },
+  });
+
+  const editDataQ = useQuery({
+    queryKey: ["product-edit-extras", id],
+    enabled: editMode,
+    queryFn: async () => {
+      const { data: links } = await supabase
+        .from("product_label_links").select("label_id").eq("product_id", id);
+      const dynamicValues = await fetchProductDynamicValues(id);
+      return { labelIds: (links ?? []).map((l) => l.label_id), dynamicValues };
     },
   });
 
@@ -119,6 +140,91 @@ function ProductDetailPage() {
     }
   };
 
+  const handleSave = async (
+    v: ProductFormValues,
+    dynamic: { values: Record<string, string>; defs: any[]; categoryChanged: boolean },
+  ) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("products").update({
+        name: v.name,
+        brand_id: v.brand_id || null,
+        category_id: v.category_id || null,
+        product_type: v.product_type,
+        base_currency: v.base_currency,
+        stock_status: v.stock_status,
+        status: v.status,
+        unit: v.unit || null,
+        color: v.color || null,
+        capacity: v.capacity || null,
+        model: v.model || null,
+        primary_spec: v.primary_spec || null,
+        description: v.description || null,
+        technical_notes: v.technical_notes || null,
+      }).eq("id", id);
+      if (error) throw error;
+
+      const existingIds = new Set(editDataQ.data?.labelIds ?? []);
+      const nextIds = new Set(v.label_ids);
+      const toAdd = [...nextIds].filter((x) => !existingIds.has(x));
+      const toRemove = [...existingIds].filter((x) => !nextIds.has(x));
+      if (toAdd.length > 0) {
+        const rows = toAdd.map((label_id) => ({ product_id: id, label_id }));
+        const { error: addErr } = await supabase.from("product_label_links").insert(rows);
+        if (addErr) throw addErr;
+      }
+      if (toRemove.length > 0) {
+        const { error: rmErr } = await supabase
+          .from("product_label_links").delete().eq("product_id", id).in("label_id", toRemove);
+        if (rmErr) throw rmErr;
+      }
+
+      if (dynamic.categoryChanged) await deleteAllDynamicValuesForProduct(id);
+      if (v.category_id && dynamic.defs.length > 0) {
+        await saveProductDynamicValues(id, dynamic.defs, dynamic.values);
+      } else if (!v.category_id) {
+        await deleteAllDynamicValuesForProduct(id);
+      }
+
+      toast.success("تغییرات ذخیره شد");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["product", id] }),
+        queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
+        queryClient.invalidateQueries({ queryKey: ["product-dynamic-attrs", id] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+      ]);
+      setEditMode(false);
+    } catch (e: any) {
+      const code = e?.code ?? "";
+      const msg = String(e?.message ?? "");
+      if (code === "23505" || /duplicate key|sku/i.test(msg)) {
+        toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
+      } else {
+        toast.error(msg || "خطا در ذخیره");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const initialFormValues: Partial<ProductFormValues> = {
+    name: p.name,
+    brand_id: p.brand?.id ?? null,
+    category_id: p.category?.id ?? null,
+    product_type: p.product_type,
+    base_currency: p.base_currency,
+    stock_status: p.stock_status,
+    status: p.status,
+    unit: p.unit ?? "",
+    color: p.color ?? "",
+    capacity: p.capacity ?? "",
+    model: p.model ?? "",
+    primary_spec: p.primary_spec ?? "",
+    description: p.description ?? "",
+    technical_notes: p.technical_notes ?? "",
+    label_ids: editDataQ.data?.labelIds ?? labels.map((l: any) => l.id),
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -129,8 +235,8 @@ function ProductDetailPage() {
             <Button asChild variant="outline" size="sm">
               <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
-            {canUpdate && (
-              <Button size="sm" onClick={() => navigate({ to: "/products/$id/edit", params: { id } })}>
+            {canUpdate && !editMode && (
+              <Button size="sm" onClick={() => setEditMode(true)}>
                 <Pencil className="ms-1 h-4 w-4" />ویرایش
               </Button>
             )}
@@ -143,6 +249,27 @@ function ProductDetailPage() {
         }
       />
 
+      {editMode ? (
+        editDataQ.isLoading ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری فرم...</div>
+        ) : (
+          <Card>
+            <CardContent className="p-4">
+              <ProductForm
+                initial={initialFormValues}
+                existingSku={p.sku ?? null}
+                isEdit
+                initialDynamicValues={editDataQ.data?.dynamicValues ?? {}}
+                initialCategoryId={p.category?.id ?? null}
+                onSubmit={handleSave}
+                loading={saving}
+                submitLabel="ذخیره تغییرات"
+                onCancel={() => setEditMode(false)}
+              />
+            </CardContent>
+          </Card>
+        )
+      ) : (
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardContent className="grid gap-3 p-4 md:grid-cols-2">
@@ -225,6 +352,7 @@ function ProductDetailPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       <OwnerAssignDialog
         productId={id}
