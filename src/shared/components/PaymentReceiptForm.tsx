@@ -23,6 +23,9 @@ import {
   ReceiptDocumentPicker,
   uploadReceiptDocuments,
 } from "@/components/accounting/PaymentReceiptDocuments";
+import { extractReceiptFromBytes } from "@/server/receipt-ocr-bytes.functions";
+import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
+import { parseDateToGregorianIso } from "@/lib/i18n/jalali";
 import {
   WaybillCustomFieldsInput,
   validateCustomData,
@@ -257,6 +260,8 @@ export function PaymentReceiptForm() {
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [customData, setCustomData] = useState<CustomData>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
+  const [autoFilling, setAutoFilling] = useState(false);
+  const autoExtractedRef = useRef<Set<string>>(new Set());
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -292,6 +297,106 @@ export function PaymentReceiptForm() {
   });
 
   const errors = form.formState.errors;
+
+  /* ---- Auto-extract & autofill on new file pick (admin/accountant only) ---- */
+  useEffect(() => {
+    let cancelled = false;
+    async function processNew() {
+      const fresh = stagedFiles.filter(
+        (f) => !autoExtractedRef.current.has(`${f.name}|${f.size}|${f.lastModified}`),
+      );
+      if (fresh.length === 0) return;
+      for (const f of fresh) {
+        autoExtractedRef.current.add(`${f.name}|${f.size}|${f.lastModified}`);
+      }
+      setAutoFilling(true);
+      try {
+        for (const file of fresh) {
+          // Read as base64
+          const buf = await file.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let bin = "";
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          const b64 = btoa(bin);
+          let ocr;
+          try {
+            ocr = await extractReceiptFromBytes({
+              data: { file_name: file.name, mime: file.type || "application/octet-stream", base64: b64 },
+            });
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "خطای ناشناخته";
+            toast.error(`استخراج خودکار «${file.name}» ناموفق: ${msg}`);
+            continue;
+          }
+          if (cancelled) return;
+          if (!ocr.raw_text || !ocr.raw_text.trim()) {
+            if (ocr.warnings.length > 0) {
+              toast.info(ocr.warnings[0]);
+            }
+            continue;
+          }
+          const parsed = parseReceiptText(ocr.raw_text);
+          const filled: string[] = [];
+
+          // Only fill empty fields to avoid overriding manual edits.
+          if (parsed.amount != null && !form.getValues("amount")) {
+            form.setValue("amount", parsed.amount, { shouldValidate: true, shouldDirty: true });
+            filled.push("مبلغ");
+          }
+          if (parsed.tracking_number && !form.getValues("tracking_number")) {
+            form.setValue("tracking_number", parsed.tracking_number, { shouldValidate: true, shouldDirty: true });
+            filled.push("شماره پیگیری");
+          }
+          if (parsed.receipt_date) {
+            const iso = parseDateToGregorianIso(parsed.receipt_date);
+            if (iso && iso <= today && !form.getValues("payment_date")) {
+              form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true });
+              filled.push("تاریخ واریز");
+            }
+          }
+          if (parsed.receipt_time && !form.getValues("payment_time")) {
+            const tm = /^(\d{1,2}):(\d{2})/.exec(parsed.receipt_time);
+            if (tm) {
+              const hh = tm[1].padStart(2, "0");
+              form.setValue("payment_time", `${hh}:${tm[2]}`, { shouldDirty: true });
+              form.setValue("receipt_time", `${hh}:${tm[2]}`, { shouldDirty: true });
+              filled.push("ساعت");
+            }
+          }
+          if (parsed.source_bank && !form.getValues("source_bank")) {
+            form.setValue("source_bank", parsed.source_bank, { shouldDirty: true });
+            filled.push("بانک مبدأ");
+          }
+          if (parsed.destination_bank && !form.getValues("destination_bank")) {
+            form.setValue("destination_bank", parsed.destination_bank, { shouldDirty: true });
+            filled.push("بانک مقصد");
+          }
+          if (parsed.payer_name_on_receipt && !form.getValues("payer_name_on_receipt")) {
+            form.setValue("payer_name_on_receipt", parsed.payer_name_on_receipt, { shouldDirty: true });
+          }
+          if (parsed.receiver_name_on_receipt && !form.getValues("receiver_name_on_receipt")) {
+            form.setValue("receiver_name_on_receipt", parsed.receiver_name_on_receipt, { shouldDirty: true });
+          }
+          if (parsed.document_channel && parsed.document_channel !== "unknown" && !form.getValues("document_channel")) {
+            form.setValue("document_channel", parsed.document_channel, { shouldDirty: true });
+          }
+
+          if (filled.length > 0) {
+            toast.success(`به‌صورت خودکار از فیش پر شد: ${filled.join("، ")}`);
+          } else {
+            toast.info("استخراج انجام شد ولی فیلد قابل اطمینانی پیدا نشد؛ لطفاً دستی پر کنید.");
+          }
+        }
+      } finally {
+        if (!cancelled) setAutoFilling(false);
+      }
+    }
+    processNew();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stagedFiles]);
 
   // Customer search
   const [customerOpen, setCustomerOpen] = useState(false);
@@ -1322,6 +1427,12 @@ export function PaymentReceiptForm() {
             onChange={setStagedFiles}
             disabled={mutation.isPending}
           />
+          {autoFilling && (
+            <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              در حال استخراج خودکار اطلاعات از فایل آپلودشده…
+            </div>
+          )}
 
           {customFields.length > 0 && (
             <div className="rounded-md border bg-muted/30 p-3">
