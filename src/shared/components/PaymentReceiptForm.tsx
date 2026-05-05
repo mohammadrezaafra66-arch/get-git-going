@@ -1268,11 +1268,11 @@ export function PaymentReceiptForm() {
             <div className="space-y-1">
               <Label>تاریخ ثبت فیش</Label>
               <Input
-                type="date"
-                value={today}
+                value={isoToJalaliDisplay(today)}
                 readOnly
                 disabled
-                className="bg-muted/50 cursor-not-allowed"
+                dir="ltr"
+                className="bg-muted/50 cursor-not-allowed text-center"
               />
               <p className="text-[10px] text-muted-foreground">
                 به‌صورت خودکار با تاریخ امروز پر می‌شود.
@@ -1281,15 +1281,14 @@ export function PaymentReceiptForm() {
 
             <div className="space-y-1">
               <Label>تاریخ روی فیش واریزی <span className="text-destructive">*</span></Label>
-              <Input
-                type="date"
-                max={today}
-                {...form.register("payment_date")}
-                className={
-                  !watchedPaymentDate || errors.payment_date
-                    ? "border-destructive ring-1 ring-destructive bg-destructive/5"
-                    : ""
+              <JalaliDateInput
+                value={watchedPaymentDate}
+                onChange={(iso) =>
+                  form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true })
                 }
+                max={today}
+                placeholder="انتخاب تاریخ شمسی"
+                invalid={!watchedPaymentDate || Boolean(errors.payment_date)}
               />
               {!watchedPaymentDate && !errors.payment_date && (
                 <p className="text-xs text-destructive font-medium">
