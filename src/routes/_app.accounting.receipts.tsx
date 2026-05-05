@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Loader2, Check, ChevronsUpDown, Eye } from "lucide-react";
+import { Plus, Loader2, Check, ChevronsUpDown, Eye, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +72,144 @@ function ReceiptsListPage() {
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const debouncedCustomer = useDebounce(customerSearch, 350);
+  const [exporting, setExporting] = useState(false);
+
+  const STATUS_FA: Record<string, string> = {
+    pending_review: "در انتظار بررسی",
+    approved: "تأییدشده",
+    rejected: "ردشده",
+  };
+  const RECEIPT_TYPE_FA: Record<string, string> = {
+    prepayment: "پیش واریز (اعتبار)",
+    debt_payment: "پرداخت بدهی",
+  };
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      let q = supabase
+        .from("payment_receipts")
+        .select(
+          `id, amount, payment_date, payment_time, receipt_time, tracking_number, status,
+           receipt_type, posting_status, posted_at, description, rejection_reason, bank_name,
+           source_bank, destination_bank, payer_name, payer_phone, payer_accounting_code,
+           receiver_name, receiver_phone, receiver_accounting_code, created_at, created_by,
+           customer:customers(id, name, phone, accounting_code),
+           destination_bank_account:bank_accounts!payment_receipts_destination_bank_account_id_fkey(id, title),
+           receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, name)`
+        )
+        .order("created_at", { ascending: false })
+        .limit(5000);
+
+      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (customerId) q = q.eq("customer_id", customerId);
+      if (dateFrom) q = q.gte("payment_date", dateFrom);
+      if (dateTo) q = q.lte("payment_date", dateTo);
+
+      const { data, error } = await q;
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        toast.error("داده‌ای برای خروجی وجود ندارد");
+        return;
+      }
+
+      type Row = {
+        id: string;
+        amount: number;
+        payment_date: string;
+        payment_time: string | null;
+        receipt_time: string | null;
+        tracking_number: string;
+        status: string;
+        receipt_type: string;
+        posting_status: string | null;
+        posted_at: string | null;
+        description: string | null;
+        rejection_reason: string | null;
+        bank_name: string | null;
+        source_bank: string | null;
+        destination_bank: string | null;
+        payer_name: string;
+        payer_phone: string | null;
+        payer_accounting_code: string | null;
+        receiver_name: string;
+        receiver_phone: string | null;
+        receiver_accounting_code: string | null;
+        created_at: string;
+        created_by: string | null;
+        customer: { name: string | null; phone: string | null; accounting_code: string | null } | null;
+        destination_bank_account: { title: string | null } | null;
+        receiver_party: { name: string | null } | null;
+      };
+
+      const typed = data as unknown as Row[];
+
+      // Resolve creator names in a single batched query
+      const creatorIds = Array.from(
+        new Set(typed.map((r) => r.created_by).filter((x): x is string => Boolean(x))),
+      );
+      const creatorMap = new Map<string, string>();
+      if (creatorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", creatorIds);
+        (profs ?? []).forEach((p) => {
+          creatorMap.set((p as { id: string }).id, (p as { full_name: string | null }).full_name ?? "");
+        });
+      }
+
+      const rows = typed.map((r) => {
+        const receiverTarget = r.destination_bank_account?.title
+          ? `بانک ما: ${r.destination_bank_account.title}`
+          : r.receiver_party?.name
+            ? `طرف خارجی: ${r.receiver_party.name}`
+            : r.receiver_name || "—";
+        return {
+          "تاریخ ثبت (شمسی)": isoToJalaliDisplay(r.created_at?.slice(0, 10)),
+          "تاریخ فیش (شمسی)": isoToJalaliDisplay(r.payment_date),
+          "ساعت فیش": r.payment_time?.slice(0, 5) ?? "",
+          "ثبت‌کننده (کاربر)": (r.created_by && creatorMap.get(r.created_by)) || "—",
+          "مشتری مرتبط": r.customer?.name ?? "—",
+          "تلفن مشتری": r.customer?.phone ?? "",
+          "کد آسان مشتری": r.customer?.accounting_code ?? "",
+          "واریزکننده (نام)": r.payer_name,
+          "واریزکننده (تلفن)": r.payer_phone ?? "",
+          "واریزکننده (کد آسان)": r.payer_accounting_code ?? "",
+          "بانک مبدأ": r.source_bank ?? r.bank_name ?? "",
+          "گیرنده": receiverTarget,
+          "گیرنده (نام روی فیش)": r.receiver_name,
+          "گیرنده (تلفن)": r.receiver_phone ?? "",
+          "گیرنده (کد آسان)": r.receiver_accounting_code ?? "",
+          "بانک مقصد": r.destination_bank ?? "",
+          "مبلغ (تومان)": Number(r.amount),
+          "شماره پیگیری": r.tracking_number,
+          "نوع فیش": RECEIPT_TYPE_FA[r.receipt_type] ?? r.receipt_type,
+          "وضعیت": STATUS_FA[r.status] ?? r.status,
+          "وضعیت ثبت سند": r.posting_status ?? "",
+          "تاریخ ثبت سند (شمسی)": r.posted_at ? isoToJalaliDisplay(r.posted_at.slice(0, 10)) : "",
+          "علت رد": r.rejection_reason ?? "",
+          "توضیحات": r.description ?? "",
+          "شناسه فیش": r.id,
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = Object.keys(rows[0]).map((k) => ({
+        wch: Math.min(40, Math.max(12, k.length + 4)),
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "فیش‌ها");
+      const ts = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `payment-receipts-${ts}.xlsx`);
+      toast.success(`خروجی اکسل آماده شد (${toFaDigits(String(rows.length))} ردیف)`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "خطای ناشناخته";
+      toast.error(`دریافت خروجی ناموفق بود: ${msg}`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const { data: customers = [] } = useQuery({
     queryKey: ["receipts-filter-customers", debouncedCustomer],
@@ -121,12 +261,27 @@ function ReceiptsListPage() {
         title="فیش‌های واریزی"
         description="مدیریت و بررسی فیش‌های واریزی مشتریان"
         actions={
-          <Button asChild>
-            <Link to="/accounting/receipts/create">
-              <Plus className="ml-2 h-4 w-4" />
-              ثبت فیش جدید
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="ml-2 h-4 w-4" />
+              )}
+              خروجی اکسل
+            </Button>
+            <Button asChild>
+              <Link to="/accounting/receipts/create">
+                <Plus className="ml-2 h-4 w-4" />
+                ثبت فیش جدید
+              </Link>
+            </Button>
+          </div>
         }
       />
 
