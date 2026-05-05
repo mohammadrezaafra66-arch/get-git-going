@@ -97,6 +97,7 @@ import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.
 import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
+import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
@@ -586,6 +587,11 @@ const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   path: '/admin/roles',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminReceiptFieldsRoute = AppAdminReceiptFieldsRouteImport.update({
+  id: '/admin/receipt-fields',
+  path: '/admin/receipt-fields',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   id: '/admin/profile-fields',
   path: '/admin/profile-fields',
@@ -829,6 +835,7 @@ export interface FileRoutesByFullPath {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -953,6 +960,7 @@ export interface FileRoutesByTo {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -1080,6 +1088,7 @@ export interface FileRoutesById {
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -1208,6 +1217,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/profile-fields'
+    | '/admin/receipt-fields'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/waybill-fields'
@@ -1332,6 +1342,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/profile-fields'
+    | '/admin/receipt-fields'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/waybill-fields'
@@ -1458,6 +1469,7 @@ export interface FileRouteTypes {
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/profile-fields'
+    | '/_app/admin/receipt-fields'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
     | '/_app/admin/waybill-fields'
@@ -2183,6 +2195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRolesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/receipt-fields': {
+      id: '/_app/admin/receipt-fields'
+      path: '/admin/receipt-fields'
+      fullPath: '/admin/receipt-fields'
+      preLoaderRoute: typeof AppAdminReceiptFieldsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/profile-fields': {
       id: '/_app/admin/profile-fields'
       path: '/admin/profile-fields'
@@ -2654,6 +2673,7 @@ interface AppRouteChildren {
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
+  AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
@@ -2740,6 +2760,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
+  AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,
@@ -2834,3 +2855,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
