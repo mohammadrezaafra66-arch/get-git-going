@@ -206,6 +206,11 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  // PDF density / font controls
+  const [pdfFontSize, setPdfFontSize] = useState<number>(10);
+  const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
+  const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
@@ -263,6 +268,11 @@ function SaleListDetailPage() {
         change_percent: it.change_percent !== null ? Number(it.change_percent) : null,
         stock_status: it.stock_status,
       })),
+      options: {
+        fontSize: pdfFontSize,
+        rowPaddingY: pdfRowPadY,
+        cellPaddingX: pdfCellPadX,
+      },
     };
   };
 
