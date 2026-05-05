@@ -2,6 +2,8 @@ import pdfMake from "pdfmake/build/pdfmake";
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 // @ts-expect-error - no bundled types
 import bidiFactory from "bidi-js";
+// @ts-expect-error - no bundled types
+import { PersianShaper } from "arabic-persian-reshaper";
 import vazirRegularB64 from "@/assets/fonts/vazirmatn-regular.b64?raw";
 import vazirBoldB64 from "@/assets/fonts/vazirmatn-bold.b64?raw";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
@@ -21,8 +23,13 @@ function shapeRtl(text: string): string {
     const lines = text.split("\n");
     return lines
       .map((line) => {
-        const embed = bidi.getEmbeddingLevels(line, "rtl");
-        return bidi.getReorderedString(line, embed);
+        // 1) Reshape logical Arabic/Persian letters into their connected
+        //    presentation forms (initial/medial/final/isolated).
+        const shaped = PersianShaper.convertArabic(line);
+        // 2) Reorder bidi runs into visual order so numbers/Latin appear
+        //    at the correct on-screen position inside the RTL line.
+        const embed = bidi.getEmbeddingLevels(shaped, "rtl");
+        return bidi.getReorderedString(shaped, embed);
       })
       .join("\n");
   } catch {
