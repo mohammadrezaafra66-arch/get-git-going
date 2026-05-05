@@ -1373,15 +1373,23 @@ export function PaymentReceiptForm() {
               </div>
 
               <div className="space-y-1">
-                <Label>حساب مقصد (اختیاری)</Label>
+                <Label>
+                  حساب مقصد (بانک ما){" "}
+                  <span className="text-[10px] text-muted-foreground">
+                    — یا این، یا «طرف حساب گیرنده»
+                  </span>
+                </Label>
                 <Select
                   value={form.watch("destination_bank_account_id") || "__none"}
+                  disabled={Boolean(form.watch("receiver_party_id"))}
                   onValueChange={(v) => {
                     if (v === "__none") {
                       form.setValue("destination_bank_account_id", "", { shouldDirty: true });
                       return;
                     }
                     form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                    // mutually exclusive with external party
+                    form.setValue("receiver_party_id", "", { shouldDirty: true });
                     const b = bankAccounts.find((x) => x.id === v);
                     if (b) {
                       if (!form.getValues("destination_bank")) {
