@@ -1006,6 +1006,32 @@ export function PaymentReceiptForm() {
           }
           mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
         })();
+      }, (errors) => {
+        console.warn("[receipt-form] validation failed", errors);
+        const labels: Record<string, string> = {
+          customer_id: "مشتری",
+          payer_name: "نام پرداخت‌کننده",
+          receiver_name: "نام گیرنده",
+          amount: "مبلغ",
+          payment_date: "تاریخ پرداخت",
+          payment_time: "ساعت پرداخت",
+          tracking_number: "شماره پیگیری",
+          receiver_party_id: "گیرنده (حساب بانکی ما یا طرف خارجی)",
+          destination_bank_account_id: "حساب بانکی مقصد",
+        };
+        const fields = Object.keys(errors);
+        const named = fields.map((f) => labels[f] ?? f);
+        const first = fields[0];
+        toast.error(
+          named.length
+            ? `فیلدهای ناقص: ${named.join("، ")}`
+            : "فرم نامعتبر است",
+        );
+        if (first) {
+          const el = document.querySelector(`[name="${first}"]`) as HTMLElement | null;
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          el?.focus?.();
+        }
       })}
       className="space-y-6"
       dir="rtl"
@@ -1715,16 +1741,28 @@ export function PaymentReceiptForm() {
         >
           انصراف
         </Button>
-        <Button
-          type="submit"
-          disabled={
-            mutation.isPending ||
-            (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
-          }
-        >
-          {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-          ثبت فیش
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            type="submit"
+            disabled={
+              mutation.isPending ||
+              (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
+            }
+          >
+            {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            ثبت فیش
+          </Button>
+          {watchedReceiptType === "payment" && allocations.length === 0 && (
+            <p className="text-xs text-destructive">
+              برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
+            </p>
+          )}
+          {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
+            <p className="text-xs text-destructive">
+              مجموع تخصیص بیشتر از مبلغ فیش است.
+            </p>
+          )}
+        </div>
       </div>
     </form>
 
