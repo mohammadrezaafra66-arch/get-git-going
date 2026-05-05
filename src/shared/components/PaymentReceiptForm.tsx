@@ -293,6 +293,7 @@ export function PaymentReceiptForm() {
       receiver_name: "",
       receiver_phone: "",
       receiver_accounting_code: "",
+      beneficiary_accounting_code: "",
       amount: undefined as unknown as number,
       payment_date: today,
       payment_time: new Date().toTimeString().slice(0, 5),
