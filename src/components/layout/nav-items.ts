@@ -91,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/settings", label: "تنظیمات فروشگاه", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/marketing-channels", label: "کانال‌های تبلیغاتی", icon: Megaphone, module: "roles", group: "admin" },
   { to: "/admin/waybill-fields", label: "فیلدهای بیجک", icon: Settings, module: "roles", group: "admin" },
+  { to: "/admin/receipt-fields", label: "فیلدهای فیش واریزی", icon: Settings, module: "roles", group: "admin" },
   { to: "/audit-logs", label: "Audit Logs", icon: ScrollText, module: "audit-logs", group: "admin" },
   { to: "/bot-api-keys", label: "کلیدهای API ربات", icon: KeyRound, module: "bot-api-keys", group: "admin" },
 ];
