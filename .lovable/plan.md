@@ -1,61 +1,78 @@
-## دلیل کندی
 
-وقتی روی «ثبت» در کارت «نرخ ارزهای مؤثر» می‌زنید، تابع `saveCurrencyRateAndRecompute` در `src/lib/pricing/effective-currencies.ts` این کار را می‌کند:
+# افزودن آپلود فایل (عکس / ویدیو / ویس) به فرم بازخورد
 
-1. غیرفعال‌سازی نرخ قبلی + درج نرخ جدید + audit (سریع، ۳ کوئری).
-2. گرفتن همهٔ محصولات مؤثر آن ارز (مثلاً USD می‌تواند ده‌ها/صدها محصول باشد).
-3. گرفتن همهٔ `sale_price_types` فعال (مثلاً ۵–۱۰ نوع).
-4. **یک حلقهٔ تو در تو، کاملاً سریال** روی `محصولات × انواع قیمت فروش` که برای هر سلول:
-   - `calculateSalePrice(...)` صدا می‌زند (که خودش چند کوئری به DB می‌زند: قیمت خرید فعال، نرخ ارز، قانون قیمت‌گذاری، …).
-   - یک `select` جدا برای `product_computed_prices` (قیمت قبلی).
-   - یک `upsert` در `product_computed_prices`.
+در حال حاضر فرم بازخورد (`src/shared/components/FeedbackForm.tsx`) فقط امکان «چسباندن URL» را دارد و کاربر نمی‌تواند مستقیماً فایل آپلود کند. هدف: کاربر بتواند از داخل فرم، عکس، ویدیو یا ویس (حتی ضبط مستقیم) ضمیمه کند.
 
-برای N محصول و M نوع قیمت، این یعنی حدوداً **N × M × ۵ رفت‌وبرگشت HTTP از مرورگر به Supabase، همه پشت سر هم**. با ۵۰ محصول و ۵ نوع قیمت = ۱٬۲۵۰ درخواست سریال؛ با لاتنسی ۱۵۰ms هر کدام، چند دقیقه طول می‌کشد. این علت دقیق «خیلی طول می‌کشد تا پیغام موفقیت بدهد» است.
+## تغییرات دیتابیس / استوریج
 
-به‌علاوه، invalidate شدن `effective-currencies` و `my-workbench` بعد از پایان، باعث رفرش‌های اضافه هم می‌شود.
+ایجاد یک bucket اختصاصی در Lovable Cloud برای پیوست‌های بازخورد:
 
-## برنامهٔ رفع
+- نام bucket: `feedback-attachments`
+- نوع: **private** (نه public) — لینک‌ها از طریق signed URL ارائه می‌شوند تا فقط کاربران مجاز ببینند.
+- ساختار مسیر: `{user_id}/{feedback_temp_id}/{timestamp}_{filename}`
+- محدودیت‌ها در RLS و در کلاینت:
+  - حداکثر حجم هر فایل: 25MB
+  - فرمت‌های مجاز: `image/*`, `video/mp4`, `video/webm`, `video/quicktime`, `audio/*`
+- RLS روی `storage.objects`:
+  - INSERT: فقط کاربر authenticated می‌تواند داخل پوشه‌ای که نام آن برابر `auth.uid()` است آپلود کند.
+  - SELECT: مالک فایل + نقش‌های `admin` و `feedback_reviewer` (با `has_role`).
+  - DELETE: فقط مالک تا قبل از submit شدن بازخورد، و admin همیشه.
 
-هدف: زمان ثبت نرخ ارز را از چند دقیقه به چند ثانیه برسانیم، بدون شکستن منطق قیمت‌گذاری.
+migration تحت `supabase/migrations/` ایجاد می‌شود (idempotent، reversible).
 
-### ۱) انتقال محاسبهٔ سنگین به یک Server Function
+## تغییرات بک‌اند (Server Functions)
 
-ایجاد `src/server/recompute-prices.functions.ts` با `createServerFn` (با `requireSupabaseAuth`) که:
+دو server function جدید در `src/server/feedback-attachments.functions.ts`:
 
-- ورودی: `{ currency, newRate }` (با Zod اعتبارسنجی).
-- روی سرور (نزدیک به DB، بدون لاتنسی مرورگر) همان منطق فعلی را اجرا می‌کند.
-- مراحل ۱–۳ (insert نرخ + audit) را همان‌جا انجام می‌دهد.
-- برای حلقهٔ N×M از موازی‌سازی با چانک استفاده می‌کند (مثلاً `Promise.all` با `concurrency = 8`) — چون از سرور به DB لاتنسی بسیار کمتر است و موازی امن است.
-- به‌جای دو کوئری `select prev + upsert`، از یک `upsert(...).select("rounded_sale_price")` استفاده می‌کند و `old_price` را از یک batch‌ select اولیه (`product_computed_prices` با `.in("product_id", ids)`) می‌گیرد — یعنی فقط ۱ select اضافه به‌جای N×M select.
-- خروجی: همان `RecomputeSummary[]` فعلی تا UI تغییر نکند.
+1. `createFeedbackUploadUrl` — با `requireSupabaseAuth`، یک signed upload URL برمی‌گرداند (validation: نوع MIME، حجم، تعداد کل پیوست‌های همان session).
+2. `getFeedbackAttachmentSignedUrl` — برای نمایش پیوست‌های قبلی در صفحه جزئیات بازخورد، signed URL کوتاه‌مدت تولید می‌کند.
 
-### ۲) بهینه‌سازی `calculateSalePrice` در سرور
+> دلیل استفاده از signed URL: bucket private است؛ هیچ لینک دائمی عمومی منتشر نمی‌شود → سازگار با خط‌مشی self-host و امنیت.
 
-داخل همان server function، قبل از حلقه:
-- یک‌بار `purchase_prices` فعال همهٔ محصولات را با `.in("product_id", ids)` بگیریم.
-- یک‌بار `pricing_rules` لازم را بگیریم.
-- یک‌بار `currency_rates` فعال را بگیریم (نرخ جدید را داریم).
-- نسخهٔ سبک `calculateSalePriceFromContext({ product, purchasePrice, rule, rate, spt })` بسازیم که هیچ کوئری اضافه نزند.
+## تغییرات UI — `FeedbackForm.tsx`
 
-این کار تعداد رفت‌وبرگشت‌ها را از O(N×M×چند) به O(۱ + N×M upsert) کاهش می‌دهد.
+جایگزینی کامل بخش «پیوست‌ها (URL)» با کامپوننت جدید:
 
-### ۳) تغییر کوچک سمت کلاینت
+- دکمه‌های انتخاب:
+  - «انتخاب عکس/ویدیو» (input file با `accept="image/*,video/*"`)
+  - «انتخاب فایل صوتی» (`accept="audio/*"`)
+  - «ضبط ویس» (با `MediaRecorder API` — ضبط mic و تولید Blob `audio/webm`)
+- هنگام انتخاب فایل:
+  1. اعتبارسنجی client (نوع + حجم) با پیام فارسی.
+  2. درخواست signed upload URL از server function.
+  3. آپلود مستقیم به Storage با progress bar (XHR برای پشتیبانی progress).
+  4. اضافه شدن به لیست پیوست‌ها به‌صورت `{ path, mime_type, size, name }`.
+- پیش‌نمایش هر پیوست بسته به نوع:
+  - عکس → thumbnail
+  - ویدیو → `<video controls>` کوچک
+  - صدا → `<audio controls>`
+- امکان حذف هر پیوست قبل از ثبت نهایی (هم از لیست و هم از Storage).
+- حفظ سازگاری با field فعلی `attachment_urls` در جدول `feedback_items`: به‌جای URLهای خام، **مسیرهای داخلی Storage (path)** ذخیره می‌شوند تا signed URL در زمان نمایش ساخته شود. در صورت نیاز برای backward compatibility، اگر مقدار با `http` شروع شد همان رفتار قبلی اعمال می‌شود.
 
-در `src/components/pricing/EffectiveCurrenciesPanel.tsx`:
-- `saveCurrencyRateAndRecompute(...)` را با فراخوانی server function جایگزین کنیم.
-- توست موقت «در حال بازمحاسبه…» نشان دهیم تا کاربر بداند کار در جریان است.
-- `invalidateQueries` ها بدون تغییر بمانند.
+## تغییرات نمایش بازخورد
 
-فایل قدیمی `src/lib/pricing/effective-currencies.ts`: تابع `fetchEffectiveCurrencies` بدون تغییر می‌ماند؛ تابع `saveCurrencyRateAndRecompute` به یک wrapper نازک روی server function تبدیل می‌شود (تا اگر جای دیگری هم استفاده شده باشد، نشکند).
+در `src/routes/_app.feedback_.$feedbackId.tsx` (و هرجا attachmentها نمایش داده می‌شود):
+- برای هر path، با `getFeedbackAttachmentSignedUrl` لینک امضاشده گرفته می‌شود.
+- رندر بر اساس MIME: image/video/audio inline؛ سایر موارد به‌صورت دکمه دانلود.
 
-### ۴) رعایت قوانین پروژه
+## رعایت قوانین مادر پروژه
 
-- بدون migration جدید (فقط بهینه‌سازی کد).
-- بدون secret جدید، بدون CDN خارجی.
-- RLS رعایت می‌شود چون از `requireSupabaseAuth` استفاده می‌کنیم نه `supabaseAdmin`.
-- `audit_logs` همچنان ثبت می‌شود.
-- خروجی نهایی شامل گزارش Self-Host Acceptance Check.
+- کاملاً self-host: از Lovable Cloud Storage (Supabase Storage) استفاده می‌شود، بدون CDN خارجی.
+- bucket **private** + RLS سختگیرانه + signed URL.
+- migration نوشته می‌شود؛ هیچ تغییر دستی روی schemaهای رزرو شده.
+- audit log: هنگام افزودن/حذف پیوست رویداد در `audit_logs` ثبت می‌شود.
+- فارسی، RTL، mobile-first؛ ضبط ویس با fallback پیام در صورت نبود مجوز mic.
+- بدون secret در frontend؛ آپلود از طریق signed URL سمت سرور.
 
-## نتیجهٔ مورد انتظار
+## فایل‌هایی که تغییر می‌کنند یا اضافه می‌شوند
 
-برای مثال ۵۰ محصول × ۵ نوع قیمت: از ~۱٬۲۵۰ درخواست سریال از مرورگر به ~۲–۴ ثانیه روی سرور با چند ده کوئری بهینه. UI و API بیرونی بدون تغییر باقی می‌ماند.
+- جدید: `supabase/migrations/{timestamp}_feedback_attachments_bucket.sql`
+- جدید: `src/server/feedback-attachments.functions.ts`
+- جدید: `src/shared/components/FeedbackAttachmentUploader.tsx` (استخراج منطق آپلود/ضبط)
+- ویرایش: `src/shared/components/FeedbackForm.tsx` (جایگزینی بخش پیوست‌ها)
+- ویرایش: `src/routes/_app.feedback_.$feedbackId.tsx` (نمایش پیوست‌ها با signed URL)
+- ویرایش: `src/routes/_app.feedback_.create.tsx` (در صورت نیاز برای پاس دادن user id به آپلودر)
+
+## نکته باز برای تأیید شما
+
+محدودیت پیشنهادی: **حداکثر ۵ پیوست در هر بازخورد، هر فایل تا ۲۵MB**. اگر مقدار دیگری مدنظر دارید قبل از پیاده‌سازی اعلام کنید (مثلاً برای ویدیوهای طولانی‌تر تا ۱۰۰MB).
