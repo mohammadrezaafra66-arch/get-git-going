@@ -208,11 +208,9 @@ function MarketRatesWorkshopPage() {
         )}
       </section>
 
-      {/* تاریخچه با فیلتر */}
-      <Card>
-        {/* placeholder anchor */}
-      </Card>
       {canWrite && <ExternalIngestionCard />}
+
+      {/* تاریخچه با فیلتر */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Filter className="h-4 w-4" /> تاریخچه نرخ‌ها</CardTitle>
