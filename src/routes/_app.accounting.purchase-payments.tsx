@@ -3,13 +3,14 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, CheckCircle2, Wallet } from "lucide-react";
+import { CalendarIcon, Loader2, CheckCircle2, Wallet, Search, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +29,10 @@ import {
 import {
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -71,6 +76,12 @@ function PurchasePaymentsPage() {
   const [tab, setTab] = useState<"unpaid" | "paid">("unpaid");
   const [target, setTarget] = useState<Row | null>(null);
   const [paidAt, setPaidAt] = useState<Date>(new Date());
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const [sortBy, setSortBy] = useState<
+    "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "deadline_asc"
+  >("date_desc");
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["purchase-payments", tab],
@@ -119,6 +130,45 @@ function PurchasePaymentsPage() {
     [rows],
   );
 
+  const filteredRows = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    let out = rows;
+    if (q) {
+      out = out.filter((r) => {
+        return (
+          (r.number ?? "").toLowerCase().includes(q) ||
+          (r.product?.name ?? "").toLowerCase().includes(q) ||
+          (r.supplier?.name ?? "").toLowerCase().includes(q)
+        );
+      });
+    }
+    if (tab === "unpaid" && overdueOnly) {
+      out = out.filter((r) => {
+        const d = r.payment_term?.days ?? 0;
+        return daysSince(r.purchase_date) > d;
+      });
+    }
+    const sorted = [...out];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc":
+          return a.purchase_date.localeCompare(b.purchase_date);
+        case "date_desc":
+          return b.purchase_date.localeCompare(a.purchase_date);
+        case "amount_asc":
+          return Number(a.total_amount) - Number(b.total_amount);
+        case "amount_desc":
+          return Number(b.total_amount) - Number(a.total_amount);
+        case "deadline_asc": {
+          const remA = (a.payment_term?.days ?? 0) - daysSince(a.purchase_date);
+          const remB = (b.payment_term?.days ?? 0) - daysSince(b.purchase_date);
+          return remA - remB;
+        }
+      }
+    });
+    return sorted;
+  }, [rows, debouncedSearch, sortBy, overdueOnly, tab]);
+
   return (
     <div className="space-y-4 pb-10" dir="rtl">
       <PageHeader
@@ -138,11 +188,65 @@ function PurchasePaymentsPage() {
         </TabsList>
 
         <TabsContent value={tab} className="mt-3">
+          <Card className="mb-3">
+            <CardContent className="flex flex-col gap-3 p-3 md:flex-row md:items-center md:justify-between">
+              <div className="relative w-full md:max-w-sm">
+                <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="جستجو شماره، محصول یا تأمین‌کننده..."
+                  className="pr-8 pl-8"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="پاک کردن جستجو"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {tab === "unpaid" && (
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                    <Switch checked={overdueOnly} onCheckedChange={setOverdueOnly} id="overdue-only" />
+                    <Label htmlFor="overdue-only" className="cursor-pointer text-xs">
+                      فقط دیرکردها
+                    </Label>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">مرتب‌سازی:</Label>
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                    <SelectTrigger className="h-9 w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="date_desc">جدیدترین خرید</SelectItem>
+                      <SelectItem value="date_asc">قدیمی‌ترین خرید</SelectItem>
+                      <SelectItem value="amount_desc">بیشترین مبلغ</SelectItem>
+                      <SelectItem value="amount_asc">کمترین مبلغ</SelectItem>
+                      <SelectItem value="deadline_asc">نزدیک‌ترین سررسید</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="mb-2 px-1 text-xs text-muted-foreground">
+            {toFaDigits(String(filteredRows.length))} مورد از {toFaDigits(String(rows.length))} نمایش داده شد
+          </div>
+
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
-              ) : rows.length === 0 ? (
+              ) : filteredRows.length === 0 ? (
                 <div className="py-10 text-center text-sm text-muted-foreground">موردی یافت نشد</div>
               ) : (
                 <div className="overflow-x-auto">
@@ -160,7 +264,7 @@ function PurchasePaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((r) => {
+                      {filteredRows.map((r) => {
                         const promised = r.payment_term?.days ?? 0;
                         const elapsed = daysSince(r.purchase_date);
                         const overdue = !r.paid_at && elapsed > promised;
