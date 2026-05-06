@@ -347,9 +347,92 @@ export async function previewSaleListPdf(input: SaleListPdfInput): Promise<void>
 }
 
 export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void> {
-  // Open the same RTL HTML document and trigger the browser's print dialog,
-  // where the user can pick "Save as PDF". This guarantees correct Persian
-  // shaping/BiDi via the browser's own text engine.
-  const html = buildHtmlDocument(input, true);
-  openHtmlInNewWindow(html);
+  // Render the same RTL HTML inside a hidden iframe, then snapshot it with
+  // html2canvas-pro and slice the bitmap into A4 pages with jsPDF. This gives
+  // the user a real downloadable .pdf file without relying on the browser's
+  // print dialog (which some users find unreliable / hard to find).
+  const html = buildHtmlDocument(input, false);
+  const safeName = (input.listName || "sale-list").replace(/[\\/:*?"<>|]+/g, "_").trim() || "sale-list";
+  const fileName = `${safeName}-v${input.versionNumber}.pdf`;
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = "1024px";
+  iframe.style.height = "1px";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("no_iframe_document");
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    // Wait for fonts + layout
+    await new Promise<void>((resolve) => {
+      if (iframe.contentWindow?.document.readyState === "complete") resolve();
+      else iframe.onload = () => resolve();
+    });
+    try {
+      await (iframe.contentDocument as any)?.fonts?.ready;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 250));
+
+    const target = (iframe.contentDocument?.querySelector(".page") as HTMLElement | null)
+      ?? (iframe.contentDocument?.body as HTMLElement);
+    // Hide toolbar in capture
+    const toolbar = iframe.contentDocument?.querySelector(".toolbar") as HTMLElement | null;
+    if (toolbar) toolbar.style.display = "none";
+
+    const html2canvasMod = await import("html2canvas-pro");
+    const html2canvas = (html2canvasMod as any).default ?? (html2canvasMod as any);
+    const { jsPDF } = await import("jspdf");
+
+    const canvas: HTMLCanvasElement = await html2canvas(target, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    });
+
+    const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    const pageWidthMm = pdf.internal.pageSize.getWidth();
+    const pageHeightMm = pdf.internal.pageSize.getHeight();
+    const marginMm = 8;
+    const usableWidthMm = pageWidthMm - marginMm * 2;
+    const usableHeightMm = pageHeightMm - marginMm * 2;
+
+    const pxPerMm = canvas.width / usableWidthMm;
+    const pageHeightPx = Math.floor(usableHeightMm * pxPerMm);
+
+    let renderedPx = 0;
+    let pageIndex = 0;
+    while (renderedPx < canvas.height) {
+      const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedPx);
+      const slice = document.createElement("canvas");
+      slice.width = canvas.width;
+      slice.height = sliceHeightPx;
+      const ctx = slice.getContext("2d");
+      if (!ctx) throw new Error("canvas_ctx");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+      const imgData = slice.toDataURL("image/jpeg", 0.92);
+      if (pageIndex > 0) pdf.addPage();
+      const sliceHeightMm = sliceHeightPx / pxPerMm;
+      pdf.addImage(imgData, "JPEG", marginMm, marginMm, usableWidthMm, sliceHeightMm);
+      renderedPx += sliceHeightPx;
+      pageIndex += 1;
+    }
+
+    pdf.save(fileName);
+  } finally {
+    setTimeout(() => {
+      try { document.body.removeChild(iframe); } catch {}
+    }, 500);
+  }
 }
