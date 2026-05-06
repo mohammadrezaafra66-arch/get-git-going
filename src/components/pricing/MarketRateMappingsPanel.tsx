@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,6 +76,9 @@ export function MarketRateMappingsPanel() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MappingRow | null>(null);
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "navasan" | "tgju" | "other">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | MappingStatus>("all");
 
   const q = useQuery({
     queryKey: ["market-rate-mappings"],
@@ -94,14 +98,32 @@ export function MarketRateMappingsPanel() {
     },
   });
 
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (q.data ?? []).filter((r) => {
+      const srcCode = r.source?.code ?? "";
+      if (sourceFilter === "navasan" && srcCode !== "NAVASAN_API") return false;
+      if (sourceFilter === "tgju" && srcCode !== "TGJU_API") return false;
+      if (sourceFilter === "other" && (srcCode === "NAVASAN_API" || srcCode === "TGJU_API")) return false;
+      if (statusFilter !== "all" && getMappingStatus(r) !== statusFilter) return false;
+      if (!term) return true;
+      const hay = [
+        r.source?.code, r.source?.title_fa,
+        r.indicator?.code, r.indicator?.title_fa,
+        r.source_symbol, r.note ?? "",
+      ].join(" ").toLowerCase();
+      return hay.includes(term);
+    });
+  }, [q.data, search, sourceFilter, statusFilter]);
+
   const grouped = useMemo(() => {
     const m: Record<string, MappingRow[]> = {};
-    (q.data ?? []).forEach((r) => {
+    filtered.forEach((r) => {
       const k = r.source?.title_fa ?? r.source?.code ?? "—";
       (m[k] ||= []).push(r);
     });
     return m;
-  }, [q.data]);
+  }, [filtered]);
 
   if (!canView) return null;
 
@@ -126,11 +148,43 @@ export function MarketRateMappingsPanel() {
               فعال‌سازی mapping مالی فقط پس از تأیید نماد رسمی مجاز است. حدس‌زدن نماد ممنوع.
             </p>
 
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Input
+                placeholder="جستجو در شاخص، نماد، یادداشت…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="text-xs"
+              />
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="منبع" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه منابع</SelectItem>
+                  <SelectItem value="navasan">نوسان</SelectItem>
+                  <SelectItem value="tgju">TGJU</SelectItem>
+                  <SelectItem value="other">سایر</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="وضعیت" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه وضعیت‌ها</SelectItem>
+                  <SelectItem value="active">فعال</SelectItem>
+                  <SelectItem value="disabled">غیرفعال</SelectItem>
+                  <SelectItem value="needs_approval">نیاز به تأیید</SelectItem>
+                  <SelectItem value="ambiguous">مبهم</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {q.isLoading ? (
               <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
             ) : !q.data || q.data.length === 0 ? (
               <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
                 نگاشتی تعریف نشده است.
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                نگاشتی با این فیلترها یافت نشد.
               </div>
             ) : (
               Object.entries(grouped).map(([src, rows]) => (
