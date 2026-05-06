@@ -1,6 +1,7 @@
 -- Batch RPC: get_recent_purchase_labels(p_ids uuid[])
--- بهینه‌سازی: یک round-trip به جای N برای صفحات با چند محصول
--- تابع موجود get_recent_purchase_label دست‌نخورده باقی می‌ماند.
+-- بهینه‌سازی: یک round-trip به جای N برای صفحات با چند محصول.
+-- منطق دقیقاً مطابق get_recent_purchase_label است.
+-- idempotent: CREATE OR REPLACE.
 
 CREATE OR REPLACE FUNCTION public.get_recent_purchase_labels(p_ids uuid[])
 RETURNS TABLE (
@@ -16,8 +17,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_limited int;
-  v_unavail int;
+  v_limited numeric;
+  v_unavail numeric;
 BEGIN
   IF p_ids IS NULL OR array_length(p_ids, 1) IS NULL THEN
     RETURN;
@@ -26,20 +27,22 @@ BEGIN
   SELECT limited_after_hours, unavailable_after_hours
     INTO v_limited, v_unavail
   FROM public.recent_purchase_settings
-  ORDER BY id LIMIT 1;
+  WHERE singleton = true
+  LIMIT 1;
 
-  v_limited := COALESCE(v_limited, 6);
-  v_unavail := COALESCE(v_unavail, 12);
+  IF v_limited IS NULL THEN
+    v_limited := 6;
+    v_unavail := 12;
+  END IF;
 
   RETURN QUERY
   WITH last_p AS (
-    SELECT pi.product_id AS pid,
-           MAX(p.purchase_date) AS last_at
-    FROM public.purchase_items pi
-    JOIN public.purchases p ON p.id = pi.purchase_id
-    WHERE pi.product_id = ANY(p_ids)
-      AND COALESCE(p.status, 'confirmed') <> 'cancelled'
-    GROUP BY pi.product_id
+    SELECT p.product_id AS pid,
+           MAX(p.created_at) AS last_at
+    FROM public.purchases p
+    WHERE p.product_id = ANY(p_ids)
+      AND p.status IS DISTINCT FROM 'cancelled'
+    GROUP BY p.product_id
   )
   SELECT
     pid AS product_id,
