@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, ChevronDown, ChevronLeft } from "lucide-react";
+import { History, ChevronDown, ChevronLeft, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,16 @@ function formatDuration(started: string, finished: string | null): string {
   const m = Math.floor(s / 60);
   const rs = Math.round(s - m * 60);
   return `${m} دقیقه و ${rs} ثانیه`;
+}
+
+async function copyErrorMessage(msg: string) {
+  try {
+    if (!navigator?.clipboard?.writeText) throw new Error("clipboard unavailable");
+    await navigator.clipboard.writeText(msg);
+    toast.success("پیام خطا کپی شد");
+  } catch {
+    toast.error("کپی پیام خطا ممکن نشد");
+  }
 }
 
 export function MarketRateIngestionHistory() {
@@ -171,7 +182,20 @@ export function MarketRateIngestionHistory() {
                               <div><dt className="text-muted-foreground">شروع</dt><dd>{formatDateFa(r.started_at)}</dd></div>
                               <div><dt className="text-muted-foreground">پایان</dt><dd>{r.finished_at ? formatDateFa(r.finished_at) : "نامشخص"}</dd></div>
                               <div className="sm:col-span-2 md:col-span-3">
-                                <dt className="text-muted-foreground">پیام خطا</dt>
+                                <div className="flex items-center justify-between gap-2">
+                                  <dt className="text-muted-foreground">پیام خطا</dt>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px]"
+                                    disabled={!r.error_message}
+                                    onClick={() => r.error_message && copyErrorMessage(r.error_message)}
+                                    aria-label="کپی پیام خطا"
+                                  >
+                                    <Copy className="ml-1 h-3 w-3" />
+                                    کپی خطا
+                                  </Button>
+                                </div>
                                 <dd className="mt-1 whitespace-pre-wrap break-words rounded-md border bg-background p-2 text-[11px]">
                                   {r.error_message ?? "خطایی ثبت نشده است."}
                                 </dd>
