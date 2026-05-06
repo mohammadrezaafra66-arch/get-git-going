@@ -176,7 +176,13 @@ function SalespersonCapitalAllocationsPage() {
             <Button
               className="gap-2"
               disabled={!isUuid(snapshotInput) || computeQ.isFetching}
-              onClick={() => setActiveSnapshotId(snapshotInput.trim())}
+              onClick={() => {
+                if (!isUuid(snapshotInput)) {
+                  toast.error("شناسه اسنپ‌شات معتبر نیست.");
+                  return;
+                }
+                setActiveSnapshotId(snapshotInput.trim());
+              }}
             >
               <Calculator className="h-4 w-4" />
               محاسبه سهم پیشنهادی فروشندگان
@@ -289,7 +295,11 @@ function SalespersonCapitalAllocationsPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={() => saveM.mutate()} disabled={saveM.isPending} className="gap-2">
+            <Button
+              onClick={() => saveM.mutate()}
+              disabled={saveM.isPending || rows.length === 0}
+              className="gap-2"
+            >
               {saveM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               ذخیره تخصیص‌ها
             </Button>
