@@ -283,7 +283,9 @@ function ProductDetailPage() {
     } catch (e: any) {
       const code = e?.code ?? "";
       const msg = String(e?.message ?? "");
-      if (code === "23505" || /duplicate key|sku/i.test(msg)) {
+      if (code === "23505" && /products_dedup_key_unique/i.test(msg)) {
+        toast.error("محصول تکراری است: ترکیب «برند + دسته + مدل + رنگ + ظرفیت» قبلاً ثبت شده است.");
+      } else if (code === "23505" || /duplicate key|sku/i.test(msg)) {
         toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
       } else {
         toast.error(msg || "خطا در ذخیره");
