@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, ChevronDown, ChevronLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,8 +123,8 @@ export function MarketRateIngestionHistory() {
                     {q.data.map((r) => {
                       const isOpen = expanded.has(r.id);
                       return (
-                      <>
-                      <tr key={r.id} className="border-t">
+                      <Fragment key={r.id}>
+                      <tr className="border-t">
                         <td className="px-2 py-2">{SOURCE_LABEL[r.source_code] ?? r.source_code}</td>
                         <td className="px-2 py-2">
                           <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"} className="text-[10px]">
@@ -159,7 +159,7 @@ export function MarketRateIngestionHistory() {
                         </td>
                       </tr>
                       {isOpen && (
-                        <tr key={`${r.id}-details`} className="border-t bg-muted/20">
+                        <tr className="border-t bg-muted/20">
                           <td colSpan={9} className="px-3 py-3">
                             <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 md:grid-cols-3">
                               <div><dt className="text-muted-foreground">منبع</dt><dd>{SOURCE_LABEL[r.source_code] ?? r.source_code}</dd></div>
@@ -180,7 +180,7 @@ export function MarketRateIngestionHistory() {
                           </td>
                         </tr>
                       )}
-                      </>
+                      </Fragment>
                       );
                     })}
                   </tbody>
