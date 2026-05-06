@@ -345,6 +345,7 @@ function ProductDetailPage() {
                 initial={initialFormValues}
                 existingSku={p.sku ?? null}
                 isEdit
+                productId={p.id}
                 initialDynamicValues={editDataQ.data?.dynamicValues ?? {}}
                 initialCategoryId={p.category?.id ?? null}
                 onSubmit={handleSave}
