@@ -2949,6 +2949,107 @@ export type Database = {
         }
         Relationships: []
       }
+      market_rate_ingestion_runs: {
+        Row: {
+          error_message: string | null
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          inserted_count: number
+          source_code: string
+          source_id: string | null
+          started_at: string
+          started_by: string | null
+          status: string
+          suspect_count: number
+        }
+        Insert: {
+          error_message?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          source_code: string
+          source_id?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          suspect_count?: number
+        }
+        Update: {
+          error_message?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          source_code?: string
+          source_id?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          suspect_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_rate_ingestion_runs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "market_rate_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_rate_source_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          indicator_id: string
+          is_enabled: boolean
+          normalize_multiplier: number
+          note: string | null
+          source_id: string
+          source_symbol: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          indicator_id: string
+          is_enabled?: boolean
+          normalize_multiplier?: number
+          note?: string | null
+          source_id: string
+          source_symbol: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          indicator_id?: string
+          is_enabled?: boolean
+          normalize_multiplier?: number
+          note?: string | null
+          source_id?: string
+          source_symbol?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_rate_source_mappings_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "market_indicators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_rate_source_mappings_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "market_rate_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_rate_sources: {
         Row: {
           base_url: string | null
@@ -6833,6 +6934,17 @@ export type Database = {
           sku: string
         }[]
       }
+      finish_market_rate_ingestion_run: {
+        Args: {
+          p_error?: string
+          p_fetched: number
+          p_inserted: number
+          p_run_id: string
+          p_status: string
+          p_suspect: number
+        }
+        Returns: undefined
+      }
       gamification_analytics_achievements: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -7447,6 +7559,21 @@ export type Database = {
         }
         Returns: string
       }
+      record_external_market_rate_tick: {
+        Args: {
+          p_indicator_id: string
+          p_observed_at: string
+          p_raw_payload?: Json
+          p_source_id: string
+          p_source_reported_at?: string
+          p_unit?: string
+          p_value: number
+        }
+        Returns: {
+          status_out: string
+          tick_id: string
+        }[]
+      }
       record_market_rate_tick: {
         Args: {
           p_indicator_id: string
@@ -7557,6 +7684,10 @@ export type Database = {
       show_trgm: { Args: { "": string }; Returns: string[] }
       start_league_season: {
         Args: { _end: string; _name: string; _start: string }
+        Returns: string
+      }
+      start_market_rate_ingestion_run: {
+        Args: { p_source_code: string }
         Returns: string
       }
       submit_quiz_attempt: {
