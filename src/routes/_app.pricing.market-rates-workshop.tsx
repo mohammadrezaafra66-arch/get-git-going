@@ -405,7 +405,20 @@ function ExternalIngestionCard() {
   const { user } = useAuth();
   const statusQ = useQuery({
     queryKey: ["market-external-status"],
-    queryFn: async () => await getExternalRatesStatus({ data: {} }),
+    queryFn: async () => {
+      try {
+        return await getExternalRatesStatus({ data: {} });
+      } catch {
+        // No access or self-host disabled — fall back to a safe default
+        return {
+          master_enabled: false,
+          navasan_enabled: false,
+          tgju_enabled: false,
+          navasan_has_key: false,
+          tgju_has_key: false,
+        };
+      }
+    },
     staleTime: 60_000,
     enabled: !!user,
     retry: false,
