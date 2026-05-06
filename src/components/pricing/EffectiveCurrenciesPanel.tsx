@@ -64,6 +64,7 @@ export function EffectiveCurrenciesPanel() {
       return;
     }
     setSaving(true);
+    const toastId = toast.loading(`در حال ثبت نرخ ${c.title} و بازمحاسبه قیمت‌ها…`);
     try {
       const { results } = await saveCurrencyRateAndRecompute({
         currency: c.code,
@@ -73,13 +74,16 @@ export function EffectiveCurrenciesPanel() {
       setLastResults({ code: c.code, results });
       setEditing(null);
       setDraftRate("");
-      toast.success(`نرخ ${c.title} با موفقیت ثبت شد و ${results.filter((r) => !r.error).length} قیمت بازمحاسبه شد.`);
+      toast.success(
+        `نرخ ${c.title} با موفقیت ثبت شد و ${results.filter((r) => !r.error).length} قیمت بازمحاسبه شد.`,
+        { id: toastId },
+      );
       qc.invalidateQueries({ queryKey: ["effective-currencies"] });
       qc.invalidateQueries({ queryKey: ["currency-rates"] });
       qc.invalidateQueries({ queryKey: ["my-workbench"] });
       qc.invalidateQueries({ queryKey: ["live-price-list"] });
     } catch (e) {
-      toast.error(`خطا در ثبت نرخ: ${(e as Error)?.message ?? "نامشخص"}`);
+      toast.error(`خطا در ثبت نرخ: ${(e as Error)?.message ?? "نامشخص"}`, { id: toastId });
     } finally {
       setSaving(false);
     }
