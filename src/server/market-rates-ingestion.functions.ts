@@ -209,8 +209,8 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
               p_source_id: src.id,
               p_value: normalized,
               p_observed_at: observedAt,
-              p_source_reported_at: entry.reportedAt,
-              p_raw_payload: truncatePayload(entry.raw) as object,
+              p_source_reported_at: entry.reportedAt ?? undefined,
+              p_raw_payload: truncatePayload(entry.raw) as never,
               p_unit: "toman",
             },
           );
@@ -227,7 +227,8 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
 
         await supabase.rpc("finish_market_rate_ingestion_run", {
           p_run_id: runId, p_status: "completed",
-          p_fetched: fetched, p_inserted: inserted, p_suspect: suspect, p_error: null,
+          p_fetched: fetched, p_inserted: inserted, p_suspect: suspect,
+          p_error: undefined,
         });
         results.push({
           source_code: code, status: "completed", fetched, inserted, suspect,
