@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
@@ -380,29 +381,21 @@ export function PurchaseForm() {
         {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
       </div>
 
-      {/* تاریخ خرید */}
+      {/* تاریخ خرید (شمسی) */}
       <div className="space-y-2">
         <Label>تاریخ خرید <span className="text-destructive">*</span></Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline"
-              className={cn("w-full justify-start text-right font-normal",
-                !purchaseDate && "text-muted-foreground")}>
-              <CalendarIcon className="ml-2 h-4 w-4" />
-              {purchaseDate ? toFaDigits(formatDateFa(purchaseDate)) : "انتخاب تاریخ"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={purchaseDate}
-              onSelect={(d) => d && form.setValue("purchase_date", d, { shouldValidate: true })}
-              disabled={(d) => d > new Date()}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
+        <JalaliDateInput
+          value={purchaseDate ? format(purchaseDate, "yyyy-MM-dd") : ""}
+          onChange={(iso: string) => {
+            if (!iso) return;
+            const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+            if (!m) return;
+            const d = new Date(+m[1], +m[2] - 1, +m[3]);
+            form.setValue("purchase_date", d, { shouldValidate: true });
+          }}
+          max={format(new Date(), "yyyy-MM-dd")}
+          invalid={!!errors.purchase_date}
+        />
         {errors.purchase_date && <p className="text-xs text-destructive">{errors.purchase_date.message}</p>}
       </div>
 
