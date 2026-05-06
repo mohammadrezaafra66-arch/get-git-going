@@ -954,7 +954,23 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
             productName={product.name}
             salePriceTypeId={primary?.sale_price_type_id ?? null}
           />
+          <RoleGuard roles={["admin", "manager", "sales", "accountant"]}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); setSupplierModalOpen(true); }}
+            >
+              <UserPlus className="ms-1 h-4 w-4" />
+              معرفی تأمین‌کننده برای این محصول
+            </Button>
+          </RoleGuard>
         </div>
+        <SupplierReferralModal
+          open={supplierModalOpen}
+          onOpenChange={setSupplierModalOpen}
+          defaultNotes={`تأمین‌کننده پیشنهادی برای محصول: ${product.name}${product.sku ? ` (کد ${product.sku})` : ""}`}
+        />
       </CardContent>
     </Card>
   );
