@@ -7126,6 +7126,17 @@ export type Database = {
         Args: { _employee_id: string }
         Returns: Json
       }
+      can_issue_customer_invoice: {
+        Args: { p_customer_id: string }
+        Returns: {
+          can_issue: boolean
+          customer_id: string
+          oldest_due_date: string
+          overdue_amount: number
+          overdue_count: number
+          reason: string
+        }[]
+      }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       capture_score_snapshots: { Args: never; Returns: number }
       check_and_unlock_achievements_for_employee: {

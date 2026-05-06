@@ -232,6 +232,27 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         }
       }
 
+      // Phase 21.4: Overdue blocker — backend trigger هم enforce می‌کند، این فقط UX است.
+      const willCommit =
+        values.invoice_type === "pre_invoice" ||
+        (values.invoice_type === "advance_payment" && !!values.commitment_confirmed);
+      if (willCommit) {
+        const { data: ovd, error: ovdErr } = await supabase.rpc(
+          "can_issue_customer_invoice",
+          { p_customer_id: values.customer_id },
+        );
+        if (ovdErr) throw ovdErr;
+        const ovRow = Array.isArray(ovd) ? ovd[0] : ovd;
+        if (ovRow && (ovRow as { can_issue?: boolean }).can_issue === false) {
+          const amt = Number((ovRow as { overdue_amount?: number }).overdue_amount ?? 0);
+          const cnt = Number((ovRow as { overdue_count?: number }).overdue_count ?? 0);
+          const oldest = (ovRow as { oldest_due_date?: string | null }).oldest_due_date ?? null;
+          throw new Error(
+            `این مشتری دارای مانده معوق است و تا زمان تسویه، امکان صدور فاکتور یا پیش‌فاکتور جدید ندارد. مبلغ معوق: ${amt.toLocaleString("fa-IR")} ریال، تعداد فاکتور معوق: ${cnt}${oldest ? `، قدیمی‌ترین سررسید: ${oldest}` : ""}. مشاهده گزارش: /accounting/receivables`,
+          );
+        }
+      }
+
       // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
         const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
