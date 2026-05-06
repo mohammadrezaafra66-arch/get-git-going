@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/market-rates-workshop")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => { await requirePermission("market-rates", "view"); },
   component: MarketRatesWorkshopPage,
 });
 
@@ -106,7 +106,7 @@ function MarketRatesWorkshopPage() {
       if (isPrivileged) {
         let q = supabase.from("market_rate_ticks")
           .select("id,indicator_id,source_id,value,unit,observed_at,change_amount,change_percent,status,note,created_at")
-          .order("observed_at", { ascending: false }).limit(100);
+          .order("observed_at", { ascending: false }).limit(15);
         if (filterIndicator !== "all") q = q.eq("indicator_id", filterIndicator);
         if (filterStatus !== "all") q = q.eq("status", filterStatus);
         if (filterSource !== "all") q = q.eq("source_id", filterSource);
@@ -116,7 +116,7 @@ function MarketRatesWorkshopPage() {
       } else {
         const { data, error } = await supabase.rpc("list_market_rate_ticks_public", {
           p_indicator_id: filterIndicator === "all" ? undefined : filterIndicator,
-          p_limit: 100,
+          p_limit: 15,
         });
         if (error) throw error;
         return (data ?? []).map((r: any) => ({ ...r, note: null, created_at: r.observed_at })) as Tick[];
