@@ -202,21 +202,7 @@ function EditMappingDialog({
         if (!ok) throw new Error("فعال‌سازی توسط کاربر لغو شد");
       }
 
-      const before = {
-        source_symbol: row.source_symbol,
-        normalize_multiplier: row.normalize_multiplier,
-        is_enabled: row.is_enabled,
-        note: row.note,
-      };
-      const after = {
-        source_symbol: sym,
-        normalize_multiplier: mult,
-        is_enabled: state.is_enabled,
-        note: state.note || null,
-      };
-
       // Secure RPC: enforces role check + writes audit log atomically (server-side)
-      void before; void after;
       const { error } = await supabase.rpc("update_market_rate_source_mapping", {
         p_mapping_id: row.id,
         p_source_symbol: sym,
