@@ -8197,6 +8197,49 @@ export type Database = {
         Args: { p_new_status: string; p_waybill_id: string }
         Returns: undefined
       }
+      upsert_daily_capital_input: {
+        Args: {
+          p_bank_balance?: number
+          p_blocked_funds?: number
+          p_capital_date: string
+          p_cash_balance?: number
+          p_external_payables?: number
+          p_external_receivables?: number
+          p_incoming_checks?: number
+          p_inventory_liquidity_value?: number
+          p_manual_adjustment?: number
+          p_near_term_expenses?: number
+          p_notes?: string
+          p_outgoing_checks?: number
+          p_risk_reserve?: number
+        }
+        Returns: {
+          bank_balance: number
+          blocked_funds: number
+          capital_date: string
+          cash_balance: number
+          created_at: string
+          created_by: string | null
+          external_payables: number
+          external_receivables: number
+          id: string
+          incoming_checks: number
+          inventory_liquidity_value: number
+          manual_adjustment: number
+          near_term_expenses: number
+          notes: string | null
+          outgoing_checks: number
+          risk_reserve: number
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_capital_inputs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       validate_journal_entry_balance: {
         Args: { p_journal_entry_id: string }
         Returns: {
