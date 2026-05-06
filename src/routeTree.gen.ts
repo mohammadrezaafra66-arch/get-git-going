@@ -100,6 +100,7 @@ import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settin
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
@@ -602,6 +603,11 @@ const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   path: '/admin/profile-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPaymentTermsRoute = AppAdminPaymentTermsRouteImport.update({
+  id: '/admin/payment-terms',
+  path: '/admin/payment-terms',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminMarketingChannelsRoute =
   AppAdminMarketingChannelsRouteImport.update({
     id: '/admin/marketing-channels',
@@ -834,6 +840,7 @@ export interface FileRoutesByFullPath {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
@@ -959,6 +966,7 @@ export interface FileRoutesByTo {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/roles': typeof AppAdminRolesRoute
@@ -1087,6 +1095,7 @@ export interface FileRoutesById {
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
@@ -1216,6 +1225,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/admin/gamification'
     | '/admin/marketing-channels'
+    | '/admin/payment-terms'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/roles'
@@ -1341,6 +1351,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/admin/gamification'
     | '/admin/marketing-channels'
+    | '/admin/payment-terms'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/roles'
@@ -1468,6 +1479,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receipts'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
+    | '/_app/admin/payment-terms'
     | '/_app/admin/profile-fields'
     | '/_app/admin/receipt-fields'
     | '/_app/admin/roles'
@@ -2216,6 +2228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/payment-terms': {
+      id: '/_app/admin/payment-terms'
+      path: '/admin/payment-terms'
+      fullPath: '/admin/payment-terms'
+      preLoaderRoute: typeof AppAdminPaymentTermsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/marketing-channels': {
       id: '/_app/admin/marketing-channels'
       path: '/admin/marketing-channels'
@@ -2672,6 +2691,7 @@ interface AppRouteChildren {
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
+  AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
@@ -2759,6 +2779,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
+  AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
