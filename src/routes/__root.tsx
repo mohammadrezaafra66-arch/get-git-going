@@ -47,6 +47,12 @@ function RootErrorComponent({ error, reset }: { error: Error; reset: () => void 
           >
             تلاش دوباره
           </button>
+          <button
+            onClick={() => { void forceHardReload("manual: RootError"); }}
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            رفرش کامل و پاک‌سازی کش
+          </button>
           <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
             ورود
           </Link>
@@ -89,6 +95,12 @@ class AuthErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
               >
                 تلاش دوباره
+              </button>
+              <button
+                onClick={() => { void forceHardReload("manual: AuthBoundary"); }}
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground"
+              >
+                رفرش کامل و پاک‌سازی کش
               </button>
               <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground">
                 ورود
