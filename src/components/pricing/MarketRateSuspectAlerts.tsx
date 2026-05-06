@@ -103,7 +103,11 @@ export function MarketRateSuspectAlerts() {
             در حال حاضر نرخ مشکوکی ثبت نشده است.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
+          <>
+            <p className="mb-2 text-[11px] leading-5 text-muted-foreground">
+              درصد تغییر نسبت به آخرین نرخ تأییدشده همان شاخص محاسبه می‌شود. تغییرهای بزرگ‌تر ممکن است نیازمند بررسی دستی باشند.
+            </p>
+            <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-right text-xs">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
@@ -125,7 +129,7 @@ export function MarketRateSuspectAlerts() {
                     <td className="px-2 py-2 font-mono">{toFaDigits(Number(r.value).toLocaleString("en-US"))}</td>
                     <td className="px-2 py-2">{r.source?.title_fa ?? r.source?.code ?? "—"}</td>
                     <td className="px-2 py-2 text-muted-foreground">{formatDateFa(r.observed_at)}</td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2" title="درصد تغییر نسبت به آخرین نرخ تأییدشده">
                       {r.change_percent == null ? "—" : toFaDigits(Number(r.change_percent).toFixed(2)) + "٪"}
                     </td>
                     <td
@@ -138,7 +142,8 @@ export function MarketRateSuspectAlerts() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
