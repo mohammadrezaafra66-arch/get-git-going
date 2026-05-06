@@ -377,8 +377,7 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
       else iframe.onload = () => resolve();
     });
     try {
-      // @ts-expect-error fonts API
-      await iframe.contentDocument?.fonts?.ready;
+      await (iframe.contentDocument as any)?.fonts?.ready;
     } catch {}
     await new Promise((r) => setTimeout(r, 250));
 
