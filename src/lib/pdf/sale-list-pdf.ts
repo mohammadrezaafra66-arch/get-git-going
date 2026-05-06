@@ -429,7 +429,21 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
       pageIndex += 1;
     }
 
-    pdf.save(fileName);
+    // Use blob + anchor click for maximum browser compatibility — pdf.save()
+    // sometimes fails silently inside iframes / strict popup-blockers.
+    const pdfBlob: Blob = pdf.output("blob");
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try { document.body.removeChild(a); } catch {}
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
   } finally {
     setTimeout(() => {
       try { document.body.removeChild(iframe); } catch {}
