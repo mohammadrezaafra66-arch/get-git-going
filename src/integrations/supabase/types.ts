@@ -1365,6 +1365,140 @@ export type Database = {
           },
         ]
       }
+      daily_capital_inputs: {
+        Row: {
+          bank_balance: number
+          blocked_funds: number
+          capital_date: string
+          cash_balance: number
+          created_at: string
+          created_by: string | null
+          external_payables: number
+          external_receivables: number
+          id: string
+          incoming_checks: number
+          inventory_liquidity_value: number
+          manual_adjustment: number
+          near_term_expenses: number
+          notes: string | null
+          outgoing_checks: number
+          risk_reserve: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bank_balance?: number
+          blocked_funds?: number
+          capital_date: string
+          cash_balance?: number
+          created_at?: string
+          created_by?: string | null
+          external_payables?: number
+          external_receivables?: number
+          id?: string
+          incoming_checks?: number
+          inventory_liquidity_value?: number
+          manual_adjustment?: number
+          near_term_expenses?: number
+          notes?: string | null
+          outgoing_checks?: number
+          risk_reserve?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bank_balance?: number
+          blocked_funds?: number
+          capital_date?: string
+          cash_balance?: number
+          created_at?: string
+          created_by?: string | null
+          external_payables?: number
+          external_receivables?: number
+          id?: string
+          incoming_checks?: number
+          inventory_liquidity_value?: number
+          manual_adjustment?: number
+          near_term_expenses?: number
+          notes?: string | null
+          outgoing_checks?: number
+          risk_reserve?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      daily_capital_snapshots: {
+        Row: {
+          approved_by: string | null
+          capital_date: string
+          created_at: string
+          created_by: string | null
+          due_today_payables: number
+          due_today_receivables: number
+          final_capital: number
+          formula_version: string
+          future_payables: number
+          future_receivables: number
+          id: string
+          input_id: string | null
+          overdue_payables: number
+          overdue_receivables: number
+          override_reason: string | null
+          system_suggested_capital: number
+          total_payables: number
+          total_receivables: number
+        }
+        Insert: {
+          approved_by?: string | null
+          capital_date: string
+          created_at?: string
+          created_by?: string | null
+          due_today_payables?: number
+          due_today_receivables?: number
+          final_capital?: number
+          formula_version?: string
+          future_payables?: number
+          future_receivables?: number
+          id?: string
+          input_id?: string | null
+          overdue_payables?: number
+          overdue_receivables?: number
+          override_reason?: string | null
+          system_suggested_capital?: number
+          total_payables?: number
+          total_receivables?: number
+        }
+        Update: {
+          approved_by?: string | null
+          capital_date?: string
+          created_at?: string
+          created_by?: string | null
+          due_today_payables?: number
+          due_today_receivables?: number
+          final_capital?: number
+          formula_version?: string
+          future_payables?: number
+          future_receivables?: number
+          id?: string
+          input_id?: string | null
+          overdue_payables?: number
+          overdue_receivables?: number
+          override_reason?: string | null
+          system_suggested_capital?: number
+          total_payables?: number
+          total_receivables?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_capital_snapshots_input_id_fkey"
+            columns: ["input_id"]
+            isOneToOne: false
+            referencedRelation: "daily_capital_inputs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_mood_entries: {
         Row: {
           answers: Json
@@ -6923,6 +7057,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      compute_daily_capital: {
+        Args: { p_capital_date?: string }
+        Returns: {
+          bank_balance: number
+          blocked_funds: number
+          capital_date: string
+          cash_balance: number
+          due_today_payables: number
+          due_today_receivables: number
+          external_payables: number
+          external_receivables: number
+          formula_version: string
+          future_payables: number
+          future_receivables: number
+          incoming_checks: number
+          input_id: string
+          inventory_liquidity_value: number
+          manual_adjustment: number
+          near_term_expenses: number
+          outgoing_checks: number
+          overdue_payables: number
+          overdue_receivables: number
+          risk_reserve: number
+          system_suggested_capital: number
+          total_payables: number
+          total_receivables: number
+        }[]
+      }
       compute_promotion_scores: {
         Args: { _channel_id?: string; _limit?: number; _min_score?: number }
         Returns: {
@@ -7894,6 +8056,39 @@ export type Database = {
           _target_user: string
         }
         Returns: undefined
+      }
+      save_daily_capital_snapshot: {
+        Args: {
+          p_capital_date: string
+          p_final_capital: number
+          p_override_reason?: string
+        }
+        Returns: {
+          approved_by: string | null
+          capital_date: string
+          created_at: string
+          created_by: string | null
+          due_today_payables: number
+          due_today_receivables: number
+          final_capital: number
+          formula_version: string
+          future_payables: number
+          future_receivables: number
+          id: string
+          input_id: string | null
+          overdue_payables: number
+          overdue_receivables: number
+          override_reason: string | null
+          system_suggested_capital: number
+          total_payables: number
+          total_receivables: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_capital_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       search_product_ids: {
         Args: { p_limit?: number; p_term: string }
