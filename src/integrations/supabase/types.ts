@@ -7126,6 +7126,17 @@ export type Database = {
         Args: { _employee_id: string }
         Returns: Json
       }
+      calculate_salesperson_collected_sales: {
+        Args: { p_employee_id: string; p_window_months?: number }
+        Returns: {
+          collected_amount: number
+          employee_id: string
+          linked_invoice_count: number
+          qualifying_receipt_count: number
+          window_months: number
+          window_start: string
+        }[]
+      }
       can_issue_customer_invoice: {
         Args: { p_customer_id: string }
         Returns: {
