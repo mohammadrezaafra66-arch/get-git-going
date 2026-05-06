@@ -106,7 +106,7 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
       .eq("user_id", userId);
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
-      throw new Response("Forbidden", { status: 403 });
+      throw new Error("Forbidden");
     }
 
     const masterOn = flagOn("MARKET_RATES_EXTERNAL_ENABLED");
