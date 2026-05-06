@@ -37,7 +37,7 @@ export function RecentPurchaseGroup({
     queryKey: ["recent-purchase-labels-batch", ids],
     enabled: ids.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_recent_purchase_labels", {
+      const { data, error } = await (supabase.rpc as any)("get_recent_purchase_labels", {
         p_ids: ids,
       });
       if (error) throw error;
