@@ -247,6 +247,22 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           const amt = Number((ovRow as { overdue_amount?: number }).overdue_amount ?? 0);
           const cnt = Number((ovRow as { overdue_count?: number }).overdue_count ?? 0);
           const oldest = (ovRow as { oldest_due_date?: string | null }).oldest_due_date ?? null;
+          // audit ثبت بلاک در یک operation مستقل (trigger نمی‌تواند audit بدهد چون با RAISE rollback می‌شود)
+          await supabase.from("audit_logs").insert({
+            actor_id: user.id,
+            entity_type: "invoice",
+            entity_id: values.customer_id,
+            action: "invoice_issuance_blocked_overdue",
+            diff: {
+              customer_id: values.customer_id,
+              invoice_type: values.invoice_type,
+              commitment_confirmed: !!values.commitment_confirmed,
+              overdue_amount: amt,
+              overdue_count: cnt,
+              oldest_due_date: oldest,
+              source: "ui_pre_check",
+            },
+          } as never);
           throw new Error(
             `این مشتری دارای مانده معوق است و تا زمان تسویه، امکان صدور فاکتور یا پیش‌فاکتور جدید ندارد. مبلغ معوق: ${amt.toLocaleString("fa-IR")} ریال، تعداد فاکتور معوق: ${cnt}${oldest ? `، قدیمی‌ترین سررسید: ${oldest}` : ""}. مشاهده گزارش: /accounting/receivables`,
           );
