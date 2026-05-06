@@ -268,7 +268,7 @@ function buildDocDefinition(input: SaleListPdfInput): TDocumentDefinitions {
     pageSize: "A4",
     pageMargins: [25, 80, 25, 60],
     // RTL document — explicit direction + right alignment for all default text
-    defaultStyle: { font: "Vazirmatn", fontSize: baseFont, alignment: "right", direction: "rtl" } as any,
+    defaultStyle: { font: "Vazirmatn", fontSize: baseFont, alignment: "right" } as any,
     info: {
       title: `لیست فروش - ${input.listName}`,
       author: "افراکالا",
