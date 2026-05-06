@@ -2910,6 +2910,159 @@ export type Database = {
         }
         Relationships: []
       }
+      market_indicators: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title_en: string | null
+          title_fa: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title_en?: string | null
+          title_fa: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title_en?: string | null
+          title_fa?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_rate_sources: {
+        Row: {
+          base_url: string | null
+          code: string
+          confidence_weight: number
+          created_at: string
+          fetch_interval_seconds: number | null
+          id: string
+          is_enabled: boolean
+          requires_api_key: boolean
+          source_type: string
+          title_fa: string
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string | null
+          code: string
+          confidence_weight?: number
+          created_at?: string
+          fetch_interval_seconds?: number | null
+          id?: string
+          is_enabled?: boolean
+          requires_api_key?: boolean
+          source_type: string
+          title_fa: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string | null
+          code?: string
+          confidence_weight?: number
+          created_at?: string
+          fetch_interval_seconds?: number | null
+          id?: string
+          is_enabled?: boolean
+          requires_api_key?: boolean
+          source_type?: string
+          title_fa?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_rate_ticks: {
+        Row: {
+          change_amount: number | null
+          change_percent: number | null
+          confidence_score: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          indicator_id: string
+          jalali_date_label: string | null
+          note: string | null
+          observed_at: string
+          raw_payload: Json | null
+          source_id: string
+          source_reported_at: string | null
+          status: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          change_amount?: number | null
+          change_percent?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          indicator_id: string
+          jalali_date_label?: string | null
+          note?: string | null
+          observed_at?: string
+          raw_payload?: Json | null
+          source_id: string
+          source_reported_at?: string | null
+          status?: string
+          unit?: string
+          value: number
+        }
+        Update: {
+          change_amount?: number | null
+          change_percent?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          indicator_id?: string
+          jalali_date_label?: string | null
+          note?: string | null
+          observed_at?: string
+          raw_payload?: Json | null
+          source_id?: string
+          source_reported_at?: string | null
+          status?: string
+          unit?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_rate_ticks_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "market_indicators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_rate_ticks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "market_rate_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_channels: {
         Row: {
           created_at: string
@@ -6234,6 +6387,66 @@ export type Database = {
         }
         Relationships: []
       }
+      market_rate_ticks_public: {
+        Row: {
+          change_amount: number | null
+          change_percent: number | null
+          created_at: string | null
+          id: string | null
+          indicator_id: string | null
+          jalali_date_label: string | null
+          observed_at: string | null
+          source_id: string | null
+          source_reported_at: string | null
+          status: string | null
+          unit: string | null
+          value: number | null
+        }
+        Insert: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string | null
+          id?: string | null
+          indicator_id?: string | null
+          jalali_date_label?: string | null
+          observed_at?: string | null
+          source_id?: string | null
+          source_reported_at?: string | null
+          status?: string | null
+          unit?: string | null
+          value?: number | null
+        }
+        Update: {
+          change_amount?: number | null
+          change_percent?: number | null
+          created_at?: string | null
+          id?: string | null
+          indicator_id?: string | null
+          jalali_date_label?: string | null
+          observed_at?: string | null
+          source_id?: string | null
+          source_reported_at?: string | null
+          status?: string | null
+          unit?: string | null
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_rate_ticks_indicator_id_fkey"
+            columns: ["indicator_id"]
+            isOneToOne: false
+            referencedRelation: "market_indicators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_rate_ticks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "market_rate_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       publish_recipients_view: {
         Row: {
           full_name: string | null
@@ -7279,6 +7492,18 @@ export type Database = {
         }
         Returns: string
       }
+      record_market_rate_tick: {
+        Args: {
+          p_indicator_id: string
+          p_note?: string
+          p_observed_at: string
+          p_source_id: string
+          p_status?: string
+          p_unit?: string
+          p_value: number
+        }
+        Returns: string
+      }
       reject_currency_fetch: {
         Args: { p_fetch_id: string; p_reason?: string }
         Returns: undefined
@@ -7362,6 +7587,10 @@ export type Database = {
       }
       set_dynamic_table_row_active: {
         Args: { p_is_active: boolean; p_row_id: string }
+        Returns: undefined
+      }
+      set_market_rate_tick_status: {
+        Args: { p_note?: string; p_status: string; p_tick_id: string }
         Returns: undefined
       }
       set_profile_field_value: {
