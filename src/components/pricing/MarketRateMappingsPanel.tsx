@@ -215,29 +215,16 @@ function EditMappingDialog({
         note: state.note || null,
       };
 
-      const { error } = await supabase
-        .from("market_rate_source_mappings")
-        .update(after)
-        .eq("id", row.id);
+      // Secure RPC: enforces role check + writes audit log atomically (server-side)
+      void before; void after;
+      const { error } = await supabase.rpc("update_market_rate_source_mapping", {
+        p_mapping_id: row.id,
+        p_source_symbol: sym,
+        p_normalize_multiplier: mult,
+        p_is_enabled: state.is_enabled,
+        p_note: state.note || "",
+      });
       if (error) throw error;
-
-      // audit log (best-effort, non-blocking)
-      try {
-        await supabase.from("audit_logs").insert({
-          action: "market_rate_mapping_updated",
-          entity_type: "market_rate_source_mapping",
-          entity_id: row.id,
-          actor_id: actorId,
-          diff: {
-            source_code: row.source?.code ?? null,
-            indicator_code: row.indicator?.code ?? null,
-            before,
-            after,
-          } as never,
-        });
-      } catch (e) {
-        console.warn("[mapping] audit log failed:", e);
-      }
     },
     onSuccess: () => {
       toast.success("نگاشت با موفقیت ذخیره شد");
