@@ -112,6 +112,7 @@ import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app
 import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
 import { Route as AppAccountingDailyCapitalRouteImport } from './routes/_app.accounting.daily-capital'
+import { Route as AppAccountingCustomerCapitalAllocationsRouteImport } from './routes/_app.accounting.customer-capital-allocations'
 import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
@@ -679,6 +680,12 @@ const AppAccountingDailyCapitalRoute =
     path: '/accounting/daily-capital',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAccountingCustomerCapitalAllocationsRoute =
+  AppAccountingCustomerCapitalAllocationsRouteImport.update({
+    id: '/accounting/customer-capital-allocations',
+    path: '/accounting/customer-capital-allocations',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAccountingBankAccountsRoute =
   AppAccountingBankAccountsRouteImport.update({
     id: '/accounting/bank-accounts',
@@ -891,6 +898,7 @@ export interface FileRoutesByFullPath {
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
@@ -1025,6 +1033,7 @@ export interface FileRoutesByTo {
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
@@ -1162,6 +1171,7 @@ export interface FileRoutesById {
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
+  '/_app/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/_app/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/_app/accounting/payables': typeof AppAccountingPayablesRoute
@@ -1300,6 +1310,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
+    | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
@@ -1434,6 +1445,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
+    | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
@@ -1570,6 +1582,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/accounting/bank-accounts'
+    | '/_app/accounting/customer-capital-allocations'
     | '/_app/accounting/daily-capital'
     | '/_app/accounting/external-parties'
     | '/_app/accounting/payables'
@@ -2415,6 +2428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingDailyCapitalRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/customer-capital-allocations': {
+      id: '/_app/accounting/customer-capital-allocations'
+      path: '/accounting/customer-capital-allocations'
+      fullPath: '/accounting/customer-capital-allocations'
+      preLoaderRoute: typeof AppAccountingCustomerCapitalAllocationsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/bank-accounts': {
       id: '/_app/accounting/bank-accounts'
       path: '/accounting/bank-accounts'
@@ -2849,6 +2869,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
+  AppAccountingCustomerCapitalAllocationsRoute: typeof AppAccountingCustomerCapitalAllocationsRoute
   AppAccountingDailyCapitalRoute: typeof AppAccountingDailyCapitalRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
   AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
@@ -2944,6 +2965,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingBankAccountsRoute: AppAccountingBankAccountsRoute,
+  AppAccountingCustomerCapitalAllocationsRoute:
+    AppAccountingCustomerCapitalAllocationsRoute,
   AppAccountingDailyCapitalRoute: AppAccountingDailyCapitalRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
   AppAccountingPayablesRoute: AppAccountingPayablesRoute,
