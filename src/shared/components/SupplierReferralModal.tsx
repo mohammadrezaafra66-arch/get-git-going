@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,17 +34,24 @@ type FormValues = z.infer<typeof schema>;
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultNotes?: string;
 }
 
-export function SupplierReferralModal({ open, onOpenChange }: Props) {
+export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", phone: "", city: "", notes: "" },
+    defaultValues: { name: "", phone: "", city: "", notes: defaultNotes ?? "" },
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    if (open && defaultNotes && !form.getValues("notes")) {
+      form.setValue("notes", defaultNotes);
+    }
+  }, [open, defaultNotes, form]);
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {

@@ -96,7 +96,7 @@ function SalesSearchPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useSessionStorageState<string>("sales-search:q", "");
-  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  // supplier referral moved to per-product card actions
   const dSearch = useDebounce(search, 350);
   const [brandIds, setBrandIds] = useSessionStorageState<string[]>("sales-search:brandIds", []);
   const [categoryIds, setCategoryIds] = useSessionStorageState<string[]>("sales-search:categoryIds", []);
@@ -289,16 +289,7 @@ function SalesSearchPage() {
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
-        actions={
-          <RoleGuard roles={["admin", "manager", "sales", "accountant"]}>
-            <Button variant="outline" size="sm" onClick={() => setSupplierModalOpen(true)}>
-              <UserPlus className="ml-2 h-4 w-4" />
-              معرفی تأمین‌کننده جدید
-            </Button>
-          </RoleGuard>
-        }
       />
-      <SupplierReferralModal open={supplierModalOpen} onOpenChange={setSupplierModalOpen} />
 
       {/* search & price type */}
       <Card>
@@ -708,6 +699,7 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
   const prices = product.prices ?? [];
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   // primary price = the one selected globally (if available for this product), otherwise the first.
   const primary =
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
@@ -962,7 +954,23 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
             productName={product.name}
             salePriceTypeId={primary?.sale_price_type_id ?? null}
           />
+          <RoleGuard roles={["admin", "manager", "sales", "accountant"]}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); setSupplierModalOpen(true); }}
+            >
+              <UserPlus className="ms-1 h-4 w-4" />
+              معرفی تأمین‌کننده برای این محصول
+            </Button>
+          </RoleGuard>
         </div>
+        <SupplierReferralModal
+          open={supplierModalOpen}
+          onOpenChange={setSupplierModalOpen}
+          defaultNotes={`تأمین‌کننده پیشنهادی برای محصول: ${product.name}${product.sku ? ` (کد ${product.sku})` : ""}`}
+        />
       </CardContent>
     </Card>
   );
