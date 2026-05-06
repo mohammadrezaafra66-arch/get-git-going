@@ -149,6 +149,7 @@ export function PurchaseForm() {
         .insert({
           product_id: values.product_id,
           supplier_id: supplierId,
+          payment_term_id: values.payment_term_id,
           purchase_price: values.purchase_price,
           currency: values.currency,
           quantity: values.quantity,
