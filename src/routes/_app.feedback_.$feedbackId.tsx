@@ -273,18 +273,7 @@ function FeedbackDetailContent({
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">پیوست‌ها</CardTitle></CardHeader>
           <CardContent>
-            <ul className="space-y-1.5 text-sm">
-              {attachments.map((url, i) => (
-                <li key={i}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline-offset-2 hover:underline break-all"
-                  >{url}</a>
-                </li>
-              ))}
-            </ul>
+            <AttachmentsSection attachments={attachments} />
           </CardContent>
         </Card>
       )}
