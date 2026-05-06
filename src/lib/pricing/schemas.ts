@@ -70,6 +70,7 @@ export type SalePriceTypeFormValues = z.infer<typeof salePriceTypeSchema>;
 export const shippingRuleSchema = z
   .object({
     title: z.string().trim().max(160).optional().or(z.literal("")),
+    scope_mode: z.enum(["product", "price_range", "category"]).default("product"),
     cost_type: z.enum(["fixed", "percent", "currency"]),
     cost_value: z.coerce.number().nonnegative("مقدار نمی‌تواند منفی باشد"),
     cost_currency: z.string().trim().min(2).max(20).nullable().optional(),
@@ -91,8 +92,18 @@ export const shippingRuleSchema = z
     { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price"] }
   )
   .refine(
-    (v) => Boolean(v.product_id),
+    (v) => v.scope_mode !== "product" || Boolean(v.product_id),
     { message: "انتخاب محصول الزامی است", path: ["product_id"] }
+  )
+  .refine(
+    (v) => v.scope_mode !== "category" || Boolean(v.category_id),
+    { message: "انتخاب دسته الزامی است", path: ["category_id"] }
+  )
+  .refine(
+    (v) =>
+      v.scope_mode !== "price_range" ||
+      (v.min_purchase_price != null || v.max_purchase_price != null),
+    { message: "حداقل یکی از کف یا سقف بازه را وارد کنید", path: ["min_purchase_price"] }
   )
   .refine(
     (v) => v.cost_type !== "currency" || Boolean(v.cost_currency && v.cost_currency.length > 0),

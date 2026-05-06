@@ -15,6 +15,7 @@ type ProductLite = { id: string; name: string };
 
 export const emptyShippingRule: ShippingRuleFormValues = {
   title: "",
+  scope_mode: "product",
   cost_type: "fixed",
   cost_value: 0,
   cost_currency: null,
@@ -85,6 +86,19 @@ export function ShippingCostRuleForm({
   const [productTerm, setProductTerm] = useState(initialProductLabel ?? "");
   const productSearch = useProductSearch(productTerm);
 
+  const { data: categories } = useQuery({
+    queryKey: ["categories-lite-shipping"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name")
+        .order("name", { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
   const amountLabel =
     values.cost_type === "fixed"
       ? "مبلغ (تومان)"
@@ -105,47 +119,119 @@ export function ShippingCostRuleForm({
       className="grid gap-3 sm:grid-cols-2"
     >
       <div className="sm:col-span-2">
-        <Label>محصول *</Label>
-        <Input
-          dir="rtl"
-          placeholder="نام محصول را برای جستجو تایپ کنید..."
-          value={productTerm}
-          onChange={(e) => {
-            setProductTerm(e.target.value);
-            if (!e.target.value) set("product_id", null);
+        <Label>نوع تعریف هزینه *</Label>
+        <Select
+          value={values.scope_mode}
+          onValueChange={(v) => {
+            const next = v as "product" | "price_range" | "category";
+            onChange({
+              ...values,
+              scope_mode: next,
+              product_id: next === "product" ? values.product_id : null,
+              category_id: next === "category" ? values.category_id : null,
+              min_purchase_price: next === "price_range" ? values.min_purchase_price : null,
+              max_purchase_price: next === "price_range" ? values.max_purchase_price : null,
+            });
+            if (next !== "product") setProductTerm("");
           }}
-        />
-        {productSearch.data && productSearch.data.length > 0 && (
-          <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover text-sm">
-            {productSearch.data.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
-                    values.product_id === p.id ? "bg-muted font-semibold" : ""
-                  }`}
-                  onClick={() => { set("product_id", p.id); setProductTerm(p.name); }}
-                >
-                  {p.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {values.product_id && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            انتخاب‌شده — برای حذف، فیلد را خالی کنید.
-          </p>
-        )}
-        {errors.product_id && <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>}
+        >
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="product">بر اساس محصول</SelectItem>
+            <SelectItem value="price_range">بر اساس بازه قیمتی</SelectItem>
+            <SelectItem value="category">بر اساس دسته</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {values.scope_mode === "product" && (
+        <div className="sm:col-span-2">
+          <Label>محصول *</Label>
+          <Input
+            dir="rtl"
+            placeholder="نام محصول را برای جستجو تایپ کنید..."
+            value={productTerm}
+            onChange={(e) => {
+              setProductTerm(e.target.value);
+              if (!e.target.value) set("product_id", null);
+            }}
+          />
+          {productSearch.data && productSearch.data.length > 0 && (
+            <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover text-sm">
+              {productSearch.data.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
+                      values.product_id === p.id ? "bg-muted font-semibold" : ""
+                    }`}
+                    onClick={() => { set("product_id", p.id); setProductTerm(p.name); }}
+                  >
+                    {p.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {values.product_id && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              انتخاب‌شده — برای حذف، فیلد را خالی کنید.
+            </p>
+          )}
+          {errors.product_id && <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>}
+        </div>
+      )}
+
+      {values.scope_mode === "category" && (
+        <div className="sm:col-span-2">
+          <Label>دسته *</Label>
+          <Select
+            value={values.category_id ?? ""}
+            onValueChange={(v) => set("category_id", v)}
+          >
+            <SelectTrigger><SelectValue placeholder="انتخاب دسته" /></SelectTrigger>
+            <SelectContent>
+              {(categories ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            هزینه برای تمام محصولات این دسته اعمال می‌شود.
+          </p>
+          {errors.category_id && <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>}
+        </div>
+      )}
+
+      {values.scope_mode === "price_range" && (
+        <>
+          <div>
+            <Label>کف بازه قیمت خرید (تومان)</Label>
+            <Input
+              type="number" inputMode="decimal" dir="ltr"
+              value={values.min_purchase_price ?? ""}
+              onChange={(e) => set("min_purchase_price", e.target.value === "" ? null : Number(e.target.value))}
+            />
+            {errors.min_purchase_price && <p className="mt-1 text-xs text-destructive">{errors.min_purchase_price}</p>}
+          </div>
+          <div>
+            <Label>سقف بازه قیمت خرید (تومان)</Label>
+            <Input
+              type="number" inputMode="decimal" dir="ltr"
+              value={values.max_purchase_price ?? ""}
+              onChange={(e) => set("max_purchase_price", e.target.value === "" ? null : Number(e.target.value))}
+            />
+            {errors.max_purchase_price && <p className="mt-1 text-xs text-destructive">{errors.max_purchase_price}</p>}
+          </div>
+        </>
+      )}
 
       <div className="sm:col-span-2">
         <Label>عنوان قانون (اختیاری)</Label>
         <Input
           value={values.title ?? ""}
           onChange={(e) => set("title", e.target.value)}
-          placeholder="در صورت خالی، نام محصول استفاده می‌شود"
+          placeholder="در صورت خالی، عنوان به‌صورت خودکار تولید می‌شود"
         />
         {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
       </div>
