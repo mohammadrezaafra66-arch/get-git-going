@@ -314,6 +314,32 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {duplicate && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>محصول تکراری شناسایی شد</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>
+              محصولی با ترکیب «برند + دسته + مدل + رنگ + ظرفیت» مشابه قبلاً
+              ثبت شده است. ثبت محصول جدید مجاز نیست.
+            </p>
+            <div className="rounded-md bg-background/50 p-2 text-sm">
+              <div><span className="font-medium">نام:</span> {duplicate.name}</div>
+              {duplicate.sku && (
+                <div dir="ltr" className="text-start"><span className="font-medium">SKU:</span> {duplicate.sku}</div>
+              )}
+            </div>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to="/products/$id" params={{ id: duplicate.id }}>
+                مشاهده محصول موجود
+              </Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {!duplicate && dupChecking && values.brand_id && values.category_id && (
+        <p className="text-xs text-muted-foreground">در حال بررسی تکراری بودن محصول...</p>
+      )}
       <Card>
         <CardContent className="grid gap-4 p-4 md:grid-cols-2">
           <Field label="نام محصول" required error={errors.name}>
