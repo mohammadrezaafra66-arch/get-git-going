@@ -191,7 +191,7 @@ function DailyCapitalPage() {
         p_blocked_funds: toNum(form.blocked_funds),
         p_inventory_liquidity_value: toNum(form.inventory_liquidity_value),
         p_manual_adjustment: toNum(form.manual_adjustment),
-        p_notes: form.notes?.trim() || null,
+        p_notes: form.notes?.trim() || undefined,
       });
       if (error) throw error;
       return data;
@@ -215,7 +215,7 @@ function DailyCapitalPage() {
       const { data, error } = await supabase.rpc("save_daily_capital_snapshot", {
         p_capital_date: dateIso,
         p_final_capital: final,
-        p_override_reason: reason || null,
+        p_override_reason: reason || undefined,
       });
       if (error) throw error;
       return data;
@@ -236,7 +236,7 @@ function DailyCapitalPage() {
 
   return (
     <div className="space-y-4 p-4" dir="rtl">
-      <PageHeader title="سرمایه روز" subtitle="محاسبه سرمایه قابل تخصیص برای فروش حساب‌باز" />
+      <PageHeader title="سرمایه روز" description="محاسبه سرمایه قابل تخصیص برای فروش حساب‌باز" />
 
       {/* Date picker + refresh */}
       <div className="flex flex-wrap items-center gap-2">
