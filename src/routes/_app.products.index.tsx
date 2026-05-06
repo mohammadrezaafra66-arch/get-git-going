@@ -175,7 +175,7 @@ function ProductsPage() {
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState icon={Package} title="محصولی یافت نشد" description="با تغییر فیلترها یا افزودن محصول جدید شروع کنید." />
       ) : (
-        <>
+        <RecentPurchaseGroup productIds={(data?.rows ?? []).map((p) => p.id)}>
           {/* Desktop table */}
           <Card className="hidden md:block">
             <CardContent className="p-0">
@@ -324,7 +324,7 @@ function ProductsPage() {
               </Button>
             </div>
           </div>
-        </>
+        </RecentPurchaseGroup>
       )}
 
       <ProductLabelsQuickDialog
