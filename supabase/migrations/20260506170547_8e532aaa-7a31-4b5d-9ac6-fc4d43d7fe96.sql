@@ -1,0 +1,1 @@
+ALTER VIEW public.vw_purchase_float SET (security_invoker = true);
