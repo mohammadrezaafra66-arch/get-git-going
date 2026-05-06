@@ -99,6 +99,7 @@ import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.w
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
+import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
@@ -602,6 +603,12 @@ const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   path: '/admin/roles',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRecentPurchaseSettingsRoute =
+  AppAdminRecentPurchaseSettingsRouteImport.update({
+    id: '/admin/recent-purchase-settings',
+    path: '/admin/recent-purchase-settings',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminReceiptFieldsRoute = AppAdminReceiptFieldsRouteImport.update({
   id: '/admin/receipt-fields',
   path: '/admin/receipt-fields',
@@ -865,6 +872,7 @@ export interface FileRoutesByFullPath {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
+  '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
@@ -994,6 +1002,7 @@ export interface FileRoutesByTo {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
+  '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
@@ -1126,6 +1135,7 @@ export interface FileRoutesById {
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
+  '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
@@ -1259,6 +1269,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
+    | '/admin/recent-purchase-settings'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/validation-rules'
@@ -1388,6 +1399,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
+    | '/admin/recent-purchase-settings'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/validation-rules'
@@ -1519,6 +1531,7 @@ export interface FileRouteTypes {
     | '/_app/admin/payment-terms'
     | '/_app/admin/profile-fields'
     | '/_app/admin/receipt-fields'
+    | '/_app/admin/recent-purchase-settings'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
     | '/_app/admin/validation-rules'
@@ -2260,6 +2273,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRolesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/recent-purchase-settings': {
+      id: '/_app/admin/recent-purchase-settings'
+      path: '/admin/recent-purchase-settings'
+      fullPath: '/admin/recent-purchase-settings'
+      preLoaderRoute: typeof AppAdminRecentPurchaseSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/receipt-fields': {
       id: '/_app/admin/receipt-fields'
       path: '/admin/receipt-fields'
@@ -2758,6 +2778,7 @@ interface AppRouteChildren {
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
+  AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
@@ -2848,6 +2869,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
+  AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,

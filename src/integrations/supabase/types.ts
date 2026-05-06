@@ -5287,6 +5287,33 @@ export type Database = {
           },
         ]
       }
+      recent_purchase_settings: {
+        Row: {
+          id: string
+          limited_after_hours: number
+          singleton: boolean
+          unavailable_after_hours: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          limited_after_hours?: number
+          singleton?: boolean
+          unavailable_after_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          limited_after_hours?: number
+          singleton?: boolean
+          unavailable_after_hours?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           can_approve: boolean
@@ -7238,6 +7265,10 @@ export type Database = {
           relative_position: string
           score: number
         }[]
+      }
+      get_recent_purchase_label: {
+        Args: { p_product_id: string }
+        Returns: Json
       }
       get_sales_search_products: {
         Args: {

@@ -92,6 +92,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/profile-fields", label: "فیلدهای کاربر", icon: UserSquare2, module: "users", group: "admin" },
   { to: "/admin/workflow-stages", label: "مراحل گردش‌کار", icon: Workflow, module: "roles", group: "admin" },
   { to: "/admin/settings", label: "تنظیمات فروشگاه", icon: Settings, module: "roles", group: "admin" },
+  { to: "/admin/recent-purchase-settings", label: "وضعیت موجودی پس از خرید", icon: Settings, module: "roles", group: "admin", adminOnly: true },
   { to: "/admin/marketing-channels", label: "کانال‌های تبلیغاتی", icon: Megaphone, module: "roles", group: "admin" },
   { to: "/admin/payment-terms", label: "زمان‌های تسویه", icon: Wallet, module: "roles", group: "admin" },
   { to: "/admin/waybill-fields", label: "فیلدهای بیجک", icon: Settings, module: "roles", group: "admin" },
