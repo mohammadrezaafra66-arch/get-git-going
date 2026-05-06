@@ -699,6 +699,7 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
   const prices = product.prices ?? [];
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   // primary price = the one selected globally (if available for this product), otherwise the first.
   const primary =
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
