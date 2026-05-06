@@ -308,6 +308,30 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         }
       }
 
+      // Phase 22.2C: Capital allocation pre-flight for capital-committing invoices
+      // (pre_invoice OR advance_payment with commitment_confirmed)
+      const capitalCommitting =
+        values.invoice_type === "pre_invoice" ||
+        (values.invoice_type === "advance_payment" && !!values.commitment_confirmed);
+      if (capitalCommitting) {
+        const { data: capChk, error: capChkErr } = await supabase.rpc(
+          "can_use_customer_capital_allocation",
+          { p_customer_id: values.customer_id, p_amount: total },
+        );
+        if (capChkErr) {
+          throw new Error(
+            "برای فروش حساب‌باز، سرمایه روز و تخصیص سرمایه فعال لازم است.",
+          );
+        }
+        const capRow = Array.isArray(capChk) ? capChk[0] : capChk;
+        if (!capRow || (capRow as { can_use?: boolean }).can_use !== true) {
+          const reason = (capRow as { reason?: string } | null)?.reason ?? "";
+          throw new Error(
+            `سهم سرمایه تخصیص‌یافته برای این مشتری/فروشنده کافی نیست.${reason ? ` (${reason})` : ""}`,
+          );
+        }
+      }
+
       const { data: inv, error: iErr } = await supabase
         .from("invoices")
         .insert({
@@ -353,6 +377,30 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
           await supabase.from("invoices").delete().eq("id", invoiceId);
           throw new Error(holdErr.message || "ثبت اعتبار با خطا مواجه شد");
+        }
+      }
+
+      // Phase 22.2C: Hold capital allocation for capital-committing invoices.
+      // Runs AFTER hold_credit. On failure, release credit (if held) then drop invoice/items.
+      if (capitalCommitting) {
+        const { error: capHoldErr } = await supabase.rpc("hold_capital_allocation", {
+          p_customer_id: values.customer_id,
+          p_amount: total,
+          p_invoice_id: invoiceId,
+          p_user_id: user.id,
+        });
+        if (capHoldErr) {
+          if (values.invoice_type === "pre_invoice") {
+            await supabase.rpc("release_credit", {
+              p_customer_id: values.customer_id,
+              p_amount: total,
+              p_invoice_id: invoiceId,
+              p_user_id: user.id,
+            });
+          }
+          await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+          await supabase.from("invoices").delete().eq("id", invoiceId);
+          throw new Error(capHoldErr.message || "ثبت سهم سرمایه با خطا مواجه شد");
         }
       }
 
