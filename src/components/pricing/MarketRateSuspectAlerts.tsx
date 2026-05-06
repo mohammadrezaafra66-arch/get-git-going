@@ -146,9 +146,9 @@ export function MarketRateSuspectAlerts() {
                         </td>
                         <td
                           className="px-2 py-2 max-w-[260px] truncate text-muted-foreground"
-                          title={r.note ?? "دلیل ثبت نشده"}
+                          title={r.note?.trim() ? r.note : "دلیل ثبت نشده"}
                         >
-                          {r.note ?? "دلیل ثبت نشده"}
+                          {r.note?.trim() ? r.note : "دلیل ثبت نشده"}
                         </td>
                       </tr>
                     );
