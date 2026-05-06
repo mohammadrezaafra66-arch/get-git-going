@@ -144,8 +144,19 @@ export function MarketRateIngestionHistory() {
             </div>
 
             {q.data && q.data.length > 0 && (
-              <div className="mb-2 text-[11px] text-muted-foreground">
-                نمایش {toFaDigits(filtered.length)} مورد از {toFaDigits(q.data.length)} اجرای آخر
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground">
+                  نمایش {toFaDigits(filtered.length)} مورد از {toFaDigits(q.data.length)} اجرای آخر
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[10px]"
+                  disabled={sourceFilter === "all" && statusFilter === "all"}
+                  onClick={() => { setSourceFilter("all"); setStatusFilter("all"); }}
+                >
+                  پاک‌سازی فیلترها
+                </Button>
               </div>
             )}
 
