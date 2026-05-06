@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { TrendingUp, TrendingDown, Plus, Filter } from "lucide-react";
+import { TrendingUp, TrendingDown, Plus, Filter, Cloud, RefreshCw } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import {
+  ingestMarketRatesExternal,
+  getExternalRatesStatus,
+} from "@/server/market-rates-ingestion.functions";
 
 export const Route = createFileRoute("/_app/pricing/market-rates-workshop")({
   beforeLoad: async () => { await requirePermission("market-rates", "view"); },
