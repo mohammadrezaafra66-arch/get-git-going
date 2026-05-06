@@ -282,7 +282,15 @@ export const getExternalRatesStatus = createServerFn({ method: "GET" })
       .from("user_roles").select("role").eq("user_id", userId);
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
-      throw new Error("Forbidden");
+      // Return safe defaults instead of throwing — keeps UI stable for users
+      // without market-rates write access (read-only viewers).
+      return {
+        master_enabled: false,
+        navasan_enabled: false,
+        tgju_enabled: false,
+        navasan_has_key: false,
+        tgju_has_key: false,
+      };
     }
     return {
       master_enabled: flagOn("MARKET_RATES_EXTERNAL_ENABLED"),
