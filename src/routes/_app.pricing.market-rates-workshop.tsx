@@ -413,7 +413,8 @@ function ExternalIngestionCard() {
         // runtime error in the preview reporter.
         const { supabase } = await import("@/integrations/supabase/client");
         const { data: sess } = await supabase.auth.getSession();
-        if (!sess?.session?.access_token) {
+        const token = sess?.session?.access_token;
+        if (!token) {
           return {
             master_enabled: false,
             navasan_enabled: false,
@@ -422,7 +423,10 @@ function ExternalIngestionCard() {
             tgju_has_key: false,
           };
         }
-        return await getExternalRatesStatus({ data: {} });
+        return await getExternalRatesStatus({
+          data: {},
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } catch {
         // No access or self-host disabled — fall back to a safe default
         return {
@@ -440,8 +444,16 @@ function ExternalIngestionCard() {
   });
 
   const ingest = useMutation({
-    mutationFn: async (source_code: "NAVASAN_API" | "TGJU_API" | "ALL") =>
-      await ingestMarketRatesExternal({ data: { source_code } }),
+    mutationFn: async (source_code: "NAVASAN_API" | "TGJU_API" | "ALL") => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) throw new Error("برای دریافت نرخ باید وارد شده باشید.");
+      return await ingestMarketRatesExternal({
+        data: { source_code },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
     onSuccess: (results) => {
       results.forEach((r) => {
         const label = r.source_code === "NAVASAN_API" ? "نوسان" : "TGJU";
