@@ -517,3 +517,40 @@ LOVABLE_API_KEY=...   # فقط در .env سرور، هرگز در repo
 ---
 
 **پایان Runbook SH.9.** برای ۱۰۰٪ self-host واقعی، فاز SH.6 (OCR) باقی مانده است.
+## Market Rates — External Ingestion (Navasan / TGJU)
+
+Phase FX.2 adds **optional** server-side ingestion of currency/gold rates from
+Navasan and TGJU. Both integrations are **OFF by default** and must remain
+optional: if disabled or unreachable, manual rate entry remains the primary path.
+
+### Rules
+- API keys are **server-only**. Never prefix with `VITE_`.
+- The browser never calls Navasan/TGJU directly; only the server function
+  `ingestMarketRatesExternal` does.
+- Failure of one source must not break the other or manual entry.
+- No automatic cron in this phase — only manual trigger from
+  `/pricing/market-rates-workshop` (admin/manager/accountant).
+- Each fetch attempt is logged in `market_rate_ingestion_runs`
+  (started/completed/failed/skipped) and successful ticks generate
+  `audit_logs.action = 'market_rate_external_ingested'`.
+
+### Enabling on a self-host server
+Set in `deploy/app/.env.production` (never commit real values):
+
+```
+MARKET_RATES_EXTERNAL_ENABLED=true
+NAVASAN_ENABLED=true
+NAVASAN_API_KEY=...   # obtain from Navasan bot
+TGJU_ENABLED=false    # TGJU symbol mappings need admin verification first
+```
+
+If `MARKET_RATES_EXTERNAL_ENABLED=false`, the UI shows a Persian message and
+all buttons are disabled. The server function returns `status=skipped` without
+any external network call.
+
+### Mappings
+Indicator-to-source-symbol mappings live in
+`public.market_rate_source_mappings`. Navasan symbols are seeded enabled per
+its public docs. TGJU mappings are seeded **disabled** until an admin
+verifies the exact symbols against the TGJU web service contract — guessing
+financial symbols is forbidden.
