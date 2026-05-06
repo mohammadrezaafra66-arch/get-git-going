@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
@@ -58,6 +59,25 @@ export function MarketRateSuspectAlerts() {
       <CardContent>
         {q.isLoading ? (
           <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+        ) : q.isError ? (
+          (() => {
+            console.warn("[MarketRateSuspectAlerts] query error", q.error);
+            return (
+              <div className="flex flex-col items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                <span>خطا در دریافت نرخ‌های مشکوک. لطفاً دوباره تلاش کنید یا با مدیر سیستم تماس بگیرید.</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => q.refetch()}
+                  disabled={q.isFetching}
+                >
+                  <RefreshCw className="ml-1 h-3 w-3" />
+                  تلاش دوباره
+                </Button>
+              </div>
+            );
+          })()
         ) : !q.data || q.data.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
             در حال حاضر نرخ مشکوکی ثبت نشده است.
