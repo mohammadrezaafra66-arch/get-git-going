@@ -399,10 +399,13 @@ function NewTickDialog({ indicators, sources, onDone }: {
 
 function ExternalIngestionCard() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const statusQ = useQuery({
     queryKey: ["market-external-status"],
     queryFn: async () => await getExternalRatesStatus({ data: {} }),
     staleTime: 60_000,
+    enabled: !!user,
+    retry: false,
   });
 
   const ingest = useMutation({
