@@ -34,5 +34,5 @@ export async function findDuplicateProduct(args: {
   }
   const row = Array.isArray(data) ? data[0] : null;
   if (!row) return null;
-  return { id: row.id, name: row.name, sku: row.sku };
+  return { id: row.id, name: row.name, sku: row.sku ?? null };
 }
