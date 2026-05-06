@@ -121,24 +121,38 @@ export function MarketRateSuspectAlerts() {
               </thead>
               <tbody>
                 {q.data.map((r) => (
-                  <tr key={r.id} className="border-t">
-                    <td className="px-2 py-2">
-                      <div className="font-medium">{r.indicator?.title_fa ?? "—"}</div>
-                      <div className="text-[10px] text-muted-foreground">{r.indicator?.code}</div>
-                    </td>
-                    <td className="px-2 py-2 font-mono">{toFaDigits(Number(r.value).toLocaleString("en-US"))}</td>
-                    <td className="px-2 py-2">{r.source?.title_fa ?? r.source?.code ?? "—"}</td>
-                    <td className="px-2 py-2 text-muted-foreground">{formatDateFa(r.observed_at)}</td>
-                    <td className="px-2 py-2" title="درصد تغییر نسبت به آخرین نرخ تأییدشده">
-                      {r.change_percent == null ? "—" : toFaDigits(Number(r.change_percent).toFixed(2)) + "٪"}
-                    </td>
-                    <td
-                      className="px-2 py-2 max-w-[260px] truncate text-muted-foreground"
-                      title={r.note ?? ""}
-                    >
-                      {r.note ?? "—"}
-                    </td>
-                  </tr>
+                  (() => {
+                    const valueNum = Number(r.value);
+                    const hasValue = r.value !== null && r.value !== undefined && Number.isFinite(valueNum);
+                    const observed = r.observed_at ? formatDateFa(r.observed_at) : "زمان نامشخص";
+                    const observedSafe = observed && observed !== "—" ? observed : "زمان نامشخص";
+                    const changeNum = r.change_percent == null ? null : Number(r.change_percent);
+                    const hasChange = changeNum !== null && Number.isFinite(changeNum);
+                    return (
+                      <tr key={r.id} className="border-t">
+                        <td className="px-2 py-2">
+                          <div className="font-medium">{r.indicator?.title_fa ?? "شاخص نامشخص"}</div>
+                          <div className="text-[10px] text-muted-foreground">{r.indicator?.code ?? ""}</div>
+                        </td>
+                        <td className="px-2 py-2 font-mono">
+                          {hasValue ? toFaDigits(valueNum.toLocaleString("en-US")) : "مقدار نامشخص"}
+                        </td>
+                        <td className="px-2 py-2">
+                          {r.source?.title_fa ?? r.source?.code ?? "منبع نامشخص"}
+                        </td>
+                        <td className="px-2 py-2 text-muted-foreground">{observedSafe}</td>
+                        <td className="px-2 py-2" title="درصد تغییر نسبت به آخرین نرخ تأییدشده">
+                          {hasChange ? toFaDigits(changeNum.toFixed(2)) + "٪" : "نامشخص"}
+                        </td>
+                        <td
+                          className="px-2 py-2 max-w-[260px] truncate text-muted-foreground"
+                          title={r.note ?? "دلیل ثبت نشده"}
+                        >
+                          {r.note ?? "دلیل ثبت نشده"}
+                        </td>
+                      </tr>
+                    );
+                  })()
                 ))}
               </tbody>
             </table>
