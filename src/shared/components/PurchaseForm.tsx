@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Loader2, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +50,10 @@ const schema = z.object({
     .refine((d) => d.getTime() <= new Date().setHours(23, 59, 59, 999),
       { message: "تاریخ نمی‌تواند در آینده باشد" }),
   notes: z.string().max(500, "حداکثر ۵۰۰ کاراکتر").optional(),
+  cash_price: z
+    .number({ message: "قیمت نقدی نامعتبر است" })
+    .positive("قیمت نقدی باید مثبت باشد")
+    .optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -67,6 +71,7 @@ const defaultValues: FormValues = {
   quantity: 1,
   purchase_date: new Date(),
   notes: "",
+  cash_price: undefined,
 };
 
 export function PurchaseForm() {
@@ -152,6 +157,8 @@ export function PurchaseForm() {
           payment_term_id: values.payment_term_id,
           purchase_price: values.purchase_price,
           currency: values.currency,
+          cash_price: values.cash_price ?? null,
+          cash_price_currency: values.cash_price ? values.currency : null,
           quantity: values.quantity,
           purchase_date: format(values.purchase_date, "yyyy-MM-dd"),
           notes: values.notes || null,
@@ -315,6 +322,32 @@ export function PurchaseForm() {
           {...form.register("purchase_price", { valueAsNumber: true })}
         />
         {errors.purchase_price && <p className="text-xs text-destructive">{errors.purchase_price.message}</p>}
+      </div>
+
+      {/* قیمت نقدی همان تأمین‌کننده — مبنای امتیازدهی طلای زمان */}
+      <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+        <Label htmlFor="cash_price" className="flex items-center gap-2">
+          <Coins className="h-4 w-4 text-amber-500" />
+          قیمت نقدی همین تأمین‌کننده در همین لحظه
+          <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+            امتیازآور
+          </span>
+        </Label>
+        <Input
+          id="cash_price"
+          type="number"
+          step="0.01"
+          min="0"
+          inputMode="decimal"
+          placeholder="اگر همین حالا نقد می‌دادیم چقدر می‌شد؟"
+          {...form.register("cash_price", {
+            setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)),
+          })}
+        />
+        <p className="text-[11px] leading-5 text-muted-foreground">
+          هرچه قیمت با مهلت به قیمت نقدی نزدیک‌تر باشد و مهلت تسویه طولانی‌تر، امتیاز شما در گیمیفیکیشن «طلای زمان» بیشتر می‌شود.
+        </p>
+        {errors.cash_price && <p className="text-xs text-destructive">{errors.cash_price.message}</p>}
       </div>
 
       {/* ارز */}
