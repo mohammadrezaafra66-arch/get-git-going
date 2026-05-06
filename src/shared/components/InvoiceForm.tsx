@@ -252,7 +252,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             p_customer_id: values.customer_id,
             p_overdue_amount: amt,
             p_overdue_count: cnt,
-            p_oldest_due_date: oldest,
+            p_oldest_due_date: oldest ?? undefined,
             p_invoice_type: values.invoice_type,
             p_commitment_confirmed: !!values.commitment_confirmed,
           });
