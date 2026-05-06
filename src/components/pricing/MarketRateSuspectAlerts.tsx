@@ -68,6 +68,11 @@ export function MarketRateSuspectAlerts() {
             آخرین به‌روزرسانی: {formatDateTimeFa(lastUpdatedAt)}
           </div>
         )}
+        {q.isFetching && !q.isLoading && (
+          <div className="text-[11px] text-muted-foreground">
+            در حال به‌روزرسانی نرخ‌های مشکوک…
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {q.isLoading ? (
@@ -86,7 +91,7 @@ export function MarketRateSuspectAlerts() {
                   disabled={q.isFetching}
                 >
                   <RefreshCw className="ml-1 h-3 w-3" />
-                  تلاش دوباره
+                  {q.isFetching ? "در حال تلاش…" : "تلاش دوباره"}
                 </Button>
               </div>
             );
