@@ -26,7 +26,7 @@ export async function findDuplicateProduct(args: {
     p_model: args.model ?? "",
     p_color: args.color ?? "",
     p_capacity: args.capacity ?? "",
-    p_exclude_id: args.excludeId ?? null,
+    p_exclude_id: args.excludeId ?? undefined,
   });
   if (error) {
     console.error("find_duplicate_product failed:", error.message);
