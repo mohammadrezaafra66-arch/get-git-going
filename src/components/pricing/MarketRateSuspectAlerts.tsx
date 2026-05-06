@@ -82,7 +82,9 @@ export function MarketRateSuspectAlerts() {
             console.warn("[MarketRateSuspectAlerts] query error", q.error);
             return (
               <div className="flex flex-col items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                <span>خطا در دریافت نرخ‌های مشکوک. لطفاً دوباره تلاش کنید یا با مدیر سیستم تماس بگیرید.</span>
+                <span>
+                  لیست نرخ‌های مشکوک فعلاً دریافت نشد. ثبت دستی نرخ‌ها و سایر بخش‌های کارگاه همچنان فعال هستند. دوباره تلاش کنید یا در صورت تکرار خطا با مدیر سیستم تماس بگیرید.
+                </span>
                 <Button
                   size="sm"
                   variant="outline"
