@@ -117,6 +117,21 @@ export function PurchaseForm() {
     staleTime: 5 * 60_000,
   });
 
+  const { data: paymentTerms = [] } = useQuery({
+    queryKey: ["purchase-form-payment-terms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_terms")
+        .select("id, name, days")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === form.watch("product_id")),
     [products, form.watch("product_id")],
