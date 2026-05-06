@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 
 type SuspectRow = {
   id: string;
@@ -20,6 +21,7 @@ type SuspectRow = {
 export function MarketRateSuspectAlerts() {
   const { roles } = useAuth();
   const canView = roles.some((r) => ["admin", "manager", "accountant"].includes(r));
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const q = useQuery({
     queryKey: ["market-rate-suspect-alerts"],
@@ -41,6 +43,12 @@ export function MarketRateSuspectAlerts() {
     staleTime: 30_000,
   });
 
+  useEffect(() => {
+    if (q.isSuccess && q.dataUpdatedAt) {
+      setLastUpdatedAt(new Date(q.dataUpdatedAt));
+    }
+  }, [q.isSuccess, q.dataUpdatedAt]);
+
   if (!canView) return null;
 
   return (
@@ -55,6 +63,11 @@ export function MarketRateSuspectAlerts() {
             </Badge>
           )}
         </CardTitle>
+        {lastUpdatedAt && (
+          <div className="text-[11px] text-muted-foreground">
+            آخرین به‌روزرسانی: {formatDateTimeFa(lastUpdatedAt)}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {q.isLoading ? (
