@@ -191,6 +191,7 @@ function ProductsPage() {
                       <th className="p-3 font-medium">مدل</th>
                       <th className="p-3 font-medium">نوع / ارز</th>
                       <th className="p-3 font-medium">موجودی</th>
+                      <th className="p-3 font-medium">خرید اخیر</th>
                       <th className="p-3 font-medium">وضعیت</th>
                       <th className="p-3 font-medium">به‌روزرسانی</th>
                       <th className="p-3 font-medium">عملیات</th>
