@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS, type StockStatus } from "@/lib/products/constants";
 import type { PublicSaleListItem } from "@/lib/public/get-public-sale-list";
+import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 
 interface Props {
   items: PublicSaleListItem[];
@@ -60,6 +61,7 @@ export function SaleListTable({ items }: Props) {
                 </Badge>
               ) : null}
             </div>
+            <div className="mt-2"><RecentPurchaseBadge productId={it.product_id} /></div>
             <div className="mt-3 flex items-end justify-between border-t border-border pt-2">
               <div>
                 <div className="text-[10px] text-muted-foreground">قیمت فروش</div>
@@ -111,6 +113,7 @@ export function SaleListTable({ items }: Props) {
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
+                  <div className="mt-1"><RecentPurchaseBadge productId={it.product_id} /></div>
                 </TableCell>
               </TableRow>
             ))}
