@@ -8159,6 +8159,16 @@ export type Database = {
       }
       reactivate_user: { Args: { _user_id: string }; Returns: undefined }
       recompute_all_employee_scores: { Args: never; Returns: number }
+      recompute_customer_credit_scores: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          credit_limit: number
+          customer_id: string
+          error: string
+          score: number
+          status: string
+        }[]
+      }
       record_currency_fetch: {
         Args: {
           p_currency: Database["public"]["Enums"]["currency_code"]
