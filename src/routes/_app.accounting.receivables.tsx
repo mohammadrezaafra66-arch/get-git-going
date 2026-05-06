@@ -126,8 +126,8 @@ function ReceivablesPage() {
   const [page, setPage] = useState(0);
   const [detailInvoiceId, setDetailInvoiceId] = useState<string | null>(null);
 
-  const fromIso = fromDate ? format(fromDate, "yyyy-MM-dd") : null;
-  const toIso = toDate ? format(toDate, "yyyy-MM-dd") : null;
+  const fromIso = fromDate ? format(fromDate, "yyyy-MM-dd") : undefined;
+  const toIso = toDate ? format(toDate, "yyyy-MM-dd") : undefined;
 
   const summaryQ = useQuery({
     queryKey: ["receivables-summary", fromIso, toIso],
@@ -135,7 +135,7 @@ function ReceivablesPage() {
       const { data, error } = await supabase.rpc("get_receivables_summary", {
         p_from_date: fromIso,
         p_to_date: toIso,
-        p_customer_id: null,
+        p_customer_id: undefined,
       });
       if (error) throw error;
       const row = (data as SummaryRow[] | null)?.[0] ?? null;
@@ -150,9 +150,9 @@ function ReceivablesPage() {
       const { data, error } = await supabase.rpc("get_receivables_list", {
         p_from_date: fromIso,
         p_to_date: toIso,
-        p_customer_id: null,
+        p_customer_id: undefined,
         p_due_filter: dueFilter,
-        p_search: debouncedSearch || null,
+        p_search: debouncedSearch || undefined,
         p_limit: pageSize,
         p_offset: page * pageSize,
       });
@@ -167,8 +167,8 @@ function ReceivablesPage() {
     enabled: !!detailInvoiceId,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_receivable_detail", {
-        p_customer_id: null,
-        p_invoice_id: detailInvoiceId,
+        p_customer_id: undefined,
+        p_invoice_id: detailInvoiceId ?? undefined,
       });
       if (error) throw error;
       return (data as DetailRow[] | null) ?? [];
