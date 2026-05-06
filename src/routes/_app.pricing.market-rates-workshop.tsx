@@ -407,6 +407,21 @@ function ExternalIngestionCard() {
     queryKey: ["market-external-status"],
     queryFn: async () => {
       try {
+        // Guard: ensure session token is present before calling the
+        // server function. Without it, the auth middleware throws a 401
+        // Response which surfaces as an unhandled "[object Response]"
+        // runtime error in the preview reporter.
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: sess } = await supabase.auth.getSession();
+        if (!sess?.session?.access_token) {
+          return {
+            master_enabled: false,
+            navasan_enabled: false,
+            tgju_enabled: false,
+            navasan_has_key: false,
+            tgju_has_key: false,
+          };
+        }
         return await getExternalRatesStatus({ data: {} });
       } catch {
         // No access or self-host disabled — fall back to a safe default
