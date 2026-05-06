@@ -3,7 +3,7 @@ import {
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
   MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
   CheckSquare, Workflow, Settings, Heart,
-  Megaphone, Edit3, Monitor, TrendingUp, Trophy,
+  Megaphone, Edit3, Monitor, TrendingUp, Trophy, Wallet,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -90,6 +90,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/workflow-stages", label: "مراحل گردش‌کار", icon: Workflow, module: "roles", group: "admin" },
   { to: "/admin/settings", label: "تنظیمات فروشگاه", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/marketing-channels", label: "کانال‌های تبلیغاتی", icon: Megaphone, module: "roles", group: "admin" },
+  { to: "/admin/payment-terms", label: "زمان‌های تسویه", icon: Wallet, module: "roles", group: "admin" },
   { to: "/admin/waybill-fields", label: "فیلدهای بیجک", icon: Settings, module: "roles", group: "admin" },
   { to: "/admin/receipt-fields", label: "فیلدهای فیش واریزی", icon: Settings, module: "roles", group: "admin" },
   { to: "/audit-logs", label: "Audit Logs", icon: ScrollText, module: "audit-logs", group: "admin" },

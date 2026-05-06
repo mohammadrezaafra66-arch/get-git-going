@@ -3406,6 +3406,42 @@ export type Database = {
           },
         ]
       }
+      payment_terms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days: number | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       price_alert_notifications: {
         Row: {
           alert_rule_id: string
@@ -4903,6 +4939,7 @@ export type Database = {
           id: string
           notes: string | null
           number: string | null
+          payment_term_id: string | null
           product_id: string | null
           purchase_date: string
           purchase_price: number | null
@@ -4919,6 +4956,7 @@ export type Database = {
           id?: string
           notes?: string | null
           number?: string | null
+          payment_term_id?: string | null
           product_id?: string | null
           purchase_date?: string
           purchase_price?: number | null
@@ -4935,6 +4973,7 @@ export type Database = {
           id?: string
           notes?: string | null
           number?: string | null
+          payment_term_id?: string | null
           product_id?: string | null
           purchase_date?: string
           purchase_price?: number | null
@@ -4945,6 +4984,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchases_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchases_product_id_fkey"
             columns: ["product_id"]

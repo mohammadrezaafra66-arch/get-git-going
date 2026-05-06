@@ -37,6 +37,7 @@ const SUPPLIER_UNKNOWN = "__none__";
 const schema = z.object({
   product_id: z.string().uuid({ message: "انتخاب محصول الزامی است" }),
   supplier_id: z.string().nullable(),
+  payment_term_id: z.string().uuid({ message: "انتخاب زمان تسویه الزامی است" }),
   purchase_price: z
     .number({ message: "قیمت خرید الزامی است" })
     .positive("قیمت خرید باید مثبت باشد"),
@@ -60,6 +61,7 @@ const CURRENCY_LABELS: Record<FormValues["currency"], string> = {
 const defaultValues: FormValues = {
   product_id: "",
   supplier_id: null,
+  payment_term_id: "",
   purchase_price: undefined as unknown as number,
   currency: "toman",
   quantity: 1,
@@ -115,6 +117,21 @@ export function PurchaseForm() {
     staleTime: 5 * 60_000,
   });
 
+  const { data: paymentTerms = [] } = useQuery({
+    queryKey: ["purchase-form-payment-terms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_terms")
+        .select("id, name, days")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === form.watch("product_id")),
     [products, form.watch("product_id")],
@@ -132,6 +149,7 @@ export function PurchaseForm() {
         .insert({
           product_id: values.product_id,
           supplier_id: supplierId,
+          payment_term_id: values.payment_term_id,
           purchase_price: values.purchase_price,
           currency: values.currency,
           quantity: values.quantity,
@@ -257,6 +275,31 @@ export function PurchaseForm() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* زمان تسویه */}
+      <div className="space-y-2">
+        <Label>زمان تسویه <span className="text-destructive">*</span></Label>
+        <Select
+          value={form.watch("payment_term_id") || undefined}
+          onValueChange={(v) => form.setValue("payment_term_id", v, { shouldValidate: true })}
+        >
+          <SelectTrigger><SelectValue placeholder="انتخاب زمان تسویه" /></SelectTrigger>
+          <SelectContent>
+            {paymentTerms.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                هیچ زمان تسویه‌ای تعریف نشده است
+              </div>
+            ) : (
+              paymentTerms.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}{t.days != null ? ` (${toFaDigits(String(t.days))} روز)` : ""}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+        {errors.payment_term_id && <p className="text-xs text-destructive">{errors.payment_term_id.message}</p>}
       </div>
 
       {/* قیمت خرید */}
