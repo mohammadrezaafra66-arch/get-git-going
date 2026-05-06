@@ -23,6 +23,7 @@ import {
 } from "@/server/market-rates-ingestion.functions";
 import { MarketRateMappingsPanel } from "@/components/pricing/MarketRateMappingsPanel";
 import { MarketRateIngestionHistory } from "@/components/pricing/MarketRateIngestionHistory";
+import { MarketRateSuspectAlerts } from "@/components/pricing/MarketRateSuspectAlerts";
 
 export const Route = createFileRoute("/_app/pricing/market-rates-workshop")({
   beforeLoad: async () => { await requirePermission("market-rates", "view"); },
@@ -211,6 +212,8 @@ function MarketRatesWorkshopPage() {
       </section>
 
       {canWrite && <ExternalIngestionCard />}
+
+      <MarketRateSuspectAlerts />
 
       {canWrite && <MarketRateMappingsPanel />}
 
