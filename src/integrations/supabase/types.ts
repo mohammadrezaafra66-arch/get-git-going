@@ -5997,6 +5997,68 @@ export type Database = {
         }
         Relationships: []
       }
+      salesperson_capital_allocations: {
+        Row: {
+          approved_by: string | null
+          capital_date: string
+          capital_snapshot_id: string
+          created_at: string
+          created_by: string | null
+          final_amount: number
+          id: string
+          override_reason: string | null
+          salesperson_id: string
+          score: number
+          score_source: string
+          status: string
+          system_suggested_amount: number
+          total_score: number
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          capital_date: string
+          capital_snapshot_id: string
+          created_at?: string
+          created_by?: string | null
+          final_amount?: number
+          id?: string
+          override_reason?: string | null
+          salesperson_id: string
+          score?: number
+          score_source?: string
+          status?: string
+          system_suggested_amount?: number
+          total_score?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          capital_date?: string
+          capital_snapshot_id?: string
+          created_at?: string
+          created_by?: string | null
+          final_amount?: number
+          id?: string
+          override_reason?: string | null
+          salesperson_id?: string
+          score?: number
+          score_source?: string
+          status?: string
+          system_suggested_amount?: number
+          total_score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_capital_allocations_capital_snapshot_id_fkey"
+            columns: ["capital_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "daily_capital_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       score_snapshots: {
         Row: {
           captured_at: string
@@ -7108,6 +7170,18 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      compute_salesperson_capital_allocations: {
+        Args: { p_capital_snapshot_id: string }
+        Returns: {
+          capital_date: string
+          capital_snapshot_id: string
+          daily_final_capital: number
+          salesperson_id: string
+          score: number
+          system_suggested_amount: number
+          total_score: number
+        }[]
+      }
       create_bot_api_key: {
         Args: { p_expires_at?: string; p_name: string }
         Returns: {
@@ -8089,6 +8163,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_salesperson_capital_allocations: {
+        Args: { p_allocations: Json; p_capital_snapshot_id: string }
+        Returns: number
       }
       search_product_ids: {
         Args: { p_limit?: number; p_term: string }
