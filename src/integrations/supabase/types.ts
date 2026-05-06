@@ -7954,6 +7954,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_invoice_issuance_blocked_overdue: {
+        Args: {
+          p_commitment_confirmed?: boolean
+          p_customer_id: string
+          p_invoice_type?: string
+          p_oldest_due_date: string
+          p_overdue_amount: number
+          p_overdue_count: number
+        }
+        Returns: undefined
+      }
       mark_all_notifications_read: { Args: never; Returns: number }
       mark_notification_read: {
         Args: { p_notification_id: string }
