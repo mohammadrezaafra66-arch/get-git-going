@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { History, ChevronDown, ChevronLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
@@ -66,6 +67,8 @@ export function MarketRateIngestionHistory() {
   const canView = roles.some((r) => ["admin", "manager", "accountant"].includes(r));
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [sourceFilter, setSourceFilter] = useState<"all" | "navasan" | "tgju" | "other">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | Run["status"]>("all");
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -89,6 +92,16 @@ export function MarketRateIngestionHistory() {
     },
   });
 
+  const filtered = useMemo(() => {
+    return (q.data ?? []).filter((r) => {
+      if (sourceFilter === "navasan" && r.source_code !== "NAVASAN_API") return false;
+      if (sourceFilter === "tgju" && r.source_code !== "TGJU_API") return false;
+      if (sourceFilter === "other" && (r.source_code === "NAVASAN_API" || r.source_code === "TGJU_API")) return false;
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      return true;
+    });
+  }, [q.data, sourceFilter, statusFilter]);
+
   if (!canView) return null;
 
   return (
@@ -108,11 +121,37 @@ export function MarketRateIngestionHistory() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent>
+            <div className="mb-3 grid gap-2 sm:grid-cols-2">
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="منبع" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه منابع</SelectItem>
+                  <SelectItem value="navasan">نوسان</SelectItem>
+                  <SelectItem value="tgju">TGJU</SelectItem>
+                  <SelectItem value="other">سایر</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="وضعیت" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">همه وضعیت‌ها</SelectItem>
+                  <SelectItem value="completed">موفق</SelectItem>
+                  <SelectItem value="failed">ناموفق</SelectItem>
+                  <SelectItem value="skipped">ردشده/غیرفعال</SelectItem>
+                  <SelectItem value="started">در حال اجرا</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {q.isLoading ? (
               <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
             ) : !q.data || q.data.length === 0 ? (
               <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
                 هنوز دریافت خودکاری ثبت نشده است.
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                اجرایی با این فیلترها یافت نشد.
               </div>
             ) : (
               <div className="overflow-x-auto rounded-md border">
@@ -131,7 +170,7 @@ export function MarketRateIngestionHistory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {q.data.map((r) => {
+                    {filtered.map((r) => {
                       const isOpen = expanded.has(r.id);
                       return (
                       <Fragment key={r.id}>
