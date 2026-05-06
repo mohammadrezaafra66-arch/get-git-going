@@ -7312,6 +7312,60 @@ export type Database = {
         Args: { _default: number; _key: string }
         Returns: number
       }
+      get_payable_detail: {
+        Args: { p_purchase_id?: string; p_supplier_id?: string }
+        Returns: {
+          cash_price: number
+          currency: string
+          due_date: string
+          is_overdue: boolean
+          is_paid: boolean
+          item_id: string
+          item_line_total: number
+          item_quantity: number
+          item_unit_price: number
+          outstanding_amount: number
+          paid_at: string
+          payment_term_days: number
+          product_id: string
+          product_name: string
+          purchase_date: string
+          purchase_id: string
+          purchase_total_amount: number
+          supplier_id: string
+          supplier_name: string
+        }[]
+      }
+      get_payables_list: {
+        Args: {
+          p_due_filter?: string
+          p_from_date?: string
+          p_include_paid?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_supplier_id?: string
+          p_to_date?: string
+        }
+        Returns: {
+          cash_price: number
+          created_at: string
+          currency: string
+          days_until_due: number
+          due_date: string
+          is_overdue: boolean
+          is_paid: boolean
+          outstanding_amount: number
+          paid_at: string
+          payment_term_days: number
+          product_summary: string
+          purchase_date: string
+          purchase_id: string
+          purchase_total_amount: number
+          supplier_id: string
+          supplier_name: string
+        }[]
+      }
       get_payables_summary: {
         Args: {
           p_from_date?: string
@@ -7364,6 +7418,58 @@ export type Database = {
           rank: number
           relative_position: string
           score: number
+        }[]
+      }
+      get_receivable_detail: {
+        Args: { p_customer_id?: string; p_invoice_id?: string }
+        Returns: {
+          confirmed_paid_amount: number
+          customer_id: string
+          customer_name: string
+          customer_phone: string
+          deposit_amount: number
+          due_date: string
+          invoice_id: string
+          invoice_number: string
+          invoice_status: string
+          invoice_type: string
+          is_overdue: boolean
+          issue_date: string
+          outstanding_amount: number
+          receipt_amount: number
+          receipt_bank_name: string
+          receipt_id: string
+          receipt_payment_date: string
+          receipt_status: string
+          receipt_tracking_number: string
+          total_amount: number
+        }[]
+      }
+      get_receivables_list: {
+        Args: {
+          p_customer_id?: string
+          p_due_filter?: string
+          p_from_date?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_to_date?: string
+        }
+        Returns: {
+          confirmed_paid_amount: number
+          created_at: string
+          customer_id: string
+          customer_name: string
+          days_until_due: number
+          deposit_amount: number
+          due_date: string
+          invoice_id: string
+          invoice_number: string
+          invoice_status: string
+          invoice_type: string
+          is_overdue: boolean
+          outstanding_amount: number
+          total_amount: number
         }[]
       }
       get_receivables_summary: {
