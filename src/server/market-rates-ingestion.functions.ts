@@ -185,10 +185,19 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
         if (code === "NAVASAN_API") {
           payload = await fetchNavasanRaw();
         } else {
-          // TGJU: نمادها/پاسخ هنوز نیاز به تأیید ادمین دارند → اجرای واقعی غیرفعال.
-          throw new Error(
-            "اتصال TGJU در این نسخه فعال نیست؛ نمادهای دقیق نیاز به تأیید ادمین دارند.",
-          );
+          // TGJU: endpoint/symbol رسمی هنوز تأیید نشده → graceful skip (بدون throw، بدون fetch خارجی).
+          await supabase.rpc("finish_market_rate_ingestion_run", {
+            p_run_id: runId, p_status: "skipped",
+            p_fetched: 0, p_inserted: 0, p_suspect: 0,
+            p_error: "TGJU fetcher تأیید نشده؛ منتظر endpoint/symbol رسمی",
+          });
+          results.push({
+            source_code: code, status: "skipped",
+            fetched: 0, inserted: 0, suspect: 0, error: null,
+            message_fa: "اتصال TGJU هنوز فعال نیست؛ نیاز به تأیید endpoint و نمادهای رسمی دارد.",
+            run_id: runId as string,
+          });
+          continue;
         }
 
         let fetched = 0, inserted = 0, suspect = 0;
