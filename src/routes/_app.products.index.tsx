@@ -21,6 +21,7 @@ import {
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
+import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -190,6 +191,7 @@ function ProductsPage() {
                       <th className="p-3 font-medium">مدل</th>
                       <th className="p-3 font-medium">نوع / ارز</th>
                       <th className="p-3 font-medium">موجودی</th>
+                      <th className="p-3 font-medium">خرید اخیر</th>
                       <th className="p-3 font-medium">وضعیت</th>
                       <th className="p-3 font-medium">به‌روزرسانی</th>
                       <th className="p-3 font-medium">عملیات</th>
@@ -222,6 +224,7 @@ function ProductsPage() {
                           {PRODUCT_TYPE_LABELS[p.product_type]} / {(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency] ?? p.base_currency.toUpperCase()}
                         </td>
                         <td className="p-3"><Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge></td>
+                        <td className="p-3"><RecentPurchaseBadge productId={p.id} /></td>
                         <td className="p-3"><Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>{PRODUCT_STATUS_LABELS[p.status]}</Badge></td>
                         <td className="p-3 text-xs text-muted-foreground">{formatDateFa(p.updated_at)}</td>
                         <td className="p-3">
@@ -278,7 +281,10 @@ function ProductsPage() {
                     <div>{PRODUCT_TYPE_LABELS[p.product_type]} / {(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency] ?? p.base_currency.toUpperCase()}</div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge variant={STOCK_STATUS_VARIANTS[p.stock_status]}>{STOCK_STATUS_LABELS[p.stock_status]}</Badge>
+                      <RecentPurchaseBadge productId={p.id} />
+                    </div>
                     {canUpdate && (
                       <div className="flex gap-1">
                         <Button
