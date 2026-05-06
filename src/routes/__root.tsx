@@ -1,9 +1,10 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Component, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
+import { initCacheBuster, forceHardReload } from "@/lib/cache-buster";
 
 import appCss from "../styles.css?url";
 
@@ -65,6 +66,15 @@ class AuthErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
       stack: error.stack,
       componentStack: info.componentStack,
     });
+    // Auto-recover from stale-chunk errors after a deploy
+    const msg = `${error.name}: ${error.message}`;
+    if (
+      /Failed to fetch dynamically imported module|ChunkLoadError|Loading chunk|Importing a module script failed|Unable to preload CSS|MIME type \("text\/html"\)/i.test(
+        msg,
+      )
+    ) {
+      void forceHardReload(`AuthErrorBoundary: ${msg}`);
+    }
   }
   render() {
     if (this.state.error) {
@@ -155,6 +165,9 @@ function RootComponent() {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } } })
   );
+  useEffect(() => {
+    initCacheBuster();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AuthErrorBoundary>
