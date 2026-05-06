@@ -864,6 +864,7 @@ export type Database = {
           score_formula: string | null
           updated_at: string
           weight: number
+          window_months: number
         }
         Insert: {
           created_at?: string
@@ -876,6 +877,7 @@ export type Database = {
           score_formula?: string | null
           updated_at?: string
           weight: number
+          window_months?: number
         }
         Update: {
           created_at?: string
@@ -888,6 +890,7 @@ export type Database = {
           score_formula?: string | null
           updated_at?: string
           weight?: number
+          window_months?: number
         }
         Relationships: [
           {
