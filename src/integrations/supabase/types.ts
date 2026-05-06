@@ -7716,6 +7716,32 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_market_rate_source_mapping: {
+        Args: {
+          p_is_enabled: boolean
+          p_mapping_id: string
+          p_normalize_multiplier: number
+          p_note: string
+          p_source_symbol: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          indicator_id: string
+          is_enabled: boolean
+          normalize_multiplier: number
+          note: string | null
+          source_id: string
+          source_symbol: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "market_rate_source_mappings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       update_role_permissions: {
         Args: { _permissions: Json; _role_name: string }
         Returns: undefined
