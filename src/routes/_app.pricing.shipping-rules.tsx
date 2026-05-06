@@ -192,14 +192,26 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
-      setValues(editing ? {
-        title: editing.title ?? "", cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
-        cost_currency: editing.cost_currency ?? null,
-        product_type: editing.product_type,
-        product_id: editing.product_id, brand_id: editing.brand_id, category_id: editing.category_id,
-        min_purchase_price: editing.min_purchase_price, max_purchase_price: editing.max_purchase_price,
-        priority: editing.priority, sort_order: editing.sort_order ?? 0, is_active: editing.is_active,
-      } : emptyShippingRule);
+      if (editing) {
+        const scope_mode: "product" | "category" | "price_range" = editing.product_id
+          ? "product"
+          : editing.category_id
+            ? "category"
+            : (editing.min_purchase_price != null || editing.max_purchase_price != null)
+              ? "price_range"
+              : "product";
+        setValues({
+          title: editing.title ?? "", scope_mode,
+          cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
+          cost_currency: editing.cost_currency ?? null,
+          product_type: editing.product_type,
+          product_id: editing.product_id, brand_id: editing.brand_id, category_id: editing.category_id,
+          min_purchase_price: editing.min_purchase_price, max_purchase_price: editing.max_purchase_price,
+          priority: editing.priority, sort_order: editing.sort_order ?? 0, is_active: editing.is_active,
+        });
+      } else {
+        setValues(emptyShippingRule);
+      }
       setErrors({});
     }
     onOpenChange(v);
@@ -215,14 +227,26 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
     setErrors({}); setLoading(true);
     try {
       const data = parsed.data;
-      // اگر عنوان خالی است، از نام محصول استفاده کن
+      // اگر عنوان خالی است، عنوان مناسب تولید کن
       let title = (data.title ?? "").trim();
-      if (!title && data.product_id) {
-        const { data: p } = await supabase.from("products").select("name").eq("id", data.product_id).maybeSingle();
-        title = p?.name ?? "قانون حمل";
+      if (!title) {
+        if (data.scope_mode === "product" && data.product_id) {
+          const { data: p } = await supabase.from("products").select("name").eq("id", data.product_id).maybeSingle();
+          title = p?.name ?? "قانون حمل";
+        } else if (data.scope_mode === "category" && data.category_id) {
+          const { data: c } = await supabase.from("categories").select("name").eq("id", data.category_id).maybeSingle();
+          title = c?.name ? `دسته: ${c.name}` : "قانون حمل دسته";
+        } else if (data.scope_mode === "price_range") {
+          const lo = data.min_purchase_price != null ? Number(data.min_purchase_price).toLocaleString("fa-IR") : "—";
+          const hi = data.max_purchase_price != null ? Number(data.max_purchase_price).toLocaleString("fa-IR") : "—";
+          title = `بازه ${lo} تا ${hi} ت`;
+        }
       }
+      // scope_mode فقط برای UI است؛ به DB ارسال نمی‌شود
+      const { scope_mode, ...rest } = data;
+      void scope_mode;
       const payload = {
-        ...data,
+        ...rest,
         title: title || "قانون حمل",
         cost_currency: data.cost_type === "currency" ? data.cost_currency ?? null : null,
       };
