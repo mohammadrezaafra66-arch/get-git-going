@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Save, X, Wand2 } from "lucide-react";
+import { Loader2, Save, X, Wand2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Link } from "@tanstack/react-router";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
 import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
 import {
@@ -23,6 +25,8 @@ import {
   type CategoryAttributeDef,
   type DynamicAttrValues,
 } from "@/lib/products/category-attrs";
+import { findDuplicateProduct, type DuplicateProduct } from "@/lib/products/duplicate-check";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -31,6 +35,8 @@ interface Props {
   loading?: boolean;
   /** When true, behave as edit form: do not auto-overwrite name on field changes. */
   isEdit?: boolean;
+  /** Product id to exclude from duplicate-check (only meaningful in edit mode). */
+  productId?: string | null;
   /** Initial dynamic attribute values keyed by category_attribute_id. */
   initialDynamicValues?: DynamicAttrValues;
   /** Initial category id at mount, used to detect a category change in edit mode. */
@@ -60,7 +66,7 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
-export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, initialDynamicValues, initialCategoryId, onSubmit, onCancel }: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, productId, initialDynamicValues, initialCategoryId, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
@@ -68,6 +74,35 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamicValues ?? {});
   const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
   const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
+
+  // ---------- بررسی زنده تکراری بودن محصول ----------
+  const dupKey = useMemo(
+    () => ({
+      brand_id: values.brand_id ?? null,
+      category_id: values.category_id ?? null,
+      model: (values.model ?? "").trim(),
+      color: (values.color ?? "").trim(),
+      capacity: (values.capacity ?? "").trim(),
+    }),
+    [values.brand_id, values.category_id, values.model, values.color, values.capacity],
+  );
+  const debouncedDupKey = useDebounce(dupKey, 400);
+  const dupQ = useQuery<DuplicateProduct | null>({
+    queryKey: ["product-duplicate-check", debouncedDupKey, productId ?? null],
+    enabled: !!debouncedDupKey.brand_id && !!debouncedDupKey.category_id,
+    staleTime: 5_000,
+    queryFn: () =>
+      findDuplicateProduct({
+        brandId: debouncedDupKey.brand_id,
+        categoryId: debouncedDupKey.category_id,
+        model: debouncedDupKey.model,
+        color: debouncedDupKey.color,
+        capacity: debouncedDupKey.capacity,
+        excludeId: productId ?? null,
+      }),
+  });
+  const duplicate = dupQ.data ?? null;
+  const dupChecking = dupQ.isFetching;
 
   useEffect(() => {
     setValues({ ...DEFAULTS, ...initial });
@@ -246,6 +281,10 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (duplicate) {
+      toast.error("ثبت متوقف شد: محصول مشابهی قبلاً ثبت شده است.");
+      return;
+    }
     const flat: Record<string, string> = {};
     if (primarySpecRequired && !(values.primary_spec ?? "").trim()) {
       flat.primary_spec = `${primarySpecLabel} الزامی است`;
