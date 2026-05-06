@@ -277,6 +277,31 @@ export function PurchaseForm() {
         </Select>
       </div>
 
+      {/* زمان تسویه */}
+      <div className="space-y-2">
+        <Label>زمان تسویه <span className="text-destructive">*</span></Label>
+        <Select
+          value={form.watch("payment_term_id") || undefined}
+          onValueChange={(v) => form.setValue("payment_term_id", v, { shouldValidate: true })}
+        >
+          <SelectTrigger><SelectValue placeholder="انتخاب زمان تسویه" /></SelectTrigger>
+          <SelectContent>
+            {paymentTerms.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                هیچ زمان تسویه‌ای تعریف نشده است
+              </div>
+            ) : (
+              paymentTerms.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}{t.days != null ? ` (${toFaDigits(String(t.days))} روز)` : ""}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+        {errors.payment_term_id && <p className="text-xs text-destructive">{errors.payment_term_id.message}</p>}
+      </div>
+
       {/* قیمت خرید */}
       <div className="space-y-2">
         <Label htmlFor="purchase_price">قیمت خرید <span className="text-destructive">*</span></Label>
