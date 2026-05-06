@@ -46,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing", label: "تنظیمات قیمت", icon: DollarSign, module: "pricing", group: "pricing" },
   { to: "/pricing/currencies", label: "ارزها", icon: DollarSign, module: "pricing", group: "pricing" },
   { to: "/pricing/currency-sources", label: "منابع ارز", icon: DollarSign, module: "pricing", group: "pricing" },
+  { to: "/pricing/market-rates-workshop", label: "کارگاه نرخ ارز و طلا", icon: Coins, module: "market-rates", group: "pricing" },
 
   // عملیات و خرید
   { to: "/products", label: "محصولات", icon: Package, module: "products", group: "operations" },
