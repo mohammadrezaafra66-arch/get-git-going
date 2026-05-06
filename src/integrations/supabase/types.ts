@@ -6387,66 +6387,6 @@ export type Database = {
         }
         Relationships: []
       }
-      market_rate_ticks_public: {
-        Row: {
-          change_amount: number | null
-          change_percent: number | null
-          created_at: string | null
-          id: string | null
-          indicator_id: string | null
-          jalali_date_label: string | null
-          observed_at: string | null
-          source_id: string | null
-          source_reported_at: string | null
-          status: string | null
-          unit: string | null
-          value: number | null
-        }
-        Insert: {
-          change_amount?: number | null
-          change_percent?: number | null
-          created_at?: string | null
-          id?: string | null
-          indicator_id?: string | null
-          jalali_date_label?: string | null
-          observed_at?: string | null
-          source_id?: string | null
-          source_reported_at?: string | null
-          status?: string | null
-          unit?: string | null
-          value?: number | null
-        }
-        Update: {
-          change_amount?: number | null
-          change_percent?: number | null
-          created_at?: string | null
-          id?: string | null
-          indicator_id?: string | null
-          jalali_date_label?: string | null
-          observed_at?: string | null
-          source_id?: string | null
-          source_reported_at?: string | null
-          status?: string | null
-          unit?: string | null
-          value?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "market_rate_ticks_indicator_id_fkey"
-            columns: ["indicator_id"]
-            isOneToOne: false
-            referencedRelation: "market_indicators"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "market_rate_ticks_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "market_rate_sources"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       publish_recipients_view: {
         Row: {
           full_name: string | null
@@ -7279,6 +7219,21 @@ export type Database = {
       league_tier_index: {
         Args: { _tier: Database["public"]["Enums"]["league_tier"] }
         Returns: number
+      }
+      list_market_rate_ticks_public: {
+        Args: { p_indicator_id?: string; p_limit?: number }
+        Returns: {
+          change_amount: number
+          change_percent: number
+          id: string
+          indicator_id: string
+          jalali_date_label: string
+          observed_at: string
+          source_id: string
+          status: string
+          unit: string
+          value: number
+        }[]
       }
       log_event: {
         Args: {
