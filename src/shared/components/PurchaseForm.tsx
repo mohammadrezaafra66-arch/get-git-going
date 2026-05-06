@@ -37,6 +37,7 @@ const SUPPLIER_UNKNOWN = "__none__";
 const schema = z.object({
   product_id: z.string().uuid({ message: "انتخاب محصول الزامی است" }),
   supplier_id: z.string().nullable(),
+  payment_term_id: z.string().uuid({ message: "انتخاب زمان تسویه الزامی است" }),
   purchase_price: z
     .number({ message: "قیمت خرید الزامی است" })
     .positive("قیمت خرید باید مثبت باشد"),
@@ -60,6 +61,7 @@ const CURRENCY_LABELS: Record<FormValues["currency"], string> = {
 const defaultValues: FormValues = {
   product_id: "",
   supplier_id: null,
+  payment_term_id: "",
   purchase_price: undefined as unknown as number,
   currency: "toman",
   quantity: 1,
