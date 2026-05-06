@@ -390,3 +390,93 @@ function NewTickDialog({ indicators, sources, onDone }: {
     </Dialog>
   );
 }
+
+function ExternalIngestionCard() {
+  const qc = useQueryClient();
+  const statusQ = useQuery({
+    queryKey: ["market-external-status"],
+    queryFn: async () => await getExternalRatesStatus({ data: {} }),
+    staleTime: 60_000,
+  });
+
+  const ingest = useMutation({
+    mutationFn: async (source_code: "NAVASAN_API" | "TGJU_API" | "ALL") =>
+      await ingestMarketRatesExternal({ data: { source_code } }),
+    onSuccess: (results) => {
+      results.forEach((r) => {
+        const label = r.source_code === "NAVASAN_API" ? "نوسان" : "TGJU";
+        if (r.status === "completed") toast.success(`${label}: ${r.message_fa}`);
+        else if (r.status === "skipped") toast.info(`${label}: ${r.message_fa}`);
+        else toast.error(`${label}: ${r.message_fa}`);
+      });
+      qc.invalidateQueries({ queryKey: ["market-ticks-latest"] });
+      qc.invalidateQueries({ queryKey: ["market-ticks-history"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطای دریافت"),
+  });
+
+  const s = statusQ.data;
+  const masterOff = !!s && !s.master_enabled;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Cloud className="h-4 w-4" /> دریافت نرخ از منابع خارجی (اختیاری)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!s ? (
+          <p className="text-sm text-muted-foreground">در حال بررسی پیکربندی…</p>
+        ) : masterOff ? (
+          <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            دریافت خودکار نرخ‌ها در نسخه self-host غیرفعال است. ثبت دستی همچنان فعال است.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant={s.navasan_enabled ? "default" : "secondary"}>
+                نوسان: {s.navasan_enabled ? "فعال" : "غیرفعال"}
+              </Badge>
+              {s.navasan_enabled && !s.navasan_has_key && (
+                <Badge variant="destructive">کلید API ندارد</Badge>
+              )}
+              <Badge variant={s.tgju_enabled ? "default" : "secondary"}>
+                TGJU: {s.tgju_enabled ? "فعال" : "غیرفعال"}
+              </Badge>
+              {s.tgju_enabled && !s.tgju_has_key && (
+                <Badge variant="destructive">کلید API ندارد</Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              قطع شدن منبع خارجی، مسیر ثبت دستی نرخ را مختل نمی‌کند.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm" variant="outline"
+            disabled={masterOff || !s?.navasan_enabled || ingest.isPending}
+            onClick={() => ingest.mutate("NAVASAN_API")}
+          >
+            <RefreshCw className="ml-1 h-4 w-4" /> دریافت از نوسان
+          </Button>
+          <Button
+            size="sm" variant="outline"
+            disabled={masterOff || !s?.tgju_enabled || ingest.isPending}
+            onClick={() => ingest.mutate("TGJU_API")}
+          >
+            <RefreshCw className="ml-1 h-4 w-4" /> دریافت از TGJU
+          </Button>
+          <Button
+            size="sm"
+            disabled={masterOff || (!s?.navasan_enabled && !s?.tgju_enabled) || ingest.isPending}
+            onClick={() => ingest.mutate("ALL")}
+          >
+            <RefreshCw className="ml-1 h-4 w-4" /> دریافت از همه منابع فعال
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
