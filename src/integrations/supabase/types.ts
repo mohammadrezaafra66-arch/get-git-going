@@ -4490,6 +4490,7 @@ export type Database = {
       }
       product_suppliers: {
         Row: {
+          auto_added: boolean
           created_at: string
           id: string
           is_primary: boolean
@@ -4498,6 +4499,7 @@ export type Database = {
           supplier_id: string
         }
         Insert: {
+          auto_added?: boolean
           created_at?: string
           id?: string
           is_primary?: boolean
@@ -4506,6 +4508,7 @@ export type Database = {
           supplier_id: string
         }
         Update: {
+          auto_added?: boolean
           created_at?: string
           id?: string
           is_primary?: boolean
@@ -6411,6 +6414,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_stale_auto_suppliers: { Args: never; Returns: number }
       complete_invoice_task: { Args: { p_task_id: string }; Returns: undefined }
       complete_quote_send_queue_item: {
         Args: { p_error?: string; p_queue_id: string; p_success: boolean }
