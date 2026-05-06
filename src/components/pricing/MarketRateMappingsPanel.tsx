@@ -15,6 +15,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
+type MappingStatus = "active" | "disabled" | "needs_approval" | "ambiguous";
+
+function getMappingStatus(r: { is_enabled: boolean; note: string | null }): MappingStatus {
+  const note = r.note ?? "";
+  if (note.includes("مبهم")) return "ambiguous";
+  if (note.includes("نیاز به تأیید")) return "needs_approval";
+  return r.is_enabled ? "active" : "disabled";
+}
+
+const STATUS_META: Record<
+  MappingStatus,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
+  active: { label: "فعال", variant: "default" },
+  disabled: { label: "غیرفعال", variant: "secondary" },
+  needs_approval: { label: "نیاز به تأیید", variant: "destructive" },
+  ambiguous: { label: "مبهم", variant: "destructive" },
+};
+
+function getMappingHint(r: MappingRow): string | null {
+  const srcCode = r.source?.code ?? "";
+  const indCode = r.indicator?.code ?? "";
+  if (srcCode === "TGJU_API") return "TGJU هنوز fetcher تأییدشده ندارد.";
+  if (
+    srcCode === "NAVASAN_API" &&
+    !r.is_enabled &&
+    (indCode === "USD_TEHRAN_FREE" || indCode === "AED_TEHRAN")
+  ) {
+    return "فعال‌سازی فقط پس از تأیید نماد رسمی.";
+  }
+  return null;
+}
+
 type MappingRow = {
   id: string;
   source_id: string;
@@ -110,14 +143,18 @@ export function MarketRateMappingsPanel() {
                           <th className="px-2 py-2">شاخص</th>
                           <th className="px-2 py-2">نماد منبع</th>
                           <th className="px-2 py-2">ضریب</th>
-                          <th className="px-2 py-2">فعال</th>
+                          <th className="px-2 py-2">وضعیت</th>
                           <th className="px-2 py-2">یادداشت</th>
                           <th className="px-2 py-2">به‌روزرسانی</th>
                           {canEdit && <th className="px-2 py-2"></th>}
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((r) => (
+                        {rows.map((r) => {
+                          const status = getMappingStatus(r);
+                          const meta = STATUS_META[status];
+                          const hint = getMappingHint(r);
+                          return (
                           <tr key={r.id} className="border-t">
                             <td className="px-2 py-2">
                               <div className="font-medium">{r.indicator?.title_fa ?? "—"}</div>
@@ -126,9 +163,14 @@ export function MarketRateMappingsPanel() {
                             <td className="px-2 py-2 font-mono">{r.source_symbol}</td>
                             <td className="px-2 py-2">{Number(r.normalize_multiplier)}</td>
                             <td className="px-2 py-2">
-                              <Badge variant={r.is_enabled ? "default" : "secondary"} className="text-[10px]">
-                                {r.is_enabled ? "فعال" : "غیرفعال"}
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge variant={meta.variant} className="w-fit text-[10px]">
+                                  {meta.label}
+                                </Badge>
+                                {hint && (
+                                  <span className="text-[10px] text-muted-foreground">{hint}</span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-2 py-2 max-w-[280px] truncate text-muted-foreground" title={r.note ?? ""}>
                               {r.note ?? "—"}
@@ -147,7 +189,8 @@ export function MarketRateMappingsPanel() {
                               </td>
                             )}
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
