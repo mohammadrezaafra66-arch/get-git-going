@@ -296,7 +296,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
 <div class="page">
   <div class="toolbar">
     <button onclick="window.print()">چاپ / ذخیره به PDF</button>
-    <button class="secondary" onclick="window.close()">بستن</button>
+    <button class="secondary" onclick="(function(){try{window.close();}catch(e){} setTimeout(function(){if(!window.closed){if(window.history.length>1){window.history.back();}else{window.location.href='about:blank';}}},150);})()">بستن</button>
     <span style="margin-inline-start:auto">برای ذخیره به‌صورت PDF در دیالوگ چاپ، گزینهٔ «Save as PDF» را انتخاب کنید.</span>
   </div>
   <div class="header">
@@ -304,7 +304,6 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       <div class="brand">افراکالا</div>
       <div class="meta">
         <div>${escapeHtml(input.listName)} — نسخه ${escapeHtml(formatNumber(input.versionNumber))}</div>
-        <div>نوع قیمت: ${escapeHtml(input.salePriceTypeTitle)}</div>
       </div>
     </div>
     <div style="text-align:left">
