@@ -22,6 +22,7 @@ import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
