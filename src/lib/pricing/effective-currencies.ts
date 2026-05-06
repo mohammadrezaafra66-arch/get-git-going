@@ -175,80 +175,103 @@ export async function saveCurrencyRateAndRecompute(opts: {
 
   const results: RecomputeSummary[] = [];
 
-  // 7) برای هر محصول × sale_price_type — محاسبه و upsert (sequential برای کنترل بار)
-  for (const p of products ?? []) {
-    for (const spt of spts ?? []) {
-      try {
-        const res = await calculateSalePrice({
-          product_id: p.id,
-          sale_price_type_id: spt.id,
-          force_snapshot: false,
-        });
-
-        // قیمت قبلی از کش
-        const { data: prevComputed } = await supabase
-          .from("product_computed_prices")
-          .select("rounded_sale_price")
-          .eq("product_id", p.id)
-          .eq("sale_price_type_id", spt.id)
-          .maybeSingle();
-        const oldPrice = prevComputed ? Number(prevComputed.rounded_sale_price) : null;
-        const newPrice = res.breakdown.rounded_sale_price;
-        const changePct =
-          oldPrice && oldPrice > 0
-            ? Number((((newPrice - oldPrice) / oldPrice) * 100).toFixed(2))
-            : null;
-
-        // upsert
-        const { error: upErr } = await supabase
-          .from("product_computed_prices")
-          .upsert(
-            {
-              product_id: p.id,
-              sale_price_type_id: spt.id,
-              purchase_price_id: res.breakdown.purchase_price_id,
-              pricing_rule_id: res.breakdown.pricing_rule_id,
-              input_purchase_price: res.breakdown.input_purchase_price,
-              input_currency: res.breakdown.input_currency,
-              currency_rate: res.breakdown.currency_rate,
-              purchase_price_toman: res.breakdown.purchase_price_toman,
-              shipping_cost: res.breakdown.shipping_cost,
-              margin_amount: res.breakdown.margin_amount,
-              final_sale_price: res.breakdown.final_sale_price,
-              rounded_sale_price: res.breakdown.rounded_sale_price,
-              computed_at: new Date().toISOString(),
-              computed_by: actorId,
-              source: "currency_rate_change",
-            },
-            { onConflict: "product_id,sale_price_type_id" },
-          );
-        if (upErr) throw upErr;
-
-        results.push({
-          product_id: p.id,
-          product_name: p.name,
-          sale_price_type_id: spt.id,
-          sale_price_type_title: spt.title,
-          old_price: oldPrice,
-          new_price: newPrice,
-          change_pct: changePct,
-          error: null,
-        });
-      } catch (e) {
-        const msg = e instanceof PricingError ? e.message : (e as Error)?.message ?? "خطای ناشناخته";
-        results.push({
-          product_id: p.id,
-          product_name: p.name,
-          sale_price_type_id: spt.id,
-          sale_price_type_title: spt.title,
-          old_price: null,
-          new_price: 0,
-          change_pct: null,
-          error: msg,
-        });
-      }
-    }
+  // 7) Batch fetch قیمت‌های قبلی (به‌جای N×M select)
+  const productIds = (products ?? []).map((p) => p.id);
+  const sptIds = (spts ?? []).map((s) => s.id);
+  const prevMap = new Map<string, number>(); // key: `${productId}|${sptId}` -> oldPrice
+  if (productIds.length > 0 && sptIds.length > 0) {
+    const { data: prevRows } = await supabase
+      .from("product_computed_prices")
+      .select("product_id, sale_price_type_id, rounded_sale_price")
+      .in("product_id", productIds)
+      .in("sale_price_type_id", sptIds);
+    (prevRows ?? []).forEach((r: any) => {
+      prevMap.set(`${r.product_id}|${r.sale_price_type_id}`, Number(r.rounded_sale_price));
+    });
   }
+
+  // 8) محاسبه و upsert موازی با concurrency محدود
+  const tasks: Array<{ p: { id: string; name: string }; spt: { id: string; title: string } }> = [];
+  for (const p of products ?? []) {
+    for (const spt of spts ?? []) tasks.push({ p, spt });
+  }
+
+  const CONCURRENCY = 8;
+  let cursor = 0;
+  const runOne = async (idx: number) => {
+    const { p, spt } = tasks[idx];
+    try {
+      const res = await calculateSalePrice({
+        product_id: p.id,
+        sale_price_type_id: spt.id,
+        force_snapshot: false,
+      });
+      const oldPrice = prevMap.get(`${p.id}|${spt.id}`) ?? null;
+      const newPrice = res.breakdown.rounded_sale_price;
+      const changePct =
+        oldPrice && oldPrice > 0
+          ? Number((((newPrice - oldPrice) / oldPrice) * 100).toFixed(2))
+          : null;
+
+      const { error: upErr } = await supabase
+        .from("product_computed_prices")
+        .upsert(
+          {
+            product_id: p.id,
+            sale_price_type_id: spt.id,
+            purchase_price_id: res.breakdown.purchase_price_id,
+            pricing_rule_id: res.breakdown.pricing_rule_id,
+            input_purchase_price: res.breakdown.input_purchase_price,
+            input_currency: res.breakdown.input_currency,
+            currency_rate: res.breakdown.currency_rate,
+            purchase_price_toman: res.breakdown.purchase_price_toman,
+            shipping_cost: res.breakdown.shipping_cost,
+            margin_amount: res.breakdown.margin_amount,
+            final_sale_price: res.breakdown.final_sale_price,
+            rounded_sale_price: res.breakdown.rounded_sale_price,
+            computed_at: new Date().toISOString(),
+            computed_by: actorId,
+            source: "currency_rate_change",
+          },
+          { onConflict: "product_id,sale_price_type_id" },
+        );
+      if (upErr) throw upErr;
+
+      results.push({
+        product_id: p.id,
+        product_name: p.name,
+        sale_price_type_id: spt.id,
+        sale_price_type_title: spt.title,
+        old_price: oldPrice,
+        new_price: newPrice,
+        change_pct: changePct,
+        error: null,
+      });
+    } catch (e) {
+      const msg = e instanceof PricingError ? e.message : (e as Error)?.message ?? "خطای ناشناخته";
+      results.push({
+        product_id: p.id,
+        product_name: p.name,
+        sale_price_type_id: spt.id,
+        sale_price_type_title: spt.title,
+        old_price: null,
+        new_price: 0,
+        change_pct: null,
+        error: msg,
+      });
+    }
+  };
+
+  const workers: Promise<void>[] = [];
+  const worker = async () => {
+    while (true) {
+      const idx = cursor++;
+      if (idx >= tasks.length) return;
+      await runOne(idx);
+    }
+  };
+  for (let i = 0; i < Math.min(CONCURRENCY, tasks.length); i++) workers.push(worker());
+  await Promise.all(workers);
 
   return { rateId, results };
 }
