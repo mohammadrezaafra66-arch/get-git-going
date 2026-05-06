@@ -413,7 +413,8 @@ function ExternalIngestionCard() {
         // runtime error in the preview reporter.
         const { supabase } = await import("@/integrations/supabase/client");
         const { data: sess } = await supabase.auth.getSession();
-        if (!sess?.session?.access_token) {
+        const token = sess?.session?.access_token;
+        if (!token) {
           return {
             master_enabled: false,
             navasan_enabled: false,
@@ -422,7 +423,10 @@ function ExternalIngestionCard() {
             tgju_has_key: false,
           };
         }
-        return await getExternalRatesStatus({ data: {} });
+        return await getExternalRatesStatus({
+          data: {},
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } catch {
         // No access or self-host disabled — fall back to a safe default
         return {
