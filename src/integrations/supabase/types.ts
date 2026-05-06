@@ -4852,6 +4852,13 @@ export type Database = {
             referencedRelation: "purchases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_purchase_float"
+            referencedColumns: ["purchase_id"]
+          },
         ]
       }
       purchase_prices: {
@@ -4933,12 +4940,16 @@ export type Database = {
       }
       purchases: {
         Row: {
+          cash_price: number | null
+          cash_price_currency: string | null
           created_at: string
           created_by: string | null
           currency: string | null
           id: string
           notes: string | null
           number: string | null
+          paid_at: string | null
+          paid_by: string | null
           payment_term_id: string | null
           product_id: string | null
           purchase_date: string
@@ -4950,12 +4961,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_price?: number | null
+          cash_price_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           id?: string
           notes?: string | null
           number?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
           payment_term_id?: string | null
           product_id?: string | null
           purchase_date?: string
@@ -4967,12 +4982,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_price?: number | null
+          cash_price_currency?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
           id?: string
           notes?: string | null
           number?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
           payment_term_id?: string | null
           product_id?: string | null
           purchase_date?: string
@@ -6273,6 +6292,54 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_purchase_float: {
+        Row: {
+          accountant_id: string | null
+          actual_days: number | null
+          buyer_id: string | null
+          cash_price: number | null
+          implied_daily_cost: number | null
+          paid_at: string | null
+          payment_term_id: string | null
+          product_id: string | null
+          promised_days: number | null
+          purchase_date: string | null
+          purchase_id: string | null
+          purchase_price: number | null
+          quantity: number | null
+          supplier_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_payment_term_id_fkey"
+            columns: ["payment_term_id"]
+            isOneToOne: false
+            referencedRelation: "payment_terms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _ensure_credit_balance: {
@@ -6863,6 +6930,10 @@ export type Database = {
           rank: number
           score: number
         }[]
+      }
+      get_numeric_setting: {
+        Args: { _default: number; _key: string }
+        Returns: number
       }
       get_product_price_bounds: {
         Args: { _product_id: string; _sale_price_type_id?: string }
