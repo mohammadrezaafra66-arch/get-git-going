@@ -1,78 +1,96 @@
 
-# افزودن آپلود فایل (عکس / ویدیو / ویس) به فرم بازخورد
+# جلوگیری از ثبت محصول تکراری
 
-در حال حاضر فرم بازخورد (`src/shared/components/FeedbackForm.tsx`) فقط امکان «چسباندن URL» را دارد و کاربر نمی‌تواند مستقیماً فایل آپلود کند. هدف: کاربر بتواند از داخل فرم، عکس، ویدیو یا ویس (حتی ضبط مستقیم) ضمیمه کند.
+## معیار توافق‌شده
 
-## تغییرات دیتابیس / استوریج
+دو محصول وقتی **تکراری** محسوب می‌شوند که این پنج فیلد یکسان باشند (با نرمال‌سازی فارسی):
+**برند + دسته + مدل + رنگ + ظرفیت**
 
-ایجاد یک bucket اختصاصی در Lovable Cloud برای پیوست‌های بازخورد:
+نرمال‌سازی شامل: یکسان‌سازی «ی/ك» عربی به فارسی، حذف اعراب و ZWNJ، تبدیل اعداد فارسی به انگلیسی، حذف فاصله‌های اضافی، lowercase حروف انگلیسی.
 
-- نام bucket: `feedback-attachments`
-- نوع: **private** (نه public) — لینک‌ها از طریق signed URL ارائه می‌شوند تا فقط کاربران مجاز ببینند.
-- ساختار مسیر: `{user_id}/{feedback_temp_id}/{timestamp}_{filename}`
-- محدودیت‌ها در RLS و در کلاینت:
-  - حداکثر حجم هر فایل: 25MB
-  - فرمت‌های مجاز: `image/*`, `video/mp4`, `video/webm`, `video/quicktime`, `audio/*`
-- RLS روی `storage.objects`:
-  - INSERT: فقط کاربر authenticated می‌تواند داخل پوشه‌ای که نام آن برابر `auth.uid()` است آپلود کند.
-  - SELECT: مالک فایل + نقش‌های `admin` و `feedback_reviewer` (با `has_role`).
-  - DELETE: فقط مالک تا قبل از submit شدن بازخورد، و admin همیشه.
+---
 
-migration تحت `supabase/migrations/` ایجاد می‌شود (idempotent، reversible).
+## مرحله ۱ — اصلاح ۲۶ محصول موجود (پیشنیاز)
 
-## تغییرات بک‌اند (Server Functions)
+برای هر ۲۶ محصول شناسایی‌شده، نام مدل تجاری از فیلد `name` استخراج و به فیلد `model` منتقل می‌شود. لیست پیشنهادی تغییرات:
 
-دو server function جدید در `src/server/feedback-attachments.functions.ts`:
+| SKU | model فعلی | model پیشنهادی |
+|---|---|---|
+| AFK-2026-00033 | — | md1 |
+| AFK-2026-00035 | — | الگانت |
+| AFK-2026-00044 | — | ECO |
+| AFK-2026-00045 | — | ENZO T3 |
+| AFK-2026-00046 | — | ULTRA T3 |
+| AFK-2026-00047 | — | NORD D3 |
+| AFK-2026-00048 | — | D BIX T3 |
+| AFK-2026-00051 | — | DIVA 5 |
+| AFK-2026-00052 | — | 4GEAR |
+| AFK-2026-00053 | — | SPARK 5 T3 |
+| AFK-2026-00054 | — | SPARK 5 |
+| AFK-2026-00055 | — | MARS 5 |
+| AFK-2026-00057 | — | D NIDA T3 |
+| AFK-2026-00058 | — | یونیوالوکس |
+| AFK-2026-00059 | — | EXTRA T3 |
+| AFK-2026-00061 | — | T3 PRO |
+| AFK-2026-00062 | — | T3 PRO |
+| AFK-2026-00063 | — | T3 ULTRA |
+| AFK-2026-00064 | — | T4 PRO |
+| AFK-2026-00065 | — | ULTRA WALL |
+| AFK-2026-00066 | — | TROPICAL T3 |
+| AFK-2026-00067 | — | ZETTA T3 |
+| AFK-2026-00068 | — | FROST SCROL T3 |
+| AFK-2026-00070 | — | TITANIUM AMP INVERTER |
+| AFK-2026-00071 | — | FANTOM5 |
+| AFK-2026-00072 | — | FANTOM5 |
 
-1. `createFeedbackUploadUrl` — با `requireSupabaseAuth`، یک signed upload URL برمی‌گرداند (validation: نوع MIME، حجم، تعداد کل پیوست‌های همان session).
-2. `getFeedbackAttachmentSignedUrl` — برای نمایش پیوست‌های قبلی در صفحه جزئیات بازخورد، signed URL کوتاه‌مدت تولید می‌کند.
+این لیست به‌صورت یک عملیات `UPDATE` روی جدول `products` اعمال می‌شود. نام محصول دست نمی‌خورد.
 
-> دلیل استفاده از signed URL: bucket private است؛ هیچ لینک دائمی عمومی منتشر نمی‌شود → سازگار با خط‌مشی self-host و امنیت.
+> اگر هر مدلی از این لیست اشتباه استخراج شده، قبل از اجرا اعلام کنید تا اصلاح شود.
 
-## تغییرات UI — `FeedbackForm.tsx`
+---
 
-جایگزینی کامل بخش «پیوست‌ها (URL)» با کامپوننت جدید:
+## مرحله ۲ — قانون جلوگیری در دیتابیس (لایه نهایی)
 
-- دکمه‌های انتخاب:
-  - «انتخاب عکس/ویدیو» (input file با `accept="image/*,video/*"`)
-  - «انتخاب فایل صوتی» (`accept="audio/*"`)
-  - «ضبط ویس» (با `MediaRecorder API` — ضبط mic و تولید Blob `audio/webm`)
-- هنگام انتخاب فایل:
-  1. اعتبارسنجی client (نوع + حجم) با پیام فارسی.
-  2. درخواست signed upload URL از server function.
-  3. آپلود مستقیم به Storage با progress bar (XHR برای پشتیبانی progress).
-  4. اضافه شدن به لیست پیوست‌ها به‌صورت `{ path, mime_type, size, name }`.
-- پیش‌نمایش هر پیوست بسته به نوع:
-  - عکس → thumbnail
-  - ویدیو → `<video controls>` کوچک
-  - صدا → `<audio controls>`
-- امکان حذف هر پیوست قبل از ثبت نهایی (هم از لیست و هم از Storage).
-- حفظ سازگاری با field فعلی `attachment_urls` در جدول `feedback_items`: به‌جای URLهای خام، **مسیرهای داخلی Storage (path)** ذخیره می‌شوند تا signed URL در زمان نمایش ساخته شود. در صورت نیاز برای backward compatibility، اگر مقدار با `http` شروع شد همان رفتار قبلی اعمال می‌شود.
+یک migration اجرا می‌شود که شامل:
 
-## تغییرات نمایش بازخورد
+1. **تابع `normalize_fa(text)`** — `IMMUTABLE`، یکسان‌سازی فارسی برای مقایسه.
+2. **ستون محاسباتی `products.dedup_key`** — `GENERATED ALWAYS AS STORED` از ترکیب پنج فیلد نرمال‌شده. وقتی برند یا دسته خالی باشد، `NULL` می‌شود (مقایسه نمی‌شود).
+3. **Unique partial index** — `WHERE dedup_key IS NOT NULL AND status <> 'discontinued'`. این یعنی محصولات کنسل‌شده می‌توانند همان کلید را داشته باشند.
+4. **تابع RPC `find_duplicate_product(...)`** — `SECURITY DEFINER`، فقط برای کاربران احراز شده. در فرم برای بررسی زنده استفاده می‌شود و `id, name, sku` محصول مشابه را برمی‌گرداند.
 
-در `src/routes/_app.feedback_.$feedbackId.tsx` (و هرجا attachmentها نمایش داده می‌شود):
-- برای هر path، با `getFeedbackAttachmentSignedUrl` لینک امضاشده گرفته می‌شود.
-- رندر بر اساس MIME: image/video/audio inline؛ سایر موارد به‌صورت دکمه دانلود.
+---
 
-## رعایت قوانین مادر پروژه
+## مرحله ۳ — هشدار زنده در فرم (UX)
 
-- کاملاً self-host: از Lovable Cloud Storage (Supabase Storage) استفاده می‌شود، بدون CDN خارجی.
-- bucket **private** + RLS سختگیرانه + signed URL.
-- migration نوشته می‌شود؛ هیچ تغییر دستی روی schemaهای رزرو شده.
-- audit log: هنگام افزودن/حذف پیوست رویداد در `audit_logs` ثبت می‌شود.
-- فارسی، RTL، mobile-first؛ ضبط ویس با fallback پیام در صورت نبود مجوز mic.
-- بدون secret در frontend؛ آپلود از طریق signed URL سمت سرور.
+تغییرات در `src/components/products/ProductForm.tsx`:
 
-## فایل‌هایی که تغییر می‌کنند یا اضافه می‌شوند
+- یک hook جدید `useDuplicateCheck` با debounce ۴۰۰ms که هر بار `brand_id, category_id, model, color, capacity` تغییر کرد، تابع RPC را صدا می‌زند.
+- در حالت **ایجاد**: همه محصولات بررسی می‌شوند.
+- در حالت **ویرایش**: محصول فعلی exclude می‌شود (`p_exclude_id`).
+- اگر مشابه پیدا شد:
+  - یک کارت هشدار قرمز بالای فرم نمایش داده می‌شود: «این محصول قبلاً با SKU مشخص ثبت شده است».
+  - دکمه «ذخیره / ایجاد محصول» **غیرفعال** می‌شود.
+  - یک لینک «مشاهده محصول موجود» به صفحه آن محصول.
+- علاوه بر این، اگر کاربر به هر دلیلی تونست submit کند، خطای `23505` از DB گرفته شده و پیام فارسی «محصول تکراری است» نمایش داده می‌شود (در `_app.products.new.tsx` و route ویرایش).
 
-- جدید: `supabase/migrations/{timestamp}_feedback_attachments_bucket.sql`
-- جدید: `src/server/feedback-attachments.functions.ts`
-- جدید: `src/shared/components/FeedbackAttachmentUploader.tsx` (استخراج منطق آپلود/ضبط)
-- ویرایش: `src/shared/components/FeedbackForm.tsx` (جایگزینی بخش پیوست‌ها)
-- ویرایش: `src/routes/_app.feedback_.$feedbackId.tsx` (نمایش پیوست‌ها با signed URL)
-- ویرایش: `src/routes/_app.feedback_.create.tsx` (در صورت نیاز برای پاس دادن user id به آپلودر)
+---
 
-## نکته باز برای تأیید شما
+## فایل‌های تحت تأثیر
 
-محدودیت پیشنهادی: **حداکثر ۵ پیوست در هر بازخورد، هر فایل تا ۲۵MB**. اگر مقدار دیگری مدنظر دارید قبل از پیاده‌سازی اعلام کنید (مثلاً برای ویدیوهای طولانی‌تر تا ۱۰۰MB).
+- **migration جدید** در `supabase/migrations/` — تابع `normalize_fa`، ستون `dedup_key`، unique index، تابع `find_duplicate_product`، و `UPDATE` اصلاحی برای ۲۶ محصول.
+- `src/lib/products/duplicate-check.ts` — wrapper برای فراخوانی RPC.
+- `src/hooks/useDuplicateProductCheck.ts` — hook با debounce.
+- `src/components/products/ProductForm.tsx` — اضافه شدن کارت هشدار + غیرفعال‌سازی دکمه ثبت.
+- `src/routes/_app.products.new.tsx` و route ویرایش — مدیریت خطای `23505` با پیام فارسی.
+
+---
+
+## معیارهای پذیرش (طبق قانون مادر)
+
+- migration reversible و idempotent (`CREATE ... IF NOT EXISTS`، `ADD COLUMN IF NOT EXISTS`).
+- RLS تغییر نمی‌کند؛ تابع RPC با `SECURITY DEFINER` و `GRANT` فقط به `authenticated`.
+- هیچ secret در frontend.
+- بدون CDN خارجی.
+- query بررسی تکراری در فرم با debounce و limit 1.
+- UI: RTL، فارسی، با `Alert` از shadcn (موجود).
+- audit log برای UPDATE اصلاحی نیازی نیست (اصلاح داده‌ای، نه عملیاتی کاربری).

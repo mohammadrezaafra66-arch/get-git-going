@@ -4547,6 +4547,7 @@ export type Database = {
           color: string | null
           created_at: string
           created_by: string | null
+          dedup_key: string | null
           description: string | null
           id: string
           is_active: boolean
@@ -4571,6 +4572,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          dedup_key?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -4595,6 +4597,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          dedup_key?: string | null
           description?: string | null
           id?: string
           is_active?: boolean
@@ -6545,6 +6548,21 @@ export type Database = {
           total_count: number
         }[]
       }
+      find_duplicate_product: {
+        Args: {
+          p_brand_id: string
+          p_capacity: string
+          p_category_id: string
+          p_color: string
+          p_exclude_id?: string
+          p_model: string
+        }
+        Returns: {
+          id: string
+          name: string
+          sku: string
+        }[]
+      }
       gamification_analytics_achievements: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -7088,6 +7106,7 @@ export type Database = {
       }
       next_product_sku: { Args: { _year: number }; Returns: string }
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
+      normalize_fa: { Args: { input: string }; Returns: string }
       normalize_fa_text: { Args: { input: string }; Returns: string }
       post_receipt_accounting: {
         Args: { p_receipt_id: string; p_user_id: string }
