@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
 
 type Run = {
   id: string;
@@ -142,6 +142,12 @@ export function MarketRateIngestionHistory() {
                 </SelectContent>
               </Select>
             </div>
+
+            {q.data && q.data.length > 0 && (
+              <div className="mb-2 text-[11px] text-muted-foreground">
+                نمایش {toFaDigits(filtered.length)} مورد از {toFaDigits(q.data.length)} اجرای آخر
+              </div>
+            )}
 
             {q.isLoading ? (
               <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
