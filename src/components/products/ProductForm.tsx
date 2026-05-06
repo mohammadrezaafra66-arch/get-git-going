@@ -580,9 +580,9 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
             <X className="ms-1 h-4 w-4" />انصراف
           </Button>
         )}
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || !!duplicate || dupChecking}>
           {loading ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Save className="ms-1 h-4 w-4" />}
-          {submitLabel}
+          {duplicate ? "ثبت غیرممکن (تکراری)" : submitLabel}
         </Button>
       </div>
     </form>
