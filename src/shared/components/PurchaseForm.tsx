@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
