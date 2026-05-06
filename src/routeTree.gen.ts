@@ -108,6 +108,7 @@ import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.ga
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app.accounting.purchase-payments'
+import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
 import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
@@ -653,6 +654,11 @@ const AppAccountingPurchasePaymentsRoute =
     path: '/accounting/purchase-payments',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAccountingPayablesRoute = AppAccountingPayablesRouteImport.update({
+  id: '/accounting/payables',
+  path: '/accounting/payables',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingExternalPartiesRoute =
   AppAccountingExternalPartiesRouteImport.update({
     id: '/accounting/external-parties',
@@ -872,6 +878,7 @@ export interface FileRoutesByFullPath {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
@@ -1003,6 +1010,7 @@ export interface FileRoutesByTo {
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
@@ -1137,6 +1145,7 @@ export interface FileRoutesById {
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/_app/accounting/payables': typeof AppAccountingPayablesRoute
   '/_app/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
@@ -1272,6 +1281,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/bank-accounts'
     | '/accounting/external-parties'
+    | '/accounting/payables'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
@@ -1403,6 +1413,7 @@ export interface FileRouteTypes {
     | '/academy/manage'
     | '/accounting/bank-accounts'
     | '/accounting/external-parties'
+    | '/accounting/payables'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
@@ -1536,6 +1547,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/manage'
     | '/_app/accounting/bank-accounts'
     | '/_app/accounting/external-parties'
+    | '/_app/accounting/payables'
     | '/_app/accounting/purchase-payments'
     | '/_app/accounting/receipts'
     | '/_app/accounting/receivables'
@@ -2349,6 +2361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingPurchasePaymentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/payables': {
+      id: '/_app/accounting/payables'
+      path: '/accounting/payables'
+      fullPath: '/accounting/payables'
+      preLoaderRoute: typeof AppAccountingPayablesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/external-parties': {
       id: '/_app/accounting/external-parties'
       path: '/accounting/external-parties'
@@ -2791,6 +2810,7 @@ interface AppRouteChildren {
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
+  AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
   AppAccountingPurchasePaymentsRoute: typeof AppAccountingPurchasePaymentsRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
@@ -2883,6 +2903,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingBankAccountsRoute: AppAccountingBankAccountsRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
+  AppAccountingPayablesRoute: AppAccountingPayablesRoute,
   AppAccountingPurchasePaymentsRoute: AppAccountingPurchasePaymentsRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAccountingReceivablesRoute: AppAccountingReceivablesRoute,
