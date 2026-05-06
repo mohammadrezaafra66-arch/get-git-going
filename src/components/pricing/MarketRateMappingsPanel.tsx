@@ -36,7 +36,7 @@ type EditState = {
 };
 
 export function MarketRateMappingsPanel() {
-  const { roles, user } = useAuth();
+  const { roles } = useAuth();
   const canEdit = roles.some((r) => ["admin", "manager"].includes(r));
   const canView = canEdit || roles.includes("accountant");
   const qc = useQueryClient();
@@ -161,7 +161,6 @@ export function MarketRateMappingsPanel() {
       {canEdit && editing && (
         <EditMappingDialog
           row={editing}
-          actorId={user?.id ?? null}
           onClose={() => setEditing(null)}
           onSaved={() => {
             qc.invalidateQueries({ queryKey: ["market-rate-mappings"] });
@@ -174,8 +173,8 @@ export function MarketRateMappingsPanel() {
 }
 
 function EditMappingDialog({
-  row, actorId, onClose, onSaved,
-}: { row: MappingRow; actorId: string | null; onClose: () => void; onSaved: () => void }) {
+  row, onClose, onSaved,
+}: { row: MappingRow; onClose: () => void; onSaved: () => void }) {
   const [state, setState] = useState<EditState>({
     source_symbol: row.source_symbol,
     normalize_multiplier: String(row.normalize_multiplier ?? 1),
