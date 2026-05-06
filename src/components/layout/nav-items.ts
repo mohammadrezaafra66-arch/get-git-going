@@ -3,7 +3,7 @@ import {
   FileText, ListOrdered, Users, ShieldCheck, BarChart3, BookOpen,
   MessageSquare, Mail, ScrollText, Database, KeyRound, UserSquare2, Factory, GraduationCap,
   CheckSquare, Workflow, Settings, Heart,
-  Megaphone, Edit3, Monitor, TrendingUp, Trophy, Wallet,
+  Megaphone, Edit3, Monitor, TrendingUp, Trophy, Wallet, Coins,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -74,6 +74,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/gamification/admin/leagues", label: "مدیریت لیگ‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
   { to: "/gamification/admin/rewards", label: "مدیریت پاداش‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
   { to: "/gamification/admin/analytics", label: "تحلیل گیمیفیکیشن", icon: BarChart3, module: "roles", group: "gamification-admin", adminOnly: true },
+  { to: "/gamification/admin/purchase-settings", label: "طلای زمان (خرید)", icon: Coins, module: "roles", group: "gamification-admin", adminOnly: true },
 
   // ارتباطات
   { to: "/knowledge", label: "دانش سازمانی", icon: BookOpen, module: "knowledge", group: "comms" },
