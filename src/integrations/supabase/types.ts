@@ -1161,6 +1161,88 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_capital_allocations: {
+        Row: {
+          approved_by: string | null
+          capital_date: string
+          capital_snapshot_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          customer_score: number
+          final_amount: number
+          id: string
+          override_reason: string | null
+          salesperson_allocation_id: string
+          salesperson_id: string
+          score_source: string
+          status: string
+          system_suggested_amount: number
+          total_customer_score: number
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          capital_date: string
+          capital_snapshot_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          customer_score?: number
+          final_amount?: number
+          id?: string
+          override_reason?: string | null
+          salesperson_allocation_id: string
+          salesperson_id: string
+          score_source?: string
+          status?: string
+          system_suggested_amount?: number
+          total_customer_score?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          capital_date?: string
+          capital_snapshot_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          customer_score?: number
+          final_amount?: number
+          id?: string
+          override_reason?: string | null
+          salesperson_allocation_id?: string
+          salesperson_id?: string
+          score_source?: string
+          status?: string
+          system_suggested_amount?: number
+          total_customer_score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_capital_allocations_capital_snapshot_id_fkey"
+            columns: ["capital_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "daily_capital_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_capital_allocations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_capital_allocations_salesperson_allocation_id_fkey"
+            columns: ["salesperson_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "salesperson_capital_allocations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credit_balance: {
         Row: {
           available_credit: number
@@ -7119,6 +7201,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      compute_customer_capital_allocations: {
+        Args: { p_salesperson_allocation_id: string }
+        Returns: {
+          capital_date: string
+          capital_snapshot_id: string
+          customer_id: string
+          customer_score: number
+          salesperson_allocation_id: string
+          salesperson_final_amount: number
+          salesperson_id: string
+          system_suggested_amount: number
+          total_customer_score: number
+        }[]
+      }
       compute_daily_capital: {
         Args: { p_capital_date?: string }
         Returns: {
@@ -8130,6 +8226,10 @@ export type Database = {
           _target_user: string
         }
         Returns: undefined
+      }
+      save_customer_capital_allocations: {
+        Args: { p_allocations: Json; p_salesperson_allocation_id: string }
+        Returns: Json
       }
       save_daily_capital_snapshot: {
         Args: {
