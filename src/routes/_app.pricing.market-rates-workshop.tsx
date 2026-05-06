@@ -21,6 +21,7 @@ import {
   ingestMarketRatesExternal,
   getExternalRatesStatus,
 } from "@/server/market-rates-ingestion.functions";
+import { MarketRateMappingsPanel } from "@/components/pricing/MarketRateMappingsPanel";
 
 export const Route = createFileRoute("/_app/pricing/market-rates-workshop")({
   beforeLoad: async () => { await requirePermission("market-rates", "view"); },
@@ -209,6 +210,8 @@ function MarketRatesWorkshopPage() {
       </section>
 
       {canWrite && <ExternalIngestionCard />}
+
+      {canWrite && <MarketRateMappingsPanel />}
 
       {/* تاریخچه با فیلتر */}
       <Card>
