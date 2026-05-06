@@ -24,6 +24,7 @@ function FeedbackCreatePage() {
       <Card>
         <CardContent className="pt-6">
           <FeedbackForm
+            userId={user?.id ?? ""}
             submitting={submitting}
             onCancel={() => navigate({ to: "/feedback" })}
             onSubmit={async (v) => {

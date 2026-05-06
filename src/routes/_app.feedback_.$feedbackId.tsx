@@ -148,6 +148,88 @@ function FeedbackDetailPage() {
 
   const attachments = (Array.isArray(data.attachment_urls) ? data.attachment_urls : []) as string[];
 
+  return <FeedbackDetailContent
+    data={data} attachments={attachments}
+    status={status} setStatus={setStatus}
+    response={response} setResponse={setResponse}
+    taskDialogOpen={taskDialogOpen} setTaskDialogOpen={setTaskDialogOpen}
+    taskId={taskId} setTaskId={setTaskId}
+    canManage={canManage} updateMut={updateMut}
+  />;
+}
+
+type DetailProps = {
+  data: { id: string; title: string; description: string; created_at: string; type: string; status: string;
+    where_occurred: string | null; impact: string | null; suggestion: string | null;
+    response: string | null; responded_at: string | null; converted_task_id: string | null;
+  };
+  attachments: string[];
+  status: FeedbackStatus; setStatus: (s: FeedbackStatus) => void;
+  response: string; setResponse: (s: string) => void;
+  taskDialogOpen: boolean; setTaskDialogOpen: (b: boolean) => void;
+  taskId: string; setTaskId: (s: string) => void;
+  canManage: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updateMut: any;
+};
+
+function AttachmentsSection({ attachments }: { attachments: string[] }) {
+  const [signed, setSigned] = useState<Array<{ url: string; mime: string; raw: string }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const out: Array<{ url: string; mime: string; raw: string }> = [];
+      for (const item of attachments) {
+        if (item.startsWith("http://") || item.startsWith("https://")) {
+          out.push({ url: item, mime: "", raw: item });
+          continue;
+        }
+        const { data } = await supabase.storage
+          .from("feedback-attachments")
+          .createSignedUrl(item, 60 * 60);
+        const ext = item.split(".").pop()?.toLowerCase() ?? "";
+        const mime =
+          ["jpg","jpeg","png","gif","webp","heic"].includes(ext) ? "image" :
+          ["mp4","webm","mov","quicktime"].includes(ext) ? "video" :
+          ["mp3","m4a","ogg","wav","webm"].includes(ext) ? "audio" : "";
+        out.push({ url: data?.signedUrl ?? "", mime, raw: item });
+      }
+      if (!cancelled) setSigned(out);
+    })();
+    return () => { cancelled = true; };
+  }, [attachments]);
+
+  return (
+    <ul className="grid gap-3 sm:grid-cols-2">
+      {signed.map((s, i) => (
+        <li key={i} className="rounded-md border bg-muted/30 p-2 space-y-1">
+          {s.mime === "image" && s.url && (
+            <img src={s.url} alt="" className="max-h-48 w-auto rounded" />
+          )}
+          {s.mime === "video" && s.url && (
+            <video src={s.url} controls className="w-full rounded" />
+          )}
+          {s.mime === "audio" && s.url && (
+            <audio src={s.url} controls className="w-full" />
+          )}
+          {s.url && (
+            <a href={s.url} target="_blank" rel="noopener noreferrer"
+               className="block truncate text-xs text-primary hover:underline">
+              دانلود فایل
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function FeedbackDetailContent({
+  data, attachments, status, setStatus, response, setResponse,
+  taskDialogOpen, setTaskDialogOpen, taskId, setTaskId, canManage, updateMut,
+}: DetailProps) {
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -191,18 +273,7 @@ function FeedbackDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">پیوست‌ها</CardTitle></CardHeader>
           <CardContent>
-            <ul className="space-y-1.5 text-sm">
-              {attachments.map((url, i) => (
-                <li key={i}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline-offset-2 hover:underline break-all"
-                  >{url}</a>
-                </li>
-              ))}
-            </ul>
+            <AttachmentsSection attachments={attachments} />
           </CardContent>
         </Card>
       )}
