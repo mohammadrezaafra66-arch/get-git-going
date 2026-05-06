@@ -70,6 +70,7 @@ import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pric
 import { Route as AppPricingProductRecommendationsRouteImport } from './routes/_app.pricing.product-recommendations'
 import { Route as AppPricingPriceAlertsRouteImport } from './routes/_app.pricing.price-alerts'
 import { Route as AppPricingMyWorkbenchRouteImport } from './routes/_app.pricing.my-workbench'
+import { Route as AppPricingMarketRatesWorkshopRouteImport } from './routes/_app.pricing.market-rates-workshop'
 import { Route as AppPricingMarketIntelligenceRouteImport } from './routes/_app.pricing.market-intelligence'
 import { Route as AppPricingLivePriceListRouteImport } from './routes/_app.pricing.live-price-list'
 import { Route as AppPricingCurrencySourcesRouteImport } from './routes/_app.pricing.currency-sources'
@@ -449,6 +450,12 @@ const AppPricingMyWorkbenchRoute = AppPricingMyWorkbenchRouteImport.update({
   path: '/pricing/my-workbench',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingMarketRatesWorkshopRoute =
+  AppPricingMarketRatesWorkshopRouteImport.update({
+    id: '/pricing/market-rates-workshop',
+    path: '/pricing/market-rates-workshop',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingMarketIntelligenceRoute =
   AppPricingMarketIntelligenceRouteImport.update({
     id: '/pricing/market-intelligence',
@@ -886,6 +893,7 @@ export interface FileRoutesByFullPath {
   '/pricing/currency-sources': typeof AppPricingCurrencySourcesRoute
   '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
+  '/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
   '/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
@@ -1014,6 +1022,7 @@ export interface FileRoutesByTo {
   '/pricing/currency-sources': typeof AppPricingCurrencySourcesRoute
   '/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
+  '/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
   '/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
@@ -1145,6 +1154,7 @@ export interface FileRoutesById {
   '/_app/pricing/currency-sources': typeof AppPricingCurrencySourcesRoute
   '/_app/pricing/live-price-list': typeof AppPricingLivePriceListRoute
   '/_app/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
+  '/_app/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/_app/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
   '/_app/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/_app/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
@@ -1277,6 +1287,7 @@ export interface FileRouteTypes {
     | '/pricing/currency-sources'
     | '/pricing/live-price-list'
     | '/pricing/market-intelligence'
+    | '/pricing/market-rates-workshop'
     | '/pricing/my-workbench'
     | '/pricing/price-alerts'
     | '/pricing/product-recommendations'
@@ -1405,6 +1416,7 @@ export interface FileRouteTypes {
     | '/pricing/currency-sources'
     | '/pricing/live-price-list'
     | '/pricing/market-intelligence'
+    | '/pricing/market-rates-workshop'
     | '/pricing/my-workbench'
     | '/pricing/price-alerts'
     | '/pricing/product-recommendations'
@@ -1535,6 +1547,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/currency-sources'
     | '/_app/pricing/live-price-list'
     | '/_app/pricing/market-intelligence'
+    | '/_app/pricing/market-rates-workshop'
     | '/_app/pricing/my-workbench'
     | '/_app/pricing/price-alerts'
     | '/_app/pricing/product-recommendations'
@@ -2042,6 +2055,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/my-workbench'
       fullPath: '/pricing/my-workbench'
       preLoaderRoute: typeof AppPricingMyWorkbenchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/market-rates-workshop': {
+      id: '/_app/pricing/market-rates-workshop'
+      path: '/pricing/market-rates-workshop'
+      fullPath: '/pricing/market-rates-workshop'
+      preLoaderRoute: typeof AppPricingMarketRatesWorkshopRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/market-intelligence': {
@@ -2762,6 +2782,7 @@ interface AppRouteChildren {
   AppPricingCurrencySourcesRoute: typeof AppPricingCurrencySourcesRoute
   AppPricingLivePriceListRoute: typeof AppPricingLivePriceListRoute
   AppPricingMarketIntelligenceRoute: typeof AppPricingMarketIntelligenceRoute
+  AppPricingMarketRatesWorkshopRoute: typeof AppPricingMarketRatesWorkshopRoute
   AppPricingMyWorkbenchRoute: typeof AppPricingMyWorkbenchRoute
   AppPricingPriceAlertsRoute: typeof AppPricingPriceAlertsRoute
   AppPricingProductRecommendationsRoute: typeof AppPricingProductRecommendationsRoute
@@ -2851,6 +2872,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingCurrencySourcesRoute: AppPricingCurrencySourcesRoute,
   AppPricingLivePriceListRoute: AppPricingLivePriceListRoute,
   AppPricingMarketIntelligenceRoute: AppPricingMarketIntelligenceRoute,
+  AppPricingMarketRatesWorkshopRoute: AppPricingMarketRatesWorkshopRoute,
   AppPricingMyWorkbenchRoute: AppPricingMyWorkbenchRoute,
   AppPricingPriceAlertsRoute: AppPricingPriceAlertsRoute,
   AppPricingProductRecommendationsRoute: AppPricingProductRecommendationsRoute,
@@ -2921,3 +2943,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

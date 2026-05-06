@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet, Monitor, BarChart3, Sparkles, RefreshCw } from "lucide-react";
+import { DollarSign, TrendingUp, Tag, FileText, Calculator, Truck, AlertCircle, ArrowLeft, Layers, ListChecks, Zap, Wallet, Monitor, BarChart3, Sparkles, RefreshCw, Coins } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +43,7 @@ function PricingHubPage() {
 
   const tiles = [
     { to: "/pricing/currency-rates", label: "نرخ ارز", icon: TrendingUp, desc: "ثبت نرخ روز دلار و درهم", enabled: true },
+    { to: "/pricing/market-rates-workshop", label: "کارگاه نرخ ارز و طلا", icon: Coins, desc: "پایش نرخ‌های مهم بازار برای حسابدار و مدیرکل", enabled: true },
     { to: "/pricing/purchase-prices", label: "قیمت خرید", icon: Tag, desc: "ثبت و مشاهده قیمت‌های خرید", enabled: true },
     { to: "/pricing/sale-price-types", label: "انواع قیمت فروش", icon: Layers, desc: "تعریف نقدی، چکی، همکار و ...", enabled: true },
     { to: "/pricing/settlement-types", label: "انواع تسویه", icon: Wallet, desc: "روش‌های تسویه (نقدی، چکی، همکار)", enabled: true },
