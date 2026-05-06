@@ -622,6 +622,57 @@ export type Database = {
         }
         Relationships: []
       }
+      capital_allocation_ledger: {
+        Row: {
+          actor_id: string | null
+          allocation_id: string
+          allocation_kind: string
+          amount: number
+          consumed_after: number
+          consumed_before: number
+          created_at: string
+          held_after: number
+          held_before: number
+          id: string
+          metadata: Json
+          reference_id: string | null
+          reference_type: string | null
+          transaction_type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          allocation_id: string
+          allocation_kind: string
+          amount: number
+          consumed_after: number
+          consumed_before: number
+          created_at?: string
+          held_after: number
+          held_before: number
+          id?: string
+          metadata?: Json
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type: string
+        }
+        Update: {
+          actor_id?: string | null
+          allocation_id?: string
+          allocation_kind?: string
+          amount?: number
+          consumed_after?: number
+          consumed_before?: number
+          created_at?: string
+          held_after?: number
+          held_before?: number
+          id?: string
+          metadata?: Json
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -1169,11 +1220,13 @@ export type Database = {
           approved_by: string | null
           capital_date: string
           capital_snapshot_id: string
+          consumed_amount: number
           created_at: string
           created_by: string | null
           customer_id: string
           customer_score: number
           final_amount: number
+          held_amount: number
           id: string
           override_reason: string | null
           salesperson_allocation_id: string
@@ -1188,11 +1241,13 @@ export type Database = {
           approved_by?: string | null
           capital_date: string
           capital_snapshot_id: string
+          consumed_amount?: number
           created_at?: string
           created_by?: string | null
           customer_id: string
           customer_score?: number
           final_amount?: number
+          held_amount?: number
           id?: string
           override_reason?: string | null
           salesperson_allocation_id: string
@@ -1207,11 +1262,13 @@ export type Database = {
           approved_by?: string | null
           capital_date?: string
           capital_snapshot_id?: string
+          consumed_amount?: number
           created_at?: string
           created_by?: string | null
           customer_id?: string
           customer_score?: number
           final_amount?: number
+          held_amount?: number
           id?: string
           override_reason?: string | null
           salesperson_allocation_id?: string
@@ -1527,6 +1584,7 @@ export type Database = {
           future_receivables: number
           id: string
           input_id: string | null
+          is_active: boolean
           overdue_payables: number
           overdue_receivables: number
           override_reason: string | null
@@ -1547,6 +1605,7 @@ export type Database = {
           future_receivables?: number
           id?: string
           input_id?: string | null
+          is_active?: boolean
           overdue_payables?: number
           overdue_receivables?: number
           override_reason?: string | null
@@ -1567,6 +1626,7 @@ export type Database = {
           future_receivables?: number
           id?: string
           input_id?: string | null
+          is_active?: boolean
           overdue_payables?: number
           overdue_receivables?: number
           override_reason?: string | null
@@ -6087,9 +6147,11 @@ export type Database = {
           approved_by: string | null
           capital_date: string
           capital_snapshot_id: string
+          consumed_amount: number
           created_at: string
           created_by: string | null
           final_amount: number
+          held_amount: number
           id: string
           override_reason: string | null
           salesperson_id: string
@@ -6104,9 +6166,11 @@ export type Database = {
           approved_by?: string | null
           capital_date: string
           capital_snapshot_id: string
+          consumed_amount?: number
           created_at?: string
           created_by?: string | null
           final_amount?: number
+          held_amount?: number
           id?: string
           override_reason?: string | null
           salesperson_id: string
@@ -6121,9 +6185,11 @@ export type Database = {
           approved_by?: string | null
           capital_date?: string
           capital_snapshot_id?: string
+          consumed_amount?: number
           created_at?: string
           created_by?: string | null
           final_amount?: number
+          held_amount?: number
           id?: string
           override_reason?: string | null
           salesperson_id?: string
@@ -7148,6 +7214,16 @@ export type Database = {
           reason: string
         }[]
       }
+      can_use_customer_capital_allocation: {
+        Args: { p_amount: number; p_customer_id: string }
+        Returns: {
+          available: number
+          can_use: boolean
+          customer_allocation_id: string
+          reason: string
+          salesperson_allocation_id: string
+        }[]
+      }
       cancel_invoice: { Args: { p_invoice_id: string }; Returns: Json }
       capture_score_snapshots: { Args: never; Returns: number }
       check_and_unlock_achievements_for_employee: {
@@ -7302,6 +7378,15 @@ export type Database = {
           system_suggested_amount: number
           total_score: number
         }[]
+      }
+      consume_capital_allocation: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       create_bot_api_key: {
         Args: { p_expires_at?: string; p_name: string }
@@ -7897,6 +7982,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      hold_capital_allocation: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       hold_credit: {
         Args: {
           p_amount: number
@@ -8216,12 +8310,30 @@ export type Database = {
         }
         Returns: string
       }
+      refund_capital_allocation: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       reject_currency_fetch: {
         Args: { p_fetch_id: string; p_reason?: string }
         Returns: undefined
       }
       reject_pending_user: {
         Args: { _notes?: string; _user_id: string }
+        Returns: undefined
+      }
+      release_capital_allocation: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_invoice_id: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       release_credit: {
@@ -8296,6 +8408,7 @@ export type Database = {
           future_receivables: number
           id: string
           input_id: string | null
+          is_active: boolean
           overdue_payables: number
           overdue_receivables: number
           override_reason: string | null
