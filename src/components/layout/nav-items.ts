@@ -66,6 +66,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/accounting/receivables", label: "مطالبات مشتریان", icon: Wallet, module: "invoices", group: "finance" },
  { to: "/accounting/payables", label: "بدهی‌های تأمین‌کنندگان", icon: Wallet, module: "invoices", group: "finance" },
   { to: "/accounting/daily-capital", label: "سرمایه روز", icon: Coins, module: "invoices", group: "finance" },
+  { to: "/accounting/salesperson-capital-allocations", label: "تخصیص سرمایه فروشندگان", icon: Wallet, module: "invoices", group: "finance" },
   { to: "/reports", label: "گزارش‌ها", icon: BarChart3, module: "reports", group: "finance" },
 
   // گیمیفیکیشن
