@@ -444,9 +444,9 @@ function ExternalIngestionCard() {
               <Badge variant={s.tgju_enabled ? "default" : "secondary"}>
                 TGJU: {s.tgju_enabled ? "فعال" : "غیرفعال"}
               </Badge>
-              {s.tgju_enabled && !s.tgju_has_key && (
-                <Badge variant="destructive">کلید API ندارد</Badge>
-              )}
+              <Badge variant="secondary" className="text-[10px]">
+                TGJU: نیاز به تأیید قرارداد/نماد رسمی
+              </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               قطع شدن منبع خارجی، مسیر ثبت دستی نرخ را مختل نمی‌کند.
@@ -456,21 +456,22 @@ function ExternalIngestionCard() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm" variant="outline"
-            disabled={masterOff || !s?.navasan_enabled || ingest.isPending}
+            disabled={masterOff || !s?.navasan_enabled || !s?.navasan_has_key || ingest.isPending}
             onClick={() => ingest.mutate("NAVASAN_API")}
+            title={!s?.navasan_has_key ? "کلید API نوسان تنظیم نشده است" : undefined}
           >
             <RefreshCw className="ml-1 h-4 w-4" /> دریافت از نوسان
           </Button>
           <Button
             size="sm" variant="outline"
-            disabled={masterOff || !s?.tgju_enabled || ingest.isPending}
-            onClick={() => ingest.mutate("TGJU_API")}
+            disabled
+            title="اتصال TGJU تا تأیید endpoint و نمادهای رسمی غیرفعال است"
           >
             <RefreshCw className="ml-1 h-4 w-4" /> دریافت از TGJU
           </Button>
           <Button
             size="sm"
-            disabled={masterOff || (!s?.navasan_enabled && !s?.tgju_enabled) || ingest.isPending}
+            disabled={masterOff || !s?.navasan_enabled || !s?.navasan_has_key || ingest.isPending}
             onClick={() => ingest.mutate("ALL")}
           >
             <RefreshCw className="ml-1 h-4 w-4" /> دریافت از همه منابع فعال
