@@ -139,7 +139,9 @@ function MarketRatesWorkshopPage() {
     <div dir="rtl" className="space-y-5">
       <PageHeader
         title="کارگاه نرخ ارز و طلا"
-        description="پایش و ثبت نرخ‌های مهم بازار برای حسابدار و مدیرکل"
+        description={isPrivileged
+          ? "پایش و ثبت نرخ‌های مهم بازار برای حسابدار و مدیرکل"
+          : "نرخ‌های عمومی تأییدشده بازار (مشاهده فقط)"}
         actions={canWrite && indicatorsQ.data && sourcesQ.data ? (
           <NewTickDialog
             indicators={indicatorsQ.data}
