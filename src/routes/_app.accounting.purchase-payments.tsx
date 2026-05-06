@@ -264,7 +264,7 @@ function PurchasePaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rows.map((r) => {
+                      {filteredRows.map((r) => {
                         const promised = r.payment_term?.days ?? 0;
                         const elapsed = daysSince(r.purchase_date);
                         const overdue = !r.paid_at && elapsed > promised;
