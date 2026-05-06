@@ -18,6 +18,7 @@ import {
   TrendingDown,
   Check,
   CircleDot,
+  Tag,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -49,6 +50,7 @@ import {
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
+import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 
 export const Route = createFileRoute("/_app/pricing/my-workbench")({
   component: WorkbenchPage,
@@ -66,6 +68,8 @@ function WorkbenchPage() {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
   const isPrivileged = hasAnyRole(roles, ["admin", "manager"]);
+  const canLabel = hasAnyRole(roles, ["admin", "accountant"]);
+  const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
 
   const [search, setSearch] = useState("");
   const dSearch = useDebounce(search, 300);
@@ -287,6 +291,8 @@ function WorkbenchPage() {
               stepPct={stepPct}
               saving={saving === row.id}
               justSaved={!!savedFlash[row.id]}
+              canLabel={canLabel}
+              onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
               onPrice={(v) => setRowPrice(row, v)}
               onBump={(p) => bumpPrice(row, p)}
               onStock={(s) => setRowStock(row, s)}
@@ -317,6 +323,8 @@ function WorkbenchPage() {
                     dirty={dirty[row.id]}
                     stepPct={stepPct}
                     saving={saving === row.id}
+                    canLabel={canLabel}
+                    onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
                     onPrice={(v) => setRowPrice(row, v)}
                     onBump={(p) => bumpPrice(row, p)}
                     onStock={(s) => setRowStock(row, s)}
@@ -363,6 +371,13 @@ function WorkbenchPage() {
           </div>
         </div>
       )}
+
+      <ProductLabelsQuickDialog
+        productId={labelTarget?.id ?? null}
+        productName={labelTarget?.name ?? ""}
+        open={!!labelTarget}
+        onOpenChange={(o) => { if (!o) setLabelTarget(null); }}
+      />
     </div>
   );
 }
@@ -371,12 +386,14 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row, dirty, stepPct, saving, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRow;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
+  canLabel: boolean;
+  onLabel: () => void;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
   onStock: (s: StockStatus) => void;
@@ -448,6 +465,11 @@ function DesktopRow({
           <Button size="sm" variant="default" className="h-7" disabled={!isDirty || saving} onClick={onSave}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           </Button>
+          {canLabel && (
+            <Button size="sm" variant="outline" className="h-7" onClick={onLabel} title="برچسب‌زدن">
+              <Tag className="h-3 w-3" />
+            </Button>
+          )}
           {isDirty && (
             <Button size="sm" variant="ghost" className="h-7" onClick={onClear}>
               <RotateCcw className="h-3 w-3" />
@@ -463,13 +485,15 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row, dirty, stepPct, saving, justSaved, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, justSaved, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRow;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
   justSaved: boolean;
+  canLabel: boolean;
+  onLabel: () => void;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
   onStock: (s: StockStatus) => void;
@@ -698,6 +722,11 @@ function MobileCard({
               </>
             )}
           </Button>
+          {canLabel && (
+            <Button variant="outline" className="h-12" onClick={onLabel} title="برچسب‌زدن">
+              <Tag className="h-4 w-4" />
+            </Button>
+          )}
           {isDirty && (
             <Button variant="outline" className="h-12" onClick={onClear} disabled={saving}>
               <RotateCcw className="h-4 w-4" />
