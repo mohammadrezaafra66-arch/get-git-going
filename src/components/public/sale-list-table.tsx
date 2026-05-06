@@ -5,6 +5,7 @@ import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS, type StockStatus } from "@/lib/products/constants";
 import type { PublicSaleListItem } from "@/lib/public/get-public-sale-list";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 
 interface Props {
   items: PublicSaleListItem[];
@@ -42,7 +43,7 @@ export function SaleListTable({ items }: Props) {
   }
 
   return (
-    <>
+    <RecentPurchaseGroup productIds={items.map((i) => i.product_id)}>
       {/* Mobile: card view */}
       <div className="space-y-3 md:hidden">
         {items.map((it) => (
@@ -120,6 +121,6 @@ export function SaleListTable({ items }: Props) {
           </TableBody>
         </Table>
       </div>
-    </>
+    </RecentPurchaseGroup>
   );
 }
