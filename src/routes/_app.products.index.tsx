@@ -22,6 +22,7 @@ import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
@@ -174,7 +175,7 @@ function ProductsPage() {
       ) : (data?.rows.length ?? 0) === 0 ? (
         <EmptyState icon={Package} title="محصولی یافت نشد" description="با تغییر فیلترها یا افزودن محصول جدید شروع کنید." />
       ) : (
-        <>
+        <RecentPurchaseGroup productIds={(data?.rows ?? []).map((p) => p.id)}>
           {/* Desktop table */}
           <Card className="hidden md:block">
             <CardContent className="p-0">
@@ -323,7 +324,7 @@ function ProductsPage() {
               </Button>
             </div>
           </div>
-        </>
+        </RecentPurchaseGroup>
       )}
 
       <ProductLabelsQuickDialog

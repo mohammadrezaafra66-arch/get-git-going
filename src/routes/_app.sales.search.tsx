@@ -33,6 +33,8 @@ import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/Pr
 import { PriceChangeBadge } from "@/components/pricing/price-history/PriceChangeBadge";
 import { computeChangePercent, computeDirection } from "@/lib/pricing/price-history";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
@@ -592,6 +594,7 @@ function SalesSearchPage() {
         </div>
       ) : (
         <>
+        <RecentPurchaseGroup productIds={products.map((p) => p.id)}>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {products.map((p) => {
             return (
@@ -628,6 +631,7 @@ function SalesSearchPage() {
             );
           })}
         </div>
+        </RecentPurchaseGroup>
         {labelMode !== "off" && (
           <div className="mt-4 flex flex-col items-center justify-between gap-2 sm:flex-row">
             <div className="text-xs text-muted-foreground">
@@ -836,6 +840,7 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
             <Badge variant={STOCK_VARIANT[stockKey] ?? "outline"}>
               {STOCK_LABEL[stockKey] ?? stockKey}
             </Badge>
+            <RecentPurchaseBadge productId={product.id} />
             <span className="text-[11px] text-muted-foreground">
               {product.product_type === "foreign" ? "خارجی" : product.product_type === "iranian" ? "ایرانی" : ""}
             </span>
