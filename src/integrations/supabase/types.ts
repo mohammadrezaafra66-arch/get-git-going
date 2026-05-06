@@ -2459,6 +2459,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vw_customer_receivables"
+            referencedColumns: ["invoice_id"]
+          },
+          {
             foreignKeyName: "invoice_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -3501,6 +3508,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_receipt_links_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vw_customer_receivables"
+            referencedColumns: ["invoice_id"]
           },
           {
             foreignKeyName: "payment_receipt_links_receipt_id_fkey"
@@ -5113,6 +5127,13 @@ export type Database = {
             referencedRelation: "vw_purchase_float"
             referencedColumns: ["purchase_id"]
           },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "vw_supplier_payables"
+            referencedColumns: ["purchase_id"]
+          },
         ]
       }
       purchase_prices: {
@@ -6469,6 +6490,13 @@ export type Database = {
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "waybills_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vw_customer_receivables"
+            referencedColumns: ["invoice_id"]
+          },
         ]
       }
     }
@@ -6573,6 +6601,34 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_customer_receivables: {
+        Row: {
+          commitment_confirmed: boolean | null
+          confirmed_paid_amount: number | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string | null
+          days_until_due: number | null
+          deposit_amount: number | null
+          due_date: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          invoice_status: string | null
+          invoice_type: string | null
+          is_overdue: boolean | null
+          outstanding_amount: number | null
+          total_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_purchase_float: {
         Row: {
           accountant_id: string | null
@@ -6612,6 +6668,35 @@ export type Database = {
             referencedRelation: "v_promotion_suggestions"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_supplier_payables: {
+        Row: {
+          cash_price: number | null
+          created_at: string | null
+          currency: string | null
+          days_until_due: number | null
+          due_date: string | null
+          is_overdue: boolean | null
+          is_paid: boolean | null
+          outstanding_amount: number | null
+          paid_at: string | null
+          payment_term_days: number | null
+          product_summary: string | null
+          purchase_date: string | null
+          purchase_id: string | null
+          purchase_total_amount: number | null
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Relationships: [
           {
             foreignKeyName: "purchases_supplier_id_fkey"
             columns: ["supplier_id"]
@@ -7227,6 +7312,21 @@ export type Database = {
         Args: { _default: number; _key: string }
         Returns: number
       }
+      get_payables_summary: {
+        Args: {
+          p_from_date?: string
+          p_supplier_id?: string
+          p_to_date?: string
+        }
+        Returns: {
+          due_today: number
+          due_tomorrow: number
+          future_outstanding: number
+          items_count: number
+          overdue_outstanding: number
+          total_outstanding: number
+        }[]
+      }
       get_product_price_bounds: {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: {
@@ -7264,6 +7364,21 @@ export type Database = {
           rank: number
           relative_position: string
           score: number
+        }[]
+      }
+      get_receivables_summary: {
+        Args: {
+          p_customer_id?: string
+          p_from_date?: string
+          p_to_date?: string
+        }
+        Returns: {
+          due_today: number
+          due_tomorrow: number
+          future_outstanding: number
+          items_count: number
+          overdue_outstanding: number
+          total_outstanding: number
         }[]
       }
       get_recent_purchase_label: {
