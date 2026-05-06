@@ -115,7 +115,7 @@ function MarketRatesWorkshopPage() {
         return (data ?? []) as Tick[];
       } else {
         const { data, error } = await supabase.rpc("list_market_rate_ticks_public", {
-          p_indicator_id: filterIndicator === "all" ? null : filterIndicator,
+          p_indicator_id: filterIndicator === "all" ? undefined : filterIndicator,
           p_limit: 100,
         });
         if (error) throw error;
@@ -311,7 +311,7 @@ function NewTickDialog({ indicators, sources, onDone }: {
         p_value: v,
         p_observed_at: new Date(observedAt).toISOString(),
         p_status: status,
-        p_note: note || null,
+        p_note: note || undefined,
         p_unit: ind?.unit ?? "toman",
       });
       if (error) throw error;
