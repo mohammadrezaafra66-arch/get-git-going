@@ -303,7 +303,11 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
     if (primarySpecRequired && !(values.primary_spec ?? "").trim()) {
       flat.primary_spec = `${primarySpecLabel} الزامی است`;
     }
-    const parsed = productSchema.safeParse(values);
+    // وقتی فیلد مشخصه اصلی مخفی است، مقدارش را با فیلد استاندارد متناظر همگام کن
+    const valuesForSubmit = primarySpecHidden
+      ? { ...values, primary_spec: effectivePrimarySpec }
+      : values;
+    const parsed = productSchema.safeParse(valuesForSubmit);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) flat[issue.path.join(".")] = issue.message;
     }
@@ -319,7 +323,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
     setDynErrors({});
     const categoryChanged =
       isEdit === true && (values.category_id ?? null) !== initialCatRef.current;
-    await onSubmit(parsed.success ? parsed.data : (values as ProductFormValues), {
+    await onSubmit(parsed.success ? parsed.data : (valuesForSubmit as ProductFormValues), {
       values: dynValues,
       defs: dynDefs,
       categoryChanged,
@@ -505,7 +509,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
             </Select>
           </Field>
 
-          <Field
+          {!primarySpecHidden && <Field
             label={primarySpecLabel || "مشخصه اصلی"}
             required={primarySpecRequired}
             error={errors.primary_spec}
@@ -519,7 +523,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
             <p className="text-xs text-muted-foreground">
               این مقدار در نام استاندارد محصول استفاده می‌شود.
             </p>
-          </Field>
+          </Field>}
         </CardContent>
       </Card>
 
