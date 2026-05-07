@@ -191,7 +191,21 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
 
   const primarySpecLabel = ((selectedCategory as any)?.primary_spec_label?.toString().trim() ?? "") as string;
   const namingTemplate = ((selectedCategory as any)?.naming_template?.toString() ?? "") as string;
-  const primarySpecRequired = primarySpecLabel.length > 0;
+  // اگر برچسب «مشخصه اصلی» با یکی از فیلدهای استاندارد یکی باشد،
+  // فیلد متنی مشخصه اصلی حذف می‌شود و مقدار همان فیلد استاندارد جایگزین آن می‌گردد.
+  const primarySpecMappedField: "capacity" | "color" | "model" | null =
+    primarySpecLabel === "ظرفیت"
+      ? "capacity"
+      : primarySpecLabel === "رنگ"
+        ? "color"
+        : primarySpecLabel === "مدل"
+          ? "model"
+          : null;
+  const primarySpecHidden = primarySpecMappedField !== null;
+  const effectivePrimarySpec = primarySpecHidden
+    ? ((values[primarySpecMappedField as "capacity" | "color" | "model"] ?? "") as string)
+    : (values.primary_spec ?? "");
+  const primarySpecRequired = primarySpecLabel.length > 0 && !primarySpecHidden;
 
   const selectedBrandName = useMemo(() => {
     const b = (brandsQ.data ?? []).find((x) => x.id === values.brand_id);
@@ -220,7 +234,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
       template: namingTemplate || null,
       category: selectedCategory?.name ?? "",
       brand: selectedBrandName,
-      primary_spec: values.primary_spec ?? "",
+      primary_spec: effectivePrimarySpec,
       model: values.model ?? "",
       capacity: values.capacity ?? "",
       color: values.color ?? "",
