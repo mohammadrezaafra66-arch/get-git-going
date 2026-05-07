@@ -370,10 +370,12 @@ function ProductDetailPage() {
             <Info label="رنگ" value={p.color ?? "—"} />
             <Info label="ظرفیت" value={p.capacity ?? "—"} />
             <Info label="مدل" value={p.model ?? "—"} />
-            <Info
-              label={(p.category as any)?.primary_spec_label || "مشخصه اصلی"}
-              value={p.primary_spec ?? "—"}
-            />
+            {(() => {
+              const lbl = ((p.category as any)?.primary_spec_label ?? "").toString().trim();
+              // اگر برچسب با یکی از فیلدهای استاندارد یکی است، ردیف تکراری را نشان نده
+              if (lbl === "ظرفیت" || lbl === "رنگ" || lbl === "مدل") return null;
+              return <Info label={lbl || "مشخصه اصلی"} value={p.primary_spec ?? "—"} />;
+            })()}
             <Info label="نوع" value={PRODUCT_TYPE_LABELS[p.product_type as keyof typeof PRODUCT_TYPE_LABELS]} />
             <Info label="ارز مبنا" value={(BASE_CURRENCY_LABELS as Record<string, string>)[p.base_currency as string] ?? String(p.base_currency).toUpperCase()} />
             <Info label="وضعیت موجودی">
