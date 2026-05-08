@@ -23,7 +23,7 @@ import {
   ReceiptDocumentPicker,
   uploadReceiptDocuments,
 } from "@/components/accounting/PaymentReceiptDocuments";
-import { extractReceiptFromBytes } from "@/server/receipt-ocr-bytes.functions";
+import { extractReceiptFromBytes } from "@/lib/receipt-ocr-bytes.functions";
 import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
 import { parseDateToGregorianIso, isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
