@@ -2,10 +2,21 @@
 // produced by `vite build` (dist/server/server.js). No Worker/Cloudflare runtime.
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import handler from "../dist/server/server.js";
+import handler from "../dist/server/index.js";
 
-const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || "0.0.0.0";
+// Allow CLI overrides: `node server/node-entry.mjs --host 127.0.0.1 --port 8080`
+// (used by `npm run preview -- --host ... --port ...`).
+function getArg(name) {
+  const argv = process.argv.slice(2);
+  const idx = argv.findIndex((a) => a === `--${name}` || a.startsWith(`--${name}=`));
+  if (idx === -1) return undefined;
+  const a = argv[idx];
+  if (a.includes("=")) return a.split("=")[1];
+  return argv[idx + 1];
+}
+
+const PORT = Number(getArg("port") ?? process.env.PORT ?? 3000);
+const HOST = getArg("host") ?? process.env.HOST ?? "0.0.0.0";
 
 const httpServer = createServer(async (req, res) => {
   try {
