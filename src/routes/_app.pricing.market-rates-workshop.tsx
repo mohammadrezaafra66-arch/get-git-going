@@ -20,7 +20,7 @@ import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import {
   ingestMarketRatesExternal,
   getExternalRatesStatus,
-} from "@/server/market-rates-ingestion.functions";
+} from "@/lib/market-rates-ingestion.functions";
 import { MarketRateMappingsPanel } from "@/components/pricing/MarketRateMappingsPanel";
 import { MarketRateIngestionHistory } from "@/components/pricing/MarketRateIngestionHistory";
 import { MarketRateSuspectAlerts } from "@/components/pricing/MarketRateSuspectAlerts";
