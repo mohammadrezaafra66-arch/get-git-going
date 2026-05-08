@@ -27,7 +27,7 @@ import {
   type DocumentChannel,
 } from "@/lib/accounting/receipt-extraction";
 import { evaluateReceiptSecurityWarnings } from "@/lib/accounting/receipt-security";
-import { extractReceiptDocumentOcr, type OcrMethod } from "@/server/receipt-ocr.functions";
+import { extractReceiptDocumentOcr, type OcrMethod } from "@/lib/receipt-ocr.functions";
 
 export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 
