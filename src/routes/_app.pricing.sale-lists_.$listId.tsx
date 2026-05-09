@@ -474,6 +474,66 @@ function SaleListDetailPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={brandOrderOpen} onOpenChange={(o) => { if (!o) { setBrandOrderOpen(false); setPendingPdfAction(null); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>ترتیب نمایش برندها در PDF</DialogTitle>
+            <DialogDescription>
+              ترتیب برندها را با دکمه‌های بالا/پایین مشخص کنید. محصولات هر برند زیر یک سطر عنوان همان برند نمایش داده می‌شوند و درون هر برند بر اساس مدل و سپس ظرفیت مرتب می‌شوند.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+            {brandOrder.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">برندی برای نمایش وجود ندارد.</div>
+            ) : (
+              <ul className="divide-y">
+                {brandOrder.map((b, i) => (
+                  <li key={b} className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-muted px-1.5 text-xs font-semibold">
+                        {formatNumber(i + 1)}
+                      </span>
+                      <span>{b}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={i === 0}
+                        onClick={() => moveBrand(i, -1)}
+                        aria-label="بالا"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={i === brandOrder.length - 1}
+                        onClick={() => moveBrand(i, 1)}
+                        aria-label="پایین"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => { setBrandOrderOpen(false); setPendingPdfAction(null); }}>
+              انصراف
+            </Button>
+            <Button onClick={runPdfAction} disabled={brandOrder.length === 0} className="gap-1">
+              {pendingPdfAction === "download" ? <Download className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+              {pendingPdfAction === "download" ? "دانلود PDF" : "پیش‌نمایش PDF"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
