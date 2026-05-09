@@ -1,59 +1,67 @@
-## Phase SH-DOC.1 — Create 11 Self-Host Governance Documents
+## فاز SH-RA.3 — راهنمای Smoke Test روی لپ‌تاپ
 
-**Scope:** Documentation only. No code, no Docker/compose, no migrations, no secrets, no .env, no deploy.
+### دامنه
+صرفاً مستندسازی. هیچ کد، compose، migration، secret یا اجرا تغییر نمی‌کند.
 
-**Location:** `docs/self-host-governance/`
+### فایل‌های مجاز برای ساخت
+- `docs/self-host-governance/SH-RA.3_LAPTOP_SMOKE_TEST.md` — تنها فایل جدید این فاز.
 
-### Files to create (11 total, numbered 00..10)
+### فایل‌های فقط‌خواندنی مرجع (بدون ویرایش)
+- `docs/self-host-governance/06_PHASE_PROTOCOL.md`
+- `deploy/app/README.md`
+- `deploy/supabase/README.md`
+- `deploy/proxy/README.md`
 
-| # | File | Purpose |
-|---|------|---------|
-| 00 | `00_INDEX.md` | Map of the pack: each doc, owner, when to read, reading order |
-| 01 | `01_PROJECT_CHARTER.md` | Why self-host, success definition, in/out of scope, stakeholders |
-| 02 | `02_ARCHITECTURE_OVERVIEW.md` | Stacks (app, supabase, proxy), data flow, network, ports — references existing `deploy/*` |
-| 03 | `03_REQUIREMENTS_REQ_SH.md` | REQ-SH-001..015 (functional + non-functional acceptance reqs derived from `AFRAKALA_ACCEPTANCE_CRITERIA.md`) |
-| 04 | `04_REPO_STANDARDS.md` | Branch naming, commit format, PR rules, file naming, what may/may not be committed |
-| 05 | `05_MASTER_EXECUTION_PLAN.md` | Roadmap of phases SH-DOC.1 → SH-RA.9 with status table |
-| 06 | `06_PHASE_PROTOCOL.md` | Standard phase prompt template + Phase Completion Report format |
-| 07 | `07_MIGRATION_SAFETY.md` | Pointer + summary of `docs/MIGRATION_SAFETY_POLICY.md` |
-| 08 | `08_OPS_RUNBOOK.md` | Pointer + summary of `docs/OPERATIONS_QUICK_REFERENCE.md` and update/rollback runbook |
-| 09 | `09_INTERNET_RESILIENCE.md` | Pointer + summary of `docs/INTERNET_RESILIENCE.md` (national vs international internet) |
-| 10 | `10_ENVIRONMENT_MATRIX.md` | Empty matrix template (Lovable preview / Local laptop / Staging VPS / Production VPS) — values filled in SH-RA.2C |
+### ساختار سند پیشنهادی (فارسی، RTL، قابل copy-paste)
 
-### Rules applied to every doc
+1. **مقدمه و دامنه** — هدف: اجرای کامل stack روی لپ‌تاپ توسعه‌دهنده برای smoke test؛ تأکید بر اینکه این محیط dev/staging سبک است نه production.
+2. **پیش‌نیازها**
+   - Docker Engine 24+ یا Docker Desktop
+   - Docker Compose v2
+   - Git
+   - حداقل ۸ گیگ RAM آزاد، ۲۰ گیگ دیسک
+   - دسترسی به اینترنت برای pull تصاویر اولیه
+3. **Clone مخزن** — دستور `git clone` و `cd` به پوشه پروژه.
+4. **ساخت فایل‌های env محلی** — کپی هر چهار `.env.example`:
+   - `deploy/supabase/.env.example` → `deploy/supabase/.env`
+   - `deploy/app/.env.production.example` → `deploy/app/.env.production` (مقادیر dummy لوکال؛ اشاره به `docs/self-host-governance/10_ENVIRONMENT_MATRIX.md`)
+   - `deploy/proxy/.env.example` → `deploy/proxy/.env` و `Caddyfile.example` → `Caddyfile`
+   - `deploy/backups/.env.example` → `deploy/backups/.env` (اختیاری برای smoke)
+   - تأکید: مقادیر واقعی production استفاده نشود؛ فقط dummy/local؛ `chmod 600`.
+5. **ساخت شبکه مشترک** — `docker network create afrakala-net`.
+6. **بالا آوردن stack ‌Supabase** — `docker compose -f deploy/supabase/docker-compose.yml up -d` و انتظار healthy شدن.
+7. **اجرای migration به‌صورت کنترل‌شده** — اشاره به `deploy/migration/README.md` و اینکه فقط در صورت نیاز عمدی با `DRY_RUN=false` اجرا شود؛ توضیح dry-run.
+8. **بالا آوردن stack اپ (build محلی)** — `docker compose -f deploy/app/docker-compose.yml up -d --build`.
+9. **بالا آوردن stack proxy** — `docker compose -f deploy/proxy/docker-compose.yml up -d` با اشاره به اینکه برای لوکال می‌توان از HTTP و دامنه `localhost` در Caddyfile استفاده کرد.
+10. **چک‌لیست Smoke**
+    - `curl -fsS http://localhost/api/healthz` ⇒ پاسخ `ok`
+    - باز شدن صفحه `/login`
+    - باز شدن صفحه `/products`
+    - باز شدن صفحه `/pricing`
+    - بدون خطای console در DevTools
+    - بدون درخواست به CDN خارجی در tab Network (تأکید بر مقاومت اینترنت ایران)
+11. **Tear-down و پاک‌سازی volume**
+    - `docker compose -f deploy/proxy/docker-compose.yml down`
+    - `docker compose -f deploy/app/docker-compose.yml down`
+    - `docker compose -f deploy/supabase/docker-compose.yml down -v` (هشدار: `-v` همه داده لوکال را پاک می‌کند)
+    - `docker network rm afrakala-net` (اختیاری)
+12. **Troubleshooting**
+    - تداخل پورت ۸۰/۴۴۳/۵۴۳۲ → چک با `lsof -i` و آزاد کردن یا تغییر در compose لوکال
+    - خطای `network afrakala-net not found` → اجرای دستور create
+    - خطای env mismatch بین stackها (مثلاً `JWT_SECRET` متفاوت بین supabase و app) → یکسان‌سازی
+    - گیج شدن روی dry-run migration → توضیح که DRY_RUN پیش‌فرض true است و هیچ تغییری روی DB نمی‌دهد
+    - Caddy گواهی نمی‌گیرد → برای لوکال از `http://localhost` استفاده شود نه دامنه واقعی
 
-- Persian (RTL), short, executable
-- No secrets, no real env values, no API keys
-- Cross-link to existing `docs/*.md` files instead of duplicating
-- Each doc starts with: Purpose / Audience / Last updated / Related docs
+### بخش پایانی سند
+- یادداشت: این راهنما فقط برای smoke test محلی است؛ برای production از `docs/SELF_HOST_UPDATE_RUNBOOK.md` و `docs/self-host-governance/08_OPS_RUNBOOK.md` استفاده شود.
+- لینک‌های متقاطع به: `06_PHASE_PROTOCOL.md`, `09_INTERNET_RESILIENCE.md`, `10_ENVIRONMENT_MATRIX.md`.
 
-### Forbidden in this phase
+### الزامات و ممنوعیت‌ها
+- بدون اجرای هیچ دستور Docker/migration.
+- بدون تغییر کد، compose، migration، secret یا env واقعی.
+- بدون افزودن وابستگی.
+- پایان کار با Phase Completion Report مطابق `06_PHASE_PROTOCOL.md`.
+- شروع نکردن SH-RA.4.
 
-- No edits outside `docs/self-host-governance/`
-- No new `.env` files
-- No code, Docker/compose, migration, or deploy changes
-- No secret creation
-- Do not start SH-RA.2A
-
-### Refinement carried forward to SH-RA.2A (recorded in `05_MASTER_EXECUTION_PLAN.md`)
-
-SH-RA.2A must inspect both, if present:
-- `docker-compose.yml` (root)
-- `docker-compose.legacy.yml.bak` (root)
-
-…before deciding `DELETE_BAK` / `KEEP_BAK` / `ARCHIVE_ROOT_COMPOSE`.
-
-### Phase Completion Report (to be emitted after creation)
-
-1. Files created: list of 11 paths
-2. No code changed ✅
-3. No OCR changed ✅
-4. No Docker/compose changed ✅
-5. No migration ran ✅
-6. No Auth/Storage/Data changed ✅
-7. No secret/env/cert created ✅
-8. No deployment ✅
-9. SH-DOC.1 ready for review ✅
-10. SH-RA.2A is BLOCKED pending user approval
-
-Final line: **"SH-DOC.1 completed. 11 governance docs ready for review. Awaiting approval before SH-RA.2A."**
+### خروجی نهایی
+یک فایل واحد `docs/self-host-governance/SH-RA.3_LAPTOP_SMOKE_TEST.md` آماده برای review.
