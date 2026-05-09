@@ -31,10 +31,33 @@ export interface OcrResult {
   warnings: string[];
   /** Optional engine-supplied confidence in [0,1]; null if not provided. */
   engine_confidence: number | null;
+  /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
+  ok?: boolean;
+  disabled?: boolean;
+  reason?: string;
 }
 
 const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
+
+/**
+ * SH-RA.2B helpers — read at runtime (NEVER at module top-level) so each
+ * request reflects the live env on self-host servers.
+ */
+function isExternalOcrEnabled(): boolean {
+  // Prefer new EXTERNAL_OCR_ENABLED; fall back to legacy OCR_ENABLED for
+  // backward compatibility with deployments that pre-date SH-RA.2B.
+  // Default ON only when neither is set (preserves Lovable preview behavior).
+  const raw =
+    process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
+  return String(raw).toLowerCase() === "true";
+}
+function externalApiTimeoutMs(): number {
+  const raw = Number(process.env.EXTERNAL_API_TIMEOUT_MS ?? "15000");
+  // Enforce minimum of 15000ms regardless of operator override.
+  if (!Number.isFinite(raw) || raw < 15000) return 15000;
+  return Math.floor(raw);
+}
 
 const OCR_PROMPT = [
   "Extract only visible text from this payment receipt.",
