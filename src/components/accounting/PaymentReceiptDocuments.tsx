@@ -744,7 +744,11 @@ export function ReceiptDocumentsList({
         }
       }
       if (r.method === "unsupported" && !r.hasText) {
-        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+        if (r.ocrDisabled) {
+          toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
+        } else {
+          toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+        }
       } else if (r.status === "extracted") {
         toast.success(
           r.method === "image_ocr"
