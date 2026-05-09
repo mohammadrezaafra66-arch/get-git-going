@@ -1,4 +1,16 @@
 # AfraKala — Production app stack (pull image from GHCR, NO build).
+#
+# Image source of truth: .github/workflows/build-image.yml
+#   workflow pushes:  ghcr.io/<owner>/<repo>-web:latest
+#                     ghcr.io/<owner>/<repo>-web:sha-<commit>
+# This compose resolves <owner>/<repo> from .env.production via
+# GHCR_OWNER/GHCR_REPO and never builds locally.
+#
+# Read-only root filesystem is intentionally NOT enabled here:
+# the Node SSR runtime writes temp/build artefacts during request handling
+# (see deploy/app/README.md "Read-only rootfs" note). If a future audit
+# proves it safe, add `read_only: true` plus a tmpfs for /tmp and /app/.cache.
+#
 # مصرف:
 #   docker login ghcr.io        # با PAT دارای read:packages
 #   export IMAGE_TAG=latest      # یا sha-<commit>
