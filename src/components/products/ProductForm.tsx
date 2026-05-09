@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,11 +118,11 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
   const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite });
   const attrsQ = useQuery({
-    queryKey: ["product-attributes-active"],
+    queryKey: ["product-attributes-active-v2"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_attributes")
-        .select("id, type, name")
+        .select("id, type, name, category_id")
         .eq("is_active", true)
         .order("name", { ascending: true });
       if (error) throw error;
@@ -130,6 +131,39 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
   });
   const attrsByType = (t: "color" | "capacity" | "model") =>
     (attrsQ.data ?? []).filter((a) => a.type === t);
+  // Models scoped to selected category. Items with category_id = NULL (legacy)
+  // remain visible in every category until an admin assigns one.
+  const modelOptions = useMemo(() => {
+    const all = (attrsQ.data ?? []).filter((a) => a.type === "model");
+    const cat = values.category_id ?? null;
+    const filtered = cat
+      ? all.filter((a) => (a as any).category_id === cat || (a as any).category_id == null)
+      : all;
+    return filtered.map((a) => ({ value: a.name, label: a.name }));
+  }, [attrsQ.data, values.category_id]);
+
+  const qc = useQueryClient();
+  const createModelMut = useMutation({
+    mutationFn: async (name: string) => {
+      if (!values.category_id) throw new Error("ابتدا دسته‌بندی را انتخاب کنید");
+      const { data, error } = await supabase.rpc("find_or_create_model", {
+        p_name: name,
+        p_category_id: values.category_id,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return row as { id: string; name: string; category_id: string } | null;
+    },
+    onSuccess: (row) => {
+      if (row?.name) {
+        set("model", row.name);
+        toast.success("مدل اضافه شد");
+        qc.invalidateQueries({ queryKey: ["product-attributes-active-v2"] });
+        qc.invalidateQueries({ queryKey: ["product-attributes-all"] });
+      }
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا در افزودن مدل"),
+  });
 
   const currenciesQ = useQuery({
     queryKey: ["currencies-active"],
@@ -390,27 +424,31 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
           </Field>
 
           <Field label="برند">
-            <Select value={values.brand_id ?? "__none"} onValueChange={(v) => set("brand_id", v === "__none" ? null : v)}>
-              <SelectTrigger><SelectValue placeholder="انتخاب برند" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— بدون برند —</SelectItem>
-                {(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={values.brand_id ?? null}
+              onChange={(v) => set("brand_id", v)}
+              options={(brandsQ.data ?? [])
+                .filter((b) => b.is_active)
+                .map((b) => ({ value: b.id, label: b.name }))}
+              placeholder="انتخاب برند"
+              searchPlaceholder="جستجوی برند..."
+              emptyText="برندی یافت نشد"
+              noneLabel="— بدون برند —"
+            />
           </Field>
 
           <Field label="دسته‌بندی">
-            <Select value={values.category_id ?? "__none"} onValueChange={(v) => set("category_id", v === "__none" ? null : v)}>
-              <SelectTrigger><SelectValue placeholder="انتخاب دسته" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— بدون دسته —</SelectItem>
-                {(catsQ.data ?? []).filter((c) => c.is_active).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={values.category_id ?? null}
+              onChange={(v) => set("category_id", v)}
+              options={(catsQ.data ?? [])
+                .filter((c) => c.is_active)
+                .map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="انتخاب دسته"
+              searchPlaceholder="جستجوی دسته..."
+              emptyText="دسته‌ای یافت نشد"
+              noneLabel="— بدون دسته —"
+            />
           </Field>
 
           <Field label="نوع محصول">
@@ -498,15 +536,23 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
           </Field>
 
           <Field label="مدل">
-            <Select value={values.model || "__none"} onValueChange={(v) => set("model", v === "__none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="انتخاب مدل" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">— بدون مدل —</SelectItem>
-                {attrsByType("model").map((a) => (
-                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={values.model ? values.model : null}
+              onChange={(v) => set("model", v ?? "")}
+              options={modelOptions}
+              placeholder={values.category_id ? "انتخاب مدل" : "ابتدا دسته را انتخاب کنید"}
+              searchPlaceholder="جستجو یا تایپ نام جدید..."
+              emptyText="مدلی یافت نشد"
+              noneLabel="— بدون مدل —"
+              disabled={!values.category_id || createModelMut.isPending}
+              onCreate={values.category_id ? (q) => createModelMut.mutateAsync(q) : undefined}
+              createLabel={(q) => `افزودن مدل جدید: «${q}»`}
+            />
+            {!values.category_id ? (
+              <p className="text-xs text-muted-foreground">برای دیدن یا ساختن مدل، ابتدا دسته‌بندی را انتخاب کنید.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">فقط مدل‌های مرتبط با این دسته نمایش داده می‌شود. تکراری ساخته نخواهد شد.</p>
+            )}
           </Field>
 
           {!primarySpecHidden && <Field
