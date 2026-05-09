@@ -1,65 +1,70 @@
+# پاسخ سوالات + پلن ربات اپدیت محصولات WordPress
 
-## هدف
+## ۱) پایگاه داده کجاست؟ SQL یا Supabase؟
 
-در فرم «محصول جدید» و «ویرایش محصول»:
-- لیست‌های کشویی **مدل، برند، دسته** به Combobox سرچ‌پذیر تبدیل شوند.
-- هر مدل به یک **دسته** متصل باشد و فقط مدل‌های همان دسته نمایش داده شوند.
-- ساخت مدل تکراری در هر دسته مسدود شود.
-- داده‌های موجود (مدل‌ها و محصولات) **هرگز پاک یا تغییر داده نمی‌شوند**.
+دیتابیس **PostgreSQL داخل Supabase** است (Lovable Cloud). SQL جداگانه‌ای نداریم. همه چیز در همین Postgres با RLS است.
 
-## تغییرات دیتابیس (migration جدید، non-destructive)
+## ۲) ساختار محصولات و «تگ‌ها»
 
-1. افزودن ستون `category_id uuid NULL` به `public.product_attributes` با FK به `categories(id) ON DELETE SET NULL`.
-2. ایندکس روی `(type, category_id, name)`.
-3. **Unique partial index** برای جلوگیری از مدل تکراری در یک دسته:
-   - `UNIQUE (type, category_id, lower(btrim(name))) WHERE type='model' AND category_id IS NOT NULL`.
-   - رکوردهای فعلی بدون `category_id` تحت تاثیر قرار نمی‌گیرند (هیچ داده‌ای پاک/تغییر نمی‌شود).
-4. RLS موجود `product_attributes` حفظ می‌شود؛ فقط ستون اضافه می‌شود.
-5. RPC کمکی (اختیاری) `find_or_create_model(p_name text, p_category_id uuid)` که در صورت وجود همان نام در همان دسته، رکورد موجود را برمی‌گرداند، در غیر این‌صورت می‌سازد. این RPC با `security definer` و چک permission مناسب پیاده می‌شود.
+محصولات در جدول `public.products` ذخیره می‌شوند. ستون‌های اصلی:
+`id, sku, name, description, unit, category (text قدیمی), category_id, brand_id, product_type, base_currency, stock_status, status, color, capacity, model, primary_spec, technical_notes, is_active, dedup_key, created_at, updated_at`
 
-> تذکر: مدل‌های فعلی که `category_id = NULL` دارند، طبق توافق در همه دسته‌ها قابل انتخاب باقی می‌مانند تا ادمین به‌مرور دسته‌شان را تعیین کند. هیچ DELETE یا UPDATE اجباری روی داده‌های موجود انجام نمی‌شود.
+«تگ/برچسب» در سامانه = **Label** (نه tag). جداول مرتبط:
+- `product_labels` → `id, title, color, description, is_active, weight, visibility`
+- `product_label_links` → `product_id, label_id` (رابطه many-to-many)
+- `brands` (برند)، `categories` (دسته با naming_template و attributeهای داینامیک)
+- قیمت محاسبه‌شده در `product_computed_prices` (per sale_price_type)
 
-## تغییرات UI
+پس برای ربات ووردپرس، «برچسب مشخص» = یک `product_labels.title` معین؛ ربات باید محصولاتی که این label به آن‌ها لینک شده را بگیرد.
 
-### کامپوننت مشترک
-- استفاده از `Command` + `Popover` shadcn (موجود در پروژه) برای یک کامپوننت `SearchableSelect` فارسی/RTL با:
-  - باکس سرچ بالای لیست
-  - پیام خالی («موردی یافت نشد»)
-  - دکمه «ساخت مورد جدید: …» وقتی متن سرچ با هیچ آیتمی دقیقاً مطابقت ندارد (فقط برای مدل)
-  - virtualized نبودن (لیست‌ها معمولاً <۱۰۰۰ آیتم، با debounce سرچ کافی است)
+## ۳) آیا قبلاً چیزی ساخته‌ایم؟ بله
 
-### فرم محصول (`src/components/products/ProductForm.tsx`)
-- **برند**: تبدیل `<Select>` فعلی به `SearchableSelect` بدون تغییر منطق ذخیره.
-- **دسته**: همان تبدیل.
-- **مدل**:
-  - کوئری `product_attributes` با فیلتر `type='model'` و `(category_id = values.category_id OR category_id IS NULL)`.
-  - اگر `category_id` خالی باشد، فیلد مدل **غیرفعال** شود با راهنما: «ابتدا دسته را انتخاب کنید».
-  - هنگام تایپ نامی که در لیست نیست، گزینه «افزودن مدل جدید در این دسته» نمایش داده شود؛ کلیک → فراخوانی `find_or_create_model` → set مقدار.
-  - اگر کاربر متنی تایپ کند که با یک مدل موجود (case/space-insensitive) یکی است، همان انتخاب شود (جلوگیری از تکرار).
+یک زیرساخت کامل **Bot API Keys** از قبل وجود دارد:
 
-### مدیریت ویژگی‌ها (`src/routes/_app.products.attributes.tsx`)
-- در فرم ساخت/ویرایش attribute از نوع `model`، یک فیلد انتخاب دسته اضافه شود (Searchable). برای انواع `color`/`capacity` بدون تغییر.
-- در لیست، ستون «دسته» نمایش داده شود.
+- صفحات UI:
+  - `src/routes/_app.bot-api-keys.index.tsx` (مدیریت کلیدها)
+  - `src/routes/_app.bot-api-keys.docs.tsx` (مستندات)
+  - `src/routes/_app.bot-api-keys.playground.tsx` (تست)
+  - `src/routes/_app.bot-api-keys.usage.tsx` (لاگ مصرف)
+- جداول DB: `bot_api_keys`, `bot_api_key_table_access`, `bot_api_usage_logs`
+- helper سرور: `src/server/bot-api.ts` (auth با Bearer، rate-limit per key/IP، نگاشت خطا به فارسی، usage log، RPCهای `bot_authenticate_key`, `bot_check_rate_limit`)
+- endpoint عمومی موجود (فقط برای Dynamic Tables):
+  - `GET /api/public/bot/dynamic-tables/:tableId/rows`
+  - `PATCH /api/public/bot/dynamic-tables/:tableId/rows/:rowId`
 
-## حفاظت از داده
+**نکته مهم:** این endpointها فقط روی «جدول‌های داینامیک» کار می‌کنند، نه مستقیم روی `products`. پس برای ربات ووردپرس باید endpoint اختصاصی محصول اضافه شود — اما زیرساخت auth/rate-limit/log را دوباره نمی‌سازیم و از همین `bot-api.ts` استفاده می‌کنیم.
 
-- migration فقط `ADD COLUMN` و `CREATE INDEX` و `CREATE FUNCTION` دارد. هیچ DROP/DELETE/UPDATE روی `product_attributes` یا `products`.
-- unique index به‌صورت `WHERE category_id IS NOT NULL` تعریف می‌شود تا با رکوردهای قدیمی برخورد نکند.
-- در صورت بروز تداخل اسامی هنگام اختصاص دسته به مدل قدیمی، خطای واضح نمایش داده می‌شود؛ هیچ رکوردی به‌صورت خودکار حذف یا ادغام نمی‌شود.
+## پلن پیشنهادی (بدون دوباره‌کاری)
 
-## چک‌لیست self-host
+### فاز ۱ — endpointهای read-only محصولات (برای ربات WP)
+دو route عمومی جدید زیر `src/routes/api.public.bot.products.*` با همان pattern موجود:
 
-- بدون CDN/فونت خارجی.
-- migration idempotent (با `IF NOT EXISTS`) و reversible (drop column/index در پایین مستند).
-- RLS موجود حفظ.
-- بدون secret جدید.
-- queryها با limit/فیلتر و سرچ debounce شده.
-- RTL/mobile-first حفظ می‌شود.
+1. `GET /api/public/bot/products`
+   - query: `label` (title یا id)، `label_in[]`, `category_id`, `brand_id`, `status`, `stock_status`, `updated_since` (ISO)، `page`, `page_size` (max 100)
+   - response: `id, sku, name, brand, category, status, stock_status, labels[], price (rounded از product_computed_prices)، updated_at`
+   - استفاده از `supabaseAdmin` + همان `authenticateBot` + `checkBotRateLimit` + `logBotUsage`
 
-## فایل‌های متاثر
+2. `GET /api/public/bot/products/:id`
+   - جزئیات کامل + همه قیمت‌های محاسبه‌شده + لیبل‌ها + attributes داینامیک
 
-- `supabase/migrations/<timestamp>_product_attributes_category.sql` (جدید)
-- `src/components/ui/searchable-select.tsx` (جدید، wrapper روی Command/Popover)
-- `src/components/products/ProductForm.tsx`
-- `src/routes/_app.products.attributes.tsx`
-- (در صورت نیاز) `src/lib/products/attributes.ts` برای helper مدل‌ها
+### فاز ۲ — کنترل دسترسی
+- یک رکورد سیستمی در `bot_api_key_table_access` با `table_id = special UUID 'products'` (یا یک ستون جدید `scope text`) برای هر کلید مشخص کند آیا اجازه دسترسی به products را دارد.
+- **ترجیحاً ساده:** یک ستون boolean `can_read_products` به `bot_api_keys` اضافه شود (migration کوچک، RLS امن، reversible).
+
+### فاز ۳ — صفحه «دسترسی محصولات» در UI
+- در `_app.bot-api-keys.index.tsx` toggle «دسترسی به محصولات» اضافه شود.
+- در `_app.bot-api-keys.docs.tsx` نمونه فراخوانی برای ربات WP اضافه شود (curl + سناریوی sync با label).
+
+### فاز ۴ (اختیاری بعداً) — write-back
+اگر ربات بخواهد چیزی را از سمت ووردپرس برگرداند (مثلاً sync_status)، `PATCH /api/public/bot/products/:id` با ستون‌های whitelist محدود.
+
+## آنچه دست نمی‌خورد
+- فرم/route ساخت محصول (`_app.products.new.tsx`، `ProductForm.tsx`) **هیچ تغییری** نمی‌کند.
+- داده‌های موجود محصولات، مدل‌ها، لیبل‌ها، کلیدهای ربات حفظ می‌شوند.
+- Auth / RLS / rate-limit موجود بدون تغییر بازاستفاده می‌شوند.
+
+## سوالات قبل از کدنویسی
+1. **فیلتر اصلی ربات ووردپرس روی چه چیزی است؟** فقط label، یا ترکیب label + category؟
+2. **قیمت برگشتی** کدام `sale_price_type` باشد؟ (مثلاً «خرده‌فروشی نقدی») یا همه را برگردانیم و ربات خودش انتخاب کند؟
+3. **کنترل دسترسی** ساده (یک toggle `can_read_products` روی هر کلید) کافی است یا می‌خواهی per-label هم محدود کنیم؟
+4. **مرحله بعد write-back** را الان هم پیاده کنیم یا فعلاً فقط read؟
