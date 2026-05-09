@@ -130,10 +130,10 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
 
   const matchedRule = (rules ?? []).find((r: any) => {
     if (r.sale_price_type_id && r.sale_price_type_id !== input.sale_price_type_id) return false;
-    if (r.settlement_type_id) {
-      if (!input.settlement_type_id) return false;
-      if (r.settlement_type_id !== input.settlement_type_id) return false;
-    }
+    // اگر ورودی settlement مشخص کرده، باید با قانون یکسان باشد.
+    // اگر ورودی settlement ندارد (مثل «محاسبه و انتشار قیمت‌ها»)، قانون‌هایی که
+    // فقط روی sale_price_type کار می‌کنند یا settlement خودشان را دارند نیز پذیرفته می‌شوند.
+    if (input.settlement_type_id && r.settlement_type_id && r.settlement_type_id !== input.settlement_type_id) return false;
     if (r.product_type && r.product_type !== product.product_type) return false;
     if (r.category_id && r.category_id !== product.category_id) return false;
     if (r.brand_id && r.brand_id !== product.brand_id) return false;
@@ -145,6 +145,8 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
 
   if (!matchedRule) throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این محصول پیدا نشد.");
   const m = matchedRule as any;
+  // settlement مؤثر = ورودی کاربر یا settlement قانون انتخاب‌شده
+  const effective_settlement_type_id: string | null = input.settlement_type_id ?? m.settlement_type_id ?? null;
 
   // 5) قانون حمل — همیشه از shipping_cost_rules انتخاب می‌شود
   // (اولویت تطبیق: محصول > دسته > برند > نوع کالا)
