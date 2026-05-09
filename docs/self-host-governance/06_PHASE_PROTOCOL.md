@@ -1,21 +1,40 @@
 # 06 — Phase Protocol
 
-- Purpose: قالب ثابت پرامپت فاز + قالب گزارش پایان فاز.
+- Purpose: قواعد ثابت همهٔ فازها + قالب پرامپت + قالب گزارش پایان فاز.
 - Audience: همه.
 - Last updated: 2026-05-09
 - Related: `04_REPO_STANDARDS.md`, `05_MASTER_EXECUTION_PLAN.md`
 
-## قالب پرامپت فاز
+## قواعد ثابت برای همهٔ فازها
+
+- Lovable فقط ابزار توسعه است، نه وابستگی runtime.
+- production نباید به Lovable Cloud وابسته باشد.
+- Code و Data جدا هستند.
+  - Code = GitHub repo + Docker image + scripts + docs + migrations.
+  - Data = volume Postgres + volume Storage + backups + `.env` واقعی + گواهی‌ها.
+- هیچ secret واقعی commit نشود.
+- service role key هرگز در client bundle نباشد.
+- GitHub Actions فقط image می‌سازد و به production DB دسترسی ندارد.
+- production migration فقط دستی، با backup تازه، توسط اپراتور انسانی.
+- هر integration خارجی → optional + feature flag + graceful failure.
+- هر فاز کوچک، تک‌هدف، قابل بازبینی، handoff-ready، low-risk.
+- پایان هر فاز = Phase Completion Report.
+
+## قالب پرامپت شروع فاز
 
 ```
 Phase <ID> — <Title>
+Owner: <name>
+
+Goal:
+<یک هدف>
 
 Read ONLY:
 - docs/AFRAKALA_ACCEPTANCE_CRITERIA.md
 - docs/self-host-governance/06_PHASE_PROTOCOL.md
-- <فایل‌های صراحتاً مجاز این فاز>
+- <فایل‌های مجاز این فاز>
 
-Allowed actions:
+Allowed files (write):
 - <لیست دقیق>
 
 Forbidden:
@@ -27,31 +46,70 @@ Forbidden:
 - deploy واقعی
 - اجرای typecheck/build/tests
 
+Allowed commands: <لیست>
+Forbidden commands: <لیست>
+
+Inputs: <فایل‌ها/مقادیر ورودی>
+Expected output: <خروجی قابل بازبینی>
+Validation checklist: <چک‌ها>
+Rollback note: <چگونه برگردانیم>
+
 End with:
 - Phase Completion Report (قالب پایین)
 - جملهٔ پایانی استاندارد فاز
 ```
 
-## قالب Phase Completion Report
+## قالب رسمی Phase Completion Report
 
 ```
-Phase Completion Report — <ID>
+Phase: <ID> — <Title>
+Status: success / blocked / failed
 
-1. فایل‌های ساخته/اصلاح‌شده:
-   - <path>
-2. کد اپ تغییر کرد؟ بله/خیر — توضیح
-3. OCR تغییر کرد؟ بله/خیر
-4. Docker/Compose تغییر کرد؟ بله/خیر
-5. Migration اجرا شد؟ بله/خیر
-6. Auth/Storage/Data تغییر کرد؟ بله/خیر
-7. Secret/env/cert ساخته شد؟ بله/خیر
-8. Deployment انجام شد؟ بله/خیر
-9. REQ-SHهای متأثر و وضعیت جدید: <لیست>
-10. فاز بعدی: <ID> — منتظر تأیید کاربر
+Files created:
+- <path>
+Files edited:
+- <path>
+Files deleted:
+- <path>
+
+OCR changed? yes/no
+Auth changed? yes/no
+Storage changed? yes/no
+Migration changed/executed? yes/no
+Secret/env/certificate created? yes/no
+Deploy/build/test executed? yes/no
+Docker/Compose changed? yes/no
+Database/Data changed? yes/no
+
+Verification commands run:
+- <cmd>
+Verification results:
+- <result>
+
+Known issues:
+- <...>
+
+Manual actions required:
+- <...>
+
+Next recommended phase: <ID>
+Ready for handoff: yes/no
 ```
 
-## قواعد ثابت
+## شرایط توقف اجباری (Stop conditions)
 
-- یک فاز = یک هدف.
-- بدون تأیید کاربر، فاز بعدی شروع نمی‌شود.
-- اگر هر معیار acceptance قابل رعایت نیست، توقف و گزارش.
+- یافت شدن secret در repo
+- ساخت ناخواستهٔ `.env` واقعی
+- اجرای ناخواستهٔ migration
+- دسترسی به دادهٔ production
+- تغییر Auth/Storage خارج از scope
+- افزودن وابستگی خارجی بدون flag
+- مبهم شدن مسیر root compose یا env
+- دست زدن به فایل‌های forbidden
+
+## قواعد پرامپت Lovable
+
+- پرامپت کوچک، یک هدف.
+- Allowed/Forbidden دقیق.
+- گزارش پایانی الزامی.
+- بدون تغییر چند featureای در یک پرامپت.
