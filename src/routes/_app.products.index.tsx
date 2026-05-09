@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye, Tag } from "lucide-react";
@@ -51,8 +52,11 @@ function ProductsPage() {
   const canCreate = hasPermission(roles, "products", "create");
   const canUpdate = hasPermission(roles, "products", "update");
 
-  const [filters, setFilters] = useState<ProductFilterState>(EMPTY_FILTERS);
-  const [page, setPage] = useState(0);
+  const [filters, setFilters] = useSessionStorageState<ProductFilterState>(
+    "products:list:filters",
+    EMPTY_FILTERS,
+  );
+  const [page, setPage] = useSessionStorageState<number>("products:list:page", 0);
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
