@@ -562,6 +562,11 @@ export function ReceiptDocumentsList({
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        // SH-RA.2B-UI: explicit disabled state from server flag.
+        const ocrDisabled =
+          (ocr as { disabled?: boolean }).disabled === true &&
+          (ocr as { reason?: string }).reason === "ocr_disabled";
+
         const text = ocr.raw_text || "";
         const parsed = parseReceiptText(text);
         parsed.warnings = [...(ocr.warnings ?? []), ...parsed.warnings];
@@ -694,6 +699,7 @@ export function ReceiptDocumentsList({
           method: ocr.method,
           autoApplied,
           autoMismatches,
+          ocrDisabled,
         };
       } catch (err) {
         await supabase
@@ -738,7 +744,11 @@ export function ReceiptDocumentsList({
         }
       }
       if (r.method === "unsupported" && !r.hasText) {
-        toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+        if (r.ocrDisabled) {
+          toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
+        } else {
+          toast.info("موتور استخراج خودکار برای این نوع فایل هنوز فعال نیست.");
+        }
       } else if (r.status === "extracted") {
         toast.success(
           r.method === "image_ocr"

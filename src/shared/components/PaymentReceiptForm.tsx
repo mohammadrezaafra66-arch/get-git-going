@@ -358,6 +358,12 @@ export function PaymentReceiptForm() {
             continue;
           }
           if (cancelled) return;
+          // SH-RA.2B-UI: explicit message when server reports OCR disabled.
+          if (ocr && (ocr as { disabled?: boolean; reason?: string }).disabled === true &&
+              (ocr as { reason?: string }).reason === "ocr_disabled") {
+            toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
+            continue;
+          }
           if (!ocr || !ocr.raw_text || !ocr.raw_text.trim()) {
             const warnings = ocr?.warnings ?? [];
             if (warnings.length > 0) {
