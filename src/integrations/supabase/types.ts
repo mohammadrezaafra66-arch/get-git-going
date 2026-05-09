@@ -413,6 +413,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_api_key_label_access: {
+        Row: {
+          api_key_id: string
+          created_at: string
+          label_id: string
+        }
+        Insert: {
+          api_key_id: string
+          created_at?: string
+          label_id: string
+        }
+        Update: {
+          api_key_id?: string
+          created_at?: string
+          label_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_api_key_label_access_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "bot_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_api_key_label_access_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "product_labels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_api_key_table_access: {
         Row: {
           allowed_update_columns: string[]
@@ -7141,6 +7174,10 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      bot_get_product_for_key: {
+        Args: { p_key_id: string; p_product_id: string }
+        Returns: Json
+      }
       bot_key_stats_today: {
         Args: never
         Returns: {
@@ -7148,6 +7185,19 @@ export type Database = {
           errors_today: number
           last_used_at: string
           requests_today: number
+        }[]
+      }
+      bot_list_products_for_key: {
+        Args: {
+          p_key_id: string
+          p_label_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_updated_since?: string
+        }
+        Returns: {
+          product: Json
+          total_count: number
         }[]
       }
       bot_query_table_rows: {
