@@ -26,6 +26,7 @@ export interface SaleListPdfItem {
   product_name: string;
   brand_name?: string | null;
   category_name?: string | null;
+  model?: string | null;
   current_price: number;
   previous_price?: number | null;
   change_amount?: number | null;
@@ -44,6 +45,13 @@ export interface SaleListPdfInput {
   termsText?: string | null;
   selectedColumns: SaleListPdfColumn[];
   items: SaleListPdfItem[];
+  /**
+   * Optional explicit brand display order. Brands not listed here are appended
+   * at the end, preserving their original first-appearance order. When set,
+   * items are grouped by brand and a brand-header row is rendered before each
+   * group in the PDF.
+   */
+  brandOrder?: string[] | null;
   sellerInfo?: string | null;
   shopInfo?: {
     name?: string | null;
@@ -81,6 +89,71 @@ const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   labels: "برچسب‌ها",
   description: "توضیحات",
 };
+
+const NO_BRAND_KEY = "__NO_BRAND__";
+const NO_BRAND_LABEL = "بدون برند";
+
+function brandKey(b: string | null | undefined): string {
+  const t = (b ?? "").trim();
+  return t === "" ? NO_BRAND_KEY : t;
+}
+
+function brandLabel(k: string): string {
+  return k === NO_BRAND_KEY ? NO_BRAND_LABEL : k;
+}
+
+/** Extract first numeric run from a string (e.g. "کولر گازی 12000" -> 12000). */
+function firstNumber(s: string | null | undefined): number {
+  if (!s) return Number.POSITIVE_INFINITY;
+  const m = String(s).match(/\d+(?:[\.,]\d+)?/);
+  if (!m) return Number.POSITIVE_INFINITY;
+  const n = Number(m[0].replace(",", "."));
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Sort/group items by user-chosen brand order, then within each brand by model
+ * (alphabetical) and finally by the numeric capacity extracted from the
+ * product name (e.g. 12000 < 18000 < 24000 < 30000).
+ */
+function arrangeItems(
+  items: SaleListPdfItem[],
+  brandOrder: string[] | null | undefined,
+): { brand: string; rows: SaleListPdfItem[] }[] {
+  const groups = new Map<string, SaleListPdfItem[]>();
+  const firstSeen: string[] = [];
+  for (const it of items) {
+    const k = brandKey(it.brand_name);
+    if (!groups.has(k)) { groups.set(k, []); firstSeen.push(k); }
+    groups.get(k)!.push(it);
+  }
+  const orderKeys = (brandOrder ?? []).map(brandKey);
+  const seen = new Set<string>();
+  const finalOrder: string[] = [];
+  for (const k of orderKeys) {
+    if (groups.has(k) && !seen.has(k)) { finalOrder.push(k); seen.add(k); }
+  }
+  for (const k of firstSeen) {
+    if (!seen.has(k)) { finalOrder.push(k); seen.add(k); }
+  }
+  return finalOrder.map((k) => {
+    const rows = (groups.get(k) ?? []).slice().sort((a, b) => {
+      const ma = (a.model ?? "").trim();
+      const mb = (b.model ?? "").trim();
+      if (ma && mb) {
+        const cmp = ma.localeCompare(mb, "fa");
+        if (cmp !== 0) return cmp;
+      } else if (ma !== mb) {
+        return ma ? -1 : 1;
+      }
+      const na = firstNumber(a.product_name);
+      const nb = firstNumber(b.product_name);
+      if (na !== nb) return na - nb;
+      return (a.product_name ?? "").localeCompare(b.product_name ?? "", "fa");
+    });
+    return { brand: k, rows };
+  });
+}
 
 function escapeHtml(s: string | null | undefined): string {
   if (s === null || s === undefined) return "";
@@ -133,14 +206,26 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   const padY = Math.max(0, Math.min(20, Number(input.options?.rowPaddingY ?? 4)));
   const padX = Math.max(0, Math.min(20, Number(input.options?.cellPaddingX ?? 6)));
 
-  const headerCells = cols
-    .map((c) => `<th>${escapeHtml(COLUMN_LABELS[c])}</th>`)
-    .join("");
+  // Always include a leading row-number column ("ردیف").
+  const totalCols = cols.length + 1;
+  const headerCells =
+    `<th style="width:48px">ردیف</th>` +
+    cols.map((c) => `<th>${escapeHtml(COLUMN_LABELS[c])}</th>`).join("");
 
-  const bodyRows = input.items
-    .map((it) => {
-      const tds = cols.map((c) => `<td>${escapeHtml(cellText(c, it))}</td>`).join("");
-      return `<tr>${tds}</tr>`;
+  const groups = arrangeItems(input.items, input.brandOrder);
+  let rowIdx = 0;
+  const bodyRows = groups
+    .map((g) => {
+      const header = `<tr class="brand-row"><td colspan="${totalCols}">${escapeHtml(brandLabel(g.brand))}</td></tr>`;
+      const rows = g.rows
+        .map((it) => {
+          rowIdx += 1;
+          const num = `<td class="row-num">${escapeHtml(formatNumber(rowIdx))}</td>`;
+          const tds = cols.map((c) => `<td>${escapeHtml(cellText(c, it))}</td>`).join("");
+          return `<tr>${num}${tds}</tr>`;
+        })
+        .join("");
+      return header + rows;
     })
     .join("");
 
@@ -265,6 +350,15 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
     font-weight: 700;
   }
   tbody tr:nth-child(even) td { background: #fafafa; }
+  tbody tr.brand-row td {
+    background: #1e293b !important;
+    color: #ffffff;
+    font-weight: 700;
+    text-align: center;
+    font-size: ${baseFont + 1}px;
+    padding: ${padY + 2}px ${padX}px;
+  }
+  td.row-num { text-align: center; color: #475569; font-variant-numeric: tabular-nums; }
   .info-block {
     margin-top: 16px;
     padding: 10px 12px;
