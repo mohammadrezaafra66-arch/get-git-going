@@ -117,6 +117,7 @@ import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.acc
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesInvoicesInvoiceIdRouteImport } from './routes/_app.sales_.invoices_.$invoiceId'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -707,6 +708,11 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const ApiPublicBotProductsRoute = ApiPublicBotProductsRouteImport.update({
+  id: '/api/public/bot/products',
+  path: '/api/public/bot/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSalesInvoicesCreateRoute = AppSalesInvoicesCreateRouteImport.update({
   id: '/sales_/invoices_/create',
   path: '/sales/invoices/create',
@@ -997,6 +1003,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
+  '/api/public/bot/products': typeof ApiPublicBotProductsRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1131,6 +1138,7 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
+  '/api/public/bot/products': typeof ApiPublicBotProductsRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1270,6 +1278,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/invoices_/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
+  '/api/public/bot/products': typeof ApiPublicBotProductsRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1409,6 +1418,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
+    | '/api/public/bot/products'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1543,6 +1553,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
+    | '/api/public/bot/products'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1681,6 +1692,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/invoices_/$invoiceId'
     | '/_app/sales_/invoices_/create'
+    | '/api/public/bot/products'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/pricing/sale-lists_/$listId/publish'
@@ -1702,6 +1714,7 @@ export interface RootRouteChildren {
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
+  ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
 }
 
@@ -2463,6 +2476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/api/public/bot/products': {
+      id: '/api/public/bot/products'
+      path: '/api/public/bot/products'
+      fullPath: '/api/public/bot/products'
+      preLoaderRoute: typeof ApiPublicBotProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sales_/invoices_/create': {
       id: '/_app/sales_/invoices_/create'
       path: '/sales/invoices/create'
@@ -3070,6 +3090,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnauthorizedRoute: UnauthorizedRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
+  ApiPublicBotProductsRoute: ApiPublicBotProductsRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
 }
