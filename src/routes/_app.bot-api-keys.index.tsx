@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen, FlaskConical,
+  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen, FlaskConical, Tags,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -72,6 +72,7 @@ function BotApiKeysPage() {
   const [newExpires, setNewExpires] = useState<string>("");
   const [revealedKey, setRevealedKey] = useState<{ id: string; raw: string; prefix: string } | null>(null);
   const [accessKey, setAccessKey] = useState<BotKey | null>(null);
+  const [labelKey, setLabelKey] = useState<BotKey | null>(null);
 
   const keysQuery = useQuery({
     enabled: !!user,
@@ -222,6 +223,9 @@ function BotApiKeysPage() {
                       <Button size="sm" variant="outline" onClick={() => setAccessKey(k)}>
                         <Settings2 className="ml-2 h-4 w-4" />دسترسی جداول
                       </Button>
+                      <Button size="sm" variant="outline" onClick={() => setLabelKey(k)}>
+                        <Tags className="ml-2 h-4 w-4" />دسترسی برچسب محصولات
+                      </Button>
                       <label className="flex items-center gap-2 text-xs">
                         <Switch
                           checked={k.is_active}
@@ -278,6 +282,12 @@ function BotApiKeysPage() {
       <AccessDialog
         botKey={accessKey}
         onClose={() => setAccessKey(null)}
+      />
+
+      {/* Product label access dialog */}
+      <LabelAccessDialog
+        botKey={labelKey}
+        onClose={() => setLabelKey(null)}
       />
     </div>
   );
