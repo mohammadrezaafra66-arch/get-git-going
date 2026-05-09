@@ -251,29 +251,7 @@ function BotApiDocsPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p className="text-muted-foreground">
-                این endpoint محصولات را بر اساس برچسب‌های مجاز هر کلید برمی‌گرداند.
-                برچسب‌های مجاز را از دکمه «دسترسی برچسب محصولات» در صفحه کلیدها تنظیم کنید.
-                اگر هیچ برچسبی برای کلید فعال نباشد، پاسخ <code dir="ltr">403 forbidden_no_labels</code> خواهد بود.
-              </p>
-              <CodeBlock lang="endpoint" code={`GET /api/public/bot/products`} />
-              <div>
-                <p className="font-medium mb-1">پارامترهای Query</p>
-                <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-                  <li><code dir="ltr">label_id</code> — اختیاری؛ فقط محصولات یک برچسب خاص (باید در فهرست مجاز کلید باشد)</li>
-                  <li><code dir="ltr">updated_since</code> — اختیاری؛ ISO datetime برای sync تدریجی</li>
-                  <li><code dir="ltr">page</code>, <code dir="ltr">page_size</code> — صفحه‌بندی (حداکثر ۱۰۰)</li>
-                </ul>
-              </div>
-              <CodeBlock
-                lang="curl"
-                code={`curl -X GET "${baseUrl}/api/public/bot/products?page=1&page_size=50" \\
-  -H "Authorization: Bearer <API_KEY>"`}
-              />
-              <CodeBlock lang="endpoint" code={`GET /api/public/bot/products/{product_id}`} />
-              <p className="text-xs text-muted-foreground">
-                جزئیات یک محصول شامل برند، دسته، همه برچسب‌ها، همه قیمت‌های فعال (به ازای هر نوع‌قیمت) و
-                ویژگی‌های داینامیک. اگر هیچ‌یک از برچسب‌های مجاز کلید روی این محصول نباشد،
-                پاسخ <code dir="ltr">403 forbidden_product</code> خواهد بود.
+                مستندات کامل این بخش به تب «محصولات / ربات ووردپرس» منتقل شده است.
               </p>
             </CardContent>
           </Card>
@@ -321,6 +299,12 @@ function BotApiDocsPage() {
               </ol>
             </CardContent>
           </Card>
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-4">
+              <ProductsDocs baseUrl={baseUrl} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="test">
