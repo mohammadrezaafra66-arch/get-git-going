@@ -36,6 +36,8 @@ interface SRule {
   is_active: boolean; priority: number; sort_order: number;
 }
 
+type NameRow = { id: string; name: string | null };
+
 function ShippingRulesPage() {
   const { roles } = useAuth();
   const canWrite = hasAnyRole(roles, ["admin", "accountant"]);
@@ -66,17 +68,18 @@ function ShippingRulesPage() {
       const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))] as string[];
       const brandIds = [...new Set(rows.map((r) => r.brand_id).filter(Boolean))] as string[];
       const categoryIds = [...new Set(rows.map((r) => r.category_id).filter(Boolean))] as string[];
+      const emptyNameRows = Promise.resolve({ data: [] as NameRow[], error: null });
       const [productsRes, brandsRes, categoriesRes] = await Promise.all([
-        productIds.length ? supabase.from("products").select("id,name").in("id", productIds) : Promise.resolve({ data: [], error: null }),
-        brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : Promise.resolve({ data: [], error: null }),
-        categoryIds.length ? supabase.from("categories").select("id,name").in("id", categoryIds) : Promise.resolve({ data: [], error: null }),
+        productIds.length ? supabase.from("products").select("id,name").in("id", productIds) : emptyNameRows,
+        brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : emptyNameRows,
+        categoryIds.length ? supabase.from("categories").select("id,name").in("id", categoryIds) : emptyNameRows,
       ]);
       if (productsRes.error) throw productsRes.error;
       if (brandsRes.error) throw brandsRes.error;
       if (categoriesRes.error) throw categoriesRes.error;
-      const productNames = new Map((productsRes.data ?? []).map((p: any) => [p.id, p.name]));
-      const brandNames = new Map((brandsRes.data ?? []).map((b: any) => [b.id, b.name]));
-      const categoryNames = new Map((categoriesRes.data ?? []).map((c: any) => [c.id, c.name]));
+      const productNames = new Map((productsRes.data ?? []).map((p) => [p.id, p.name]));
+      const brandNames = new Map((brandsRes.data ?? []).map((b) => [b.id, b.name]));
+      const categoryNames = new Map((categoriesRes.data ?? []).map((c) => [c.id, c.name]));
       return rows.map((r) => ({
         ...r,
         product_name: r.product_id ? productNames.get(r.product_id) ?? null : null,
