@@ -498,6 +498,15 @@ function SaleListDetailPage() {
         </TabsList>
 
         <TabsContent value="items" className="pt-4">
+          <ZeroPriceWarning
+            items={items}
+            salePriceTypeId={list.sale_price_type_id}
+            canPublish={canPublish}
+            onPublished={() => {
+              qc.invalidateQueries({ queryKey: ["sale-list-items", listId] });
+              qc.invalidateQueries({ queryKey: ["zero-price-audit", listId] });
+            }}
+          />
           <ItemsTab items={items} loading={itemsQ.isLoading} />
         </TabsContent>
 
