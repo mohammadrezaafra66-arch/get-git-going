@@ -18,7 +18,7 @@ login/auth، products، pricing، purchase prices، currency rates، sale price 
 
 | Dependency | Core? | وضعیت فعلی | Feature flag | Fallback | Blocking 100% self-host? |
 |---|---|---|---|---|---|
-| OCR Lovable gateway | خیر | TBD | `EXTERNAL_OCR_ENABLED` | ورود دستی | خیر |
+| OCR Lovable gateway | خیر | پیاده‌سازی شد در SH-RA.2B (default OFF در production) | `EXTERNAL_OCR_ENABLED` (سازگار با legacy `OCR_ENABLED`) | ورود دستی فیلدهای رسید | خیر |
 | AI APIs (LLM) | خیر | TBD | `EXTERNAL_AI_ENABLED` | پنهان‌سازی feature | خیر |
 | SMS provider | خیر | TBD | `SMS_ENABLED` | OTP via email/manual | خیر |
 | SMTP | نیمه‌core (auth emails) | TBD | `SMTP_ENABLED` | manual reset توسط ادمین | خیر |
@@ -47,3 +47,12 @@ EXTERNAL_API_TIMEOUT_MS=15000
 - فونت/JS/CSS فقط local؛ هیچ CDN خارجی برای core.
 - timeout هر integration خارجی ≥ ۱۵ ثانیه + graceful fallback + پیام واضح.
 - `/api/healthz` فقط داخلی را بسنجد، نه external.
+
+## SH-RA.2B — وضعیت OCR
+
+- متغیرهای رسمی: `EXTERNAL_OCR_ENABLED` و `EXTERNAL_API_TIMEOUT_MS`.
+- پیش‌فرض production self-host: `EXTERNAL_OCR_ENABLED=false` (هیچ تماسی با `ai.gateway.lovable.dev`).
+- پیش‌فرض dev/preview: `true` برای حفظ رفتار قبلی.
+- legacy `OCR_ENABLED` هنوز خوانده می‌شود (سازگاری عقب)؛ تنظیم جدید اولویت دارد.
+- وقتی flag خاموش است، server function خروجی typed برمی‌گرداند: `{ ok: false, disabled: true, reason: "ocr_disabled", method: "unsupported", raw_text: "", warnings: [...] }` و هرگز fetch به سرویس خارجی نمی‌زند.
+- timeout سخت: کف ۱۵۰۰۰ms در کد clamp می‌شود (مقادیر کمتر بالا کشیده می‌شوند). فراخوانی fetch با `AbortController` مقید است؛ در صورت timeout/خطای شبکه پاسخ `ok:false, reason:"ocr_timeout"|"ocr_network_error"` برمی‌گردد.
