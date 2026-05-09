@@ -52,7 +52,11 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = settlementTypeSchema.safeParse(values);
+    const finalValues = {
+      ...values,
+      code: values.code?.trim() || generateCode(values.title),
+    };
+    const parsed = settlementTypeSchema.safeParse(finalValues);
     if (!parsed.success) {
       const f: Record<string, string> = {};
       for (const i of parsed.error.issues) f[i.path.join(".")] = i.message;
@@ -74,18 +78,13 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
         />
         {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
       </div>
-      <div>
-        <Label>کد یکتا *</Label>
-        <Input
-          dir="ltr"
-          value={values.code}
-          onChange={(e) => setValues((s) => ({ ...s, code: e.target.value }))}
-          placeholder="cash"
-          disabled={isEdit}
-        />
-        {errors.code && <p className="mt-1 text-xs text-destructive">{errors.code}</p>}
-        {isEdit && <p className="mt-1 text-[11px] text-muted-foreground">کد پس از ثبت قابل ویرایش نیست.</p>}
-      </div>
+      {isEdit && (
+        <div>
+          <Label>کد یکتا</Label>
+          <Input dir="ltr" value={values.code} disabled />
+          <p className="mt-1 text-[11px] text-muted-foreground">کد به‌صورت خودکار تولید شده و قابل ویرایش نیست.</p>
+        </div>
+      )}
       <div>
         <Label>توضیحات</Label>
         <Textarea
