@@ -219,6 +219,18 @@ function SaleListDetailPage() {
   const [brandOrder, setBrandOrder] = useState<string[]>([]);
   const [pendingPdfAction, setPendingPdfAction] = useState<"preview" | "download" | null>(null);
 
+  // Distinct brands in items, preserving first-appearance order from the list.
+  // MUST be declared before any early return to keep hook order stable.
+  const distinctBrands = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const it of (itemsQ.data ?? [])) {
+      const b = (it.product?.brand?.name ?? "").trim() || "بدون برند";
+      if (!seen.has(b)) { seen.add(b); out.push(b); }
+    }
+    return out;
+  }, [itemsQ.data]);
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
@@ -285,17 +297,6 @@ function SaleListDetailPage() {
       },
     };
   };
-
-  // Distinct brands in items, preserving first-appearance order from the list.
-  const distinctBrands = useMemo(() => {
-    const seen = new Set<string>();
-    const out: string[] = [];
-    for (const it of items) {
-      const b = (it.product?.brand?.name ?? "").trim() || "بدون برند";
-      if (!seen.has(b)) { seen.add(b); out.push(b); }
-    }
-    return out;
-  }, [items]);
 
   const openBrandOrderFor = (action: "preview" | "download") => {
     if (items.length === 0) { toast.error("لیست خالی است."); return; }
