@@ -1,0 +1,39 @@
+# AfraKala — Production app stack (pull image from GHCR, NO build).
+# مصرف:
+#   docker login ghcr.io        # با PAT دارای read:packages
+#   export IMAGE_TAG=latest      # یا sha-<commit>
+#   docker compose -f deploy/app/docker-compose.prod.yml pull web
+#   docker compose -f deploy/app/docker-compose.prod.yml up -d web
+#
+# نکته‌ها:
+#  - این فایل هرگز build محلی نمی‌کند؛ فقط image از GHCR pull می‌شود.
+#  - .env.production فقط روی filesystem سرور؛ هرگز در Git.
+#  - شبکه افراکالا باید قبلاً با `docker network create afrakala-net` ساخته شده باشد.
+#  - GHCR_OWNER و GHCR_REPO را در .env.production ست کن (یا مستقیم IMAGE را override کن).
+
+services:
+  web:
+    image: ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-web:${IMAGE_TAG:-latest}
+    container_name: afrakala-web
+    pull_policy: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+    expose:
+      - "3000"
+    networks:
+      - afrakala-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  afrakala-net:
+    external: true
