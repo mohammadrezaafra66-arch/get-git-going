@@ -1,241 +1,158 @@
-
-# پلن: Self-Host ۱۰۰٪ افراکالا — معماری، فازبندی و گردش‌کار توسعه با Lovable
-
-## وضعیت فعلی پروژه (آنچه از قبل آماده است)
-
-پروژه از قبل بخش بزرگی از زیرساخت self-host را دارد و نیازی به ساخت دوباره نیست:
-
-- `Dockerfile` + `docker-compose.yml` در ریشه + `server/node-entry.mjs` (Node SSR adapter — مستقل از Cloudflare).
-- `deploy/app/` — استک اپ + healthcheck `/api/healthz`.
-- `deploy/proxy/` — Caddy reverse-proxy (تنها سرویس public).
-- `deploy/supabase/` — استک Supabase خودمیزبان (Postgres + GoTrue + PostgREST + Storage + Kong + Studio).
-- `deploy/migration/` — اسکریپت‌های مهاجرت از Cloud به self-host (auth, storage, db, smoke-test).
-- `deploy/backups/` — backup/restore برای Postgres + Storage + cron.
-- `docs/SELF_HOSTING.md` و `docs/AFRAKALA_ACCEPTANCE_CRITERIA.md` — runbook کامل و قانون مادر.
-
-پس این پلن **چیز جدیدی از صفر نمی‌سازد**؛ فقط ۱) گردش‌کار «توسعه در Lovable → استقرار روی سرور» را تثبیت می‌کند، ۲) شکاف‌های باقی‌مانده برای ۱۰۰٪ self-host را شناسایی و می‌بندد، ۳) چک‌لیست گزارش پایان‌هر-تغییر را اجباری می‌کند.
+## هدف
+خود‌میزبانی ۱۰۰٪ افراکالا روی سرور لینوکس شخصی، با چرخه توسعه: Lovable → GitHub → GHCR → سرور.
 
 ---
 
-## پاسخ کوتاه به سوالات شما
+## فاز ۱ — آماده‌سازی لپ‌تاپ شخصی (یک‌بار)
 
-| سوال | پاسخ |
-|---|---|
-| ۱) ابزارها | GitHub (sync دوطرفه با Lovable) + Docker + Docker Compose + Caddy + Supabase self-host stack + GitHub Actions (CI build image) + GHCR (registry) + watchtower یا Portainer (auto-update روی سرور). |
-| ۵) جداسازی کد و دیتا | ✅ از قبل رعایت شده: کد در image؛ دیتا در `/opt/afrakala/data/{postgres,storage,caddy}` بیرون از image. |
-| ۶-۹) سرور اجاره‌ای | حداقل: ۴ vCPU، ۸ GB RAM، ۱۰۰ GB SSD NVMe، Ubuntu 22.04 LTS، IP عمومی، پهنای‌باند نامحدود. توصیه‌شده برای رشد: ۸ vCPU، ۱۶ GB RAM، ۲۰۰ GB SSD + ۵۰۰ GB backup storage جدا. |
-| ۱۰-۱۲) لپ‌تاپ | Docker Desktop + Git + VS Code + Bun + Node 20 + GitHub CLI. حداقل ۸ GB RAM آزاد. |
+**ابزارها:**
+- Git (≥ 2.40)
+- Docker Desktop (Win/Mac) یا Docker Engine + Compose v2 (Linux)
+- Node.js 20 LTS + Bun
+- VS Code + افزونه‌های Docker و GitLens
+- GitHub CLI (`gh`)
+- یک SSH key (`ssh-keygen -t ed25519`) برای ورود به سرور
 
----
-
-## فاز ۱ — آماده‌سازی محیط محلی (لپ‌تاپ) | ۱ روز
-
-### چه نصب کنید
-1. **Git** + حساب GitHub.
-2. **Docker Desktop** (Windows/Mac) یا **Docker Engine + Compose v2** (Linux).
-3. **Node 20 LTS** + **Bun** (`curl -fsSL https://bun.sh/install | bash`).
-4. **VS Code** + افزونه‌های Docker و GitLens.
-5. **GitHub CLI** (`gh`) برای auth و branch.
-
-### اتصال Lovable به GitHub
-- در Lovable: + → GitHub → Connect → ساخت repo جدید (یا اتصال به repo موجود).
-- از این لحظه هر تغییر Lovable خودکار push می‌شود و هر push در GitHub خودکار به Lovable می‌آید.
-
-### تست محلی
-```bash
-git clone <repo>
-cp deploy/app/.env.production.example deploy/app/.env.production    # مقادیر تست
-docker compose -f deploy/app/docker-compose.yml build
-docker compose -f deploy/app/docker-compose.yml up -d
-curl http://localhost:3000/api/healthz
-```
+**کارها:**
+1. اتصال پروژه Lovable به GitHub (منوی + → GitHub → Connect).
+2. `git clone` پروژه روی لپ‌تاپ.
+3. تست build محلی: `bun install && bun run build`.
 
 ---
 
-## فاز ۲ — Supabase Self-Host روی لپ‌تاپ | ۱ روز
+## فاز ۲ — راه‌اندازی Supabase Self-host به‌صورت محلی (تست کامل)
 
-### پیش‌نیاز
-طبق `deploy/supabase/README.md`:
-- ساخت `deploy/supabase/.env` از `.env.example` (تولید JWT_SECRET، ANON_KEY، SERVICE_ROLE_KEY با اسکریپت داخل README).
-- ساخت کاربر Postgres و رمزها.
+**هدف:** قبل از اجاره سرور، کل stack را روی لپ‌تاپ اجرا کن تا مطمئن شوی همه چیز کار می‌کند.
 
-### اجرا
-```bash
-docker compose -f deploy/supabase/docker-compose.yml up -d
-docker compose -f deploy/supabase/docker-compose.yml ps   # همه healthy
-```
-
-### مهاجرت داده از Lovable Cloud به استک محلی
-طبق `deploy/migration/`:
-1. `dump-auth.sh` — صدور کاربران از Cloud.
-2. `apply-project-migrations.sh` — اعمال همه `supabase/migrations/*.sql`.
-3. `restore-auth.sh` — وارد کردن کاربران.
-4. `export-storage.mjs` + `import-storage.mjs` — انتقال فایل‌ها.
-5. `verify-db-counts.sh` + `smoke-test.sh` — تأیید.
-
-### اتصال اپ به Supabase محلی
-ویرایش `deploy/app/.env.production`:
-```
-SUPABASE_URL=http://kong:8000
-SUPABASE_PUBLISHABLE_KEY=<از فاز ۲>
-SUPABASE_SERVICE_ROLE_KEY=<server-only>
-```
-سپس `docker compose ... restart web` و تست login.
+**مراحل:**
+1. `cp deploy/supabase/.env.example deploy/supabase/.env` و پر کردن مقادیر:
+   - `POSTGRES_PASSWORD`, `JWT_SECRET` (≥ 32 char), `ANON_KEY`, `SERVICE_ROLE_KEY`, `DASHBOARD_USERNAME/PASSWORD`, `SITE_URL=http://localhost:3000`.
+2. `docker compose -f deploy/supabase/docker-compose.yml up -d` → بررسی healthcheck همه سرویس‌ها (db, auth, rest, storage, kong, studio).
+3. اجرای migrationها: `bash deploy/migration/apply-project-migrations.sh`.
+4. مهاجرت داده از Lovable Cloud (اختیاری در این فاز):
+   - `dump-auth.sh` → users
+   - `pg_dump` از Cloud → restore به local
+   - `export-storage.mjs` + `import-storage.mjs` برای فایل‌ها
+5. اجرای app: `docker compose -f deploy/app/docker-compose.yml up -d` با `.env` که به Supabase محلی اشاره می‌کند.
+6. تست: `verify-db-counts.sh` + `smoke-test.sh` + لاگین/ساخت محصول/آپلود فایل.
 
 ---
 
-## فاز ۳ — Reverse Proxy + HTTPS | نیم روز
+## فاز ۳ — CI/CD: ساخت خودکار Docker image روی GitHub
 
-طبق `deploy/proxy/`:
-1. کپی `Caddyfile.example` → `Caddyfile` و درج دامنه‌ها.
-2. اجرای `docker compose -f deploy/proxy/docker-compose.yml up -d`.
-3. روی لپ‌تاپ از self-signed یا `localhost` استفاده کنید؛ روی سرور Caddy خودش Let's Encrypt می‌گیرد.
+**فایل آماده است:** `.github/workflows/build-image.yml`
 
-دامنه‌ها:
-- `app.afrakala.ir` → web:3000
-- `api.afrakala.ir` → kong:8000
-- `studio.afrakala.ir` → studio:3000 (basic auth + IP allowlist)
+**کاری که باید انجام دهی:**
+1. در GitHub → Settings → Actions → General → Workflow permissions → **Read and write** فعال کن (برای پوش به GHCR).
+2. هر push به `main` خودکار image می‌سازد و در `ghcr.io/<user>/<repo>-web:latest` و `:sha-<commit>` می‌گذارد.
+3. Image را public یا private نگه دار (private امن‌تر؛ روی سرور `docker login ghcr.io` لازم می‌شود).
 
 ---
 
-## فاز ۴ — انتقال به سرور لینوکس اجاره‌ای | ۱ روز
+## فاز ۴ — اجاره و آماده‌سازی سرور لینوکس
 
-### مشخصات سرور (پاسخ ۷-۹)
+**حداقل سخت‌افزار توصیه‌شده:**
+- 8 vCPU / 16 GB RAM / 200 GB NVMe SSD + 500 GB دیسک backup
+- Ubuntu 22.04 LTS
+- IP ثابت + دامنه (مثلاً `app.afrakala.ir`)
 
-| منبع | حداقل | توصیه‌شده | Production | چرا |
-|---|---|---|---|---|
-| CPU | ۴ vCPU | ۶ vCPU | ۸ vCPU | Postgres + Node SSR + Kong هر کدام CPU می‌خواهد |
-| RAM | ۸ GB | ۱۲ GB | ۱۶ GB | Postgres شیفت کش + Node + Caddy |
-| Disk | ۱۰۰ GB SSD NVMe | ۲۰۰ GB | ۲۰۰ + ۵۰۰ backup | NVMe برای Postgres ضروری |
-| OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | پایدار، مستندات فراوان |
-| شبکه | ۱ Gbps + IP ثابت | همان | DDoS protection | Caddy روی 80/443 |
-| Backup | روزانه | روزانه + offsite | روزانه + هفتگی offsite | Storage جدا (S3-compatible ایرانی مثل ArvanCloud) |
+**ارائه‌دهنده‌های پیشنهادی (داخل ایران برای latency کمتر):** ابرآروان، پارس‌پک، آسیاتک، یا خارجی Hetzner/Contabo.
 
-### مراحل
-1. SSH key، فعال‌سازی UFW (فقط 22، 80، 443)، fail2ban.
-2. نصب Docker + Compose v2.
-3. کاربر غیر-root با sudo.
-4. ساختار `/opt/afrakala/{deploy,data,backups,logs}` (طبق SELF_HOSTING.md §۴).
-5. clone repo داخل `/opt/afrakala/`.
-6. کپی `.env` واقعی (هرگز در git نباشد).
-7. اجرای فازهای ۲ و ۳ روی سرور.
-8. زمان‌بندی cron برای `deploy/backups/scripts/backup-all.sh` (روزانه).
-9. تست restore drill طبق `deploy/backups/scripts/restore-drill.md`.
+**کارهای اولیه روی سرور:**
+1. `ssh root@server` → ساخت user غیر‌root + sudo.
+2. نصب Docker Engine + Compose v2 + UFW + fail2ban + certbot.
+3. UFW: فقط 22, 80, 443 باز.
+4. تنظیم DNS: A record دامنه → IP سرور.
 
 ---
 
-## فاز ۵ — گردش‌کار توسعه روزانه (بهترین قسمت) | همیشگی
+## فاز ۵ — استقرار اولیه روی سرور
 
-### چرخه «توسعه در Lovable → نسخه روی سرور»
+1. `git clone` پروژه روی سرور (یا فقط پوشه `deploy/`).
+2. `docker login ghcr.io` با Personal Access Token (scope: `read:packages`).
+3. ساخت `.env` واقعی برای Supabase و App (همان الگوی فاز ۲ ولی با دامنه واقعی و رمزهای قوی).
+4. اجرای stack:
+   ```
+   docker compose -f deploy/supabase/docker-compose.yml up -d
+   docker compose -f deploy/proxy/docker-compose.yml up -d   # Caddy
+   docker compose -f deploy/app/docker-compose.yml up -d
+   ```
+5. Caddy خودکار TLS از Let's Encrypt می‌گیرد.
+6. اجرای migration اولیه + import داده از Lovable Cloud (طبق `docs/SELF_HOSTING.md`).
+
+---
+
+## فاز ۶ — چرخه روزمره توسعه (پس از استقرار)
 
 ```text
-[Lovable Editor] ── auto push ──► [GitHub main] ── trigger ──► [GitHub Actions]
-                                                                     │
-                                                                     │ build & push
-                                                                     ▼
-                                                              [GHCR registry]
-                                                                     │
-                                                                     │ pull
-                                                                     ▼
-                                                            [سرور افراکالا]
-                                                            docker compose pull
-                                                            docker compose up -d
+Lovable (تغییر کد) 
+   ↓ auto-sync
+GitHub (main branch)
+   ↓ Actions auto-build
+GHCR (image جدید)
+   ↓ ssh + دستور دستی
+سرور (pull + restart)
 ```
 
-### پیاده‌سازی (یک بار):
-
-**۵.۱ — GitHub Actions workflow** (فایل جدید `.github/workflows/build-image.yml`)
-- روی push به `main` اجرا می‌شود.
-- `docker build` و push به `ghcr.io/<user>/afrakala-web:latest` و tag با commit SHA.
-
-**۵.۲ — روی سرور**
-دو روش:
-- **روش A (دستی، امن‌تر):** بعد از هر تغییر مهم در Lovable، SSH بزنید و `cd /opt/afrakala/deploy/app && docker compose pull && docker compose up -d web`.
-- **روش B (خودکار):** نصب **Watchtower** فقط برای کانتینر `web`، بررسی هر ۱۵ دقیقه، با notification به تلگرام/ایمیل. Migrationها همیشه جداگانه اعمال می‌شوند، نه خودکار.
-
-**۵.۳ — Migrationهای دیتابیس**
-- هر تغییر دیتابیس از Lovable → فایل جدید در `supabase/migrations/`.
-- روی سرور: `bash deploy/migration/scripts/apply-project-migrations.sh` (دستی، با backup قبلی).
-- هرگز migration خودکار اعمال نشود؛ این مرز ایمنی برای دیتای production است.
-
-**۵.۴ — Branch strategy ساده**
-- `main` = production، فقط بعد از تست.
-- در Lovable از feature branch استفاده کنید (Account Settings → Labs → GitHub Branch Switching).
-- `staging` (اختیاری) = یک کانتینر دوم روی همان سرور با دیتابیس جدا برای QA.
-
----
-
-## فاز ۶ — استانداردهای کد که Lovable باید رعایت کند
-
-این چک‌لیست در پایان **هر تغییر** Lovable باید pass شود (طبق `AFRAKALA_ACCEPTANCE_CRITERIA.md`):
-
-### الف) Secret Hygiene
-- هیچ secret با prefix `VITE_` نباشد.
-- اسکن خروجی build:
-  ```
-  grep -R "SERVICE_ROLE\|JWT_SECRET\|POSTGRES_PASSWORD" dist/client deploy src
-  ```
-  باید خالی برگردد.
-- فقط `*.example` در git؛ `.env` واقعی هرگز.
-
-### ب) Dependency Hygiene
-- هیچ import از `fonts.googleapis.com`، `cdn.jsdelivr.net`، CDN خارجی.
-- هر integration خارجی feature flag دارد و در حالت off، سیستم کار می‌کند.
-- هیچ پکیج Node-only که در Worker یا Node SSR کار نمی‌کند (sharp, canvas, puppeteer, child_process).
-
-### ج) DB & RLS
-- هر جدول جدید RLS دارد.
-- migration در `supabase/migrations/` با timestamp و قابل rollback.
-- نقش‌ها فقط در `user_roles` با `has_role()` security definer.
-
-### د) Build & Runtime
-- `bun run build` و `SELF_HOSTING_NODE=1 bun run build` هر دو موفق.
-- `docker compose -f deploy/app/docker-compose.yml build` موفق.
-- `/api/healthz` پاسخ ۲۰۰ بدون auth و بدون اتصال DB.
-
-### ه) UX
-- RTL، فارسی، mobile-first.
-- query با pagination و limit.
-
----
-
-## فاز ۷ — گزارش الزامی پایان هر کار توسط Lovable
-
-پس از هر تغییر، Lovable باید این گزارش کوتاه را در پاسخ بدهد (Self-Host Acceptance Check):
-
-```
-✅ Secret scan: clean
-✅ No external CDN imports
-✅ RLS on new tables: <لیست>
-✅ Migration files: <لیست>
-✅ Build: pass
-✅ Healthcheck route untouched
-⚠️ Items needing manual ops on server: <مثلاً apply migration>
+**روی سرور برای هر آپدیت:**
+```bash
+cd /opt/afrakala
+git pull
+docker compose -f deploy/app/docker-compose.yml pull web
+docker compose -f deploy/app/docker-compose.yml up -d web
+# اگر migration جدید بود:
+bash deploy/migration/apply-project-migrations.sh
 ```
 
-اگر یکی از این موارد نقض شد، Lovable باید **قبل از تغییر کد توقف کند** و گزارش بدهد.
+> **چرا migration دستی؟** مرز امنیتی — هیچ‌وقت Actions نباید به DB production دسترسی داشته باشد.
 
 ---
 
-## شکاف‌های باقی‌مانده برای ۱۰۰٪ self-host (کارهای بعدی)
+## فاز ۷ — Backup و نگهداری
 
-این موارد در runbook به‌عنوان «باقی‌مانده» علامت خورده‌اند و باید در فازهای بعدی بسته شوند:
-
-1. **OCR خارجی** (فاز SH.6 در runbook) — حذف یا جایگزینی با Tesseract محلی.
-2. **Lovable AI Gateway** — بررسی feature flag برای حالت offline (اگر مدل خارجی استفاده می‌شود، باید optional باشد).
-3. **GitHub Actions workflow** برای build خودکار image — هنوز در repo نیست (در فاز ۵.۱ بالا اضافه می‌شود).
-4. **Watchtower / auto-update config** — اختیاری ولی توصیه شده.
-5. **Offsite backup script واقعی** — فعلاً فقط `.example` هست؛ باید با مقصد ابری ایرانی (ArvanCloud Object Storage یا مشابه) تنظیم شود.
+1. **Cron روزانه روی سرور:**
+   - `pg_dump` از Postgres → فایل رمزنگاری‌شده در `/backup/`
+   - `rsync` پوشه storage → دیسک backup
+   - آپلود هفتگی به یک off-site (مثلاً S3/ابری ایرانی)
+2. **Monitoring:** `docker stats` + سرویس ساده `uptime-kuma` برای healthcheck.
+3. **به‌روزرسانی امنیتی:** `unattended-upgrades` فعال + بازبینی ماهانه image ها.
 
 ---
 
-## اولویت‌بندی پیشنهادی برای شما
+## چک‌لیست تأیید Self-Host (پایان هر تغییر در Lovable)
 
-اگر می‌خواهید کم‌ترین کریدیت مصرف شود، این ترتیب را برگزینید:
+طبق `docs/AFRAKALA_ACCEPTANCE_CRITERIA.md`:
+- [ ] هیچ secret در bundle کلاینت نیست
+- [ ] هیچ import از CDN خارجی اضافه نشده
+- [ ] migration در `supabase/migrations/` با timestamp جدید
+- [ ] RLS روی جداول جدید فعال
+- [ ] build روی Docker لینوکس پاس می‌شود
+- [ ] healthcheck `/api/healthz` دست‌نخورده
+- [ ] گزارش پایان کار به کاربر داده شده
 
-1. **همین الان (دستی، بدون Lovable):** فاز ۱ و ۲ روی لپ‌تاپ — فقط Docker و دستورات ترمینال. Lovable نیاز نیست.
-2. **یک تسک Lovable:** افزودن GitHub Actions workflow (فاز ۵.۱) + اسکریپت‌های کوچک کمکی. ~۱ تسک.
-3. **یک تسک Lovable دیگر:** تکمیل OCR محلی (شکاف ۱) و حذف Lovable AI Gateway hard-dependency. ~۱-۲ تسک.
-4. **خودتان روی سرور:** فاز ۴ و استقرار — نیازی به Lovable نیست.
+---
 
-این‌طوری تمام بار سنگین استقرار سمت ترمینال شماست و Lovable فقط برای تغییرات کد استفاده می‌شود.
+## خلاصه ابزارها
+
+| لایه | ابزار |
+|---|---|
+| توسعه | Lovable + VS Code |
+| نسخه‌گذاری | Git + GitHub |
+| CI | GitHub Actions |
+| Registry | GHCR (ghcr.io) |
+| Runtime | Docker + Compose v2 |
+| Backend | Supabase Self-host (Postgres+Auth+REST+Storage+Kong) |
+| Reverse Proxy + TLS | Caddy |
+| OS | Ubuntu 22.04 LTS |
+| Backup | pg_dump + rsync + cron |
+
+---
+
+## ترتیب پیشنهادی اجرا
+
+1. **این هفته:** فاز ۱ + ۲ (لپ‌تاپ + Supabase محلی) — بدون هزینه، تست کامل.
+2. **هفته بعد:** فاز ۳ (فعال‌سازی Actions) + اجاره سرور.
+3. **هفته سوم:** فاز ۴ + ۵ (استقرار production + مهاجرت داده).
+4. **دائمی:** فاز ۶ + ۷ (چرخه توسعه + backup).
+
+در این مود فقط برنامه‌ریزی انجام شد؛ پس از تأیید، فاز به فاز پیش می‌رویم.
