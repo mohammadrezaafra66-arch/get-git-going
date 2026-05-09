@@ -1,67 +1,53 @@
-## فاز SH-RA.3 — راهنمای Smoke Test روی لپ‌تاپ
+## هدف
+رفع ساختاری ریشه مشکل «قیمت فروش صفر در PDF» با دو محافظ در سطح دیتابیس.
 
-### دامنه
-صرفاً مستندسازی. هیچ کد، compose، migration، secret یا اجرا تغییر نمی‌کند.
+## تغییرات
 
-### فایل‌های مجاز برای ساخت
-- `docs/self-host-governance/SH-RA.3_LAPTOP_SMOKE_TEST.md` — تنها فایل جدید این فاز.
+### ۱. پاکسازی داده‌های تکراری (پیش‌نیاز)
+دو رکورد `sale_price_types` با عنوان یکسان «پیش واریز» وجود دارد:
+- نوع قدیمی `111c2fdf-...` (دارای قیمت‌های واقعی)
+- نوع جدید `4860300a-...` (لیست فعلی به آن متصل است)
 
-### فایل‌های فقط‌خواندنی مرجع (بدون ویرایش)
-- `docs/self-host-governance/06_PHASE_PROTOCOL.md`
-- `deploy/app/README.md`
-- `deploy/supabase/README.md`
-- `deploy/proxy/README.md`
+**اقدام:** انتقال (merge) رکوردهای `product_sale_price_history` از نوع قدیمی به نوع جدید برای محصولاتی که فقط روی قدیمی قیمت دارند، سپس غیرفعال کردن نوع قدیمی (`is_active = false`) — حذف نمی‌کنیم تا تاریخچه حفظ شود.
 
-### ساختار سند پیشنهادی (فارسی، RTL، قابل copy-paste)
+### ۲. Unique constraint روی عنوان نوع قیمت
+```sql
+CREATE UNIQUE INDEX sale_price_types_title_unique_active
+ON public.sale_price_types (lower(trim(title)))
+WHERE is_active = true;
+```
+- فقط روی ردیف‌های فعال — تا رکوردهای غیرفعال تاریخی مزاحم نشوند.
+- `lower(trim(...))` تا تفاوت فاصله/حروف هم گرفته شود.
+- **نتیجه:** دیگر امکان ایجاد دو نوع قیمت فعال هم‌نام وجود ندارد.
 
-1. **مقدمه و دامنه** — هدف: اجرای کامل stack روی لپ‌تاپ توسعه‌دهنده برای smoke test؛ تأکید بر اینکه این محیط dev/staging سبک است نه production.
-2. **پیش‌نیازها**
-   - Docker Engine 24+ یا Docker Desktop
-   - Docker Compose v2
-   - Git
-   - حداقل ۸ گیگ RAM آزاد، ۲۰ گیگ دیسک
-   - دسترسی به اینترنت برای pull تصاویر اولیه
-3. **Clone مخزن** — دستور `git clone` و `cd` به پوشه پروژه.
-4. **ساخت فایل‌های env محلی** — کپی هر چهار `.env.example`:
-   - `deploy/supabase/.env.example` → `deploy/supabase/.env`
-   - `deploy/app/.env.production.example` → `deploy/app/.env.production` (مقادیر dummy لوکال؛ اشاره به `docs/self-host-governance/10_ENVIRONMENT_MATRIX.md`)
-   - `deploy/proxy/.env.example` → `deploy/proxy/.env` و `Caddyfile.example` → `Caddyfile`
-   - `deploy/backups/.env.example` → `deploy/backups/.env` (اختیاری برای smoke)
-   - تأکید: مقادیر واقعی production استفاده نشود؛ فقط dummy/local؛ `chmod 600`.
-5. **ساخت شبکه مشترک** — `docker network create afrakala-net`.
-6. **بالا آوردن stack ‌Supabase** — `docker compose -f deploy/supabase/docker-compose.yml up -d` و انتظار healthy شدن.
-7. **اجرای migration به‌صورت کنترل‌شده** — اشاره به `deploy/migration/README.md` و اینکه فقط در صورت نیاز عمدی با `DRY_RUN=false` اجرا شود؛ توضیح dry-run.
-8. **بالا آوردن stack اپ (build محلی)** — `docker compose -f deploy/app/docker-compose.yml up -d --build`.
-9. **بالا آوردن stack proxy** — `docker compose -f deploy/proxy/docker-compose.yml up -d` با اشاره به اینکه برای لوکال می‌توان از HTTP و دامنه `localhost` در Caddyfile استفاده کرد.
-10. **چک‌لیست Smoke**
-    - `curl -fsS http://localhost/api/healthz` ⇒ پاسخ `ok`
-    - باز شدن صفحه `/login`
-    - باز شدن صفحه `/products`
-    - باز شدن صفحه `/pricing`
-    - بدون خطای console در DevTools
-    - بدون درخواست به CDN خارجی در tab Network (تأکید بر مقاومت اینترنت ایران)
-11. **Tear-down و پاک‌سازی volume**
-    - `docker compose -f deploy/proxy/docker-compose.yml down`
-    - `docker compose -f deploy/app/docker-compose.yml down`
-    - `docker compose -f deploy/supabase/docker-compose.yml down -v` (هشدار: `-v` همه داده لوکال را پاک می‌کند)
-    - `docker network rm afrakala-net` (اختیاری)
-12. **Troubleshooting**
-    - تداخل پورت ۸۰/۴۴۳/۵۴۳۲ → چک با `lsof -i` و آزاد کردن یا تغییر در compose لوکال
-    - خطای `network afrakala-net not found` → اجرای دستور create
-    - خطای env mismatch بین stackها (مثلاً `JWT_SECRET` متفاوت بین supabase و app) → یکسان‌سازی
-    - گیج شدن روی dry-run migration → توضیح که DRY_RUN پیش‌فرض true است و هیچ تغییری روی DB نمی‌دهد
-    - Caddy گواهی نمی‌گیرد → برای لوکال از `http://localhost` استفاده شود نه دامنه واقعی
+### ۳. Validation trigger روی قیمت تاریخچه
+```sql
+CREATE TRIGGER trg_validate_sale_price_positive
+BEFORE INSERT OR UPDATE ON public.product_sale_price_history
+FOR EACH ROW EXECUTE FUNCTION public.validate_sale_price_positive();
+```
+تابع: اگر `new_sale_price IS NULL OR new_sale_price <= 0` خطا برگرداند.
+- از CHECK constraint استفاده نمی‌کنیم (طبق قانون پروژه).
+- **نتیجه:** دیگر هیچ کاربری نمی‌تواند قیمت صفر ثبت کند (مثل `AFK-2026-00169`).
 
-### بخش پایانی سند
-- یادداشت: این راهنما فقط برای smoke test محلی است؛ برای production از `docs/SELF_HOST_UPDATE_RUNBOOK.md` و `docs/self-host-governance/08_OPS_RUNBOOK.md` استفاده شود.
-- لینک‌های متقاطع به: `06_PHASE_PROTOCOL.md`, `09_INTERNET_RESILIENCE.md`, `10_ENVIRONMENT_MATRIX.md`.
+### ۴. اصلاح داده موجود
+- رکورد قیمت صفر `AFK-2026-00169` با تأیید: یا حذف یا اصلاح به مقدار واقعی (نیاز به تأیید شما — فعلاً فقط شناسایی می‌شود، تغییر داده اعمال نمی‌شود مگر اعلام مقدار صحیح).
 
-### الزامات و ممنوعیت‌ها
-- بدون اجرای هیچ دستور Docker/migration.
-- بدون تغییر کد، compose، migration، secret یا env واقعی.
-- بدون افزودن وابستگی.
-- پایان کار با Phase Completion Report مطابق `06_PHASE_PROTOCOL.md`.
-- شروع نکردن SH-RA.4.
+## آنچه شامل این پلن **نیست**
+- ۳ محصول بدون قیمت (`AFK-2026-00029/30/20`) → نیاز به ورود قیمت دستی توسط کاربر، migration نمی‌خواهد.
+- تغییر UI افزودن محصول به لیست (Option 3) — فعلاً انجام نمی‌شود.
+- تغییر منطق PDF (قبلاً در SH-RA.2C اصلاح شد).
 
-### خروجی نهایی
-یک فایل واحد `docs/self-host-governance/SH-RA.3_LAPTOP_SMOKE_TEST.md` آماده برای review.
+## فایل‌های تغییریافته
+- یک migration جدید در `supabase/migrations/` شامل: merge داده‌های تکراری + unique index + trigger.
+
+## ریسک و rollback
+- migration کاملاً reversible: `DROP INDEX`، `DROP TRIGGER`، `DROP FUNCTION`.
+- قبل از اجرا، کوئری بررسی می‌کند هیچ tile تکراری فعال باقی نماند تا unique index موفق ساخته شود.
+- داده‌های تاریخی `product_sale_price_history` از نوع قدیمی **پاک نمی‌شود** — فقط برای محصولاتی که روی نوع جدید قیمت ندارند، یک رکورد آینه‌ای روی نوع جدید اضافه می‌شود.
+
+## گزارش پایان (طبق قانون مادر)
+بعد از migration، Self-Host Acceptance Check کامل گزارش می‌شود.
+
+## سؤال قبل از اجرا
+آیا با merge خودکار قیمت‌های نوع قدیمی «پیش واریز» به نوع جدید موافقید، یا ترجیح می‌دهید فقط constraint و trigger اضافه شود و merge را خودتان دستی انجام دهید؟
