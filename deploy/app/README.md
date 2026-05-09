@@ -1,23 +1,87 @@
+# AfraKala App — Self-Host
 
 ## Production vs Local/Staging
+
 - `docker-compose.yml` — **build محلی** برای development/staging سبک.
 - `docker-compose.prod.yml` — **pull از GHCR** برای production. هرگز build نمی‌کند.
 
-مصرف production:
+منبع image در production همان GitHub Actions workflow است:
+`.github/workflows/build-image.yml` که روی هر push به `main` این تگ‌ها را
+به GHCR push می‌کند:
+
+```
+ghcr.io/<owner>/<repo>-web:latest
+ghcr.io/<owner>/<repo>-web:sha-<commit>
+```
+
+`docker-compose.prod.yml` این الگو را با `${GHCR_OWNER}/${GHCR_REPO}` و
+`${IMAGE_TAG:-latest}` resolve می‌کند. هیچ بلاک `build:` ندارد، host port
+publish نمی‌کند، فقط در شبکه external `afrakala-net` است،
+`restart: unless-stopped` دارد و healthcheck روی `/api/healthz`.
+
+### ۱) Pull تصویر
+
 ```bash
-docker login ghcr.io
-export IMAGE_TAG=sha-<commit>     # یا latest
+docker login ghcr.io                     # PAT با read:packages
+export IMAGE_TAG=sha-<commit>            # یا latest
+docker compose -f deploy/app/docker-compose.prod.yml pull web
+```
+
+### ۲) Start / Update
+
+```bash
+docker compose -f deploy/app/docker-compose.prod.yml up -d web
+# update به نسخه جدید: IMAGE_TAG را تغییر دهید، سپس pull و up -d مجدد.
+```
+
+### ۳) Healthcheck
+
+```bash
+curl -fsS http://localhost/api/healthz   # از پشت Caddy (deploy/proxy)
+# یا داخل کانتینر:
+docker exec afrakala-web wget -qO- http://127.0.0.1:3000/api/healthz
+```
+
+پاسخ مورد انتظار: `{"ok":true}` با status `200`.
+
+### ۴) Rollback (با تغییر IMAGE_TAG)
+
+```bash
+# بازگشت به یک sha مشخص که قبلاً healthy بوده:
+export IMAGE_TAG=sha-<previous-commit>
 docker compose -f deploy/app/docker-compose.prod.yml pull web
 docker compose -f deploy/app/docker-compose.prod.yml up -d web
 ```
 
-متغیرهای موردنیاز در `.env.production`:
-- `GHCR_OWNER`, `GHCR_REPO`, `IMAGE_TAG` (اختیاری، پیش‌فرض `latest`)
-- بقیه env های runtime app
+مقدار `IMAGE_TAG` معمولاً در `deploy/app/.env.production` نگهداری می‌شود
+(نه export موقت)، تا restart خودکار سرور همان نسخه را بیاورد.
 
-جزئیات کامل به‌روزرسانی، rollback و migration در:
-`docs/SELF_HOST_UPDATE_RUNBOOK.md`
-# AfraKala App — Self-Host (Phase SH.3)
+### Read-only rootfs (چرا الان فعال نیست)
+
+در `docker-compose.prod.yml` فلگ `read_only: true` ست نشده زیرا runtime
+Node SSR در زمان serve فایل‌های موقت/cache می‌نویسد (writeable cwd لازم
+است). اگر در آینده اثبات شد که فقط `/tmp` و `/app/.cache` نیاز نوشتن
+دارند، می‌توان به‌صورت زیر امن کرد:
+
+```yaml
+read_only: true
+tmpfs:
+  - /tmp
+  - /app/.cache
+```
+
+تا آن زمان حذف رفع نمی‌شود تا production stable بماند.
+
+متغیرهای موردنیاز در `.env.production`:
+
+- `GHCR_OWNER`, `GHCR_REPO`, `IMAGE_TAG`
+- بقیه env های runtime app (مرجع: `docs/self-host-governance/10_ENVIRONMENT_MATRIX.md`)
+
+جزئیات update/rollback/migration: `docs/SELF_HOST_UPDATE_RUNBOOK.md`.
+
+---
+
+# Local / Staging build
 
 این پوشه فقط مربوط به **اپلیکیشن frontend/SSR** است. Supabase self-host و reverse proxy در فازهای بعد (SH.4 / SH.5) جداگانه اضافه می‌شوند.
 
