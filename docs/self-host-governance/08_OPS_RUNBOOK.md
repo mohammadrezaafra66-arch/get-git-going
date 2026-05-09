@@ -225,7 +225,10 @@ Notes / anomalies:
 
 - روزانه: Postgres، Storage، secrets رمز‌شده (age/sops).
 - نگه‌داری محلی: ۱۴ روز. offsite: ۳۰ روز.
-- ماهانه: drill restore روی staging.
+- ماهانه: drill restore طبق روال رسمی در
+  `deploy/backups/scripts/restore-drill.md` (بخش "SH-RA.6A — Formal
+  Monthly Drill Procedure"). drill روی container/volume یک‌بارمصرف اجرا
+  می‌شود و **هرگز** production را لمس نمی‌کند.
 
 ## 11. Restore policy
 
@@ -253,3 +256,4 @@ uptime-kuma (healthz)، docker stats، آلارم disk/RAM، آلارم backup j
 - `docs/SELF_HOST_UPDATE_RUNBOOK.md`
 - `docs/self-host-governance/07_MIGRATION_SAFETY.md`
 - `docs/self-host-governance/09_INTERNET_RESILIENCE.md`
+- `deploy/backups/scripts/restore-drill.md` (روال drill ماهانه backup/restore)
