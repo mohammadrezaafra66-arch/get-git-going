@@ -222,7 +222,10 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
     if (!parsed.success) {
       const f: Record<string, string> = {};
       for (const i of parsed.error.issues) f[i.path.join(".")] = i.message;
-      setErrors(f); return;
+      setErrors(f);
+      const firstMsg = parsed.error.issues[0]?.message ?? "اطلاعات فرم نامعتبر است";
+      toast.error(firstMsg);
+      return;
     }
     setErrors({}); setLoading(true);
     try {
