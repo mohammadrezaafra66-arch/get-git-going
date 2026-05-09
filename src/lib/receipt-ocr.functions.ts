@@ -31,10 +31,33 @@ export interface OcrResult {
   warnings: string[];
   /** Optional engine-supplied confidence in [0,1]; null if not provided. */
   engine_confidence: number | null;
+  /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
+  ok?: boolean;
+  disabled?: boolean;
+  reason?: string;
 }
 
 const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
+
+/**
+ * SH-RA.2B helpers — read at runtime (NEVER at module top-level) so each
+ * request reflects the live env on self-host servers.
+ */
+function isExternalOcrEnabled(): boolean {
+  // Prefer new EXTERNAL_OCR_ENABLED; fall back to legacy OCR_ENABLED for
+  // backward compatibility with deployments that pre-date SH-RA.2B.
+  // Default ON only when neither is set (preserves Lovable preview behavior).
+  const raw =
+    process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
+  return String(raw).toLowerCase() === "true";
+}
+function externalApiTimeoutMs(): number {
+  const raw = Number(process.env.EXTERNAL_API_TIMEOUT_MS ?? "15000");
+  // Enforce minimum of 15000ms regardless of operator override.
+  if (!Number.isFinite(raw) || raw < 15000) return 15000;
+  return Math.floor(raw);
+}
 
 const OCR_PROMPT = [
   "Extract only visible text from this payment receipt.",
@@ -159,13 +182,9 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
 
     // image/* → vision OCR via Lovable AI Gateway.
     if (fileType.startsWith("image/")) {
-      // SH.6: feature flag — strict self-host pipeline must not reach the
-      // external Lovable AI Gateway unless the operator explicitly opts in
-      // by setting OCR_ENABLED=true on the server. Default is OFF.
-      // Default ON (Lovable hosted). Self-host operators can opt out by
-      // setting OCR_ENABLED=false explicitly on the server.
-      const ocrEnabled = (process.env.OCR_ENABLED ?? "true").toLowerCase() === "true";
-      if (!ocrEnabled) {
+      // SH-RA.2B: self-host gating. Default OFF in production (.env.production
+      // example sets EXTERNAL_OCR_ENABLED=false). Read at request time.
+      if (!isExternalOcrEnabled()) {
         return {
           raw_text: "",
           method: "unsupported" as const,
@@ -173,6 +192,9 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
             "OCR در نسخه self-host غیرفعال است. لطفاً اطلاعات رسید را دستی وارد کنید.",
           ],
           engine_confidence: null,
+          ok: false,
+          disabled: true,
+          reason: "ocr_disabled",
         } satisfies OcrResult;
       }
 
@@ -185,6 +207,9 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
             "موتور OCR تصویری در این محیط فعال نیست (LOVABLE_API_KEY تنظیم نشده).",
           ],
           engine_confidence: null,
+          ok: false,
+          disabled: true,
+          reason: "ocr_disabled",
         } satisfies OcrResult;
       }
 
@@ -196,31 +221,63 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       const b64 = btoa(bin);
       const dataUrl = `data:${fileType};base64,${b64}`;
 
-      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          temperature: 0,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an OCR engine. Output only the raw visible text from the image. No commentary.",
-            },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: OCR_PROMPT },
-                { type: "image_url", image_url: { url: dataUrl } },
-              ],
-            },
-          ],
-        }),
-      });
+      // SH-RA.2B: bound external call with AbortController + EXTERNAL_API_TIMEOUT_MS.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), externalApiTimeoutMs());
+      let aiResp: Response;
+      try {
+        aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            temperature: 0,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are an OCR engine. Output only the raw visible text from the image. No commentary.",
+              },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: OCR_PROMPT },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              },
+            ],
+          }),
+          signal: ctrl.signal,
+        });
+      } catch (err) {
+        const isAbort =
+          (err as { name?: string } | null)?.name === "AbortError";
+        if (isAbort) {
+          return {
+            raw_text: "",
+            method: "image_ocr" as const,
+            warnings: ["موتور OCR در زمان مقرر پاسخ نداد (timeout)."],
+            engine_confidence: null,
+            ok: false,
+            reason: "ocr_timeout",
+          } satisfies OcrResult;
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[ocr] external fetch failed:", msg);
+        return {
+          raw_text: "",
+          method: "image_ocr" as const,
+          warnings: ["خطا در ارتباط با موتور OCR خارجی."],
+          engine_confidence: null,
+          ok: false,
+          reason: "ocr_network_error",
+        } satisfies OcrResult;
+      } finally {
+        clearTimeout(timer);
+      }
 
       if (aiResp.status === 429) {
         return {
