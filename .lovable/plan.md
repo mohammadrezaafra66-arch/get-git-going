@@ -1,70 +1,47 @@
-# پاسخ سوالات + پلن ربات اپدیت محصولات WordPress
 
-## ۱) پایگاه داده کجاست؟ SQL یا Supabase؟
+# پلن: مستندسازی کامل API محصولات (صفر تا صد)
 
-دیتابیس **PostgreSQL داخل Supabase** است (Lovable Cloud). SQL جداگانه‌ای نداریم. همه چیز در همین Postgres با RLS است.
+## وضعیت فعلی
+صفحه `/bot-api-keys/docs` در نوبت قبل به‌روز شد و یک کارت کوتاه برای endpointهای محصول اضافه شد، اما **آموزش کامل سناریوی ربات ووردپرس** (نمونه پاسخ JSON، کد PHP/Node، استراتژی sync، عیب‌یابی) هنوز اضافه نشده. این پلن همان شکاف را پر می‌کند.
 
-## ۲) ساختار محصولات و «تگ‌ها»
+## محدوده
+فقط فایل `src/routes/_app.bot-api-keys.docs.tsx` ویرایش می‌شود. هیچ تغییر backend/migration/route جدید نیاز نیست — همه endpointها از قبل ساخته شده‌اند.
 
-محصولات در جدول `public.products` ذخیره می‌شوند. ستون‌های اصلی:
-`id, sku, name, description, unit, category (text قدیمی), category_id, brand_id, product_type, base_currency, stock_status, status, color, capacity, model, primary_spec, technical_notes, is_active, dedup_key, created_at, updated_at`
+## ساختار جدید مستندات (داخل تب «مستندات»، یک تب فرعی جدید «محصولات / ربات ووردپرس»)
 
-«تگ/برچسب» در سامانه = **Label** (نه tag). جداول مرتبط:
-- `product_labels` → `id, title, color, description, is_active, weight, visibility`
-- `product_label_links` → `product_id, label_id` (رابطه many-to-many)
-- `brands` (برند)، `categories` (دسته با naming_template و attributeهای داینامیک)
-- قیمت محاسبه‌شده در `product_computed_prices` (per sale_price_type)
+تب فرعی شامل ۹ کارت پشت سر هم:
 
-پس برای ربات ووردپرس، «برچسب مشخص» = یک `product_labels.title` معین؛ ربات باید محصولاتی که این label به آن‌ها لینک شده را بگیرد.
+1. **مقدمه و سناریو** — توضیح دقیق: ربات WP می‌خواهد قیمت/برچسب/نام محصولات سامانه را روی محصولات ووردپرس sync کند. مدل دسترسی: per-label.
 
-## ۳) آیا قبلاً چیزی ساخته‌ایم؟ بله
+2. **پیش‌نیازها (صفر)**
+   - ساخت برچسب در `/products/labels` و چسباندن آن به محصولات هدف.
+   - ساخت کلید API در `/bot-api-keys`.
+   - تخصیص برچسب‌های مجاز به کلید از دکمه «دسترسی برچسب محصولات».
 
-یک زیرساخت کامل **Bot API Keys** از قبل وجود دارد:
+3. **`GET /api/public/bot/products`** — جدول کامل پارامترها + نمونه curl + **نمونه پاسخ JSON واقعی** شامل: `id, sku, name, brand, category, status, stock_status, labels[], prices[]، updated_at` با مقادیر فارسی نمونه.
 
-- صفحات UI:
-  - `src/routes/_app.bot-api-keys.index.tsx` (مدیریت کلیدها)
-  - `src/routes/_app.bot-api-keys.docs.tsx` (مستندات)
-  - `src/routes/_app.bot-api-keys.playground.tsx` (تست)
-  - `src/routes/_app.bot-api-keys.usage.tsx` (لاگ مصرف)
-- جداول DB: `bot_api_keys`, `bot_api_key_table_access`, `bot_api_usage_logs`
-- helper سرور: `src/server/bot-api.ts` (auth با Bearer، rate-limit per key/IP، نگاشت خطا به فارسی، usage log، RPCهای `bot_authenticate_key`, `bot_check_rate_limit`)
-- endpoint عمومی موجود (فقط برای Dynamic Tables):
-  - `GET /api/public/bot/dynamic-tables/:tableId/rows`
-  - `PATCH /api/public/bot/dynamic-tables/:tableId/rows/:rowId`
+4. **`GET /api/public/bot/products/{id}`** — نمونه پاسخ کامل با همه قیمت‌های فعال (per `sale_price_type`) + ویژگی‌های داینامیک.
 
-**نکته مهم:** این endpointها فقط روی «جدول‌های داینامیک» کار می‌کنند، نه مستقیم روی `products`. پس برای ربات ووردپرس باید endpoint اختصاصی محصول اضافه شود — اما زیرساخت auth/rate-limit/log را دوباره نمی‌سازیم و از همین `bot-api.ts` استفاده می‌کنیم.
+5. **ساختار قیمت** — توضیح آرایه `prices[]`: هر آیتم `{ sale_price_type_id, sale_price_type_title, amount, currency, computed_at }`. نحوه انتخاب قیمت مناسب در ربات.
 
-## پلن پیشنهادی (بدون دوباره‌کاری)
+6. **استراتژی Sync تدریجی** — استفاده از `updated_since` با ذخیره `last_sync_at` در سمت ربات؛ pagination تا اتمام.
 
-### فاز ۱ — endpointهای read-only محصولات (برای ربات WP)
-دو route عمومی جدید زیر `src/routes/api.public.bot.products.*` با همان pattern موجود:
+7. **نمونه کد ربات** — سه تب: `bash/curl`، `PHP (مناسب وردپرس)`، `Node.js`. کد PHP باید نمونه `wp_update_post` و `update_post_meta` و sync ترم‌ها را نشان دهد.
 
-1. `GET /api/public/bot/products`
-   - query: `label` (title یا id)، `label_in[]`, `category_id`, `brand_id`, `status`, `stock_status`, `updated_since` (ISO)، `page`, `page_size` (max 100)
-   - response: `id, sku, name, brand, category, status, stock_status, labels[], price (rounded از product_computed_prices)، updated_at`
-   - استفاده از `supabaseAdmin` + همان `authenticateBot` + `checkBotRateLimit` + `logBotUsage`
+8. **خطاهای اختصاصی محصول** — جدول: `403 forbidden_no_labels`, `403 forbidden_label`, `403 forbidden_product`, `404 product_not_found`, `400 invalid_label_id`, `400 invalid_product_id` با شرح فارسی هر کدام.
 
-2. `GET /api/public/bot/products/:id`
-   - جزئیات کامل + همه قیمت‌های محاسبه‌شده + لیبل‌ها + attributes داینامیک
+9. **چک‌لیست راه‌اندازی ربات WP** — ۸ مرحله از ساخت برچسب تا cron زمان‌بندی شده در سمت WP.
 
-### فاز ۲ — کنترل دسترسی
-- یک رکورد سیستمی در `bot_api_key_table_access` با `table_id = special UUID 'products'` (یا یک ستون جدید `scope text`) برای هر کلید مشخص کند آیا اجازه دسترسی به products را دارد.
-- **ترجیحاً ساده:** یک ستون boolean `can_read_products` به `bot_api_keys` اضافه شود (migration کوچک، RLS امن، reversible).
-
-### فاز ۳ — صفحه «دسترسی محصولات» در UI
-- در `_app.bot-api-keys.index.tsx` toggle «دسترسی به محصولات» اضافه شود.
-- در `_app.bot-api-keys.docs.tsx` نمونه فراخوانی برای ربات WP اضافه شود (curl + سناریوی sync با label).
-
-### فاز ۴ (اختیاری بعداً) — write-back
-اگر ربات بخواهد چیزی را از سمت ووردپرس برگرداند (مثلاً sync_status)، `PATCH /api/public/bot/products/:id` با ستون‌های whitelist محدود.
+## تغییرات UI
+- تب اصلی فعلی «مستندات» به دو تب فرعی تقسیم می‌شود: «جدول‌های داینامیک» (محتوای فعلی) و «محصولات / ربات ووردپرس» (محتوای جدید).
+- کارت کوتاه فعلی محصولات (خطوط 239-273) حذف می‌شود تا تکراری نباشد.
+- یک Anchor TOC کوتاه بالای صفحه برای پرش سریع بین بخش‌ها.
 
 ## آنچه دست نمی‌خورد
-- فرم/route ساخت محصول (`_app.products.new.tsx`، `ProductForm.tsx`) **هیچ تغییری** نمی‌کند.
-- داده‌های موجود محصولات، مدل‌ها، لیبل‌ها، کلیدهای ربات حفظ می‌شوند.
-- Auth / RLS / rate-limit موجود بدون تغییر بازاستفاده می‌شوند.
+- هیچ تغییر در API/migration/types/RPC.
+- هیچ تغییر در صفحه کلیدها، playground، usage.
+- متن همه نمونه‌های JSON با مقادیر آموزشی استاتیک نوشته می‌شود (نه fetch واقعی).
 
-## سوالات قبل از کدنویسی
-1. **فیلتر اصلی ربات ووردپرس روی چه چیزی است؟** فقط label، یا ترکیب label + category؟
-2. **قیمت برگشتی** کدام `sale_price_type` باشد؟ (مثلاً «خرده‌فروشی نقدی») یا همه را برگردانیم و ربات خودش انتخاب کند؟
-3. **کنترل دسترسی** ساده (یک toggle `can_read_products` روی هر کلید) کافی است یا می‌خواهی per-label هم محدود کنیم؟
-4. **مرحله بعد write-back** را الان هم پیاده کنیم یا فعلاً فقط read؟
+## معیار پذیرش
+- کاربر بدون دانش فنی بتواند با خواندن این تب از صفر یک کلید بسازد، برچسب بدهد، با curl تست کند و کد PHP را در WP پیاده کند.
+- تمام قوانین پروژه: RTL/فارسی، بدون CDN خارجی، بدون secret در کد.
