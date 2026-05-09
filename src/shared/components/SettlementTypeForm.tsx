@@ -21,6 +21,16 @@ export const settlementTypeSchema = z.object({
 
 export type SettlementTypeFormValues = z.infer<typeof settlementTypeSchema>;
 
+function generateCode(title: string): string {
+  const base = (title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const ascii = base.length >= 2 ? base : "st";
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `${ascii}_${suffix}`.slice(0, 40);
+}
+
 interface Props {
   initial?: Partial<SettlementTypeFormValues>;
   onSubmit: (values: SettlementTypeFormValues) => Promise<void> | void;
