@@ -23,10 +23,26 @@ export interface OcrBytesResult {
   raw_text: string;
   method: OcrBytesMethod;
   warnings: string[];
+  /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
+  ok?: boolean;
+  disabled?: boolean;
+  reason?: string;
 }
 
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+/** SH-RA.2B: read at runtime so each request reflects live env. */
+function isExternalOcrEnabled(): boolean {
+  const raw =
+    process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
+  return String(raw).toLowerCase() === "true";
+}
+function externalApiTimeoutMs(): number {
+  const raw = Number(process.env.EXTERNAL_API_TIMEOUT_MS ?? "15000");
+  if (!Number.isFinite(raw) || raw < 15000) return 15000;
+  return Math.floor(raw);
+}
 
 const OCR_PROMPT = [
   "Extract only visible text from this payment receipt.",
