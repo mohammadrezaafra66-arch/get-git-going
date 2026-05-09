@@ -4586,6 +4586,7 @@ export type Database = {
       }
       product_attributes: {
         Row: {
+          category_id: string | null
           created_at: string
           created_by: string | null
           group_id: string | null
@@ -4596,6 +4597,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           group_id?: string | null
@@ -4606,6 +4608,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           group_id?: string | null
@@ -4616,6 +4619,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "product_attributes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_attributes_group_id_fkey"
             columns: ["group_id"]
@@ -7486,6 +7496,14 @@ export type Database = {
           id: string
           name: string
           sku: string
+        }[]
+      }
+      find_or_create_model: {
+        Args: { p_category_id: string; p_name: string }
+        Returns: {
+          category_id: string
+          id: string
+          name: string
         }[]
       }
       finish_market_rate_ingestion_run: {
