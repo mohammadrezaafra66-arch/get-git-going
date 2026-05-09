@@ -45,7 +45,7 @@ function ShippingRulesPage() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 20;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["shipping-rules", page],
     queryFn: async (): Promise<SRule[]> => {
       const from = page * PAGE_SIZE;
@@ -56,21 +56,33 @@ function ShippingRulesPage() {
           id, title, cost_type, cost_value, cost_currency, product_type,
           product_id, brand_id, category_id,
           min_purchase_price, max_purchase_price,
-          is_active, priority, sort_order,
-          product:products(id,name),
-          brand:brands(id,name),
-          category:categories(id,name)
+          is_active, priority, sort_order
         `)
         .order("sort_order", { ascending: true })
         .order("priority", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({
+      const rows = (data ?? []) as SRule[];
+      const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))] as string[];
+      const brandIds = [...new Set(rows.map((r) => r.brand_id).filter(Boolean))] as string[];
+      const categoryIds = [...new Set(rows.map((r) => r.category_id).filter(Boolean))] as string[];
+      const [productsRes, brandsRes, categoriesRes] = await Promise.all([
+        productIds.length ? supabase.from("products").select("id,name").in("id", productIds) : Promise.resolve({ data: [], error: null }),
+        brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : Promise.resolve({ data: [], error: null }),
+        categoryIds.length ? supabase.from("categories").select("id,name").in("id", categoryIds) : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (productsRes.error) throw productsRes.error;
+      if (brandsRes.error) throw brandsRes.error;
+      if (categoriesRes.error) throw categoriesRes.error;
+      const productNames = new Map((productsRes.data ?? []).map((p: any) => [p.id, p.name]));
+      const brandNames = new Map((brandsRes.data ?? []).map((b: any) => [b.id, b.name]));
+      const categoryNames = new Map((categoriesRes.data ?? []).map((c: any) => [c.id, c.name]));
+      return rows.map((r) => ({
         ...r,
-        product_name: r.product?.name ?? null,
-        brand_name: r.brand?.name ?? null,
-        category_name: r.category?.name ?? null,
-      })) as SRule[];
+        product_name: r.product_id ? productNames.get(r.product_id) ?? null : null,
+        brand_name: r.brand_id ? brandNames.get(r.brand_id) ?? null : null,
+        category_name: r.category_id ? categoryNames.get(r.category_id) ?? null : null,
+      }));
     },
   });
 
@@ -95,6 +107,9 @@ function ShippingRulesPage() {
 
   const scopeLabel = (r: SRule) => {
     if (r.product_name) return r.product_name;
+    if (r.category_name) return `دسته: ${r.category_name}`;
+    if (r.brand_name) return `برند: ${r.brand_name}`;
+    if (r.min_purchase_price != null || r.max_purchase_price != null) return "بازه قیمت خرید";
     return "—";
   };
 
@@ -124,6 +139,8 @@ function ShippingRulesPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+          ) : error ? (
+            <div className="p-6 text-center text-sm text-destructive">خطا در دریافت قوانین حمل.</div>
           ) : (data ?? []).length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">قانون حملی ثبت نشده.</div>
           ) : (
