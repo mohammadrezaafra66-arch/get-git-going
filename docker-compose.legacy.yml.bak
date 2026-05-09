@@ -1,0 +1,56 @@
+# ============================================================================
+# DEPRECATED — این فایل legacy است و دیگر استفاده نمی‌شود.
+# ----------------------------------------------------------------------------
+# تاریخ deprecation: SH-RA.2A
+# دلیل: این compose فقط Postgres ساده می‌آورد و با معماری self-host واقعی
+# (Supabase کامل: db + auth + rest + storage + kong + meta + studio)
+# تناقض دارد و کاربر را گمراه می‌کند.
+#
+# مسیر درست برای self-host:
+#   - deploy/supabase/docker-compose.yml   → Supabase stack کامل
+#   - deploy/app/docker-compose.yml        → app (build local، برای dev/staging)
+#   - deploy/app/docker-compose.prod.yml   → app (pull from GHCR، برای production)
+#   - deploy/proxy/docker-compose.yml      → Caddy reverse proxy
+#
+# مستندات:
+#   - docs/SELF_HOST_ROADMAP_FA.md
+#   - docs/SELF_HOST_UPDATE_RUNBOOK.md
+#   - deploy/app/README.md
+#
+# این فایل فقط برای حفظ تاریخچه نگه داشته شده و نباید با
+# `docker compose up` اجرا شود. در فاز آینده ممکن است حذف شود.
+# ============================================================================
+
+# نمونه Docker Compose برای اجرای دستیار افراکالا به همراه Postgres self-host.
+# نکته: برای backend کامل، می‌توانید Supabase self-hosted (https://supabase.com/docs/guides/self-hosting)
+# را به‌صورت جداگانه راه‌اندازی کرده و VITE_SUPABASE_URL را به آن نشانه‌گذاری کنید.
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    image: afrakala-assistant:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: afrakala
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: afrakala
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

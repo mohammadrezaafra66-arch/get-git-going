@@ -29,20 +29,21 @@ update user_roles set role='admin' where user_id=(select id from auth.users wher
 
 ## Self-host با Docker
 
-ساختار کد استاندارد است: React + Vite + TypeScript + TanStack Start + PostgreSQL.
-فایل‌های آماده: `Dockerfile`، `docker-compose.yml`، `.dockerignore`.
+ساختار کد استاندارد: React + Vite + TypeScript + TanStack Start + Supabase self-host.
 
-```bash
-# 1) متغیرهای محیطی را در .env تنظیم کنید (VITE_SUPABASE_URL و ...)
-# 2) build و اجرا
-docker compose build
-docker compose up -d
-# اپ روی http://localhost:3000
-```
+> ⚠️ **مهم:** برای deploy از پوشهٔ `deploy/` استفاده کنید، **نه** فایل `docker-compose.yml` ریشه (که از فاز SH-RA.2A به‌نام `docker-compose.legacy.yml.bak` آرشیو شده است).
 
-برای backend کامل self-host می‌توانید [Supabase self-hosted](https://supabase.com/docs/guides/self-hosting)
-را روی همان سرور بالا آورده و `VITE_SUPABASE_URL` را به آن نشانه‌گذاری کنید.
-فایل‌های `supabase/migrations/` بدون تغییر روی نمونه self-hosted اجرا می‌شوند.
+استک‌های رسمی self-host:
+
+| استک | فایل | کاربرد |
+|---|---|---|
+| Supabase | `deploy/supabase/docker-compose.yml` | db + auth + rest + storage + kong + meta + studio |
+| App (dev/staging) | `deploy/app/docker-compose.yml` | build محلی image |
+| App (production) | `deploy/app/docker-compose.prod.yml` | pull از GHCR |
+| Proxy | `deploy/proxy/docker-compose.yml` | Caddy + TLS |
+
+ترتیب راه‌اندازی، آپدیت و rollback در `docs/SELF_HOST_UPDATE_RUNBOOK.md` و نقشه راه کامل در `docs/SELF_HOST_ROADMAP_FA.md` است.
+فایل‌های `supabase/migrations/` بدون تغییر روی نمونه self-hosted اجرا می‌شوند (سیاست امنیتی: `docs/MIGRATION_SAFETY_POLICY.md`).
 
 هیچ وابستگی حیاتی به CDN خارجی، فونت آنلاین یا API بین‌المللی وجود ندارد.
 
