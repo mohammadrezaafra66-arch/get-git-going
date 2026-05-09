@@ -118,6 +118,12 @@ function BotApiDocsPage() {
         </TabsList>
 
         <TabsContent value="docs" className="space-y-4">
+          <Tabs defaultValue="dynamic" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="dynamic">جدول‌های داینامیک</TabsTrigger>
+              <TabsTrigger value="products">محصولات / ربات ووردپرس</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dynamic" className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">معرفی Bot API</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm leading-7">
@@ -245,29 +251,7 @@ function BotApiDocsPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p className="text-muted-foreground">
-                این endpoint محصولات را بر اساس برچسب‌های مجاز هر کلید برمی‌گرداند.
-                برچسب‌های مجاز را از دکمه «دسترسی برچسب محصولات» در صفحه کلیدها تنظیم کنید.
-                اگر هیچ برچسبی برای کلید فعال نباشد، پاسخ <code dir="ltr">403 forbidden_no_labels</code> خواهد بود.
-              </p>
-              <CodeBlock lang="endpoint" code={`GET /api/public/bot/products`} />
-              <div>
-                <p className="font-medium mb-1">پارامترهای Query</p>
-                <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-                  <li><code dir="ltr">label_id</code> — اختیاری؛ فقط محصولات یک برچسب خاص (باید در فهرست مجاز کلید باشد)</li>
-                  <li><code dir="ltr">updated_since</code> — اختیاری؛ ISO datetime برای sync تدریجی</li>
-                  <li><code dir="ltr">page</code>, <code dir="ltr">page_size</code> — صفحه‌بندی (حداکثر ۱۰۰)</li>
-                </ul>
-              </div>
-              <CodeBlock
-                lang="curl"
-                code={`curl -X GET "${baseUrl}/api/public/bot/products?page=1&page_size=50" \\
-  -H "Authorization: Bearer <API_KEY>"`}
-              />
-              <CodeBlock lang="endpoint" code={`GET /api/public/bot/products/{product_id}`} />
-              <p className="text-xs text-muted-foreground">
-                جزئیات یک محصول شامل برند، دسته، همه برچسب‌ها، همه قیمت‌های فعال (به ازای هر نوع‌قیمت) و
-                ویژگی‌های داینامیک. اگر هیچ‌یک از برچسب‌های مجاز کلید روی این محصول نباشد،
-                پاسخ <code dir="ltr">403 forbidden_product</code> خواهد بود.
+                مستندات کامل این بخش به تب «محصولات / ربات ووردپرس» منتقل شده است.
               </p>
             </CardContent>
           </Card>
@@ -315,6 +299,12 @@ function BotApiDocsPage() {
               </ol>
             </CardContent>
           </Card>
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-4">
+              <ProductsDocs baseUrl={baseUrl} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="test">
@@ -618,6 +608,358 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+/* ----------------------------- Products Docs (WordPress) ----------------------------- */
+
+function ProductsDocs({ baseUrl }: { baseUrl: string }) {
+  const sampleList = JSON.stringify({
+    products: [
+      {
+        id: "8f2c9d10-0001-4a11-9b22-aaaaaaaaaaaa",
+        sku: "SAM-A55-128-BLK",
+        name: "گوشی سامسونگ A55 ظرفیت ۱۲۸ مشکی",
+        brand: { id: "b1", title: "سامسونگ" },
+        category: { id: "c1", title: "گوشی موبایل" },
+        status: "active",
+        stock_status: "in_stock",
+        labels: [
+          { id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" },
+        ],
+        prices: [
+          {
+            sale_price_type_id: "spt-1",
+            sale_price_type_title: "خرده‌فروشی نقدی",
+            amount: 18500000,
+            currency: "IRT",
+            computed_at: "2026-05-09T08:30:00Z",
+          },
+          {
+            sale_price_type_id: "spt-2",
+            sale_price_type_title: "عمده نقدی",
+            amount: 17900000,
+            currency: "IRT",
+            computed_at: "2026-05-09T08:30:00Z",
+          },
+        ],
+        updated_at: "2026-05-09T08:31:12Z",
+      },
+    ],
+    pagination: { page: 1, page_size: 50, total: 1, total_pages: 1 },
+  }, null, 2);
+
+  const sampleSingle = JSON.stringify({
+    product: {
+      id: "8f2c9d10-0001-4a11-9b22-aaaaaaaaaaaa",
+      sku: "SAM-A55-128-BLK",
+      name: "گوشی سامسونگ A55 ظرفیت ۱۲۸ مشکی",
+      description: "...",
+      unit: "عدد",
+      brand: { id: "b1", title: "سامسونگ" },
+      category: { id: "c1", title: "گوشی موبایل" },
+      status: "active",
+      stock_status: "in_stock",
+      color: "مشکی",
+      capacity: "128GB",
+      model: "A55",
+      labels: [
+        { id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" },
+      ],
+      attributes: { ram: "8GB", screen: "6.6 inch" },
+      prices: [
+        { sale_price_type_id: "spt-1", sale_price_type_title: "خرده‌فروشی نقدی", amount: 18500000, currency: "IRT", computed_at: "2026-05-09T08:30:00Z" },
+        { sale_price_type_id: "spt-2", sale_price_type_title: "عمده نقدی", amount: 17900000, currency: "IRT", computed_at: "2026-05-09T08:30:00Z" },
+      ],
+      created_at: "2026-01-12T10:00:00Z",
+      updated_at: "2026-05-09T08:31:12Z",
+    },
+  }, null, 2);
+
+  const phpCode = `<?php
+/**
+ * افراکالا → ووردپرس Sync
+ * این فایل را در پوشه پلاگین خود بگذارید و از طریق WP-Cron یا cron سرور اجرا کنید.
+ */
+
+define('AFRA_API_BASE', '${baseUrl}');
+define('AFRA_API_KEY',  'bk_xxxxxxxxxxxxxxxxxxxxxx'); // در wp-config.php نگه دارید
+
+function afra_fetch_products($page = 1, $updated_since = null) {
+    $url = AFRA_API_BASE . '/api/public/bot/products?page=' . $page . '&page_size=100';
+    if ($updated_since) {
+        $url .= '&updated_since=' . urlencode($updated_since);
+    }
+    $res = wp_remote_get($url, [
+        'headers' => [ 'Authorization' => 'Bearer ' . AFRA_API_KEY ],
+        'timeout' => 30,
+    ]);
+    if (is_wp_error($res)) return null;
+    return json_decode(wp_remote_retrieve_body($res), true);
+}
+
+function afra_sync_all() {
+    $last = get_option('afra_last_sync_at', null);
+    $page = 1;
+    do {
+        $data = afra_fetch_products($page, $last);
+        if (empty($data['products'])) break;
+
+        foreach ($data['products'] as $p) {
+            // ۱) پیدا کردن محصول WP بر اساس SKU
+            $post_id = wc_get_product_id_by_sku($p['sku']);
+            if (!$post_id) continue;
+
+            // ۲) به‌روزرسانی نام
+            wp_update_post([ 'ID' => $post_id, 'post_title' => $p['name'] ]);
+
+            // ۳) قیمت — انتخاب «خرده‌فروشی نقدی»
+            foreach ($p['prices'] as $pr) {
+                if ($pr['sale_price_type_title'] === 'خرده‌فروشی نقدی') {
+                    update_post_meta($post_id, '_regular_price', $pr['amount']);
+                    update_post_meta($post_id, '_price',         $pr['amount']);
+                    break;
+                }
+            }
+
+            // ۴) برچسب‌ها
+            $tags = array_map(fn($l) => $l['title'], $p['labels']);
+            wp_set_object_terms($post_id, $tags, 'product_tag');
+
+            // ۵) موجودی
+            update_post_meta($post_id, '_stock_status',
+                $p['stock_status'] === 'in_stock' ? 'instock' : 'outofstock');
+        }
+
+        $page++;
+    } while ($page <= ($data['pagination']['total_pages'] ?? 1));
+
+    update_option('afra_last_sync_at', gmdate('c'));
+}
+
+// زمان‌بندی هر ۱۵ دقیقه
+if (!wp_next_scheduled('afra_sync_event')) {
+    wp_schedule_event(time(), 'fifteen_minutes', 'afra_sync_event');
+}
+add_action('afra_sync_event', 'afra_sync_all');
+`;
+
+  const nodeCode = `// Node.js — اسکریپت ساده sync
+const BASE = "${baseUrl}";
+const KEY  = process.env.AFRA_API_KEY;
+
+async function syncAll(updatedSince) {
+  let page = 1, totalPages = 1;
+  do {
+    const url = new URL(BASE + "/api/public/bot/products");
+    url.searchParams.set("page", page);
+    url.searchParams.set("page_size", "100");
+    if (updatedSince) url.searchParams.set("updated_since", updatedSince);
+
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + KEY } });
+    if (!res.ok) throw new Error("HTTP " + res.status + " — " + await res.text());
+    const data = await res.json();
+    totalPages = data.pagination.total_pages;
+
+    for (const p of data.products) {
+      // اینجا منطق sync خودتون رو بنویسید
+      console.log(p.sku, "→", p.name, p.prices[0]?.amount);
+    }
+    page++;
+  } while (page <= totalPages);
+}
+
+syncAll(process.env.LAST_SYNC).catch(console.error);
+`;
+
+  const curlList = `curl -X GET "${baseUrl}/api/public/bot/products?page=1&page_size=50" \\
+  -H "Authorization: Bearer <API_KEY>"`;
+
+  const curlByLabel = `curl -X GET "${baseUrl}/api/public/bot/products?label_id=<LABEL_UUID>&updated_since=2026-05-01T00:00:00Z" \\
+  -H "Authorization: Bearer <API_KEY>"`;
+
+  const curlSingle = `curl -X GET "${baseUrl}/api/public/bot/products/<PRODUCT_ID>" \\
+  -H "Authorization: Bearer <API_KEY>"`;
+
+  return (
+    <div className="space-y-4">
+      {/* TOC */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">فهرست</CardTitle></CardHeader>
+        <CardContent className="text-xs text-muted-foreground leading-7">
+          ۱) سناریو · ۲) پیش‌نیاز و ساخت کلید · ۳) GET لیست محصولات · ۴) GET تک محصول ·
+          ۵) ساختار قیمت · ۶) Sync تدریجی · ۷) نمونه کد PHP / Node / curl · ۸) خطاها · ۹) چک‌لیست راه‌اندازی
+        </CardContent>
+      </Card>
+
+      {/* 1 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۱) سناریو</CardTitle></CardHeader>
+        <CardContent className="text-sm leading-7 space-y-2">
+          <p>
+            یک سایت ووردپرس (یا ووکامرس) از قبل دارید و محصولات را آنجا منتشر کرده‌اید. می‌خواهید
+            <strong> قیمت، نام، برچسب، موجودی</strong> را از سامانه افراکالا به‌صورت خودکار روی همان
+            محصولات وردپرسی به‌روزرسانی کنید — بدون اینکه مدیر دسترسی به کل دیتابیس داشته باشد.
+          </p>
+          <p>
+            مدل امنیتی: هر کلید API فقط محصولاتی را می‌بیند که <strong>حداقل یکی از برچسب‌های مجاز
+            آن کلید</strong> روی محصول نشسته باشد. پس می‌توانید چند کلید برای چند سایت مختلف بسازید
+            و هر سایت فقط محصولات مربوط به برچسب خودش را sync کند.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* 2 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۲) پیش‌نیاز و ساخت کلید (صفر)</CardTitle></CardHeader>
+        <CardContent className="text-sm leading-7 space-y-2">
+          <ol className="list-decimal pr-5 space-y-2">
+            <li>به <Link to="/products/labels" className="underline">برچسب‌های محصول</Link> بروید و یک برچسب مثل «وب‌سایت اصلی» بسازید.</li>
+            <li>در صفحه محصولات، این برچسب را به محصولاتی که می‌خواهید روی WP منتشر شوند بچسبانید.</li>
+            <li>به <Link to="/bot-api-keys" className="underline">کلیدهای API</Link> بروید و دکمه «کلید جدید» را بزنید.</li>
+            <li><strong>کلید خام</strong> فقط یک‌بار نمایش داده می‌شود؛ فوراً کپی و در محل امن (مثلاً <code dir="ltr">wp-config.php</code>) ذخیره کنید.</li>
+            <li>روبه‌روی همان کلید روی دکمه <strong>«دسترسی برچسب محصولات»</strong> بزنید و برچسب‌های مجاز را تیک بزنید.</li>
+            <li>اگر می‌خواهید SKU/قیمت را روی WP داشته باشید، مطمئن شوید SKU محصولات افراکالا با SKU محصولات WP یکی است.</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      {/* 3 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Badge variant="outline">GET</Badge> ۳) لیست محصولات
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <CodeBlock lang="endpoint" code="GET /api/public/bot/products" />
+          <div>
+            <p className="font-medium mb-1">پارامترهای Query</p>
+            <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
+              <li><code dir="ltr">label_id</code> — UUID برچسب (اختیاری)؛ فقط محصولات این برچسب. باید جزو برچسب‌های مجاز کلید باشد.</li>
+              <li><code dir="ltr">updated_since</code> — ISO 8601 datetime؛ فقط محصولاتی که بعد از این زمان تغییر کرده‌اند.</li>
+              <li><code dir="ltr">page</code> پیش‌فرض ۱، <code dir="ltr">page_size</code> پیش‌فرض ۵۰، حداکثر ۱۰۰.</li>
+            </ul>
+          </div>
+          <CodeBlock lang="curl — همه" code={curlList} />
+          <CodeBlock lang="curl — فیلتر برچسب + sync" code={curlByLabel} />
+          <div>
+            <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
+            <CodeBlock lang="json" code={sampleList} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 4 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Badge variant="outline">GET</Badge> ۴) جزئیات یک محصول
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <CodeBlock lang="endpoint" code="GET /api/public/bot/products/{product_id}" />
+          <CodeBlock lang="curl" code={curlSingle} />
+          <div>
+            <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
+            <CodeBlock lang="json" code={sampleSingle} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            اگر هیچ‌یک از برچسب‌های مجاز کلید روی این محصول نباشد،
+            پاسخ <code dir="ltr">403 forbidden_product</code> برمی‌گردد.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* 5 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۵) ساختار قیمت</CardTitle></CardHeader>
+        <CardContent className="text-sm leading-7 space-y-2">
+          <p>
+            میدان <code dir="ltr">prices[]</code> برای هر محصول شامل همه قیمت‌های فعال
+            (به ازای هر «نوع قیمت») است. هر آیتم:
+          </p>
+          <CodeBlock lang="schema" code={`{
+  "sale_price_type_id":    "uuid",
+  "sale_price_type_title": "خرده‌فروشی نقدی | عمده نقدی | ...",
+  "amount":                18500000,
+  "currency":              "IRT",
+  "computed_at":           "2026-05-09T08:30:00Z"
+}`} />
+          <p className="text-xs text-muted-foreground">
+            در ربات WP معمولاً یک عنوان مشخص (مثلاً «خرده‌فروشی نقدی») را انتخاب می‌کنید و آن را
+            روی <code dir="ltr">_regular_price</code> ووکامرس می‌نویسید (نمونه در بخش ۷).
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* 6 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۶) استراتژی Sync تدریجی</CardTitle></CardHeader>
+        <CardContent className="text-sm leading-7 space-y-2">
+          <ol className="list-decimal pr-5 space-y-1">
+            <li>اولین بار <code dir="ltr">updated_since</code> را خالی بگذارید و از <code dir="ltr">page=1</code> شروع کنید.</li>
+            <li>بعد از پایان هر دور، زمان شروع همان دور را در سمت ربات ذخیره کنید (مثلاً <code dir="ltr">last_sync_at</code> در WP options).</li>
+            <li>دفعه بعد همان مقدار را به <code dir="ltr">updated_since</code> بدهید تا فقط تغییرات جدید برگردد.</li>
+            <li>تا زمانی که <code dir="ltr">page &lt;= total_pages</code> است صفحه‌بندی را ادامه دهید.</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      {/* 7 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۷) نمونه کد ربات</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Tabs defaultValue="php">
+            <TabsList>
+              <TabsTrigger value="php">PHP (WordPress)</TabsTrigger>
+              <TabsTrigger value="node">Node.js</TabsTrigger>
+              <TabsTrigger value="bash">curl</TabsTrigger>
+            </TabsList>
+            <TabsContent value="php"><CodeBlock lang="php" code={phpCode} /></TabsContent>
+            <TabsContent value="node"><CodeBlock lang="javascript" code={nodeCode} /></TabsContent>
+            <TabsContent value="bash"><CodeBlock lang="bash" code={curlList + "\n\n" + curlByLabel + "\n\n" + curlSingle} /></TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* 8 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۸) خطاهای اختصاصی</CardTitle></CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <ErrorRow status={403} code="forbidden_no_labels"
+            desc="هیچ برچسبی برای این کلید فعال نیست. از دکمه «دسترسی برچسب محصولات» حداقل یک برچسب فعال کنید." />
+          <ErrorRow status={403} code="forbidden_label"
+            desc="label_id ارسال شد، اما این برچسب در فهرست مجاز کلید نیست." />
+          <ErrorRow status={403} code="forbidden_product"
+            desc="محصول هست، ولی هیچ‌یک از برچسب‌های مجاز کلید روی آن نیست." />
+          <ErrorRow status={404} code="product_not_found" desc="محصولی با این شناسه وجود ندارد." />
+          <ErrorRow status={400} code="invalid_label_id" desc="مقدار label_id باید UUID معتبر باشد." />
+          <ErrorRow status={400} code="invalid_product_id" desc="شناسه محصول در URL باید UUID معتبر باشد." />
+          <ErrorRow status={401} code="invalid_key | missing_key | inactive_key | expired_key"
+            desc="کلید نامعتبر، غیرفعال، منقضی یا ارسال نشده است." />
+          <ErrorRow status={429} code="rate_limit_*"
+            desc="عبور از سقف نرخ. هدر Retry-After را رعایت کنید." />
+        </CardContent>
+      </Card>
+
+      {/* 9 */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">۹) چک‌لیست راه‌اندازی ربات WP</CardTitle></CardHeader>
+        <CardContent className="text-sm leading-7">
+          <ol className="list-decimal pr-5 space-y-1">
+            <li>برچسب «وب‌سایت اصلی» را بسازید و به محصولات هدف بچسبانید.</li>
+            <li>کلید API بسازید و کلید خام را در <code dir="ltr">wp-config.php</code> ذخیره کنید.</li>
+            <li>برچسب مجاز را روی کلید فعال کنید.</li>
+            <li>اول با curl یک GET بزنید و مطمئن شوید پاسخ ۲۰۰ می‌گیرید.</li>
+            <li>کد PHP بخش ۷ را در یک پلاگین کوچک قرار دهید.</li>
+            <li>SKU محصولات WP و افراکالا را همسان کنید.</li>
+            <li>WP-Cron یا cron سرور را روی فاصله ۱۵ دقیقه تنظیم کنید.</li>
+            <li>گزارش مصرف و خطاها را در <Link to="/bot-api-keys/usage" className="underline">گزارش استفاده</Link> پایش کنید.</li>
+          </ol>
+        </CardContent>
+      </Card>
     </div>
   );
 }
