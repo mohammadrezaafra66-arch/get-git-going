@@ -545,7 +545,7 @@ export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", 
               emptyText="مدلی یافت نشد"
               noneLabel="— بدون مدل —"
               disabled={!values.category_id || createModelMut.isPending}
-              onCreate={values.category_id ? (q) => createModelMut.mutateAsync(q) : undefined}
+              onCreate={values.category_id ? async (q) => { await createModelMut.mutateAsync(q); } : undefined}
               createLabel={(q) => `افزودن مدل جدید: «${q}»`}
             />
             {!values.category_id ? (
