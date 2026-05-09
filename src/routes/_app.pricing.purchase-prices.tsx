@@ -569,7 +569,7 @@ const EMPTY_FORM: PurchasePriceFormValues & { selectedProductLabel: string | nul
   currency: "toman",
   reason_id: null,
   private_note: "",
-  effective_at: "",
+  effective_at: todayIsoDate(),
   selectedProductLabel: null,
   is_active: true,
 };
@@ -588,14 +588,15 @@ function PurchasePriceDialog({
   productMap?: Record<string, { name: string; sku: string | null }>;
 }) {
   const [values, setValues] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
-  const [expiresAt, setExpiresAt] = useState<string>("");
+  const [expiresAt, setExpiresAt] = useState<string>(addMonthsIsoDate(todayIsoDate(), 6));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setValues(EMPTY_FORM);
-      setExpiresAt("");
+      const today = todayIsoDate();
+      setValues({ ...EMPTY_FORM, effective_at: today });
+      setExpiresAt(addMonthsIsoDate(today, 6));
       setErrors({});
       return;
     }
@@ -610,11 +611,16 @@ function PurchasePriceDialog({
         currency: editing.currency,
         reason_id: editing.reason_id ?? null,
         private_note: editing.private_note ?? "",
-        effective_at: editing.effective_at ? String(editing.effective_at).slice(0, 16) : "",
+        effective_at: toDateOnly(editing.effective_at) || todayIsoDate(),
         selectedProductLabel: prodLabel,
         is_active: !!editing.is_active,
       });
-      setExpiresAt(editing.expires_at ? String(editing.expires_at).slice(0, 16) : "");
+      setExpiresAt(toDateOnly(editing.expires_at) || addMonthsIsoDate(toDateOnly(editing.effective_at) || todayIsoDate(), 6));
+      setErrors({});
+    } else {
+      const today = todayIsoDate();
+      setValues({ ...EMPTY_FORM, effective_at: today });
+      setExpiresAt(addMonthsIsoDate(today, 6));
       setErrors({});
     }
   }, [open, editing, productMap]);
@@ -678,8 +684,8 @@ function PurchasePriceDialog({
         private_note: parsed.data.private_note || null,
         is_active: values.is_active,
       };
-      if (parsed.data.effective_at) payload.effective_at = parsed.data.effective_at;
-      if (expiresAt) payload.expires_at = expiresAt;
+      if (parsed.data.effective_at) payload.effective_at = dateStartIso(parsed.data.effective_at);
+      if (expiresAt) payload.expires_at = dateEndIso(expiresAt);
 
       if (editing?.id) {
         const { error } = await supabase.from("purchase_prices").update(payload).eq("id", editing.id);
