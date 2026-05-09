@@ -50,7 +50,7 @@ source code، Dockerfile، compose templates، `.env.example`، migration script
 
 - compose **build محلی** از compose **pull-only production** جداست.
 - production compose: فقط `image:` از GHCR، بدون `build:`.
-- root `docker-compose.yml` نباید مسیر production را مبهم کند → موضوع SH-RA.2A.
+- root `docker-compose.yml` نباید مسیر production را مبهم کند. در فاز SH-RA.2A فایل ریشه و `docker-compose.legacy.yml.bak` حذف شدند؛ از این پس فقط فایل‌های `deploy/**/docker-compose*.yml` معتبرند. هیچ فایل `.bak` نباید در ریپو نگه داشته شود (history همان backup است).
 
 ## Footer گزارش هر تحویل
 
