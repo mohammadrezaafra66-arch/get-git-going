@@ -141,16 +141,17 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
 
     // image/* → vision OCR
     if (mime.startsWith("image/")) {
-      // Default ON (Lovable hosted). Self-host operators can opt out by
-      // setting OCR_ENABLED=false explicitly on the server.
-      const ocrEnabled = (process.env.OCR_ENABLED ?? "true").toLowerCase() === "true";
-      if (!ocrEnabled) {
+      // SH-RA.2B: self-host gating. Default OFF in production. Read at request time.
+      if (!isExternalOcrEnabled()) {
         return {
           raw_text: "",
           method: "unsupported" as const,
           warnings: [
             "OCR در نسخه self-host غیرفعال است. مدیر باید OCR_ENABLED=true را در سرور فعال کند.",
           ],
+          ok: false,
+          disabled: true,
+          reason: "ocr_disabled",
         } satisfies OcrBytesResult;
       }
       const apiKey = process.env.LOVABLE_API_KEY;
@@ -159,34 +160,67 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
           raw_text: "",
           method: "unsupported" as const,
           warnings: ["LOVABLE_API_KEY در سرور تنظیم نشده."],
+          ok: false,
+          disabled: true,
+          reason: "ocr_disabled",
         } satisfies OcrBytesResult;
       }
 
       const dataUrl = `data:${mime};base64,${data.base64}`;
-      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          temperature: 0,
-          messages: [
-            {
-              role: "system",
-              content: "You are an OCR engine. Output only raw visible text from the image.",
-            },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: OCR_PROMPT },
-                { type: "image_url", image_url: { url: dataUrl } },
-              ],
-            },
-          ],
-        }),
-      });
+      // SH-RA.2B: bound external call with AbortController + EXTERNAL_API_TIMEOUT_MS.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), externalApiTimeoutMs());
+      let aiResp: Response;
+      try {
+        aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            temperature: 0,
+            messages: [
+              {
+                role: "system",
+                content: "You are an OCR engine. Output only raw visible text from the image.",
+              },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: OCR_PROMPT },
+                  { type: "image_url", image_url: { url: dataUrl } },
+                ],
+              },
+            ],
+          }),
+          signal: ctrl.signal,
+        });
+      } catch (err) {
+        const isAbort =
+          (err as { name?: string } | null)?.name === "AbortError";
+        if (isAbort) {
+          return {
+            raw_text: "",
+            method: "image_ocr" as const,
+            warnings: ["موتور OCR در زمان مقرر پاسخ نداد (timeout)."],
+            ok: false,
+            reason: "ocr_timeout",
+          } satisfies OcrBytesResult;
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[ocr-bytes] external fetch failed:", msg);
+        return {
+          raw_text: "",
+          method: "image_ocr" as const,
+          warnings: ["خطا در ارتباط با موتور OCR خارجی."],
+          ok: false,
+          reason: "ocr_network_error",
+        } satisfies OcrBytesResult;
+      } finally {
+        clearTimeout(timer);
+      }
 
       if (aiResp.status === 429) {
         return {
