@@ -31,7 +31,7 @@ update user_roles set role='admin' where user_id=(select id from auth.users wher
 
 ساختار کد استاندارد: React + Vite + TypeScript + TanStack Start + Supabase self-host.
 
-> ⚠️ **مهم:** برای deploy از پوشهٔ `deploy/` استفاده کنید، **نه** فایل `docker-compose.yml` ریشه (که از فاز SH-RA.2A به‌نام `docker-compose.legacy.yml.bak` آرشیو شده است).
+> ⚠️ **مهم:** Production و self-host افراکالا از پوشهٔ `deploy/` (شامل `deploy/app`, `deploy/supabase`, `deploy/proxy`, `deploy/backups`) اجرا می‌شود. هیچ فایل `docker-compose.yml` در ریشهٔ ریپو وجود ندارد و نباید برای production استفاده شود (فاز SH-RA.2A: legacy compose حذف شد).
 
 استک‌های رسمی self-host:
 
