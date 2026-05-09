@@ -1,3 +1,22 @@
+
+## Production vs Local/Staging
+- `docker-compose.yml` — **build محلی** برای development/staging سبک.
+- `docker-compose.prod.yml` — **pull از GHCR** برای production. هرگز build نمی‌کند.
+
+مصرف production:
+```bash
+docker login ghcr.io
+export IMAGE_TAG=sha-<commit>     # یا latest
+docker compose -f deploy/app/docker-compose.prod.yml pull web
+docker compose -f deploy/app/docker-compose.prod.yml up -d web
+```
+
+متغیرهای موردنیاز در `.env.production`:
+- `GHCR_OWNER`, `GHCR_REPO`, `IMAGE_TAG` (اختیاری، پیش‌فرض `latest`)
+- بقیه env های runtime app
+
+جزئیات کامل به‌روزرسانی، rollback و migration در:
+`docs/SELF_HOST_UPDATE_RUNBOOK.md`
 # AfraKala App — Self-Host (Phase SH.3)
 
 این پوشه فقط مربوط به **اپلیکیشن frontend/SSR** است. Supabase self-host و reverse proxy در فازهای بعد (SH.4 / SH.5) جداگانه اضافه می‌شوند.
