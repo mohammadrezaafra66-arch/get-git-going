@@ -8,12 +8,22 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { type ShippingRuleFormValues } from "@/lib/pricing/schemas";
-import { SHIPPING_COST_TYPE_LABELS, CURRENCY_LABELS, type CurrencyCode } from "@/lib/pricing/constants";
+import {
+  SHIPPING_COST_TYPE_LABELS,
+  CURRENCY_LABELS,
+  type CurrencyCode,
+} from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
 import {
   ShippingCostRuleForm,
@@ -22,18 +32,30 @@ import {
 } from "@/shared/components/ShippingCostRuleForm";
 
 export const Route = createFileRoute("/_app/pricing/shipping-rules")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
   component: ShippingRulesPage,
 });
 
 interface SRule {
-  id: string; title: string; cost_type: "fixed" | "percent" | "currency"; cost_value: number;
+  id: string;
+  title: string;
+  cost_type: "fixed" | "percent" | "currency";
+  cost_value: number;
   cost_currency: string | null;
   product_type: "iranian" | "foreign" | null;
-  product_id: string | null; brand_id: string | null; category_id: string | null;
-  product_name?: string | null; brand_name?: string | null; category_name?: string | null;
-  min_purchase_price: number | null; max_purchase_price: number | null;
-  is_active: boolean; priority: number; sort_order: number;
+  product_id: string | null;
+  brand_id: string | null;
+  category_id: string | null;
+  product_name?: string | null;
+  brand_name?: string | null;
+  category_name?: string | null;
+  min_purchase_price: number | null;
+  max_purchase_price: number | null;
+  is_active: boolean;
+  priority: number;
+  sort_order: number;
 }
 
 type NameRow = { id: string; name: string | null };
@@ -54,12 +76,14 @@ function ShippingRulesPage() {
       const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("shipping_cost_rules")
-        .select(`
+        .select(
+          `
           id, title, cost_type, cost_value, cost_currency, product_type,
           product_id, brand_id, category_id,
           min_purchase_price, max_purchase_price,
           is_active, priority, sort_order
-        `)
+        `,
+        )
         .order("sort_order", { ascending: true })
         .order("priority", { ascending: true })
         .range(from, to);
@@ -70,9 +94,15 @@ function ShippingRulesPage() {
       const categoryIds = [...new Set(rows.map((r) => r.category_id).filter(Boolean))] as string[];
       const emptyNameRows = Promise.resolve({ data: [] as NameRow[], error: null });
       const [productsRes, brandsRes, categoriesRes] = await Promise.all([
-        productIds.length ? supabase.from("products").select("id,name").in("id", productIds) : emptyNameRows,
-        brandIds.length ? supabase.from("brands").select("id,name").in("id", brandIds) : emptyNameRows,
-        categoryIds.length ? supabase.from("categories").select("id,name").in("id", categoryIds) : emptyNameRows,
+        productIds.length
+          ? supabase.from("products").select("id,name").in("id", productIds)
+          : emptyNameRows,
+        brandIds.length
+          ? supabase.from("brands").select("id,name").in("id", brandIds)
+          : emptyNameRows,
+        categoryIds.length
+          ? supabase.from("categories").select("id,name").in("id", categoryIds)
+          : emptyNameRows,
       ]);
       if (productsRes.error) throw productsRes.error;
       if (brandsRes.error) throw brandsRes.error;
@@ -82,9 +112,9 @@ function ShippingRulesPage() {
       const categoryNames = new Map((categoriesRes.data ?? []).map((c) => [c.id, c.name]));
       return rows.map((r) => ({
         ...r,
-        product_name: r.product_id ? productNames.get(r.product_id) ?? null : null,
-        brand_name: r.brand_id ? brandNames.get(r.brand_id) ?? null : null,
-        category_name: r.category_id ? categoryNames.get(r.category_id) ?? null : null,
+        product_name: r.product_id ? (productNames.get(r.product_id) ?? null) : null,
+        brand_name: r.brand_id ? (brandNames.get(r.brand_id) ?? null) : null,
+        category_name: r.category_id ? (categoryNames.get(r.category_id) ?? null) : null,
       }));
     },
   });
@@ -98,14 +128,20 @@ function ShippingRulesPage() {
       .update({ is_active: !r.is_active })
       .eq("id", r.id);
     if (error) toast.error(error.message);
-    else { toast.success(r.is_active ? "غیرفعال شد" : "فعال شد"); refresh(); }
+    else {
+      toast.success(r.is_active ? "غیرفعال شد" : "فعال شد");
+      refresh();
+    }
   };
 
   const remove = async (r: SRule) => {
     if (!confirm(`حذف قانون "${r.title}"؟`)) return;
     const { error } = await supabase.from("shipping_cost_rules").delete().eq("id", r.id);
     if (error) toast.error(error.message);
-    else { toast.success("حذف شد"); refresh(); }
+    else {
+      toast.success("حذف شد");
+      refresh();
+    }
   };
 
   const scopeLabel = (r: SRule) => {
@@ -119,7 +155,9 @@ function ShippingRulesPage() {
   const renderCostValue = (r: SRule) => {
     if (r.cost_type === "percent") return `%${formatNumber(Number(r.cost_value))}`;
     if (r.cost_type === "currency") {
-      const label = r.cost_currency ? (CURRENCY_LABELS[r.cost_currency as CurrencyCode] ?? r.cost_currency) : "—";
+      const label = r.cost_currency
+        ? (CURRENCY_LABELS[r.cost_currency as CurrencyCode] ?? r.cost_currency)
+        : "—";
       return `${formatNumber(Number(r.cost_value))} ${label}`;
     }
     return `${formatNumber(Number(r.cost_value))} ت`;
@@ -132,8 +170,24 @@ function ShippingRulesPage() {
         description="تعریف هزینه حمل بر اساس محصول، دسته‌بندی، برند یا نوع کالا"
         actions={
           <>
-            <Button asChild variant="outline" size="sm"><Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link></Button>
-            {canWrite && <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="ms-1 h-4 w-4" />قانون جدید</Button>}
+            <Button asChild variant="outline" size="sm">
+              <Link to="/pricing">
+                <ArrowRight className="ms-1 h-4 w-4" />
+                بازگشت
+              </Link>
+            </Button>
+            {canWrite && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setOpen(true);
+                }}
+              >
+                <Plus className="ms-1 h-4 w-4" />
+                قانون جدید
+              </Button>
+            )}
           </>
         }
       />
@@ -143,9 +197,13 @@ function ShippingRulesPage() {
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : error ? (
-            <div className="p-6 text-center text-sm text-destructive">خطا در دریافت قوانین حمل.</div>
+            <div className="p-6 text-center text-sm text-destructive">
+              خطا در دریافت قوانین حمل.
+            </div>
           ) : (data ?? []).length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">قانون حملی ثبت نشده.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              قانون حملی ثبت نشده.
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -166,15 +224,39 @@ function ShippingRulesPage() {
                       <td className="p-3 text-xs">{SHIPPING_COST_TYPE_LABELS[r.cost_type]}</td>
                       <td className="p-3">{renderCostValue(r)}</td>
                       <td className="p-3 text-xs text-muted-foreground">{r.title || "—"}</td>
-                      <td className="p-3">{r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}</td>
+                      <td className="p-3">
+                        {r.is_active ? (
+                          <Badge>فعال</Badge>
+                        ) : (
+                          <Badge variant="outline">غیرفعال</Badge>
+                        )}
+                      </td>
                       <td className="p-3">
                         {canWrite && (
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => { setEditing(r); setOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => toggle(r)} title={r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}>
-                              <Power className={`h-4 w-4 ${r.is_active ? "text-destructive" : ""}`} />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditing(r);
+                                setOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => remove(r)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggle(r)}
+                              title={r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
+                            >
+                              <Power
+                                className={`h-4 w-4 ${r.is_active ? "text-destructive" : ""}`}
+                              />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => remove(r)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         )}
                       </td>
@@ -188,22 +270,43 @@ function ShippingRulesPage() {
             <div className="flex items-center justify-between gap-2 border-t p-3 text-xs text-muted-foreground">
               <span>صفحه {formatNumber(page + 1)}</span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
-                <Button variant="outline" size="sm" disabled={(data ?? []).length < PAGE_SIZE} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  قبلی
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={(data ?? []).length < PAGE_SIZE}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  بعدی
+                </Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <SRuleDialog open={open} onOpenChange={setOpen} editing={editing}
-        onSaved={refresh} />
+      <SRuleDialog open={open} onOpenChange={setOpen} editing={editing} onSaved={refresh} />
     </div>
   );
 }
 
-function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
-  open: boolean; onOpenChange: (v: boolean) => void; editing: SRule | null; onSaved: () => void;
+function SRuleDialog({
+  open,
+  onOpenChange,
+  editing,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  editing: SRule | null;
+  onSaved: () => void;
 }) {
   const [values, setValues] = useState<ShippingRuleFormValues>(emptyShippingRule);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -217,17 +320,24 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
           ? "product"
           : editing.category_id
             ? "category"
-            : (editing.min_purchase_price != null || editing.max_purchase_price != null)
+            : editing.min_purchase_price != null || editing.max_purchase_price != null
               ? "price_range"
               : "product";
         setValues({
-          title: editing.title ?? "", scope_mode,
-          cost_type: editing.cost_type, cost_value: Number(editing.cost_value),
+          title: editing.title ?? "",
+          scope_mode,
+          cost_type: editing.cost_type,
+          cost_value: Number(editing.cost_value),
           cost_currency: editing.cost_currency ?? null,
           product_type: editing.product_type,
-          product_id: editing.product_id, brand_id: editing.brand_id, category_id: editing.category_id,
-          min_purchase_price: editing.min_purchase_price, max_purchase_price: editing.max_purchase_price,
-          priority: editing.priority, sort_order: editing.sort_order ?? 0, is_active: editing.is_active,
+          product_id: editing.product_id,
+          brand_id: editing.brand_id,
+          category_id: editing.category_id,
+          min_purchase_price: editing.min_purchase_price,
+          max_purchase_price: editing.max_purchase_price,
+          priority: editing.priority,
+          sort_order: editing.sort_order ?? 0,
+          is_active: editing.is_active,
         });
       } else {
         setValues(emptyShippingRule);
@@ -247,21 +357,36 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
       toast.error(firstMsg);
       return;
     }
-    setErrors({}); setLoading(true);
+    setErrors({});
+    setLoading(true);
     try {
       const data = parsed.data;
       // اگر عنوان خالی است، عنوان مناسب تولید کن
       let title = (data.title ?? "").trim();
       if (!title) {
         if (data.scope_mode === "product" && data.product_id) {
-          const { data: p } = await supabase.from("products").select("name").eq("id", data.product_id).maybeSingle();
+          const { data: p } = await supabase
+            .from("products")
+            .select("name")
+            .eq("id", data.product_id)
+            .maybeSingle();
           title = p?.name ?? "قانون حمل";
         } else if (data.scope_mode === "category" && data.category_id) {
-          const { data: c } = await supabase.from("categories").select("name").eq("id", data.category_id).maybeSingle();
+          const { data: c } = await supabase
+            .from("categories")
+            .select("name")
+            .eq("id", data.category_id)
+            .maybeSingle();
           title = c?.name ? `دسته: ${c.name}` : "قانون حمل دسته";
         } else if (data.scope_mode === "price_range") {
-          const lo = data.min_purchase_price != null ? Number(data.min_purchase_price).toLocaleString("fa-IR") : "—";
-          const hi = data.max_purchase_price != null ? Number(data.max_purchase_price).toLocaleString("fa-IR") : "—";
+          const lo =
+            data.min_purchase_price != null
+              ? Number(data.min_purchase_price).toLocaleString("fa-IR")
+              : "—";
+          const hi =
+            data.max_purchase_price != null
+              ? Number(data.max_purchase_price).toLocaleString("fa-IR")
+              : "—";
           title = `بازه ${lo} تا ${hi} ت`;
         }
       }
@@ -271,25 +396,35 @@ function SRuleDialog({ open, onOpenChange, editing, onSaved }: {
       const payload = {
         ...rest,
         title: title || "قانون حمل",
-        cost_currency: data.cost_type === "currency" ? data.cost_currency ?? null : null,
+        cost_currency: data.cost_type === "currency" ? (data.cost_currency ?? null) : null,
       };
       if (editing) {
-        const { error } = await supabase.from("shipping_cost_rules").update(payload).eq("id", editing.id);
-        if (error) throw error; toast.success("به‌روزرسانی شد");
+        const { error } = await supabase
+          .from("shipping_cost_rules")
+          .update(payload)
+          .eq("id", editing.id);
+        if (error) throw error;
+        toast.success("به‌روزرسانی شد");
       } else {
         const { error } = await supabase.from("shipping_cost_rules").insert([payload]);
-        if (error) throw error; toast.success("ثبت شد");
+        if (error) throw error;
+        toast.success("ثبت شد");
       }
-      onSaved(); onOpenChange(false);
+      onSaved();
+      onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خطا در ذخیره");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{editing ? "ویرایش قانون حمل" : "قانون حمل جدید"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{editing ? "ویرایش قانون حمل" : "قانون حمل جدید"}</DialogTitle>
+        </DialogHeader>
         <ShippingCostRuleForm
           values={values}
           onChange={setValues}
