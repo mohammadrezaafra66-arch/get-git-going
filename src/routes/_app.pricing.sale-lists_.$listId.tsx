@@ -78,6 +78,7 @@ import {
   type SaleListPdfColumn,
 } from "@/lib/pdf/sale-list-pdf";
 import { fetchShopSettings } from "@/lib/shop/settings";
+import { publishProductPrices } from "@/lib/pricing/publish-prices";
 
 const PAGE_SIZE = 20;
 
