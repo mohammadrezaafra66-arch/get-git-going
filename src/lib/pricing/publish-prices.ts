@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { calculateSalePrice, PricingError } from "./engine";
+import { fetchLatestPurchasePrice } from "./queries";
 
 export interface PublishOnePriceResult {
   sale_price_type_id: string;
@@ -54,6 +55,28 @@ export async function publishProductPrices(opts: {
   const uid = userData.user?.id ?? null;
 
   const results: PublishOnePriceResult[] = [];
+  const purchase = await fetchLatestPurchasePrice(productId);
+  if (!purchase) {
+    return {
+      product_id: product.id,
+      product_name: product.name,
+      sku: product.sku,
+      total_types: list.length,
+      succeeded: 0,
+      failed: 1,
+      results: [
+        {
+          sale_price_type_id: "missing-purchase-price",
+          sale_price_type_title: "قیمت خرید",
+          ok: false,
+          old_price: null,
+          new_price: null,
+          changed: false,
+          error: "برای این محصول قیمت خرید معتبر ثبت نشده است. ابتدا قیمت خرید را با تاریخ مؤثر امروز یا قبل‌تر و تاریخ انقضای آینده ثبت کنید.",
+        },
+      ],
+    };
+  }
 
   for (const spt of list) {
     try {
