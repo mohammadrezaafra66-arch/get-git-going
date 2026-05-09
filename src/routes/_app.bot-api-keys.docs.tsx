@@ -118,6 +118,12 @@ function BotApiDocsPage() {
         </TabsList>
 
         <TabsContent value="docs" className="space-y-4">
+          <Tabs defaultValue="dynamic" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="dynamic">جدول‌های داینامیک</TabsTrigger>
+              <TabsTrigger value="products">محصولات / ربات ووردپرس</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dynamic" className="space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-base">معرفی Bot API</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm leading-7">
