@@ -1,77 +1,116 @@
 
-# رفع دائمی مشکل قیمت صفر در لیست‌های فروش
+# Phase SH-RA.5 — Update + Rollback Runbook (Documentation Only)
 
-## ریشه ساختاری مشکل (یادآوری)
+## هدف
 
-سه منبع قیمت در سیستم وجود دارد و sync نیستند:
+اضافه کردن procedureهای دقیق و تکرارپذیر برای بروزرسانی و rollback production self-host به مستندات، طبق scope فاز SH-RA.5. هیچ تغییر کد، compose، migration، secret یا اجرای deploy/build/test انجام نمی‌شود.
 
-1. `product_computed_prices` — کش محاسبه از نرخ ارز (نتیجه pricing engine)
-2. `product_sale_price_history` — قیمت‌های منتشرشده رسمی
-3. `sale_list_items.current_price` — **snapshot ثابت** هنگام ساخت/ذخیره لیست
+## تحلیل وضعیت موجود
 
-PDF و صفحه عمومی از `sale_list_items.current_price` می‌خوانند. وقتی قیمت بعد از ساخت لیست تغییر کند یا محصول تازه اضافه شود، snapshot صفر می‌ماند.
+دو فایل عملیاتی مرتبط در پروژه وجود دارد:
 
----
+- **`docs/self-host-governance/08_OPS_RUNBOOK.md`** — runbook عملیات روزانه؛ بخش‌های update/rollback آن خلاصه و فاقد جزئیات لازم برای SH-RA.5 است (مثلاً curl health check، record IMAGE_TAG، stop conditions، DB-rollback warning، post-update report).
+- **`docs/SELF_HOST_UPDATE_RUNBOOK.md`** — runbook کاملِ به‌روزرسانی موجود است و بسیاری از سناریوها را پوشش می‌دهد. با spec فاز هم‌خوانی خوبی دارد و نیازی به تغییر اساسی ندارد.
 
-## آنچه شما باید انجام دهید (تصمیم‌های انسانی)
+طبق دستور فاز:
+> docs/SELF_HOST_UPDATE_RUNBOOK.md only if a small consistency fix is required; otherwise link only.
 
-این موارد نیاز به دانش کسب‌وکار دارند و قابل خودکارسازی نیستند:
+تصمیم: فقط `08_OPS_RUNBOOK.md` را با بخش‌های SH-RA.5 گسترش می‌دهیم و به `SELF_HOST_UPDATE_RUNBOOK.md` لینک می‌دهیم. به فایل دوم دست نمی‌زنیم.
 
-1. **سه محصول بدون قیمت پایه** (`AFK-2026-00029` / `00030` / `00020`): قیمت خرید پایه را در محصول تنظیم کنید یا تایید کنید که قیمت محاسبه‌شده فعلی منتشر شود.
-2. **محصول `AFK-2026-00169`**: قیمت خرید پایه `850 تومان` غیرواقعی است (احتمالاً واحد ارز اشتباه ثبت شده). واحد/مقدار صحیح را اصلاح کنید.
-3. تایید کنید که نوع قیمت قدیمی «پیش واریز» (`111c2fdf-…`) دیگر استفاده نشود (در migration قبلی غیرفعال شد، اما اگر جایی به ID آن hard-code شده بازبینی شود).
+## فایل‌های مجاز برای تغییر در این فاز
 
-## آنچه من (Lovable) باید انجام دهم — راه‌حل دائمی
+- ویرایش: `docs/self-host-governance/08_OPS_RUNBOOK.md`
+- ایجاد/حذف: هیچ‌کدام
 
-برای اینکه این مشکل **هرگز تکرار نشود**، چهار لایه دفاعی اضافه می‌کنم:
+## محتوای تغییر در 08_OPS_RUNBOOK.md
 
-### لایه ۱ — Trigger پایگاه‌داده برای sync خودکار snapshot
-یک trigger روی `AFTER INSERT OR UPDATE` در `product_sale_price_history` که به‌صورت خودکار `sale_list_items.current_price` و `previous_price` و `change_*` را برای **همه لیست‌هایی که این محصول و این `sale_price_type_id` را دارند** به‌روزرسانی می‌کند.
-
-نتیجه: هر بار قیمت جدید منتشر شود، تمام لیست‌های فعال خودکار sync می‌شوند. دیگر snapshot کهنه نخواهیم داشت.
-
-### لایه ۲ — Backfill اولیه
-یک‌بار، با همان منطق trigger، تمام `sale_list_items` فعلی که `current_price = 0` دارند ولی قیمت معتبر در history وجود دارد را از history پر کن. (هشت محصول دسته اول حل می‌شوند.)
-
-### لایه ۳ — هشدار «محصولات بدون قیمت منتشرشده» در ویرایش لیست
-در صفحه `/_app.pricing.sale-lists_.$listId.tsx` یک بخش هشدار اضافه می‌شود که محصولات لیست بدون رکورد در `product_sale_price_history` برای نوع قیمت انتخاب‌شده را نشان می‌دهد، با دکمه «انتشار قیمت محاسبه‌شده» که اگر `product_computed_prices` رکورد دارد، آن را در history منتشر می‌کند (با تایید کاربر). این مشکل دسته دوم (3 محصول با قیمت محاسباتی منتشرنشده) را حل می‌کند.
-
-### لایه ۴ — همسویی نمایش UI با PDF
-جدول داخلی صفحه لیست هم مثل PDF از قیمت زنده history (در صورت وجود) به‌جای snapshot استفاده کند، تا کاربر همان چیزی را ببیند که در PDF و صفحه عمومی منتشر می‌شود. (با وجود لایه ۱ این صرفاً defense-in-depth است.)
-
----
-
-## ساختار تغییرات
+بخش‌های فعلی «آپدیت فقط اپ» و «آپدیت با migration» و «Emergency Rollback» با ساختار رسمی SH-RA.5 جایگزین/گسترش می‌شوند. ساختار نهایی فایل به این صورت خواهد بود:
 
 ```text
-supabase/migrations/<timestamp>_sync_sale_list_snapshots.sql
-  - function: public.sync_sale_list_items_from_history()  (security definer)
-  - trigger : trg_sync_sale_list_items AFTER INSERT/UPDATE on product_sale_price_history
-  - backfill: UPDATE sale_list_items SET current_price = ... FROM latest history
-  - reversible: DROP TRIGGER / DROP FUNCTION
-
-src/routes/_app.pricing.sale-lists_.$listId.tsx
-  - بخش «محصولات بدون قیمت منتشرشده» با دکمه publish
-  - استفاده از livePrices در جدول داخلی هم (نه فقط PDF)
-
-src/lib/pricing/publish-prices.ts
-  - تابع کمکی publishComputedToHistory(productId, salePriceTypeId) برای دکمه جدید
+1. ترتیب راه‌اندازی stackها                     (بدون تغییر)
+2. عملیات روزانه                                (بدون تغییر)
+3. Update — Scenario A: app-only, no migration
+   - verify current IMAGE_TAG (grep .env.production / docker inspect)
+   - set new IMAGE_TAG
+   - docker login ghcr.io (in case PAT expired)
+   - docker compose -f deploy/app/docker-compose.prod.yml pull web
+   - docker compose -f deploy/app/docker-compose.prod.yml up -d web
+   - curl -fsS https://app.afrakala.ir/api/healthz
+   - docker compose logs --tail=200 web
+   - record deployed IMAGE_TAG in deploy log
+4. Update — Scenario B: with migration
+   - fresh backup (deploy/backups/scripts/backup-postgres.sh)
+   - git pull && review supabase/migrations diff
+   - confirm no destructive SQL without owner/devops approval
+   - DRY_RUN=false bash deploy/migration/scripts/apply-project-migrations.sh
+   - pull + up -d web
+   - smoke-test.sh + curl /api/healthz
+   - monitor logs (15 min minimum)
+5. App rollback (by previous IMAGE_TAG)
+   - export IMAGE_TAG=sha-<previous-good>
+   - pull + up -d
+   - healthcheck + logs
+   - record rollback in incident log
+6. DB rollback — DANGER
+   - DB rollback ≠ app rollback
+   - requires verified backup restore OR approved reverse migration
+   - NEVER run without admin/devops written approval
+   - production restore requires fresh incident note
+   - reference: deploy/backups/scripts/restore-postgres.sh + verify-restore.sh
+7. GHCR image consistency note
+   - production image MUST follow:
+     ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-web:${IMAGE_TAG:-latest}
+   - same pattern as .github/workflows/build-image.yml and
+     deploy/app/docker-compose.prod.yml
+   - GHCR_OWNER and GHCR_REPO must be set in deploy/app/.env.production
+   - tag mismatch → docker pull fails or wrong code is deployed
+8. Stop conditions (operator MUST stop and escalate if ANY apply)
+   - missing/old backup
+   - smoke test fails
+   - unknown migration content
+   - destructive SQL without approval
+   - unknown IMAGE_TAG
+   - GHCR pull fails
+   - healthcheck fails
+   - logs show startup errors
+   - any secret/env/cert appears in `git status`/`git diff`
+9. Post-update report template (copyable)
+   - date/time, operator
+   - previous IMAGE_TAG, new IMAGE_TAG
+   - migration: yes/no
+   - backup file path
+   - healthcheck result
+   - smoke test result
+   - rollback needed: yes/no
+   - notes
+10. Backup / Restore policy                     (بدون تغییر)
+11. Disaster Recovery scenarios                 (بدون تغییر)
+12. Monitoring                                  (بدون تغییر)
+13. Reference: docs/SELF_HOST_UPDATE_RUNBOOK.md (link only)
 ```
 
-## ریسک‌ها و ملاحظات
+دستورات داخل بخش‌های ۳ تا ۵ همان الگوی موجود در `SELF_HOST_UPDATE_RUNBOOK.md` و `deploy/app/README.md` را دقیقاً بازتاب می‌دهند تا inconsistency ایجاد نشود. بدون hard-code کردن owner/repo واقعی.
 
-- Trigger روی هر insert اجرا می‌شود؛ scope با `WHERE sale_price_type_id = NEW.sale_price_type_id` و index مناسب محدود می‌شود تا کند نشود.
-- Backfill فقط رکوردهای `current_price = 0` را تغییر می‌دهد تا snapshotهای آگاهانه دست‌نخورده بماند.
-- نسخه‌های قبلی لیست در `sale_list_versions` (snapshot تاریخی) دست‌نخورده می‌مانند — فقط لیست فعال sync می‌شود.
-- migration کاملاً reversible و idempotent.
-- بدون تغییر RLS، secret، CDN، Docker، یا frontend bundle.
+## آنچه تغییر نمی‌کند (Forbidden)
 
-## معیار موفقیت
+- هیچ فایل کد، compose، Dockerfile، migration، script، .env یا certificate.
+- بدون اجرای deploy/build/test/migration/backup/restore.
+- بدون تغییر در `src/`, `server/`, `supabase/`, `deploy/`, `.github/`.
+- بدون تغییر در `docs/SELF_HOST_UPDATE_RUNBOOK.md` (فقط لینک از داخل 08).
 
-- بعد از انتشار قیمت جدید، نیازی به ذخیره مجدد لیست نیست؛ PDF و صفحه عمومی فوراً قیمت تازه را نشان می‌دهند.
-- هیچ محصول جدید اضافه‌شده به لیست با قیمت صفر نمی‌ماند مگر اینکه واقعاً قیمتی در history نداشته باشد — و در آن حالت در UI با هشدار قرمز و دکمه publish نمایش داده می‌شود.
+## Validation checklist (پس از پیاده‌سازی)
 
-## خارج از scope این پلن
+- [ ] فقط `08_OPS_RUNBOOK.md` تغییر کرده.
+- [ ] هر هفت بخش الزامی SH-RA.5 موجود است (Scenario A, Scenario B, App rollback, DB rollback warning, GHCR note, Stop conditions, Post-update report).
+- [ ] هیچ دستوری اجرا نشده.
+- [ ] هیچ secret/env/cert ساخته نشده.
+- [ ] هیچ تغییر در deploy/, src/, supabase/, server/, .github/.
+- [ ] الگوی GHCR image با compose و workflow هم‌خوان است.
 
-- اصلاح دستی قیمت پایه `00169` و سه محصول بدون قیمت (تصمیم کسب‌وکار شماست).
-- حذف فیزیکی نوع قیمت قدیمی غیرفعال (نگه داشته می‌شود برای رفرنس تاریخی).
+## Rollback note
+
+برگرداندن این فاز ساده است: revert تنها commit مربوط به `08_OPS_RUNBOOK.md`. هیچ side-effect عملیاتی ندارد چون فقط documentation است.
+
+## Phase Completion Report (پس از اجرا تکمیل می‌شود)
+
+طبق قالب `06_PHASE_PROTOCOL.md` در پایان اجرا گزارش رسمی شامل: Files edited (تنها 08_OPS_RUNBOOK.md)، تمام پاسخ‌های yes/no صفر برای OCR/Auth/Storage/Migration/Secret/Deploy/Docker/Database، Verification = grep بر روی فایل برای حضور هر هفت بخش، Next recommended phase = SH-RA.6A، Ready for handoff = yes.
