@@ -253,7 +253,10 @@ function SaleListDetailPage() {
 
   const canPublish = hasAnyRole(roles, ["admin", "manager", "accountant"]);
 
-  const buildPdfInput = (overrideOrder?: string[]): SaleListPdfInput => {
+  const buildPdfInput = (
+    overrideOrder?: string[],
+    livePrices?: Map<string, number>,
+  ): SaleListPdfInput => {
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
@@ -279,17 +282,35 @@ function SaleListDetailPage() {
         : null,
       selectedColumns: cols,
       brandOrder: overrideOrder ?? brandOrder,
-      items: items.map((it) => ({
-        product_name: it.product?.name ?? "—",
-        brand_name: it.product?.brand?.name ?? null,
-        category_name: it.product?.category?.name ?? null,
-        model: it.product?.model ?? null,
-        current_price: Number(it.current_price),
-        previous_price: it.previous_price !== null ? Number(it.previous_price) : null,
-        change_amount: it.change_amount !== null ? Number(it.change_amount) : null,
-        change_percent: it.change_percent !== null ? Number(it.change_percent) : null,
-        stock_status: it.stock_status,
-      })),
+      items: items.map((it) => {
+        const snapshotCurrent = Number(it.current_price);
+        const live = livePrices?.get(it.product?.id ?? "");
+        // Prefer live price when available; fall back to snapshot.
+        const current =
+          live !== undefined && live > 0
+            ? live
+            : snapshotCurrent;
+        const previous = it.previous_price !== null ? Number(it.previous_price) : null;
+        const change_amount =
+          previous !== null && current > 0 ? current - previous : it.change_amount !== null ? Number(it.change_amount) : null;
+        const change_percent =
+          previous && previous !== 0 && current > 0
+            ? Number((((current - previous) / previous) * 100).toFixed(2))
+            : it.change_percent !== null
+            ? Number(it.change_percent)
+            : null;
+        return {
+          product_name: it.product?.name ?? "—",
+          brand_name: it.product?.brand?.name ?? null,
+          category_name: it.product?.category?.name ?? null,
+          model: it.product?.model ?? null,
+          current_price: current,
+          previous_price: previous,
+          change_amount,
+          change_percent,
+          stock_status: it.stock_status,
+        };
+      }),
       options: {
         fontSize: pdfFontSize,
         rowPaddingY: pdfRowPadY,
@@ -322,7 +343,31 @@ function SaleListDetailPage() {
     setPendingPdfAction(null);
     if (!action) return;
     try {
-      const input = buildPdfInput(brandOrder);
+      // Fetch latest live sale prices for items that may have stale/zero snapshots
+      let livePrices: Map<string, number> | undefined;
+      try {
+        const productIds = items
+          .map((it) => it.product?.id)
+          .filter((x): x is string => !!x);
+        if (productIds.length > 0 && list.sale_price_type_id) {
+          const { data: priceRows } = await supabase
+            .from("product_sale_price_history")
+            .select("product_id, new_sale_price, created_at")
+            .eq("sale_price_type_id", list.sale_price_type_id)
+            .in("product_id", productIds)
+            .order("created_at", { ascending: false });
+          const map = new Map<string, number>();
+          for (const row of priceRows ?? []) {
+            if (!map.has(row.product_id)) {
+              map.set(row.product_id, Number(row.new_sale_price ?? 0) || 0);
+            }
+          }
+          livePrices = map;
+        }
+      } catch (err) {
+        console.warn("fetch live prices for PDF failed; using snapshot", err);
+      }
+      const input = buildPdfInput(brandOrder, livePrices);
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
     } catch (e) {
