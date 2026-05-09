@@ -1,53 +1,77 @@
-## هدف
-رفع ساختاری ریشه مشکل «قیمت فروش صفر در PDF» با دو محافظ در سطح دیتابیس.
 
-## تغییرات
+# رفع دائمی مشکل قیمت صفر در لیست‌های فروش
 
-### ۱. پاکسازی داده‌های تکراری (پیش‌نیاز)
-دو رکورد `sale_price_types` با عنوان یکسان «پیش واریز» وجود دارد:
-- نوع قدیمی `111c2fdf-...` (دارای قیمت‌های واقعی)
-- نوع جدید `4860300a-...` (لیست فعلی به آن متصل است)
+## ریشه ساختاری مشکل (یادآوری)
 
-**اقدام:** انتقال (merge) رکوردهای `product_sale_price_history` از نوع قدیمی به نوع جدید برای محصولاتی که فقط روی قدیمی قیمت دارند، سپس غیرفعال کردن نوع قدیمی (`is_active = false`) — حذف نمی‌کنیم تا تاریخچه حفظ شود.
+سه منبع قیمت در سیستم وجود دارد و sync نیستند:
 
-### ۲. Unique constraint روی عنوان نوع قیمت
-```sql
-CREATE UNIQUE INDEX sale_price_types_title_unique_active
-ON public.sale_price_types (lower(trim(title)))
-WHERE is_active = true;
+1. `product_computed_prices` — کش محاسبه از نرخ ارز (نتیجه pricing engine)
+2. `product_sale_price_history` — قیمت‌های منتشرشده رسمی
+3. `sale_list_items.current_price` — **snapshot ثابت** هنگام ساخت/ذخیره لیست
+
+PDF و صفحه عمومی از `sale_list_items.current_price` می‌خوانند. وقتی قیمت بعد از ساخت لیست تغییر کند یا محصول تازه اضافه شود، snapshot صفر می‌ماند.
+
+---
+
+## آنچه شما باید انجام دهید (تصمیم‌های انسانی)
+
+این موارد نیاز به دانش کسب‌وکار دارند و قابل خودکارسازی نیستند:
+
+1. **سه محصول بدون قیمت پایه** (`AFK-2026-00029` / `00030` / `00020`): قیمت خرید پایه را در محصول تنظیم کنید یا تایید کنید که قیمت محاسبه‌شده فعلی منتشر شود.
+2. **محصول `AFK-2026-00169`**: قیمت خرید پایه `850 تومان` غیرواقعی است (احتمالاً واحد ارز اشتباه ثبت شده). واحد/مقدار صحیح را اصلاح کنید.
+3. تایید کنید که نوع قیمت قدیمی «پیش واریز» (`111c2fdf-…`) دیگر استفاده نشود (در migration قبلی غیرفعال شد، اما اگر جایی به ID آن hard-code شده بازبینی شود).
+
+## آنچه من (Lovable) باید انجام دهم — راه‌حل دائمی
+
+برای اینکه این مشکل **هرگز تکرار نشود**، چهار لایه دفاعی اضافه می‌کنم:
+
+### لایه ۱ — Trigger پایگاه‌داده برای sync خودکار snapshot
+یک trigger روی `AFTER INSERT OR UPDATE` در `product_sale_price_history` که به‌صورت خودکار `sale_list_items.current_price` و `previous_price` و `change_*` را برای **همه لیست‌هایی که این محصول و این `sale_price_type_id` را دارند** به‌روزرسانی می‌کند.
+
+نتیجه: هر بار قیمت جدید منتشر شود، تمام لیست‌های فعال خودکار sync می‌شوند. دیگر snapshot کهنه نخواهیم داشت.
+
+### لایه ۲ — Backfill اولیه
+یک‌بار، با همان منطق trigger، تمام `sale_list_items` فعلی که `current_price = 0` دارند ولی قیمت معتبر در history وجود دارد را از history پر کن. (هشت محصول دسته اول حل می‌شوند.)
+
+### لایه ۳ — هشدار «محصولات بدون قیمت منتشرشده» در ویرایش لیست
+در صفحه `/_app.pricing.sale-lists_.$listId.tsx` یک بخش هشدار اضافه می‌شود که محصولات لیست بدون رکورد در `product_sale_price_history` برای نوع قیمت انتخاب‌شده را نشان می‌دهد، با دکمه «انتشار قیمت محاسبه‌شده» که اگر `product_computed_prices` رکورد دارد، آن را در history منتشر می‌کند (با تایید کاربر). این مشکل دسته دوم (3 محصول با قیمت محاسباتی منتشرنشده) را حل می‌کند.
+
+### لایه ۴ — همسویی نمایش UI با PDF
+جدول داخلی صفحه لیست هم مثل PDF از قیمت زنده history (در صورت وجود) به‌جای snapshot استفاده کند، تا کاربر همان چیزی را ببیند که در PDF و صفحه عمومی منتشر می‌شود. (با وجود لایه ۱ این صرفاً defense-in-depth است.)
+
+---
+
+## ساختار تغییرات
+
+```text
+supabase/migrations/<timestamp>_sync_sale_list_snapshots.sql
+  - function: public.sync_sale_list_items_from_history()  (security definer)
+  - trigger : trg_sync_sale_list_items AFTER INSERT/UPDATE on product_sale_price_history
+  - backfill: UPDATE sale_list_items SET current_price = ... FROM latest history
+  - reversible: DROP TRIGGER / DROP FUNCTION
+
+src/routes/_app.pricing.sale-lists_.$listId.tsx
+  - بخش «محصولات بدون قیمت منتشرشده» با دکمه publish
+  - استفاده از livePrices در جدول داخلی هم (نه فقط PDF)
+
+src/lib/pricing/publish-prices.ts
+  - تابع کمکی publishComputedToHistory(productId, salePriceTypeId) برای دکمه جدید
 ```
-- فقط روی ردیف‌های فعال — تا رکوردهای غیرفعال تاریخی مزاحم نشوند.
-- `lower(trim(...))` تا تفاوت فاصله/حروف هم گرفته شود.
-- **نتیجه:** دیگر امکان ایجاد دو نوع قیمت فعال هم‌نام وجود ندارد.
 
-### ۳. Validation trigger روی قیمت تاریخچه
-```sql
-CREATE TRIGGER trg_validate_sale_price_positive
-BEFORE INSERT OR UPDATE ON public.product_sale_price_history
-FOR EACH ROW EXECUTE FUNCTION public.validate_sale_price_positive();
-```
-تابع: اگر `new_sale_price IS NULL OR new_sale_price <= 0` خطا برگرداند.
-- از CHECK constraint استفاده نمی‌کنیم (طبق قانون پروژه).
-- **نتیجه:** دیگر هیچ کاربری نمی‌تواند قیمت صفر ثبت کند (مثل `AFK-2026-00169`).
+## ریسک‌ها و ملاحظات
 
-### ۴. اصلاح داده موجود
-- رکورد قیمت صفر `AFK-2026-00169` با تأیید: یا حذف یا اصلاح به مقدار واقعی (نیاز به تأیید شما — فعلاً فقط شناسایی می‌شود، تغییر داده اعمال نمی‌شود مگر اعلام مقدار صحیح).
+- Trigger روی هر insert اجرا می‌شود؛ scope با `WHERE sale_price_type_id = NEW.sale_price_type_id` و index مناسب محدود می‌شود تا کند نشود.
+- Backfill فقط رکوردهای `current_price = 0` را تغییر می‌دهد تا snapshotهای آگاهانه دست‌نخورده بماند.
+- نسخه‌های قبلی لیست در `sale_list_versions` (snapshot تاریخی) دست‌نخورده می‌مانند — فقط لیست فعال sync می‌شود.
+- migration کاملاً reversible و idempotent.
+- بدون تغییر RLS، secret، CDN، Docker، یا frontend bundle.
 
-## آنچه شامل این پلن **نیست**
-- ۳ محصول بدون قیمت (`AFK-2026-00029/30/20`) → نیاز به ورود قیمت دستی توسط کاربر، migration نمی‌خواهد.
-- تغییر UI افزودن محصول به لیست (Option 3) — فعلاً انجام نمی‌شود.
-- تغییر منطق PDF (قبلاً در SH-RA.2C اصلاح شد).
+## معیار موفقیت
 
-## فایل‌های تغییریافته
-- یک migration جدید در `supabase/migrations/` شامل: merge داده‌های تکراری + unique index + trigger.
+- بعد از انتشار قیمت جدید، نیازی به ذخیره مجدد لیست نیست؛ PDF و صفحه عمومی فوراً قیمت تازه را نشان می‌دهند.
+- هیچ محصول جدید اضافه‌شده به لیست با قیمت صفر نمی‌ماند مگر اینکه واقعاً قیمتی در history نداشته باشد — و در آن حالت در UI با هشدار قرمز و دکمه publish نمایش داده می‌شود.
 
-## ریسک و rollback
-- migration کاملاً reversible: `DROP INDEX`، `DROP TRIGGER`، `DROP FUNCTION`.
-- قبل از اجرا، کوئری بررسی می‌کند هیچ tile تکراری فعال باقی نماند تا unique index موفق ساخته شود.
-- داده‌های تاریخی `product_sale_price_history` از نوع قدیمی **پاک نمی‌شود** — فقط برای محصولاتی که روی نوع جدید قیمت ندارند، یک رکورد آینه‌ای روی نوع جدید اضافه می‌شود.
+## خارج از scope این پلن
 
-## گزارش پایان (طبق قانون مادر)
-بعد از migration، Self-Host Acceptance Check کامل گزارش می‌شود.
-
-## سؤال قبل از اجرا
-آیا با merge خودکار قیمت‌های نوع قدیمی «پیش واریز» به نوع جدید موافقید، یا ترجیح می‌دهید فقط constraint و trigger اضافه شود و merge را خودتان دستی انجام دهید؟
+- اصلاح دستی قیمت پایه `00169` و سه محصول بدون قیمت (تصمیم کسب‌وکار شماست).
+- حذف فیزیکی نوع قیمت قدیمی غیرفعال (نگه داشته می‌شود برای رفرنس تاریخی).
