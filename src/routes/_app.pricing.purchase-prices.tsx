@@ -51,6 +51,7 @@ import {
 } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 export const Route = createFileRoute("/_app/pricing/purchase-prices")({
   beforeLoad: async () => {
@@ -60,6 +61,36 @@ export const Route = createFileRoute("/_app/pricing/purchase-prices")({
 });
 
 const PAGE_SIZE = 20;
+
+function toIsoDate(date: Date): string {
+  const yyyy = date.getFullYear().toString().padStart(4, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function todayIsoDate(): string {
+  return toIsoDate(new Date());
+}
+
+function addMonthsIsoDate(iso: string, months: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setMonth(d.getMonth() + months);
+  return toIsoDate(d);
+}
+
+function toDateOnly(value: string | null | undefined): string {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+function dateStartIso(iso: string): string {
+  return `${iso}T00:00:00`;
+}
+
+function dateEndIso(iso: string): string {
+  return `${iso}T23:59:59`;
+}
 
 type Filters = {
   productId: string | null;
@@ -538,7 +569,7 @@ const EMPTY_FORM: PurchasePriceFormValues & { selectedProductLabel: string | nul
   currency: "toman",
   reason_id: null,
   private_note: "",
-  effective_at: "",
+  effective_at: todayIsoDate(),
   selectedProductLabel: null,
   is_active: true,
 };
@@ -557,14 +588,15 @@ function PurchasePriceDialog({
   productMap?: Record<string, { name: string; sku: string | null }>;
 }) {
   const [values, setValues] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
-  const [expiresAt, setExpiresAt] = useState<string>("");
+  const [expiresAt, setExpiresAt] = useState<string>(addMonthsIsoDate(todayIsoDate(), 6));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setValues(EMPTY_FORM);
-      setExpiresAt("");
+      const today = todayIsoDate();
+      setValues({ ...EMPTY_FORM, effective_at: today });
+      setExpiresAt(addMonthsIsoDate(today, 6));
       setErrors({});
       return;
     }
@@ -579,11 +611,16 @@ function PurchasePriceDialog({
         currency: editing.currency,
         reason_id: editing.reason_id ?? null,
         private_note: editing.private_note ?? "",
-        effective_at: editing.effective_at ? String(editing.effective_at).slice(0, 16) : "",
+        effective_at: toDateOnly(editing.effective_at) || todayIsoDate(),
         selectedProductLabel: prodLabel,
         is_active: !!editing.is_active,
       });
-      setExpiresAt(editing.expires_at ? String(editing.expires_at).slice(0, 16) : "");
+      setExpiresAt(toDateOnly(editing.expires_at) || addMonthsIsoDate(toDateOnly(editing.effective_at) || todayIsoDate(), 6));
+      setErrors({});
+    } else {
+      const today = todayIsoDate();
+      setValues({ ...EMPTY_FORM, effective_at: today });
+      setExpiresAt(addMonthsIsoDate(today, 6));
       setErrors({});
     }
   }, [open, editing, productMap]);
@@ -647,8 +684,8 @@ function PurchasePriceDialog({
         private_note: parsed.data.private_note || null,
         is_active: values.is_active,
       };
-      if (parsed.data.effective_at) payload.effective_at = parsed.data.effective_at;
-      if (expiresAt) payload.expires_at = expiresAt;
+      if (parsed.data.effective_at) payload.effective_at = dateStartIso(parsed.data.effective_at);
+      if (expiresAt) payload.expires_at = dateEndIso(expiresAt);
 
       if (editing?.id) {
         const { error } = await supabase.from("purchase_prices").update(payload).eq("id", editing.id);
@@ -753,21 +790,22 @@ function PurchasePriceDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>تاریخ مؤثر</Label>
-              <Input
-                type="datetime-local"
-                dir="ltr"
+              <JalaliDateInput
                 value={values.effective_at ?? ""}
-                onChange={(e) => setValues((s) => ({ ...s, effective_at: e.target.value }))}
+                onChange={(iso) => {
+                  setValues((s) => ({ ...s, effective_at: iso }));
+                  if (iso && !editing) setExpiresAt(addMonthsIsoDate(iso, 6));
+                }}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">خالی = الان</p>
             </div>
             <div>
-              <Label>تاریخ انقضا (اختیاری)</Label>
-              <Input
-                type="datetime-local"
-                dir="ltr"
+              <Label>تاریخ انقضا</Label>
+              <JalaliDateInput
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+                onChange={setExpiresAt}
+                min={values.effective_at || undefined}
+                invalid={!!errors.expires_at}
               />
               {errors.expires_at && <p className="mt-1 text-xs text-destructive">{errors.expires_at}</p>}
             </div>
