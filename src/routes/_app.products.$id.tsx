@@ -41,11 +41,15 @@ import {
 
 export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => { await requirePermission("products", "view"); },
+  validateSearch: (search: Record<string, unknown>) => ({
+    edit: search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined,
+  }),
   component: ProductDetailPage,
 });
 
 function ProductDetailPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles, user } = useAuth();
@@ -54,7 +58,7 @@ function ProductDetailPage() {
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState(!!search.edit && canUpdate);
   const [saving, setSaving] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
