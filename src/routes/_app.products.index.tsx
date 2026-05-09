@@ -235,7 +235,7 @@ function ProductsPage() {
                             </Button>
                             {canUpdate && (
                               <Button asChild variant="ghost" size="icon" aria-label="ویرایش">
-                                <Link to="/products/$id/edit" params={{ id: p.id }}><Pencil className="h-4 w-4" /></Link>
+                                <Link to="/products/$id" params={{ id: p.id }} search={{ edit: 1 }}><Pencil className="h-4 w-4" /></Link>
                               </Button>
                             )}
                             {canUpdate && (
@@ -296,7 +296,7 @@ function ProductsPage() {
                           <Tag className="ms-1 h-3.5 w-3.5" />برچسب
                         </Button>
                         <Button asChild variant="outline" size="sm">
-                          <Link to="/products/$id/edit" params={{ id: p.id }}><Pencil className="ms-1 h-3.5 w-3.5" />ویرایش</Link>
+                          <Link to="/products/$id" params={{ id: p.id }} search={{ edit: 1 }}><Pencil className="ms-1 h-3.5 w-3.5" />ویرایش</Link>
                         </Button>
                       </div>
                     )}
