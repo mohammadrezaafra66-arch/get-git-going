@@ -16,6 +16,12 @@ export const STOCK_STATUS_OPTIONS: { value: StockStatus; label: string }[] = [
   { value: "unavailable", label: "ناموجود" },
 ];
 
+function addMonthsIso(date: Date, months: number): string {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString();
+}
+
 export interface WorkbenchRow {
   id: string;
   name: string;
@@ -79,10 +85,11 @@ export async function fetchMyWorkbenchRows(opts: {
   const nowIso = new Date().toISOString();
   const { data: prices, error: prErr } = await supabase
     .from("purchase_prices")
-    .select("id, product_id, supplier_id, purchase_price, currency, effective_at")
+    .select("id, product_id, supplier_id, purchase_price, currency, effective_at, expires_at")
     .in("product_id", productIds)
     .eq("is_active", true)
     .lte("effective_at", nowIso)
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
     .order("effective_at", { ascending: false });
   if (prErr) throw prErr;
 
@@ -158,6 +165,7 @@ export async function upsertPurchasePrice(opts: {
   }
 
   const nowIso = new Date().toISOString();
+  const expiresIso = addMonthsIso(new Date(), 6);
 
   // expire previous active row
   if (previousPriceId) {
@@ -174,6 +182,7 @@ export async function upsertPurchasePrice(opts: {
     purchase_price: newPrice,
     currency,
     effective_at: nowIso,
+    expires_at: expiresIso,
     is_active: true,
     registered_by: actorId,
   });
