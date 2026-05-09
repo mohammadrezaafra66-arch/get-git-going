@@ -571,3 +571,109 @@ function AccessRowCard({
     </div>
   );
 }
+
+interface LabelRow { id: string; title: string; color: string | null }
+
+function LabelAccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const open = !!botKey;
+
+  const labelsQuery = useQuery({
+    enabled: open,
+    queryKey: ["product-labels-min"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_labels")
+        .select("id, title, color")
+        .eq("is_active", true)
+        .order("title", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as LabelRow[];
+    },
+  });
+
+  const allowedQuery = useQuery({
+    enabled: open && !!botKey,
+    queryKey: ["bot-api-key-label-access", botKey?.id],
+    staleTime: 5_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bot_api_key_label_access")
+        .select("label_id")
+        .eq("api_key_id", botKey!.id);
+      if (error) throw error;
+      return new Set((data ?? []).map((r: any) => r.label_id as string));
+    },
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: async (vars: { labelId: string; allow: boolean }) => {
+      if (vars.allow) {
+        const { error } = await supabase
+          .from("bot_api_key_label_access")
+          .insert({ api_key_id: botKey!.id, label_id: vars.labelId });
+        if (error && !/duplicate/i.test(error.message)) throw error;
+      } else {
+        const { error } = await supabase
+          .from("bot_api_key_label_access")
+          .delete()
+          .eq("api_key_id", botKey!.id)
+          .eq("label_id", vars.labelId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bot-api-key-label-access", botKey?.id] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "خطا در ذخیره"),
+  });
+
+  const labels = labelsQuery.data ?? [];
+  const allowed = allowedQuery.data ?? new Set<string>();
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>دسترسی برچسب محصولات — {botKey?.name}</DialogTitle>
+          <DialogDescription>
+            ربات فقط می‌تواند محصولاتی را بخواند که حداقل یکی از این برچسب‌ها روی آن‌ها باشد.
+            اگر هیچ برچسبی انتخاب نشود، endpoint محصولات برای این کلید مسدود است.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          {labelsQuery.isLoading || allowedQuery.isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : labels.length === 0 ? (
+            <p className="text-sm text-muted-foreground">برچسب فعالی تعریف نشده است.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {labels.map((l) => {
+                const checked = allowed.has(l.id);
+                return (
+                  <label key={l.id} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm cursor-pointer hover:bg-muted/40">
+                    <Checkbox
+                      checked={checked}
+                      disabled={toggleMut.isPending}
+                      onCheckedChange={(v) => toggleMut.mutate({ labelId: l.id, allow: !!v })}
+                    />
+                    {l.color && (
+                      <span className="inline-block h-3 w-3 rounded-full border" style={{ background: l.color }} />
+                    )}
+                    <span>{l.title}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>بستن</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
