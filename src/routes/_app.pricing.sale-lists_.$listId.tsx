@@ -596,6 +596,136 @@ function SaleListDetailPage() {
   );
 }
 
+/* ---------- Zero-price warning ---------- */
+function ZeroPriceWarning({
+  items,
+  salePriceTypeId,
+  canPublish,
+  onPublished,
+}: {
+  items: SaleListItemRow[];
+  salePriceTypeId: string;
+  canPublish: boolean;
+  onPublished: () => void;
+}) {
+  const zeroItems = useMemo(
+    () => items.filter((it) => !it.current_price || Number(it.current_price) <= 0),
+    [items],
+  );
+  const productIds = useMemo(
+    () => zeroItems.map((it) => it.product?.id).filter((x): x is string => !!x),
+    [zeroItems],
+  );
+
+  const auditQ = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["zero-price-audit", salePriceTypeId, productIds.join(",")],
+    queryFn: async () => {
+      const [historyRes, computedRes] = await Promise.all([
+        supabase
+          .from("product_sale_price_history")
+          .select("product_id, new_sale_price, created_at")
+          .eq("sale_price_type_id", salePriceTypeId)
+          .in("product_id", productIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("product_computed_prices")
+          .select("product_id, rounded_sale_price")
+          .eq("sale_price_type_id", salePriceTypeId)
+          .in("product_id", productIds),
+      ]);
+      const latestHistory = new Map<string, number>();
+      for (const r of historyRes.data ?? []) {
+        if (!latestHistory.has(r.product_id)) {
+          latestHistory.set(r.product_id, Number(r.new_sale_price ?? 0) || 0);
+        }
+      }
+      const computed = new Map<string, number>();
+      for (const r of computedRes.data ?? []) {
+        computed.set(r.product_id, Number(r.rounded_sale_price ?? 0) || 0);
+      }
+      return { latestHistory, computed };
+    },
+  });
+
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+
+  if (zeroItems.length === 0) return null;
+
+  const handlePublish = async (productId: string) => {
+    setPublishingId(productId);
+    try {
+      const r = await publishProductPrices({ productId, source: "sale_list_zero_fix" });
+      if (r.succeeded > 0) {
+        toast.success("قیمت محاسبه و منتشر شد. لیست به‌صورت خودکار به‌روزرسانی می‌شود.");
+        onPublished();
+      } else {
+        const firstErr = r.results.find((x) => !x.ok)?.error ?? "خطای ناشناخته";
+        toast.error(`انتشار ناموفق بود: ${firstErr}`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در انتشار قیمت");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  return (
+    <Card className="mb-3 border-amber-300 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/30">
+      <CardContent className="space-y-2 p-3 text-sm">
+        <div className="flex items-center gap-2 font-semibold text-amber-900 dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4" />
+          {formatNumber(zeroItems.length)} محصول بدون قیمت معتبر در این لیست
+        </div>
+        <div className="text-xs text-amber-800/80 dark:text-amber-200/80">
+          این محصولات در PDF و صفحه عمومی با قیمت صفر نمایش داده می‌شوند. در صورتی که قیمت محاسبه‌شده موجود است، با دکمه «انتشار» آن را در تاریخچه قیمت ثبت کنید تا لیست خودکار به‌روزرسانی شود.
+        </div>
+        <ul className="divide-y divide-amber-200/60 dark:divide-amber-800/40">
+          {zeroItems.map((it) => {
+            const pid = it.product?.id ?? "";
+            const computed = auditQ.data?.computed.get(pid) ?? 0;
+            const hasComputed = computed > 0;
+            return (
+              <li key={it.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <div className="font-medium">{it.product?.name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {it.product?.sku ?? "—"}
+                    {hasComputed && (
+                      <span className="mr-2">• قیمت محاسبه‌شده: {formatCurrency(computed, "تومان")}</span>
+                    )}
+                    {!hasComputed && auditQ.isFetched && (
+                      <span className="mr-2 text-rose-600 dark:text-rose-400">
+                        • قیمت پایه/قانون قیمت‌گذاری ثبت نشده
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {canPublish && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    disabled={publishingId === pid}
+                    onClick={() => handlePublish(pid)}
+                  >
+                    {publishingId === pid ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                    انتشار قیمت
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ---------- Tab 1: Items ---------- */
 function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boolean }) {
   const [page, setPage] = useState(1);
