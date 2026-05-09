@@ -1,44 +1,64 @@
 # 04 — Repo Standards
 
-- Purpose: قوانین ثابت برای commit/PR/فایل تا کار چند نفره منظم بماند.
+- Purpose: ساختار repo، قواعد فایل، secrets و compose.
 - Audience: Dev.
 - Last updated: 2026-05-09
 - Related: `06_PHASE_PROTOCOL.md`
 
-## Branch
+## ساختار پوشه‌ها (تاییدشده)
 
-- `main` — پایدار، deployable.
-- `phase/sh-<id>` — هر فاز یک branch (مثال: `phase/sh-ra-2a`).
-
-## Commit
-
-قالب:
 ```
-[SH-<phase-id>] <action>: <subject>
+deploy/app/        deploy/proxy/      deploy/supabase/
+deploy/migration/  deploy/backups/
+docs/              docs/self-host-governance/
+supabase/migrations/
+server/            src/               public/fonts/
 ```
-مثال: `[SH-DOC.1] docs: add governance pack`
 
-## PR
+## Branch / Commit / PR
 
-- عنوان = ID فاز + خلاصه.
-- توضیح = Phase Completion Report (طبق `06_PHASE_PROTOCOL.md`).
-- لینک به REQ-SHهای متأثر.
+- Branch: `main` (پایدار) و `phase/sh-<id>` (هر فاز).
+- Commit: `[SH-<phase-id>] <action>: <subject>` — مثال `[SH-DOC.1] docs: add governance pack`.
+- PR title = ID فاز + خلاصه. توضیح PR = Phase Completion Report.
 
-## فایل‌ها
+## چه چیزی در Git **مجاز** است
 
-| نوع | محل | نکته |
-|---|---|---|
-| Migration | `supabase/migrations/` | timestamp جدید، reversible، idempotent |
-| Server fn | `src/lib/*.functions.ts` یا کنار route | هرگز در `src/server/` که client از آن import کند |
-| اسناد حاکمیت | `docs/self-host-governance/` | فقط در فاز SH-DOC.* |
-| Compose production | `deploy/app/docker-compose.prod.yml` | pull-only |
-| Secrets | فقط .env سرور (chmod 600) | هرگز در repo |
+source code، Dockerfile، compose templates، `.env.example`، migration scripts، backup scripts، docs، assetهای محلی، فونت‌های محلی.
 
-## ممنوعیت‌های ثابت
+## چه چیزی در Git **ممنوع** است
 
-- commit کردن `.env`, dump, certificate, key.
-- prefix `VITE_` روی secret سرور.
-- ذخیرهٔ role در `profiles` یا `users`.
-- استفاده از CDN خارجی برای font/JS/CSS.
-- تغییر `src/integrations/supabase/{client,types}.ts` و `supabase/config.toml` (project-level).
-- ادغام PR بدون Phase Completion Report.
+`.env` واقعی، service role key، JWT secret، DB password، SMTP password، گواهی‌ها، private keys، dump، backup، storage export، runtime volume، دادهٔ تولیدی، فایل `.bak` legacy.
+
+## قوانین Secret
+
+- **Client-safe:** فقط `VITE_*` که آگاهانه public است (anon/publishable key).
+- **Server-only:** `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `POSTGRES_PASSWORD`, `SMTP_PASS`, `DASHBOARD_PASSWORD`, `LOVABLE_API_KEY`, OCR/AI keys, private keys.
+- هیچ secret سرور هرگز prefix `VITE_` نمی‌گیرد.
+
+## فایل‌های ممنوع برای دست زدن مستقیم
+
+- `src/integrations/supabase/{client,types}.ts`
+- `supabase/config.toml` (تنظیمات project-level)
+- `.env`, `.env.local`, `.env.production`
+
+## Legacy / Dead files
+
+- اگر legacy و بدون رفرنس → حذف.
+- `.bak` در repo نگه داشته نشود؛ تاریخچهٔ Git خودش backup است.
+
+## Compose policy
+
+- compose **build محلی** از compose **pull-only production** جداست.
+- production compose: فقط `image:` از GHCR، بدون `build:`.
+- root `docker-compose.yml` نباید مسیر production را مبهم کند → موضوع SH-RA.2A.
+
+## Footer گزارش هر تحویل
+
+- فایل‌های تغییرکرده / دست‌نخورده
+- وضعیت secrets (safe/leaked)
+- وابستگی خارجی اضافه شد؟
+- feature flag لازم شد؟
+- سازگاری Docker/Linux متاثر؟
+- Supabase/RLS/RBAC متاثر؟
+- backup/restore متاثر؟
+- آماده فاز بعدی؟
