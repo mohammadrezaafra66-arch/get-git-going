@@ -790,21 +790,22 @@ function PurchasePriceDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>تاریخ مؤثر</Label>
-              <Input
-                type="datetime-local"
-                dir="ltr"
+              <JalaliDateInput
                 value={values.effective_at ?? ""}
-                onChange={(e) => setValues((s) => ({ ...s, effective_at: e.target.value }))}
+                onChange={(iso) => {
+                  setValues((s) => ({ ...s, effective_at: iso }));
+                  if (iso && !editing) setExpiresAt(addMonthsIsoDate(iso, 6));
+                }}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">خالی = الان</p>
             </div>
             <div>
-              <Label>تاریخ انقضا (اختیاری)</Label>
-              <Input
-                type="datetime-local"
-                dir="ltr"
+              <Label>تاریخ انقضا</Label>
+              <JalaliDateInput
                 value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+                onChange={setExpiresAt}
+                min={values.effective_at || undefined}
+                invalid={!!errors.expires_at}
               />
               {errors.expires_at && <p className="mt-1 text-xs text-destructive">{errors.expires_at}</p>}
             </div>
