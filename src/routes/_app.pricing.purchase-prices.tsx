@@ -51,6 +51,7 @@ import {
 } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 export const Route = createFileRoute("/_app/pricing/purchase-prices")({
   beforeLoad: async () => {
@@ -60,6 +61,36 @@ export const Route = createFileRoute("/_app/pricing/purchase-prices")({
 });
 
 const PAGE_SIZE = 20;
+
+function toIsoDate(date: Date): string {
+  const yyyy = date.getFullYear().toString().padStart(4, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function todayIsoDate(): string {
+  return toIsoDate(new Date());
+}
+
+function addMonthsIsoDate(iso: string, months: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setMonth(d.getMonth() + months);
+  return toIsoDate(d);
+}
+
+function toDateOnly(value: string | null | undefined): string {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+function dateStartIso(iso: string): string {
+  return `${iso}T00:00:00`;
+}
+
+function dateEndIso(iso: string): string {
+  return `${iso}T23:59:59`;
+}
 
 type Filters = {
   productId: string | null;
