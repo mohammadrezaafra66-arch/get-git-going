@@ -1,7 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Loader2, CheckCircle2, AlertCircle, ListChecks, HelpCircle } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ListChecks,
+  HelpCircle,
+  Activity,
+  Clock,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -14,6 +24,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { publishAllProductsPrices, type PublishProductResult } from "@/lib/pricing/publish-prices";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 
 export const Route = createFileRoute("/_app/pricing/recompute-prices")({
   beforeLoad: async () => { await requirePermission("pricing", "update"); },
@@ -39,6 +50,32 @@ function RecomputePricesPage() {
       return { all: a.count ?? 0, eligible: e.count ?? 0 };
     },
   });
+
+  // وضعیت سلامت صف بازمحاسبه قیمت — فقط برای نقش‌هایی که RLS اجازهٔ خواندن
+  // pricing_recompute_queue را به آن‌ها داده (admin/manager/accountant).
+  const queueHealthQuery = useQuery({
+    queryKey: ["pricing-recompute-queue-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_pricing_recompute_queue_summary")
+        .select("pending_count, processing_count, failed_count, done_count, oldest_pending_at, latest_error")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+    staleTime: 10_000,
+  });
+
+  // وقتی worker قیمت‌ها را به‌روز کرد، summary صف هم تازه شود.
+  useComputedPricesRealtime({
+    channelName: "recompute-prices-page-realtime",
+    invalidateKeys: [["pricing-recompute-queue-summary"]],
+  });
+
+  const queueHealth = queueHealthQuery.data;
+  const queueLastFetchedAt = queueHealthQuery.dataUpdatedAt;
 
   async function handleRun() {
     setRunning(true);
@@ -72,6 +109,72 @@ function RecomputePricesPage() {
         title="انتشار قیمت فروش (دسته‌ای)"
         description="برای همهٔ محصولات واجد شرایط، قیمت فروش با همهٔ نوع‌قیمت‌های فعال محاسبه و در سیستم ذخیره می‌شود تا در /sales/search و سایر صفحات دیده شود."
       />
+
+      {queueHealth && (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="flex items-center gap-1 font-medium">
+                <Activity className="h-4 w-4 text-primary" />
+                وضعیت صف بازمحاسبه قیمت
+              </div>
+              <div className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                آخرین بررسی: {queueLastFetchedAt ? new Date(queueLastFetchedAt).toLocaleTimeString("fa-IR") : "—"}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  onClick={() => queueHealthQuery.refetch()}
+                  disabled={queueHealthQuery.isFetching}
+                  aria-label="بروزرسانی وضعیت صف"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${queueHealthQuery.isFetching ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-md border bg-muted/40 p-2">
+                <div className="text-xs text-muted-foreground">در انتظار</div>
+                <div className="text-lg font-semibold">{formatNumber(Number(queueHealth.pending_count ?? 0))}</div>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-2">
+                <div className="text-xs text-muted-foreground">در حال پردازش</div>
+                <div className="text-lg font-semibold">{formatNumber(Number(queueHealth.processing_count ?? 0))}</div>
+              </div>
+              <div className={`rounded-md border p-2 ${Number(queueHealth.failed_count ?? 0) > 0 ? "border-destructive/40 bg-destructive/10" : "bg-muted/40"}`}>
+                <div className="text-xs text-muted-foreground">ناموفق</div>
+                <div className={`text-lg font-semibold ${Number(queueHealth.failed_count ?? 0) > 0 ? "text-destructive" : ""}`}>
+                  {formatNumber(Number(queueHealth.failed_count ?? 0))}
+                </div>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-2">
+                <div className="text-xs text-muted-foreground">انجام‌شده</div>
+                <div className="text-lg font-semibold text-emerald-600">{formatNumber(Number(queueHealth.done_count ?? 0))}</div>
+              </div>
+            </div>
+            <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <div>
+                قدیمی‌ترین در انتظار:{" "}
+                <span className="text-foreground">
+                  {queueHealth.oldest_pending_at
+                    ? new Date(queueHealth.oldest_pending_at as string).toLocaleString("fa-IR")
+                    : "—"}
+                </span>
+              </div>
+              {queueHealth.latest_error ? (
+                <div className="flex items-start gap-1 text-destructive">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="line-clamp-2">{queueHealth.latest_error as string}</span>
+                </div>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              قیمت‌ها پس از پردازش worker به‌صورت خودکار در صفحات مربوطه به‌روزرسانی می‌شوند. این کارت برای پایش سلامت صف است و دکمه‌های دستی محاسبه را جایگزین نمی‌کند.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="space-y-4 p-4">

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useComputedPricesRealtime } from "./useComputedPricesRealtime";
 
 export interface BoardProductRow {
   id: string;
@@ -196,6 +197,18 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     return result;
   }, [productsQuery.data, computedQuery.data, historyQuery.data, opts.changedTodayOnly]);
 
+  // Realtime: وقتی worker قیمت‌های محاسبه‌شده را به‌روزرسانی می‌کند،
+  // queryهای board بدون نیاز به refresh دستی تازه می‌شوند.
+  // polling موجود (opts.refetchInterval) به‌عنوان fallback باقی می‌ماند.
+  const { isLive: isRealtimeLive } = useComputedPricesRealtime({
+    enabled,
+    channelName: "amin-board-computed-prices",
+    invalidateKeys: [
+      ["amin-board-computed"],
+      ["amin-board-history"],
+    ],
+  });
+
   const isLoading = productsQuery.isLoading || (productIds.length > 0 && (computedQuery.isLoading || historyQuery.isLoading));
   const isFetching = productsQuery.isFetching || computedQuery.isFetching || historyQuery.isFetching;
 
@@ -212,6 +225,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     isFetching,
     error: productsQuery.error || computedQuery.error || historyQuery.error,
     lastFetchedAt,
+    isRealtimeLive,
     refetch: () => {
       productsQuery.refetch();
       computedQuery.refetch();
