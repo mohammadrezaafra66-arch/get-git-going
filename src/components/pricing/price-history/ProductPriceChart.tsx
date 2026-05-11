@@ -7,6 +7,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ReferenceLine,
 } from "recharts";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import type { PriceHistoryPoint } from "@/lib/pricing/price-history";
@@ -41,17 +42,21 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
       .sort((a, b) => a.ts - b.ts);
   }, [data, mode, usdRate]);
 
-  const { yMin, yMax, yTicks } = useMemo(() => {
-    if (chartData.length === 0) return { yMin: 0, yMax: 0, yTicks: [] as number[] };
+  const { yMin, yMax, yTicks, stats } = useMemo(() => {
+    if (chartData.length === 0)
+      return { yMin: 0, yMax: 0, yTicks: [] as number[], stats: null as null | { min: number; max: number; avg: number; current: number } };
     const values = chartData.map((p) => p.value as number);
     const min = Math.min(...values);
     const max = Math.max(...values);
+    const avg = values.reduce((s, v) => s + v, 0) / values.length;
+    const current = values[values.length - 1];
+    const stats = { min, max, avg, current };
     if (min === max) {
       const pad = Math.max(1, Math.abs(min) * 0.05);
       const lo = min - pad;
       const hi = max + pad;
       const step = (hi - lo) / 4;
-      return { yMin: lo, yMax: hi, yTicks: [0, 1, 2, 3, 4].map((i) => lo + step * i) };
+      return { yMin: lo, yMax: hi, yTicks: [0, 1, 2, 3, 4].map((i) => lo + step * i), stats };
     }
     const range = max - min;
     const pad = range * 0.1;
@@ -59,7 +64,7 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
     const hi = max + pad;
     const step = (hi - lo) / 5;
     const ticks = [0, 1, 2, 3, 4, 5].map((i) => lo + step * i);
-    return { yMin: lo, yMax: hi, yTicks: ticks };
+    return { yMin: lo, yMax: hi, yTicks: ticks, stats };
   }, [chartData]);
 
   if (chartData.length === 0) {
@@ -110,6 +115,46 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
             labelFormatter={(v) => formatDateTimeFa(new Date(Number(v)))}
             formatter={(v: number) => [`${formatNumber(v)} ${unit}`, isUsd ? "قیمت دلاری" : "قیمت تومانی"]}
           />
+          {stats && stats.min !== stats.max && (
+            <>
+              <ReferenceLine
+                y={stats.max}
+                stroke="hsl(var(--destructive))"
+                strokeDasharray="4 4"
+                strokeOpacity={0.7}
+                label={{
+                  value: `بیشترین: ${fmtY(stats.max)}`,
+                  position: "insideTopRight",
+                  fill: "hsl(var(--destructive))",
+                  fontSize: 10,
+                }}
+              />
+              <ReferenceLine
+                y={stats.avg}
+                stroke="hsl(var(--muted-foreground))"
+                strokeDasharray="2 4"
+                strokeOpacity={0.6}
+                label={{
+                  value: `میانگین: ${fmtY(stats.avg)}`,
+                  position: "insideRight",
+                  fill: "hsl(var(--muted-foreground))",
+                  fontSize: 10,
+                }}
+              />
+              <ReferenceLine
+                y={stats.min}
+                stroke="hsl(142 70% 40%)"
+                strokeDasharray="4 4"
+                strokeOpacity={0.7}
+                label={{
+                  value: `کمترین: ${fmtY(stats.min)}`,
+                  position: "insideBottomRight",
+                  fill: "hsl(142 70% 40%)",
+                  fontSize: 10,
+                }}
+              />
+            </>
+          )}
           <Line
             type="monotone"
             dataKey="value"
