@@ -51,6 +51,25 @@
 
 Rollback: `SELECT cron.unschedule('mr-auto-ingest-market-rates');`
 
+## MR-AUTO.2 — Navasan twice-daily schedule (Sat–Wed 12:00 & 13:00 Asia/Tehran)
+
+For deployments that only need a light Navasan refresh twice per business day
+(Saturday through Wednesday at 12:00 and 13:00 Iran time), apply
+`deploy/migration/scripts/mr-auto-2-schedule-navasan-twice-daily.sql`
+instead of the every-15-minute job above. The script also unschedules the
+legacy `mr-auto-ingest-market-rates` job so the two cannot double-fire.
+
+- Cron expression (UTC, what pg_cron sees): `30 8,9 * * 6,0-3`
+  (08:30 UTC = 12:00 Tehran, 09:30 UTC = 13:00 Tehran; UTC+3:30, no DST.)
+- Timezone-aware equivalent (for schedulers that support TZ): `0 12,13 * * 6,0-3` with `Asia/Tehran`.
+- Days: 6=Sat, 0=Sun, 1=Mon, 2=Tue, 3=Wed. Thursday and Friday are excluded.
+- Required server-only env on the app: `MARKET_RATES_AUTO_INGEST_ENABLED=true`,
+  `MARKET_RATES_EXTERNAL_ENABLED=true`, `NAVASAN_ENABLED=true`,
+  `NAVASAN_API_KEY=...`, `EXTERNAL_API_TIMEOUT_MS=15000`. Keep `TGJU_ENABLED=false`
+  (and leave `TGJU_PUBLIC_ENABLED` unset) to ensure TGJU is not called.
+- Manual rate entry is unaffected and remains the source of truth on any failure.
+- Rollback: `SELECT cron.unschedule('mr-auto-navasan-twice-daily');`
+
 ## Lovable preview / published
 
 Status: **blocked / manual setup required.**
