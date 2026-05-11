@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
+type SbClient = typeof supabase;
+
 export async function fetchSettlementTypes(activeOnly = false) {
   let q = supabase
     .from("settlement_types")
@@ -66,8 +68,8 @@ export async function searchProducts(term: string, limit = 15) {
   return data ?? [];
 }
 
-export async function fetchProductLite(id: string) {
-  const { data, error } = await supabase
+export async function fetchProductLite(id: string, db: SbClient = supabase) {
+  const { data, error } = await db
     .from("products")
     .select("id, name, sku, product_type, base_currency, brand_id, category_id")
     .eq("id", id)
@@ -77,9 +79,9 @@ export async function fetchProductLite(id: string) {
 }
 
 /** آخرین قیمت خرید معتبر یک محصول. */
-export async function fetchLatestPurchasePrice(productId: string) {
+export async function fetchLatestPurchasePrice(productId: string, db: SbClient = supabase) {
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("purchase_prices")
     .select("id, product_id, supplier_id, purchase_price, currency, effective_at, expires_at, is_active")
     .eq("product_id", productId)
@@ -94,9 +96,9 @@ export async function fetchLatestPurchasePrice(productId: string) {
 }
 
 /** آخرین نرخ ارز فعال. */
-export async function fetchLatestCurrencyRate(currency: string) {
+export async function fetchLatestCurrencyRate(currency: string, db: SbClient = supabase) {
   const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("currency_rates")
     .select("id, currency, rate_to_toman, effective_at, is_active")
     .eq("currency", currency)

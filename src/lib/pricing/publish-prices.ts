@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { calculateSalePrice, PricingError } from "./engine";
 import { fetchLatestPurchasePrice } from "./queries";
 
+type SbClient = typeof supabase;
+
 export interface PublishOnePriceResult {
   sale_price_type_id: string;
   sale_price_type_title: string;
@@ -31,11 +33,13 @@ export interface PublishProductResult {
 export async function publishProductPrices(opts: {
   productId: string;
   source?: string;
-}): Promise<PublishProductResult> {
+  /** Optional override for SECURITY DEFINER / service-role server runs */
+  actingUserId?: string | null;
+}, db: SbClient = supabase): Promise<PublishProductResult> {
   const { productId, source = "manual_publish" } = opts;
   if (!productId) throw new Error("شناسه محصول الزامی است.");
 
-  const { data: product, error: pErr } = await supabase
+  const { data: product, error: pErr } = await db
     .from("products")
     .select("id, name, sku")
     .eq("id", productId)
@@ -43,7 +47,7 @@ export async function publishProductPrices(opts: {
   if (pErr) throw pErr;
   if (!product) throw new Error("محصول یافت نشد.");
 
-  const { data: spts, error: sptErr } = await supabase
+  const { data: spts, error: sptErr } = await db
     .from("sale_price_types")
     .select("id, title")
     .eq("is_active", true)
@@ -51,11 +55,18 @@ export async function publishProductPrices(opts: {
   if (sptErr) throw sptErr;
 
   const list = spts ?? [];
-  const { data: userData } = await supabase.auth.getUser();
-  const uid = userData.user?.id ?? null;
+  let uid: string | null = opts.actingUserId ?? null;
+  if (uid === null) {
+    try {
+      const { data: userData } = await db.auth.getUser();
+      uid = userData.user?.id ?? null;
+    } catch {
+      uid = null;
+    }
+  }
 
   const results: PublishOnePriceResult[] = [];
-  const purchase = await fetchLatestPurchasePrice(productId);
+  const purchase = await fetchLatestPurchasePrice(productId, db);
   if (!purchase) {
     return {
       product_id: product.id,
@@ -85,12 +96,13 @@ export async function publishProductPrices(opts: {
         product_id: productId,
         sale_price_type_id: spt.id,
         force_snapshot: true,
-      });
+        acting_user_id: uid,
+      }, db);
 
       const b = res.breakdown;
 
       // upsert در product_computed_prices تا /sales/search ببیند
-      const { error: upErr } = await supabase
+      const { error: upErr } = await db
         .from("product_computed_prices")
         .upsert(
           {

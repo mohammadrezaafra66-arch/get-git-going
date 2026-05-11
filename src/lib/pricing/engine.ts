@@ -6,12 +6,16 @@ import {
 } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
 
+type SbClient = typeof supabase;
+
 export interface PricingEngineInput {
   product_id: string;
   sale_price_type_id: string;
   settlement_type_id?: string | null;
   purchase_price_id?: string | null;
   force_snapshot?: boolean;
+  /** Optional override created_by for snapshot/history when running server-side without auth.uid() */
+  acting_user_id?: string | null;
 }
 
 export interface PricingBreakdown {
@@ -66,19 +70,22 @@ const fmt = (n: number) => n.toLocaleString("en-US");
  *   final_sale_price     = purchase_price_toman + shipping_cost + margin_amount
  *   rounded_sale_price   = roundSalePrice(final_sale_price)
  */
-export async function calculateSalePrice(input: PricingEngineInput): Promise<PricingEngineResult> {
+export async function calculateSalePrice(
+  input: PricingEngineInput,
+  db: SbClient = supabase,
+): Promise<PricingEngineResult> {
   if (!input.product_id) throw new PricingError("PRODUCT_REQUIRED", "محصول الزامی است.");
   if (!input.sale_price_type_id) throw new PricingError("SALE_PRICE_TYPE_REQUIRED", "نوع قیمت فروش الزامی است.");
 
   // 1) محصول
-  const product = await fetchProductLite(input.product_id);
+  const product = await fetchProductLite(input.product_id, db);
   if (!product) throw new PricingError("PRODUCT_NOT_FOUND", "محصول مورد نظر یافت نشد.");
 
   // 2) قیمت خرید
   type Purchase = { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode };
   let purchase: Purchase | null = null;
   if (input.purchase_price_id) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("purchase_prices")
       .select("id, product_id, supplier_id, purchase_price, currency, is_active, effective_at, expires_at")
       .eq("id", input.purchase_price_id)
@@ -93,7 +100,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
       currency: data.currency as CurrencyCode,
     };
   } else {
-    const latest = await fetchLatestPurchasePrice(input.product_id);
+    const latest = await fetchLatestPurchasePrice(input.product_id, db);
     if (latest) {
       purchase = {
         id: latest.id,
@@ -111,7 +118,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   // 3) نرخ ارز
   let currency_rate = 1;
   if (purchase.currency !== "toman") {
-    const rate = await fetchLatestCurrencyRate(purchase.currency);
+    const rate = await fetchLatestCurrencyRate(purchase.currency, db);
     if (!rate) throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
     currency_rate = Number(rate.rate_to_toman);
   }
@@ -119,7 +126,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   const purchase_price_toman = Math.round(input_purchase_price * currency_rate);
 
   // 4) قانون قیمت‌گذاری
-  const { data: rules, error: rulesErr } = await supabase
+  const { data: rules, error: rulesErr } = await db
     .from("pricing_rules")
     .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active")
     .eq("is_active", true)
@@ -152,7 +159,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   // (اولویت تطبیق: محصول > دسته > برند > نوع کالا)
   let shipping_cost = 0;
   let shipping_rule_used: { id: string; title: string } | null = null;
-  const { data: shippingRows, error: shippingErr } = await supabase
+  const { data: shippingRows, error: shippingErr } = await db
     .from("shipping_cost_rules")
     .select("id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
     .eq("is_active", true)
@@ -182,7 +189,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
     } else if (sRule.cost_type === "currency") {
       const code = (sRule.cost_currency ?? "").toString().toLowerCase();
       if (!code) throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
-      const { data: rateRows, error: rateErr } = await supabase
+      const { data: rateRows, error: rateErr } = await db
         .from("currency_rates")
         .select("rate_to_toman")
         .eq("currency", code)
@@ -264,10 +271,17 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
   let old_sale_price: number | null = null;
 
   if (input.force_snapshot) {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id ?? null;
+    let uid: string | null = input.acting_user_id ?? null;
+    if (uid === null) {
+      try {
+        const { data: userData } = await db.auth.getUser();
+        uid = userData.user?.id ?? null;
+      } catch {
+        uid = null;
+      }
+    }
 
-    const { data: snap, error: snapErr } = await supabase
+    const { data: snap, error: snapErr } = await db
       .from("price_calculation_snapshots")
       .insert({
         product_id: product.id,
@@ -292,7 +306,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
     snapshot_id = snap.id;
 
     // آخرین قیمت فروش ثبت‌شده برای همان محصول و همان sale_price_type
-    const { data: lastHist, error: lastErr } = await supabase
+    const { data: lastHist, error: lastErr } = await db
       .from("product_sale_price_history")
       .select("id, new_sale_price")
       .eq("product_id", product.id)
@@ -310,7 +324,7 @@ export async function calculateSalePrice(input: PricingEngineInput): Promise<Pri
         old_sale_price === null || old_sale_price === 0
           ? null
           : Math.round(((rounded_sale_price - old_sale_price) / old_sale_price) * 10000) / 100;
-      const { data: hist, error: histErr } = await supabase
+      const { data: hist, error: histErr } = await db
         .from("product_sale_price_history")
         .insert({
           product_id: product.id,
