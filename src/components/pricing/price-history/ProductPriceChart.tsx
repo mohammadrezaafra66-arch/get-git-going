@@ -44,13 +44,38 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
 
   const { yMin, yMax, yTicks, stats } = useMemo(() => {
     if (chartData.length === 0)
-      return { yMin: 0, yMax: 0, yTicks: [] as number[], stats: null as null | { min: number; max: number; avg: number; current: number } };
+      return {
+        yMin: 0,
+        yMax: 0,
+        yTicks: [] as number[],
+        stats: null as null | {
+          min: number;
+          max: number;
+          avg: number;
+          current: number;
+          minDate: string;
+          maxDate: string;
+          rangeStart: string;
+          rangeEnd: string;
+        },
+      };
     const values = chartData.map((p) => p.value as number);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const avg = values.reduce((s, v) => s + v, 0) / values.length;
     const current = values[values.length - 1];
-    const stats = { min, max, avg, current };
+    const minPoint = chartData.find((p) => p.value === min)!;
+    const maxPoint = chartData.find((p) => p.value === max)!;
+    const stats = {
+      min,
+      max,
+      avg,
+      current,
+      minDate: minPoint.date,
+      maxDate: maxPoint.date,
+      rangeStart: chartData[0].date,
+      rangeEnd: chartData[chartData.length - 1].date,
+    };
     if (min === max) {
       const pad = Math.max(1, Math.abs(min) * 0.05);
       const lo = min - pad;
@@ -80,6 +105,38 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
   const fmtY = (v: number) => {
     if (isUsd) return toFaDigits(v.toFixed(2));
     return toFaDigits(Math.round(v).toLocaleString("en-US"));
+  };
+
+  /**
+   * Custom label for ReferenceLine with native SVG <title> tooltip.
+   * Hovering روی برچسب، اطلاعات دقیق (تاریخ یا محدوده + مقدار) را نشان می‌دهد.
+   */
+  const RefLabel = (props: {
+    viewBox?: { x: number; y: number; width: number; height: number };
+    text: string;
+    tooltip: string;
+    fill: string;
+    align?: "top" | "bottom" | "middle";
+  }) => {
+    const { viewBox, text, tooltip, fill, align = "middle" } = props;
+    if (!viewBox) return null;
+    const x = viewBox.x + viewBox.width - 8;
+    const dy = align === "top" ? -4 : align === "bottom" ? 12 : -4;
+    return (
+      <g style={{ cursor: "help" }}>
+        <title>{tooltip}</title>
+        <text
+          x={x}
+          y={viewBox.y + dy}
+          textAnchor="end"
+          fill={fill}
+          fontSize={11}
+          fontWeight={600}
+        >
+          {text}
+        </text>
+      </g>
+    );
   };
 
   return (
@@ -124,14 +181,15 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
                 strokeDasharray="6 4"
                 strokeOpacity={0.85}
                 ifOverflow="extendDomain"
-                label={{
-                  value: `بیشترین: ${fmtY(stats.max)}`,
-                  position: "insideTopRight",
-                  fill: "#ef4444",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  dy: -2,
-                }}
+                label={(p: any) => (
+                  <RefLabel
+                    viewBox={p.viewBox}
+                    text={`بیشترین: ${fmtY(stats.max)} ${unit}`}
+                    tooltip={`بیشترین قیمت: ${formatNumber(stats.max)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.maxDate))}`}
+                    fill="#ef4444"
+                    align="top"
+                  />
+                )}
               />
               <ReferenceLine
                 y={stats.avg}
@@ -139,13 +197,14 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
                 strokeWidth={1.25}
                 strokeDasharray="3 5"
                 strokeOpacity={0.8}
-                label={{
-                  value: `میانگین: ${fmtY(stats.avg)}`,
-                  position: "insideRight",
-                  fill: "#64748b",
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
+                label={(p: any) => (
+                  <RefLabel
+                    viewBox={p.viewBox}
+                    text={`میانگین: ${fmtY(stats.avg)} ${unit}`}
+                    tooltip={`میانگین در بازه: ${formatNumber(stats.avg)} ${unit}\nاز ${formatDateTimeFa(new Date(stats.rangeStart))}\nتا ${formatDateTimeFa(new Date(stats.rangeEnd))}\nتعداد نقاط: ${toFaDigits(chartData.length)}`}
+                    fill="#64748b"
+                  />
+                )}
               />
               <ReferenceLine
                 y={stats.min}
@@ -154,14 +213,15 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
                 strokeDasharray="6 4"
                 strokeOpacity={0.85}
                 ifOverflow="extendDomain"
-                label={{
-                  value: `کمترین: ${fmtY(stats.min)}`,
-                  position: "insideBottomRight",
-                  fill: "#10b981",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  dy: 2,
-                }}
+                label={(p: any) => (
+                  <RefLabel
+                    viewBox={p.viewBox}
+                    text={`کمترین: ${fmtY(stats.min)} ${unit}`}
+                    tooltip={`کمترین قیمت: ${formatNumber(stats.min)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.minDate))}`}
+                    fill="#10b981"
+                    align="bottom"
+                  />
+                )}
               />
             </>
           )}
