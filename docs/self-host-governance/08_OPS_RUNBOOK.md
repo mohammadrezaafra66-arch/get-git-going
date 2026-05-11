@@ -257,3 +257,58 @@ uptime-kuma (healthz)، docker stats، آلارم disk/RAM، آلارم backup j
 - `docs/self-host-governance/07_MIGRATION_SAFETY.md`
 - `docs/self-host-governance/09_INTERNET_RESILIENCE.md`
 - `deploy/backups/scripts/restore-drill.md` (روال drill ماهانه backup/restore)
+
+---
+
+## 9. Pricing recompute worker scheduler (PRICE-RT.5)
+
+worker قیمت‌گذاری به‌صورت خودکار صف `pricing_recompute_queue` را خالی می‌کند تا
+تغییر نرخ ارز / قیمت خرید بدون مداخلهٔ اپراتور به قیمت فروش propagate شود.
+دکمهٔ UI فقط emergency است؛ حالت عادی کار = scheduler روی host.
+
+- مرجع کامل: `docs/PRICING_RECOMPUTE_WORKER.md`
+- اسکریپت آماده: `deploy/app/scripts/pricing-worker-cron.example.sh`
+- نصب گام‌به‌گام: `deploy/app/scripts/install-pricing-worker-cron.example.sh`
+- متغیر محیطی الزامی: `PRICING_WORKER_TOKEN` (server-only، فقط در
+  `/etc/afrakala/app.env` با chmod 600؛ هرگز در Git یا VITE_)
+
+### راه‌اندازی اولیه (یک‌بار)
+
+```bash
+sudo install -d -m 0750 /etc/afrakala
+sudo install -d -m 0755 /var/log/afrakala
+sudo chmod 600 /etc/afrakala/app.env       # PRICING_WORKER_TOKEN=<long-random>
+sudo install -m 0755 /opt/afrakala/deploy/app/scripts/pricing-worker-cron.example.sh \
+     /usr/local/bin/afrakala-pricing-worker.sh
+sudo /usr/local/bin/afrakala-pricing-worker.sh   # smoke test
+sudo tail -n 5 /var/log/afrakala/pricing-worker.log
+```
+
+سپس systemd timer (پیشنهاد) یا crontab سیستم را طبق
+`install-pricing-worker-cron.example.sh` فعال کنید.
+
+### پایش روزانه
+
+```bash
+systemctl list-timers | grep afrakala-pricing-worker
+sudo journalctl -u afrakala-pricing-worker.service -n 50 --no-pager
+sudo tail -n 50 /var/log/afrakala/pricing-worker.log
+```
+
+از داشبورد `/pricing/recompute-prices` یا view زیر برای سلامت صف:
+
+```sql
+select pending_count, processing_count, failed_count, oldest_pending_at, latest_error
+from public.v_pricing_recompute_queue_summary;
+```
+
+شرط هشدار: `failed_count > 0` یا `pending_count > 100` یا
+`oldest_pending_at` قدیمی‌تر از ۱۰ دقیقه.
+
+### غیرفعال‌سازی موقت (هنگام migration)
+
+```bash
+sudo systemctl stop afrakala-pricing-worker.timer
+# پس از پایان migration:
+sudo systemctl start afrakala-pricing-worker.timer
+```
