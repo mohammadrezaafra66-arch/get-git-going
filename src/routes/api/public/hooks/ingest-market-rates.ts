@@ -11,7 +11,7 @@
  *   - Lovable: blocked / manual setup required (Cloudflare Workers may also be
  *     geo-blocked from Navasan; honest report only — no fake scheduler).
  *
- * (rev: auth-removed 2026-05-11 — public data, no secret needed)
+ * (rev: flags-enabled 2026-05-11 — public data, no auth)
  */
 
 import { createFileRoute } from "@tanstack/react-router";
