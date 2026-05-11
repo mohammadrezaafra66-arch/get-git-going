@@ -249,7 +249,6 @@ async function fetchNavasan(): Promise<ProviderResult> {
     if (!res.ok) return { ok: false, reason: `navasan_http_${res.status}` };
     const payload = (await res.json()) as Record<string, unknown>;
     if (!payload || typeof payload !== "object") return { ok: false, reason: "navasan_invalid_payload" };
-    const ticks: Record<string, ProviderResult extends { ok: true; ticks: infer T } ? T[keyof T] : never> = {} as never;
     const out: Record<string, { value: number; reportedAt: string | null; raw: unknown }> = {};
     let count = 0;
     for (const [sym, node] of Object.entries(payload)) {
