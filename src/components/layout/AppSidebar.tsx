@@ -29,7 +29,9 @@ export function AppSidebar() {
   const qc = useQueryClient();
   const isAdmin = roles.includes("admin");
   const isManager = roles.includes("manager");
+  const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
+  const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const visible = NAV_ITEMS.filter((i) => {
     if (i.adminOnly && !canSeeAdminOnly) return false;
     return hasPermissionEx(roles, i.module, "view");
@@ -45,6 +47,35 @@ export function AppSidebar() {
       return count ?? 0;
     },
   });
+
+  // PRICE-RT.4 — small queue alert badge (admin/manager/accountant only).
+  const { data: pricingQueueHealth } = useQuery({
+    queryKey: ["sidebar-pricing-queue-summary"],
+    enabled: canSeePricingQueue,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_pricing_recompute_queue_summary")
+        .select("pending_count, failed_count, oldest_pending_at")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const failedCount = Number(pricingQueueHealth?.failed_count ?? 0);
+  const pendingPricing = Number(pricingQueueHealth?.pending_count ?? 0);
+  const oldestPendingAt = pricingQueueHealth?.oldest_pending_at as string | null | undefined;
+  const oldestPendingMs = oldestPendingAt ? Date.now() - new Date(oldestPendingAt).getTime() : 0;
+  const pricingAlertVariant: "alert" | "warning" | null =
+    !canSeePricingQueue
+      ? null
+      : failedCount > 0
+        ? "alert"
+        : pendingPricing > 100 || oldestPendingMs > 10 * 60 * 1000
+          ? "warning"
+          : null;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -85,6 +116,8 @@ export function AppSidebar() {
                   {items.map((item) => {
                     const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
                     const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
+                    const showPricingBadge =
+                      item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
@@ -94,6 +127,22 @@ export function AppSidebar() {
                             {showBadge && (
                               <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
                                 {pendingCount}
+                              </span>
+                            )}
+                            {showPricingBadge && (
+                              <span
+                                className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
+                                  pricingAlertVariant === "alert"
+                                    ? "bg-destructive"
+                                    : "bg-amber-500"
+                                }`}
+                                title={
+                                  pricingAlertVariant === "alert"
+                                    ? `${failedCount} مورد ناموفق در صف قیمت`
+                                    : `${pendingPricing} مورد در انتظار در صف قیمت`
+                                }
+                              >
+                                {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
                               </span>
                             )}
                           </Link>
