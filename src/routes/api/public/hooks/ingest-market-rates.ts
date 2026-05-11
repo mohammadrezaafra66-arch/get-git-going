@@ -12,6 +12,7 @@
  *     geo-blocked from Navasan; honest report only — no fake scheduler).
  *
  * NEVER calls TGJU in this phase (endpoint/symbol mapping unconfirmed).
+ * (rev: secret-rotated 2026-05-11)
  */
 
 import { createFileRoute } from "@tanstack/react-router";
