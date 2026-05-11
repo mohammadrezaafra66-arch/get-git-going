@@ -87,16 +87,18 @@ export async function fetchProductPriceHistory(opts: {
     .limit(limit);
 
   const days = RANGE_DAYS[range];
+  let sinceIso: string | null = null;
   if (days !== null) {
     const since = new Date();
     since.setDate(since.getDate() - days);
-    q = q.gte("created_at", since.toISOString());
+    sinceIso = since.toISOString();
+    q = q.gte("created_at", sinceIso);
   }
 
   const { data, error } = await q;
   if (error) throw error;
 
-  return ((data ?? []) as PriceHistoryPoint[])
+  const rows = ((data ?? []) as PriceHistoryPoint[])
     .map((r) => ({
       ...r,
       new_sale_price: Number(r.new_sale_price),
@@ -105,6 +107,63 @@ export async function fetchProductPriceHistory(opts: {
       change_percent: r.change_percent !== null ? Number(r.change_percent) : null,
     }))
     .reverse(); // ascending for chart
+
+  // Anchor the chart at the start of the range with the last known price
+  // before that window, so the line spans the full selected period even
+  // when price changes are sparse.
+  if (sinceIso) {
+    const { data: anchorData } = await supabase
+      .from("product_sale_price_history")
+      .select("id, created_at, new_sale_price, old_sale_price, change_amount, change_percent")
+      .eq("product_id", productId)
+      .eq("sale_price_type_id", salePriceTypeId)
+      .lt("created_at", sinceIso)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (anchorData) {
+      const anchorPrice = Number(anchorData.new_sale_price);
+      rows.unshift({
+        id: `anchor-${anchorData.id}`,
+        created_at: sinceIso,
+        new_sale_price: anchorPrice,
+        old_sale_price: null,
+        change_amount: null,
+        change_percent: null,
+      });
+    } else if (rows.length > 0) {
+      // No prior data — extend first known point back to range start
+      // so the chart shows a flat line up to the first real change.
+      const first = rows[0];
+      rows.unshift({
+        id: `anchor-start-${first.id}`,
+        created_at: sinceIso,
+        new_sale_price: first.new_sale_price,
+        old_sale_price: null,
+        change_amount: null,
+        change_percent: null,
+      });
+    }
+  }
+
+  // Append a synthetic "now" point with the latest known price so the
+  // line extends to today even if no change happened recently.
+  if (rows.length > 0) {
+    const last = rows[rows.length - 1];
+    const nowIso = new Date().toISOString();
+    if (last.created_at < nowIso) {
+      rows.push({
+        id: `now-${last.id}`,
+        created_at: nowIso,
+        new_sale_price: last.new_sale_price,
+        old_sale_price: null,
+        change_amount: null,
+        change_percent: null,
+      });
+    }
+  }
+
+  return rows;
 }
 
 /**
