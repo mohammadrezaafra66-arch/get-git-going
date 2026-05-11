@@ -4248,6 +4248,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "price_calculation_snapshots_purchase_price_id_fkey"
+            columns: ["purchase_price_id"]
+            isOneToOne: false
+            referencedRelation: "v_latest_active_purchase_prices"
+            referencedColumns: ["purchase_price_id"]
+          },
+          {
             foreignKeyName: "price_calculation_snapshots_sale_price_type_id_fkey"
             columns: ["sale_price_type_id"]
             isOneToOne: false
@@ -4484,6 +4491,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pricing_recompute_queue: {
+        Row: {
+          attempts: number
+          created_by: string | null
+          enqueued_at: string
+          error: string | null
+          id: string
+          priority: number
+          processed_at: string | null
+          product_id: string
+          reason: string
+          sale_price_type_id: string | null
+          source_id: string | null
+          source_table: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_by?: string | null
+          enqueued_at?: string
+          error?: string | null
+          id?: string
+          priority?: number
+          processed_at?: string | null
+          product_id: string
+          reason: string
+          sale_price_type_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_by?: string | null
+          enqueued_at?: string
+          error?: string | null
+          id?: string
+          priority?: number
+          processed_at?: string | null
+          product_id?: string
+          reason?: string
+          sale_price_type_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_recompute_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_recompute_queue_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "pricing_recompute_queue_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_rules: {
         Row: {
@@ -6941,6 +7021,32 @@ export type Database = {
         }
         Relationships: []
       }
+      v_latest_active_purchase_prices: {
+        Row: {
+          currency: Database["public"]["Enums"]["currency_code"] | null
+          effective_at: string | null
+          expires_at: string | null
+          product_id: string | null
+          purchase_price: number | null
+          purchase_price_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       v_league_tiers_public: {
         Row: {
           id: string | null
@@ -6971,6 +7077,17 @@ export type Database = {
           tier?: Database["public"]["Enums"]["league_tier"] | null
           title_en?: string | null
           title_fa?: string | null
+        }
+        Relationships: []
+      }
+      v_pricing_recompute_queue_summary: {
+        Row: {
+          done_count: number | null
+          failed_count: number | null
+          latest_error: string | null
+          oldest_pending_at: string | null
+          pending_count: number | null
+          processing_count: number | null
         }
         Relationships: []
       }
@@ -7515,6 +7632,17 @@ export type Database = {
             }
             Returns: boolean
           }
+      enqueue_pricing_recompute: {
+        Args: {
+          _priority?: number
+          _product_ids: string[]
+          _reason: string
+          _sale_price_type_id?: string
+          _source_id?: string
+          _source_table?: string
+        }
+        Returns: number
+      }
       export_dynamic_table_rows: {
         Args: {
           p_filters?: Json
