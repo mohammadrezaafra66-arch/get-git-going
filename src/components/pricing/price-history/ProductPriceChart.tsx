@@ -119,38 +119,48 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
             <>
               <ReferenceLine
                 y={stats.max}
-                stroke="hsl(var(--destructive))"
-                strokeDasharray="4 4"
-                strokeOpacity={0.7}
+                stroke="#ef4444"
+                strokeWidth={1.25}
+                strokeDasharray="6 4"
+                strokeOpacity={0.85}
+                ifOverflow="extendDomain"
                 label={{
                   value: `بیشترین: ${fmtY(stats.max)}`,
                   position: "insideTopRight",
-                  fill: "hsl(var(--destructive))",
-                  fontSize: 10,
+                  fill: "#ef4444",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  dy: -2,
                 }}
               />
               <ReferenceLine
                 y={stats.avg}
-                stroke="hsl(var(--muted-foreground))"
-                strokeDasharray="2 4"
-                strokeOpacity={0.6}
+                stroke="#94a3b8"
+                strokeWidth={1.25}
+                strokeDasharray="3 5"
+                strokeOpacity={0.8}
                 label={{
                   value: `میانگین: ${fmtY(stats.avg)}`,
                   position: "insideRight",
-                  fill: "hsl(var(--muted-foreground))",
-                  fontSize: 10,
+                  fill: "#64748b",
+                  fontSize: 11,
+                  fontWeight: 600,
                 }}
               />
               <ReferenceLine
                 y={stats.min}
-                stroke="hsl(142 70% 40%)"
-                strokeDasharray="4 4"
-                strokeOpacity={0.7}
+                stroke="#10b981"
+                strokeWidth={1.25}
+                strokeDasharray="6 4"
+                strokeOpacity={0.85}
+                ifOverflow="extendDomain"
                 label={{
                   value: `کمترین: ${fmtY(stats.min)}`,
                   position: "insideBottomRight",
-                  fill: "hsl(142 70% 40%)",
-                  fontSize: 10,
+                  fill: "#10b981",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  dy: 2,
                 }}
               />
             </>
