@@ -38,6 +38,7 @@ import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
+import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -96,6 +97,18 @@ function SalesSearchPage() {
   const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
   const canRecalcPrice = hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
   const queryClient = useQueryClient();
+
+  // PRICE-RT.7 — هرگاه worker «product_computed_prices» را به‌روزرسانی کند،
+  // کوئری‌های «جستجوی سریع فروش» باید بدون refresh دستی تازه شوند.
+  // فیلترها/متن جستجو/صفحه‌بندی دست‌نخورده می‌مانند چون فقط queryKey ها
+  // invalidate می‌شوند (state در useSessionStorageState نگه‌داری می‌شود).
+  useComputedPricesRealtime({
+    channelName: "sales-search-computed-prices",
+    invalidateKeys: [
+      ["sales-search-products-rpc"],
+      ["sales-search-products-rpc-label-mode"],
+    ],
+  });
 
   const [search, setSearch] = useSessionStorageState<string>("sales-search:q", "");
   // supplier referral moved to per-product card actions
