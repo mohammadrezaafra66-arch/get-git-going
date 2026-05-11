@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -26,6 +26,19 @@ interface Props {
  * - tooltip شامل تاریخ شمسی و قیمت.
  */
 export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!wrapperRef.current) return;
+    const el = wrapperRef.current;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
     return data
@@ -92,6 +105,31 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
     return { yMin: lo, yMax: hi, yTicks: ticks, stats };
   }, [chartData]);
 
+  // Compute day boundaries (midnight ts) covering the data range — used for
+  // both vertical day-separators and to size the chart so each day gets enough
+  // horizontal room when many points cluster within a single day.
+  const dayBoundaries = useMemo(() => {
+    if (chartData.length === 0) return [] as number[];
+    const startMs = chartData[0].ts;
+    const endMs = chartData[chartData.length - 1].ts;
+    const start = new Date(startMs);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endMs);
+    end.setHours(0, 0, 0, 0);
+    const out: number[] = [];
+    const cur = new Date(start);
+    while (cur.getTime() <= end.getTime()) {
+      out.push(cur.getTime());
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  }, [chartData]);
+
+  const MIN_DAY_WIDTH = 110; // px per day minimum
+  const daysCount = Math.max(1, dayBoundaries.length || 1);
+  const innerWidth = Math.max(containerWidth || 0, daysCount * MIN_DAY_WIDTH);
+  const showDaySeparators = dayBoundaries.length > 1 && dayBoundaries.length <= 60;
+
   if (chartData.length === 0) {
     return (
       <div className="flex h-[180px] items-center justify-center rounded-md border border-dashed border-border bg-muted/20 text-sm text-muted-foreground">
@@ -120,18 +158,37 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
   }) => {
     const { viewBox, text, tooltip, fill, align = "middle" } = props;
     if (!viewBox) return null;
+    const padX = 6;
+    const padY = 3;
+    const charW = 6.2;
+    const textW = Math.max(40, Math.round(text.length * charW));
+    const textH = 14;
     const x = viewBox.x + viewBox.width - 8;
-    const dy = align === "top" ? -4 : align === "bottom" ? 12 : -4;
+    const dy = align === "top" ? -6 : align === "bottom" ? 14 : -6;
+    const rectX = x - textW - padX;
+    const rectY = viewBox.y + dy - textH + padY;
     return (
       <g style={{ cursor: "help" }}>
         <title>{tooltip}</title>
+        <rect
+          x={rectX}
+          y={rectY}
+          width={textW + padX * 2}
+          height={textH + padY * 2}
+          rx={3}
+          fill="var(--background)"
+          fillOpacity={0.85}
+          stroke={fill}
+          strokeOpacity={0.4}
+          strokeWidth={0.75}
+        />
         <text
           x={x}
           y={viewBox.y + dy}
           textAnchor="end"
           fill={fill}
           fontSize={11}
-          fontWeight={600}
+          fontWeight={700}
         >
           {text}
         </text>
@@ -140,17 +197,34 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
   };
 
   return (
-    <div style={{ width: "100%", height }} dir="ltr">
-      <ResponsiveContainer>
-        <LineChart data={chartData} margin={{ top: 12, right: 16, left: 12, bottom: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+    <div
+      ref={wrapperRef}
+      style={{ width: "100%", height }}
+      className="overflow-x-auto overflow-y-hidden"
+      dir="ltr"
+    >
+      <div style={{ width: innerWidth, height: "100%", touchAction: "pan-x" }}>
+        <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 18, right: 24, left: 12, bottom: 24 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+          {showDaySeparators &&
+            dayBoundaries.map((ts) => (
+              <ReferenceLine
+                key={`day-${ts}`}
+                x={ts}
+                stroke="var(--border)"
+                strokeDasharray="2 4"
+                strokeOpacity={0.5}
+                ifOverflow="hidden"
+              />
+            ))}
           <XAxis
             dataKey="ts"
             type="number"
             domain={["dataMin", "dataMax"]}
             tickFormatter={(v) => formatDateTimeFa(new Date(v))}
             tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            minTickGap={60}
+            minTickGap={40}
             angle={-20}
             textAnchor="end"
             height={50}
@@ -174,51 +248,72 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
           />
           {stats && stats.min !== stats.max && (
             <>
+              {/* Halo (under-stroke) for visibility on any background */}
               <ReferenceLine
                 y={stats.max}
-                stroke="#ef4444"
-                strokeWidth={1.25}
-                strokeDasharray="6 4"
-                strokeOpacity={0.85}
+                stroke="var(--destructive)"
+                strokeWidth={5}
+                strokeOpacity={0.18}
+                ifOverflow="extendDomain"
+              />
+              <ReferenceLine
+                y={stats.max}
+                stroke="var(--destructive)"
+                strokeWidth={1.75}
+                strokeDasharray="8 4"
+                strokeOpacity={1}
                 ifOverflow="extendDomain"
                 label={(p: any) => (
                   <RefLabel
                     viewBox={p.viewBox}
                     text={`بیشترین: ${fmtY(stats.max)} ${unit}`}
                     tooltip={`بیشترین قیمت: ${formatNumber(stats.max)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.maxDate))}`}
-                    fill="#ef4444"
+                    fill="var(--destructive)"
                     align="top"
                   />
                 )}
               />
               <ReferenceLine
                 y={stats.avg}
-                stroke="#94a3b8"
-                strokeWidth={1.25}
-                strokeDasharray="3 5"
-                strokeOpacity={0.8}
+                stroke="var(--muted-foreground)"
+                strokeWidth={4}
+                strokeOpacity={0.15}
+              />
+              <ReferenceLine
+                y={stats.avg}
+                stroke="var(--muted-foreground)"
+                strokeWidth={1.5}
+                strokeDasharray="4 5"
+                strokeOpacity={0.95}
                 label={(p: any) => (
                   <RefLabel
                     viewBox={p.viewBox}
                     text={`میانگین: ${fmtY(stats.avg)} ${unit}`}
                     tooltip={`میانگین در بازه: ${formatNumber(stats.avg)} ${unit}\nاز ${formatDateTimeFa(new Date(stats.rangeStart))}\nتا ${formatDateTimeFa(new Date(stats.rangeEnd))}\nتعداد نقاط: ${toFaDigits(chartData.length)}`}
-                    fill="#64748b"
+                    fill="var(--muted-foreground)"
                   />
                 )}
               />
               <ReferenceLine
                 y={stats.min}
-                stroke="#10b981"
-                strokeWidth={1.25}
-                strokeDasharray="6 4"
-                strokeOpacity={0.85}
+                stroke="var(--success)"
+                strokeWidth={5}
+                strokeOpacity={0.18}
+                ifOverflow="extendDomain"
+              />
+              <ReferenceLine
+                y={stats.min}
+                stroke="var(--success)"
+                strokeWidth={1.75}
+                strokeDasharray="8 4"
+                strokeOpacity={1}
                 ifOverflow="extendDomain"
                 label={(p: any) => (
                   <RefLabel
                     viewBox={p.viewBox}
                     text={`کمترین: ${fmtY(stats.min)} ${unit}`}
                     tooltip={`کمترین قیمت: ${formatNumber(stats.min)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.minDate))}`}
-                    fill="#10b981"
+                    fill="var(--success)"
                     align="bottom"
                   />
                 )}
@@ -228,26 +323,27 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
           <Line
             type="monotone"
             dataKey="value"
-            stroke="hsl(var(--primary))"
+            stroke="var(--primary)"
             strokeWidth={2.5}
             connectNulls
             dot={{
               r: 3.5,
-              fill: "hsl(var(--primary))",
-              stroke: "hsl(var(--background))",
+              fill: "var(--primary)",
+              stroke: "var(--background)",
               strokeWidth: 1.5,
             }}
             activeDot={{
               r: 6,
-              fill: "hsl(var(--background))",
-              stroke: "hsl(var(--primary))",
+              fill: "var(--background)",
+              stroke: "var(--primary)",
               strokeWidth: 2.5,
             }}
             isAnimationActive={true}
             animationDuration={500}
           />
         </LineChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
