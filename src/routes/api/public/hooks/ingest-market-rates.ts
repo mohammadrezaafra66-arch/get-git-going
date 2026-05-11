@@ -94,7 +94,7 @@ async function runSource(args: {
   const supabase = supabaseAdmin;
 
   const { data: runId, error: runErr } = await supabase.rpc(
-    "start_market_rate_ingestion_run",
+    "start_market_rate_ingestion_run_system",
     { p_source_code: code },
   );
   if (runErr || !runId) {
@@ -122,7 +122,7 @@ async function runSource(args: {
     .eq("is_enabled", true);
 
   if (!src || !mappings || mappings.length === 0) {
-    await supabase.rpc("finish_market_rate_ingestion_run", {
+    await supabase.rpc("finish_market_rate_ingestion_run_system", {
       p_run_id: runIdStr,
       p_status: "skipped",
       p_fetched: 0,
@@ -144,7 +144,7 @@ async function runSource(args: {
   const result = await fetcher();
   if (!result.ok) {
     console.error(`[market-rates cron] ${code} fetch failed:`, result.reason);
-    await supabase.rpc("finish_market_rate_ingestion_run", {
+    await supabase.rpc("finish_market_rate_ingestion_run_system", {
       p_run_id: runIdStr,
       p_status: "failed",
       p_fetched: 0,
@@ -179,7 +179,7 @@ async function runSource(args: {
     const normalized = tick.value * Number(m.normalize_multiplier ?? 1);
 
     const { data: rec, error: recErr } = await supabase.rpc(
-      "record_external_market_rate_tick",
+      "record_external_market_rate_tick_system",
       {
         p_indicator_id: m.indicator_id,
         p_source_id: src.id,
@@ -201,7 +201,7 @@ async function runSource(args: {
     }
   }
 
-  await supabase.rpc("finish_market_rate_ingestion_run", {
+  await supabase.rpc("finish_market_rate_ingestion_run_system", {
     p_run_id: runIdStr,
     p_status: "completed",
     p_fetched: fetched,

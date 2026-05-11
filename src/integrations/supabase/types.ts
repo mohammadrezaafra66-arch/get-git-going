@@ -7720,6 +7720,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      finish_market_rate_ingestion_run_system: {
+        Args: {
+          p_error?: string
+          p_fetched: number
+          p_inserted: number
+          p_run_id: string
+          p_status: string
+          p_suspect: number
+        }
+        Returns: undefined
+      }
       gamification_analytics_achievements: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -8519,6 +8530,21 @@ export type Database = {
           tick_id: string
         }[]
       }
+      record_external_market_rate_tick_system: {
+        Args: {
+          p_indicator_id: string
+          p_observed_at: string
+          p_raw_payload?: Json
+          p_source_id: string
+          p_source_reported_at?: string
+          p_unit?: string
+          p_value: number
+        }
+        Returns: {
+          status_out: string
+          tick_id: string
+        }[]
+      }
       record_market_rate_tick: {
         Args: {
           p_indicator_id: string
@@ -8697,6 +8723,10 @@ export type Database = {
         Returns: string
       }
       start_market_rate_ingestion_run: {
+        Args: { p_source_code: string }
+        Returns: string
+      }
+      start_market_rate_ingestion_run_system: {
         Args: { p_source_code: string }
         Returns: string
       }
