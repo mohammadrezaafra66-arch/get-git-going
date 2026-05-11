@@ -382,16 +382,17 @@ function SaleListDetailPage() {
           .map((it) => it.product?.id)
           .filter((x): x is string => !!x);
         if (productIds.length > 0 && list.sale_price_type_id) {
+          // Canonical source: product_computed_prices (same as sales search & workshop).
           const { data: priceRows } = await supabase
-            .from("product_sale_price_history")
-            .select("product_id, new_sale_price, created_at")
+            .from("product_computed_prices")
+            .select("product_id, rounded_sale_price, computed_at")
             .eq("sale_price_type_id", list.sale_price_type_id)
             .in("product_id", productIds)
-            .order("created_at", { ascending: false });
+            .order("computed_at", { ascending: false });
           const map = new Map<string, number>();
           for (const row of priceRows ?? []) {
             if (!map.has(row.product_id)) {
-              map.set(row.product_id, Number(row.new_sale_price ?? 0) || 0);
+              map.set(row.product_id, Number(row.rounded_sale_price ?? 0) || 0);
             }
           }
           livePrices = map;
