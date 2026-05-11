@@ -15,14 +15,11 @@ const GROUPS: NavItem["group"][] = [
   "main",
   "products-pricing",
   "purchasing",
-  "sales",
+  "sales-customers",
   "finance",
-  "customers",
   "operations",
   "reports",
-  "comms",
-  "gamification",
-  "gamification-admin",
+  "knowledge-comms",
   "admin",
 ];
 

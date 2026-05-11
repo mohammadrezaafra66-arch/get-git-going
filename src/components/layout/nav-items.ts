@@ -18,14 +18,11 @@ export interface NavItem {
     | "main"
     | "products-pricing"
     | "purchasing"
-    | "sales"
+    | "sales-customers"
     | "finance"
-    | "customers"
     | "operations"
     | "reports"
-    | "comms"
-    | "gamification"
-    | "gamification-admin"
+    | "knowledge-comms"
     | "admin";
   /** When true, only admin/manager roles see this item even if module check passes. */
   adminOnly?: boolean;
@@ -61,12 +58,15 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/suppliers", label: "تأمین‌کنندگان", icon: Factory, module: "suppliers", group: "purchasing" },
   { to: "/purchases", label: "پنل خرید", icon: ShoppingBag, module: "purchases", group: "purchasing" },
 
-  // ۴) فروش
-  { to: "/sales", label: "فروش", icon: ShoppingCart, module: "sales", group: "sales" },
-  { to: "/sales/quotes", label: "پیش‌فاکتورها", icon: FileText, module: "invoices", group: "sales" },
-  { to: "/sales/invoices", label: "فاکتورهای فروش", icon: Receipt, module: "invoices", group: "sales" },
-  { to: "/invoices", label: "فاکتورها", icon: FileText, module: "invoices", group: "sales" },
-  { to: "/sales/stock-alerts", label: "هشدار موجودی", icon: AlertTriangle, module: "sales", group: "sales" },
+  // ۴) فروش و مشتریان
+  { to: "/sales", label: "فروش", icon: ShoppingCart, module: "sales", group: "sales-customers" },
+  { to: "/sales/quotes", label: "پیش‌فاکتورها", icon: FileText, module: "invoices", group: "sales-customers" },
+  { to: "/sales/invoices", label: "فاکتورهای فروش", icon: Receipt, module: "invoices", group: "sales-customers" },
+  { to: "/invoices", label: "فاکتورها", icon: FileText, module: "invoices", group: "sales-customers" },
+  { to: "/sales/stock-alerts", label: "هشدار موجودی", icon: AlertTriangle, module: "sales", group: "sales-customers" },
+  { to: "/sales/customers", label: "مشتریان", icon: UserSquare2, module: "sales", group: "sales-customers" },
+  { to: "/sales/credit-customers", label: "اعتبار مشتریان", icon: BadgeCheck, module: "sales", group: "sales-customers" },
+  { to: "/sales/credit-rules", label: "قوانین اعتبار", icon: ShieldCheck, module: "sales", group: "sales-customers" },
 
   // ۵) مالی و حسابداری
   { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: Receipt, module: "invoices", group: "finance" },
@@ -79,19 +79,16 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/accounting/salesperson-capital-allocations", label: "تخصیص سرمایه فروشندگان", icon: Wallet, module: "invoices", group: "finance" },
   { to: "/accounting/daily-capital", label: "سرمایه روز", icon: Coins, module: "invoices", group: "finance" },
 
-  // ۶) مشتریان و اعتبار
-  { to: "/sales/customers", label: "مشتریان", icon: UserSquare2, module: "sales", group: "customers" },
-  { to: "/sales/credit-customers", label: "اعتبار مشتریان", icon: BadgeCheck, module: "sales", group: "customers" },
-  { to: "/sales/credit-rules", label: "قوانین اعتبار", icon: ShieldCheck, module: "sales", group: "customers" },
-
-  // ۷) عملیات داخلی
+  // ۶) عملیات داخلی
   { to: "/operations/tasks", label: "برد وظایف", icon: CheckSquare, module: "invoices", group: "operations" },
   { to: "/operations/daily-mood", label: "حال‌وهوای امروز", icon: Heart, module: "feedback", group: "operations" },
   { to: "/operations/daily-mood/admin", label: "مدیریت حال‌وهوا", icon: Heart, module: "hr", group: "operations", adminOnly: true },
   { to: "/messages", label: "پیام‌ها", icon: Mail, module: "messages", group: "operations" },
   { to: "/feedback", label: "بازخورد", icon: MessageSquare, module: "feedback", group: "operations" },
+  { to: "/gamification", label: "داشبورد گیمیفیکیشن", icon: Trophy, module: "dashboard", group: "operations" },
+  { to: "/gamification/leaderboard", label: "لیدربورد", icon: BarChart3, module: "dashboard", group: "operations" },
 
-  // ۸) گزارش‌ها
+  // ۷) گزارش‌ها
   { to: "/reports", label: "گزارش‌ها", icon: BarChart3, module: "reports", group: "reports" },
   { to: "/audit-logs", label: "لاگ فعالیت‌ها", icon: ScrollText, module: "audit-logs", group: "reports", adminOnly: true },
   { to: "/sales/quote-share-logs", label: "لاگ اشتراک‌گذاری پیش‌فاکتور", icon: Share2, module: "invoices", group: "reports" },
@@ -99,25 +96,12 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/marketing/suggestions", label: "پیشنهادهای تبلیغاتی", icon: Megaphone, module: "reports", group: "reports" },
   { to: "/marketing/suggestions-history", label: "تاریخچه پیشنهادها", icon: ScrollText, module: "reports", group: "reports" },
 
-  // ۹) دانش و ارتباطات
-  { to: "/knowledge", label: "دانش سازمانی", icon: BookOpen, module: "knowledge", group: "comms" },
-  { to: "/academy", label: "آکادمی", icon: GraduationCap, module: "academy", group: "comms" },
-  { to: "/data-tables", label: "جداول داده پویا", icon: Database, module: "data-tables", group: "comms" },
+  // ۸) دانش، آکادمی و ارتباطات
+  { to: "/knowledge", label: "دانش سازمانی", icon: BookOpen, module: "knowledge", group: "knowledge-comms" },
+  { to: "/academy", label: "آکادمی", icon: GraduationCap, module: "academy", group: "knowledge-comms" },
+  { to: "/data-tables", label: "جداول داده پویا", icon: Database, module: "data-tables", group: "knowledge-comms" },
 
-  // ۱۰) گیمیفیکیشن
-  { to: "/gamification", label: "داشبورد گیمیفیکیشن", icon: Trophy, module: "dashboard", group: "gamification" },
-  { to: "/gamification/leaderboard", label: "لیدربورد", icon: BarChart3, module: "dashboard", group: "gamification" },
-
-  // ۱۱) مدیریت گیمیفیکیشن (admin/manager only)
-  { to: "/gamification/admin/kpi-rules", label: "قوانین امتیازدهی", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/achievements", label: "مدیریت مدال‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/leagues", label: "مدیریت لیگ‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/rewards", label: "مدیریت پاداش‌ها", icon: Trophy, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/analytics", label: "تحلیل گیمیفیکیشن", icon: BarChart3, module: "roles", group: "gamification-admin", adminOnly: true },
-  { to: "/gamification/admin/purchase-settings", label: "طلای زمان (خرید)", icon: Coins, module: "roles", group: "gamification-admin", adminOnly: true },
-
-  // ۱۲) مدیریت سیستم
+  // ۹) مدیریت سیستم
   { to: "/users", label: "کاربران", icon: Users, module: "users", group: "admin" },
   { to: "/users/pending", label: "کاربران در انتظار تأیید", icon: Users, module: "users", group: "admin", adminOnly: true },
   { to: "/roles", label: "نقش‌ها و دسترسی‌ها", icon: ShieldCheck, module: "roles", group: "admin" },
@@ -140,19 +124,23 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: ScrollText, module: "pricing", group: "admin", adminOnly: true },
   { to: "/pricing", label: "تنظیمات قیمت‌گذاری", icon: DollarSign, module: "pricing", group: "admin", adminOnly: true },
   { to: "/bot-api-keys", label: "کلیدهای API ربات", icon: KeyRound, module: "bot-api-keys", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/kpi-rules", label: "قوانین امتیازدهی", icon: Trophy, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/achievements", label: "مدیریت مدال‌ها", icon: Trophy, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/leagues", label: "مدیریت لیگ‌ها", icon: Trophy, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/rewards", label: "مدیریت پاداش‌ها", icon: Trophy, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/analytics", label: "تحلیل گیمیفیکیشن", icon: BarChart3, module: "roles", group: "admin", adminOnly: true },
+  { to: "/gamification/admin/purchase-settings", label: "طلای زمان (خرید)", icon: Coins, module: "roles", group: "admin", adminOnly: true },
 ];
 
 export const GROUP_LABELS: Record<NavItem["group"], string> = {
   main: "داشبورد",
   "products-pricing": "محصولات و قیمت‌گذاری",
   purchasing: "خرید و تأمین‌کنندگان",
-  sales: "فروش",
+  "sales-customers": "فروش و مشتریان",
   finance: "مالی و حسابداری",
-  customers: "مشتریان و اعتبار",
   operations: "عملیات داخلی",
   reports: "گزارش‌ها",
-  comms: "دانش و ارتباطات",
-  gamification: "گیمیفیکیشن",
-  "gamification-admin": "مدیریت گیمیفیکیشن",
+  "knowledge-comms": "دانش، آکادمی و ارتباطات",
   admin: "مدیریت سیستم",
 };
