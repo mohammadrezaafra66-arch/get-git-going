@@ -56,3 +56,12 @@ EXTERNAL_API_TIMEOUT_MS=15000
 - legacy `OCR_ENABLED` هنوز خوانده می‌شود (سازگاری عقب)؛ تنظیم جدید اولویت دارد.
 - وقتی flag خاموش است، server function خروجی typed برمی‌گرداند: `{ ok: false, disabled: true, reason: "ocr_disabled", method: "unsupported", raw_text: "", warnings: [...] }` و هرگز fetch به سرویس خارجی نمی‌زند.
 - timeout سخت: کف ۱۵۰۰۰ms در کد clamp می‌شود (مقادیر کمتر بالا کشیده می‌شوند). فراخوانی fetch با `AbortController` مقید است؛ در صورت timeout/خطای شبکه پاسخ `ok:false, reason:"ocr_timeout"|"ocr_network_error"` برمی‌گردد.
+
+## MR-AUTO.1 — وضعیت زمان‌بندی نرخ بازار
+
+- endpoint جدید: `POST /api/public/hooks/ingest-market-rates` (server-only، secret-protected).
+- پیش‌فرض همه‌جا OFF: `MARKET_RATES_AUTO_INGEST_ENABLED=false`.
+- منبع فعلی: فقط Navasan. TGJU عمداً disabled است تا endpoint/symbol رسمی تأیید شود.
+- self-host: pg_cron هر ۱۵ دقیقه (apply دستی از `deploy/migration/scripts/mr-auto-1-schedule-market-rates.sql` پس از backup).
+- Lovable: scheduler **blocked / manual setup required** — pg_cron تضمین‌نشده و Cloudflare Workers ممکن است از Navasan geo-block باشد. در این حالت endpoint به‌جای crash پاسخ `status:"failed"` می‌دهد و core app سالم می‌ماند.
+- مرجع کامل: `docs/self-host-governance/MR-AUTO.1_MARKET_RATES_SCHEDULER.md`.
