@@ -236,6 +236,33 @@ function SaleListDetailPage() {
     return out;
   }, [itemsQ.data]);
 
+  // Realtime: refresh items when sale_list_items changes (trigger on price history),
+  // and proactively refresh when product_sale_price_history changes for our price type.
+  useEffect(() => {
+    if (!listId) return;
+    const ch = supabase
+      .channel(`sale-list-${listId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sale_list_items", filter: `sale_list_id=eq.${listId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["sale-list-items", listId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "product_sale_price_history" },
+        async () => {
+          await supabase.rpc("refresh_sale_list_prices", { p_list_id: listId });
+          qc.invalidateQueries({ queryKey: ["sale-list-items", listId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [listId, qc]);
+
   if (listQ.isLoading) {
     return (
       <div className="space-y-3">
