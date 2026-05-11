@@ -18,6 +18,7 @@ export type ModuleKey =
   | "purchases"
   | "sales"
   | "invoices"
+  | "accounting"
   | "price-lists"
   | "users"
   | "roles"
@@ -85,6 +86,15 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   },
   "market-rates": {
     view: ["admin","manager","accountant","sales"],
+    create: ["admin","manager","accountant"],
+    update: ["admin","manager","accountant"],
+    delete: ["admin"],
+  },
+  // UI-NAV.4 — ماژول جداگانه برای منوهای «مالی و حسابداری».
+  // فروشنده/بیننده دسترسی پیش‌فرض ندارند تا منوهای مالی برایشان پنهان شود.
+  // route guard های مربوطه از قبل با requireAnyRole(["admin","manager","accountant"]) محدود شده‌اند.
+  accounting: {
+    view: ["admin","manager","accountant"],
     create: ["admin","manager","accountant"],
     update: ["admin","manager","accountant"],
     delete: ["admin"],
