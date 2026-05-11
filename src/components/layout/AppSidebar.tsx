@@ -13,13 +13,16 @@ import { Sparkles } from "lucide-react";
 
 const GROUPS: NavItem["group"][] = [
   "main",
+  "products-pricing",
+  "purchasing",
   "sales",
-  "pricing",
-  "operations",
   "finance",
+  "customers",
+  "operations",
+  "reports",
+  "comms",
   "gamification",
   "gamification-admin",
-  "comms",
   "admin",
 ];
 
