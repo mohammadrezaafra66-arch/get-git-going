@@ -109,3 +109,27 @@ SELECT cron.schedule(
 ```
 
 هیچ secret یا داده‌ی خصوصی مشتری در لاگ نوشته نمی‌شود.
+---
+
+## PRICE-RT.4 — Manual UI trigger (admin/operator)
+
+In addition to the cron-driven public webhook, an authorized operator can
+manually drain the queue from the UI:
+
+- Page: `/pricing/recompute-prices` → "پردازش صف قیمت‌ها" button in the queue
+  health card.
+- Server function: `triggerPricingRecomputeQueue` in
+  `src/lib/pricing/process-queue.functions.ts`.
+- Auth: requires a valid Supabase session (`requireSupabaseAuth` middleware).
+- Authorization: caller must hold `admin`, `manager`, or `accountant` in
+  `public.user_roles`. Other users cannot trigger the worker.
+- Token safety: the UI **never** receives `PRICING_WORKER_TOKEN`. The token
+  remains a server-only secret used solely by the public cron webhook.
+- Sidebar badge: admin/manager/accountant see a small red badge on the
+  recompute menu item when `failed_count > 0`, or a warning badge when the
+  pending backlog is unusually high (>100 or oldest pending older than 10
+  minutes). Normal users do not see any badge.
+
+**Automatic cron remains the preferred path.** The manual UI trigger exists
+only for emergency, retry after failures, post-maintenance, or when the
+scheduled job is delayed.
