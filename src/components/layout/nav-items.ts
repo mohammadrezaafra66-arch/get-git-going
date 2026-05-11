@@ -85,15 +85,16 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/sales/credit-rules", label: "قوانین اعتبار", icon: ShieldCheck, module: "sales", group: "sales-customers", subgroup: "sc-customers" },
 
   // ۵) مالی و حسابداری
-  { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: Receipt, module: "invoices", group: "finance" },
-  { to: "/accounting/receivables", label: "مطالبات مشتریان", icon: Wallet, module: "invoices", group: "finance" },
-  { to: "/accounting/payables", label: "بدهی تأمین‌کنندگان", icon: Wallet, module: "invoices", group: "finance" },
-  { to: "/accounting/purchase-payments", label: "پرداخت خرید", icon: CreditCard, module: "invoices", group: "finance" },
-  { to: "/accounting/bank-accounts", label: "حساب‌های بانکی", icon: Banknote, module: "invoices", group: "finance" },
-  { to: "/accounting/external-parties", label: "طرف‌های حساب", icon: UserSquare2, module: "invoices", group: "finance" },
-  { to: "/accounting/customer-capital-allocations", label: "تخصیص سرمایه مشتریان", icon: Wallet, module: "invoices", group: "finance" },
-  { to: "/accounting/salesperson-capital-allocations", label: "تخصیص سرمایه فروشندگان", icon: Wallet, module: "invoices", group: "finance" },
-  { to: "/accounting/daily-capital", label: "سرمایه روز", icon: Coins, module: "invoices", group: "finance" },
+  // UI-NAV.4 — همگی به ماژول جدید «accounting» منتقل شدند تا برای فروشنده/بیننده پنهان شوند.
+  { to: "/accounting/receipts", label: "فیش‌های واریزی", icon: Receipt, module: "accounting", group: "finance" },
+  { to: "/accounting/receivables", label: "مطالبات مشتریان", icon: Wallet, module: "accounting", group: "finance" },
+  { to: "/accounting/payables", label: "بدهی تأمین‌کنندگان", icon: Wallet, module: "accounting", group: "finance" },
+  { to: "/accounting/purchase-payments", label: "پرداخت خرید", icon: CreditCard, module: "accounting", group: "finance" },
+  { to: "/accounting/bank-accounts", label: "حساب‌های بانکی", icon: Banknote, module: "accounting", group: "finance" },
+  { to: "/accounting/external-parties", label: "طرف‌های حساب", icon: UserSquare2, module: "accounting", group: "finance" },
+  { to: "/accounting/customer-capital-allocations", label: "تخصیص سرمایه مشتریان", icon: Wallet, module: "accounting", group: "finance" },
+  { to: "/accounting/salesperson-capital-allocations", label: "تخصیص سرمایه فروشندگان", icon: Wallet, module: "accounting", group: "finance" },
+  { to: "/accounting/daily-capital", label: "سرمایه روز", icon: Coins, module: "accounting", group: "finance" },
 
   // ۶) عملیات داخلی
   { to: "/operations/tasks", label: "برد وظایف", icon: CheckSquare, module: "invoices", group: "operations" },
