@@ -82,6 +82,7 @@ export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) 
             dataKey="value"
             stroke="hsl(var(--primary))"
             strokeWidth={2.5}
+            connectNulls
             dot={{
               r: 5,
               fill: "hsl(var(--background))",
