@@ -87,13 +87,16 @@ function checkSecret(request: Request): boolean {
   // documented cron auth pattern for /api/public/* routes. This lets pg_cron
   // call us without embedding a separate shared secret in SQL.
   const apiKey = (request.headers.get("apikey") ?? "").trim();
-  const expectedAnon = (
-    (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
+  const buildAnon =
+    (typeof import.meta !== "undefined" &&
+      (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
+    "";
+  const runtimeAnon =
     process.env.SUPABASE_PUBLISHABLE_KEY ??
     process.env.SUPABASE_ANON_KEY ??
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    ""
-  ).trim();
+    "";
+  const expectedAnon = (buildAnon || runtimeAnon).trim();
   if (apiKey && expectedAnon && apiKey === expectedAnon) return true;
 
   const expected = (process.env.MARKET_RATES_CRON_SECRET ?? "").trim();
