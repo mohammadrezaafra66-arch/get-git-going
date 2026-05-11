@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Plus, Filter, Cloud, RefreshCw } from "lucide-react";
@@ -53,6 +53,25 @@ function MarketRatesWorkshopPage() {
   const canWrite = roles.some((r) => ["admin","manager","accountant"].includes(r));
   const isPrivileged = canWrite; // مشاهده داده حساس
   const qc = useQueryClient();
+
+  // Realtime: refresh ticks/indicators caches whenever a new tick is inserted/updated.
+  useEffect(() => {
+    const channel = supabase
+      .channel("market-rates-workshop-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "market_rate_ticks" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["market-ticks-latest"] });
+          qc.invalidateQueries({ queryKey: ["market-ticks-history"] });
+          qc.invalidateQueries({ queryKey: ["market-external-status"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const [filterIndicator, setFilterIndicator] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
