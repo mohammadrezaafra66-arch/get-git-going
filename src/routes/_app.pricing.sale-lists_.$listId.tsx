@@ -181,6 +181,8 @@ function SaleListDetailPage() {
   const itemsQ = useQuery({
     queryKey: ["sale-list-items", listId],
     queryFn: async () => {
+      // Refresh prices from latest history before reading (live pricing).
+      await supabase.rpc("refresh_sale_list_prices", { p_list_id: listId });
       const { data, error } = await supabase
         .from("sale_list_items")
         .select(
