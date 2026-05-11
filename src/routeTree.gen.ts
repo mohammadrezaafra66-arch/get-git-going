@@ -117,6 +117,7 @@ import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.acc
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
@@ -710,6 +711,12 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const ApiPublicHooksProcessPricingQueueRoute =
+  ApiPublicHooksProcessPricingQueueRouteImport.update({
+    id: '/api/public/hooks/process-pricing-queue',
+    path: '/api/public/hooks/process-pricing-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksIngestMarketRatesRoute =
   ApiPublicHooksIngestMarketRatesRouteImport.update({
     id: '/api/public/hooks/ingest-market-rates',
@@ -1019,6 +1026,7 @@ export interface FileRoutesByFullPath {
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1156,6 +1164,7 @@ export interface FileRoutesByTo {
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1298,6 +1307,7 @@ export interface FileRoutesById {
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1440,6 +1450,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/create'
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/process-pricing-queue'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1577,6 +1588,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/create'
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/process-pricing-queue'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1718,6 +1730,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/invoices_/create'
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/process-pricing-queue'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/pricing/sale-lists_/$listId/publish'
@@ -1742,6 +1755,7 @@ export interface RootRouteChildren {
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
+  ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
 }
 
@@ -2503,6 +2517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/api/public/hooks/process-pricing-queue': {
+      id: '/api/public/hooks/process-pricing-queue'
+      path: '/api/public/hooks/process-pricing-queue'
+      fullPath: '/api/public/hooks/process-pricing-queue'
+      preLoaderRoute: typeof ApiPublicHooksProcessPricingQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ingest-market-rates': {
       id: '/api/public/hooks/ingest-market-rates'
       path: '/api/public/hooks/ingest-market-rates'
@@ -3144,6 +3165,8 @@ const rootRouteChildren: RootRouteChildren = {
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
+  ApiPublicHooksProcessPricingQueueRoute:
+    ApiPublicHooksProcessPricingQueueRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
 }
