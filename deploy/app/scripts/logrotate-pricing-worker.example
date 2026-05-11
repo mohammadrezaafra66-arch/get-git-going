@@ -1,0 +1,23 @@
+# Afrakala — pricing recompute worker logrotate config (PRICE-RT.6)
+#
+# Install (operator, on self-host server only — never commit a real version
+# with site-specific paths to git):
+#
+#   sudo install -m 0644 deploy/app/scripts/logrotate-pricing-worker.example \
+#        /etc/logrotate.d/afrakala-pricing-worker
+#   sudo logrotate --debug /etc/logrotate.d/afrakala-pricing-worker
+#
+# Assumes the worker writes to /var/log/afrakala/pricing-worker.log as set up
+# in deploy/app/scripts/pricing-worker-cron.example.sh.
+
+/var/log/afrakala/pricing-worker.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    create 0640 root adm
+    su root root
+}
