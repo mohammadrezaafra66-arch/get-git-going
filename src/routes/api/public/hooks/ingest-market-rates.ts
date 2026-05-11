@@ -83,6 +83,18 @@ function makeResponse(body: IngestResponse, status = 200): Response {
 }
 
 function checkSecret(request: Request): boolean {
+  // Accept Lovable Cloud's publishable/anon key in `apikey` header as the
+  // documented cron auth pattern for /api/public/* routes. This lets pg_cron
+  // call us without embedding a separate shared secret in SQL.
+  const apiKey = (request.headers.get("apikey") ?? "").trim();
+  const expectedAnon = (
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    ""
+  ).trim();
+  if (apiKey && expectedAnon && apiKey === expectedAnon) return true;
+
   const expected = (process.env.MARKET_RATES_CRON_SECRET ?? "").trim();
   if (!expected) return false; // no secret configured = denied
   const auth = request.headers.get("authorization") ?? "";
