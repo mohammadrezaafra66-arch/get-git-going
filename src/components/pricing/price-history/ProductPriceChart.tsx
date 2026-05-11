@@ -78,7 +78,7 @@ export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) 
             formatter={(v: number) => [`${formatNumber(v)} ${unit}`, isUsd ? "قیمت دلاری" : "قیمت تومانی"]}
           />
           <Line
-            type="stepAfter"
+            type="monotone"
             dataKey="value"
             stroke="hsl(var(--primary))"
             strokeWidth={2}
