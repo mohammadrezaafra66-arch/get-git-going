@@ -7449,6 +7449,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_pricing_recompute_jobs: {
+        Args: { _batch_size?: number; _max_attempts?: number }
+        Returns: {
+          attempts: number
+          created_by: string | null
+          enqueued_at: string
+          error: string | null
+          id: string
+          priority: number
+          processed_at: string | null
+          product_id: string
+          reason: string
+          sale_price_type_id: string | null
+          source_id: string | null
+          source_table: string | null
+          started_at: string | null
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pricing_recompute_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cleanup_stale_auto_suppliers: { Args: never; Returns: number }
       complete_invoice_task: { Args: { p_task_id: string }; Returns: undefined }
       complete_quote_send_queue_item: {
