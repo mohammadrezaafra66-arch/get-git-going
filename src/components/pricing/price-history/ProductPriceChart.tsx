@@ -8,7 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { formatNumber, formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
+import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import type { PriceHistoryPoint } from "@/lib/pricing/price-history";
 import { tomanToUsd } from "@/lib/pricing/price-history";
 
@@ -24,19 +24,43 @@ interface Props {
  * - دلار با snapshot آخرین نرخ معتبر محاسبه می‌شود.
  * - tooltip شامل تاریخ شمسی و قیمت.
  */
-export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) {
+export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return data.map((d) => {
-      const toman = d.new_sale_price;
-      const usd = mode === "usd" ? tomanToUsd(toman, usdRate) : null;
-      return {
-        ts: new Date(d.created_at).getTime(),
-        date: d.created_at,
-        value: mode === "toman" ? toman : usd,
-      };
-    }).filter((p) => p.value !== null);
+    return data
+      .map((d) => {
+        const toman = d.new_sale_price;
+        const usd = mode === "usd" ? tomanToUsd(toman, usdRate) : null;
+        return {
+          ts: new Date(d.created_at).getTime(),
+          date: d.created_at,
+          value: mode === "toman" ? toman : usd,
+        };
+      })
+      .filter((p) => p.value !== null)
+      .sort((a, b) => a.ts - b.ts);
   }, [data, mode, usdRate]);
+
+  const { yMin, yMax, yTicks } = useMemo(() => {
+    if (chartData.length === 0) return { yMin: 0, yMax: 0, yTicks: [] as number[] };
+    const values = chartData.map((p) => p.value as number);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) {
+      const pad = Math.max(1, Math.abs(min) * 0.05);
+      const lo = min - pad;
+      const hi = max + pad;
+      const step = (hi - lo) / 4;
+      return { yMin: lo, yMax: hi, yTicks: [0, 1, 2, 3, 4].map((i) => lo + step * i) };
+    }
+    const range = max - min;
+    const pad = range * 0.1;
+    const lo = Math.max(0, min - pad);
+    const hi = max + pad;
+    const step = (hi - lo) / 5;
+    const ticks = [0, 1, 2, 3, 4, 5].map((i) => lo + step * i);
+    return { yMin: lo, yMax: hi, yTicks: ticks };
+  }, [chartData]);
 
   if (chartData.length === 0) {
     return (
@@ -48,24 +72,33 @@ export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) 
 
   const isUsd = mode === "usd";
   const unit = isUsd ? "$" : "ت";
+  const fmtY = (v: number) => {
+    if (isUsd) return toFaDigits(v.toFixed(2));
+    return toFaDigits(Math.round(v).toLocaleString("en-US"));
+  };
 
   return (
     <div style={{ width: "100%", height }} dir="ltr">
       <ResponsiveContainer>
-        <LineChart data={chartData} margin={{ top: 8, right: 12, left: 8, bottom: 8 }}>
+        <LineChart data={chartData} margin={{ top: 12, right: 16, left: 12, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
           <XAxis
             dataKey="ts"
             type="number"
             domain={["dataMin", "dataMax"]}
-            tickFormatter={(v) => formatDateFa(new Date(v))}
+            tickFormatter={(v) => formatDateTimeFa(new Date(v))}
             tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            minTickGap={30}
+            minTickGap={60}
+            angle={-20}
+            textAnchor="end"
+            height={50}
           />
           <YAxis
-            tickFormatter={(v) => toFaDigits(Number(v).toLocaleString("en-US"))}
+            domain={[yMin, yMax]}
+            ticks={yTicks}
+            tickFormatter={fmtY}
             tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            width={70}
+            width={90}
           />
           <Tooltip
             contentStyle={{
@@ -74,23 +107,23 @@ export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) 
               borderRadius: 6,
               fontSize: 12,
             }}
-            labelFormatter={(v) => formatDateFa(new Date(Number(v)))}
+            labelFormatter={(v) => formatDateTimeFa(new Date(Number(v)))}
             formatter={(v: number) => [`${formatNumber(v)} ${unit}`, isUsd ? "قیمت دلاری" : "قیمت تومانی"]}
           />
           <Line
-            type="monotone"
+            type="stepAfter"
             dataKey="value"
             stroke="hsl(var(--primary))"
             strokeWidth={2.5}
             connectNulls
             dot={{
-              r: 5,
+              r: 4,
               fill: "hsl(var(--background))",
               stroke: "hsl(var(--primary))",
               strokeWidth: 2,
             }}
             activeDot={{
-              r: 7,
+              r: 6,
               fill: "hsl(var(--background))",
               stroke: "hsl(var(--primary))",
               strokeWidth: 2.5,
