@@ -1190,3 +1190,30 @@ Feature فقط وقتی قابل قبول است که:
 
 
 
+\---
+
+\## 22. Realtime Pricing Propagation (PRICE-RT)
+
+معیارهای الزامی برای propagation خودکار قیمت‌ها (تأیید نهایی در PRICE-RT.6):
+
+\* تغییر روتین نرخ ارز باید بدون فشردن دکمهٔ recompute، محصولات متاثر را در `pricing_recompute_queue` enqueue کند و worker پردازش نماید.
+
+\* تغییر روتین قیمت خرید یک محصول باید همان محصول را بدون مداخلهٔ اپراتور enqueue و پردازش کند.
+
+\* board زنده باید پس از تغییر `product_computed_prices` بدون refresh به‌روز شود (subscription realtime).
+
+\* ویرایشگر داخلی sale list باید از طریق sync trigger روی `sale_list_items` پس از worker قیمت تازه را نشان دهد.
+
+\* PDF لیست فروش و پیش‌فاکتور باید در لحظهٔ تولید از داده‌های فعلی client استفاده کنند؛ هیچ PDF استاتیکی روی Storage cache نشود.
+
+\* صفحهٔ عمومی sale list read-only است؛ هر refresh/navigation قیمت تازه می‌آورد. این رفتار عمدی است و stale محسوب نمی‌شود.
+
+\* manual recompute (UI/RPC) فقط مسیر maintenance/recovery است و حذف نمی‌شود؛ مسیر اصلی = scheduler خودکار روی self-host.
+
+\* `PRICING_WORKER_TOKEN` فقط server-only، فقط در `/etc/afrakala/app.env` (chmod 600)، هرگز با پیشوند `VITE_` و هرگز در Git.
+
+\* لاگ worker در `/var/log/afrakala/pricing-worker.log` با logrotate (daily, rotate 14, compress) چرخش دارد.
+
+\* alert الزامی برای `failed_count > 0` یا `pending_count > 100` یا `oldest_pending_at` قدیمی‌تر از ۱۰ دقیقه.
+
+

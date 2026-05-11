@@ -312,3 +312,32 @@ sudo systemctl stop afrakala-pricing-worker.timer
 # پس از پایان migration:
 sudo systemctl start afrakala-pricing-worker.timer
 ```
+
+### Logrotate برای لاگ worker (PRICE-RT.6)
+
+الگو در `deploy/app/scripts/logrotate-pricing-worker.example`
+(daily / rotate 14 / compress / missingok / notifempty / copytruncate).
+
+```bash
+sudo install -m 0644 \
+  /opt/afrakala/deploy/app/scripts/logrotate-pricing-worker.example \
+  /etc/logrotate.d/afrakala-pricing-worker
+sudo logrotate --debug /etc/logrotate.d/afrakala-pricing-worker
+```
+
+### Alerting hardening (PRICE-RT.6)
+
+سیگنال‌های alert (در uptime-kuma، cron-checker یا مانیتور دستی):
+
+- `failed_count > 0` در `v_pricing_recompute_queue_summary`
+- `pending_count > 100`
+- `oldest_pending_at` قدیمی‌تر از ۱۰ دقیقه
+- تکرار HTTP غیر-200 در `/var/log/afrakala/pricing-worker.log`
+  (≥ ۳ بار در ۵ دقیقه)
+- نبود هیچ اجرای موفق worker در ۵ دقیقهٔ اخیر
+
+### Validation کامل end-to-end
+
+چک‌لیست staging (purchase price، currency rate، rule change، sale-list/PDF
+freshness): `docs/PRICING_RECOMPUTE_WORKER_VALIDATION.md`. اجرا فقط روی
+staging؛ روی production فقط با backup تازه و در پنجرهٔ تعمیر.
