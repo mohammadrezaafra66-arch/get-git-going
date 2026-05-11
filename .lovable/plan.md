@@ -1,56 +1,50 @@
-## مشکل
+## هدف
 
-نمودار «تاریخچه قیمت فروش» داده‌اش را از جدول `product_sale_price_history` می‌خواند. این جدول فقط زمانی پر می‌شود که `calculateSalePrice(..., force_snapshot: true)` یا `publishProductPrices(...)` اجرا شود.
+دو بهبود در نمودار تاریخچه قیمت (`src/components/pricing/price-history/ProductPriceChart.tsx`):
 
-اما در صفحهٔ `/pricing/my-workbench` وقتی کاربر قیمت را تغییر و ذخیره می‌کند، تنها `upsertPurchasePrice` صدا زده می‌شود که فقط:
-- یک ردیف جدید در `purchase_prices` می‌سازد
-- ردیف قبلی را expire می‌کند
-- یک audit log ثبت می‌کند
+1. **فضای کافی برای هر روز روی محور افقی** — اگر در یک روز ۷ بار قیمت آپدیت شود، نقاط نزدیک هم چسبیده‌اند و کلیک/هاور سخت است. باید برای هر روز یک عرض حداقلی اختصاص داده شود تا نقاط داخل آن روز پخش شوند.
+2. **رنگی و واضح‌تر کردن خطوط راهنمای افقی** (بیشترین/کمترین/میانگین) تا در همه تم‌ها به‌خوبی دیده شوند.
 
-**هیچ بازمحاسبهٔ قیمت فروشی انجام نمی‌شود** و در نتیجه `product_sale_price_history` به‌روزرسانی نمی‌گردد. این دقیقاً همان چیزی است که در نمودار می‌بینید: تغییرات جدید قیمت در نمودار ظاهر نمی‌شوند.
+## تغییرات در `ProductPriceChart.tsx`
 
-## راه‌حل
+### ۱) محور افقی روزـمحور با اسکرول افقی
 
-پس از موفقیت `upsertPurchasePrice` در `saveRow` (در فایل `src/routes/_app.pricing.my-workbench.tsx`)، به‌صورت خودکار `publishProductPrices` را برای همان محصول صدا بزن. این کار:
+- محاسبه تعداد روزهای منحصربه‌فرد بین `rangeStart` و `rangeEnd` چارت.
+- تعریف `MIN_DAY_WIDTH = 120px` (روی موبایل ۹۶px با media-query ساده در className).
+- محاسبه `chartWidth = max(containerWidth, daysCount * MIN_DAY_WIDTH)`.
+- پیچیدن `ResponsiveContainer` در یک wrapper با `overflow-x-auto` و عرض داخلی `chartWidth`.
+- استفاده از `ResizeObserver` (یا یک `useRef` + `useState` ساده) برای گرفتن عرض container و تصمیم بین حالت fit و حالت اسکرول.
+- اضافه‌کردن `ReferenceLine` عمودی نازک (stroke: `hsl(var(--border))`، dashed، opacity ۰.۴) در ابتدای هر روز برای تفکیک بصری روزها.
+- `tickFormatter` محور X طوری تنظیم شود که tickهای اصلی فقط «تاریخ روز» باشند و tickهای کوچک‌تر (در صورت نیاز) ساعت را نشان دهند؛ یا دو XAxis جداگانه (یکی روز، یکی ساعت) — انتخاب می‌شود ساده‌ترین: یک XAxis با `interval="preserveStartEnd"` و `minTickGap` کوچک‌تر چون عرض بیشتر شده.
 
-1. قیمت فروش جدید را بر اساس قیمت خرید تازه محاسبه می‌کند
-2. `product_computed_prices` را upsert می‌کند تا /sales/search مقدار جدید را ببیند
-3. در صورت تغییر، یک ردیف جدید در `product_sale_price_history` درج می‌کند
-4. به‌خاطر Realtime که قبلاً فعال شد، نمودار باز در drawer به‌صورت زنده نقطهٔ جدید را نمایش می‌دهد
+### ۲) خطوط راهنمای افقی پررنگ‌تر و قابل رؤیت در همه تم‌ها
 
-## جزئیات پیاده‌سازی
+- استفاده از توکن‌های semantic به جای رنگ خام:
+  - بیشترین: `hsl(var(--destructive))`
+  - کمترین: یک توکن سبز موجود یا اضافه‌کردن `--chart-success` در `src/styles.css` (oklch) برای light/dark.
+  - میانگین: `hsl(var(--muted-foreground))` با opacity بالاتر.
+- افزایش `strokeWidth` از ۱.۲۵ به ۱.۷۵، `strokeOpacity` به ۱، الگوی dash واضح‌تر `8 4`.
+- اضافه‌کردن یک «هاله» (یک `ReferenceLine` دوم زیرین با همان y، stroke ضخیم‌تر و opacity ۰.۱۵ هم‌رنگ) برای دیده‌شدن روی پس‌زمینه‌های روشن و تیره.
+- پس‌زمینه نیمه‌شفاف پشت برچسب (`<rect>` در `RefLabel`) با `hsl(var(--background))` و opacity ۰.۸ تا متن روی هر تم خوانا بماند.
 
-فایل: `src/routes/_app.pricing.my-workbench.tsx`
+### ۳) به‌روزرسانی توکن‌های رنگی (در صورت نبودن)
 
-- import کردن `publishProductPrices` از `@/lib/pricing/publish-prices`.
-- داخل `saveRow`، بعد از `await upsertPurchasePrice(...)` و فقط در صورتی که قیمت تغییر کرده باشد:
-  ```ts
-  const pubRes = await publishProductPrices({
-    productId: row.id,
-    source: "workbench_save",
-  });
-  ```
-- نتیجه را به toast اضافه کن: تعداد نوع‌قیمت‌های موفق و ناموفق («n قیمت فروش به‌روز شد»). در صورت failed > 0 با لحن هشدار نمایش بده اما خطا throw نکن (تغییر قیمت خرید قبلاً ثبت شده).
-- invalidate کردن کلیدهای کش مرتبط:
-  - `["workbench-rows"]` (موجود است)
-  - `["product-price-history", row.id]` و `["product-computed-prices"]` تا UI تازه شود
-- در `saveAll` نیازی به تغییر اضافی نیست چون `saveRow` را صدا می‌زند.
+در `src/styles.css` در صورت نبود، اضافه شود:
 
-## ریسک‌ها و ملاحظات
+```css
+--chart-success: oklch(0.72 0.17 155);
+--chart-success-foreground: oklch(0.98 0 0);
+```
 
-- `publishProductPrices` برای همهٔ `sale_price_types` فعال اجرا می‌شود؛ ممکن است کمی کند باشد. در workbench این قابل قبول است چون کاربر آگاهانه «ذخیره» می‌زند. اگر در `saveAll` کندی محسوس شد، در آینده می‌توان آن را به صف یا batch RPC منتقل کرد (خارج از این تغییر).
-- اگر `fetchLatestPurchasePrice` بلافاصله بعد از insert ردیف جدید را نگیرد (race)، احتمال خطا هست؛ ولی `upsertPurchasePrice` synchronous است و رکورد فعال قبلی expire شده، پس کوئری بعدی همان رکورد جدید را برمی‌گرداند.
-- برای محصولاتی که قیمت خرید معتبر ندارند، `publishProductPrices` پاسخ failed برمی‌گرداند بدون throw — در toast فقط هشدار نمایش داده می‌شود.
+و variant مشابه برای `.dark`.
+
+## ریسک‌ها
+
+- اسکرول افقی داخل Drawer ممکن است با touch gestureهای موبایل تداخل کند → wrapper با `touch-action: pan-x` تنظیم شود.
+- ReferenceLine های عمودی برای روزها در بازه «همه» اگر روزها زیاد باشند ممکن است شلوغ شوند → اگر `daysCount > 60` فقط هر چند روز یک‌بار جداکننده گذاشته شود.
 
 ## تست دستی
 
-1. باز کردن `/pricing/my-workbench`، انتخاب یک محصول، تغییر قیمت و ذخیره.
-2. باز کردن drawer «تاریخچه قیمت» همان محصول از `/sales/search`.
-3. مشاهدهٔ نقطهٔ جدید در نمودار و یک ردیف جدید در «آخرین تغییرات».
-4. تغییر مجدد قیمت → نقطهٔ سوم باید بدون refresh (به‌لطف Realtime) ظاهر شود.
-
-## خارج از محدوده
-
-- تغییر منطق `engine.ts` یا ساختار جدول‌ها.
-- بازطراحی نمودار یا برچسب‌ها.
-- اجرای publish روی همهٔ محصولات هم‌زمان از workbench (پشتیبانی فعلی `saveAll` کافی است).
+- باز کردن یک محصول با چند تغییر قیمت در یک روز → نقاط باید با فاصله قابل کلیک پخش شوند و بتوان به‌راحتی روی هر کدام hover/کلیک کرد.
+- تعویض تم روشن/تیره → خطوط بیشترین/کمترین/میانگین و برچسب‌ها در هر دو واضح باشند.
+- بازه‌های ۷ روز / ۳۰ روز / ۹۰ روز / همه → اسکرول افقی در بازه‌های طولانی فعال شود؛ در بازه ۷ روز نمودار fit شود.
