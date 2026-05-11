@@ -62,10 +62,9 @@ function MarketRatesWorkshopPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "market_rate_ticks" },
         () => {
-          qc.invalidateQueries({ queryKey: ["market-ticks"] });
-          qc.invalidateQueries({ queryKey: ["market-indicators"] });
-          qc.invalidateQueries({ queryKey: ["market-rates"] });
-          qc.invalidateQueries({ queryKey: ["latest-market-rate-summary"] });
+          qc.invalidateQueries({ queryKey: ["market-ticks-latest"] });
+          qc.invalidateQueries({ queryKey: ["market-ticks-history"] });
+          qc.invalidateQueries({ queryKey: ["market-external-status"] });
         },
       )
       .subscribe();
