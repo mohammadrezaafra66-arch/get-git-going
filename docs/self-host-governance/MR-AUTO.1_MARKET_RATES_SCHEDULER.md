@@ -70,6 +70,30 @@ legacy `mr-auto-ingest-market-rates` job so the two cannot double-fire.
 - Manual rate entry is unaffected and remains the source of truth on any failure.
 - Rollback: `SELECT cron.unschedule('mr-auto-navasan-twice-daily');`
 
+## MR-AUTO.3 — Where the secrets live
+
+The endpoint reads the same env names (`MARKET_RATES_AUTO_INGEST_ENABLED`,
+`MARKET_RATES_EXTERNAL_ENABLED`, `NAVASAN_ENABLED`, `NAVASAN_API_KEY`,
+`NAVASAN_BASE_URL`, `EXTERNAL_API_TIMEOUT_MS`, `TGJU_ENABLED`,
+`TGJU_PUBLIC_ENABLED`) in both environments — the only difference is *where*
+the operator sets them:
+
+- **Lovable Preview / Lovable published**: Lovable Cloud → Secrets panel.
+  All values are server-only (no `VITE_` prefix is ever allowed). Verified
+  `2026-05-11`: this Lovable Cloud project has `pg_cron` and `pg_net`
+  installed, so the schedule script can be applied directly here. If a future
+  Lovable Cloud instance lacks them, fall back to an external scheduler that
+  POSTs to `/api/public/hooks/ingest-market-rates` on cron
+  `30 8,9 * * 6,0-3` (UTC) — same body `{}`, no auth header required.
+- **Self-host (Linux + Docker)**: `deploy/app/.env` on the server, never
+  committed. Apply the same SQL on the host Postgres.
+
+The Navasan API key is read only inside server code via
+`process.env.NAVASAN_API_KEY` (see
+`src/routes/api/public/hooks/ingest-market-rates.ts` and
+`src/lib/market-rates-ingestion.functions.ts`). It is never logged, never
+returned in API responses, and never bundled into the client.
+
 ## Lovable preview / published
 
 Status: **blocked / manual setup required.**
