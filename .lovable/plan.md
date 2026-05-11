@@ -1,50 +1,26 @@
 ## هدف
+افزودن یک آیکون راهنما کنار دکمه «شروع محاسبه و انتشار» در صفحه `/pricing/recompute-prices` که با hover/focus/click متن راهنما را در یک Popover نشان دهد.
 
-دو بهبود در نمودار تاریخچه قیمت (`src/components/pricing/price-history/ProductPriceChart.tsx`):
+## فایل‌های تغییر یافته
+- `src/routes/_app.pricing.recompute-prices.tsx` (تنها فایل)
 
-1. **فضای کافی برای هر روز روی محور افقی** — اگر در یک روز ۷ بار قیمت آپدیت شود، نقاط نزدیک هم چسبیده‌اند و کلیک/هاور سخت است. باید برای هر روز یک عرض حداقلی اختصاص داده شود تا نقاط داخل آن روز پخش شوند.
-2. **رنگی و واضح‌تر کردن خطوط راهنمای افقی** (بیشترین/کمترین/میانگین) تا در همه تم‌ها به‌خوبی دیده شوند.
+## پیاده‌سازی
+1. import کردن `Popover, PopoverTrigger, PopoverContent` از `@/components/ui/popover` (موجود) و آیکون `HelpCircle` از `lucide-react`.
+2. کنار دکمه «شروع محاسبه و انتشار» (داخل همان `flex` که `ms-auto` دارد) یک `Popover` با `Button` آیکون-only (`variant="ghost"`, `size="icon"`) قرار دهیم.
+   - `aria-label="راهنمای استفاده از انتشار دسته‌ای قیمت فروش"`
+   - آیکون: `<HelpCircle className="h-4 w-4" />`
+3. `PopoverContent` با `align="end"` و `className="w-80 text-sm"` شامل:
+   - عنوان bold: «چه زمانی از این دکمه استفاده کنم؟»
+   - توضیح کوتاه + لیست «استفاده کن وقتی…» و «استفاده نکن وقتی…» با `<ul className="list-disc ps-4 space-y-1">`.
+   - یک پاراگراف پایانی توضیح‌دهنده.
+4. Popover هم با click (موبایل/کیبورد) و هم به‌صورت طبیعی با focus کار می‌کند؛ برای تجربه desktop دکمه trigger روی hover هم می‌تواند یک `title` attribute بگیرد.
 
-## تغییرات در `ProductPriceChart.tsx`
+## محدودیت‌ها (طبق درخواست)
+- بدون تغییر در منطق pricing، database، migration، RPC، permission.
+- بدون تغییر در `publishAllProductsPrices` / `publishProductPrices`.
+- بدون نصب package جدید (Popover و lucide از قبل موجود است).
+- بدون فایل UI جدید.
 
-### ۱) محور افقی روزـمحور با اسکرول افقی
-
-- محاسبه تعداد روزهای منحصربه‌فرد بین `rangeStart` و `rangeEnd` چارت.
-- تعریف `MIN_DAY_WIDTH = 120px` (روی موبایل ۹۶px با media-query ساده در className).
-- محاسبه `chartWidth = max(containerWidth, daysCount * MIN_DAY_WIDTH)`.
-- پیچیدن `ResponsiveContainer` در یک wrapper با `overflow-x-auto` و عرض داخلی `chartWidth`.
-- استفاده از `ResizeObserver` (یا یک `useRef` + `useState` ساده) برای گرفتن عرض container و تصمیم بین حالت fit و حالت اسکرول.
-- اضافه‌کردن `ReferenceLine` عمودی نازک (stroke: `hsl(var(--border))`، dashed، opacity ۰.۴) در ابتدای هر روز برای تفکیک بصری روزها.
-- `tickFormatter` محور X طوری تنظیم شود که tickهای اصلی فقط «تاریخ روز» باشند و tickهای کوچک‌تر (در صورت نیاز) ساعت را نشان دهند؛ یا دو XAxis جداگانه (یکی روز، یکی ساعت) — انتخاب می‌شود ساده‌ترین: یک XAxis با `interval="preserveStartEnd"` و `minTickGap` کوچک‌تر چون عرض بیشتر شده.
-
-### ۲) خطوط راهنمای افقی پررنگ‌تر و قابل رؤیت در همه تم‌ها
-
-- استفاده از توکن‌های semantic به جای رنگ خام:
-  - بیشترین: `hsl(var(--destructive))`
-  - کمترین: یک توکن سبز موجود یا اضافه‌کردن `--chart-success` در `src/styles.css` (oklch) برای light/dark.
-  - میانگین: `hsl(var(--muted-foreground))` با opacity بالاتر.
-- افزایش `strokeWidth` از ۱.۲۵ به ۱.۷۵، `strokeOpacity` به ۱، الگوی dash واضح‌تر `8 4`.
-- اضافه‌کردن یک «هاله» (یک `ReferenceLine` دوم زیرین با همان y، stroke ضخیم‌تر و opacity ۰.۱۵ هم‌رنگ) برای دیده‌شدن روی پس‌زمینه‌های روشن و تیره.
-- پس‌زمینه نیمه‌شفاف پشت برچسب (`<rect>` در `RefLabel`) با `hsl(var(--background))` و opacity ۰.۸ تا متن روی هر تم خوانا بماند.
-
-### ۳) به‌روزرسانی توکن‌های رنگی (در صورت نبودن)
-
-در `src/styles.css` در صورت نبود، اضافه شود:
-
-```css
---chart-success: oklch(0.72 0.17 155);
---chart-success-foreground: oklch(0.98 0 0);
-```
-
-و variant مشابه برای `.dark`.
-
-## ریسک‌ها
-
-- اسکرول افقی داخل Drawer ممکن است با touch gestureهای موبایل تداخل کند → wrapper با `touch-action: pan-x` تنظیم شود.
-- ReferenceLine های عمودی برای روزها در بازه «همه» اگر روزها زیاد باشند ممکن است شلوغ شوند → اگر `daysCount > 60` فقط هر چند روز یک‌بار جداکننده گذاشته شود.
-
-## تست دستی
-
-- باز کردن یک محصول با چند تغییر قیمت در یک روز → نقاط باید با فاصله قابل کلیک پخش شوند و بتوان به‌راحتی روی هر کدام hover/کلیک کرد.
-- تعویض تم روشن/تیره → خطوط بیشترین/کمترین/میانگین و برچسب‌ها در هر دو واضح باشند.
-- بازه‌های ۷ روز / ۳۰ روز / ۹۰ روز / همه → اسکرول افقی در بازه‌های طولانی فعال شود؛ در بازه ۷ روز نمودار fit شود.
+## Verification
+- باز کردن صفحه و کلیک روی آیکون راهنما → نمایش Popover با متن مشخص‌شده.
+- دکمه اصلی همچنان عمل publish را انجام دهد.
