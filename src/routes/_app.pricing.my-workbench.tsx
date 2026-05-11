@@ -49,6 +49,7 @@ import {
 } from "@/lib/pricing/workbench";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 
@@ -155,6 +156,28 @@ function WorkbenchPage() {
           previousPrice: row.current_price,
           actorId: user.id,
         });
+        // بازمحاسبه و انتشار قیمت‌های فروش تا product_sale_price_history و
+        // product_computed_prices به‌روز شوند و نمودار تاریخچه (Realtime) نقطهٔ جدید را ببیند.
+        try {
+          const pubRes = await publishProductPrices({
+            productId: row.id,
+            source: "workbench_save",
+          });
+          if (pubRes.succeeded > 0) {
+            toast.success(`${formatNumber(pubRes.succeeded)} قیمت فروش به‌روزرسانی شد`);
+          }
+          if (pubRes.failed > 0) {
+            const firstErr = pubRes.results.find((r) => !r.ok)?.error;
+            toast.warning(
+              `بازمحاسبهٔ ${formatNumber(pubRes.failed)} قیمت فروش ناموفق بود${firstErr ? `: ${firstErr}` : ""}`,
+            );
+          }
+          qc.invalidateQueries({ queryKey: ["product-price-history", row.id] });
+          qc.invalidateQueries({ queryKey: ["product-computed-prices"] });
+        } catch (pubErr: any) {
+          // تغییر قیمت خرید قبلاً ذخیره شده — فقط هشدار بده.
+          toast.warning(`بازمحاسبه قیمت فروش ناموفق بود: ${pubErr?.message ?? "خطای ناشناخته"}`);
+        }
       }
       // سپس موجودی
       if (change.stock && change.stock !== row.stock_status) {
