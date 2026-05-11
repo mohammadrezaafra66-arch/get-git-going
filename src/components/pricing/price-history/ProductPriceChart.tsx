@@ -111,16 +111,16 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
             formatter={(v: number) => [`${formatNumber(v)} ${unit}`, isUsd ? "قیمت دلاری" : "قیمت تومانی"]}
           />
           <Line
-            type="stepAfter"
+            type="monotone"
             dataKey="value"
             stroke="hsl(var(--primary))"
             strokeWidth={2.5}
             connectNulls
             dot={{
-              r: 4,
-              fill: "hsl(var(--background))",
-              stroke: "hsl(var(--primary))",
-              strokeWidth: 2,
+              r: 3.5,
+              fill: "hsl(var(--primary))",
+              stroke: "hsl(var(--background))",
+              strokeWidth: 1.5,
             }}
             activeDot={{
               r: 6,
@@ -128,7 +128,8 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
               stroke: "hsl(var(--primary))",
               strokeWidth: 2.5,
             }}
-            isAnimationActive={false}
+            isAnimationActive={true}
+            animationDuration={500}
           />
         </LineChart>
       </ResponsiveContainer>
