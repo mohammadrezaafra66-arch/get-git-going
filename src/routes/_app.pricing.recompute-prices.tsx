@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Sparkles,
   Loader2,
@@ -11,6 +12,7 @@ import {
   Activity,
   Clock,
   RefreshCw,
+  PlayCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -25,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publishAllProductsPrices, type PublishProductResult } from "@/lib/pricing/publish-prices";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
+import { triggerPricingRecomputeQueue } from "@/lib/pricing/process-queue.functions";
 
 export const Route = createFileRoute("/_app/pricing/recompute-prices")({
   beforeLoad: async () => { await requirePermission("pricing", "update"); },
@@ -34,9 +37,11 @@ export const Route = createFileRoute("/_app/pricing/recompute-prices")({
 function RecomputePricesPage() {
   const [onlyAvailable, setOnlyAvailable] = useState(true);
   const [running, setRunning] = useState(false);
+  const [draining, setDraining] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [results, setResults] = useState<PublishProductResult[]>([]);
   const [summary, setSummary] = useState<{ written: number; failed: number } | null>(null);
+  const triggerQueueFn = useServerFn(triggerPricingRecomputeQueue);
 
   const { data: counts } = useQuery({
     queryKey: ["recompute-eligible-count", onlyAvailable],
@@ -76,6 +81,27 @@ function RecomputePricesPage() {
 
   const queueHealth = queueHealthQuery.data;
   const queueLastFetchedAt = queueHealthQuery.dataUpdatedAt;
+
+  async function handleProcessQueue() {
+    setDraining(true);
+    try {
+      const res = await triggerQueueFn({ data: {} });
+      toast.success(
+        `پردازش صف قیمت‌ها انجام شد. (${res.picked} پردازش، ${res.succeeded} موفق، ${res.failed} ناموفق، ${res.remaining_pending} در انتظار)`,
+      );
+      await queueHealthQuery.refetch();
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message ?? "";
+      console.error("[ui] process queue failed", e);
+      toast.error(
+        msg
+          ? `پردازش صف قیمت‌ها ناموفق بود؛ لاگ‌ها را بررسی کنید. (${msg})`
+          : "پردازش صف قیمت‌ها ناموفق بود؛ لاگ‌ها را بررسی کنید.",
+      );
+    } finally {
+      setDraining(false);
+    }
+  }
 
   async function handleRun() {
     setRunning(true);
@@ -130,6 +156,21 @@ function RecomputePricesPage() {
                   aria-label="بروزرسانی وضعیت صف"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${queueHealthQuery.isFetching ? "animate-spin" : ""}`} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1 px-2"
+                  onClick={handleProcessQueue}
+                  disabled={draining}
+                  title="پردازش دستی صف بازمحاسبه قیمت — فقط برای کنترل اپراتور"
+                >
+                  {draining ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <PlayCircle className="h-3.5 w-3.5" />
+                  )}
+                  <span>پردازش صف قیمت‌ها</span>
                 </Button>
               </div>
             </div>
