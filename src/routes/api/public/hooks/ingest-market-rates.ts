@@ -88,6 +88,7 @@ function checkSecret(request: Request): boolean {
   // call us without embedding a separate shared secret in SQL.
   const apiKey = (request.headers.get("apikey") ?? "").trim();
   const expectedAnon = (
+    (typeof import.meta !== "undefined" && (import.meta as { env?: Record<string, string> }).env?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
     process.env.SUPABASE_PUBLISHABLE_KEY ??
     process.env.SUPABASE_ANON_KEY ??
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
