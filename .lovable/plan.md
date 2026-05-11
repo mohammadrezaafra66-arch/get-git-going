@@ -1,44 +1,67 @@
-## هدف
-فعال‌سازی واقعی استخراج خودکار نرخ بازار و تأیید ثبت داده‌ها در دیتابیس.
+## مشکل
+در Dockerfile، نصب bun از طریق `npm install -g bun@1.1.38` روی `node:20-alpine` شکست می‌خورد. bun به‌صورت رسمی از طریق npm روی Alpine (musl) به‌خوبی نصب نمی‌شود — باید از image رسمی `oven/bun` استفاده کرد.
 
-## وضعیت فعلی (تأیید شده)
-- ✅ Endpoint `/api/public/hooks/ingest-market-rates` روی production در دسترس است (publish موفق).
-- ❌ `MARKET_RATES_AUTO_INGEST_ENABLED` با مقدار صحیح ست نشده — endpoint `disabled` پاسخ می‌دهد.
-- ⚠️ Cron job (هر ۱۵ دقیقه) به URL `-dev` اشاره می‌کند نه production.
-- ❌ هیچ ردیفی در `market_rate_ticks` و `market_rate_ingestion_runs` نیست.
+## راه‌حل
+استفاده از image رسمی `oven/bun:1-debian` در stage builder (پایدار، شامل bun stable، سازگار با glibc و pre-built binaryها)، و حفظ `node:20-alpine` در stage runtime برای کوچک ماندن image نهایی.
 
-## مراحل اجرا
+## تغییرات
 
-**۱. به‌روزرسانی ۴ flag به مقدار `true`**
-درخواست فرم امن برای ست مجدد این چهار secret با مقدار دقیقاً `true` (حروف کوچک):
-- `MARKET_RATES_AUTO_INGEST_ENABLED`
-- `MARKET_RATES_EXTERNAL_ENABLED`
-- `BRSAPI_PUBLIC_ENABLED`
-- `TGJU_PUBLIC_ENABLED`
+### 1) `Dockerfile` (builder stage)
+```dockerfile
+# ====== Build stage ======
+FROM oven/bun:1-debian AS builder
+WORKDIR /app
 
-**۲. سویچ URL در cron job به production**
-به‌روزرسانی job `mr-auto-ingest-market-rates` تا به آدرس `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app/api/public/hooks/ingest-market-rates` صدا بزند (بدون `-dev`).
+COPY package.json bun.lock* bun.lockb* ./
+RUN bun install --frozen-lockfile || bun install
 
-**۳. تست دستی**
-صدا زدن endpoint production با curl و بررسی پاسخ:
-- باید `status: "completed"` یا `"failed"` (در صورت geo-block) باشد، نه `"disabled"`.
-- باید `sources` شامل `BRSAPI_PUBLIC` و در صورت نیاز `TGJU_PUBLIC` باشد.
+COPY . .
 
-**۴. تأیید ثبت در دیتابیس**
-```sql
-SELECT count(*) FROM market_rate_ingestion_runs;
-SELECT count(*) FROM market_rate_ticks;
-SELECT * FROM market_rate_ingestion_runs ORDER BY started_at DESC LIMIT 5;
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_SUPABASE_PROJECT_ID
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
+    VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+    NODE_ENV=production \
+    SELF_HOST_NODE=1
+
+RUN bun run build
+
+# secret leak guard (همان منطق فعلی)
+RUN set -e; \
+    if [ -d "dist/client" ]; then \
+      if grep -REIn --binary-files=without-match \
+          -e 'SERVICE_ROLE' -e 'SUPABASE_SERVICE_ROLE_KEY' \
+          -e 'JWT_SECRET' -e 'POSTGRES_PASSWORD' -e 'LOVABLE_API_KEY' \
+          dist/client; then \
+        echo "FATAL: secret-like token found in client bundle" >&2; exit 1; \
+      fi; \
+    fi
 ```
 
-**۵. گزارش نتیجه به کاربر**
-- اگر `inserted_count > 0`: داده‌ها در صفحه `/pricing/market-rates-workshop` قابل مشاهده‌اند، Realtime به‌روزرسانی می‌کند.
-- اگر `inserted_count = 0` ولی `fetched_count > 0`: نگاشت سمبل‌ها (`market_rate_source_mappings`) ناقص است — نیاز به تنظیم mapping در UI.
-- اگر `failed`: احتمالاً Cloudflare Worker از منابع ایرانی geo-block شده. در این صورت باید روی self-host با pg_cron از سرور خودت اجرا شود (فاز بعدی).
+### 2) `Dockerfile` (runtime stage)
+بدون تغییر — همچنان `node:20-alpine` با کاربر non-root و tini.
 
-## تغییرات کد
-هیچ تغییر کدی لازم نیست — فقط secret update + cron URL update.
+### 3) `.github/workflows/build-image.yml`
+- نسخه‌های action فعلی (`checkout@v4`, `setup-buildx-action@v3`, `login-action@v3`, `build-push-action@v5`) همگی Node 20–compatible و up-to-date هستند → نیاز به تغییر ندارند.
+- افزودن `platforms: linux/amd64` صریح برای جلوگیری از build چندمعماری ناخواسته (سرور هدف x86_64 است).
 
-## ریسک‌ها
-- اگر `MARKET_RATES_NAVASAN_ENABLED` به‌اشتباه `true` شد، تلاش برای صدا زدن Navasan انجام می‌شود (نیاز به API key — احتمالاً fail می‌شود ولی core سالم می‌ماند).
-- BrsApi/TGJU احتمالاً از Cloudflare Worker (خارج ایران) قابل دسترسی نباشند → پاسخ `failed` با reason صریح، اپ سالم.
+### 4) Cache
+استفادهٔ موجود از `cache-from: type=gha` و `cache-to: type=gha,mode=max` حفظ می‌شود؛ image رسمی bun لایه‌های پایدار و قابل cache فراهم می‌کند.
+
+## چرا این انتخاب؟
+- **`oven/bun:1-debian`**: تگ رسمی، همیشه آخرین نسخهٔ stable از bun 1.x، بدون نیاز به نصب دستی، سازگار با glibc → نه musl issue، نه npm install fragility.
+- **پایدار در برابر آپگرید**: تگ `1` به آخرین minor/patch stable می‌چسبد بدون breaking change.
+- **runtime همچنان Alpine**: image نهایی کوچک، بدون bun در runtime (فقط Node SSR لازم است).
+- **سازگار با self-host**: تنها از Docker Hub رسمی استفاده می‌شود؛ هیچ وابستگی جدید به CDN/registry غیرقابل دسترس از ایران (build روی GitHub Actions اجرا می‌شود، نه سرور ایران).
+
+## معیارهای پذیرش
+- `docker build` در GitHub Actions روی commit جدید سبز شود.
+- image در `ghcr.io/.../...-web:latest` و `:sha-<commit>` push شود.
+- secret-leak scan pass شود.
+- روی سرور `docker compose pull && docker compose up -d web` بدون خطا اجرا شود.
+
+## ریسک
+- اگر bun 1.x در آینده breaking change بدهد، تگ `1` هم آپدیت می‌شود؛ در صورت نیاز به pin، می‌توان به `oven/bun:1.1` تغییر داد.
+- image builder بزرگ‌تر از alpine است (~150MB بیشتر) ولی فقط در build مرحله مصرف می‌شود؛ runtime image تأثیر نمی‌گیرد.
