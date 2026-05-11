@@ -22,6 +22,7 @@ import {
   useLatestUsdRate,
   useProductPriceHistory,
 } from "@/hooks/pricing/useProductPriceHistory";
+import { useProductPriceHistoryRealtime } from "@/hooks/pricing/useProductPriceHistoryRealtime";
 
 const ProductPriceChart = lazy(() => import("./ProductPriceChart"));
 
@@ -54,6 +55,12 @@ export function ProductPriceHistoryDrawer({
     enabled: open,
   });
   const usdRateQuery = useLatestUsdRate(open && mode === "usd");
+
+  const { isLive } = useProductPriceHistoryRealtime({
+    productId,
+    salePriceTypeId,
+    enabled: open,
+  });
 
   const data = historyQuery.data ?? [];
   const latest = data[data.length - 1] ?? null;
@@ -88,6 +95,15 @@ export function ProductPriceHistoryDrawer({
           <SheetTitle className="flex items-center gap-2 text-base">
             <LineChartIcon className="h-4 w-4 text-primary" />
             نمودار قیمت فروش {productName ?? ""}
+            {isLive && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400"
+                title="به‌روزرسانی زنده فعال است"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                زنده
+              </span>
+            )}
           </SheetTitle>
           <SheetDescription>
             بر اساس نوع قیمت: <span className="font-medium text-foreground">{salePriceTypeTitle ?? "—"}</span>
