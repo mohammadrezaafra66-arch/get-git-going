@@ -81,9 +81,19 @@ export function ProductPriceChart({ data, mode, usdRate, height = 240 }: Props) 
             type="monotone"
             dataKey="value"
             stroke="hsl(var(--primary))"
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            activeDot={{ r: 4 }}
+            strokeWidth={2.5}
+            dot={{
+              r: 5,
+              fill: "hsl(var(--background))",
+              stroke: "hsl(var(--primary))",
+              strokeWidth: 2,
+            }}
+            activeDot={{
+              r: 7,
+              fill: "hsl(var(--background))",
+              stroke: "hsl(var(--primary))",
+              strokeWidth: 2.5,
+            }}
             isAnimationActive={false}
           />
         </LineChart>
