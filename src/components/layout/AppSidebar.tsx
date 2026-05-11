@@ -1,15 +1,20 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
-import { NAV_ITEMS, GROUP_LABELS, type NavItem } from "./nav-items";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  NAV_ITEMS, GROUP_LABELS, SUBGROUP_LABELS, type NavItem, type SubgroupKey,
+} from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ChevronDown } from "lucide-react";
 
 const GROUPS: NavItem["group"][] = [
   "main",
@@ -32,10 +37,14 @@ export function AppSidebar() {
   const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
-  const visible = NAV_ITEMS.filter((i) => {
-    if (i.adminOnly && !canSeeAdminOnly) return false;
-    return hasPermissionEx(roles, i.module, "view");
-  });
+  const visible = useMemo(
+    () =>
+      NAV_ITEMS.filter((i) => {
+        if (i.adminOnly && !canSeeAdminOnly) return false;
+        return hasPermissionEx(roles, i.module, "view");
+      }),
+    [roles, canSeeAdminOnly],
+  );
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
@@ -90,6 +99,45 @@ export function AppSidebar() {
     return () => { supabase.removeChannel(ch); };
   }, [isAdmin, qc]);
 
+  const isItemActive = (to: string) =>
+    location.pathname === to || location.pathname.startsWith(to + "/");
+
+  const renderItem = (item: NavItem) => {
+    const active = isItemActive(item.to);
+    const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
+    const showPricingBadge =
+      item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+    return (
+      <SidebarMenuItem key={item.to}>
+        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+          <Link to={item.to}>
+            <item.icon className="h-4 w-4" />
+            <span>{item.label}</span>
+            {showBadge && (
+              <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                {pendingCount}
+              </span>
+            )}
+            {showPricingBadge && (
+              <span
+                className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
+                  pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+                }`}
+                title={
+                  pricingAlertVariant === "alert"
+                    ? `${failedCount} مورد ناموفق در صف قیمت`
+                    : `${pendingPricing} مورد در انتظار در صف قیمت`
+                }
+              >
+                {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+              </span>
+            )}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
   return (
     <Sidebar side="right" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -108,51 +156,81 @@ export function AppSidebar() {
         {GROUPS.map((g) => {
           const items = visible.filter((i) => i.group === g);
           if (!items.length) return null;
+          const groupActive = items.some((i) => isItemActive(i.to));
+
+          // Group items into subgroups (preserving order). Items without subgroup go first.
+          const flatItems = items.filter((i) => !i.subgroup);
+          const subgroupOrder: SubgroupKey[] = [];
+          const bySubgroup = new Map<SubgroupKey, NavItem[]>();
+          for (const it of items) {
+            if (!it.subgroup) continue;
+            if (!bySubgroup.has(it.subgroup)) {
+              bySubgroup.set(it.subgroup, []);
+              subgroupOrder.push(it.subgroup);
+            }
+            bySubgroup.get(it.subgroup)!.push(it);
+          }
+          const hasSubgroups = subgroupOrder.length > 0;
+
+          // "main" group is always flat — no collapse.
+          if (g === "main") {
+            return (
+              <SidebarGroup key={g}>
+                <SidebarGroupLabel>{GROUP_LABELS[g]}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>{items.map(renderItem)}</SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          }
+
           return (
-            <SidebarGroup key={g}>
-              <SidebarGroupLabel>{GROUP_LABELS[g]}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((item) => {
-                    const active = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
-                    const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
-                    const showPricingBadge =
-                      item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
-                    return (
-                      <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                          <Link to={item.to}>
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.label}</span>
-                            {showBadge && (
-                              <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                                {pendingCount}
-                              </span>
-                            )}
-                            {showPricingBadge && (
-                              <span
-                                className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
-                                  pricingAlertVariant === "alert"
-                                    ? "bg-destructive"
-                                    : "bg-amber-500"
-                                }`}
-                                title={
-                                  pricingAlertVariant === "alert"
-                                    ? `${failedCount} مورد ناموفق در صف قیمت`
-                                    : `${pendingPricing} مورد در انتظار در صف قیمت`
-                                }
+            <Collapsible key={g} defaultOpen={groupActive} className="group/collapsible">
+              <SidebarGroup>
+                <CollapsibleTrigger asChild>
+                  <SidebarGroupLabel
+                    className={`flex cursor-pointer items-center justify-between gap-2 hover:text-sidebar-foreground ${groupActive ? "text-sidebar-foreground" : ""}`}
+                  >
+                    <span>{GROUP_LABELS[g]}</span>
+                    <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    {flatItems.length > 0 && (
+                      <SidebarMenu>{flatItems.map(renderItem)}</SidebarMenu>
+                    )}
+                    {hasSubgroups &&
+                      subgroupOrder.map((sg) => {
+                        const sgItems = bySubgroup.get(sg)!;
+                        const sgActive = sgItems.some((i) => isItemActive(i.to));
+                        return (
+                          <Collapsible
+                            key={sg}
+                            defaultOpen={sgActive}
+                            className="group/sub mt-1"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                               >
-                                {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
-                              </span>
-                            )}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                                <span>{SUBGROUP_LABELS[sg]}</span>
+                                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=closed]/sub:-rotate-90" />
+                              </button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <SidebarMenu className="border-r border-sidebar-border/40 pr-1">
+                                {sgItems.map(renderItem)}
+                              </SidebarMenu>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })}
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
           );
         })}
       </SidebarContent>
