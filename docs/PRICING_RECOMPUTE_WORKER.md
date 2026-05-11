@@ -312,3 +312,28 @@ sudo systemctl enable --now afrakala-pricing-worker.timer
 - هرگز در Git commit نشود (placeholder در `.env.production.example` خالی است)
 - محل واقعی فقط: `/etc/afrakala/app.env` با chmod 600
 
+---
+
+## PRICE-RT.6 — Validation, freshness map, and monitoring hardening
+
+- چک‌لیست end-to-end staging (purchase price, currency rate, rule change,
+  PDF/sale-list freshness): `docs/PRICING_RECOMPUTE_WORKER_VALIDATION.md`
+- Logrotate template: `deploy/app/scripts/logrotate-pricing-worker.example`
+  (daily, rotate 14, compress, missingok, notifempty, copytruncate).
+- خلاصه freshness:
+  - board زنده → realtime از طریق `useComputedPricesRealtime`.
+  - ویرایشگر داخلی sale list → realtime + sync trigger روی
+    `sale_list_items` از `product_computed_prices`.
+  - صفحهٔ عمومی sale list → snapshot read-only؛ refresh/navigation
+    قیمت تازه را می‌آورد (realtime نیست؛ عمدی).
+  - PDF لیست فروش و پیش‌فاکتور → در client از داده‌های فعلی تولید
+    می‌شوند، هیچ فایل PDF استاتیکی روی Storage نگه‌داری نمی‌شود.
+- شرایط alert (پایش manual یا dashboard):
+  - `failed_count > 0`
+  - `pending_count > 100`
+  - `oldest_pending_at` قدیمی‌تر از ۱۰ دقیقه
+  - تکرار HTTP غیر-200 در `pricing-worker.log` (≥ ۳ بار در ۵ دقیقه)
+  - نبود اجرای موفق worker در ۵ دقیقهٔ اخیر
+- manual recompute (UI و RPC) **حذف نمی‌شود**؛ مسیر تعمیر/import/recovery
+  باقی می‌ماند. cron/timer مسیر اصلی است.
+
