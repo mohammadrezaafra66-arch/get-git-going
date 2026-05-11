@@ -8378,6 +8378,11 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_all_sale_list_prices: { Args: never; Returns: undefined }
+      refresh_sale_list_prices: {
+        Args: { p_list_id: string }
+        Returns: undefined
+      }
       refund_capital_allocation: {
         Args: {
           p_amount: number

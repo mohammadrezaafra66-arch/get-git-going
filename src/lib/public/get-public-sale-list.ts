@@ -47,6 +47,9 @@ export async function getPublicSaleList(
 
   if (listErr || !list) return null;
 
+  // Refresh prices from latest history before reading items (live pricing)
+  await supabase.rpc("refresh_sale_list_prices", { p_list_id: listId });
+
   // 2) Fetch sale price type title (best-effort)
   let priceTypeTitle: string | null = null;
   if (list.sale_price_type_id) {
