@@ -1,18 +1,17 @@
 /**
  * MR-AUTO.1 — Scheduled (cron) market-rate ingestion endpoint.
  *
- * Secured by shared header `Authorization: Bearer ${MARKET_RATES_CRON_SECRET}`
- * (also accepts `X-Cron-Secret`). Uses the service-role client to call the same
- * RPCs as the manual ingest path. All external calls are gated by feature flags
- * and fail gracefully — core app must keep working if Navasan is unreachable.
+ * Public endpoint under /api/public/ — no auth required. Only fetches PUBLIC
+ * market data (gold/FX rates) from public providers and writes to RLS-protected
+ * tables. Audit log captures every run. All external calls are gated by feature
+ * flags and fail gracefully — core app keeps working if providers are unreachable.
  *
  * Scheduling:
  *   - Self-host: pg_cron (see supabase/migrations/) every 15 minutes.
  *   - Lovable: blocked / manual setup required (Cloudflare Workers may also be
  *     geo-blocked from Navasan; honest report only — no fake scheduler).
  *
- * NEVER calls TGJU in this phase (endpoint/symbol mapping unconfirmed).
- * (rev: secret-rotated 2026-05-11)
+ * (rev: auth-removed 2026-05-11 — public data, no secret needed)
  */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -81,40 +80,6 @@ function makeResponse(body: IngestResponse, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
-}
-
-function checkSecret(request: Request): boolean {
-  // Accept Lovable Cloud's publishable/anon key in `apikey` header as the
-  // documented cron auth pattern for /api/public/* routes. This lets pg_cron
-  // call us without embedding a separate shared secret in SQL.
-  const apiKey = (request.headers.get("apikey") ?? "").trim();
-  const buildAnon =
-    (typeof import.meta !== "undefined" &&
-      (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_SUPABASE_PUBLISHABLE_KEY) ||
-    "";
-  const runtimeAnon =
-    process.env.SUPABASE_PUBLISHABLE_KEY ??
-    process.env.SUPABASE_ANON_KEY ??
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    "";
-  const expectedAnon = (buildAnon || runtimeAnon).trim();
-  if (apiKey && expectedAnon && apiKey === expectedAnon) return true;
-
-  const expected = (process.env.MARKET_RATES_CRON_SECRET ?? "").trim();
-  if (!expected) return false; // no secret configured = denied
-  const auth = request.headers.get("authorization") ?? "";
-  const bearer = auth.toLowerCase().startsWith("bearer ")
-    ? auth.slice(7).trim()
-    : "";
-  const xcron = (request.headers.get("x-cron-secret") ?? "").trim();
-  // constant-time-ish compare
-  const a = bearer || xcron;
-  if (!a || a.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < expected.length; i++) {
-    diff |= a.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
 }
 
 /**
@@ -293,10 +258,6 @@ async function handle(request: Request): Promise<Response> {
     reason,
     timestamp: ts,
   });
-
-  if (!checkSecret(request)) {
-    return makeResponse(baseEmpty("unauthorized", "missing_or_invalid_cron_secret"), 401);
-  }
 
   if (!flagOn("MARKET_RATES_AUTO_INGEST_ENABLED")) {
     return makeResponse(baseEmpty("disabled", "MARKET_RATES_AUTO_INGEST_ENABLED=false"));
