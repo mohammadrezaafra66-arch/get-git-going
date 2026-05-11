@@ -1,13 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
 # ====== Build stage ======
-FROM node:20-alpine AS builder
+FROM oven/bun:1-debian AS builder
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat \
- && npm install -g bun@1.1.38
-
-COPY package.json bun.lock* ./
+COPY package.json bun.lock* bun.lockb* ./
 RUN bun install --frozen-lockfile || bun install
 
 COPY . .
