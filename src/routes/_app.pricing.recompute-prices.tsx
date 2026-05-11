@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Loader2, CheckCircle2, AlertCircle, ListChecks } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, AlertCircle, ListChecks, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { publishAllProductsPrices, type PublishProductResult } from "@/lib/pricing/publish-prices";
 import { formatNumber } from "@/lib/i18n/formatters";
@@ -92,10 +93,52 @@ function RecomputePricesPage() {
               {" "}از کل{" "}
               <strong className="text-foreground">{formatNumber(counts?.all ?? 0)}</strong>
             </div>
-            <Button onClick={handleRun} disabled={running} className="ms-auto">
-              {running ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Sparkles className="ms-1 h-4 w-4" />}
-              شروع محاسبه و انتشار
-            </Button>
+            <div className="ms-auto flex items-center gap-1">
+              <Button onClick={handleRun} disabled={running}>
+                {running ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Sparkles className="ms-1 h-4 w-4" />}
+                شروع محاسبه و انتشار
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="راهنمای استفاده از انتشار دسته‌ای قیمت فروش"
+                    title="راهنمای استفاده"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 text-sm leading-6" dir="rtl">
+                  <div className="space-y-2">
+                    <div className="font-semibold">چه زمانی از این دکمه استفاده کنم؟</div>
+                    <p className="text-muted-foreground">
+                      این دکمه برای محاسبه و انتشار دسته‌ای قیمت فروش چندین محصول است.
+                    </p>
+                    <div>
+                      <div className="font-medium">استفاده کن وقتی:</div>
+                      <ul className="list-disc ps-5 space-y-1 text-muted-foreground">
+                        <li>نرخ ارز تغییر کرده و باید قیمت چندین محصول به‌روزرسانی شود.</li>
+                        <li>قوانین قیمت‌گذاری یا نوع قیمت‌های فروش تغییر کرده‌اند.</li>
+                        <li>بعد از import یا اصلاح گسترده محصولات/قیمت‌ها می‌خواهی قیمت‌ها دوباره منتشر شوند.</li>
+                        <li>بعد از migration یا راه‌اندازی اولیه لازم است قیمت‌ها برای فروش قابل مشاهده شوند.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="font-medium">استفاده نکن وقتی:</div>
+                      <ul className="list-disc ps-5 space-y-1 text-muted-foreground">
+                        <li>فقط قیمت خرید یک محصول تغییر کرده است.</li>
+                        <li>فقط می‌خواهی قیمت یک کالا را اصلاح کنی.</li>
+                      </ul>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      برای تغییر قیمت خرید یک محصول، باید فقط همان محصول دوباره محاسبه شود؛ اجرای دسته‌ای ممکن است قیمت چندین محصول را هم‌زمان بازنویسی کند.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {running && (
