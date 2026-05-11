@@ -1,116 +1,55 @@
+## مشکل
 
-# Phase SH-RA.5 — Update + Rollback Runbook (Documentation Only)
+قیمت‌ها در «لیست‌های فروش» (و PDF خروجی آن‌ها) به‌صورت snapshot روی ستون `sale_list_items.current_price` ذخیره می‌شوند. هرچند یک تریگر روی `product_sale_price_history` وجود دارد که هنگام درج رکورد جدید، snapshot لیست‌ها را به‌روزرسانی می‌کند، اما در عمل:
+
+- PDF از همان snapshot لحظه‌ی ساخت لیست خوانده می‌شود و اگر بعداً قیمت در «کارگاه قیمت» تغییر کند ولی به history اضافه نشود (یا کاربر «نسخه جدید» نسازد)، PDF قدیمی می‌ماند.
+- صفحه‌ی جزئیات لیست هیچ realtime/refresh خودکاری ندارد.
+- هنگام تولید PDF هیچ همگام‌سازی اجباری انجام نمی‌شود.
 
 ## هدف
 
-اضافه کردن procedureهای دقیق و تکرارپذیر برای بروزرسانی و rollback production self-host به مستندات، طبق scope فاز SH-RA.5. هیچ تغییر کد، compose، migration، secret یا اجرای deploy/build/test انجام نمی‌شود.
+وقتی قیمت یک محصول از هر مسیری (کارگاه قیمت، تابلوی امین حضور، تنظیمات قیمت و …) تغییر می‌کند، تمام لیست‌های فروشی که آن محصول را با همان `sale_price_type` دارند بدون نیاز به ساخت نسخه‌ی جدید، و چه در نمایش UI، چه در صفحه‌ی عمومی و چه در PDF خروجی، به آخرین قیمت برسند.
 
-## تحلیل وضعیت موجود
+## راهکار
 
-دو فایل عملیاتی مرتبط در پروژه وجود دارد:
+سه لایه‌ی همگام‌سازی روی هم:
 
-- **`docs/self-host-governance/08_OPS_RUNBOOK.md`** — runbook عملیات روزانه؛ بخش‌های update/rollback آن خلاصه و فاقد جزئیات لازم برای SH-RA.5 است (مثلاً curl health check، record IMAGE_TAG، stop conditions، DB-rollback warning، post-update report).
-- **`docs/SELF_HOST_UPDATE_RUNBOOK.md`** — runbook کاملِ به‌روزرسانی موجود است و بسیاری از سناریوها را پوشش می‌دهد. با spec فاز هم‌خوانی خوبی دارد و نیازی به تغییر اساسی ندارد.
+### ۱. لایه‌ی دیتابیس — تابع همگام‌سازی صریح + پوشش بهتر تریگر
 
-طبق دستور فاز:
-> docs/SELF_HOST_UPDATE_RUNBOOK.md only if a small consistency fix is required; otherwise link only.
+- ساخت تابع `public.refresh_sale_list_prices(p_list_id uuid)` (security definer) که برای یک لیست مشخص، تمام `sale_list_items` آن را از آخرین `product_sale_price_history` همان `sale_price_type` به‌روزرسانی می‌کند (current_price/previous_price/change_amount/change_percent).
+- ساخت تابع `public.refresh_all_sale_list_prices()` برای همگام‌سازی کل لیست‌ها (برای cron یا دکمه‌ی ادمین).
+- بازنویسی تریگر `sync_sale_list_items_from_history` تا علاوه بر `INSERT/UPDATE` روی `product_sale_price_history`، روی درج در `price_calculation_snapshots` هم فعال شود (در صورت مسیر مستقیم workshop)، و همچنین وقتی `sale_list_items` جدید درج می‌شود، خودش از آخرین history مقداردهی شود (تا آیتم‌های تازه اضافه‌شده هم درست شروع کنند).
+- اعطای `EXECUTE` به `authenticated` و `anon` (برای صفحه‌ی عمومی).
 
-تصمیم: فقط `08_OPS_RUNBOOK.md` را با بخش‌های SH-RA.5 گسترش می‌دهیم و به `SELF_HOST_UPDATE_RUNBOOK.md` لینک می‌دهیم. به فایل دوم دست نمی‌زنیم.
+### ۲. لایه‌ی Read — اجرای refresh قبل از خواندن
 
-## فایل‌های مجاز برای تغییر در این فاز
+- در `src/lib/public/get-public-sale-list.ts` قبل از کوئری `sale_list_items`، یک `supabase.rpc("refresh_sale_list_prices", { p_list_id })` صدا زده شود تا صفحه‌ی عمومی همیشه آخرین قیمت‌ها را بدهد.
+- در `src/routes/_app.pricing.sale-lists_.$listId.tsx` همان rpc قبل از واکشی آیتم‌ها فراخوانی شود؛ یک دکمه‌ی «به‌روزرسانی قیمت‌ها از منبع» هم برای ادمین اضافه شود.
+- در تابع تولید PDF (`src/lib/pdf/sale-list-pdf.ts` یا محل فراخوانی آن در صفحه‌ی لیست)، درست قبل از ساخت PDF همان rpc اجرا و سپس آیتم‌ها مجدداً خوانده شوند تا PDF با تازه‌ترین قیمت‌ها رندر شود.
 
-- ویرایش: `docs/self-host-governance/08_OPS_RUNBOOK.md`
-- ایجاد/حذف: هیچ‌کدام
+### ۳. لایه‌ی Realtime — به‌روزرسانی لحظه‌ای UI
 
-## محتوای تغییر در 08_OPS_RUNBOOK.md
+- فعال‌سازی realtime روی جدول `sale_list_items` (اضافه‌کردن به `supabase_realtime` publication).
+- در صفحه‌ی جزئیات لیست، subscription روی تغییرات `sale_list_items` با `sale_list_id = listId` تا جدول و کارت‌های قیمت به محض تغییر (از تریگر دیتابیس) فوراً refresh شوند، بدون نیاز به reload.
 
-بخش‌های فعلی «آپدیت فقط اپ» و «آپدیت با migration» و «Emergency Rollback» با ساختار رسمی SH-RA.5 جایگزین/گسترش می‌شوند. ساختار نهایی فایل به این صورت خواهد بود:
+### نکات سازگار با قانون مادر
 
-```text
-1. ترتیب راه‌اندازی stackها                     (بدون تغییر)
-2. عملیات روزانه                                (بدون تغییر)
-3. Update — Scenario A: app-only, no migration
-   - verify current IMAGE_TAG (grep .env.production / docker inspect)
-   - set new IMAGE_TAG
-   - docker login ghcr.io (in case PAT expired)
-   - docker compose -f deploy/app/docker-compose.prod.yml pull web
-   - docker compose -f deploy/app/docker-compose.prod.yml up -d web
-   - curl -fsS https://app.afrakala.ir/api/healthz
-   - docker compose logs --tail=200 web
-   - record deployed IMAGE_TAG in deploy log
-4. Update — Scenario B: with migration
-   - fresh backup (deploy/backups/scripts/backup-postgres.sh)
-   - git pull && review supabase/migrations diff
-   - confirm no destructive SQL without owner/devops approval
-   - DRY_RUN=false bash deploy/migration/scripts/apply-project-migrations.sh
-   - pull + up -d web
-   - smoke-test.sh + curl /api/healthz
-   - monitor logs (15 min minimum)
-5. App rollback (by previous IMAGE_TAG)
-   - export IMAGE_TAG=sha-<previous-good>
-   - pull + up -d
-   - healthcheck + logs
-   - record rollback in incident log
-6. DB rollback — DANGER
-   - DB rollback ≠ app rollback
-   - requires verified backup restore OR approved reverse migration
-   - NEVER run without admin/devops written approval
-   - production restore requires fresh incident note
-   - reference: deploy/backups/scripts/restore-postgres.sh + verify-restore.sh
-7. GHCR image consistency note
-   - production image MUST follow:
-     ghcr.io/${GHCR_OWNER}/${GHCR_REPO}-web:${IMAGE_TAG:-latest}
-   - same pattern as .github/workflows/build-image.yml and
-     deploy/app/docker-compose.prod.yml
-   - GHCR_OWNER and GHCR_REPO must be set in deploy/app/.env.production
-   - tag mismatch → docker pull fails or wrong code is deployed
-8. Stop conditions (operator MUST stop and escalate if ANY apply)
-   - missing/old backup
-   - smoke test fails
-   - unknown migration content
-   - destructive SQL without approval
-   - unknown IMAGE_TAG
-   - GHCR pull fails
-   - healthcheck fails
-   - logs show startup errors
-   - any secret/env/cert appears in `git status`/`git diff`
-9. Post-update report template (copyable)
-   - date/time, operator
-   - previous IMAGE_TAG, new IMAGE_TAG
-   - migration: yes/no
-   - backup file path
-   - healthcheck result
-   - smoke test result
-   - rollback needed: yes/no
-   - notes
-10. Backup / Restore policy                     (بدون تغییر)
-11. Disaster Recovery scenarios                 (بدون تغییر)
-12. Monitoring                                  (بدون تغییر)
-13. Reference: docs/SELF_HOST_UPDATE_RUNBOOK.md (link only)
-```
+- migration فقط افزودنی (تابع جدید + بازنویسی idempotent تریگر موجود)، بدون DROP COLUMN.
+- تابع `SECURITY DEFINER` با `search_path = public` و grant محدود.
+- بدون secret جدید، بدون وابستگی خارجی، self-host-friendly.
+- realtime publication فقط روی همان جدول، بدون publicاکردن داده‌ی حساس (RLS موجود حفظ می‌شود).
+- منطق نسخه‌بندی (`version_number`/`snapshot_data`) دست نمی‌خورد؛ نسخه‌ها همچنان immutable باقی می‌مانند و فقط «نمای جاری لیست منتشرشده» live می‌شود.
 
-دستورات داخل بخش‌های ۳ تا ۵ همان الگوی موجود در `SELF_HOST_UPDATE_RUNBOOK.md` و `deploy/app/README.md` را دقیقاً بازتاب می‌دهند تا inconsistency ایجاد نشود. بدون hard-code کردن owner/repo واقعی.
+## فایل‌های تغییر
 
-## آنچه تغییر نمی‌کند (Forbidden)
+- جدید: `supabase/migrations/<timestamp>_refresh_sale_list_prices.sql`
+- ویرایش: `src/lib/public/get-public-sale-list.ts`
+- ویرایش: `src/routes/_app.pricing.sale-lists_.$listId.tsx` (rpc قبل از fetch + realtime + دکمه‌ی refresh)
+- ویرایش: `src/lib/pdf/sale-list-pdf.ts` یا محل فراخوانی آن (refresh قبل از تولید)
+- بدون تغییر: `src/integrations/supabase/{client,types}.ts` (auto-regen)
 
-- هیچ فایل کد، compose، Dockerfile، migration، script، .env یا certificate.
-- بدون اجرای deploy/build/test/migration/backup/restore.
-- بدون تغییر در `src/`, `server/`, `supabase/`, `deploy/`, `.github/`.
-- بدون تغییر در `docs/SELF_HOST_UPDATE_RUNBOOK.md` (فقط لینک از داخل 08).
+## تأیید
 
-## Validation checklist (پس از پیاده‌سازی)
-
-- [ ] فقط `08_OPS_RUNBOOK.md` تغییر کرده.
-- [ ] هر هفت بخش الزامی SH-RA.5 موجود است (Scenario A, Scenario B, App rollback, DB rollback warning, GHCR note, Stop conditions, Post-update report).
-- [ ] هیچ دستوری اجرا نشده.
-- [ ] هیچ secret/env/cert ساخته نشده.
-- [ ] هیچ تغییر در deploy/, src/, supabase/, server/, .github/.
-- [ ] الگوی GHCR image با compose و workflow هم‌خوان است.
-
-## Rollback note
-
-برگرداندن این فاز ساده است: revert تنها commit مربوط به `08_OPS_RUNBOOK.md`. هیچ side-effect عملیاتی ندارد چون فقط documentation است.
-
-## Phase Completion Report (پس از اجرا تکمیل می‌شود)
-
-طبق قالب `06_PHASE_PROTOCOL.md` در پایان اجرا گزارش رسمی شامل: Files edited (تنها 08_OPS_RUNBOOK.md)، تمام پاسخ‌های yes/no صفر برای OCR/Auth/Storage/Migration/Secret/Deploy/Docker/Database، Verification = grep بر روی فایل برای حضور هر هفت بخش، Next recommended phase = SH-RA.6A، Ready for handoff = yes.
+- تغییر قیمت یک محصول در «کارگاه قیمت» → بدون reload، صفحه‌ی جزئیات لیست همان قیمت جدید را نشان می‌دهد.
+- دانلود PDF بلافاصله بعد از تغییر قیمت → PDF با قیمت جدید تولید می‌شود.
+- باز کردن لینک عمومی لیست → آخرین قیمت دیده می‌شود.
