@@ -10,6 +10,7 @@ import { toFaDigits } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,11 +156,26 @@ function SalespersonCapitalAllocationsPage() {
       <PageHeader
         title="تخصیص سرمایه روز بین فروشندگان"
         description="محاسبه و ثبت سهم هر فروشنده از سرمایه نهایی روز بر اساس امتیاز ماهانه"
+        actions={
+          <HelpHint
+            size={18}
+            text={
+              "این صفحه سرمایه نهایی روز را بین فروشندگان فعال تقسیم می‌کند.\n" +
+              "۱) شناسه «اسنپ‌شات سرمایه روز» را از صفحه «سرمایه روز» کپی و در کادر بالا وارد کنید.\n" +
+              "۲) دکمه «محاسبه سهم پیشنهادی» سهم هر فروشنده را بر اساس امتیاز ماهانه‌اش محاسبه می‌کند.\n" +
+              "۳) در ستون «سهم نهایی» می‌توانید عدد را تغییر دهید؛ در صورت تغییر، نوشتن «دلیل تغییر» اجباری است.\n" +
+              "۴) در پایان «ذخیره تخصیص‌ها» را بزنید. سپس از صفحه «تخصیص سرمایه فروشنده بین مشتریان» می‌توانید سهم هر فروشنده را بین مشتریانش پخش کنید."
+            }
+          />
+        }
       />
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="text-sm font-semibold">انتخاب اسنپ‌شات سرمایه روز</div>
+          <div className="text-sm font-semibold inline-flex items-center gap-1">
+            انتخاب اسنپ‌شات سرمایه روز
+            <HelpHint text={"اسنپ‌شات همان سرمایه نهایی تأییدشده روز است که در صفحه «سرمایه روز» ذخیره کرده‌اید.\nشناسه (UUID) آن را از همان صفحه یا گزارش backend بردارید."} />
+          </div>
           <div className="text-xs text-muted-foreground">
             شناسه اسنپ‌شات (capital_snapshot_id) را از صفحه «سرمایه روز» یا گزارش backend وارد کنید.
           </div>
@@ -239,10 +255,30 @@ function SalespersonCapitalAllocationsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">شناسه فروشنده</TableHead>
-                    <TableHead className="text-right">امتیاز ماهانه</TableHead>
-                    <TableHead className="text-right">سهم پیشنهادی سیستم</TableHead>
-                    <TableHead className="text-right">سهم نهایی</TableHead>
-                    <TableHead className="text-right">دلیل تغییر (در صورت override)</TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        امتیاز ماهانه
+                        <HelpHint text={"امتیاز عملکرد ماهانه فروشنده که از ماژول گیمیفیکیشن/فروش محاسبه می‌شود.\nهرچه امتیاز بیشتر باشد، سهم بیشتری از سرمایه روز می‌گیرد."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        سهم پیشنهادی سیستم
+                        <HelpHint text={"سهم پیشنهادی = سرمایه نهایی روز × (امتیاز فروشنده ÷ مجموع امتیازها).\nاین عدد فقط پیشنهاد است و قابل تغییر است."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        سهم نهایی
+                        <HelpHint text={"عدد نهایی که فروشنده برای فروش حساب‌باز می‌تواند استفاده کند.\nاگر با سهم پیشنهادی فرق داشته باشد، باید دلیل تغییر را در ستون بعدی بنویسید."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        دلیل تغییر (در صورت override)
+                        <HelpHint text={"فقط وقتی پر کنید که «سهم نهایی» را با «سهم پیشنهادی» متفاوت گذاشته‌اید.\nاین دلیل برای حسابرسی ذخیره می‌شود."} />
+                      </span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
