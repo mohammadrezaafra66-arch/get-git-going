@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +99,15 @@ function CustomerCreditPage() {
         description="امتیاز اعتباری، سقف اعتبار و سابقه مالی مشتری"
         actions={
           <div className="flex gap-2">
+            <HelpHint
+              size={18}
+              text={
+                "این صفحه وضعیت اعتباری یک مشتری را نشان می‌دهد:\n" +
+                "• امتیاز اعتباری (۰ تا ۱۰۰) بر اساس قوانین تعریف‌شده محاسبه می‌شود.\n" +
+                "• سقف اعتبار، حداکثر بدهی مجاز برای این مشتری است.\n" +
+                "• «محاسبه مجدد» اعداد را بر اساس آخرین فاکتور‌ها/پرداخت‌ها به‌روز می‌کند."
+              }
+            />
             <Button variant="outline" asChild>
               <Link to="/sales/customers">بازگشت به مشتریان</Link>
             </Button>
@@ -135,6 +145,7 @@ function CustomerCreditPage() {
             <MetricCard
               icon={<ShieldCheck className="h-5 w-5" />}
               label="امتیاز اعتباری"
+              hintText={"عدد ۰ تا ۱۰۰: تا ۳۰ پرریسک (قرمز)، ۳۱ تا ۶۰ متوسط (کهربایی)، بالاتر از ۶۰ خوش‌حساب (سبز)."}
               value={
                 <Badge className={`text-lg px-3 py-1 ${scoreColor(score)}`}>
                   {toFaDigits(score)} / ۱۰۰
@@ -144,18 +155,21 @@ function CustomerCreditPage() {
             <MetricCard
               icon={<Wallet className="h-5 w-5" />}
               label="سقف اعتبار"
+              hintText={"حداکثر مبلغی که این مشتری می‌تواند بدهکار شود. هنگام صدور فاکتور اعتباری چک می‌شود."}
               value={<span className="text-xl font-bold">{formatNumber(limit)}</span>}
               hint="ریال"
             />
             <MetricCard
               icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
               label="بدهی جاری"
+              hintText={"مبلغی که هنوز پرداخت نشده. هر فاکتور اعتباری به آن اضافه و هر دریافت از آن کم می‌شود."}
               value={<span className="text-xl font-bold">{formatNumber(outstanding)}</span>}
               hint="ریال"
             />
             <MetricCard
               icon={<TrendingUp className="h-5 w-5" />}
               label="کل خرید"
+              hintText={"مجموع تمام خریدهای ثبت‌شدهٔ این مشتری از ابتدای همکاری."}
               value={<span className="text-xl font-bold">{formatNumber(totalPurchases)}</span>}
               hint="ریال"
             />
@@ -163,7 +177,15 @@ function CustomerCreditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">سابقه پرداخت</CardTitle>
+              <CardTitle className="text-base inline-flex items-center gap-2">
+                سابقه پرداخت
+                <HelpHint
+                  text={
+                    "خلاصهٔ رفتار پرداختی مشتری.\n" +
+                    "«تعداد تأخیر» یعنی چند بار پرداخت دیرتر از موعد انجام شده است."
+                  }
+                />
+              </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
               <Stat label="کل پرداخت" value={`${formatNumber(totalPaid)} ریال`} />
@@ -177,7 +199,15 @@ function CustomerCreditPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">تاریخچه محاسبات (۲۰ مورد اخیر)</CardTitle>
+              <CardTitle className="text-base inline-flex items-center gap-2">
+                تاریخچه محاسبات (۲۰ مورد اخیر)
+                <HelpHint
+                  text={
+                    "هر بار که امتیاز اعتباری مشتری محاسبه می‌شود، یک ردیف اینجا ثبت می‌گردد.\n" +
+                    "می‌توانید روند تغییر امتیاز و سقف اعتبار در طول زمان را مشاهده کنید."
+                  }
+                />
+              </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               <Table>
@@ -217,13 +247,15 @@ function CustomerCreditPage() {
 }
 
 function MetricCard({
-  icon, label, value, hint,
-}: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string }) {
+  icon, label, value, hint, hintText,
+}: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; hintText?: string }) {
   return (
     <Card>
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {icon}<span>{label}</span>
+          {icon}
+          <span>{label}</span>
+          {hintText && <HelpHint text={hintText} />}
         </div>
         <div>{value}</div>
         {hint && <div className="text-xs text-muted-foreground">{hint}</div>}

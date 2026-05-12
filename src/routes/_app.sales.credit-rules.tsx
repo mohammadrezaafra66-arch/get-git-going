@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,17 @@ function CreditRulesPage() {
       <PageHeader
         title="قوانین امتیازدهی اعتباری"
         description="مدیریت پارامترها و وزن‌های محاسبه امتیاز اعتباری مشتری"
+        actions={
+          <HelpHint
+            size={18}
+            text={
+              "این صفحه برای تنظیم پارامترهای محاسبه امتیاز اعتباری مشتری است.\n" +
+              "هر پارامتر یک «وزن» بین ۰ تا ۱ دارد؛ مجموع وزن‌های فعال باید ۱.۰۰ شود.\n" +
+              "برای فعال/غیرفعال‌کردن از کلید کناری استفاده کنید و سپس روی «ذخیره» بزنید.\n" +
+              "می‌توانید پارامترهای جدید با نام انگلیسی (مثلاً profitability) اضافه کنید."
+            }
+          />
+        }
       />
 
       {!canEdit && (
@@ -111,8 +123,14 @@ function CreditRulesPage() {
 
       {Math.abs(totalWeight - 1) > 0.001 && (
         <Alert variant={totalWeight > 1 ? "destructive" : "default"}>
-          <AlertDescription>
-            مجموع وزن‌های فعال: {totalWeight.toFixed(2)} (مقدار توصیه‌شده: ۱.۰۰)
+          <AlertDescription className="flex items-center gap-2">
+            <span>مجموع وزن‌های فعال: {totalWeight.toFixed(2)} (مقدار توصیه‌شده: ۱.۰۰)</span>
+            <HelpHint
+              text={
+                "مجموع وزن همهٔ پارامترهای فعال باید برابر ۱.۰۰ باشد تا امتیاز نهایی صفر تا صد به‌درستی محاسبه شود.\n" +
+                "اگر بیشتر از ۱ شود امتیاز بیش از حد خوش‌بینانه و اگر کمتر باشد بدبینانه می‌شود."
+              }
+            />
           </AlertDescription>
         </Alert>
       )}
@@ -128,9 +146,24 @@ function CreditRulesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-right">نام پارامتر</TableHead>
-                  <TableHead className="text-right w-32">وزن (۰-۱)</TableHead>
-                  <TableHead className="text-right w-24">فعال</TableHead>
-                  <TableHead className="text-right">فرمول</TableHead>
+                  <TableHead className="text-right w-32">
+                    <span className="inline-flex items-center gap-1">
+                      وزن (۰-۱)
+                      <HelpHint text={"سهم این پارامتر در امتیاز نهایی.\nمجموع وزن‌های فعال باید ۱.۰۰ شود."} />
+                    </span>
+                  </TableHead>
+                  <TableHead className="text-right w-24">
+                    <span className="inline-flex items-center gap-1">
+                      فعال
+                      <HelpHint text={"اگر خاموش باشد این پارامتر در محاسبهٔ امتیاز در نظر گرفته نمی‌شود."} />
+                    </span>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <span className="inline-flex items-center gap-1">
+                      فرمول
+                      <HelpHint text={"فرمول داخلی محاسبهٔ این پارامتر (فقط نمایشی).\nبرای تغییر منطق با مدیر سیستم هماهنگ کنید."} />
+                    </span>
+                  </TableHead>
                   <TableHead className="text-right w-24">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,14 +219,29 @@ function CreditRulesPage() {
       {canEdit && (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold">افزودن پارامتر جدید</h3>
+            <h3 className="font-semibold inline-flex items-center gap-2">
+              افزودن پارامتر جدید
+              <HelpHint
+                text={
+                  "نام پارامتر را به انگلیسی و کوتاه وارد کنید (مثلاً payment_history).\n" +
+                  "وزن باید بین ۰ تا ۱ باشد و در مجموع با سایر پارامترهای فعال برابر ۱.۰۰ شود.\n" +
+                  "پارامتر جدید به‌صورت پیش‌فرض «فعال» اضافه می‌شود."
+                }
+              />
+            </h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1">
-                <Label>نام پارامتر</Label>
+                <Label className="inline-flex items-center gap-1">
+                  نام پارامتر
+                  <HelpHint text={"شناسهٔ انگلیسی پارامتر؛ بدون فاصله، با حروف کوچک و _ مثلاً total_purchases."} />
+                </Label>
                 <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثلاً profitability" />
               </div>
               <div className="space-y-1">
-                <Label>وزن (۰ تا ۱)</Label>
+                <Label className="inline-flex items-center gap-1">
+                  وزن (۰ تا ۱)
+                  <HelpHint text={"سهم این پارامتر در امتیاز نهایی. مثلاً ۰.۲ یعنی ۲۰٪."} />
+                </Label>
                 <Input
                   type="number" min="0" max="1" step="0.05" dir="ltr"
                   value={newWeight}
