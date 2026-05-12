@@ -405,7 +405,13 @@ function FiltersForm(p: FiltersFormProps) {
         </div>
       </div>
 
-      <NumberRange label="سابقه خرید (تومان)" range={p.purchases} onChange={p.setPurchases} error={p.errors.purchases} />
+      <NumberRange
+        label="سابقه خرید (تومان)"
+        range={p.purchases}
+        onChange={p.setPurchases}
+        error={p.errors.purchases}
+        hint="مجموع خریدهای مشتری از ابتدای فعالیت. برای پیدا کردن مشتریان بزرگ، فقط «از» را پر کنید."
+      />
       <NumberRange
         label="اعتبار (تومان)"
         range={p.credit}
