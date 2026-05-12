@@ -45,8 +45,12 @@ services:
       JWT_EXP: ${JWT_EXPIRY}
     volumes:
       - db-data:/var/lib/postgresql/data
-      # migrations در فاز SH.7 از طریق این پوشه اعمال می‌شوند (الان خالی است)
-      - ./migrations:/docker-entrypoint-initdb.d/migrations:ro
+      # bootstrap deterministic — اجرا توسط entrypoint تصویر در اولین boot
+      # (وقتی volume خالی است). idempotent، بدون secret واقعی.
+      # ترتیب الفبایی → بعد از init پیش‌فرض image اجرا می‌شود.
+      - ./volumes/db/init:/docker-entrypoint-initdb.d/zz-afrakala-init:ro
+      # migrationهای اپ (فاز SH.7) — جداگانه و دستی apply می‌شوند، نه از initdb
+      - ./migrations:/var/lib/afrakala/migrations:ro
     networks:
       - supabase-internal
     # هیچ ports: عمداً تعریف نشده — دسترسی فقط داخل docker network
