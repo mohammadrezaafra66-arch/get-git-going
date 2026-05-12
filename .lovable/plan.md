@@ -1,26 +1,21 @@
-## هدف
-افزودن یک آیکون راهنما کنار دکمه «شروع محاسبه و انتشار» در صفحه `/pricing/recompute-prices` که با hover/focus/click متن راهنما را در یک Popover نشان دهد.
+## حذف کاربر `afrakaladidar404@gmail.com` (ملیکا ترابی)
 
-## فایل‌های تغییر یافته
-- `src/routes/_app.pricing.recompute-prices.tsx` (تنها فایل)
+این یک عملیات حساس و **برگشت‌ناپذیر** است. قبل از اجرا تأیید شما لازم است.
 
-## پیاده‌سازی
-1. import کردن `Popover, PopoverTrigger, PopoverContent` از `@/components/ui/popover` (موجود) و آیکون `HelpCircle` از `lucide-react`.
-2. کنار دکمه «شروع محاسبه و انتشار» (داخل همان `flex` که `ms-auto` دارد) یک `Popover` با `Button` آیکون-only (`variant="ghost"`, `size="icon"`) قرار دهیم.
-   - `aria-label="راهنمای استفاده از انتشار دسته‌ای قیمت فروش"`
-   - آیکون: `<HelpCircle className="h-4 w-4" />`
-3. `PopoverContent` با `align="end"` و `className="w-80 text-sm"` شامل:
-   - عنوان bold: «چه زمانی از این دکمه استفاده کنم؟»
-   - توضیح کوتاه + لیست «استفاده کن وقتی…» و «استفاده نکن وقتی…» با `<ul className="list-disc ps-4 space-y-1">`.
-   - یک پاراگراف پایانی توضیح‌دهنده.
-4. Popover هم با click (موبایل/کیبورد) و هم به‌صورت طبیعی با focus کار می‌کند؛ برای تجربه desktop دکمه trigger روی hover هم می‌تواند یک `title` attribute بگیرد.
+### چه چیزی حذف می‌شود
+- رکورد در `auth.users` (شناسه: `b0a88a0e-c197-4389-9232-a41aa273c028`)
+- به‌صورت آبشاری (cascade): `public.profiles`، `public.user_roles` (نقش admin) و سایر رکوردهای متصل به این `user_id`
 
-## محدودیت‌ها (طبق درخواست)
-- بدون تغییر در منطق pricing، database، migration، RPC، permission.
-- بدون تغییر در `publishAllProductsPrices` / `publishProductPrices`.
-- بدون نصب package جدید (Popover و lucide از قبل موجود است).
-- بدون فایل UI جدید.
+### روش اجرا
+ساخت یک migration یک‌بارمصرف در `supabase/migrations/` که:
+1. وجود کاربر را چک می‌کند (idempotent)
+2. ابتدا `user_roles` و `profiles` را پاک می‌کند
+3. سپس `auth.users` را با `delete from auth.users where id = '...'` حذف می‌کند
+4. در `audit_logs` یک رکورد `user_deleted` با اطلاعات admin اجراکننده ثبت می‌کند
 
-## Verification
-- باز کردن صفحه و کلیک روی آیکون راهنما → نمایش Popover با متن مشخص‌شده.
-- دکمه اصلی همچنان عمل publish را انجام دهد.
+### نکات مهم
+- این کاربر **admin** است. اگر تنها admin سیستم باشد، نباید حذف شود. باید قبل از حذف بررسی کنم که حداقل یک admin دیگر باقی بماند.
+- اگر این کاربر داده‌های مرتبط (سفارش، فاکتور، لاگ و …) دارد، ممکن است FK‌ها مانع حذف شوند یا داده‌ها orphan شوند. در این صورت پیشنهاد جایگزین: **غیرفعال کردن** (`is_active=false`, `status='disabled'`, حذف نقش‌ها) به جای حذف کامل.
+
+### سؤال پیش از اجرا
+آیا مطمئن هستید که می‌خواهید **حذف کامل** انجام شود، یا ترجیح می‌دهید کاربر فقط **غیرفعال** شود (روش امن‌تر، قابل بازگردانی)؟
