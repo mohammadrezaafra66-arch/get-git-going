@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -182,6 +183,16 @@ function CreditCustomersPage() {
       <PageHeader
         title="وضعیت اعتبار مشتریان"
         description="فیلتر و مشاهده وضعیت اعتباری مشتریان"
+        actions={
+          <HelpHint
+            size={18}
+            text={
+              "این لیست وضعیت اعتباری همهٔ مشتریان را نشان می‌دهد.\n" +
+              "با فیلترها می‌توانید بر اساس نام، تلفن، مسئول، سابقهٔ خرید، اعتبار، بدهی یا امتیاز فیلتر کنید.\n" +
+              "روی نام هر مشتری بزنید تا وارد پروفایل اعتباری او شوید."
+            }
+          />
+        }
       />
 
       {/* Mobile: Sheet, Desktop: Collapsible */}
@@ -395,24 +406,46 @@ function FiltersForm(p: FiltersFormProps) {
       </div>
 
       <NumberRange label="سابقه خرید (تومان)" range={p.purchases} onChange={p.setPurchases} error={p.errors.purchases} />
-      <NumberRange label="اعتبار (تومان)" range={p.credit} onChange={p.setCredit} error={p.errors.credit} />
-      <NumberRange label="بدهی (تومان)" range={p.debt} onChange={p.setDebt} error={p.errors.debt} />
-      <NumberRange label="امتیاز اعتباری" range={p.score} onChange={p.setScore} error={p.errors.score} />
+      <NumberRange
+        label="اعتبار (تومان)"
+        range={p.credit}
+        onChange={p.setCredit}
+        error={p.errors.credit}
+        hint="سقف اعتبار تخصیص‌یافته به مشتری؛ بازهٔ از/تا برای فیلتر مشتریان با اعتبار در این محدوده."
+      />
+      <NumberRange
+        label="بدهی (تومان)"
+        range={p.debt}
+        onChange={p.setDebt}
+        error={p.errors.debt}
+        hint="مانده بدهی فعلی مشتری (پرداخت‌نشده). برای پیدا کردن بدهکاران بزرگ از فیلد «از» استفاده کنید."
+      />
+      <NumberRange
+        label="امتیاز اعتباری"
+        range={p.score}
+        onChange={p.setScore}
+        error={p.errors.score}
+        hint="عدد ۰ تا ۱۰۰: تا ۳۰ ضعیف (قرمز)، ۳۱ تا ۶۰ متوسط (نارنجی)، بالاتر از ۶۰ خوب (سبز)."
+      />
     </div>
   );
 }
 
 function NumberRange({
-  label, range, onChange, error,
+  label, range, onChange, error, hint,
 }: {
   label: string;
   range: NumRange;
   onChange: (v: NumRange) => void;
   error: string | null;
+  hint?: string;
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs inline-flex items-center gap-1">
+        {label}
+        {hint && <HelpHint text={hint} size={12} />}
+      </Label>
       <div className="grid grid-cols-2 gap-2">
         <Input
           type="number" min="0" inputMode="numeric" placeholder="از"
