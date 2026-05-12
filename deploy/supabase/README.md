@@ -86,6 +86,73 @@ docker compose ps
 - ❌ schema یا feature module تغییر نکرد.
 - ❌ OCR تغییر نکرد.
 
+---
+
+## Bootstrap deterministic (SH-FIX-SUPABASE-INIT)
+
+قبلاً compose فقط image `supabase/postgres` را بالا می‌آورد و در local staging
+سرویس‌های gotrue/rest/storage با خطاهایی مانند:
+
+- `role "authenticator" does not exist`
+- `schema "auth" does not exist`
+- `type "auth.factor_type" does not exist`
+
+شکست می‌خوردند. حالا `volumes/db/init/` شامل سه اسکریپت SQL idempotent است که
+entrypoint رسمی تصویر در **اولین boot روی volume خالی** اجرا می‌کند:
+
+| فایل | کار |
+|------|-----|
+| `00-roles.sql` | ساخت `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_admin`, `supabase_auth_admin`, `supabase_storage_admin`, `dashboard_user` و grant membershipها. پسورد از `POSTGRES_PASSWORD`. |
+| `01-schemas.sql` | ساخت schemaهای `auth`, `storage`, `extensions`, `graphql_public` + extensions پایه + default privileges. |
+| `02-jwt.sql` | تنظیم `app.settings.jwt_secret` و `app.settings.jwt_exp` در سطح DB (برای `auth.uid()` و توابع داخلی). مقدار از env `JWT_SECRET` / `JWT_EXP`. |
+
+سپس gotrue / storage در اولین استارت، migrationهای داخلی خود را روی schemaهای
+`auth` / `storage` اجرا می‌کنند (مانند `auth.factor_type`, `storage.objects` و …).
+**هیچ psql دستی پس از اولین boot لازم نیست.**
+
+### Reset کامل local staging (پاک کردن volume و boot از صفر)
+
+```bash
+cd deploy/supabase
+docker compose --env-file .env -f docker-compose.yml down -v
+docker compose --env-file .env -f docker-compose.yml up -d
+```
+
+`down -v` ولوم `db-data` و `storage-data` را حذف می‌کند تا اسکریپت‌های
+`zz-afrakala-init/` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
+
+### دستورات verify
+
+```bash
+# 1) وضعیت سرویس‌ها
+docker compose --env-file .env -f docker-compose.yml ps
+
+# 2) لاگ سه سرویسی که قبلاً شکست می‌خوردند
+docker compose --env-file .env -f docker-compose.yml logs --tail=80 auth
+docker compose --env-file .env -f docker-compose.yml logs --tail=80 rest
+docker compose --env-file .env -f docker-compose.yml logs --tail=80 storage
+
+# 3) تأیید نقش‌ها و schemaها از داخل DB (بدون expose پورت)
+docker compose --env-file .env -f docker-compose.yml exec -T db \
+  psql -U postgres -d "$POSTGRES_DB" -c "\du" | grep -E 'authenticator|supabase_(auth|storage)_admin'
+docker compose --env-file .env -f docker-compose.yml exec -T db \
+  psql -U postgres -d "$POSTGRES_DB" -c "\dn" | grep -E 'auth|storage|extensions'
+
+# 4) Kong health (از داخل شبکه docker، بدون expose روی هاست)
+docker compose --env-file .env -f docker-compose.yml exec -T kong \
+  curl -fsS http://localhost:8000/auth/v1/health || echo "auth health failed"
+```
+
+### قواعد پایدار
+
+- پورت `5432` Postgres هرگز روی هاست publish نمی‌شود.
+- Studio/Kong هم پورتی روی هاست ندارند؛ دسترسی فقط از طریق Caddy (فاز proxy).
+- اسکریپت‌های `zz-afrakala-init/` فقط روی **volume خالی** اجرا می‌شوند؛ روی
+  DB موجود اثر ندارند (الزام idempotency رعایت شده).
+- migrationهای اپ (`deploy/supabase/migrations/`) از مسیر جدا
+  `/var/lib/afrakala/migrations` فقط mount شده‌اند و **توسط initdb اجرا
+  نمی‌شوند**؛ apply آن‌ها در فاز SH.7 با `apply-project-migrations.sh`.
+
 ## آمادگی برای SH.7 (migration scripts)
 
 stack از نظر ساختاری آماده است:
