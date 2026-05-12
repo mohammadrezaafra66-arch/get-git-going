@@ -11,6 +11,7 @@ import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,7 +237,23 @@ function DailyCapitalPage() {
 
   return (
     <div className="space-y-4 p-4" dir="rtl">
-      <PageHeader title="سرمایه روز" description="محاسبه سرمایه قابل تخصیص برای فروش حساب‌باز" />
+      <PageHeader
+        title="سرمایه روز"
+        description="محاسبه سرمایه قابل تخصیص برای فروش حساب‌باز"
+        actions={
+          <HelpHint
+            size={18}
+            text={
+              "این صفحه «سرمایه قابل تخصیص روز» را محاسبه می‌کند.\n" +
+              "۱) تاریخ موردنظر را انتخاب کنید.\n" +
+              "۲) ورودی‌های دستی (موجودی بانک، صندوق، چک‌ها، …) را وارد و ذخیره کنید.\n" +
+              "۳) عدد «سرمایه پیشنهادی سیستم» محاسبه می‌شود.\n" +
+              "۴) در «سرمایه نهایی تأییدشده» عدد را تأیید یا تغییر دهید (در صورت تغییر، دلیل اجباری است) و اسنپ‌شات را ثبت کنید.\n" +
+              "این اسنپ‌شات سپس بین فروشندگان و در ادامه بین مشتریان تخصیص داده می‌شود."
+            }
+          />
+        }
+      />
 
       {/* Date picker + refresh */}
       <div className="flex flex-wrap items-center gap-2">
@@ -294,19 +311,22 @@ function DailyCapitalPage() {
           {/* Inputs form */}
           <Card>
             <CardContent className="p-4 space-y-4">
-              <div className="text-sm font-semibold">ورودی‌های دستی این روز</div>
+              <div className="text-sm font-semibold inline-flex items-center gap-1">
+                ورودی‌های دستی این روز
+                <HelpHint text={"اعدادی که سیستم خودکار از حساب‌ها استخراج نمی‌کند را اینجا وارد کنید.\nهمه فیلدها به جز «تعدیل دستی» باید نامنفی باشند.\nبعد از هر تغییر، «ذخیره ورودی‌ها» را بزنید تا در محاسبه سرمایه پیشنهادی اعمال شود."} />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <NumField label="موجودی بانک‌ها" value={form.bank_balance} onChange={(v) => setForm({ ...form, bank_balance: v })} />
-                <NumField label="موجودی صندوق" value={form.cash_balance} onChange={(v) => setForm({ ...form, cash_balance: v })} />
-                <NumField label="چک‌های دریافتی در راه وصول" value={form.incoming_checks} onChange={(v) => setForm({ ...form, incoming_checks: v })} />
-                <NumField label="چک‌های پرداختی" value={form.outgoing_checks} onChange={(v) => setForm({ ...form, outgoing_checks: v })} />
-                <NumField label="مطالبات خارج از سیستم" value={form.external_receivables} onChange={(v) => setForm({ ...form, external_receivables: v })} />
-                <NumField label="بدهی‌های خارج از سیستم" value={form.external_payables} onChange={(v) => setForm({ ...form, external_payables: v })} />
-                <NumField label="هزینه‌های نزدیک" value={form.near_term_expenses} onChange={(v) => setForm({ ...form, near_term_expenses: v })} />
-                <NumField label="ذخیره ریسک" value={form.risk_reserve} onChange={(v) => setForm({ ...form, risk_reserve: v })} />
-                <NumField label="وجوه بلوکه‌شده" value={form.blocked_funds} onChange={(v) => setForm({ ...form, blocked_funds: v })} />
-                <NumField label="ارزش نقدشوندگی موجودی انبار" value={form.inventory_liquidity_value} onChange={(v) => setForm({ ...form, inventory_liquidity_value: v })} />
-                <NumField label="تعدیل دستی (می‌تواند منفی باشد)" value={form.manual_adjustment} allowNegative onChange={(v) => setForm({ ...form, manual_adjustment: v })} />
+                <NumField label="موجودی بانک‌ها" hint="مجموع موجودی قابل برداشت همه حساب‌های بانکی شرکت در پایان امروز." value={form.bank_balance} onChange={(v) => setForm({ ...form, bank_balance: v })} />
+                <NumField label="موجودی صندوق" hint="پول نقد موجود در صندوق‌های شرکت." value={form.cash_balance} onChange={(v) => setForm({ ...form, cash_balance: v })} />
+                <NumField label="چک‌های دریافتی در راه وصول" hint="مبلغ چک‌هایی که از مشتریان گرفته‌اید و هنوز به حساب نشسته اما تا چند روز آینده وصول می‌شوند." value={form.incoming_checks} onChange={(v) => setForm({ ...form, incoming_checks: v })} />
+                <NumField label="چک‌های پرداختی" hint="مبلغ چک‌هایی که شما داده‌اید و هنوز پاس نشده‌اند؛ از سرمایه قابل استفاده کم می‌شود." value={form.outgoing_checks} onChange={(v) => setForm({ ...form, outgoing_checks: v })} />
+                <NumField label="مطالبات خارج از سیستم" hint="پول‌هایی که باید به شما برسد ولی در این نرم‌افزار ثبت نشده‌اند (مثلاً بدهی شخصی یا قرارداد خارج از سیستم)." value={form.external_receivables} onChange={(v) => setForm({ ...form, external_receivables: v })} />
+                <NumField label="بدهی‌های خارج از سیستم" hint="بدهی‌هایی که باید پرداخت کنید ولی در نرم‌افزار ثبت نشده‌اند." value={form.external_payables} onChange={(v) => setForm({ ...form, external_payables: v })} />
+                <NumField label="هزینه‌های نزدیک" hint="هزینه‌های قطعی روزهای نزدیک (حقوق، اجاره، عوارض و …) که باید از سرمایه کنار گذاشته شود." value={form.near_term_expenses} onChange={(v) => setForm({ ...form, near_term_expenses: v })} />
+                <NumField label="ذخیره ریسک" hint="مبلغی که محتاطانه برای اتفاقات پیش‌بینی‌نشده کنار می‌گذارید." value={form.risk_reserve} onChange={(v) => setForm({ ...form, risk_reserve: v })} />
+                <NumField label="وجوه بلوکه‌شده" hint="مبالغی که فعلاً قابل استفاده نیستند (تضامین، ضمانت‌نامه، وثیقه و …)." value={form.blocked_funds} onChange={(v) => setForm({ ...form, blocked_funds: v })} />
+                <NumField label="ارزش نقدشوندگی موجودی انبار" hint="آن بخش از موجودی انبار که در صورت لزوم سریع نقد می‌شود — معمولاً درصدی از کل ارزش انبار." value={form.inventory_liquidity_value} onChange={(v) => setForm({ ...form, inventory_liquidity_value: v })} />
+                <NumField label="تعدیل دستی (می‌تواند منفی باشد)" hint="اصلاح دستی نهایی برای بالا یا پایین بردن سرمایه پیشنهادی. مقدار منفی مجاز است." value={form.manual_adjustment} allowNegative onChange={(v) => setForm({ ...form, manual_adjustment: v })} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">توضیحات</Label>
@@ -350,6 +370,7 @@ function DailyCapitalPage() {
               <div className="text-sm font-semibold flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 ثبت سرمایه نهایی روز
+                <HelpHint text={"این مرحله سرمایه نهایی روز را قفل می‌کند.\nاگر عدد «سرمایه نهایی تأییدشده» با «سرمایه پیشنهادی سیستم» فرق داشته باشد، باید دلیل تغییر را بنویسید.\nبعد از ثبت اسنپ‌شات، می‌توان آن را بین فروشندگان تخصیص داد."} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -402,11 +423,14 @@ function DailyCapitalPage() {
 }
 
 function NumField({
-  label, value, onChange, allowNegative,
-}: { label: string; value: string; onChange: (v: string) => void; allowNegative?: boolean }) {
+  label, value, onChange, allowNegative, hint,
+}: { label: string; value: string; onChange: (v: string) => void; allowNegative?: boolean; hint?: string }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs inline-flex items-center gap-1">
+        {label}
+        {hint ? <HelpHint text={hint} /> : null}
+      </Label>
       <Input
         inputMode="numeric"
         value={toFaDigits(value)}

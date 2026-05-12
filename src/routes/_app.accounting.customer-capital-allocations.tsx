@@ -10,6 +10,7 @@ import { toFaDigits } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,11 +164,26 @@ function CustomerCapitalAllocationsPage() {
       <PageHeader
         title="تخصیص سرمایه فروشنده بین مشتریان"
         description="محاسبه و ثبت سهم هر مشتری از سهم سرمایه یک فروشنده بر اساس امتیاز اعتباری مشتری"
+        actions={
+          <HelpHint
+            size={18}
+            text={
+              "این صفحه سهم یک فروشنده را بین مشتریانش (بر اساس امتیاز اعتباری مشتری) تقسیم می‌کند.\n" +
+              "۱) از صفحه «تخصیص سرمایه فروشندگان» شناسه تخصیص فروشنده موردنظر را کپی کنید.\n" +
+              "۲) شناسه را در کادر بالا وارد کرده و «محاسبه سهم مشتریان» را بزنید.\n" +
+              "۳) سهم نهایی هر مشتری را در صورت لزوم تغییر دهید (ثبت دلیل اجباری است).\n" +
+              "۴) «ذخیره تخصیص مشتریان» را بزنید تا سقف اعتبار قابل استفاده هر مشتری برای امروز ثبت شود."
+            }
+          />
+        }
       />
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="text-sm font-semibold">انتخاب تخصیص فروشنده</div>
+          <div className="text-sm font-semibold inline-flex items-center gap-1">
+            انتخاب تخصیص فروشنده
+            <HelpHint text={"شناسه (UUID) همان رکوردی است که در صفحه «تخصیص سرمایه فروشندگان» برای این فروشنده ذخیره کرده‌اید."} />
+          </div>
           <div className="text-xs text-muted-foreground">
             شناسه تخصیص فروشنده (salesperson_allocation_id) را از صفحه «تخصیص سرمایه فروشندگان» یا گزارش backend وارد کنید.
           </div>
@@ -247,10 +263,30 @@ function CustomerCapitalAllocationsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right">شناسه مشتری</TableHead>
-                    <TableHead className="text-right">امتیاز اعتباری</TableHead>
-                    <TableHead className="text-right">سهم پیشنهادی سیستم</TableHead>
-                    <TableHead className="text-right">سهم نهایی</TableHead>
-                    <TableHead className="text-right">دلیل تغییر (در صورت override)</TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        امتیاز اعتباری
+                        <HelpHint text={"امتیاز اعتباری مشتری که از قوانین اعتبار محاسبه می‌شود (بین ۰ تا ۱۰۰).\nمشتری بدون پروفایل اعتباری یا با امتیاز صفر، سهمی نمی‌گیرد."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        سهم پیشنهادی سیستم
+                        <HelpHint text={"سهم پیشنهادی مشتری = سهم نهایی فروشنده × (امتیاز مشتری ÷ مجموع امتیاز مشتریان این فروشنده)."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        سهم نهایی
+                        <HelpHint text={"سقف اعتباری که این مشتری امروز از این فروشنده می‌تواند استفاده کند.\nدر صورت تغییر نسبت به پیشنهاد سیستم، نوشتن دلیل اجباری است."} />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <span className="inline-flex items-center gap-1">
+                        دلیل تغییر (در صورت override)
+                        <HelpHint text={"وقتی «سهم نهایی» با «سهم پیشنهادی» متفاوت باشد، نوشتن دلیل اجباری است و برای حسابرسی ذخیره می‌شود."} />
+                      </span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
