@@ -11,6 +11,11 @@
 2. App (`deploy/app/docker-compose.prod.yml` — pull-only، بدون build محلی)
 3. Proxy (`deploy/proxy`)
 
+> Bootstrap اولین boot Supabase به `deploy/supabase/volumes/db/init/` متکی است
+> (roles/schemas/JWT GUC). برای reset کامل local staging:
+> `docker compose --env-file .env -f docker-compose.yml down -v && up -d`.
+> مرجع: `deploy/supabase/README.md` بخش «Bootstrap deterministic».
+
 ## 2. عملیات روزانه
 
 ```bash
