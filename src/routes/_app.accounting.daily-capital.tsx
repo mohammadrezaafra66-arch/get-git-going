@@ -423,11 +423,14 @@ function DailyCapitalPage() {
 }
 
 function NumField({
-  label, value, onChange, allowNegative,
-}: { label: string; value: string; onChange: (v: string) => void; allowNegative?: boolean }) {
+  label, value, onChange, allowNegative, hint,
+}: { label: string; value: string; onChange: (v: string) => void; allowNegative?: boolean; hint?: string }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs inline-flex items-center gap-1">
+        {label}
+        {hint ? <HelpHint text={hint} /> : null}
+      </Label>
       <Input
         inputMode="numeric"
         value={toFaDigits(value)}
