@@ -1,0 +1,250 @@
+# AfraKala — Local Self-Host Stack (laptop only)
+# فاز LOCAL.1 — اجرای کامل اپ + Supabase روی لپ‌تاپ برای تست/دیباگ.
+#
+# هشدار:
+#  - این stack production نیست. Caddy/SSL/DNS ندارد.
+#  - تمام پورت‌ها فقط روی 127.0.0.1 publish می‌شوند (هیچ چیز بین‌المللی open نیست).
+#  - مقادیر واقعی env فقط در deploy/local/.env.local (در .gitignore) قرار می‌گیرد.
+#  - init scripts و kong config از deploy/supabase/ به‌صورت read-only mount می‌شوند
+#    تا یک منبع حقیقت داشته باشیم و duplicate نشود.
+
+name: afrakala-local
+
+networks:
+  local-net:
+    driver: bridge
+
+volumes:
+  local-db-data:
+  local-storage-data:
+
+services:
+  # ---------------------------------------------------------------
+  # Web (TanStack Start SSR) — build از repo root
+  # ---------------------------------------------------------------
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+    image: afrakala-app:local
+    container_name: afrakala-local-web
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      kong:
+        condition: service_started
+    networks:
+      - local-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------
+  # Postgres — فقط روی 127.0.0.1:54322 برای dev دسترسی psql
+  # ---------------------------------------------------------------
+  db:
+    image: supabase/postgres:15.6.1.139
+    container_name: afrakala-local-db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY}
+    volumes:
+      - local-db-data:/var/lib/postgresql/data
+      # init scripts را از deploy/supabase/ مشترک mount می‌کنیم تا duplicate نشود
+      - ../supabase/volumes/db/init/00-afrakala-pre-supabase-admin.sh:/docker-entrypoint-initdb.d/00-afrakala-pre-supabase-admin.sh:ro
+      - ../supabase/volumes/db/init/zz-10-afrakala-roles.sh:/docker-entrypoint-initdb.d/zz-10-afrakala-roles.sh:ro
+      - ../supabase/volumes/db/init/zz-20-afrakala-schemas.sql:/docker-entrypoint-initdb.d/zz-20-afrakala-schemas.sql:ro
+      - ../supabase/volumes/db/init/zz-30-afrakala-jwt.sh:/docker-entrypoint-initdb.d/zz-30-afrakala-jwt.sh:ro
+    ports:
+      - "127.0.0.1:54322:5432"
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # Auth (GoTrue)
+  # ---------------------------------------------------------------
+  auth:
+    image: supabase/gotrue:v2.158.1
+    container_name: afrakala-local-auth
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # PostgREST
+  # ---------------------------------------------------------------
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    container_name: afrakala-local-rest
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # Storage API
+  # ---------------------------------------------------------------
+  storage:
+    image: supabase/storage-api:v1.11.13
+    container_name: afrakala-local-storage
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - local-storage-data:/var/lib/storage
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # Postgres Meta — backend برای Studio
+  # ---------------------------------------------------------------
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    container_name: afrakala-local-meta
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # Studio — UI ادمین، فقط روی 127.0.0.1:3001
+  # ---------------------------------------------------------------
+  studio:
+    image: supabase/studio:20240729-ce42139
+    container_name: afrakala-local-studio
+    depends_on:
+      meta:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: AfraKala
+      DEFAULT_PROJECT_NAME: afrakala-local
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks:
+      - local-net
+
+  # ---------------------------------------------------------------
+  # Kong — API gateway، روی 127.0.0.1:8000
+  # ---------------------------------------------------------------
+  kong:
+    image: kong:2.8.1
+    container_name: afrakala-local-kong
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    volumes:
+      # kong.yml را اسکریپت local-up.sh از kong.yml.example می‌سازد (در .gitignore)
+      - ./kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      - auth
+      - rest
+      - storage
+      - meta
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - local-net
+
+# ---------------------------------------------------------------
+# سرویس‌های عمداً غیرفعال در local (مطابق scope فاز LOCAL.1):
+#   - realtime, edge-functions, imgproxy, analytics, vector, logflare, inbucket
+# ---------------------------------------------------------------

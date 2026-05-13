@@ -16,6 +16,14 @@ deploy/**/.env.*
 # Proxy runtime files / TLS material — never bake into images
 deploy/proxy/Caddyfile
 deploy/proxy/certs/
+
+# Local self-host laptop runtime — never bake into images
+deploy/local/.env
+deploy/local/.env.local
+deploy/local/kong.yml
+deploy/local/volumes/
+deploy/local/data/
+deploy/local/storage/
 deploy/supabase/volumes/
 *.pem
 
