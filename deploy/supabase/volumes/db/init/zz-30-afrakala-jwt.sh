@@ -21,8 +21,15 @@ if [ "${#JWT_SECRET}" -lt 32 ]; then
   exit 1
 fi
 
-psql -v ON_ERROR_STOP=1 \
-     --username "postgres" \
+# Connect as supabase_admin via the Unix socket exposed by the temporary
+# initdb server. ALTER DATABASE ... SET app.settings.* requires a privileged
+# Supabase role; the plain `postgres` superuser is rejected by supautils with
+# `permission denied to set parameter "app.settings.jwt_secret"`. TCP
+# localhost is not guaranteed to be listening during initdb, so we use the
+# Unix socket path /var/run/postgresql (same pattern as zz-10).
+PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 \
+     --host "/var/run/postgresql" \
+     --username "supabase_admin" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
      -v jwt_secret="$JWT_SECRET" \
