@@ -76,6 +76,23 @@ export function AppSidebar() {
   const { roles } = useAuth();
   const location = useLocation();
   const qc = useQueryClient();
+  const [savedOpenGroups, setSavedOpenGroups] = useState<Partial<Record<GroupKey, boolean>>>(
+    () => loadSavedOpenGroups(),
+  );
+
+  const handleGroupOpenChange = (g: GroupKey, open: boolean) => {
+    setSavedOpenGroups((prev) => {
+      const next = { ...prev, [g]: open };
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(SIDEBAR_OPEN_GROUPS_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore quota / disabled storage */
+        }
+      }
+      return next;
+    });
+  };
   const isAdmin = roles.includes("admin");
   const isManager = roles.includes("manager");
   const isAccountant = roles.includes("accountant");
@@ -290,7 +307,12 @@ export function AppSidebar() {
           }
 
           return (
-            <Collapsible key={g} defaultOpen={groupActive} className="group/collapsible">
+            <Collapsible
+              key={g}
+              open={groupActive || (savedOpenGroups[g] ?? true)}
+              onOpenChange={(open) => handleGroupOpenChange(g, open)}
+              className="group/collapsible"
+            >
           <SidebarGroup className="pb-1">
                 <CollapsibleTrigger asChild>
                   <SidebarGroupLabel
