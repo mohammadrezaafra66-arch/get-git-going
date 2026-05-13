@@ -14,8 +14,9 @@ import {
 } from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
-import { Sparkles, ChevronDown, Zap } from "lucide-react";
+import { Sparkles, ChevronDown, Zap, Search } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
 const GROUPS: NavItem["group"][] = [
   "main",
@@ -79,6 +80,7 @@ export function AppSidebar() {
   const [savedOpenGroups, setSavedOpenGroups] = useState<Partial<Record<GroupKey, boolean>>>(
     () => loadSavedOpenGroups(),
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleGroupOpenChange = (g: GroupKey, open: boolean) => {
     setSavedOpenGroups((prev) => {
@@ -129,6 +131,16 @@ export function AppSidebar() {
     }
     return items;
   }, [roles, visible]);
+
+  // SIDEBAR-SEARCH — match against permission-filtered `visible` items only.
+  const normalizedQuery = normalizeSearchText(searchQuery).toLowerCase();
+  const isSearching = normalizedQuery.length > 0;
+  const searchResults = useMemo(() => {
+    if (!isSearching) return [] as NavItem[];
+    return visible.filter((i) =>
+      normalizeSearchText(i.label).toLowerCase().includes(normalizedQuery),
+    );
+  }, [isSearching, normalizedQuery, visible]);
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
@@ -242,7 +254,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {quickAccess.length > 0 && (
+        {quickAccess.length > 0 && !isSearching && (
           <SidebarGroup className="pb-1">
             <SidebarGroupLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
               <Zap className="h-3 w-3" />
@@ -273,7 +285,35 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        {GROUPS.map((g) => {
+        <SidebarGroup className="pb-1 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupContent>
+            <div className="relative px-1">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="جستجو در منو..."
+                aria-label="جستجو در منو"
+                className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 pr-8 pl-2 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
+              />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {isSearching ? (
+          <SidebarGroup className="pb-1">
+            <SidebarGroupContent className="space-y-0.5">
+              {searchResults.length > 0 ? (
+                <SidebarMenu>{searchResults.map(renderItem)}</SidebarMenu>
+              ) : (
+                <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
+                  موردی یافت نشد
+                </div>
+              )}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+        GROUPS.map((g) => {
           const items = visible.filter((i) => i.group === g);
           if (!items.length) return null;
           const groupActive = items.some((i) => isItemActive(i.to));
@@ -359,7 +399,7 @@ export function AppSidebar() {
               </SidebarGroup>
             </Collapsible>
           );
-        })}
+        }))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
