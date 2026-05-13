@@ -21,17 +21,10 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
   exit 1
 fi
 
-# Pass the password to psql via -v, NOT via SQL string interpolation. psql's
-# `-v` binds a client-side variable; we feed it into set_config() as a regular
-# bound parameter using `:'pgpass'` at the TOP LEVEL ONLY (never inside DO).
-psql -v ON_ERROR_STOP=1 \
-     --username "postgres" \
-     --dbname "$POSTGRES_DB" \
-     --no-psqlrc \
-     -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL_OUTER'
-\set QUIET on
-EOSQL_OUTER
-
+# Pass the password to psql via -v (client-side variable). We use `:'pgpass'`
+# ONLY at the TOP LEVEL (outside any DO $$ block) to feed it into set_config().
+# Inside the DO block we read it back with current_setting() — this is the
+# safe pattern that avoids the "syntax error at or near :" failure.
 psql -v ON_ERROR_STOP=1 \
      --username "postgres" \
      --dbname "$POSTGRES_DB" \
