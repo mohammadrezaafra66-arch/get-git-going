@@ -53,6 +53,29 @@
 | `volumes/` | داده runtime | ❌ ignored |
 | `migrations/` | فایل‌های SQL برای فاز SH.7 | ✅ پوشه ساخته (محتوا بعداً) |
 
+## ترتیب bootstrap دیتابیس (initdb)
+
+فایل‌های `/docker-entrypoint-initdb.d/` به ترتیب الفبایی اجرا می‌شوند. روی
+volume خالی، ابتدا اسکریپت‌های رسمی تصویر `supabase/postgres` (شامل
+`migrate.sh` و `init-scripts/00000000000000-initial-schema.sql`) اجرا می‌شوند
+که خودشان roleهای `anon`, `authenticated`, `service_role`, `authenticator`,
+`supabase_admin`, `supabase_auth_admin`, `supabase_storage_admin` و schemaهای
+`auth` / `storage` / `extensions` را می‌سازند.
+
+اسکریپت‌های افراکالا با پیشوند `zz-` mount شده‌اند تا **بعد از** migrate.sh
+اجرا شوند و فقط:
+
+1. `zz-10-afrakala-roles.sh` — تأیید وجود roleهای baseline، ساخت
+   `dashboard_user` در صورت نبود، و یکسان‌سازی password روی همهٔ login roleها
+   با مقدار `POSTGRES_PASSWORD`.
+2. `zz-20-afrakala-schemas.sql` — اطمینان از وجود extensionها/grantهای
+   موردنیاز اپ (idempotent).
+3. `zz-30-afrakala-jwt.sh` — ست‌کردن `app.settings.jwt_secret` و
+   `app.settings.jwt_exp` در سطح دیتابیس.
+
+هیچ‌کدام از این اسکریپت‌ها roleهای baseline را CREATE نمی‌کنند تا با init رسمی
+تصویر تداخل نداشته باشند.
+
 ## استقرار اولیه روی سرور (دستی)
 
 ```bash

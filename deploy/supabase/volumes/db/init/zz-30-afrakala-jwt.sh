@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# AfraKala — Supabase self-host bootstrap (idempotent)
-# 02-jwt.sh
+# AfraKala — Supabase self-host post-init JWT settings (idempotent)
+# zz-30-afrakala-jwt.sh
 #
-# Stores JWT settings at the database level for Supabase-compatible helpers
-# such as auth.uid(), auth.role(), auth.jwt(). Values are read from runtime
-# env only (JWT_SECRET, JWT_EXPIRY) — never committed.
+# Runs AFTER the official supabase/postgres init. Stores JWT settings at the
+# database level for Supabase-compatible helpers (auth.uid(), auth.role(),
+# auth.jwt()). Values come from runtime env only — never committed.
 #
 # Strategy: avoid `:'var'` substitution inside DO $$ blocks. Use psql -v at
-# the TOP LEVEL only (in a SELECT set_config), then read inside the DO block
+# the TOP LEVEL only (in SELECT set_config), then read inside the DO block
 # via current_setting().
 
 set -euo pipefail
@@ -17,7 +17,7 @@ set -euo pipefail
 JWT_EXP_VALUE="${JWT_EXPIRY:-3600}"
 
 if [ "${#JWT_SECRET}" -lt 32 ]; then
-  echo "[afrakala/02-jwt] JWT_SECRET is too short (<32 chars). Refusing." >&2
+  echo "[afrakala/zz-30-jwt] JWT_SECRET too short (<32). Refusing." >&2
   exit 1
 fi
 
@@ -28,7 +28,7 @@ psql -v ON_ERROR_STOP=1 \
      -v jwt_secret="$JWT_SECRET" \
      -v jwt_exp="$JWT_EXP_VALUE" <<'EOSQL'
 SELECT set_config('afrakala.bootstrap_jwt_secret', :'jwt_secret', false);
-SELECT set_config('afrakala.bootstrap_jwt_exp', :'jwt_exp', false);
+SELECT set_config('afrakala.bootstrap_jwt_exp',    :'jwt_exp',    false);
 
 DO $$
 DECLARE
@@ -37,17 +37,16 @@ DECLARE
   v_exp text := current_setting('afrakala.bootstrap_jwt_exp', true);
 BEGIN
   IF v_sec IS NULL OR length(v_sec) < 32 THEN
-    RAISE EXCEPTION 'afrakala.bootstrap_jwt_secret missing or too short (need >=32). Refusing.';
+    RAISE EXCEPTION 'afrakala.bootstrap_jwt_secret missing/too short (need >=32)';
   END IF;
 
   EXECUTE format('ALTER DATABASE %I SET app.settings.jwt_secret TO %L', v_db, v_sec);
-  EXECUTE format('ALTER DATABASE %I SET app.settings.jwt_exp TO %L', v_db, v_exp);
+  EXECUTE format('ALTER DATABASE %I SET app.settings.jwt_exp    TO %L', v_db, v_exp);
 END
 $$;
 
--- Wipe the GUCs so the secret isn't readable by later SQL in this session.
 SELECT set_config('afrakala.bootstrap_jwt_secret', '', false);
-SELECT set_config('afrakala.bootstrap_jwt_exp', '', false);
+SELECT set_config('afrakala.bootstrap_jwt_exp',    '', false);
 EOSQL
 
-echo "[afrakala/02-jwt] jwt bootstrap complete"
+echo "[afrakala/zz-30-jwt] jwt bootstrap complete"
