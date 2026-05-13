@@ -31,7 +31,7 @@ const GROUPS: NavItem["group"][] = [
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
-const QUICK_ACCESS_BY_ROLE: Record<AppRole, string[]> = {
+const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
   admin: [
     "/dashboard", "/products", "/pricing/quick-price",
     "/pricing/sale-lists", "/reports", "/users",
