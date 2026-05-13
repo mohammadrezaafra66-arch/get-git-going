@@ -309,7 +309,7 @@ export function AppSidebar() {
           return (
             <Collapsible
               key={g}
-              open={groupActive || (savedOpenGroups[g] ?? true)}
+              open={groupActive || savedOpenGroups[g] === true}
               onOpenChange={(open) => handleGroupOpenChange(g, open)}
               className="group/collapsible"
             >
