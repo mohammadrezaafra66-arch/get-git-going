@@ -153,21 +153,36 @@ docker compose --env-file .env -f docker-compose.yml up -d
 ### دستورات verify
 
 ```bash
-# 1) وضعیت سرویس‌ها
+# 1) proof ترتیب mount در compose
+rg -n "docker-entrypoint-initdb.d/(00-afrakala-pre-supabase-admin|zz-10-afrakala-roles|zz-20-afrakala-schemas|zz-30-afrakala-jwt)" docker-compose.yml
+
+# 2) وضعیت سرویس‌ها (بعد از حدود 120 ثانیه نباید restarting باشند)
 docker compose --env-file .env -f docker-compose.yml ps
 
-# 2) لاگ سه سرویسی که قبلاً شکست می‌خوردند
+# 3) proof لاگ initdb دیتابیس
+docker compose --env-file .env -f docker-compose.yml logs db | \
+  grep -E "00-afrakala-pre-supabase-admin|migrate.sh|zz-10-afrakala-roles|zz-20-afrakala-schemas|zz-30-afrakala-jwt|role \"anon\" already exists|supabase_admin|syntax error"
+
+# 4) لاگ سه سرویسی که قبلاً شکست می‌خوردند
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 auth
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 rest
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 storage
 
-# 3) تأیید نقش‌ها و schemaها از داخل DB (بدون expose پورت)
+# 5) تأیید نقش‌ها و schemaها از داخل DB (بدون expose پورت)
 docker compose --env-file .env -f docker-compose.yml exec -T db \
-  psql -U postgres -d "$POSTGRES_DB" -c "\du" | grep -E 'authenticator|supabase_(auth|storage)_admin'
+  psql -U postgres -d "$POSTGRES_DB" -c "
+    SELECT rolname
+    FROM pg_roles
+    WHERE rolname IN (
+      'anon','authenticated','service_role','authenticator','supabase_admin',
+      'supabase_auth_admin','supabase_storage_admin','dashboard_user'
+    )
+    ORDER BY rolname;
+  "
 docker compose --env-file .env -f docker-compose.yml exec -T db \
   psql -U postgres -d "$POSTGRES_DB" -c "\dn" | grep -E 'auth|storage|extensions'
 
-# 4) Kong health (از داخل شبکه docker، بدون expose روی هاست)
+# 6) Kong health (از داخل شبکه docker، بدون expose روی هاست)
 docker compose --env-file .env -f docker-compose.yml exec -T kong \
   curl -fsS http://localhost:8000/auth/v1/health || echo "auth health failed"
 ```
