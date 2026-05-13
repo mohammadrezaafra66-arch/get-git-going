@@ -5899,6 +5899,8 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          pdf_brand_order: Json | null
+          pdf_product_order_by_brand: Json | null
           published_at: string | null
           sale_price_type_id: string
           selected_columns: Json | null
@@ -5914,6 +5916,8 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          pdf_brand_order?: Json | null
+          pdf_product_order_by_brand?: Json | null
           published_at?: string | null
           sale_price_type_id: string
           selected_columns?: Json | null
@@ -5929,6 +5933,8 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          pdf_brand_order?: Json | null
+          pdf_product_order_by_brand?: Json | null
           published_at?: string | null
           sale_price_type_id?: string
           selected_columns?: Json | null

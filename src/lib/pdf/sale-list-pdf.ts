@@ -23,6 +23,7 @@ export type SaleListPdfColumn =
   | "change" | "stock_status" | "product_type" | "labels" | "description";
 
 export interface SaleListPdfItem {
+  product_id?: string | null;
   product_name: string;
   brand_name?: string | null;
   category_name?: string | null;
@@ -52,6 +53,14 @@ export interface SaleListPdfInput {
    * group in the PDF.
    */
   brandOrder?: string[] | null;
+  /**
+   * Optional explicit product display order **inside each brand**. Map of
+   * brand key → ordered list of product UUIDs. Products listed here are
+   * rendered first in the given order; the rest of the brand's products are
+   * appended using the default fallback sort (model, numeric capacity, name).
+   * Use the same brand keys as `brandOrder` (NO_BRAND_KEY for no-brand).
+   */
+  productOrderByBrand?: Record<string, string[]> | null;
   sellerInfo?: string | null;
   shopInfo?: {
     name?: string | null;
@@ -90,15 +99,15 @@ const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   description: "توضیحات",
 };
 
-const NO_BRAND_KEY = "__NO_BRAND__";
-const NO_BRAND_LABEL = "بدون برند";
+export const NO_BRAND_KEY = "__NO_BRAND__";
+export const NO_BRAND_LABEL = "بدون برند";
 
-function brandKey(b: string | null | undefined): string {
+export function brandKey(b: string | null | undefined): string {
   const t = (b ?? "").trim();
   return t === "" ? NO_BRAND_KEY : t;
 }
 
-function brandLabel(k: string): string {
+export function brandLabel(k: string): string {
   return k === NO_BRAND_KEY ? NO_BRAND_LABEL : k;
 }
 
@@ -119,6 +128,7 @@ function firstNumber(s: string | null | undefined): number {
 function arrangeItems(
   items: SaleListPdfItem[],
   brandOrder: string[] | null | undefined,
+  productOrderByBrand?: Record<string, string[]> | null,
 ): { brand: string; rows: SaleListPdfItem[] }[] {
   const groups = new Map<string, SaleListPdfItem[]>();
   const firstSeen: string[] = [];
@@ -137,7 +147,8 @@ function arrangeItems(
     if (!seen.has(k)) { finalOrder.push(k); seen.add(k); }
   }
   return finalOrder.map((k) => {
-    const rows = (groups.get(k) ?? []).slice().sort((a, b) => {
+    const groupRows = (groups.get(k) ?? []).slice();
+    const fallbackSort = (a: SaleListPdfItem, b: SaleListPdfItem) => {
       const ma = (a.model ?? "").trim();
       const mb = (b.model ?? "").trim();
       if (ma && mb) {
@@ -150,7 +161,37 @@ function arrangeItems(
       const nb = firstNumber(b.product_name);
       if (na !== nb) return na - nb;
       return (a.product_name ?? "").localeCompare(b.product_name ?? "", "fa");
-    });
+    };
+
+    const savedIds = productOrderByBrand?.[k] ?? null;
+    let rows: SaleListPdfItem[];
+    if (savedIds && savedIds.length > 0) {
+      const byId = new Map<string, SaleListPdfItem>();
+      const noId: SaleListPdfItem[] = [];
+      for (const it of groupRows) {
+        const pid = (it.product_id ?? "").trim();
+        if (pid) byId.set(pid, it);
+        else noId.push(it);
+      }
+      const used = new Set<string>();
+      const ordered: SaleListPdfItem[] = [];
+      for (const pid of savedIds) {
+        const it = byId.get(pid);
+        if (it && !used.has(pid)) {
+          ordered.push(it);
+          used.add(pid);
+        }
+      }
+      const remaining = groupRows
+        .filter((it) => {
+          const pid = (it.product_id ?? "").trim();
+          return !pid || !used.has(pid);
+        })
+        .sort(fallbackSort);
+      rows = [...ordered, ...remaining];
+    } else {
+      rows = groupRows.sort(fallbackSort);
+    }
     return { brand: k, rows };
   });
 }
@@ -212,7 +253,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
     `<th style="width:48px">ردیف</th>` +
     cols.map((c) => `<th>${escapeHtml(COLUMN_LABELS[c])}</th>`).join("");
 
-  const groups = arrangeItems(input.items, input.brandOrder);
+  const groups = arrangeItems(input.items, input.brandOrder, input.productOrderByBrand);
   let rowIdx = 0;
   const bodyRows = groups
     .map((g) => {
