@@ -68,6 +68,29 @@ export function AppSidebar() {
       }),
     [roles, canSeeAdminOnly],
   );
+
+  // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
+  // user can actually see, and cap at QUICK_ACCESS_LIMIT.
+  const quickAccess = useMemo(() => {
+    const seen = new Set<string>();
+    const paths: string[] = [];
+    for (const r of roles) {
+      for (const p of QUICK_ACCESS_BY_ROLE[r] ?? []) {
+        if (!seen.has(p)) {
+          seen.add(p);
+          paths.push(p);
+        }
+      }
+    }
+    const byPath = new Map(visible.map((i) => [i.to, i] as const));
+    const items: NavItem[] = [];
+    for (const p of paths) {
+      const it = byPath.get(p);
+      if (it) items.push(it);
+      if (items.length >= QUICK_ACCESS_LIMIT) break;
+    }
+    return items;
+  }, [roles, visible]);
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
