@@ -180,9 +180,11 @@ export function AppSidebar() {
           // "main" group is always flat — no collapse.
           if (g === "main") {
             return (
-              <SidebarGroup key={g}>
-                <SidebarGroupLabel>{GROUP_LABELS[g]}</SidebarGroupLabel>
-                <SidebarGroupContent>
+              <SidebarGroup key={g} className="pb-1">
+                <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                  {GROUP_LABELS[g]}
+                </SidebarGroupLabel>
+                <SidebarGroupContent className="space-y-0.5">
                   <SidebarMenu>{items.map(renderItem)}</SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
