@@ -68,7 +68,12 @@
    می‌کند.
 3. `zz-10-afrakala-roles.sh` — بعد از migration رسمی، وجود roleهای مورد انتظار
    را assert می‌کند، `dashboard_user` را در صورت نبود می‌سازد، و password roleهای
-   login را normalize می‌کند.
+   login را normalize می‌کند. این اسکریپت با `psql -U supabase_admin` (روی
+   `localhost` با `PGPASSWORD=POSTGRES_PASSWORD`) وصل می‌شود، چون extension
+   `supautils` در تصویر `supabase/postgres` نقش‌های reserved مانند
+   `authenticator`, `supabase_auth_admin`, `supabase_storage_admin` را در برابر
+   ALTER از سوی هر roleی به‌جز `supabase_admin` محافظت می‌کند (حتی `postgres`
+   superuser خطای `"<role>" is a reserved role` می‌گیرد).
 4. `zz-20-afrakala-schemas.sql` — فقط top-upهای idempotent برای extension/grant.
 5. `zz-30-afrakala-jwt.sh` — تنظیم `app.settings.jwt_secret` و
    `app.settings.jwt_exp` در سطح دیتابیس.
