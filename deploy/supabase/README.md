@@ -176,8 +176,9 @@ docker compose --env-file .env -f docker-compose.yml exec -T kong \
 
 - پورت `5432` Postgres هرگز روی هاست publish نمی‌شود.
 - Studio/Kong هم پورتی روی هاست ندارند؛ دسترسی فقط از طریق Caddy (فاز proxy).
-- اسکریپت‌های `00/01/02-afrakala-*.sql` فقط روی **volume خالی** اجرا می‌شوند؛ روی
-  DB موجود اثر ندارند (الزام idempotency رعایت شده).
+- اسکریپت‌های initdb افراکالا (`00-afrakala-pre-supabase-admin.sh` و `zz-*`) فقط
+  روی **volume خالی** اجرا می‌شوند؛ روی DB موجود اثر ندارند (الزام idempotency
+  رعایت شده).
 - migrationهای اپ (`deploy/supabase/migrations/`) از مسیر جدا
   `/var/lib/afrakala/migrations` فقط mount شده‌اند و **توسط initdb اجرا
   نمی‌شوند**؛ apply آن‌ها در فاز SH.7 با `apply-project-migrations.sh`.
