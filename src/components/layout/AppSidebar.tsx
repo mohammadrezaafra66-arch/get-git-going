@@ -109,7 +109,12 @@ export function AppSidebar() {
       item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
     return (
       <SidebarMenuItem key={item.to}>
-        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+        <SidebarMenuButton
+          asChild
+          isActive={active}
+          tooltip={item.label}
+          className="relative h-9 gap-2.5 rounded-lg transition-colors data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-primary data-[active=true]:font-semibold data-[active=true]:shadow-sm data-[active=true]:before:absolute data-[active=true]:before:inset-y-1.5 data-[active=true]:before:right-0 data-[active=true]:before:w-[3px] data-[active=true]:before:rounded-l-full data-[active=true]:before:bg-sidebar-primary [&>a>svg]:data-[active=true]:text-sidebar-primary"
+        >
           <Link to={item.to}>
             <item.icon className="h-4 w-4" />
             <span>{item.label}</span>
@@ -175,9 +180,11 @@ export function AppSidebar() {
           // "main" group is always flat — no collapse.
           if (g === "main") {
             return (
-              <SidebarGroup key={g}>
-                <SidebarGroupLabel>{GROUP_LABELS[g]}</SidebarGroupLabel>
-                <SidebarGroupContent>
+              <SidebarGroup key={g} className="pb-1">
+                <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                  {GROUP_LABELS[g]}
+                </SidebarGroupLabel>
+                <SidebarGroupContent className="space-y-0.5">
                   <SidebarMenu>{items.map(renderItem)}</SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -186,17 +193,17 @@ export function AppSidebar() {
 
           return (
             <Collapsible key={g} defaultOpen={groupActive} className="group/collapsible">
-              <SidebarGroup>
+          <SidebarGroup className="pb-1">
                 <CollapsibleTrigger asChild>
                   <SidebarGroupLabel
-                    className={`flex cursor-pointer items-center justify-between gap-2 hover:text-sidebar-foreground ${groupActive ? "text-sidebar-foreground" : ""}`}
+                className={`flex cursor-pointer items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider transition-colors hover:text-sidebar-foreground ${groupActive ? "text-sidebar-foreground" : "text-sidebar-foreground/55"}`}
                   >
                     <span>{GROUP_LABELS[g]}</span>
                     <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
                   </SidebarGroupLabel>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <SidebarGroupContent>
+              <SidebarGroupContent className="space-y-0.5">
                     {flatItems.length > 0 && (
                       <SidebarMenu>{flatItems.map(renderItem)}</SidebarMenu>
                     )}
@@ -208,19 +215,19 @@ export function AppSidebar() {
                           <Collapsible
                             key={sg}
                             defaultOpen={sgActive}
-                            className="group/sub mt-1"
+                        className="group/sub mt-1.5"
                           >
                             <CollapsibleTrigger asChild>
                               <button
                                 type="button"
-                                className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] font-medium text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                            className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-xs font-medium tracking-wide transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground ${sgActive ? "text-sidebar-foreground" : "text-sidebar-foreground/60"}`}
                               >
                                 <span>{SUBGROUP_LABELS[sg]}</span>
                                 <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=closed]/sub:-rotate-90" />
                               </button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                              <SidebarMenu className="border-r border-sidebar-border/40 pr-1">
+                          <SidebarMenu className="mr-2 border-r border-sidebar-border/50 pr-1.5">
                                 {sgItems.map(renderItem)}
                               </SidebarMenu>
                             </CollapsibleContent>
