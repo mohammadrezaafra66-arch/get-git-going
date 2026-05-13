@@ -76,6 +76,9 @@ import {
   downloadSaleListPdf,
   type SaleListPdfInput,
   type SaleListPdfColumn,
+  NO_BRAND_KEY,
+  brandKey as toBrandKey,
+  brandLabel as toBrandLabel,
 } from "@/lib/pdf/sale-list-pdf";
 import { fetchShopSettings } from "@/lib/shop/settings";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
@@ -126,6 +129,8 @@ interface SaleListDetail {
   selected_columns: string[] | null;
   created_at: string;
   sale_price_type: { id: string; title: string } | null;
+  pdf_brand_order: string[] | null;
+  pdf_product_order_by_brand: Record<string, string[]> | null;
 }
 
 interface SaleListItemRow {
@@ -169,7 +174,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, sale_price_type:sale_price_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -219,21 +224,36 @@ function SaleListDetailPage() {
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
   const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
 
-  // Brand-order chooser dialog state
-  const [brandOrderOpen, setBrandOrderOpen] = useState(false);
+  // PDF order settings dialog state (brand keys + per-brand product UUIDs).
+  // Brand keys use the same convention as the PDF (NO_BRAND_KEY for no-brand).
+  const [pdfOrderOpen, setPdfOrderOpen] = useState(false);
   const [brandOrder, setBrandOrder] = useState<string[]>([]);
-  const [pendingPdfAction, setPendingPdfAction] = useState<"preview" | "download" | null>(null);
+  const [productOrderByBrand, setProductOrderByBrand] = useState<Record<string, string[]>>({});
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [runningPdf, setRunningPdf] = useState<"preview" | "download" | null>(null);
 
-  // Distinct brands in items, preserving first-appearance order from the list.
-  // MUST be declared before any early return to keep hook order stable.
-  const distinctBrands = useMemo(() => {
+  // Distinct brand keys in items (first-appearance order).
+  const distinctBrandKeys = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
     for (const it of (itemsQ.data ?? [])) {
-      const b = (it.product?.brand?.name ?? "").trim() || "بدون برند";
-      if (!seen.has(b)) { seen.add(b); out.push(b); }
+      const k = toBrandKey(it.product?.brand?.name);
+      if (!seen.has(k)) { seen.add(k); out.push(k); }
     }
     return out;
+  }, [itemsQ.data]);
+
+  // Map brand key -> product list (first-appearance order from items).
+  const productsByBrandKey = useMemo(() => {
+    const m = new Map<string, { id: string; name: string }[]>();
+    for (const it of (itemsQ.data ?? [])) {
+      const k = toBrandKey(it.product?.brand?.name);
+      const pid = it.product?.id;
+      if (!pid) continue;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push({ id: pid, name: it.product?.name ?? "—" });
+    }
+    return m;
   }, [itemsQ.data]);
 
   // Realtime: refresh items when sale_list_items changes (trigger on price history),
@@ -284,9 +304,11 @@ function SaleListDetailPage() {
   const versions = versionsQ.data ?? [];
 
   const canPublish = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+  const canSavePdfOrder = canPublish;
 
   const buildPdfInput = (
-    overrideOrder?: string[],
+    overrideBrandOrder?: string[],
+    overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
   ): SaleListPdfInput => {
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
@@ -313,7 +335,8 @@ function SaleListDetailPage() {
           }
         : null,
       selectedColumns: cols,
-      brandOrder: overrideOrder ?? brandOrder,
+      brandOrder: overrideBrandOrder ?? brandOrder,
+      productOrderByBrand: overrideProductOrder ?? productOrderByBrand,
       items: items.map((it) => {
         const snapshotCurrent = Number(it.current_price);
         const live = livePrices?.get(it.product?.id ?? "");
@@ -332,6 +355,7 @@ function SaleListDetailPage() {
             ? Number(it.change_percent)
             : null;
         return {
+          product_id: it.product?.id ?? null,
           product_name: it.product?.name ?? "—",
           brand_name: it.product?.brand?.name ?? null,
           category_name: it.product?.category?.name ?? null,
@@ -351,14 +375,39 @@ function SaleListDetailPage() {
     };
   };
 
-  const openBrandOrderFor = (action: "preview" | "download") => {
+  /**
+   * Merge saved order from DB with current data:
+   *  - keep saved entries that still exist (in order)
+   *  - append new entries at the end
+   *  - drop missing entries silently
+   */
+  const mergeBrandOrder = (saved: string[] | null | undefined, current: string[]): string[] => {
+    const validSaved = (saved ?? []).filter((k) => current.includes(k));
+    const seen = new Set(validSaved);
+    return [...validSaved, ...current.filter((k) => !seen.has(k))];
+  };
+  const mergeProductOrder = (
+    saved: Record<string, string[]> | null | undefined,
+    productsByKey: Map<string, { id: string; name: string }[]>,
+  ): Record<string, string[]> => {
+    const out: Record<string, string[]> = {};
+    for (const [k, list] of productsByKey.entries()) {
+      const ids = list.map((p) => p.id);
+      const idSet = new Set(ids);
+      const validSaved = (saved?.[k] ?? []).filter((pid) => idSet.has(pid));
+      const seen = new Set(validSaved);
+      out[k] = [...validSaved, ...ids.filter((pid) => !seen.has(pid))];
+    }
+    return out;
+  };
+
+  const openPdfOrderDialog = () => {
     if (items.length === 0) { toast.error("لیست خالی است."); return; }
-    // Initialize order: keep previous user choice if still valid, else first-seen.
-    const valid = brandOrder.filter((b) => distinctBrands.includes(b));
-    const missing = distinctBrands.filter((b) => !valid.includes(b));
-    setBrandOrder([...valid, ...missing]);
-    setPendingPdfAction(action);
-    setBrandOrderOpen(true);
+    const mergedBrands = mergeBrandOrder(list.pdf_brand_order, distinctBrandKeys);
+    const mergedProducts = mergeProductOrder(list.pdf_product_order_by_brand, productsByBrandKey);
+    setBrandOrder(mergedBrands);
+    setProductOrderByBrand(mergedProducts);
+    setPdfOrderOpen(true);
   };
   const moveBrand = (idx: number, dir: -1 | 1) => {
     setBrandOrder((prev) => {
@@ -369,12 +418,54 @@ function SaleListDetailPage() {
       return next;
     });
   };
-  const runPdfAction = async () => {
-    const action = pendingPdfAction;
-    setBrandOrderOpen(false);
-    setPendingPdfAction(null);
-    if (!action) return;
+  const moveProduct = (brandK: string, idx: number, dir: -1 | 1) => {
+    setProductOrderByBrand((prev) => {
+      const list = prev[brandK]?.slice() ?? [];
+      const j = idx + dir;
+      if (j < 0 || j >= list.length) return prev;
+      [list[idx], list[j]] = [list[j], list[idx]];
+      return { ...prev, [brandK]: list };
+    });
+  };
+
+  const persistPdfOrder = async (): Promise<boolean> => {
     try {
+      const { error } = await supabase
+        .from("sale_lists")
+        .update({
+          pdf_brand_order: brandOrder,
+          pdf_product_order_by_brand: productOrderByBrand,
+        })
+        .eq("id", listId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["sale-list", listId] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ذخیره ترتیب ناموفق بود.");
+      return false;
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    setSavingOrder(true);
+    try {
+      const ok = await persistPdfOrder();
+      if (ok) {
+        toast.success("ترتیب نمایش PDF ذخیره شد.");
+        setPdfOrderOpen(false);
+      }
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const runPdfAction = async (action: "preview" | "download") => {
+    setRunningPdf(action);
+    try {
+      // Save the current ordering first (best-effort; do not block PDF on failure).
+      if (canSavePdfOrder) {
+        await persistPdfOrder();
+      }
       // Fetch latest live sale prices for items that may have stale/zero snapshots
       let livePrices: Map<string, number> | undefined;
       try {
@@ -400,16 +491,19 @@ function SaleListDetailPage() {
       } catch (err) {
         console.warn("fetch live prices for PDF failed; using snapshot", err);
       }
-      const input = buildPdfInput(brandOrder, livePrices);
+      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices);
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
+      setPdfOrderOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خطا در ساخت PDF.");
       console.error(e);
+    } finally {
+      setRunningPdf(null);
     }
   };
-  const handlePreview = () => openBrandOrderFor("preview");
-  const handleDownload = () => openBrandOrderFor("download");
+  const handlePreview = () => openPdfOrderDialog();
+  const handleDownload = () => openPdfOrderDialog();
 
   return (
     <div className="space-y-5">
@@ -563,61 +657,135 @@ function SaleListDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={brandOrderOpen} onOpenChange={(o) => { if (!o) { setBrandOrderOpen(false); setPendingPdfAction(null); } }}>
-        <DialogContent className="max-w-md" dir="rtl">
+      <Dialog open={pdfOrderOpen} onOpenChange={(o) => { if (!o && !runningPdf && !savingOrder) setPdfOrderOpen(false); }}>
+        <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
-            <DialogTitle>ترتیب نمایش برندها در PDF</DialogTitle>
+            <DialogTitle>تنظیم ترتیب نمایش در PDF</DialogTitle>
             <DialogDescription>
-              ترتیب برندها را با دکمه‌های بالا/پایین مشخص کنید. محصولات هر برند زیر یک سطر عنوان همان برند نمایش داده می‌شوند و درون هر برند بر اساس مدل و سپس ظرفیت مرتب می‌شوند.
+              ترتیب برندها و محصولات داخل هر برند را مشخص کنید. تنظیمات شما برای دفعات بعد ذخیره می‌شود. محصولات فقط درون برند خودشان قابل جابجایی هستند.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto rounded-md border p-2">
             {brandOrder.length === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">برندی برای نمایش وجود ندارد.</div>
             ) : (
-              <ul className="divide-y">
-                {brandOrder.map((b, i) => (
-                  <li key={b} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-muted px-1.5 text-xs font-semibold">
-                        {formatNumber(i + 1)}
-                      </span>
-                      <span>{b}</span>
+              brandOrder.map((bk, bi) => {
+                const productIds = productOrderByBrand[bk] ?? [];
+                const productsList = productsByBrandKey.get(bk) ?? [];
+                const nameById = new Map(productsList.map((p) => [p.id, p.name]));
+                return (
+                  <div key={bk} className="rounded-md border bg-card">
+                    <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded bg-primary/10 px-1.5 text-xs">
+                          {formatNumber(bi + 1)}
+                        </span>
+                        <span>{toBrandLabel(bk)}</span>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          ({formatNumber(productIds.length)} محصول)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={bi === 0}
+                          onClick={() => moveBrand(bi, -1)}
+                          aria-label="بالا بردن برند"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={bi === brandOrder.length - 1}
+                          onClick={() => moveBrand(bi, 1)}
+                          aria-label="پایین بردن برند"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        disabled={i === 0}
-                        onClick={() => moveBrand(i, -1)}
-                        aria-label="بالا"
-                      >
-                        <ArrowUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        disabled={i === brandOrder.length - 1}
-                        onClick={() => moveBrand(i, 1)}
-                        aria-label="پایین"
-                      >
-                        <ArrowDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    <ul className="divide-y">
+                      {productIds.length === 0 ? (
+                        <li className="px-3 py-2 text-xs text-muted-foreground">محصولی در این برند نیست.</li>
+                      ) : (
+                        productIds.map((pid, pi) => (
+                          <li key={pid} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                            <div className="flex min-w-0 items-center gap-2 text-sm">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1 text-[10px] tabular-nums">
+                                {formatNumber(pi + 1)}
+                              </span>
+                              <span className="truncate">{nameById.get(pid) ?? "—"}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                disabled={pi === 0}
+                                onClick={() => moveProduct(bk, pi, -1)}
+                                aria-label="بالا بردن محصول"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                disabled={pi === productIds.length - 1}
+                                onClick={() => moveProduct(bk, pi, 1)}
+                                aria-label="پایین بردن محصول"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                );
+              })
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setBrandOrderOpen(false); setPendingPdfAction(null); }}>
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setPdfOrderOpen(false)}
+              disabled={savingOrder || runningPdf !== null}
+            >
               انصراف
             </Button>
-            <Button onClick={runPdfAction} disabled={brandOrder.length === 0} className="gap-1">
-              {pendingPdfAction === "download" ? <Download className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-              {pendingPdfAction === "download" ? "دانلود PDF" : "پیش‌نمایش PDF"}
+            {canSavePdfOrder && (
+              <Button
+                variant="secondary"
+                onClick={handleSaveOrder}
+                disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
+                className="gap-1"
+              >
+                {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                ذخیره تنظیمات
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => runPdfAction("preview")}
+              disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
+              className="gap-1"
+            >
+              {runningPdf === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              پیش‌نمایش PDF
+            </Button>
+            <Button
+              onClick={() => runPdfAction("download")}
+              disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
+              className="gap-1"
+            >
+              {runningPdf === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              دانلود PDF
             </Button>
           </div>
         </DialogContent>
