@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -50,6 +50,27 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
   viewer: [],
 };
 const QUICK_ACCESS_LIMIT = 6;
+
+const SIDEBAR_OPEN_GROUPS_KEY = "afrakala.sidebar.openGroups.v1";
+type GroupKey = NavItem["group"];
+
+function loadSavedOpenGroups(): Partial<Record<GroupKey, boolean>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_OPEN_GROUPS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Partial<Record<GroupKey, boolean>> = {};
+    for (const g of GROUPS) {
+      const v = (parsed as Record<string, unknown>)[g];
+      if (typeof v === "boolean") out[g] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
 
 export function AppSidebar() {
   const { roles } = useAuth();
