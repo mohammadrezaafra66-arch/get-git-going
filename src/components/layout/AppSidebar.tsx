@@ -14,7 +14,8 @@ import {
 } from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
-import { Sparkles, ChevronDown } from "lucide-react";
+import { Sparkles, ChevronDown, Zap } from "lucide-react";
+import type { AppRole } from "@/lib/rbac/roles";
 
 const GROUPS: NavItem["group"][] = [
   "main",
@@ -27,6 +28,28 @@ const GROUPS: NavItem["group"][] = [
   "knowledge-comms",
   "admin",
 ];
+
+// QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
+// label/icon/module/adminOnly stay in sync with the main nav.
+const QUICK_ACCESS_BY_ROLE: Record<AppRole, string[]> = {
+  admin: [
+    "/dashboard", "/products", "/pricing/quick-price",
+    "/pricing/sale-lists", "/reports", "/users",
+  ],
+  manager: [
+    "/dashboard", "/products", "/pricing/quick-price",
+    "/pricing/sale-lists", "/reports", "/users",
+  ],
+  sales: [
+    "/sales", "/sales/quotes", "/pricing/sale-lists", "/sales/customers",
+  ],
+  accountant: [
+    "/accounting/receipts", "/accounting/receivables",
+    "/accounting/payables", "/accounting/daily-capital",
+  ],
+  viewer: [],
+};
+const QUICK_ACCESS_LIMIT = 6;
 
 export function AppSidebar() {
   const { roles } = useAuth();
