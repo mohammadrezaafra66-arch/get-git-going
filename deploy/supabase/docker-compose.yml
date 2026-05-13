@@ -47,15 +47,18 @@ services:
       - db-data:/var/lib/postgresql/data
       # bootstrap deterministic — اجرا توسط entrypoint تصویر در اولین boot
       # (وقتی volume خالی است). idempotent، بدون secret واقعی.
-      # NOTE: docker-entrypoint.sh فایل‌های زیرشاخه‌ها را اجرا نمی‌کند، پس هر
-      # اسکریپت باید مستقیم در /docker-entrypoint-initdb.d mount شود.
-      # پیشوند الفبایی 00/01/02 باعث می‌شود bootstrap افراکالا قبل از
-      # migrate.sh داخلی image اجرا شود؛ roleها باید قبل از migrationهای image وجود داشته باشند.
-      # 00 و 02 به‌صورت shell script هستند تا متغیرهای env را امن به psql بدهند
-      # و از خطای syntax `:'var'` داخل DO $$ جلوگیری شود.
-      - ./volumes/db/init/00-roles.sh:/docker-entrypoint-initdb.d/00-afrakala-roles.sh:ro
-      - ./volumes/db/init/01-schemas.sql:/docker-entrypoint-initdb.d/01-afrakala-schemas.sql:ro
-      - ./volumes/db/init/02-jwt.sh:/docker-entrypoint-initdb.d/02-afrakala-jwt.sh:ro
+      #
+      # IMPORTANT: فایل‌های /docker-entrypoint-initdb.d/ به ترتیب الفبایی اجرا
+      # می‌شوند. تصویر رسمی supabase/postgres خودش migrate.sh و
+      # init-scripts/00000000000000-initial-schema.sql را دارد که roleهای
+      # anon/authenticated/service_role/authenticator/supabase_admin/...
+      # و schemaهای auth/storage را می‌سازد. اگر ما با پیشوند 00/01/02 قبل از آن
+      # roleها را بسازیم، اسکریپت رسمی با ERROR: role "anon" already exists fail
+      # می‌شود. بنابراین همهٔ اسکریپت‌های افراکالا با پیشوند `zz-` mount می‌شوند
+      # تا بعد از migrate.sh اجرا شوند و فقط normalization/JWT را انجام دهند.
+      - ./volumes/db/init/zz-10-afrakala-roles.sh:/docker-entrypoint-initdb.d/zz-10-afrakala-roles.sh:ro
+      - ./volumes/db/init/zz-20-afrakala-schemas.sql:/docker-entrypoint-initdb.d/zz-20-afrakala-schemas.sql:ro
+      - ./volumes/db/init/zz-30-afrakala-jwt.sh:/docker-entrypoint-initdb.d/zz-30-afrakala-jwt.sh:ro
       # migrationهای اپ (فاز SH.7) — جداگانه و دستی apply می‌شوند، نه از initdb
       - ./migrations:/var/lib/afrakala/migrations:ro
     networks:
