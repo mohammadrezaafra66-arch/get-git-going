@@ -99,9 +99,10 @@ docker compose ps
 
 شکست می‌خوردند. حالا `volumes/db/init/` شامل سه اسکریپت SQL idempotent است که
 entrypoint رسمی تصویر در **اولین boot روی volume خالی** اجرا می‌کند. هر فایل
-مستقیماً (نه به‌صورت زیرشاخه) داخل `/docker-entrypoint-initdb.d/` با پیشوند
-`zz-afrakala-XX-` mount می‌شود، چون `docker-entrypoint.sh` فایل‌های داخل
-زیرشاخه‌ها را اجرا نمی‌کند:
+مستقیماً (نه به‌صورت زیرشاخه) داخل `/docker-entrypoint-initdb.d/` با پیشوندهای
+`00/01/02-afrakala-` mount می‌شود، چون `docker-entrypoint.sh` فایل‌های داخل
+زیرشاخه‌ها را اجرا نمی‌کند و roleهای پایه باید **قبل از** `migrate.sh` داخلی
+تصویر `supabase/postgres` ساخته شوند:
 
 | فایل | کار |
 |------|-----|
@@ -122,7 +123,7 @@ docker compose --env-file .env -f docker-compose.yml up -d
 ```
 
 `down -v` ولوم `db-data` و `storage-data` را حذف می‌کند تا اسکریپت‌های
-`zz-afrakala-*.sql` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
+`00/01/02-afrakala-*.sql` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
 
 ### دستورات verify
 
@@ -150,7 +151,7 @@ docker compose --env-file .env -f docker-compose.yml exec -T kong \
 
 - پورت `5432` Postgres هرگز روی هاست publish نمی‌شود.
 - Studio/Kong هم پورتی روی هاست ندارند؛ دسترسی فقط از طریق Caddy (فاز proxy).
-- اسکریپت‌های `zz-afrakala-*.sql` فقط روی **volume خالی** اجرا می‌شوند؛ روی
+- اسکریپت‌های `00/01/02-afrakala-*.sql` فقط روی **volume خالی** اجرا می‌شوند؛ روی
   DB موجود اثر ندارند (الزام idempotency رعایت شده).
 - migrationهای اپ (`deploy/supabase/migrations/`) از مسیر جدا
   `/var/lib/afrakala/migrations` فقط mount شده‌اند و **توسط initdb اجرا
