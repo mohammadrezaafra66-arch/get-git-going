@@ -25,7 +25,9 @@
 # whitelisted privileged role `supabase_admin`. Even the `postgres` superuser
 # gets: ERROR: "<role>" is a reserved role, only superusers can modify it.
 # Connecting as `supabase_admin` (whose password was set by the pre-migrate
-# script) is the supported way to ALTER these roles.
+# script) is the supported way to ALTER these roles. During initdb, use the
+# Unix socket exposed by the temporary PostgreSQL server; TCP localhost is not
+# guaranteed to be listening yet.
 #
 # No psql `:'var'` is used inside any DO $$ block. The password is passed to
 # psql via -v at the top level, stashed into a session GUC with set_config(),
@@ -43,7 +45,7 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
 fi
 
 PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 \
-     --host "localhost" \
+     --host "/var/run/postgresql" \
      --username "supabase_admin" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
