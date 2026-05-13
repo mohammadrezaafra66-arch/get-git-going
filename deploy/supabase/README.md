@@ -98,7 +98,10 @@ docker compose ps
 - `type "auth.factor_type" does not exist`
 
 شکست می‌خوردند. حالا `volumes/db/init/` شامل سه اسکریپت SQL idempotent است که
-entrypoint رسمی تصویر در **اولین boot روی volume خالی** اجرا می‌کند:
+entrypoint رسمی تصویر در **اولین boot روی volume خالی** اجرا می‌کند. هر فایل
+مستقیماً (نه به‌صورت زیرشاخه) داخل `/docker-entrypoint-initdb.d/` با پیشوند
+`zz-afrakala-XX-` mount می‌شود، چون `docker-entrypoint.sh` فایل‌های داخل
+زیرشاخه‌ها را اجرا نمی‌کند:
 
 | فایل | کار |
 |------|-----|
@@ -119,7 +122,7 @@ docker compose --env-file .env -f docker-compose.yml up -d
 ```
 
 `down -v` ولوم `db-data` و `storage-data` را حذف می‌کند تا اسکریپت‌های
-`zz-afrakala-init/` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
+`zz-afrakala-*.sql` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
 
 ### دستورات verify
 
@@ -147,7 +150,7 @@ docker compose --env-file .env -f docker-compose.yml exec -T kong \
 
 - پورت `5432` Postgres هرگز روی هاست publish نمی‌شود.
 - Studio/Kong هم پورتی روی هاست ندارند؛ دسترسی فقط از طریق Caddy (فاز proxy).
-- اسکریپت‌های `zz-afrakala-init/` فقط روی **volume خالی** اجرا می‌شوند؛ روی
+- اسکریپت‌های `zz-afrakala-*.sql` فقط روی **volume خالی** اجرا می‌شوند؛ روی
   DB موجود اثر ندارند (الزام idempotency رعایت شده).
 - migrationهای اپ (`deploy/supabase/migrations/`) از مسیر جدا
   `/var/lib/afrakala/migrations` فقط mount شده‌اند و **توسط initdb اجرا
