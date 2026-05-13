@@ -37,6 +37,7 @@ psql -v ON_ERROR_STOP=1 \
      --username "supabase_admin" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
+     --host "/var/run/postgresql" \
      -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
 SELECT set_config('afrakala.bootstrap_pass', :'pgpass', false);
 
