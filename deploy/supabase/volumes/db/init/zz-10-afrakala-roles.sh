@@ -34,7 +34,7 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
 fi
 
 psql -v ON_ERROR_STOP=1 \
-     --username "postgres" \
+     --username "supabase_admin" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
      -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
