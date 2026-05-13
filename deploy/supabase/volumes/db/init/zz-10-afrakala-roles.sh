@@ -18,6 +18,15 @@
 #      GoTrue / PostgREST / Storage can authenticate against `db`,
 #   3) creates `dashboard_user` only if the image variant did not.
 #
+# IMPORTANT: this script connects as `supabase_admin`, not `postgres`. The
+# supabase/postgres image loads the `supautils` extension which protects
+# reserved roles (authenticator, supabase_auth_admin, supabase_storage_admin,
+# anon, authenticated, service_role) from being altered by anyone except the
+# whitelisted privileged role `supabase_admin`. Even the `postgres` superuser
+# gets: ERROR: "<role>" is a reserved role, only superusers can modify it.
+# Connecting as `supabase_admin` (whose password was set by the pre-migrate
+# script) is the supported way to ALTER these roles.
+#
 # No psql `:'var'` is used inside any DO $$ block. The password is passed to
 # psql via -v at the top level, stashed into a session GUC with set_config(),
 # and read inside the DO block via current_setting(). The GUC is wiped at
@@ -33,11 +42,11 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
   exit 1
 fi
 
-psql -v ON_ERROR_STOP=1 \
+PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 \
+     --host "localhost" \
      --username "supabase_admin" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
-     --host "/var/run/postgresql" \
      -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
 SELECT set_config('afrakala.bootstrap_pass', :'pgpass', false);
 
