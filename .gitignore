@@ -42,7 +42,11 @@ deploy/proxy/.env
 deploy/proxy/Caddyfile
 deploy/proxy/certs/
 deploy/supabase/.env
-deploy/supabase/volumes/
+deploy/supabase/volumes/*
+!deploy/supabase/volumes/db/
+deploy/supabase/volumes/db/*
+!deploy/supabase/volumes/db/init/
+!deploy/supabase/volumes/db/init/*.sql
 
 # TLS / certificate secrets
 *.pem
