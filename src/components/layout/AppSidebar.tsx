@@ -14,7 +14,8 @@ import {
 } from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
-import { Sparkles, ChevronDown } from "lucide-react";
+import { Sparkles, ChevronDown, Zap } from "lucide-react";
+import type { AppRole } from "@/lib/rbac/roles";
 
 const GROUPS: NavItem["group"][] = [
   "main",
@@ -27,6 +28,28 @@ const GROUPS: NavItem["group"][] = [
   "knowledge-comms",
   "admin",
 ];
+
+// QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
+// label/icon/module/adminOnly stay in sync with the main nav.
+const QUICK_ACCESS_BY_ROLE: Record<AppRole, string[]> = {
+  admin: [
+    "/dashboard", "/products", "/pricing/quick-price",
+    "/pricing/sale-lists", "/reports", "/users",
+  ],
+  manager: [
+    "/dashboard", "/products", "/pricing/quick-price",
+    "/pricing/sale-lists", "/reports", "/users",
+  ],
+  sales: [
+    "/sales", "/sales/quotes", "/pricing/sale-lists", "/sales/customers",
+  ],
+  accountant: [
+    "/accounting/receipts", "/accounting/receivables",
+    "/accounting/payables", "/accounting/daily-capital",
+  ],
+  viewer: [],
+};
+const QUICK_ACCESS_LIMIT = 6;
 
 export function AppSidebar() {
   const { roles } = useAuth();
@@ -45,6 +68,29 @@ export function AppSidebar() {
       }),
     [roles, canSeeAdminOnly],
   );
+
+  // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
+  // user can actually see, and cap at QUICK_ACCESS_LIMIT.
+  const quickAccess = useMemo(() => {
+    const seen = new Set<string>();
+    const paths: string[] = [];
+    for (const r of roles) {
+      for (const p of QUICK_ACCESS_BY_ROLE[r] ?? []) {
+        if (!seen.has(p)) {
+          seen.add(p);
+          paths.push(p);
+        }
+      }
+    }
+    const byPath = new Map(visible.map((i) => [i.to, i] as const));
+    const items: NavItem[] = [];
+    for (const p of paths) {
+      const it = byPath.get(p);
+      if (it) items.push(it);
+      if (items.length >= QUICK_ACCESS_LIMIT) break;
+    }
+    return items;
+  }, [roles, visible]);
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
@@ -158,6 +204,37 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {quickAccess.length > 0 && (
+          <SidebarGroup className="pb-1">
+            <SidebarGroupLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
+              <Zap className="h-3 w-3" />
+              <span>دسترسی سریع</span>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="grid grid-cols-2 gap-1 group-data-[collapsible=icon]:grid-cols-1">
+                {quickAccess.map((item) => {
+                  const active = isItemActive(item.to);
+                  return (
+                    <SidebarMenuItem key={`qa-${item.to}`}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
+                        size="sm"
+                        className="h-8 rounded-md border border-sidebar-border/50 bg-sidebar-accent/20 text-xs hover:bg-sidebar-accent/60 data-[active=true]:border-sidebar-primary/40 data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-primary"
+                      >
+                        <Link to={item.to}>
+                          <item.icon className="h-3.5 w-3.5" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {GROUPS.map((g) => {
           const items = visible.filter((i) => i.group === g);
           if (!items.length) return null;
