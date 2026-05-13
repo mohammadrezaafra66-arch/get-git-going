@@ -49,11 +49,11 @@ services:
       # (وقتی volume خالی است). idempotent، بدون secret واقعی.
       # NOTE: docker-entrypoint.sh فایل‌های زیرشاخه‌ها را اجرا نمی‌کند، پس هر
       # اسکریپت باید مستقیم در /docker-entrypoint-initdb.d mount شود.
-      # پیشوند الفبایی ترتیب اجرا را تضمین می‌کند و بعد از initهای پیش‌فرض
-      # image اجرا می‌شوند (پیشوند zz-).
-      - ./volumes/db/init/00-roles.sql:/docker-entrypoint-initdb.d/zz-afrakala-00-roles.sql:ro
-      - ./volumes/db/init/01-schemas.sql:/docker-entrypoint-initdb.d/zz-afrakala-01-schemas.sql:ro
-      - ./volumes/db/init/02-jwt.sql:/docker-entrypoint-initdb.d/zz-afrakala-02-jwt.sql:ro
+      # پیشوند الفبایی 00/01/02 باعث می‌شود bootstrap افراکالا قبل از
+      # migrate.sh داخلی image اجرا شود؛ roleها باید قبل از migrationهای image وجود داشته باشند.
+      - ./volumes/db/init/00-roles.sql:/docker-entrypoint-initdb.d/00-afrakala-roles.sql:ro
+      - ./volumes/db/init/01-schemas.sql:/docker-entrypoint-initdb.d/01-afrakala-schemas.sql:ro
+      - ./volumes/db/init/02-jwt.sql:/docker-entrypoint-initdb.d/02-afrakala-jwt.sql:ro
       # migrationهای اپ (فاز SH.7) — جداگانه و دستی apply می‌شوند، نه از initdb
       - ./migrations:/var/lib/afrakala/migrations:ro
     networks:
