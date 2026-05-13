@@ -7,12 +7,12 @@
 # /docker-entrypoint-initdb.d/ are executed in alphabetical order and the
 # `zz-` prefix guarantees we run last.
 #
-# Why: pre-creating roles like `anon`, `authenticated`, `service_role`,
-# `authenticator`, `supabase_admin`, `supabase_auth_admin`,
-# `supabase_storage_admin`, `dashboard_user` BEFORE migrate.sh causes the
-# official init script to fail with: ERROR: role "anon" already exists.
-# So this script does NOT create those baseline roles — the image already
-# does. It only:
+# Why: pre-creating the whole baseline role set (`anon`, `authenticated`,
+# `service_role`, `authenticator`, `supabase_auth_admin`,
+# `supabase_storage_admin`, etc.) BEFORE migrate.sh causes the official init
+# script to fail with: ERROR: role "anon" already exists. Only
+# `supabase_admin` is prepared by 00-afrakala-pre-supabase-admin.sh because
+# migrate.sh connects as that role. This post-migrate script only:
 #   1) verifies all expected roles exist (fails fast otherwise),
 #   2) normalizes the password of every LOGIN role to POSTGRES_PASSWORD so
 #      GoTrue / PostgREST / Storage can authenticate against `db`,

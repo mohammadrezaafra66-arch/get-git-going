@@ -55,26 +55,27 @@
 
 ## ترتیب bootstrap دیتابیس (initdb)
 
-فایل‌های `/docker-entrypoint-initdb.d/` به ترتیب الفبایی اجرا می‌شوند. روی
-volume خالی، ابتدا اسکریپت‌های رسمی تصویر `supabase/postgres` (شامل
-`migrate.sh` و `init-scripts/00000000000000-initial-schema.sql`) اجرا می‌شوند
-که خودشان roleهای `anon`, `authenticated`, `service_role`, `authenticator`,
-`supabase_admin`, `supabase_auth_admin`, `supabase_storage_admin` و schemaهای
-`auth` / `storage` / `extensions` را می‌سازند.
+فایل‌های `/docker-entrypoint-initdb.d/` به ترتیب الفبایی اجرا می‌شوند. در تصویر
+`supabase/postgres`، اسکریپت رسمی `migrate.sh` قبل از فایل‌های `zz-*` اجرا
+می‌شود و خودش با `psql -U supabase_admin` به دیتابیس وصل می‌شود. بنابراین
+افراکالا فقط **یک** pre-migrate script دارد:
 
-اسکریپت‌های افراکالا با پیشوند `zz-` mount شده‌اند تا **بعد از** migrate.sh
-اجرا شوند و فقط:
-
-1. `zz-10-afrakala-roles.sh` — تأیید وجود roleهای baseline، ساخت
-   `dashboard_user` در صورت نبود، و یکسان‌سازی password روی همهٔ login roleها
-   با مقدار `POSTGRES_PASSWORD`.
-2. `zz-20-afrakala-schemas.sql` — اطمینان از وجود extensionها/grantهای
-   موردنیاز اپ (idempotent).
-3. `zz-30-afrakala-jwt.sh` — ست‌کردن `app.settings.jwt_secret` و
+1. `00-afrakala-pre-supabase-admin.sh` — فقط role `supabase_admin` را با پسورد
+   `POSTGRES_PASSWORD` ایجاد/به‌روزرسانی می‌کند تا `migrate.sh` بتواند اجرا شود.
+   این فایل عمداً `anon`, `authenticated`, `service_role`, `authenticator`,
+   `supabase_auth_admin` یا `supabase_storage_admin` را نمی‌سازد.
+2. `migrate.sh` رسمی تصویر — roleها/schemaهای baseline داخلی Supabase را ایجاد
+   می‌کند.
+3. `zz-10-afrakala-roles.sh` — بعد از migration رسمی، وجود roleهای مورد انتظار
+   را assert می‌کند، `dashboard_user` را در صورت نبود می‌سازد، و password roleهای
+   login را normalize می‌کند.
+4. `zz-20-afrakala-schemas.sql` — فقط top-upهای idempotent برای extension/grant.
+5. `zz-30-afrakala-jwt.sh` — تنظیم `app.settings.jwt_secret` و
    `app.settings.jwt_exp` در سطح دیتابیس.
 
-هیچ‌کدام از این اسکریپت‌ها roleهای baseline را CREATE نمی‌کنند تا با init رسمی
-تصویر تداخل نداشته باشند.
+این ترتیب هم جلوی خطای `role "supabase_admin" does not exist` را می‌گیرد، هم
+از ساخت زودهنگام همهٔ roleهای baseline و خطای `role "anon" already exists`
+جلوگیری می‌کند.
 
 ## استقرار اولیه روی سرور (دستی)
 
@@ -114,24 +115,25 @@ docker compose ps
 ## Bootstrap deterministic (SH-FIX-SUPABASE-INIT)
 
 قبلاً compose فقط image `supabase/postgres` را بالا می‌آورد و در local staging
-سرویس‌های gotrue/rest/storage با خطاهایی مانند:
+سرویس‌های gotrue/rest/storage یا خود `migrate.sh` با خطاهایی مانند:
 
+- `role "supabase_admin" does not exist`
 - `role "authenticator" does not exist`
 - `schema "auth" does not exist`
 - `type "auth.factor_type" does not exist`
 
-شکست می‌خوردند. حالا `volumes/db/init/` شامل سه اسکریپت SQL idempotent است که
-entrypoint رسمی تصویر در **اولین boot روی volume خالی** اجرا می‌کند. هر فایل
-مستقیماً (نه به‌صورت زیرشاخه) داخل `/docker-entrypoint-initdb.d/` با پیشوندهای
-`00/01/02-afrakala-` mount می‌شود، چون `docker-entrypoint.sh` فایل‌های داخل
-زیرشاخه‌ها را اجرا نمی‌کند و roleهای پایه باید **قبل از** `migrate.sh` داخلی
-تصویر `supabase/postgres` ساخته شوند:
+شکست می‌خوردند. حالا `volumes/db/init/` شامل یک اسکریپت pre-migrate و سه
+اسکریپت post-migrate idempotent است که entrypoint رسمی تصویر در **اولین boot
+روی volume خالی** اجرا می‌کند. هر فایل مستقیماً (نه به‌صورت زیرشاخه) داخل
+`/docker-entrypoint-initdb.d/` mount می‌شود، چون `docker-entrypoint.sh` فایل‌های
+داخل زیرشاخه‌ها را اجرا نمی‌کند:
 
 | فایل | کار |
 |------|-----|
-| `00-roles.sql` | ساخت `anon`, `authenticated`, `service_role`, `authenticator`, `supabase_admin`, `supabase_auth_admin`, `supabase_storage_admin`, `dashboard_user` و grant membershipها. پسورد از `POSTGRES_PASSWORD`. |
-| `01-schemas.sql` | ساخت schemaهای `auth`, `storage`, `extensions`, `graphql_public` + extensions پایه + default privileges. |
-| `02-jwt.sql` | تنظیم `app.settings.jwt_secret` و `app.settings.jwt_exp` در سطح DB (برای `auth.uid()` و توابع داخلی). مقدار از env `JWT_SECRET` / `JWT_EXP`. |
+| `00-afrakala-pre-supabase-admin.sh` | فقط ساخت/به‌روزرسانی `supabase_admin` قبل از `migrate.sh`. |
+| `zz-10-afrakala-roles.sh` | assert نقش‌های baseline بعد از migration رسمی، ساخت `dashboard_user` در صورت نبود، و normalize passwordها. |
+| `zz-20-afrakala-schemas.sql` | top-upهای idempotent برای `extensions`, `graphql_public`, grants و default privileges. |
+| `zz-30-afrakala-jwt.sh` | تنظیم `app.settings.jwt_secret` و `app.settings.jwt_exp` در سطح DB. مقدار از env `JWT_SECRET` / `JWT_EXPIRY`. |
 
 سپس gotrue / storage در اولین استارت، migrationهای داخلی خود را روی schemaهای
 `auth` / `storage` اجرا می‌کنند (مانند `auth.factor_type`, `storage.objects` و …).
@@ -145,27 +147,42 @@ docker compose --env-file .env -f docker-compose.yml down -v
 docker compose --env-file .env -f docker-compose.yml up -d
 ```
 
-`down -v` ولوم `db-data` و `storage-data` را حذف می‌کند تا اسکریپت‌های
-`00/01/02-afrakala-*.sql` دوباره اجرا شوند. روی production هرگز `-v` نزنید.
+`down -v` ولوم `db-data` و `storage-data` را حذف می‌کند تا اسکریپت‌های initdb
+دوباره اجرا شوند. روی production هرگز `-v` نزنید.
 
 ### دستورات verify
 
 ```bash
-# 1) وضعیت سرویس‌ها
+# 1) proof ترتیب mount در compose
+rg -n "docker-entrypoint-initdb.d/(00-afrakala-pre-supabase-admin|zz-10-afrakala-roles|zz-20-afrakala-schemas|zz-30-afrakala-jwt)" docker-compose.yml
+
+# 2) وضعیت سرویس‌ها (بعد از حدود 120 ثانیه نباید restarting باشند)
 docker compose --env-file .env -f docker-compose.yml ps
 
-# 2) لاگ سه سرویسی که قبلاً شکست می‌خوردند
+# 3) proof لاگ initdb دیتابیس
+docker compose --env-file .env -f docker-compose.yml logs db | \
+  grep -E "00-afrakala-pre-supabase-admin|migrate.sh|zz-10-afrakala-roles|zz-20-afrakala-schemas|zz-30-afrakala-jwt|role \"anon\" already exists|supabase_admin|syntax error"
+
+# 4) لاگ سه سرویسی که قبلاً شکست می‌خوردند
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 auth
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 rest
 docker compose --env-file .env -f docker-compose.yml logs --tail=80 storage
 
-# 3) تأیید نقش‌ها و schemaها از داخل DB (بدون expose پورت)
+# 5) تأیید نقش‌ها و schemaها از داخل DB (بدون expose پورت)
 docker compose --env-file .env -f docker-compose.yml exec -T db \
-  psql -U postgres -d "$POSTGRES_DB" -c "\du" | grep -E 'authenticator|supabase_(auth|storage)_admin'
+  psql -U postgres -d "$POSTGRES_DB" -c "
+    SELECT rolname
+    FROM pg_roles
+    WHERE rolname IN (
+      'anon','authenticated','service_role','authenticator','supabase_admin',
+      'supabase_auth_admin','supabase_storage_admin','dashboard_user'
+    )
+    ORDER BY rolname;
+  "
 docker compose --env-file .env -f docker-compose.yml exec -T db \
   psql -U postgres -d "$POSTGRES_DB" -c "\dn" | grep -E 'auth|storage|extensions'
 
-# 4) Kong health (از داخل شبکه docker، بدون expose روی هاست)
+# 6) Kong health (از داخل شبکه docker، بدون expose روی هاست)
 docker compose --env-file .env -f docker-compose.yml exec -T kong \
   curl -fsS http://localhost:8000/auth/v1/health || echo "auth health failed"
 ```
@@ -174,8 +191,9 @@ docker compose --env-file .env -f docker-compose.yml exec -T kong \
 
 - پورت `5432` Postgres هرگز روی هاست publish نمی‌شود.
 - Studio/Kong هم پورتی روی هاست ندارند؛ دسترسی فقط از طریق Caddy (فاز proxy).
-- اسکریپت‌های `00/01/02-afrakala-*.sql` فقط روی **volume خالی** اجرا می‌شوند؛ روی
-  DB موجود اثر ندارند (الزام idempotency رعایت شده).
+- اسکریپت‌های initdb افراکالا (`00-afrakala-pre-supabase-admin.sh` و `zz-*`) فقط
+  روی **volume خالی** اجرا می‌شوند؛ روی DB موجود اثر ندارند (الزام idempotency
+  رعایت شده).
 - migrationهای اپ (`deploy/supabase/migrations/`) از مسیر جدا
   `/var/lib/afrakala/migrations` فقط mount شده‌اند و **توسط initdb اجرا
   نمی‌شوند**؛ apply آن‌ها در فاز SH.7 با `apply-project-migrations.sh`.
