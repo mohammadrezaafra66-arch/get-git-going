@@ -204,6 +204,37 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {quickAccess.length > 0 && (
+          <SidebarGroup className="pb-1">
+            <SidebarGroupLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
+              <Zap className="h-3 w-3" />
+              <span>دسترسی سریع</span>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="grid grid-cols-2 gap-1 group-data-[collapsible=icon]:grid-cols-1">
+                {quickAccess.map((item) => {
+                  const active = isItemActive(item.to);
+                  return (
+                    <SidebarMenuItem key={`qa-${item.to}`}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.label}
+                        size="sm"
+                        className="h-8 rounded-md border border-sidebar-border/50 bg-sidebar-accent/20 text-xs hover:bg-sidebar-accent/60 data-[active=true]:border-sidebar-primary/40 data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-primary"
+                      >
+                        <Link to={item.to}>
+                          <item.icon className="h-3.5 w-3.5" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {GROUPS.map((g) => {
           const items = visible.filter((i) => i.group === g);
           if (!items.length) return null;
