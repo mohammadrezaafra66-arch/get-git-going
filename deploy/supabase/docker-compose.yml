@@ -51,9 +51,11 @@ services:
       # اسکریپت باید مستقیم در /docker-entrypoint-initdb.d mount شود.
       # پیشوند الفبایی 00/01/02 باعث می‌شود bootstrap افراکالا قبل از
       # migrate.sh داخلی image اجرا شود؛ roleها باید قبل از migrationهای image وجود داشته باشند.
-      - ./volumes/db/init/00-roles.sql:/docker-entrypoint-initdb.d/00-afrakala-roles.sql:ro
+      # 00 و 02 به‌صورت shell script هستند تا متغیرهای env را امن به psql بدهند
+      # و از خطای syntax `:'var'` داخل DO $$ جلوگیری شود.
+      - ./volumes/db/init/00-roles.sh:/docker-entrypoint-initdb.d/00-afrakala-roles.sh:ro
       - ./volumes/db/init/01-schemas.sql:/docker-entrypoint-initdb.d/01-afrakala-schemas.sql:ro
-      - ./volumes/db/init/02-jwt.sql:/docker-entrypoint-initdb.d/02-afrakala-jwt.sql:ro
+      - ./volumes/db/init/02-jwt.sh:/docker-entrypoint-initdb.d/02-afrakala-jwt.sh:ro
       # migrationهای اپ (فاز SH.7) — جداگانه و دستی apply می‌شوند، نه از initdb
       - ./migrations:/var/lib/afrakala/migrations:ro
     networks:
