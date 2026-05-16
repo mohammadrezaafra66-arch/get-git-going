@@ -40,6 +40,12 @@ import {
   DYNAMIC_TABLE_ACCESS_LEVELS,
   SELECTABLE_ROLES,
 } from "@/lib/data-tables/constants";
+import {
+  TOROB_PURCHISTA_SLUG,
+  TOROB_PURCHISTA_REFETCH_MS,
+  FORMULA_KEY_LABELS,
+  type DynamicFormulaKey,
+} from "@/lib/data-tables/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
@@ -60,7 +66,12 @@ interface ColumnRow {
   is_filterable: boolean;
   is_editable_by_bot: boolean;
   sort_order: number;
+  is_computed: boolean;
+  formula_key: DynamicFormulaKey | null;
+  formula_config: Record<string, unknown> | null;
 }
+
+const COMPUTED_TOOLTIP = "این مقدار توسط فرمول سیستم محاسبه می‌شود.";
 
 interface RowItem {
   id: string;
@@ -134,14 +145,22 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_table_columns")
-        .select("id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order")
+        .select("id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order, is_computed, formula_key, formula_config")
         .eq("table_id", tableId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as ColumnRow[];
+      return ((data ?? []) as unknown as Array<Partial<ColumnRow>>).map((c) => ({
+        ...c,
+        is_computed: Boolean(c.is_computed),
+        formula_key: (c.formula_key ?? null) as DynamicFormulaKey | null,
+        formula_config: (c.formula_config ?? null) as Record<string, unknown> | null,
+      })) as ColumnRow[];
     },
   });
   const columns = colsQuery.data ?? [];
+
+  const isTorobTable = (tableQuery.data?.slug ?? "") === TOROB_PURCHISTA_SLUG;
+  const rpcName = isTorobTable ? "query_dynamic_table_rows_v2" : "query_dynamic_table_rows";
   const filterableColumns: FilterColumn[] = useMemo(
     () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
     [columns]
@@ -174,10 +193,12 @@ function DataTableDetailPage() {
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount],
+    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount, rpcName],
     staleTime: 10_000,
+    refetchInterval: isTorobTable ? TOROB_PURCHISTA_REFETCH_MS : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("query_dynamic_table_rows", {
+      const { data, error } = await supabase.rpc(rpcName, {
         p_table_id: tableId,
         p_filters: serverFilters as unknown as never,
         p_search: search.trim() ? search.trim() : undefined,
