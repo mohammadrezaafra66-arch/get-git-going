@@ -61,6 +61,8 @@ notepad deploy\lan\.env.lan
 
 مقدار `LAN_HOST_IP` باید با IP فعلی لپ‌تاپ روی شبکه شرکت یکی باشد. اگر IP عوض شد، باید `.env.lan` را به‌روزرسانی کرده و دوباره build کنید (چون `VITE_SUPABASE_URL` در زمان build داخل bundle قرار می‌گیرد).
 
+> اگر `APP_PORT` یا `SUPABASE_API_PORT` را تغییر دادید، اسکریپت‌های `update-lan.ps1` و `check-lan.ps1` مقدارها را از `.env.lan` می‌خوانند و health check و آدرس‌های نمایش‌داده‌شده با همان portها تطبیق پیدا می‌کنند. در حالت پیش‌فرض آدرس کاربران `http://LAN_HOST_IP:3000` و API روی `http://LAN_HOST_IP:8000` است.
+
 ## ۷. اجرای اولیه
 
 ابتدا `kong.yml` را از example بسازید (یک بار):
