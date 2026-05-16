@@ -43,6 +43,11 @@ import {
   TOROB_PURCHISTA_REFETCH_MS,
   FORMULA_KEY_LABELS,
   type DynamicFormulaKey,
+  OBSERVATORY_SLUG,
+  OBSERVATORY_REFETCH_MS,
+  OBSERVATORY_READONLY_KEYS,
+  OBSERVATORY_STATUS_META,
+  getObservatoryScoreTier,
 } from "@/lib/data-tables/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -158,7 +163,60 @@ function DataTableDetailPage() {
   const columns = colsQuery.data ?? [];
 
   const isTorobTable = (tableQuery.data?.slug ?? "") === TOROB_PURCHISTA_SLUG;
-  const rpcName = isTorobTable ? "query_dynamic_table_rows_v2" : "query_dynamic_table_rows";
+  const isObservatoryTable = (tableQuery.data?.slug ?? "") === OBSERVATORY_SLUG;
+  const rpcName = (isTorobTable || isObservatoryTable)
+    ? "query_dynamic_table_rows_v2"
+    : "query_dynamic_table_rows";
+
+  const isObservatoryReadOnly = useCallback(
+    (col: ColumnRow) =>
+      isObservatoryTable && OBSERVATORY_READONLY_KEYS.has(col.column_key),
+    [isObservatoryTable],
+  );
+
+  const renderObservatoryDisplay = useCallback(
+    (col: ColumnRow, raw: unknown): React.ReactNode | null => {
+      if (!isObservatoryTable) return null;
+      if (col.column_key === "competitive_price_status") {
+        const key = typeof raw === "string" && raw ? raw : "unknown";
+        const meta = OBSERVATORY_STATUS_META[key] ?? OBSERVATORY_STATUS_META.unknown;
+        return (
+          <Badge variant="outline" className={`${meta.className} text-[11px]`}>
+            {meta.label}
+          </Badge>
+        );
+      }
+      if (col.column_key === "sales_opportunity_score") {
+        if (raw === null || raw === undefined || raw === "") {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const n = Number(raw);
+        if (!Number.isFinite(n)) return <span className="text-muted-foreground">—</span>;
+        const clamped = Math.max(0, Math.min(100, Math.round(n)));
+        const tier = getObservatoryScoreTier(clamped);
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge variant="outline" className={`${tier.className} text-[11px]`}
+              title={tier.label}>
+              {toFaDigits(String(clamped))} از ۱۰۰
+            </Badge>
+            <span className="text-[11px] text-muted-foreground">{tier.label}</span>
+          </span>
+        );
+      }
+      if (col.column_key === "suggested_sales_message") {
+        const text = typeof raw === "string" ? raw : raw == null ? "" : String(raw);
+        if (!text) return <span className="text-muted-foreground">—</span>;
+        return (
+          <span className="block truncate text-xs leading-5" title={text}>
+            {text}
+          </span>
+        );
+      }
+      return null;
+    },
+    [isObservatoryTable],
+  );
   const filterableColumns: FilterColumn[] = useMemo(
     () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
     [columns]
@@ -193,7 +251,11 @@ function DataTableDetailPage() {
     enabled: !!user && !!tableId,
     queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount, rpcName],
     staleTime: 10_000,
-    refetchInterval: isTorobTable ? TOROB_PURCHISTA_REFETCH_MS : false,
+    refetchInterval: isTorobTable
+      ? TOROB_PURCHISTA_REFETCH_MS
+      : isObservatoryTable
+      ? OBSERVATORY_REFETCH_MS
+      : false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(rpcName, {
@@ -446,6 +508,60 @@ function DataTableDetailPage() {
         </Card>
       )}
 
+      {isObservatoryTable && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 space-y-2 text-xs leading-6 text-foreground/90">
+            <div className="text-sm font-semibold text-foreground">
+              رصدخانه قیمت محصولات افراکالا
+            </div>
+            <p className="text-foreground/80">
+              این جدول قیمت داخلی افراکالا را با داده‌های بازار مثل ترب و
+              پورچیستا مقایسه می‌کند و به تیم فروش کمک می‌کند محصولات رقابتی‌تر
+              را سریع‌تر تشخیص دهند.
+            </p>
+            <ul className="space-y-0.5">
+              <li>• داده‌های بازار توسط ربات به‌روزرسانی می‌شوند.</li>
+              <li>• ستون‌های تحلیلی هنگام نمایش محاسبه می‌شوند و دستی ذخیره نمی‌شوند.</li>
+              <li>• پیام پیشنهادی فروشنده فعلاً rule-based است و AI نیست.</li>
+            </ul>
+            <details className="mt-1">
+              <summary className="cursor-pointer text-foreground/80 hover:text-foreground">
+                توضیح ستون‌های کلیدی
+              </summary>
+              <ul className="mt-2 space-y-1 text-foreground/75">
+                <li>
+                  <b>شناسه محصول افراکالا:</b> از کارت محصول داخلی می‌آید و
+                  نباید توسط کاربر یا ربات تغییر کند.
+                </li>
+                <li>
+                  <b>میانگین قیمت بازار:</b> میانگین قیمت‌های ثبت‌شده از منابع
+                  بازار مانند ترب و پورچیستا است.
+                </li>
+                <li>
+                  <b>درصد اختلاف با میانگین بازار:</b> نشان می‌دهد حداقل قیمت
+                  فروش افراکالا چند درصد با میانگین بازار اختلاف دارد.
+                </li>
+                <li>
+                  <b>وضعیت رقابتی قیمت:</b> وضعیت ساده‌شده محصول نسبت به بازار؛
+                  پایین‌تر، نزدیک یا بالاتر از بازار.
+                </li>
+                <li>
+                  <b>امتیاز فرصت فروش:</b> امتیازی بین ۰ تا ۱۰۰ برای کمک به
+                  تشخیص جذابیت فروش محصول.
+                </li>
+                <li>
+                  <b>پیام پیشنهادی فروشنده:</b> جمله آماده برای کمک به فروشنده
+                  در مذاکره با مشتری. فعلاً rule-based است و AI نیست.
+                </li>
+              </ul>
+            </details>
+            <div className="pt-1 text-[11px] text-muted-foreground">
+              بروزرسانی نمای جدول هر ۱۰ ثانیه انجام می‌شود.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Columns management */}
       <Card>
         <CardContent className="p-4">
@@ -581,6 +697,8 @@ function DataTableDetailPage() {
                   cellMut={cellMut}
                   toggleRowMut={toggleRowMut}
                   stringifyValue={stringifyValue}
+                  isCellReadOnly={isObservatoryReadOnly}
+                  renderCellOverride={renderObservatoryDisplay}
                 />
               </div>
 
@@ -626,8 +744,13 @@ function DataTableDetailPage() {
                               <CellEditor
                                 column={c}
                                 value={stringifyValue(c, r.values[c.column_key])}
-                                canEdit={canEditRows && !c.is_computed}
+                                canEdit={
+                                  canEditRows &&
+                                  !c.is_computed &&
+                                  !isObservatoryReadOnly(c)
+                                }
                                 inactive={inactive}
+                                displayOverride={renderObservatoryDisplay(c, r.values[c.column_key])}
                                 onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                               />
                             </div>
@@ -728,6 +851,7 @@ function VirtualizedGrid({
   scrollRef, virtualizer, columns, rows, canEdit, canDelete,
   focused, setFocused, editingPos, setEditingPos,
   setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
+  isCellReadOnly, renderCellOverride,
 }: {
   scrollRef: React.MutableRefObject<HTMLDivElement | null>;
   virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -744,6 +868,8 @@ function VirtualizedGrid({
   cellMut: { mutateAsync: (v: { rowId: string; columnId: string; value: string }) => Promise<void> };
   toggleRowMut: { isPending: boolean; mutate: (v: { rowId: string; isActive: boolean }) => void };
   stringifyValue: (col: ColumnRow, raw: unknown) => string;
+  isCellReadOnly?: (col: ColumnRow) => boolean;
+  renderCellOverride?: (col: ColumnRow, raw: unknown) => React.ReactNode | null;
 }) {
   const totalWidth = ROWNUM_W + columns.length * COL_W + 130 + ACT_W; // created col ~130
   const items = virtualizer.getVirtualItems();
@@ -794,7 +920,9 @@ function VirtualizedGrid({
                   const value = stringifyValue(c, raw);
                   const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
                   const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
-                  const cellEditable = canEdit && !c.is_computed;
+                  const cellEditable =
+                    canEdit && !c.is_computed && !(isCellReadOnly?.(c) ?? false);
+                  const override = renderCellOverride?.(c, raw) ?? null;
                   return (
                     <GridCell
                       key={c.id}
@@ -807,6 +935,7 @@ function VirtualizedGrid({
                       isFocused={isFocused}
                       isEditing={isEditing}
                       initialEditValue={isEditing ? editingPos?.initial : undefined}
+                      displayOverride={override}
                       onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
                       onRequestEdit={(initial) => {
                         if (!cellEditable) return;
@@ -887,6 +1016,7 @@ const GridCell = forwardRef<HTMLDivElement, {
   isFocused: boolean;
   isEditing: boolean;
   initialEditValue?: string;
+  displayOverride?: React.ReactNode | null;
   onFocusCell: () => void;
   onRequestEdit: (initial?: string) => void;
   onClearCell: () => Promise<void> | void;
@@ -896,10 +1026,11 @@ const GridCell = forwardRef<HTMLDivElement, {
 }>(function GridCell(props, ref) {
   const {
     column, value, width, canEdit, inactive, isFocused, isEditing, initialEditValue,
+    displayOverride,
     onFocusCell, onRequestEdit, onClearCell, onCancelEdit, onCommitEdit, onNavigate,
   } = props;
 
-  const display = useMemo(() => {
+  const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
     if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
@@ -911,6 +1042,7 @@ const GridCell = forwardRef<HTMLDivElement, {
     if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
+  const display: React.ReactNode = displayOverride ?? defaultDisplay;
 
   const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isEditing) return;
@@ -1032,12 +1164,13 @@ function CellEditorInput({
 
 // =============== Inline cell editor (mobile card view) ===============
 function CellEditor({
-  column, value, canEdit, inactive, onSave,
+  column, value, canEdit, inactive, displayOverride, onSave,
 }: {
   column: ColumnRow;
   value: string;
   canEdit: boolean;
   inactive?: boolean;
+  displayOverride?: React.ReactNode | null;
   onSave: (val: string) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -1048,7 +1181,7 @@ function CellEditor({
   useEffect(() => { setDraft(value); }, [value]);
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
-  const display = useMemo(() => {
+  const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
     if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
@@ -1060,6 +1193,7 @@ function CellEditor({
     if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
+  const display: React.ReactNode = displayOverride ?? defaultDisplay;
 
   if (!editing) {
     return (

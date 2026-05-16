@@ -46,6 +46,96 @@ export const TOROB_PURCHISTA_SLUG = "torob-purchista-extracted-data";
 /** Refresh interval for the Torob/Purchista live data table (ms). */
 export const TOROB_PURCHISTA_REFETCH_MS = 7000;
 
+// --- Observatory (Product Price Observatory) ---
+
+/** Slug of the seeded Product Price Observatory table. */
+export const OBSERVATORY_SLUG = "afrakala-product-price-observatory";
+
+/** Refresh interval for the Observatory table (ms). */
+export const OBSERVATORY_REFETCH_MS = 10000;
+
+/**
+ * Observatory columns that must stay read-only in the UI.
+ * Includes both DB-level computed columns and read-time placeholder columns
+ * (DB is_computed=false but populated by `_obs_compute_row_values`).
+ */
+export const OBSERVATORY_READONLY_KEYS: ReadonlySet<string> = new Set([
+  // identity / system
+  "afrakala_product_id",
+  "product_name",
+  "sku",
+  "brand_name",
+  "category_name",
+  "product_labels",
+  // computed (DB)
+  "afrakala_purchase_price_toman",
+  "afrakala_min_sale_price",
+  "price_gap_to_market_avg",
+  "price_gap_percent_to_market_avg",
+  // read-time placeholders (computed by _obs_compute_row_values)
+  "market_avg_price_toman",
+  "price_gap_to_market_min",
+  "competitive_price_status",
+  "sales_opportunity_score",
+  "sales_priority_rank",
+  "suggested_sales_message",
+]);
+
+/** Persian labels and variants for the observatory competitive_price_status column. */
+export const OBSERVATORY_STATUS_META: Record<
+  string,
+  { label: string; className: string }
+> = {
+  below_market: {
+    label: "پایین‌تر از بازار",
+    className:
+      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+  },
+  near_market: {
+    label: "نزدیک به بازار",
+    className:
+      "bg-muted text-foreground/80 border-border",
+  },
+  above_market: {
+    label: "بالاتر از بازار",
+    className:
+      "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  },
+  unknown: {
+    label: "نامشخص",
+    className: "bg-muted/60 text-muted-foreground border-border",
+  },
+};
+
+/** Score tier label (0..100) for sales_opportunity_score. */
+export function getObservatoryScoreTier(score: number): {
+  label: string;
+  className: string;
+} {
+  if (score >= 80)
+    return {
+      label: "فرصت عالی",
+      className:
+        "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+    };
+  if (score >= 60)
+    return {
+      label: "فرصت خوب",
+      className:
+        "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+    };
+  if (score >= 40)
+    return {
+      label: "متوسط",
+      className: "bg-muted text-foreground/80 border-border",
+    };
+  return {
+    label: "ضعیف",
+    className:
+      "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+  };
+}
+
 // --- Access level (RBAC) for dynamic tables ---
 export type DynamicTableAccessLevel =
   | "all"
