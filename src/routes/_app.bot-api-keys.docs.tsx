@@ -78,6 +78,19 @@ function BotApiDocsPage() {
   -H "Content-Type: application/json" \\
   -d '{"values": {"status": "done", "qty": 12}}'`;
 
+  const docCurlPost = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/<TABLE_ID>/rows" \\
+  -H "Authorization: Bearer <API_KEY>" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "values": {
+      "source": "rubika",
+      "customer_name": "علی رضایی",
+      "mobile": "09121234567",
+      "message": "متن استخراج‌شده توسط ربات",
+      "status": "new"
+    }
+  }'`;
+
   const sampleSuccessGet = JSON.stringify({
     rows: [
       {
@@ -96,6 +109,20 @@ function BotApiDocsPage() {
     row_id: "11111111-1111-1111-1111-111111111111",
     updated_count: 2,
     applied_columns: ["status", "qty"],
+  }, null, 2);
+
+  const sampleSuccessPost = JSON.stringify({
+    row_id: "22222222-2222-2222-2222-222222222222",
+    row_number: 42,
+    is_active: true,
+    created_at: "2026-05-16T10:00:00Z",
+    updated_at: "2026-05-16T10:00:00Z",
+    values: {
+      source: "rubika",
+      customer_name: "علی رضایی",
+      mobile: "09121234567",
+      status: "new",
+    },
   }, null, 2);
 
   return (
@@ -137,7 +164,7 @@ function BotApiDocsPage() {
                 آن داده باشد.
               </p>
               <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-                <li>دو endpoint عمومی: GET برای خواندن، PATCH برای به‌روزرسانی</li>
+                <li>سه endpoint عمومی: GET برای خواندن، POST برای افزودن ردیف، PATCH برای به‌روزرسانی</li>
                 <li>احراز هویت با هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code></li>
                 <li>کنترل دسترسی در سطح جدول و ستون، با Rate Limit و ثبت Usage Log</li>
               </ul>
@@ -153,6 +180,7 @@ function BotApiDocsPage() {
                 <li>از بخش «دسترسی جداول» کلید را به جدول مورد نظر متصل کنید.</li>
                 <li>برای هر جدول، گزینه‌های <strong>read</strong> و در صورت نیاز <strong>update</strong> را فعال کنید.</li>
                 <li>اگر update فعال است، ستون‌های مجاز برای تغییر را در «ستون‌های قابل به‌روزرسانی» انتخاب کنید.</li>
+                <li>توجه: برای افزودن ردیف جدید توسط ربات (POST)، گزینه «به‌روزرسانی» باید فعال باشد و ستون‌های مجاز انتخاب شده باشند.</li>
               </ol>
             </CardContent>
           </Card>
@@ -225,6 +253,36 @@ function BotApiDocsPage() {
           </Card>
 
           <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge variant="outline">POST</Badge>
+                افزودن ردیف جدید (ثبت داده استخراجی ربات)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <CodeBlock
+                lang="endpoint"
+                code={`POST /api/public/bot/dynamic-tables/{table_id}/rows`}
+              />
+              <div>
+                <p className="font-medium mb-1">بدنه درخواست (پیشنهادی)</p>
+                <CodeBlock lang="json" code={`{ "values": { "<column_key>": <value>, ... } }`} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  فقط ستون‌های موجود در «ستون‌های قابل به‌روزرسانی» این کلید قابل ثبت هستند.
+                  ستون‌های الزامی (is_required) باید مقدار داشته باشند، در غیر این صورت خطای
+                  <code dir="ltr"> required_column_missing</code> برمی‌گردد. نوع داده هر ستون
+                  اعتبارسنجی می‌شود.
+                </p>
+              </div>
+              <CodeBlock lang="curl" code={docCurlPost} />
+              <div>
+                <p className="font-medium mb-1">نمونه پاسخ موفق (201)</p>
+                <CodeBlock lang="json" code={sampleSuccessPost} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle className="text-base">خطاهای رایج</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
@@ -234,8 +292,14 @@ function BotApiDocsPage() {
                   desc="کلید مجوز دسترسی به این جدول/ستون را ندارد." />
                 <ErrorRow status={404} code="row_not_found"
                   desc="ردیف موردنظر یافت نشد." />
-                <ErrorRow status={400} code="invalid_values | invalid_number | invalid_boolean | invalid_date | invalid_datetime"
-                  desc="بدنه درخواست یا مقدار یکی از ستون‌ها نامعتبر است." />
+                <ErrorRow status={400} code="invalid_json | invalid_values | unknown_column"
+                  desc="بدنه درخواست JSON معتبر نیست، آبجکت نیست، یا ستون ناشناخته‌ای ارسال شده است." />
+                <ErrorRow status={400} code="required_column_missing"
+                  desc="یکی از ستون‌های الزامی در POST مقدار ندارد." />
+                <ErrorRow status={400} code="invalid_number | invalid_boolean | invalid_date | invalid_datetime | value_too_long"
+                  desc="مقدار یکی از ستون‌ها با نوع داده ستون سازگار نیست." />
+                <ErrorRow status={413} code="body_too_large"
+                  desc="اندازه بدنه درخواست بیش از حد مجاز (۶۴ کیلوبایت) است." />
                 <ErrorRow status={429} code="rate_limit_per_minute | rate_limit_per_day | rate_limit_ip_failures"
                   desc="از حد مجاز درخواست‌ها عبور کرده‌اید. هدر Retry-After را بررسی کنید." />
               </div>
@@ -282,6 +346,10 @@ function BotApiDocsPage() {
               <div>
                 <p className="font-medium mb-1">PATCH — به‌روزرسانی یک ردیف</p>
                 <CodeBlock lang="bash" code={docCurlPatch} />
+              </div>
+              <div>
+                <p className="font-medium mb-1">POST — افزودن ردیف جدید</p>
+                <CodeBlock lang="bash" code={docCurlPost} />
               </div>
             </CardContent>
           </Card>
