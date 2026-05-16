@@ -82,6 +82,10 @@ import {
 } from "@/lib/pdf/sale-list-pdf";
 import { fetchShopSettings } from "@/lib/shop/settings";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
+import {
+  fetchObservatoryPdfHintsForProducts,
+  type ObservatoryPdfHintMap,
+} from "@/lib/sales/observatory-snippets";
 
 const PAGE_SIZE = 20;
 
@@ -102,7 +106,8 @@ type ColumnKey =
   | "stock_status"
   | "product_type"
   | "labels"
-  | "description";
+  | "description"
+  | "observatory_price_advantage";
 
 const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
   { key: "name", label: "نام محصول", locked: true },
@@ -115,6 +120,10 @@ const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
   { key: "product_type", label: "نوع کالا" },
   { key: "labels", label: "برچسب‌ها" },
   { key: "description", label: "توضیحات" },
+  // Customer-safe Observatory hint. NOT included in the default-on
+  // fallback set so existing lists are unaffected — only shows up when
+  // the manager explicitly checks it.
+  { key: "observatory_price_advantage", label: "مزیت قیمت" },
 ];
 
 interface SaleListDetail {
@@ -357,7 +366,11 @@ function SaleListDetailPage() {
     overrideBrandOrder?: string[],
     overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
+    observatoryHints?: ObservatoryPdfHintMap,
   ): SaleListPdfInput => {
+    // Default-on column set for legacy lists with NULL selected_columns.
+    // `observatory_price_advantage` is intentionally excluded so existing
+    // lists never start exposing Observatory hints without an explicit opt-in.
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
@@ -425,6 +438,9 @@ function SaleListDetailPage() {
             it.product?.description ?? null,
             it.product?.id ? attrsMap[it.product.id] : undefined,
           ),
+          observatory_has_price_advantage: it.product?.id
+            ? observatoryHints?.[it.product.id] === true
+            : false,
         };
       }),
       options: {
@@ -559,7 +575,26 @@ function SaleListDetailPage() {
       } catch (err) {
         console.warn("fetch live prices for PDF failed; using snapshot", err);
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices);
+      // Observatory PDF hints — opt-in only. Skip entirely (zero overhead)
+      // when the "مزیت قیمت" column is not selected. Degrade gracefully on
+      // any error so the PDF still renders.
+      let observatoryHints: ObservatoryPdfHintMap | undefined;
+      if (selectedCols.includes("observatory_price_advantage")) {
+        try {
+          const productIds = items
+            .map((it) => it.product?.id)
+            .filter((x): x is string => !!x);
+          if (productIds.length > 0) {
+            observatoryHints = await fetchObservatoryPdfHintsForProducts(productIds);
+          }
+        } catch (err) {
+          console.warn(
+            "fetch observatory PDF hints failed; price-advantage column will be empty",
+            err,
+          );
+        }
+      }
+      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints);
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);

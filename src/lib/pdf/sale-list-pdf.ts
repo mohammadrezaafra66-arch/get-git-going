@@ -20,7 +20,8 @@ import { STOCK_STATUS_LABELS, PRODUCT_TYPE_LABELS, type StockStatus, type Produc
 
 export type SaleListPdfColumn =
   | "name" | "brand" | "category" | "sale_price" | "previous_price"
-  | "change" | "stock_status" | "product_type" | "labels" | "description";
+  | "change" | "stock_status" | "product_type" | "labels" | "description"
+  | "observatory_price_advantage";
 
 export interface SaleListPdfItem {
   product_id?: string | null;
@@ -36,6 +37,12 @@ export interface SaleListPdfItem {
   product_type?: string | null;
   labels?: string[] | null;
   description?: string | null;
+  /**
+   * Customer-safe Observatory signal. When true, the PDF cell renders the
+   * single phrase "قیمت رقابتی". Source: `get_observatory_pdf_hints_for_products`.
+   * Raw market prices, scores, or sales messages must never be passed here.
+   */
+  observatory_has_price_advantage?: boolean | null;
 }
 
 export interface SaleListPdfInput {
@@ -97,6 +104,7 @@ const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   product_type: "نوع کالا",
   labels: "برچسب‌ها",
   description: "توضیحات",
+  observatory_price_advantage: "مزیت قیمت",
 };
 
 export const NO_BRAND_KEY = "__NO_BRAND__";
@@ -238,6 +246,8 @@ function cellText(c: SaleListPdfColumn, it: SaleListPdfItem): string {
         : "—";
     case "labels": return it.labels && it.labels.length ? it.labels.join("، ") : "—";
     case "description": return it.description || "—";
+    case "observatory_price_advantage":
+      return it.observatory_has_price_advantage === true ? "قیمت رقابتی" : "";
   }
 }
 
