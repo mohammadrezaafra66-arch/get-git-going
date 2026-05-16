@@ -7239,6 +7239,7 @@ export type Database = {
         Returns: undefined
       }
       _mi_require_privileged: { Args: never; Returns: undefined }
+      _obs_compute_row_values: { Args: { p_row_id: string }; Returns: Json }
       _par_latest_usd_rate: { Args: never; Returns: number }
       add_dynamic_table_column: {
         Args: {
