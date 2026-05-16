@@ -68,3 +68,42 @@ export async function fetchObservatorySnippetsForProducts(
   }
   return map;
 }
+
+/**
+ * Customer-safe Observatory hint for Sale List PDF.
+ *
+ * Source: `public.get_observatory_pdf_hints_for_products(uuid[])`.
+ *
+ * The RPC only returns a single boolean `has_price_advantage` per product
+ * and intentionally does NOT expose raw market prices, opportunity scores,
+ * competitive status strings, or any internal sales message.
+ *
+ * Only products whose Observatory row has
+ * `show_in_pdf = true` AND `is_watch_active = true` (and row is_active = true)
+ * are returned. `has_price_advantage` is true only when the underlying
+ * competitive status is `below_market` AND opportunity score >= 60.
+ */
+export type ObservatoryPdfHintMap = Record<string, boolean>;
+
+export async function fetchObservatoryPdfHintsForProducts(
+  productIds: string[],
+): Promise<ObservatoryPdfHintMap> {
+  if (!productIds || productIds.length === 0) return {};
+
+  const unique = Array.from(new Set(productIds.filter(Boolean)));
+  if (unique.length === 0) return {};
+
+  const { data, error } = await supabase.rpc(
+    "get_observatory_pdf_hints_for_products",
+    { p_product_ids: unique },
+  );
+  if (error) throw error;
+
+  const map: ObservatoryPdfHintMap = {};
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const pid = typeof row.product_id === "string" ? row.product_id : null;
+    if (!pid) continue;
+    map[pid] = row.has_price_advantage === true;
+  }
+  return map;
+}
