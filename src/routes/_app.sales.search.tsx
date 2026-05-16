@@ -645,6 +645,7 @@ function SalesSearchPage() {
                 primarySalePriceTypeId={salePriceTypeId}
                 isPrivileged={isPrivileged}
                 canRecalcPrice={canRecalcPrice}
+                observatorySnippet={snippetMap[p.id] ?? null}
                 onRecalcDone={() => {
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc-label-mode"] });
@@ -734,11 +735,12 @@ interface ProductCardProps {
   primarySalePriceTypeId: string;
   isPrivileged: boolean;
   canRecalcPrice: boolean;
+  observatorySnippet?: ObservatorySnippet | null;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalcDone, onOpenChart }: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, observatorySnippet, onRecalcDone, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
   const prices = product.prices ?? [];
