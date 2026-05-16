@@ -8803,6 +8803,13 @@ export type Database = {
           score: number
         }[]
       }
+      sync_product_price_observatory_rows: {
+        Args: never
+        Returns: {
+          inserted_rows: number
+          updated_rows: number
+        }[]
+      }
       toggle_custom_role_status: {
         Args: { _is_active: boolean; _role_id: string }
         Returns: undefined
