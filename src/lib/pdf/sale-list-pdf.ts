@@ -92,7 +92,7 @@ const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   category: "دسته",
   sale_price: "قیمت فروش",
   previous_price: "قیمت قبلی",
-  change: "تغییر",
+  change: "میزان تغییرات",
   stock_status: "موجودی",
   product_type: "نوع کالا",
   labels: "برچسب‌ها",
@@ -253,6 +253,16 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
     `<th style="width:48px">ردیف</th>` +
     cols.map((c) => `<th>${escapeHtml(COLUMN_LABELS[c])}</th>`).join("");
 
+  const changeClass = (it: SaleListPdfItem): string => {
+    const amount = it.change_amount;
+    if (amount === null || amount === undefined) return "";
+    const n = Number(amount);
+    if (!Number.isFinite(n)) return "";
+    if (n > 0) return "change-up";
+    if (n < 0) return "change-down";
+    return "change-flat";
+  };
+
   const groups = arrangeItems(input.items, input.brandOrder, input.productOrderByBrand);
   let rowIdx = 0;
   const bodyRows = groups
@@ -262,7 +272,11 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
         .map((it) => {
           rowIdx += 1;
           const num = `<td class="row-num">${escapeHtml(formatNumber(rowIdx))}</td>`;
-          const tds = cols.map((c) => `<td>${escapeHtml(cellText(c, it))}</td>`).join("");
+          const tds = cols.map((c) => {
+            const cls = c === "change" ? changeClass(it) : "";
+            const classAttr = cls ? ` class="${cls}"` : "";
+            return `<td${classAttr}>${escapeHtml(cellText(c, it))}</td>`;
+          }).join("");
           return `<tr>${num}${tds}</tr>`;
         })
         .join("");
@@ -400,6 +414,25 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
     padding: ${padY + 2}px ${padX}px;
   }
   td.row-num { text-align: center; color: #475569; font-variant-numeric: tabular-nums; }
+  td.change-up {
+    color: #dc2626;
+    font-weight: 700;
+    direction: ltr;
+    text-align: center;
+    unicode-bidi: isolate;
+  }
+  td.change-down {
+    color: #059669;
+    font-weight: 700;
+    direction: ltr;
+    text-align: center;
+    unicode-bidi: isolate;
+  }
+  td.change-flat {
+    color: #64748b;
+    font-weight: 600;
+    text-align: center;
+  }
   .info-block {
     margin-top: 16px;
     padding: 10px 12px;
