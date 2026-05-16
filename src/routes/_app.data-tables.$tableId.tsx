@@ -846,6 +846,7 @@ function VirtualizedGrid({
   scrollRef, virtualizer, columns, rows, canEdit, canDelete,
   focused, setFocused, editingPos, setEditingPos,
   setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
+  isCellReadOnly, renderCellOverride,
 }: {
   scrollRef: React.MutableRefObject<HTMLDivElement | null>;
   virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -862,6 +863,8 @@ function VirtualizedGrid({
   cellMut: { mutateAsync: (v: { rowId: string; columnId: string; value: string }) => Promise<void> };
   toggleRowMut: { isPending: boolean; mutate: (v: { rowId: string; isActive: boolean }) => void };
   stringifyValue: (col: ColumnRow, raw: unknown) => string;
+  isCellReadOnly?: (col: ColumnRow) => boolean;
+  renderCellOverride?: (col: ColumnRow, raw: unknown) => React.ReactNode | null;
 }) {
   const totalWidth = ROWNUM_W + columns.length * COL_W + 130 + ACT_W; // created col ~130
   const items = virtualizer.getVirtualItems();
