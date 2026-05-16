@@ -67,6 +67,12 @@ export const OBSERVATORY_READONLY_KEYS: ReadonlySet<string> = new Set([
   "brand_name",
   "category_name",
   "product_labels",
+  // product system fields (synced from internal products)
+  "model",
+  "color",
+  "capacity",
+  "stock_status",
+  "internal_price_updated_at",
   // computed (DB)
   "afrakala_purchase_price_toman",
   "afrakala_min_sale_price",
