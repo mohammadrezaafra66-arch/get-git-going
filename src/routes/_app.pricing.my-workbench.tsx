@@ -37,9 +37,8 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { fetchBrandsLite } from "@/lib/products/queries";
+import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
 import {
-  fetchMyWorkbenchRows,
   updateProductStock,
   upsertPurchasePrice,
   STOCK_STATUS_LABELS,
@@ -47,6 +46,17 @@ import {
   type WorkbenchRow,
   type StockStatus,
 } from "@/lib/pricing/workbench";
+import {
+  fetchWorkbenchRowsV2,
+  fetchAllProductOwners,
+} from "@/lib/pricing/workbench-queries";
+import {
+  DEFAULT_WORKBENCH_FILTERS,
+  type WorkbenchFilters,
+} from "@/lib/pricing/workbench-filters";
+import { WorkbenchFiltersBar } from "@/components/pricing/workbench/WorkbenchFiltersBar";
+import { HealthReportTab } from "@/components/pricing/workbench/HealthReportTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
@@ -74,8 +84,7 @@ function WorkbenchPage() {
 
   const [search, setSearch] = useState("");
   const dSearch = useDebounce(search, 300);
-  const [brandId, setBrandId] = useState("all");
-  const [stockFilter, setStockFilter] = useState<"all" | StockStatus>("all");
+  const [filters, setFilters] = useState<WorkbenchFilters>(DEFAULT_WORKBENCH_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(0);
   const [stepPct, setStepPct] = useState<number>(1);
@@ -84,17 +93,22 @@ function WorkbenchPage() {
   const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
+  const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
+  const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite, staleTime: 60_000 });
+  const ownersQ = useQuery({ queryKey: ["product-owners-lite"], queryFn: fetchAllProductOwners, staleTime: 60_000 });
+
+  const filtersWithSearch: WorkbenchFilters = useMemo(
+    () => ({ ...filters, search: dSearch }),
+    [filters, dSearch],
+  );
 
   const listQ = useQuery({
-    queryKey: ["workbench-rows", user?.id, dSearch, brandId, stockFilter, showAll, page],
+    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page],
     enabled: !!user?.id,
     queryFn: () =>
-      fetchMyWorkbenchRows({
-        userId: user!.id,
-        search: dSearch,
-        brandId,
-        stockStatus: stockFilter,
-        showAll: showAll && isPrivileged,
+      fetchWorkbenchRowsV2({
+        filters: filtersWithSearch,
+        ownedOnly: showAll && isPrivileged ? null : { userId: user!.id },
         page,
         pageSize: PAGE_SIZE,
       }),
@@ -104,9 +118,12 @@ function WorkbenchPage() {
   // reset dirty وقتی فیلتر/صفحه عوض میشه
   useEffect(() => {
     setDirty({});
-  }, [dSearch, brandId, stockFilter, showAll, page]);
+  }, [filtersWithSearch, showAll, page]);
 
-  const rows = listQ.data?.rows ?? [];
+  // reset page وقتی فیلتر تغییر کند
+  useEffect(() => { setPage(0); }, [filtersWithSearch, showAll]);
+
+  const rows = (listQ.data?.rows ?? []) as unknown as WorkbenchRow[];
   const total = listQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
