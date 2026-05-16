@@ -146,6 +146,7 @@ import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_a
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
+import { Route as ApiPublicBotDynamicTablesBySlugSlugRouteImport } from './routes/api.public.bot.dynamic-tables.by-slug.$slug'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as AppSalesInvoicesInvoiceIdWaybillCreateRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill.create'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsUpsertRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.upsert'
@@ -879,6 +880,12 @@ const AppAcademyCourseIdLessonIdQuizRoute =
     path: '/academy/$courseId/$lessonId/quiz',
     getParentRoute: () => AppRoute,
   } as any)
+const ApiPublicBotDynamicTablesBySlugSlugRoute =
+  ApiPublicBotDynamicTablesBySlugSlugRouteImport.update({
+    id: '/api/public/bot/dynamic-tables/by-slug/$slug',
+    path: '/api/public/bot/dynamic-tables/by-slug/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRoute =
   ApiPublicBotDynamicTablesTableIdRowsRouteImport.update({
     id: '/api/public/bot/dynamic-tables/$tableId/rows',
@@ -1043,6 +1050,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1182,6 +1190,7 @@ export interface FileRoutesByTo {
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1326,6 +1335,7 @@ export interface FileRoutesById {
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1470,6 +1480,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/by-slug/$slug'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesByTo: FileRoutesByTo
@@ -1609,6 +1620,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/by-slug/$slug'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   id:
@@ -1752,6 +1764,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products/$productId'
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
+    | '/api/public/bot/dynamic-tables/by-slug/$slug'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesById: FileRoutesById
@@ -1770,6 +1783,7 @@ export interface RootRouteChildren {
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
+  ApiPublicBotDynamicTablesBySlugSlugRoute: typeof ApiPublicBotDynamicTablesBySlugSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2733,6 +2747,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAcademyCourseIdLessonIdQuizRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/bot/dynamic-tables/by-slug/$slug': {
+      id: '/api/public/bot/dynamic-tables/by-slug/$slug'
+      path: '/api/public/bot/dynamic-tables/by-slug/$slug'
+      fullPath: '/api/public/bot/dynamic-tables/by-slug/$slug'
+      preLoaderRoute: typeof ApiPublicBotDynamicTablesBySlugSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/bot/dynamic-tables/$tableId/rows': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows'
       path: '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -3192,6 +3213,8 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksProcessPricingQueueRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
+  ApiPublicBotDynamicTablesBySlugSlugRoute:
+    ApiPublicBotDynamicTablesBySlugSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
