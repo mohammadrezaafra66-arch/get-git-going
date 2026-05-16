@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
       }
       throw redirect({ to: auth.user ? "/dashboard" : "/login" });
     } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[index] auth check failed", err);
       logAuthDiagnostic("redirect.login", "index.beforeLoad: error fallback", err);
       throw redirect({ to: "/login" });

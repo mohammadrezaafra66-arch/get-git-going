@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/register")({
       const auth = await ensureAuthReady();
       if (auth.user) throw redirect({ to: "/dashboard" });
     } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[register] beforeLoad auth check failed", err);
     }
   },

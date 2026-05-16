@@ -7,6 +7,8 @@ import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 
 /** اگر کاربر در snapshot نبود ولی auth هنوز در حال load است، یک بار force refresh کن. */
 async function resolveAuthWithRetry() {
+  if (typeof window === "undefined") return null;
+
   let auth = await ensureAuthReady();
   if (!auth.user && (auth.loading || !auth.initialized)) {
     auth = await ensureAuthReady(true);
@@ -17,6 +19,8 @@ async function resolveAuthWithRetry() {
 /** بررسی دسترسی کاربر به یک ماژول؛ در صورت نبود دسترسی به /unauthorized یا /login هدایت می‌کند. */
 export async function requirePermission(module: ModuleKey, action: ExtendedAction = "view") {
   const auth = await resolveAuthWithRetry();
+  if (!auth) return { user: null, roles: [] as AppRole[] };
+
   const user = auth.user;
   if (!user) {
     logAuthDiagnostic("redirect.login", `requirePermission(${module},${action}): no user`, {
@@ -41,6 +45,8 @@ export async function requirePermission(module: ModuleKey, action: ExtendedActio
 
 export async function requireAdmin() {
   const auth = await resolveAuthWithRetry();
+  if (!auth) return { user: null, roles: [] as AppRole[] };
+
   const user = auth.user;
   if (!user) {
     logAuthDiagnostic("redirect.login", "requireAdmin: no user", { loading: auth.loading });
@@ -57,6 +63,8 @@ export async function requireAdmin() {
 /** بررسی اینکه کاربر یکی از نقش‌های مجاز را داشته باشد. */
 export async function requireAnyRole(allowed: AppRole[]) {
   const auth = await resolveAuthWithRetry();
+  if (!auth) return { user: null, roles: [] as AppRole[] };
+
   const user = auth.user;
   if (!user) {
     logAuthDiagnostic("redirect.login", "requireAnyRole: no user", { loading: auth.loading });
