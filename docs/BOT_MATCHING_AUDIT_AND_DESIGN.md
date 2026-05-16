@@ -370,3 +370,72 @@ Trigger روی `market_product_matches` AFTER INSERT/UPDATE → ثبت خودک�
 ### فاز بعدی پیشنهادی
 **BOT-MATCHING-API** — افزودن endpointهای `/api/public/bot/market-matches/...` که از RPCهای بالا استفاده کنند، با signature verification.
 سپس **BOT-MATCHING-UI** برای صف بازبینی، سپس **BOT-MATCHING-ENFORCEMENT** برای الزام approved match قبل از upsert رصدخانه.
+
+---
+
+## API Implementation Status (BOT-MATCHING-API)
+
+تاریخ: 2026-05-16
+
+### Endpointهای ساخته‌شده
+
+#### 1) POST `/api/public/bot/market-matches/candidates/upsert`
+- Auth: `Authorization: Bearer <BOT_API_KEY>` (همان سیستم Bot API موجود)
+- Rate limit: همان `bot_check_rate_limit`
+- Body (JSON):
+```json
+{
+  "source_name": "torob",
+  "source_product_url": "https://example.com/p/123",
+  "source_product_id": "torob-123",
+  "source_title": "...",
+  "normalized_source_title": "...",   // optional
+  "confidence_score": 72.5,              // optional, 0..100
+  "notes": "..."                          // optional
+}
+```
+- Response (201 created / 200 updated):
+```json
+{ "match_id": "uuid", "match_status": "pending", "created_or_updated": "created" }
+```
+- **هرگز `afrakala_product_id` برنمی‌گرداند.**
+- **هرگز match را approved نمی‌کند.**
+- RPC: `public.upsert_market_product_match_candidate(...)`
+
+#### 2) POST `/api/public/bot/market-matches/resolve`
+- Auth: همان Bot API key
+- Body:
+```json
+{ "source_name": "torob", "source_product_url": "...", "source_product_id": "..." }
+```
+- Response (approved match یافت شد):
+```json
+{ "resolved": true, "match_id": "uuid", "afrakala_product_id": "uuid",
+  "match_status": "approved", "confidence_score": 95 }
+```
+- Response (هیچ approved match نیست):
+```json
+{ "resolved": false, "reason": "approved_match_not_found" }
+```
+- **فقط برای match با status=approved مقدار `afrakala_product_id` برمی‌گرداند.**
+- RPC: `public.resolve_market_product_match(...)`
+
+### Error codes
+`invalid_payload`, `invalid_source_name`, `missing_source_reference`,
+`invalid_confidence_score`, `body_too_large`, `body_read_failed`,
+`missing_key`, `invalid_key`, `inactive_key`, `expired_key`,
+`rate_limit_per_minute`, `rate_limit_per_day`, `rate_limit_ip_failures`,
+`approved_match_not_found`, `server_error`.
+
+### قوانین امنیتی الزامی برای ربات
+1. اگر `resolve` خروجی `resolved=false` داد، ربات **نباید** Bot API رصدخانه (`/api/public/bot/dynamic-tables/.../rows/upsert`) را صدا بزند.
+2. ربات هرگز نباید سعی کند `afrakala_product_id` را خودش حدس بزند یا از روی نام محصول کشف کند.
+3. ربات فقط مجاز است:
+   - candidate جدید را به صف `pending` بفرستد،
+   - یا `resolve` کند و در صورت approved، رصدخانه را با همان id update کند.
+
+### چیزهایی که هنوز ساخته نشده‌اند
+- UI صف بازبینی (BOT-MATCHING-UI).
+- enforcement سرور-طرف روی Bot API رصدخانه (BOT-MATCHING-ENFORCEMENT) — فعلاً enforcement فقط در سطح protocol/قرارداد است و توسط ربات باید رعایت شود.
+- اتصال واقعی به ترب/پورچیستا، scraper، crawler.
+- auto-approve بر اساس re-seen / brand+model heuristics.
