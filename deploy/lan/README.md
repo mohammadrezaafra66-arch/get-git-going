@@ -9,6 +9,80 @@
 - چرخه سریع update از Lovable → GitHub → لپ‌تاپ.
 - این فاز **production نیست**.
 
+## ۱.۵ اجرای واقعی روی لپ‌تاپ شرکت — مسیر پیشنهادی
+
+مسیر سریع و قابل تکرار برای راه‌اندازی روی لپ‌تاپ داخل شرکت (IP پیش‌فرض `192.168.170.10`):
+
+1. نصب [Git for Windows](https://git-scm.com/download/win).
+2. نصب [Docker Desktop](https://www.docker.com/products/docker-desktop) و یک بار اجرای آن.
+3. clone کردن repo در یک مسیر بدون فاصله، مثلاً `C:\afrakala`:
+
+   ```powershell
+   git clone <repo-url> C:\afrakala
+   cd C:\afrakala
+   ```
+
+4. اجازه موقت اجرای اسکریپت در همین session:
+
+   ```powershell
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   ```
+
+5. نمایش IPهای لپ‌تاپ و تأیید `192.168.170.10`:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\show-ip.ps1
+   ```
+
+6. آماده‌سازی `.env.lan` و kong و secretها (Enter بزنید تا IP پیش‌فرض `192.168.170.10` استفاده شود):
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1
+   ```
+
+   این اسکریپت `POSTGRES_PASSWORD`، `JWT_SECRET`، `ANON_KEY` و `SERVICE_ROLE_KEY` را در صورت خالی بودن خودش تولید می‌کند. مقادیر در console چاپ نمی‌شوند.
+
+7. باز کردن پورت‌های Firewall فقط با **PowerShell Admin**:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\firewall-lan-admin.ps1
+   ```
+
+   بعد از موفقیت، این پنجره Admin را ببندید.
+
+8. build و اجرای stack با PowerShell **عادی**:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
+   ```
+
+9. بررسی سلامت:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
+   ```
+
+10. اعلام آدرس به همکاران:
+
+    ```
+    http://192.168.170.10:3000
+    ```
+
+### آپدیت روزهای بعد
+
+بعد از هر تغییر در Lovable و sync روی GitHub، روی لپ‌تاپ کافی است:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
+```
+
+### هشدارها
+
+- این deployment فقط داخل شبکه شرکت است؛ روی اینترنت عمومی expose نشود.
+- روی router هیچ port forwarding انجام نشود.
+- بدون SSL است و برای production نهایی نیست (production از `deploy/supabase` + `deploy/proxy` استفاده می‌کند).
+- فایل `deploy/lan/.env.lan` هرگز commit نشود.
+
 ## ۲. تفاوت با Production Self-host
 
 | موضوع | LAN Pilot (این فاز) | Production (`deploy/supabase`, `deploy/proxy`) |
