@@ -611,7 +611,18 @@ function DataTableDetailPage() {
                       <div className="space-y-1.5">
                         {columns.map((c) => (
                           <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
-                            <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
+                            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+                              {c.label}
+                              {c.is_computed && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-primary/15 text-primary border-primary/30 text-[10px] py-0 px-1"
+                                  title={COMPUTED_TOOLTIP}
+                                >
+                                  فرمولی
+                                </Badge>
+                              )}
+                            </span>
                             <div className="text-end min-w-0">
                               <CellEditor
                                 column={c}
