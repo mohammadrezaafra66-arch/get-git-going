@@ -17,6 +17,21 @@ if (-not (Test-Path $envFile)) {
     exit 1
 }
 
+# خواندن مقادیر کلیدی از .env.lan با fallback
+function Get-EnvValue($path, $key, $fallback) {
+    $line = Select-String -Path $path -Pattern ("^\s*{0}=(.*)$" -f [regex]::Escape($key)) |
+            Select-Object -First 1
+    if ($line) {
+        $v = $line.Matches.Groups[1].Value.Trim().Trim('"').Trim("'")
+        if ($v) { return $v }
+    }
+    return $fallback
+}
+
+$appPort   = Get-EnvValue $envFile "APP_PORT"          "3000"
+$apiPort   = Get-EnvValue $envFile "SUPABASE_API_PORT" "8000"
+$lanIp     = Get-EnvValue $envFile "LAN_HOST_IP"       "LAN_HOST_IP"
+
 Push-Location $repoRoot
 try {
     Write-Host "[1/5] git pull origin main ..." -ForegroundColor Cyan
@@ -37,12 +52,12 @@ try {
     Write-Host ""
     Write-Host "[5/5] health check ..." -ForegroundColor Cyan
     Start-Sleep -Seconds 5
+    $healthUrl = "http://localhost:{0}/api/healthz" -f $appPort
     for ($i = 0; $i -lt 20; $i++) {
         try {
-            $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 `
-                 -Uri "http://localhost:3000/api/healthz"
+            $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 -Uri $healthUrl
             if ($r.StatusCode -eq 200) {
-                Write-Host "App health OK (200)." -ForegroundColor Green
+                Write-Host ("App health OK (200) at {0}." -f $healthUrl) -ForegroundColor Green
                 break
             }
         } catch {
@@ -53,15 +68,10 @@ try {
         }
     }
 
-    # نمایش آدرس کاربران
-    $lanIp = (Select-String -Path $envFile -Pattern "^LAN_HOST_IP=(.*)$" |
-              Select-Object -First 1).Matches.Groups[1].Value
-    if (-not $lanIp) { $lanIp = "LAN_HOST_IP" }
-
     Write-Host ""
     Write-Host "=== آدرس برای کاربران شبکه ===" -ForegroundColor Cyan
-    Write-Host ("App          : http://{0}:3000" -f $lanIp) -ForegroundColor Green
-    Write-Host ("Supabase API : http://{0}:8000" -f $lanIp) -ForegroundColor Green
+    Write-Host ("App          : http://{0}:{1}" -f $lanIp, $appPort) -ForegroundColor Green
+    Write-Host ("Supabase API : http://{0}:{1}" -f $lanIp, $apiPort) -ForegroundColor Green
 }
 finally {
     Pop-Location
