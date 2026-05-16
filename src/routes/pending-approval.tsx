@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect, useNavigate } from "@tanstack/react-router";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/pending-approval")({
       const status = auth.profile?.status;
       if (status === "active") throw redirect({ to: "/dashboard" });
     } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[pending-approval] beforeLoad auth check failed", err);
     }
   },

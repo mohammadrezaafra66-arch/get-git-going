@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_app")({
         });
       }
     } catch (err) {
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[_app] beforeLoad auth check failed", err);
       logAuthDiagnostic("_app.beforeLoad", "auth check failed", err);
     }

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, useNavigate, redirect, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export const Route = createFileRoute("/login")({
     } catch (err) {
       // Re-throw router redirects; swallow env/client init errors so the
       // login form still renders.
-      if (err && typeof err === "object" && "isRedirect" in err) throw err;
+      if (isRedirect(err)) throw err;
       console.error("[login] beforeLoad auth check failed", err);
     }
   },
