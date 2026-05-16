@@ -583,6 +583,7 @@ function BotApiDocsPage() {
           </Card>
             </TabsContent>
 
+
             <TabsContent value="products" className="space-y-4">
               <ProductsDocs baseUrl={baseUrl} />
             </TabsContent>
