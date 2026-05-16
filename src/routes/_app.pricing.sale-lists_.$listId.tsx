@@ -526,6 +526,14 @@ function SaleListDetailPage() {
       if (canSavePdfOrder) {
         await persistPdfOrder();
       }
+      // Ensure category-specific product attributes are loaded if "description"
+      // column will be rendered (PDF combines product.description + attributes).
+      const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
+      if (selectedCols.includes("description") && productIdsForAttrs.length > 0 && !productAttrsQ.data) {
+        try { await productAttrsQ.refetch(); } catch (err) {
+          console.warn("fetch product attributes for PDF failed; description will omit attributes", err);
+        }
+      }
       // Fetch latest live sale prices for items that may have stale/zero snapshots
       let livePrices: Map<string, number> | undefined;
       try {
