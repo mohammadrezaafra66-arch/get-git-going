@@ -163,7 +163,60 @@ function DataTableDetailPage() {
   const columns = colsQuery.data ?? [];
 
   const isTorobTable = (tableQuery.data?.slug ?? "") === TOROB_PURCHISTA_SLUG;
-  const rpcName = isTorobTable ? "query_dynamic_table_rows_v2" : "query_dynamic_table_rows";
+  const isObservatoryTable = (tableQuery.data?.slug ?? "") === OBSERVATORY_SLUG;
+  const rpcName = (isTorobTable || isObservatoryTable)
+    ? "query_dynamic_table_rows_v2"
+    : "query_dynamic_table_rows";
+
+  const isObservatoryReadOnly = useCallback(
+    (col: ColumnRow) =>
+      isObservatoryTable && OBSERVATORY_READONLY_KEYS.has(col.column_key),
+    [isObservatoryTable],
+  );
+
+  const renderObservatoryDisplay = useCallback(
+    (col: ColumnRow, raw: unknown): React.ReactNode | null => {
+      if (!isObservatoryTable) return null;
+      if (col.column_key === "competitive_price_status") {
+        const key = typeof raw === "string" && raw ? raw : "unknown";
+        const meta = OBSERVATORY_STATUS_META[key] ?? OBSERVATORY_STATUS_META.unknown;
+        return (
+          <Badge variant="outline" className={`${meta.className} text-[11px]`}>
+            {meta.label}
+          </Badge>
+        );
+      }
+      if (col.column_key === "sales_opportunity_score") {
+        if (raw === null || raw === undefined || raw === "") {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        const n = Number(raw);
+        if (!Number.isFinite(n)) return <span className="text-muted-foreground">—</span>;
+        const clamped = Math.max(0, Math.min(100, Math.round(n)));
+        const tier = getObservatoryScoreTier(clamped);
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge variant="outline" className={`${tier.className} text-[11px]`}
+              title={tier.label}>
+              {toFaDigits(String(clamped))} از ۱۰۰
+            </Badge>
+            <span className="text-[11px] text-muted-foreground">{tier.label}</span>
+          </span>
+        );
+      }
+      if (col.column_key === "suggested_sales_message") {
+        const text = typeof raw === "string" ? raw : raw == null ? "" : String(raw);
+        if (!text) return <span className="text-muted-foreground">—</span>;
+        return (
+          <span className="block truncate text-xs leading-5" title={text}>
+            {text}
+          </span>
+        );
+      }
+      return null;
+    },
+    [isObservatoryTable],
+  );
   const filterableColumns: FilterColumn[] = useMemo(
     () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
     [columns]
@@ -198,7 +251,11 @@ function DataTableDetailPage() {
     enabled: !!user && !!tableId,
     queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount, rpcName],
     staleTime: 10_000,
-    refetchInterval: isTorobTable ? TOROB_PURCHISTA_REFETCH_MS : false,
+    refetchInterval: isTorobTable
+      ? TOROB_PURCHISTA_REFETCH_MS
+      : isObservatoryTable
+      ? OBSERVATORY_REFETCH_MS
+      : false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(rpcName, {
