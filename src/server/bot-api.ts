@@ -112,9 +112,12 @@ export function mapBotError(msg: string): { status: number; code: string; messag
     { key: "invalid_date_for_column",   code: "invalid_date",     status: 400, msg: (k) => `مقدار ستون «${k}» باید تاریخ معتبر در قالب YYYY-MM-DD باشد.` },
     { key: "invalid_datetime_for_column",code: "invalid_datetime",status: 400, msg: (k) => `مقدار ستون «${k}» باید تاریخ-زمان ISO معتبر باشد (مثل 2026-04-26T10:00:00Z).` },
     { key: "value_too_long_for_column", code: "value_too_long",   status: 400, msg: (k) => `مقدار ستون «${k}» از حد مجاز طول طولانی‌تر است.` },
+    { key: "required_column_missing",   code: "required_column_missing", status: 400, msg: (k) => `مقدار ستون «${k}» الزامی است.` },
   ];
   for (const p of prefixes) {
-    const m = new RegExp(`${p.key}:([^\\s"',}\\]]+)`).exec(raw);
+    // Match the label up to the end of the line / message — labels may contain
+    // spaces and Persian characters (e.g. "نام مشتری").
+    const m = new RegExp(`${p.key}:(.+?)\\s*$`, "m").exec(raw);
     if (m) return { status: p.status, code: p.code, message: p.msg(m[1]) };
   }
 

@@ -7297,6 +7297,17 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      bot_create_table_row: {
+        Args: { p_key_id: string; p_table_id: string; p_values: Json }
+        Returns: {
+          out_created_at: string
+          out_is_active: boolean
+          out_row_id: string
+          out_row_number: number
+          out_updated_at: string
+          out_values: Json
+        }[]
+      }
       bot_get_product_for_key: {
         Args: { p_key_id: string; p_product_id: string }
         Returns: Json

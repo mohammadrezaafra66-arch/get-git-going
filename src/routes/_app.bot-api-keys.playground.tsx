@@ -48,6 +48,15 @@ export const ENDPOINTS: EndpointDef[] = [
     needs: { tableId: true, rowId: true, body: true, bearer: true },
     defaultBody: `{\n  "values": {\n    "column_key": "value"\n  }\n}`,
   },
+  {
+    id: "bot-create-row",
+    group: "Bot API – Dynamic Tables",
+    method: "POST",
+    label: "افزودن ردیف جدید",
+    path: "/api/public/bot/dynamic-tables/{tableId}/rows",
+    needs: { tableId: true, body: true, bearer: true },
+    defaultBody: `{\n  "values": {\n    "source": "rubika",\n    "title": "نمونه داده استخراج‌شده",\n    "message": "این یک پیام تستی از ربات است",\n    "status": "new"\n  }\n}`,
+  },
 ];
 
 function CodeBlock({ code, lang }: { code: string; lang?: string }) {
