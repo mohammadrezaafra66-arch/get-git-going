@@ -609,10 +609,10 @@ function BotApiDocsPage() {
               <div>
                 <p className="font-medium mb-1">ستون‌هایی که ربات نباید بفرستد</p>
                 <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
-                  <li>سیستمی: <code dir="ltr">product_name</code>، <code dir="ltr">brand_name</code>، <code dir="ltr">category_path</code>، <code dir="ltr">product_labels</code> و سایر فیلدهای محصول</li>
+                  <li>سیستمی: <code dir="ltr">product_name</code>، <code dir="ltr">brand_name</code>، <code dir="ltr">category_name</code>، <code dir="ltr">product_labels</code> و سایر فیلدهای محصول</li>
                   <li>محاسباتی: <code dir="ltr">afrakala_purchase_price_toman</code>، <code dir="ltr">afrakala_min_sale_price</code>، <code dir="ltr">price_gap_to_market_avg</code>، <code dir="ltr">price_gap_percent_to_market_avg</code></li>
                   <li>placeholder تحلیلی: مثل پیام پیشنهادی و امتیاز فرصت فروش</li>
-                  <li>مدیریتی: <code dir="ltr">manager_note</code>، <code dir="ltr">show_in_pdf</code>، <code dir="ltr">show_in_quick_search</code>، <code dir="ltr">monitoring_enabled</code></li>
+                  <li>مدیریتی: <code dir="ltr">manager_note</code>، <code dir="ltr">show_in_pdf</code>، <code dir="ltr">show_in_quick_sales_search</code>، <code dir="ltr">is_watch_active</code></li>
                 </ul>
               </div>
 
