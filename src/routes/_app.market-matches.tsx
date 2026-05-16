@@ -332,7 +332,7 @@ function MatchDetailDialog({ match, onClose, onChanged }: {
     const { error } = await supabase.rpc("review_market_product_match_approve", {
       p_match_id: match.id,
       p_afrakala_product_id: productId,
-      p_notes: notes || null,
+      p_notes: notes || undefined,
     });
     setBusy(false);
     if (error) { toast.error("خطا در تایید: " + error.message); return; }
@@ -346,7 +346,7 @@ function MatchDetailDialog({ match, onClose, onChanged }: {
     const { error } = await supabase.rpc("review_market_product_match_reject", {
       p_match_id: match.id,
       p_reject_reason: rejectReason.trim(),
-      p_notes: notes || null,
+      p_notes: notes || undefined,
     });
     setBusy(false);
     if (error) { toast.error("خطا در رد: " + error.message); return; }
@@ -360,7 +360,7 @@ function MatchDetailDialog({ match, onClose, onChanged }: {
     const { error } = await supabase.rpc("review_market_product_match_disable", {
       p_match_id: match.id,
       p_reason: disableReason.trim(),
-      p_notes: notes || null,
+      p_notes: notes || undefined,
     });
     setBusy(false);
     if (error) { toast.error("خطا در غیرفعال‌سازی: " + error.message); return; }
