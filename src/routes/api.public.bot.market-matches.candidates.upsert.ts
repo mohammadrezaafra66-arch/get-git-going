@@ -118,12 +118,12 @@ export const Route = createFileRoute("/api/public/bot/market-matches/candidates/
 
         const { data, error } = await supabaseAdmin.rpc("upsert_market_product_match_candidate", {
           p_source_name: sourceName as "torob" | "purchista" | "other",
-          p_source_product_url: sourceProductUrl,
-          p_source_product_id: sourceProductId,
+          p_source_product_url: sourceProductUrl as unknown as string,
+          p_source_product_id: sourceProductId as unknown as string,
           p_source_title: sourceTitle,
-          p_normalized_source_title: normalized,
-          p_confidence_score: confidence,
-          p_notes: notes,
+          p_normalized_source_title: normalized as unknown as string,
+          p_confidence_score: confidence as unknown as number,
+          p_notes: notes as unknown as string,
         });
 
         if (error) {
