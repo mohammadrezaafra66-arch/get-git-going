@@ -508,6 +508,60 @@ function DataTableDetailPage() {
         </Card>
       )}
 
+      {isObservatoryTable && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 space-y-2 text-xs leading-6 text-foreground/90">
+            <div className="text-sm font-semibold text-foreground">
+              رصدخانه قیمت محصولات افراکالا
+            </div>
+            <p className="text-foreground/80">
+              این جدول قیمت داخلی افراکالا را با داده‌های بازار مثل ترب و
+              پورچیستا مقایسه می‌کند و به تیم فروش کمک می‌کند محصولات رقابتی‌تر
+              را سریع‌تر تشخیص دهند.
+            </p>
+            <ul className="space-y-0.5">
+              <li>• داده‌های بازار توسط ربات به‌روزرسانی می‌شوند.</li>
+              <li>• ستون‌های تحلیلی هنگام نمایش محاسبه می‌شوند و دستی ذخیره نمی‌شوند.</li>
+              <li>• پیام پیشنهادی فروشنده فعلاً rule-based است و AI نیست.</li>
+            </ul>
+            <details className="mt-1">
+              <summary className="cursor-pointer text-foreground/80 hover:text-foreground">
+                توضیح ستون‌های کلیدی
+              </summary>
+              <ul className="mt-2 space-y-1 text-foreground/75">
+                <li>
+                  <b>شناسه محصول افراکالا:</b> از کارت محصول داخلی می‌آید و
+                  نباید توسط کاربر یا ربات تغییر کند.
+                </li>
+                <li>
+                  <b>میانگین قیمت بازار:</b> میانگین قیمت‌های ثبت‌شده از منابع
+                  بازار مانند ترب و پورچیستا است.
+                </li>
+                <li>
+                  <b>درصد اختلاف با میانگین بازار:</b> نشان می‌دهد حداقل قیمت
+                  فروش افراکالا چند درصد با میانگین بازار اختلاف دارد.
+                </li>
+                <li>
+                  <b>وضعیت رقابتی قیمت:</b> وضعیت ساده‌شده محصول نسبت به بازار؛
+                  پایین‌تر، نزدیک یا بالاتر از بازار.
+                </li>
+                <li>
+                  <b>امتیاز فرصت فروش:</b> امتیازی بین ۰ تا ۱۰۰ برای کمک به
+                  تشخیص جذابیت فروش محصول.
+                </li>
+                <li>
+                  <b>پیام پیشنهادی فروشنده:</b> جمله آماده برای کمک به فروشنده
+                  در مذاکره با مشتری. فعلاً rule-based است و AI نیست.
+                </li>
+              </ul>
+            </details>
+            <div className="pt-1 text-[11px] text-muted-foreground">
+              بروزرسانی نمای جدول هر ۱۰ ثانیه انجام می‌شود.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Columns management */}
       <Card>
         <CardContent className="p-4">
