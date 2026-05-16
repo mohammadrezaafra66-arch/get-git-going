@@ -335,3 +335,38 @@ Trigger روی `market_product_matches` AFTER INSERT/UPDATE → ثبت خودک�
 - **fuzzy name matching به‌تنهایی برای resolve کردن `afrakala_product_id` ممنوع است.**
 - فاز اجرایی بعدی: **BOT-MATCHING-SCHEMA** (فقط schema + RLS، بدون UI و بدون اتصال ربات).
 
+
+---
+
+## Schema Implementation Status (BOT-MATCHING-SCHEMA)
+
+تاریخ: 2026-05-16
+
+### انجام‌شده
+- migration پایه ساخته شد (enumها، جداول، triggerها، RPCها).
+- `public.market_match_source`, `public.market_match_status`, `public.market_match_actor` ایجاد شدند.
+- جدول `public.market_product_matches` با constraintهای کلیدی:
+  - `mpm_source_ref_present`: حداقل یکی از url/id لازم است.
+  - `mpm_confidence_range`: 0..100.
+  - `mpm_approved_requires_afrakala`: approved بدون product داخلی ممکن نیست.
+  - FK به products با `ON DELETE RESTRICT`.
+- جدول `public.market_product_match_events` برای audit log.
+- triggerهای `set_updated_at` و `log_market_product_match_event` (created / status_changed).
+- RPC `resolve_market_product_match` — فقط approved، read-only، SECURITY DEFINER، GRANT فقط به service_role.
+- RPC `upsert_market_product_match_candidate` — همیشه `pending` می‌سازد، هرگز approved نمی‌سازد، هرگز afrakala_product_id را auto-set نمی‌کند، GRANT فقط به service_role.
+- RLS روی هر دو جدول فعال است؛ هیچ policy عمومی اضافه نشد (deny by default).
+- indexهای unique partial و btree و gin_trgm روی normalized_source_title.
+
+### انجام‌نشده (عمداً)
+- UI بازبین (review queue) ساخته نشده.
+- enforcement روی Bot API رصدخانه اعمال نشده. فعلاً Bot API همچنان مستقل کار می‌کند.
+- هیچ scraper / crawler / اتصال به ترب یا پورچیستا ساخته نشده.
+- هیچ ادغام AI/OpenAI/Perplexity.
+- هیچ match واقعی production ساخته نشد.
+- هیچ ردیف رصدخانه update نشد.
+- هیچ auto-approve منطق فعال نیست.
+- policy RLS برای admin/reviewer در فاز بعدی (BOT-MATCHING-UI) اضافه می‌شود.
+
+### فاز بعدی پیشنهادی
+**BOT-MATCHING-API** — افزودن endpointهای `/api/public/bot/market-matches/...` که از RPCهای بالا استفاده کنند، با signature verification.
+سپس **BOT-MATCHING-UI** برای صف بازبینی، سپس **BOT-MATCHING-ENFORCEMENT** برای الزام approved match قبل از upsert رصدخانه.
