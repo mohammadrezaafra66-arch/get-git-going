@@ -3,12 +3,28 @@ import type { AppRole, ModuleKey, ExtendedAction } from "@/lib/rbac/roles";
 import { hasPermissionEx } from "@/lib/rbac/roles";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { loadRolePermissions } from "@/lib/rbac/dynamic-permissions";
+import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
+
+/** اگر کاربر در snapshot نبود ولی auth هنوز در حال load است، یک بار force refresh کن. */
+async function resolveAuthWithRetry() {
+  let auth = await ensureAuthReady();
+  if (!auth.user && (auth.loading || !auth.initialized)) {
+    auth = await ensureAuthReady(true);
+  }
+  return auth;
+}
 
 /** بررسی دسترسی کاربر به یک ماژول؛ در صورت نبود دسترسی به /unauthorized یا /login هدایت می‌کند. */
 export async function requirePermission(module: ModuleKey, action: ExtendedAction = "view") {
-  const auth = await ensureAuthReady();
+  const auth = await resolveAuthWithRetry();
   const user = auth.user;
-  if (!user) throw redirect({ to: "/login" });
+  if (!user) {
+    logAuthDiagnostic("redirect.login", `requirePermission(${module},${action}): no user`, {
+      loading: auth.loading,
+      initialized: auth.initialized,
+    });
+    throw redirect({ to: "/login" });
+  }
   if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
   if (auth.rolesError) throw new Error(`بارگذاری نقش‌های کاربر ناموفق بود: ${auth.rolesError}`);
 
@@ -17,15 +33,19 @@ export async function requirePermission(module: ModuleKey, action: ExtendedActio
   await loadRolePermissions();
 
   if (!hasPermissionEx(roles, module, action)) {
+    logAuthDiagnostic("redirect.unauthorized", `requirePermission(${module},${action}) denied`, { roles });
     throw redirect({ to: "/unauthorized" });
   }
   return { user, roles };
 }
 
 export async function requireAdmin() {
-  const auth = await ensureAuthReady();
+  const auth = await resolveAuthWithRetry();
   const user = auth.user;
-  if (!user) throw redirect({ to: "/login" });
+  if (!user) {
+    logAuthDiagnostic("redirect.login", "requireAdmin: no user", { loading: auth.loading });
+    throw redirect({ to: "/login" });
+  }
   if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
   if (auth.rolesError) throw new Error(`بارگذاری نقش‌های کاربر ناموفق بود: ${auth.rolesError}`);
 
@@ -36,9 +56,12 @@ export async function requireAdmin() {
 
 /** بررسی اینکه کاربر یکی از نقش‌های مجاز را داشته باشد. */
 export async function requireAnyRole(allowed: AppRole[]) {
-  const auth = await ensureAuthReady();
+  const auth = await resolveAuthWithRetry();
   const user = auth.user;
-  if (!user) throw redirect({ to: "/login" });
+  if (!user) {
+    logAuthDiagnostic("redirect.login", "requireAnyRole: no user", { loading: auth.loading });
+    throw redirect({ to: "/login" });
+  }
   if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
   if (auth.rolesError) throw new Error(`بارگذاری نقش‌های کاربر ناموفق بود: ${auth.rolesError}`);
   const roles = auth.roles as AppRole[];

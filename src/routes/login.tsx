@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureAuthReady } from "@/lib/auth/session";
+import { ensureAuthReady, getAuthSnapshot } from "@/lib/auth/session";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
@@ -120,8 +120,20 @@ function LoginPage() {
         toast.error("ورود ناموفق", { description: fa });
         return;
       }
-      // Refresh identity so profile/roles are loaded before redirect.
-      try { await refreshRoles(); } catch { /* non-blocking */ }
+      // Wait for the auth snapshot to actually reflect the signed-in user
+      // BEFORE navigating. signIn() resolves when the HTTP call returns, but
+      // supabase-js fires onAuthStateChange asynchronously, and our snapshot
+      // is updated by that handler. Navigating too early sends the user to
+      // a protected route whose guard sees user=null and bounces back here.
+      try {
+        await ensureAuthReady(true);
+        // Extra short poll in case the SIGNED_IN handler is still mid-flight.
+        for (let i = 0; i < 20; i += 1) {
+          if (getAuthSnapshot().user) break;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        await refreshRoles();
+      } catch { /* non-blocking */ }
       toast.success("خوش آمدید");
       navigate({ to: "/dashboard", replace: true });
     } catch (err) {

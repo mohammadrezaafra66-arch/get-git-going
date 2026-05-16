@@ -21,12 +21,25 @@ export const Route = createFileRoute("/_app")({
     // screen handles the redirect after hydration.
     if (typeof window === "undefined") return;
     try {
-      const auth = await ensureAuthReady();
+      let auth = await ensureAuthReady();
+      // Defensive re-check: if user is missing but we're still mid-load
+      // (e.g. SIGNED_IN handler hasn't finished applySession yet), force a
+      // fresh resolve before deciding to redirect. Prevents bouncing the
+      // user back to /login right after a successful sign-in.
+      if (!auth.user && (auth.loading || !auth.initialized)) {
+        auth = await ensureAuthReady(true);
+      }
       if (!auth.user) {
+        logAuthDiagnostic("redirect.login", "_app.beforeLoad: no user", {
+          initialized: auth.initialized,
+          loading: auth.loading,
+          authError: auth.authError,
+        });
         throw redirect({ to: "/login" });
       }
       const status = auth.profile?.status;
       if (status && status !== "active") {
+        logAuthDiagnostic("redirect.pending", "_app.beforeLoad: status not active", { status });
         throw redirect({ to: "/pending-approval" });
       }
       if (auth.authError) {

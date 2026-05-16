@@ -1,5 +1,6 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ensureAuthReady } from "@/lib/auth/session";
+import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
@@ -9,8 +10,16 @@ export const Route = createFileRoute("/pending-approval")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     try {
-      const auth = await ensureAuthReady();
-      if (!auth.user) throw redirect({ to: "/login" });
+      let auth = await ensureAuthReady();
+      if (!auth.user && (auth.loading || !auth.initialized)) {
+        auth = await ensureAuthReady(true);
+      }
+      if (!auth.user) {
+        logAuthDiagnostic("redirect.login", "pending-approval.beforeLoad: no user", {
+          loading: auth.loading,
+        });
+        throw redirect({ to: "/login" });
+      }
       const status = auth.profile?.status;
       if (status === "active") throw redirect({ to: "/dashboard" });
     } catch (err) {

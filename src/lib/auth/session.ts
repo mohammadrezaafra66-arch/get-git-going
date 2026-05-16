@@ -174,6 +174,13 @@ export function initializeAuthSession() {
         event === "SIGNED_IN" &&
         (!snapshot.user || snapshot.user.id !== session?.user?.id);
       const isSignOut = event === "SIGNED_OUT";
+      logAuthDiagnostic("session.onAuthStateChange", event, {
+        hasSession: !!session,
+        sessionUserId: session?.user?.id ?? null,
+        previousUserId: snapshot.user?.id ?? null,
+        isFullReload,
+        isSignOut,
+      });
       void applySession(session, isFullReload || isSignOut);
     });
   } catch (error) {
