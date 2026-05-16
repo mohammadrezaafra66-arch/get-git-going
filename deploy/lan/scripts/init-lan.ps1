@@ -61,14 +61,7 @@ function Read-EnvMap($path) {
 }
 
 function Set-EnvValue($path, $key, $value) {
-    $content = Get-Content -LiteralPath $path -Raw
-    $pattern = "(?m)^\s*{0}=.*$" -f [regex]::Escape($key)
     $newLine = "{0}={1}" -f $key, $value
-    if ([regex]::IsMatch($content, $pattern)) {
-        $content = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.Regex]::Escape($newLine) -replace '\\(.)','$1')
-        # Replacement above is brittle; use simpler approach:
-    }
-    # Simpler robust approach: rewrite line by line
     $lines = Get-Content -LiteralPath $path
     $found = $false
     for ($i = 0; $i -lt $lines.Count; $i++) {
