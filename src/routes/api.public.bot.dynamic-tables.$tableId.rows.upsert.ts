@@ -143,8 +143,8 @@ export const Route = createFileRoute("/api/public/bot/dynamic-tables/$tableId/ro
             "resolve_market_product_match",
             {
               p_source_name: srcName as never,
-              p_source_product_url: srcUrl,
-              p_source_product_id: srcId,
+              p_source_product_url: srcUrl ?? undefined,
+              p_source_product_id: srcId ?? undefined,
             },
           );
           if (resolveErr) {
