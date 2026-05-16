@@ -33,6 +33,8 @@ const ERR_PERSIAN: Record<string, { status: number; message: string }> = {
   row_table_mismatch: { status: 400, message: "این ردیف به جدول مشخص‌شده تعلق ندارد." },
   invalid_values:     { status: 400, message: "بدنه درخواست باید یک آبجکت JSON معتبر شامل فیلد values باشد." },
   no_updatable_values:{ status: 400, message: "هیچ مقداری برای به‌روزرسانی ارسال نشده است." },
+  invalid_unique_by:  { status: 400, message: "فیلد unique_by باید آرایه‌ای از نام ستون‌های متنی موجود در جدول باشد." },
+  duplicate_match:    { status: 409, message: "بیش از یک ردیف با مقادیر یکتایی ارسال‌شده مطابقت دارد. لطفاً unique_by دقیق‌تری انتخاب کنید." },
 };
 
 const RATE_LIMIT_PERSIAN: Record<string, string> = {

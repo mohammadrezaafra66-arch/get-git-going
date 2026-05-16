@@ -1908,7 +1908,10 @@ export type Database = {
           column_key: string
           created_at: string
           data_type: Database["public"]["Enums"]["dynamic_column_data_type"]
+          formula_config: Json
+          formula_key: string | null
           id: string
+          is_computed: boolean
           is_editable_by_bot: boolean
           is_filterable: boolean
           is_required: boolean
@@ -1920,7 +1923,10 @@ export type Database = {
           column_key: string
           created_at?: string
           data_type: Database["public"]["Enums"]["dynamic_column_data_type"]
+          formula_config?: Json
+          formula_key?: string | null
           id?: string
+          is_computed?: boolean
           is_editable_by_bot?: boolean
           is_filterable?: boolean
           is_required?: boolean
@@ -1932,7 +1938,10 @@ export type Database = {
           column_key?: string
           created_at?: string
           data_type?: Database["public"]["Enums"]["dynamic_column_data_type"]
+          formula_config?: Json
+          formula_key?: string | null
           id?: string
+          is_computed?: boolean
           is_editable_by_bot?: boolean
           is_filterable?: boolean
           is_required?: boolean
@@ -7221,6 +7230,10 @@ export type Database = {
       }
     }
     Functions: {
+      _dyn_compute_row_values: {
+        Args: { p_row_id: string; p_table_id: string }
+        Returns: Json
+      }
       _ensure_credit_balance: {
         Args: { p_customer_id: string }
         Returns: undefined
@@ -7371,6 +7384,23 @@ export type Database = {
         Returns: {
           applied_keys: string[]
           updated_count: number
+        }[]
+      }
+      bot_upsert_table_row: {
+        Args: {
+          p_key_id: string
+          p_table_id: string
+          p_unique_by: string[]
+          p_values: Json
+        }
+        Returns: {
+          out_created_at: string
+          out_is_active: boolean
+          out_mode: string
+          out_row_id: string
+          out_row_number: number
+          out_updated_at: string
+          out_values: Json
         }[]
       }
       calc_xp_for_level: { Args: { _level: number }; Returns: number }
@@ -8490,6 +8520,24 @@ export type Database = {
         }[]
       }
       query_dynamic_table_rows: {
+        Args: {
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_show_inactive?: boolean
+          p_table_id: string
+        }
+        Returns: {
+          out_created_at: string
+          out_is_active: boolean
+          out_row_id: string
+          out_row_number: number
+          out_values: Json
+          total_count: number
+        }[]
+      }
+      query_dynamic_table_rows_v2: {
         Args: {
           p_filters?: Json
           p_limit?: number

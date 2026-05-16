@@ -1,73 +1,141 @@
-# Phase PW.1 + PW.2 — پلن اجرا
+## DT.1 — Upgrade Dynamic Tables for Torob/Purchista extracted data
 
-## ۱) نتیجه inspect
+این plan ماژول موجود `dynamic_tables` و `Bot API` را گسترش می‌دهد. هیچ ماژول، grid، یا auth موازی ساخته نمی‌شود. تمام محاسبات قیمت server-side و از داده‌های موجود (`purchase_prices`, `product_computed_prices`) خوانده می‌شود.
 
-**Route صفحه:** `src/routes/_app.pricing.my-workbench.tsx` (768 خط — صفحه فعلی کارگاه قیمت من).
-**Query/types:** `src/lib/pricing/workbench.ts` (`fetchMyWorkbenchRows`، `WorkbenchRow`، `StockStatus`).
-**Helpers برند/دسته/برچسب:** `src/lib/products/queries.ts` (`fetchBrandsLite`, `fetchCategoriesLite`, `fetchLabelsLite`).
-**Permissions:** RLS روی همه جدول‌های موردنیاز برای authenticated باز است — read access نیازی به migration ندارد.
+### آنچه از قبل وجود دارد و دست نخواهد خورد
+- جداول: `dynamic_tables`, `dynamic_table_columns`, `dynamic_table_rows`, `dynamic_table_cells`, `bot_api_keys`, `bot_api_usage_logs`.
+- توابع: `query_dynamic_table_rows`, `create_dynamic_table_row`, `update_dynamic_table_cell`, `bot_query_table_rows`, `bot_create_table_row`, `bot_update_table_row`.
+- مسیرها: `_app.data-tables.{index,new,$tableId}.tsx`, دو route فعلی Bot API برای rows.
+- توابع قیمت: `purchase_prices` (آخرین رکورد فعال per product برای قیمت خرید تومان)، `product_computed_prices` (`rounded_sale_price` per `sale_price_type_id` برای min فروش).
 
-## ۲) Mapping فیلدهای واقعی دیتابیس
+---
 
-| نیاز | فیلد/جدول واقعی |
-|---|---|
-| نام محصول | `products.name`, `products.sku`, `products.model` |
-| برند | `products.brand_id` → `brands.name` |
-| دسته / زیر‌دسته | `products.category_id` → `categories(id, parent_id, name)` (سلسله‌مراتبی) |
-| نوع خرید | `products.product_type` enum `iranian` / `foreign` |
-| ارز | `products.base_currency` و `purchase_prices.currency` enum `toman` / `usd` / `aed` |
-| وضعیت موجودی | `products.stock_status` enum `available` / `limited` / `unavailable` / `unknown` |
-| فعال/غیرفعال | `products.status` enum `active` / `inactive` / `discontinued` (+`is_active` boolean) |
-| قیمت فروش | `product_computed_prices.rounded_sale_price` (latest per product+sale_price_type) |
-| مسئول محصول | `product_owner_assignments(product_id, user_id)` → `profiles` |
-| برچسب‌ها | `product_label_links(product_id, label_id)` → `product_labels(title, color)` |
+### بخش ۱ — Migration ها
 
-«دارای قیمت فروش» = حداقل یک ردیف در `product_computed_prices` با `rounded_sale_price > 0` برای آن محصول.
+#### 1A. متادیتای ستون‌های computed (backward compatible)
+به `dynamic_table_columns` اضافه می‌شود:
+```
+is_computed boolean NOT NULL DEFAULT false
+formula_key text NULL
+formula_config jsonb NOT NULL DEFAULT '{}'
+```
+CHECK constraint: `formula_key` فقط از whitelist زیر:
+`latest_purchase_price_toman`, `min_sale_price`, `latest_batch_average_price`, `price_gap_to_market_avg`, `price_gap_percent_to_market_avg`.
 
-## ۳) ساختار پیاده‌سازی
+ستون‌های موجود تأثیر نمی‌گیرند (`is_computed=false` پیش‌فرض).
 
-### فایل‌های جدید
-- `src/lib/pricing/workbench-filters.ts` — types و helperهای محض (`hasValidSalePrice`, `getProductPricingIssues`, `getTaggedProductRiskPriority`, `normalizeInventoryStatus`).
-- `src/lib/pricing/workbench-queries.ts` — query جدید `fetchWorkbenchRowsV2` با فیلترهای کامل + pagination، و `fetchWorkbenchHealthReport` برای دو گزارش (single fetch با limit بالا و paginate سمت client روی dataset مشکل‌دار).
-- `src/lib/pricing/workbench-csv.ts` — export ساده CSV با هدر فارسی.
-- `src/components/pricing/workbench/WorkbenchFiltersBar.tsx` — UI فیلترها (collapsible grid).
-- `src/components/pricing/workbench/HealthReportTab.tsx` — تب گزارش‌ها (خلاصه + دو جدول + breakdown مسئول).
+#### 1B. Seed idempotent جدول Torob/Purchista
+در یک DO block:
+- اگر `slug='torob-purchista-extracted-data'` نبود، `INSERT` شود (نام: «دیتای استخراج شده ترب - پورچیستا»).
+- برای هر یک از ۲۰ ستون (۱۵ معمولی + ۵ computed) با `INSERT ... ON CONFLICT (table_id, column_key) DO NOTHING`.
+- ستون‌های ۱–۱۵ همان `data_type` و فلگ‌های مشخص‌شده در درخواست.
+- ستون‌های ۱۶–۲۰ از نوع `number` با `is_computed=true`, `is_editable_by_bot=false`, `formula_key` متناظر.
 
-### فایل‌های ویرایش‌شده
-- `src/routes/_app.pricing.my-workbench.tsx` — افزودن Tabs (`کارگاه` | `گزارش سلامت`)، نصب فیلتربار جدید، استفاده از `fetchWorkbenchRowsV2`، sync با URL query params، ستون‌های جدید (برچسب‌ها، مسئول، قیمت فروش، badge غیرفعال/بدون قیمت/بدون مسئول).
-- `src/lib/pricing/workbench.ts` — افزودن فیلدهای جدید به `WorkbenchRow` (`status`, `product_type`, `category_id`, `tags[]`, `owners[]`, `sale_price`).
+#### 1C. Indexes برای performance computed/upsert
+- partial UNIQUE برای کلید یکتایی upsert روی cells:
+  چون cells کلید/مقدار است، unique جداگانه نیست. به جایش UNIQUE expression روی یک view مادی نمی‌سازیم — به جایش index کمکی روی `value_text` تطابق با `column_id` برای lookup سریع `external_product_id` / `extraction_batch_id` / `match_key` / `afrakala_product_id`:
+  ```
+  CREATE INDEX IF NOT EXISTS idx_cells_text_lookup
+    ON dynamic_table_cells (column_id, value_text)
+    WHERE value_text IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_cells_datetime
+    ON dynamic_table_cells (column_id, value_datetime DESC)
+    WHERE value_datetime IS NOT NULL;
+  ```
 
-### Query استراتژی (server-side تا حد ممکن)
-1. base: `products` با `.in/.eq` برای brand/category/subcategory/status/stock/product_type/base_currency و `.range` برای pagination.
-2. اگر subcategory انتخاب شد → `category_id = subId`، در غیر این صورت اگر category انتخاب شد → `category_id IN (cat + childrenIds)`.
-3. برای فیلتر «مسئول»: pre-fetch `product_owner_assignments` با `user_id = X` یا `NOT IN` برای «بدون مسئول» (محدودیت: روی dataset بزرگ ممکن است محدود به اولین 10k باشد — comment).
-4. برای فیلتر «برچسب»: pre-fetch `product_label_links` با `label_id = X` یا `IN`/`NOT IN` برای «دارای/بدون برچسب».
-5. برای فیلتر «دارای/بدون قیمت فروش»: pre-fetch distinct `product_id` از `product_computed_prices` با `rounded_sale_price > 0`، سپس `IN`/`NOT IN`.
-6. پس از گرفتن productIds صفحه، latest sale_price + tags + owners را با queryهای کوچک batch.
+#### 1D. توابع server-side محاسبه فرمول
+یک تابع کمکی `_dyn_compute_row_values(p_table_id, p_row_id, p_base jsonb) RETURNS jsonb` که برای هر ستون با `is_computed=true` بر اساس `formula_key` و مقادیر base محاسبه و در jsonb درج می‌کند:
+- `latest_purchase_price_toman`: `SELECT purchase_price FROM purchase_prices WHERE product_id = afrakala_product_id::uuid AND is_active ORDER BY effective_at DESC LIMIT 1` (currency toman).
+- `min_sale_price`: `SELECT MIN(rounded_sale_price) FROM product_computed_prices WHERE product_id = afrakala_product_id::uuid`.
+- `latest_batch_average_price`: زیرپرس‌و‌جو روی همین جدول dynamic — برای rowهای فعال هم‌گروه (group by `afrakala_product_id` اگر set است؛ وگرنه `match_key`)، آخرین `extraction_batch_id` از روی بیشینه `extracted_at`، سپس `AVG(extracted_price_toman)` با حذف null/۰.
+- `price_gap_to_market_avg` و `price_gap_percent_to_market_avg`: روی دو مقدار قبلی.
 
-### فیلترها (state داخلی + sync با search params)
-search, brand, category, subcategory, currencyType (`all|toman|foreign`), currency (`all|toman|usd|aed`), inventory, productStatus, salePriceStatus (`all|has|missing`), ownerId (`all|none|<uuid>`), labelId (`all|none|any|<uuid>`), stepPct. هر تغییر → `setPage(0)`.
+#### 1E. RPC جدید: `query_dynamic_table_rows_v2`
+نسخه موازی (بدون تغییر در v1) که خروجی `out_values` را با `_dyn_compute_row_values` تکمیل می‌کند. در فاز فعلی فقط جدول Torob/Purchista از v2 استفاده می‌کند (UI با شرط `slug` تشخیص می‌دهد). امضای فعلی v1 دست‌نخورده می‌ماند تا صفحه عمومی data-tables نشکند.
 
-### گزارش سلامت
-تب جدا. fetch با `fetchWorkbenchHealthReport` (تا 2000 ردیف مشکل‌دار با limit). دو جدول:
-- **محصولات ناقص**: where `status != active` OR `bad_price` OR `no_owner`.
-- **محصولات برچسب‌دار مشکل‌دار**: where `tags.length > 0` AND (unavailable OR inactive OR bad_price OR no_owner).
-خلاصه‌کارت‌ها از `summarize(rows)` در helper.
-ستون «اولویت اصلاح» با `getTaggedProductRiskPriority` (فوری/بالا/متوسط/پایین) و sort.
-breakdown مسئول: `groupBy(owners[0]?.id || 'none')` روی همان dataset.
-دو دکمه CSV export client-side از همان data.
+#### 1F. RPC جدید: `bot_upsert_table_row(p_key_id, p_table_id, p_unique_by text[], p_values jsonb) RETURNS (mode text, row_id uuid, row_number bigint, values jsonb)`
+- همان gateهای امنیتی `bot_create_table_row`: `SECURITY DEFINER`, `SET search_path=public`, `REVOKE FROM PUBLIC`, `GRANT EXECUTE TO service_role`.
+- بررسی `is_editable_by_bot` برای هر کلید در `p_values` و رد ستون‌های computed.
+- پیدا کردن سطر موجود: برای هر کلید در `p_unique_by` که مقدارش در `p_values` آمده، EXISTS با `dynamic_table_cells.value_text = ...` (نوع text بهترین گزینه برای source/batch/external_id/match_key است). فقط ستون‌های موجود و text-compatible مجاز برای unique_by.
+- اگر سطر هست → فراخوانی منطق update مشابه `bot_update_table_row` و `mode='updated'`. وگرنه → فراخوانی منطق create مشابه `bot_create_table_row` و `mode='created'`.
+- خطاهای فارسی mapping در `mapBotError`: `unknown_column`, `column_not_allowed`, `required_column_missing`, `invalid_unique_by`, `duplicate_match`.
 
-## ۴) محدودیت‌ها و یادداشت‌ها
+---
 
-- هیچ migration. روی dataset >10k، فیلترهای ترکیبی tag+owner+salePrice ممکن است نیاز به view/RPC داشته باشند — در همین فاز صرفاً comment + TODO.
-- realtime اضافه نمی‌شود.
-- هیچ تغییری در: auth/RBAC/RLS، migrations، Caddy/Docker/LAN، deploy، edge functions، OCR/AI.
-- صفحه‌بندی همچنان 25 رکورد. گزارش سلامت تا 2000 محصول مشکل‌دار را نشان می‌دهد (با Note بالای جدول).
+### بخش ۲ — Bot API
 
-## ۵) تست‌های انجام‌شدنی
+#### 2A. Route جدید: `src/routes/api.public.bot.dynamic-tables.$tableId.rows.upsert.ts`
+- متد فقط `POST`. body همان شکل درخواست (`unique_by` + `values`).
+- استفاده از همان helperهای موجود: `authenticateBot`, `checkBotRateLimit`, `logBotUsage`, `isUuid`, `extractBearer`, `MAX_BODY_BYTES=64KB`, `mapBotError`.
+- فراخوانی `bot_upsert_table_row` و بازگشت `{ mode, row_id, row_number, values }` با `201` در حالت created و `200` در updated.
 
-build + typecheck + smoke (باز کردن صفحه، تست هر فیلتر، گزارش، CSV). تست‌های نیازمند داده واقعی صریحاً گزارش می‌شوند.
+#### 2B. Route جدید (اختیاری اما توصیه شده): `src/routes/api.public.bot.dynamic-tables.by-slug.$slug.ts`
+- `GET` که `slug` را به `tableId` تبدیل کرده و metadata کوچک (id, name, columns: key/label/data_type/is_editable_by_bot/is_computed) برمی‌گرداند.
+- ربات بدون دانستن UUID می‌تواند tableId را resolve کند، سپس از endpoint های موجود استفاده کند.
 
-## ۶) خروجی نهایی
+#### 2C. هیچ تغییری در `rows.ts` و `rows.$rowId.ts` نیست
+GET/POST/PATCH فعلی دست‌نخورده می‌ماند.
 
-پس از تأیید این پلن، فایل‌ها را با حداقل تماس‌های ابزاری می‌سازم و در پایان دقیقاً طبق ساختار 22-بندی شما گزارش می‌دهم.
+---
+
+### بخش ۳ — Frontend
+
+#### 3A. `src/lib/data-tables/constants.ts`
+- اضافه شدن:
+  ```
+  export const ALLOWED_FORMULA_KEYS = [
+    "latest_purchase_price_toman","min_sale_price",
+    "latest_batch_average_price","price_gap_to_market_avg",
+    "price_gap_percent_to_market_avg",
+  ] as const;
+  export const FORMULA_LABELS: Record<...,string>;
+  export const TOROB_PURCHISTA_SLUG = "torob-purchista-extracted-data";
+  ```
+
+#### 3B. `src/routes/_app.data-tables.$tableId.tsx`
+- اگر `slug === TOROB_PURCHISTA_SLUG`: از `query_dynamic_table_rows_v2` استفاده شود و `refetchInterval: 7000`. در غیر این صورت رفتار فعلی بدون تغییر.
+- اضافه شدن badge «فرمولی» (در کنار badge «ویرایش‌پذیر ربات» موجود) برای ستون‌هایی با `is_computed=true`.
+- سلول‌های computed → read-only (در inline edit و keyboard nav رد می‌شود).
+- پنل اطلاعات کوچک بالای جدول فقط برای این slug: «آخرین refresh: HH:mm:ss»، «تعداد ردیف‌ها»، «آخرین batch: ...»، توضیح فارسی برای computedها.
+- CSV export، search، filters، virtualized grid، RBAC بدون تغییر.
+
+#### 3C. `src/routes/_app.data-tables.new.tsx`
+- بخش create column: گزینه «ستون فرمولی» فقط برای admin/manager (با `useUserRoles`).
+- اگر فعال شد، `formula_key` از select با لیست `ALLOWED_FORMULA_KEYS`. مقادیر `data_type=number`, `is_editable_by_bot=false` بصورت forced.
+
+#### 3D. Realtime/Polling
+- در فاز فعلی فقط `refetchInterval` برای slug Torob/Purchista. در کد و mutation handlers `invalidateQueries(["dynamic-table-rows-v2", tableId])` ست می‌شود. در docs/inline comment کلمه «near-real-time» استفاده می‌شود نه «realtime».
+
+---
+
+### بخش ۴ — Docs
+
+`src/routes/_app.bot-api-keys.docs.tsx`:
+- اضافه شدن بخش «Upsert ردیف استخراج‌شده ترب/پورچیستا» با نمونه curl.
+- نمونه‌های خطا: `invalid_unique_by`, `duplicate_match`, `column_not_allowed` برای ستون‌های computed.
+- placeholder `Authorization: Bearer <BOT_API_KEY>` بدون مقدار واقعی.
+
+---
+
+### بخش ۵ — Acceptance & Rollback
+
+**تست‌های دستی browser:**
+1. صفحه `/data-tables` → جدول «دیتای استخراج شده ترب - پورچیستا» visible.
+2. باز کردن جدول → ستون‌های computed با badge «فرمولی» و read-only.
+3. curl upsert با `source=torob, extraction_batch_id, external_product_id, product_title_raw, extracted_price_toman` → 201.
+4. تکرار همان curl با قیمت متفاوت → 200، همان `row_id`، بدون duplicate.
+5. ست کردن `afrakala_product_id` معتبر → پس از ≤۱۰s، ۵ ستون قیمتی پر می‌شوند.
+6. CSV export + search همچنان کار می‌کند.
+7. یک جدول dynamic دیگر باز کنید → رفتار قبلی بدون تغییر.
+
+**Rollback:**
+- DROP FUNCTION `bot_upsert_table_row`, `query_dynamic_table_rows_v2`, `_dyn_compute_row_values`.
+- DROP INDEXes جدید.
+- `ALTER TABLE dynamic_table_columns DROP COLUMN is_computed, formula_key, formula_config`.
+- حذف routeهای جدید TanStack.
+- جدول/ستون‌های seed را می‌توان نگه داشت یا با `DELETE FROM dynamic_tables WHERE slug='torob-purchista-extracted-data'` پاک کرد (CASCADE).
+
+**Self-host:**
+- بدون CDN، بدون secret جدید، بدون edge function، بدون تغییر Caddy/SSL.
+- همه چیز Postgres + TanStack server routes موجود.
+- RLS فعلی روی dynamic_tables و bot_api_keys حفظ می‌شود؛ توابع جدید همگی `SECURITY DEFINER` با `search_path=public` و `REVOKE FROM PUBLIC`.
