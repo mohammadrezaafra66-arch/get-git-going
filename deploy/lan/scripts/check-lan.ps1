@@ -1,9 +1,9 @@
 # check-lan.ps1
-# تست وضعیت LAN deployment افراکالا.
+# Health check for AfraKala LAN deployment.
+# ASCII-only. Compatible with Windows PowerShell 5.1.
 
 $ErrorActionPreference = "Continue"
 
-# پیدا کردن .env.lan و خواندن portها
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $lanDir    = Resolve-Path (Join-Path $scriptDir "..")
 $envFile   = Join-Path $lanDir ".env.lan"
@@ -20,8 +20,8 @@ function Get-EnvValue($path, $key, $fallback) {
 }
 
 if (-not (Test-Path $envFile)) {
-    Write-Host "deploy/lan/.env.lan پیدا نشد. ابتدا از .env.lan.example کپی کنید:" -ForegroundColor Red
-    Write-Host "  Copy-Item deploy\lan\.env.lan.example deploy\lan\.env.lan" -ForegroundColor Yellow
+    Write-Host "deploy/lan/.env.lan not found. Create it from .env.lan.example first:" -ForegroundColor Red
+    Write-Host "  powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1" -ForegroundColor Yellow
     exit 1
 }
 
@@ -44,7 +44,7 @@ try {
         Write-Host ("Docker Server: {0}" -f $_) -ForegroundColor Green
     }
 } catch {
-    Write-Host "Docker در دسترس نیست. Docker Desktop را اجرا کنید." -ForegroundColor Red
+    Write-Host "Docker is not available. Start Docker Desktop." -ForegroundColor Red
     exit 1
 }
 
@@ -70,4 +70,4 @@ foreach ($a in $addrs) {
 }
 
 Write-Host ""
-Write-Host ("آدرس برای همکاران: http://{0}:{1}" -f $lanIp, $appPort) -ForegroundColor Yellow
+Write-Host ("URL for LAN users: http://{0}:{1}" -f $lanIp, $appPort) -ForegroundColor Yellow
