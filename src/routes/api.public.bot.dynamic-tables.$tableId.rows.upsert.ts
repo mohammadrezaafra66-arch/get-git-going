@@ -6,6 +6,8 @@ import {
 } from "@/server/bot-api";
 
 const MAX_BODY_BYTES = 64 * 1024;
+const OBSERVATORY_SLUG = "afrakala-product-price-observatory";
+const VALID_SOURCES = new Set(["torob", "purchista", "other"]);
 
 export const Route = createFileRoute("/api/public/bot/dynamic-tables/$tableId/rows/upsert")({
   server: {
@@ -83,6 +85,95 @@ export const Route = createFileRoute("/api/public/bot/dynamic-tables/$tableId/ro
           logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
             status_code: 400, error_code: "invalid_values", ip, request_size: raw.length });
           return jsonResponse(400, { error: "invalid_values", message: "فیلد values باید یک آبجکت JSON باشد." });
+        }
+
+        // BOT-MATCHING-ENFORCEMENT — observatory-specific gate.
+        // Look up the table slug; only enforce on the observatory table so
+        // other dynamic tables keep their previous upsert behavior.
+        const { data: tableMeta } = await supabaseAdmin
+          .from("dynamic_tables")
+          .select("slug")
+          .eq("id", tableId)
+          .maybeSingle();
+
+        if (tableMeta?.slug === OBSERVATORY_SLUG) {
+          const sm = (obj as { source_match?: unknown }).source_match;
+          if (!sm || typeof sm !== "object" || Array.isArray(sm)) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 400, error_code: "missing_source_match", ip, request_size: raw.length });
+            return jsonResponse(400, {
+              error: "missing_source_match",
+              message: "برای جدول رصدخانه، source_match با source_name و حداقل یکی از source_product_url/source_product_id الزامی است.",
+            });
+          }
+          const smObj = sm as Record<string, unknown>;
+          const srcName = typeof smObj.source_name === "string" ? smObj.source_name.trim() : "";
+          if (!VALID_SOURCES.has(srcName)) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 400, error_code: "invalid_source_name", ip, request_size: raw.length });
+            return jsonResponse(400, {
+              error: "invalid_source_name",
+              message: "source_name باید یکی از torob | purchista | other باشد.",
+            });
+          }
+          const srcUrl = typeof smObj.source_product_url === "string" && smObj.source_product_url.trim().length > 0
+            ? smObj.source_product_url.trim() : null;
+          const srcId = typeof smObj.source_product_id === "string" && smObj.source_product_id.trim().length > 0
+            ? smObj.source_product_id.trim() : null;
+          if (!srcUrl && !srcId) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 400, error_code: "missing_source_reference", ip, request_size: raw.length });
+            return jsonResponse(400, {
+              error: "missing_source_reference",
+              message: "حداقل یکی از source_product_url یا source_product_id باید مقدار داشته باشد.",
+            });
+          }
+
+          const valProductId = typeof values.afrakala_product_id === "string" ? values.afrakala_product_id : null;
+          if (!valProductId || !isUuid(valProductId)) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 400, error_code: "invalid_afrakala_product_id", ip, request_size: raw.length });
+            return jsonResponse(400, {
+              error: "invalid_afrakala_product_id",
+              message: "values.afrakala_product_id باید UUID معتبر باشد.",
+            });
+          }
+
+          const { data: resolved, error: resolveErr } = await supabaseAdmin.rpc(
+            "resolve_market_product_match",
+            {
+              p_source_name: srcName as never,
+              p_source_product_url: srcUrl,
+              p_source_product_id: srcId,
+            },
+          );
+          if (resolveErr) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 500, error_code: "match_resolve_failed", ip, request_size: raw.length });
+            return jsonResponse(500, {
+              error: "match_resolve_failed",
+              message: "خطا در بررسی تطبیق بازار.",
+            });
+          }
+          const matchRow = Array.isArray(resolved) ? resolved[0] : (resolved as { afrakala_product_id?: string | null } | null);
+          if (!matchRow || !matchRow.afrakala_product_id) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 403, error_code: "approved_match_required", ip, request_size: raw.length });
+            return jsonResponse(403, {
+              error: "approved_match_required",
+              message: "Approved market match is required before updating observatory row.",
+            });
+          }
+          if (matchRow.afrakala_product_id !== valProductId) {
+            logBotUsage({ api_key_id: auth.keyId, table_id: tableId, endpoint, method: "POST",
+              status_code: 409, error_code: "match_product_mismatch", ip, request_size: raw.length });
+            return jsonResponse(409, {
+              error: "match_product_mismatch",
+              message: "approved match به محصول دیگری وصل است.",
+            });
+          }
+          // Defensive: never persist source_match into row cells.
+          if ("source_match" in values) delete (values as Record<string, unknown>).source_match;
         }
 
         const { data, error } = await supabaseAdmin.rpc("bot_upsert_table_row", {
