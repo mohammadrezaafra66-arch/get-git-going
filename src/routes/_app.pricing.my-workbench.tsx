@@ -492,6 +492,11 @@ function DesktopRow({
         {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
       <TableCell className="text-xs">{(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)}</TableCell>
+      <TableCell className="text-xs">
+        {hasValidSalePrice(row.sale_price)
+          ? formatNumber(row.sale_price as number)
+          : <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>}
+      </TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
           <SelectTrigger className="h-8 w-28">
@@ -506,6 +511,34 @@ function DesktopRow({
             <SelectItem value="unknown">نامشخص</SelectItem>
           </SelectContent>
         </Select>
+      </TableCell>
+      <TableCell className="text-xs">
+        {row.status === "active" ? (
+          <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-xs max-w-[180px]">
+        <div className="space-y-1">
+          {noOwner ? (
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
+          ) : (
+            <div className="truncate text-muted-foreground" title={row.owners.map((o) => o.full_name ?? o.user_id).join("، ")}>
+              {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
+            </div>
+          )}
+          {row.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {row.tags.slice(0, 3).map((t) => (
+                <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
+              ))}
+              {row.tags.length > 3 && (
+                <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 3}</Badge>
+              )}
+            </div>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
