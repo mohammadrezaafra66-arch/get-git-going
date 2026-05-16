@@ -1011,6 +1011,7 @@ const GridCell = forwardRef<HTMLDivElement, {
   isFocused: boolean;
   isEditing: boolean;
   initialEditValue?: string;
+  displayOverride?: React.ReactNode | null;
   onFocusCell: () => void;
   onRequestEdit: (initial?: string) => void;
   onClearCell: () => Promise<void> | void;
@@ -1020,10 +1021,11 @@ const GridCell = forwardRef<HTMLDivElement, {
 }>(function GridCell(props, ref) {
   const {
     column, value, width, canEdit, inactive, isFocused, isEditing, initialEditValue,
+    displayOverride,
     onFocusCell, onRequestEdit, onClearCell, onCancelEdit, onCommitEdit, onNavigate,
   } = props;
 
-  const display = useMemo(() => {
+  const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
     if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
@@ -1035,6 +1037,7 @@ const GridCell = forwardRef<HTMLDivElement, {
     if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
+  const display: React.ReactNode = displayOverride ?? defaultDisplay;
 
   const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isEditing) return;
