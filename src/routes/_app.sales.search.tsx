@@ -39,6 +39,11 @@ import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/Create
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
+import {
+  fetchObservatorySnippetsForProducts,
+  type ObservatorySnippet,
+} from "@/lib/sales/observatory-snippets";
+import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -261,6 +266,29 @@ function SalesSearchPage() {
 
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
+
+  // ---------- DT.7H: Observatory snippets for current page of results ----------
+  // Read-only sidecar query. Never blocks/replaces the main search.
+  const productIdsForSnippets = useMemo(
+    () => products.map((p) => p.id).filter(Boolean),
+    [products],
+  );
+  const observatorySnippetsQuery = useQuery({
+    enabled: productIdsForSnippets.length > 0,
+    queryKey: ["sales-search-observatory-snippets", productIdsForSnippets],
+    queryFn: () => fetchObservatorySnippetsForProducts(productIdsForSnippets),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+  if (observatorySnippetsQuery.isError && import.meta.env.DEV) {
+    // Silent in production; never surfaces a toast to the seller.
+    console.warn(
+      "[sales-search] Observatory snippet fetch failed:",
+      observatorySnippetsQuery.error,
+    );
+  }
+  const snippetMap = observatorySnippetsQuery.data ?? {};
 
   // ---------- label-mode total count (only enabled in label-mode) ----------
   const labelModeCountQuery = useQuery({
