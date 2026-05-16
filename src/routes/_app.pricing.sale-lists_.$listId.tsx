@@ -82,6 +82,10 @@ import {
 } from "@/lib/pdf/sale-list-pdf";
 import { fetchShopSettings } from "@/lib/shop/settings";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
+import {
+  fetchObservatoryPdfHintsForProducts,
+  type ObservatoryPdfHintMap,
+} from "@/lib/sales/observatory-snippets";
 
 const PAGE_SIZE = 20;
 
@@ -362,7 +366,11 @@ function SaleListDetailPage() {
     overrideBrandOrder?: string[],
     overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
+    observatoryHints?: ObservatoryPdfHintMap,
   ): SaleListPdfInput => {
+    // Default-on column set for legacy lists with NULL selected_columns.
+    // `observatory_price_advantage` is intentionally excluded so existing
+    // lists never start exposing Observatory hints without an explicit opt-in.
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
@@ -430,6 +438,9 @@ function SaleListDetailPage() {
             it.product?.description ?? null,
             it.product?.id ? attrsMap[it.product.id] : undefined,
           ),
+          observatory_has_price_advantage: it.product?.id
+            ? observatoryHints?.[it.product.id] === true
+            : false,
         };
       }),
       options: {
