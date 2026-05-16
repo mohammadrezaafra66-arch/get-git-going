@@ -4,6 +4,12 @@
 
 > ⚠️ نکته Encoding: برای جلوگیری از خطای parser در Windows PowerShell 5.1، خروجی فایل‌های `*.ps1` انگلیسی و ASCII-only نوشته شده‌اند. راهنمای فارسی فقط در همین README می‌ماند.
 
+> ⚠️ نکته Registry: اگر `docker compose build` با خطای **HTTP 403** از آدرس‌هایی مثل `europe-west1-npm.pkg.dev` یا `lovable-core-prod/sandbox-npm-cache` متوقف شد، یعنی build در حال تلاش برای استفاده از کش خصوصی Lovable است که برای self-host قابل دسترسی نیست. Dockerfile پروژه برای LAN/self-host عمداً registry را روی `https://registry.npmjs.org/` ثابت می‌کند و `bun.lock` را داخل image کپی نمی‌کند تا resolve از npm عمومی انجام شود. اگر این خطا برگشت، مطمئن شوید آخرین تغییرات repo را `git pull` کرده‌اید و سپس:
+>
+> ```powershell
+> docker compose -f deploy\lan\docker-compose.yml build --no-cache app
+> ```
+
 ## ۱. هدف LAN Pilot
 
 - اجرای کامل اپ و Supabase موردنیاز روی یک لپ‌تاپ با Docker.
