@@ -540,6 +540,11 @@ function AccessRowCard({
           <Switch checked={canUpdate} onCheckedChange={setCanUpdate} /> به‌روزرسانی
         </label>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        خواندن = اجازه GET؛ به‌روزرسانی = اجازه PATCH و POST (افزودن ردیف جدید).
+        برای اینکه ربات بتواند ردیف جدید ثبت کند، «به‌روزرسانی» باید فعال باشد و
+        ستون‌های مجاز انتخاب شده باشند.
+      </p>
       {canUpdate && (
         <div className="space-y-1">
           <Label className="text-xs">ستون‌های قابل به‌روزرسانی</Label>
