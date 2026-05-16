@@ -666,6 +666,35 @@ function MobileCard({
           {statusBadge}
         </div>
 
+        {/* Meta: status + sale price + owner + tags */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          {row.status === "active" ? (
+            <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
+          )}
+          {hasValidSalePrice(row.sale_price) ? (
+            <Badge variant="secondary" className="text-[10px]">
+              فروش: {formatNumber(row.sale_price as number)}
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>
+          )}
+          {row.owners.length === 0 ? (
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">
+              مسئول: {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
+            </Badge>
+          )}
+          {row.tags.slice(0, 4).map((t) => (
+            <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
+          ))}
+          {row.tags.length > 4 && (
+            <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 4}</Badge>
+          )}
+        </div>
+
         <div>
           <Label className="mb-1 flex items-center justify-between text-xs">
             <span>قیمت خرید ({(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)})</span>
