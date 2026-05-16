@@ -148,6 +148,7 @@ interface SaleListItemRow {
         name: string;
         sku: string | null;
         model: string | null;
+        description: string | null;
         brand: { name: string } | null;
         category: { name: string } | null;
       }
@@ -191,7 +192,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_list_items")
         .select(
-          "id, product_id, current_price, previous_price, change_amount, change_percent, stock_status, sort_order, product:products(id, name, sku, model, brand:brands(name), category:categories(name))",
+          "id, product_id, current_price, previous_price, change_amount, change_percent, stock_status, sort_order, product:products(id, name, sku, model, description, brand:brands(name), category:categories(name))",
         )
         .eq("sale_list_id", listId)
         .order("sort_order", { ascending: true });
@@ -365,6 +366,7 @@ function SaleListDetailPage() {
           change_amount,
           change_percent,
           stock_status: it.stock_status,
+          description: it.product?.description ?? null,
         };
       }),
       options: {
