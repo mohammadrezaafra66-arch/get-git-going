@@ -575,7 +575,26 @@ function SaleListDetailPage() {
       } catch (err) {
         console.warn("fetch live prices for PDF failed; using snapshot", err);
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices);
+      // Observatory PDF hints — opt-in only. Skip entirely (zero overhead)
+      // when the "مزیت قیمت" column is not selected. Degrade gracefully on
+      // any error so the PDF still renders.
+      let observatoryHints: ObservatoryPdfHintMap | undefined;
+      if (selectedCols.includes("observatory_price_advantage")) {
+        try {
+          const productIds = items
+            .map((it) => it.product?.id)
+            .filter((x): x is string => !!x);
+          if (productIds.length > 0) {
+            observatoryHints = await fetchObservatoryPdfHintsForProducts(productIds);
+          }
+        } catch (err) {
+          console.warn(
+            "fetch observatory PDF hints failed; price-advantage column will be empty",
+            err,
+          );
+        }
+      }
+      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints);
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
