@@ -1,54 +1,47 @@
 # show-ip.ps1
-# نمایش IPهای IPv4 فعال لپ‌تاپ برای تنظیم LAN_HOST_IP.
-# سازگار با Windows PowerShell 5.1.
+# Show active IPv4 addresses for LAN_HOST_IP configuration.
+# ASCII-only. Compatible with Windows PowerShell 5.1.
 
 $ErrorActionPreference = "Continue"
-$targetIp = "192.168.170.10"
+$defaultIp = "192.168.170.10"
 
-Write-Host "=== IPهای فعال این لپ‌تاپ ===" -ForegroundColor Cyan
+Write-Host "Active IPv4 addresses:"
 Write-Host ""
 
 $all = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue
 $addrs = @()
 foreach ($a in $all) {
-    $ip = $a.IPAddress
-    if ($ip -like "127.*") { continue }
-    if ($ip -like "169.254.*") { continue }
+    if ($a.IPAddress -like "127.*") { continue }
+    if ($a.IPAddress -like "169.254.*") { continue }
     if ($a.PrefixOrigin -eq "WellKnown") { continue }
     $addrs += $a
 }
 
 if ($addrs.Count -eq 0) {
-    Write-Host "هیچ IPv4 فعالی پیدا نشد. آیا کابل LAN یا Wi-Fi وصل است؟" -ForegroundColor Yellow
+    Write-Host "No active IPv4 address found. Check LAN cable or Wi-Fi."
     exit 1
 }
 
 $found = $false
 foreach ($a in $addrs) {
     $marker = ""
-    if ($a.IPAddress -eq $targetIp) {
-        $marker = "  <-- LAN_HOST_IP پیش‌فرض"
+    if ($a.IPAddress -eq $defaultIp) {
+        $marker = " [DEFAULT LAN IP]"
         $found = $true
     }
-    Write-Host ("Interface : {0}" -f $a.InterfaceAlias) -ForegroundColor White
-    if ($marker) {
-        Write-Host ("IP        : {0}{1}" -f $a.IPAddress, $marker) -ForegroundColor Green
-    } else {
-        Write-Host ("IP        : {0}" -f $a.IPAddress) -ForegroundColor Green
-    }
-    Write-Host ("Prefix    : /{0}" -f $a.PrefixLength)
+    Write-Host ("Interface: {0}" -f $a.InterfaceAlias)
+    Write-Host ("IP       : {0}{1}" -f $a.IPAddress, $marker)
+    Write-Host ("Prefix   : /{0}" -f $a.PrefixLength)
     Write-Host ""
 }
 
-Write-Host "راهنما:" -ForegroundColor Cyan
-Write-Host "- IP اینترفیس متصل به شبکه شرکت (LAN/Wi-Fi شرکت) را انتخاب کنید." -ForegroundColor Gray
-Write-Host "- معمولا شبیه 192.168.x.x یا 10.x.x.x است." -ForegroundColor Gray
-Write-Host "- این IP را در deploy/lan/.env.lan در LAN_HOST_IP, VITE_SUPABASE_URL," -ForegroundColor Gray
-Write-Host "  SITE_URL, API_EXTERNAL_URL و ADDITIONAL_REDIRECT_URLS جایگزین کنید." -ForegroundColor Gray
-Write-Host "- بهتر است IP لپ‌تاپ روی روتر شرکت رزرو (static lease) شود." -ForegroundColor Gray
-
+Write-Host "Hints:"
+Write-Host "- Pick the IP connected to the company LAN or Wi-Fi (usually 192.168.x.x or 10.x.x.x)."
+Write-Host "- Put this IP into deploy/lan/.env.lan as LAN_HOST_IP, VITE_SUPABASE_URL,"
+Write-Host "  SITE_URL, API_EXTERNAL_URL and ADDITIONAL_REDIRECT_URLS."
+Write-Host "- It is recommended to reserve this IP as a static lease on the router."
+Write-Host ""
+Write-Host ("Default suggested IP: {0}" -f $defaultIp)
 if (-not $found) {
-    Write-Host ""
-    Write-Host ("توجه: IP پیش‌فرض {0} روی این لپ‌تاپ پیدا نشد." -f $targetIp) -ForegroundColor Yellow
-    Write-Host "می‌توانید IP فعلی بالا را استفاده کنید، یا روی روتر آن را به این مقدار تغییر دهید." -ForegroundColor Yellow
+    Write-Host ("Note: default IP {0} not found on this laptop. You can use one of the IPs above, or set this IP on the router." -f $defaultIp)
 }

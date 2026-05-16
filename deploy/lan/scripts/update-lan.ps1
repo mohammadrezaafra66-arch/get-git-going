@@ -1,10 +1,10 @@
 # update-lan.ps1
-# آپدیت سریع LAN deployment از GitHub بعد از تغییرات Lovable.
-# اجرا از root پروژه یا از deploy/lan هر دو پشتیبانی می‌شود.
+# Quick update of LAN deployment from GitHub after Lovable changes.
+# Works from repo root or from deploy/lan.
+# ASCII-only. Compatible with Windows PowerShell 5.1.
 
 $ErrorActionPreference = "Stop"
 
-# پیدا کردن root پروژه (دایرکتوری حاوی deploy/lan)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $lanDir    = Resolve-Path (Join-Path $scriptDir "..")
 $repoRoot  = Resolve-Path (Join-Path $lanDir "..\..")
@@ -13,11 +13,11 @@ $composeFile = Join-Path $lanDir "docker-compose.yml"
 $envFile     = Join-Path $lanDir ".env.lan"
 
 if (-not (Test-Path $envFile)) {
-    Write-Host "deploy/lan/.env.lan پیدا نشد. ابتدا از .env.lan.example بسازید." -ForegroundColor Red
+    Write-Host "deploy/lan/.env.lan not found. Create it from .env.lan.example first." -ForegroundColor Red
+    Write-Host "  powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1" -ForegroundColor Yellow
     exit 1
 }
 
-# خواندن مقادیر کلیدی از .env.lan با fallback
 function Get-EnvValue($path, $key, $fallback) {
     $line = Select-String -Path $path -Pattern ("^\s*{0}=(.*)$" -f [regex]::Escape($key)) |
             Select-Object -First 1
@@ -28,9 +28,9 @@ function Get-EnvValue($path, $key, $fallback) {
     return $fallback
 }
 
-$appPort   = Get-EnvValue $envFile "APP_PORT"          "3000"
-$apiPort   = Get-EnvValue $envFile "SUPABASE_API_PORT" "8000"
-$lanIp     = Get-EnvValue $envFile "LAN_HOST_IP"       "LAN_HOST_IP"
+$appPort = Get-EnvValue $envFile "APP_PORT"          "3000"
+$apiPort = Get-EnvValue $envFile "SUPABASE_API_PORT" "8000"
+$lanIp   = Get-EnvValue $envFile "LAN_HOST_IP"       "LAN_HOST_IP"
 
 Push-Location $repoRoot
 try {
@@ -38,7 +38,7 @@ try {
     git pull origin main
 
     Write-Host ""
-    Write-Host "[2/5] آخرین commit:" -ForegroundColor Cyan
+    Write-Host "[2/5] Latest commit:" -ForegroundColor Cyan
     git log -1 --pretty=format:"%h  %an  %s" | Write-Host
     Write-Host ""
 
@@ -64,12 +64,12 @@ try {
             Start-Sleep -Seconds 2
         }
         if ($i -eq 19) {
-            Write-Host "App هنوز جواب نداد. docker compose logs -f web را بررسی کنید." -ForegroundColor Yellow
+            Write-Host "App did not respond yet. Check: docker compose logs -f web" -ForegroundColor Yellow
         }
     }
 
     Write-Host ""
-    Write-Host "=== آدرس برای کاربران شبکه ===" -ForegroundColor Cyan
+    Write-Host "=== LAN URLs for users ===" -ForegroundColor Cyan
     Write-Host ("App          : http://{0}:{1}" -f $lanIp, $appPort) -ForegroundColor Green
     Write-Host ("Supabase API : http://{0}:{1}" -f $lanIp, $apiPort) -ForegroundColor Green
 }

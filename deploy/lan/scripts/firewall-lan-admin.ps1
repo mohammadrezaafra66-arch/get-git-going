@@ -1,18 +1,19 @@
 # firewall-lan-admin.ps1
-# باز کردن پورت‌های LAN Pilot افراکالا در Windows Firewall.
-# باید با PowerShell Administrator اجرا شود.
+# Open AfraKala LAN Pilot ports in Windows Firewall.
+# Must be run from PowerShell as Administrator.
+# ASCII-only. Compatible with Windows PowerShell 5.1.
 
 $ErrorActionPreference = "Stop"
 
-# --- بررسی Administrator ---
+# --- Check Administrator ---
 $current = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $current.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "این اسکریپت باید با PowerShell به‌عنوان Administrator اجرا شود." -ForegroundColor Red
-    Write-Host "روی Start کلیک راست -> Windows PowerShell (Admin) -> دوباره اجرا کنید." -ForegroundColor Yellow
+    Write-Host "This script must be run from PowerShell as Administrator." -ForegroundColor Red
+    Write-Host "Right-click Start -> Windows PowerShell (Admin) -> run again." -ForegroundColor Yellow
     exit 1
 }
 
-# --- خواندن portها از .env.lan ---
+# --- Read ports from .env.lan ---
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $lanDir    = Resolve-Path (Join-Path $scriptDir "..")
 $envFile   = Join-Path $lanDir ".env.lan"
@@ -31,11 +32,11 @@ function Get-EnvValue($path, $key, $fallback) {
 $appPort = Get-EnvValue $envFile "APP_PORT"          "3000"
 $apiPort = Get-EnvValue $envFile "SUPABASE_API_PORT" "8000"
 
-# --- اضافه کردن ruleها ---
+# --- Add rules ---
 function Add-LanRule($displayName, $port) {
     $existing = Get-NetFirewallRule -DisplayName $displayName -ErrorAction SilentlyContinue
     if ($existing) {
-        Write-Host ("rule از قبل وجود دارد: {0}" -f $displayName) -ForegroundColor Yellow
+        Write-Host ("Rule already exists: {0}" -f $displayName) -ForegroundColor Yellow
         return
     }
     New-NetFirewallRule `
@@ -45,13 +46,13 @@ function Add-LanRule($displayName, $port) {
         -LocalPort $port `
         -Action Allow `
         -Profile Private,Domain | Out-Null
-    Write-Host ("rule اضافه شد: {0} (TCP {1})" -f $displayName, $port) -ForegroundColor Green
+    Write-Host ("Rule added: {0} (TCP {1})" -f $displayName, $port) -ForegroundColor Green
 }
 
 Add-LanRule ("AfraKala LAN App {0}"          -f $appPort) $appPort
 Add-LanRule ("AfraKala LAN Supabase API {0}" -f $apiPort) $apiPort
 
 Write-Host ""
-Write-Host "Firewall آماده شد. این پنجره PowerShell Admin را ببندید." -ForegroundColor Green
-Write-Host "ادامه کار را با PowerShell عادی انجام دهید:" -ForegroundColor Cyan
+Write-Host "Firewall is ready. You can close this Admin PowerShell window." -ForegroundColor Green
+Write-Host "Continue in a normal PowerShell window:" -ForegroundColor Cyan
 Write-Host "  powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1" -ForegroundColor Gray

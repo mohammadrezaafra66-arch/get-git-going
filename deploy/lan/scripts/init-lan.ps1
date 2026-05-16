@@ -1,10 +1,11 @@
 # init-lan.ps1
-# آماده‌سازی اولیه LAN Pilot افراکالا روی لپ‌تاپ شرکت.
-# - ساخت deploy/lan/.env.lan از روی example
-# - تنظیم IP و portها
-# - تولید POSTGRES_PASSWORD / JWT_SECRET / ANON_KEY / SERVICE_ROLE_KEY اگر خالی باشند
-# - کپی kong.yml از example اگر وجود نداشته باشد
-# هیچ secret در console چاپ نمی‌شود. هیچ چیزی commit نمی‌شود.
+# Initial setup for AfraKala LAN Pilot on the company laptop.
+# - Creates deploy/lan/.env.lan from example
+# - Sets IP and ports
+# - Generates POSTGRES_PASSWORD / JWT_SECRET / ANON_KEY / SERVICE_ROLE_KEY if empty
+# - Copies kong.yml from example if missing
+# Secrets are never printed. Nothing is committed.
+# ASCII-only. Compatible with Windows PowerShell 5.1.
 
 $ErrorActionPreference = "Stop"
 
@@ -19,28 +20,28 @@ $kongDir     = Join-Path $repoRoot "deploy\supabase\volumes\api"
 $kongFile    = Join-Path $kongDir "kong.yml"
 $kongExample = Join-Path $repoRoot "deploy\supabase\kong.yml.example"
 
-# --- 1. گرفتن IP ---
+# --- 1. Get IP ---
 $defaultIp = "192.168.170.10"
-$inputIp = Read-Host ("IP لپ‌تاپ روی شبکه شرکت را وارد کنید [{0}]" -f $defaultIp)
+$inputIp = Read-Host ("Enter laptop LAN IP [{0}]" -f $defaultIp)
 if ([string]::IsNullOrWhiteSpace($inputIp)) { $inputIp = $defaultIp }
 
 if ($inputIp -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
-    Write-Host "IP نامعتبر است: $inputIp" -ForegroundColor Red
+    Write-Host ("Invalid IP: {0}" -f $inputIp) -ForegroundColor Red
     exit 1
 }
 $lanIp = $inputIp
 
-# --- 2. ساخت .env.lan از example ---
+# --- 2. Create .env.lan from example ---
 if (-not (Test-Path $envExample)) {
-    Write-Host "deploy/lan/.env.lan.example پیدا نشد." -ForegroundColor Red
+    Write-Host "deploy/lan/.env.lan.example not found." -ForegroundColor Red
     exit 1
 }
 
 if (-not (Test-Path $envFile)) {
     Copy-Item $envExample $envFile
-    Write-Host ".env.lan از روی example ساخته شد." -ForegroundColor Green
+    Write-Host ".env.lan created from example." -ForegroundColor Green
 } else {
-    Write-Host ".env.lan از قبل وجود دارد؛ مقادیر موجود حفظ می‌شوند." -ForegroundColor Yellow
+    Write-Host ".env.lan already exists; existing values are preserved." -ForegroundColor Yellow
 }
 
 # --- helpers ---
@@ -80,7 +81,6 @@ function Set-EnvValue($path, $key, $value) {
 function New-RandomSecret($byteCount) {
     $bytes = New-Object byte[] $byteCount
     [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-    # url-safe base64 without padding
     $b64 = [Convert]::ToBase64String($bytes)
     return ($b64 -replace '\+','-' -replace '/','_' -replace '=','')
 }
@@ -94,7 +94,6 @@ function New-SupabaseJwt($role, $secret) {
     $headerObj  = [ordered]@{ alg = "HS256"; typ = "JWT" }
     $epoch = New-Object DateTime 1970,1,1,0,0,0,([DateTimeKind]::Utc)
     $iat = [int][math]::Floor(((Get-Date).ToUniversalTime() - $epoch).TotalSeconds)
-    # 10 سال اعتبار
     $exp = $iat + (60 * 60 * 24 * 365 * 10)
     $payloadObj = [ordered]@{
         role = $role
@@ -118,7 +117,7 @@ function New-SupabaseJwt($role, $secret) {
     return "{0}.{1}" -f $signingInput, $sigB64
 }
 
-# --- 3. ست کردن IP و portها ---
+# --- 3. Set IP and ports ---
 Set-EnvValue $envFile "LAN_HOST_IP"             $lanIp
 Set-EnvValue $envFile "APP_PORT"                "3000"
 Set-EnvValue $envFile "SUPABASE_API_PORT"       "8000"
@@ -134,16 +133,16 @@ Set-EnvValue $envFile "NODE_ENV"                "production"
 Set-EnvValue $envFile "PORT"                    "3000"
 Set-EnvValue $envFile "HOST"                    "0.0.0.0"
 
-Write-Host "IP و portها در .env.lan تنظیم شد." -ForegroundColor Green
+Write-Host "IP and ports set in .env.lan." -ForegroundColor Green
 
-# --- 4/5/6/7. ساخت secretها اگر خالی هستند ---
+# --- 4/5/6/7. Generate secrets if empty ---
 $env = Read-EnvMap $envFile
 
 if ([string]::IsNullOrWhiteSpace($env["POSTGRES_PASSWORD"])) {
     Set-EnvValue $envFile "POSTGRES_PASSWORD" (New-RandomSecret 24)
-    Write-Host "POSTGRES_PASSWORD تولید شد." -ForegroundColor Green
+    Write-Host "POSTGRES_PASSWORD generated." -ForegroundColor Green
 } else {
-    Write-Host "POSTGRES_PASSWORD از قبل تنظیم شده — تغییر نکرد." -ForegroundColor Yellow
+    Write-Host "POSTGRES_PASSWORD already set - kept." -ForegroundColor Yellow
 }
 
 $env = Read-EnvMap $envFile
@@ -151,9 +150,9 @@ $jwtSecret = $env["JWT_SECRET"]
 if ([string]::IsNullOrWhiteSpace($jwtSecret) -or $jwtSecret.Length -lt 32) {
     $jwtSecret = New-RandomSecret 48
     Set-EnvValue $envFile "JWT_SECRET" $jwtSecret
-    Write-Host "JWT_SECRET تولید شد." -ForegroundColor Green
+    Write-Host "JWT_SECRET generated." -ForegroundColor Green
 } else {
-    Write-Host "JWT_SECRET از قبل تنظیم شده — تغییر نکرد." -ForegroundColor Yellow
+    Write-Host "JWT_SECRET already set - kept." -ForegroundColor Yellow
 }
 Set-EnvValue $envFile "JWT_EXPIRY" "3600"
 
@@ -166,9 +165,9 @@ if ([string]::IsNullOrWhiteSpace($anon) -or [string]::IsNullOrWhiteSpace($servic
     $service = New-SupabaseJwt "service_role" $jwtSecret
     Set-EnvValue $envFile "ANON_KEY"         $anon
     Set-EnvValue $envFile "SERVICE_ROLE_KEY" $service
-    Write-Host "ANON_KEY و SERVICE_ROLE_KEY تولید شدند." -ForegroundColor Green
+    Write-Host "ANON_KEY and SERVICE_ROLE_KEY generated." -ForegroundColor Green
 } else {
-    Write-Host "ANON_KEY و SERVICE_ROLE_KEY از قبل تنظیم شده‌اند — تغییر نکردند." -ForegroundColor Yellow
+    Write-Host "ANON_KEY and SERVICE_ROLE_KEY already set - kept." -ForegroundColor Yellow
 }
 
 Set-EnvValue $envFile "VITE_SUPABASE_PUBLISHABLE_KEY" $anon
@@ -178,29 +177,29 @@ Set-EnvValue $envFile "SUPABASE_SERVICE_ROLE_KEY"     $service
 # --- 10/11. kong.yml ---
 if (-not (Test-Path $kongDir)) {
     New-Item -ItemType Directory -Force -Path $kongDir | Out-Null
-    Write-Host "deploy/supabase/volumes/api ساخته شد." -ForegroundColor Green
+    Write-Host "deploy/supabase/volumes/api created." -ForegroundColor Green
 }
 if (-not (Test-Path $kongFile)) {
     if (-not (Test-Path $kongExample)) {
-        Write-Host "deploy/supabase/kong.yml.example پیدا نشد." -ForegroundColor Red
+        Write-Host "deploy/supabase/kong.yml.example not found." -ForegroundColor Red
         exit 1
     }
     Copy-Item $kongExample $kongFile
-    Write-Host "kong.yml از روی example کپی شد." -ForegroundColor Green
+    Write-Host "kong.yml copied from example." -ForegroundColor Green
 } else {
-    Write-Host "kong.yml از قبل وجود دارد — تغییر نکرد." -ForegroundColor Yellow
+    Write-Host "kong.yml already exists - kept." -ForegroundColor Yellow
 }
 
-# --- 14. مراحل بعدی ---
+# --- Next steps ---
 Write-Host ""
-Write-Host "=== مراحل بعدی ===" -ForegroundColor Cyan
-Write-Host "1) باز کردن پورت‌ها در Firewall (با PowerShell Admin):" -ForegroundColor White
+Write-Host "=== Next steps ===" -ForegroundColor Cyan
+Write-Host "1) Open firewall ports (run PowerShell as Administrator):" -ForegroundColor White
 Write-Host "   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\firewall-lan-admin.ps1" -ForegroundColor Gray
-Write-Host "2) build و اجرای stack (با PowerShell عادی):" -ForegroundColor White
+Write-Host "2) Build and start the stack (normal PowerShell):" -ForegroundColor White
 Write-Host "   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1" -ForegroundColor Gray
-Write-Host "3) بررسی سلامت:" -ForegroundColor White
+Write-Host "3) Health check:" -ForegroundColor White
 Write-Host "   powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1" -ForegroundColor Gray
 Write-Host ""
-Write-Host ("آدرس کاربران شبکه: http://{0}:3000" -f $lanIp) -ForegroundColor Green
+Write-Host ("LAN users URL: http://{0}:3000" -f $lanIp) -ForegroundColor Green
 Write-Host ""
-Write-Host "⚠ deploy/lan/.env.lan را هرگز commit نکنید." -ForegroundColor Yellow
+Write-Host "WARNING: Never commit deploy/lan/.env.lan." -ForegroundColor Yellow
