@@ -220,6 +220,52 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  // Category-specific product attributes for items, used only inside PDF "description" column.
+  const productIdsForAttrs = useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of (itemsQ.data ?? [])) {
+      if (it.product?.id) ids.add(it.product.id);
+    }
+    return Array.from(ids).sort();
+  }, [itemsQ.data]);
+
+  const productAttrsQ = useQuery({
+    queryKey: ["sale-list-product-attrs", listId, productIdsForAttrs],
+    enabled: productIdsForAttrs.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_category_attribute_values")
+        .select("product_id, value, def:category_product_attributes(id, label_fa, sort_order, is_active)")
+        .in("product_id", productIdsForAttrs);
+      if (error) throw error;
+      type Row = {
+        product_id: string;
+        value: string | null;
+        def: { id: string; label_fa: string; sort_order: number | null; is_active: boolean | null } | null;
+      };
+      const rows = (data ?? []) as unknown as Row[];
+      const byProduct = new Map<string, { label: string; value: string; sort: number }[]>();
+      for (const r of rows) {
+        const v = (r.value ?? "").trim();
+        if (!v) continue;
+        if (!r.def) continue;
+        if (r.def.is_active === false) continue;
+        const label = (r.def.label_fa ?? "").trim();
+        if (!label) continue;
+        const arr = byProduct.get(r.product_id) ?? [];
+        arr.push({ label, value: v, sort: r.def.sort_order ?? 0 });
+        byProduct.set(r.product_id, arr);
+      }
+      const formatted: Record<string, string> = {};
+      for (const [pid, arr] of byProduct) {
+        arr.sort((a, b) => (a.sort - b.sort) || a.label.localeCompare(b.label, "fa"));
+        formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
+      }
+      return formatted;
+    },
+  });
+
   // PDF density / font controls
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
@@ -316,6 +362,15 @@ function SaleListDetailPage() {
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
     const shop = shopSettingsQ.data;
+    const attrsMap = productAttrsQ.data ?? {};
+    const combineDescAndAttrs = (desc: string | null | undefined, attrs: string | undefined): string | null => {
+      const d = (desc ?? "").trim();
+      const a = (attrs ?? "").trim();
+      if (d && a) return `${d}\nویژگی‌ها: ${a}`;
+      if (d) return d;
+      if (a) return `ویژگی‌ها: ${a}`;
+      return null;
+    };
     return {
       listName: list.name,
       versionNumber: list.version_number,
@@ -366,7 +421,10 @@ function SaleListDetailPage() {
           change_amount,
           change_percent,
           stock_status: it.stock_status,
-          description: it.product?.description ?? null,
+          description: combineDescAndAttrs(
+            it.product?.description ?? null,
+            it.product?.id ? attrsMap[it.product.id] : undefined,
+          ),
         };
       }),
       options: {
@@ -467,6 +525,14 @@ function SaleListDetailPage() {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
         await persistPdfOrder();
+      }
+      // Ensure category-specific product attributes are loaded if "description"
+      // column will be rendered (PDF combines product.description + attributes).
+      const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
+      if (selectedCols.includes("description") && productIdsForAttrs.length > 0 && !productAttrsQ.data) {
+        try { await productAttrsQ.refetch(); } catch (err) {
+          console.warn("fetch product attributes for PDF failed; description will omit attributes", err);
+        }
       }
       // Fetch latest live sale prices for items that may have stale/zero snapshots
       let livePrices: Map<string, number> | undefined;
