@@ -8034,6 +8034,15 @@ export type Database = {
         Args: { _default: number; _key: string }
         Returns: number
       }
+      get_observatory_snippets_for_products: {
+        Args: { p_product_ids: string[] }
+        Returns: {
+          competitive_price_status: string
+          product_id: string
+          sales_opportunity_score: number
+          suggested_sales_message: string
+        }[]
+      }
       get_payable_detail: {
         Args: { p_purchase_id?: string; p_supplier_id?: string }
         Returns: {

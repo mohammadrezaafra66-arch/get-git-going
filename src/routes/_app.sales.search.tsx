@@ -39,6 +39,11 @@ import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/Create
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
+import {
+  fetchObservatorySnippetsForProducts,
+  type ObservatorySnippet,
+} from "@/lib/sales/observatory-snippets";
+import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => { await requirePermission("sales", "view"); },
@@ -261,6 +266,29 @@ function SalesSearchPage() {
 
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
+
+  // ---------- DT.7H: Observatory snippets for current page of results ----------
+  // Read-only sidecar query. Never blocks/replaces the main search.
+  const productIdsForSnippets = useMemo(
+    () => products.map((p) => p.id).filter(Boolean),
+    [products],
+  );
+  const observatorySnippetsQuery = useQuery({
+    enabled: productIdsForSnippets.length > 0,
+    queryKey: ["sales-search-observatory-snippets", productIdsForSnippets],
+    queryFn: () => fetchObservatorySnippetsForProducts(productIdsForSnippets),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+  if (observatorySnippetsQuery.isError && import.meta.env.DEV) {
+    // Silent in production; never surfaces a toast to the seller.
+    console.warn(
+      "[sales-search] Observatory snippet fetch failed:",
+      observatorySnippetsQuery.error,
+    );
+  }
+  const snippetMap = observatorySnippetsQuery.data ?? {};
 
   // ---------- label-mode total count (only enabled in label-mode) ----------
   const labelModeCountQuery = useQuery({
@@ -617,6 +645,7 @@ function SalesSearchPage() {
                 primarySalePriceTypeId={salePriceTypeId}
                 isPrivileged={isPrivileged}
                 canRecalcPrice={canRecalcPrice}
+                observatorySnippet={snippetMap[p.id] ?? null}
                 onRecalcDone={() => {
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                   queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc-label-mode"] });
@@ -706,11 +735,12 @@ interface ProductCardProps {
   primarySalePriceTypeId: string;
   isPrivileged: boolean;
   canRecalcPrice: boolean;
+  observatorySnippet?: ObservatorySnippet | null;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalcDone, onOpenChart }: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, observatorySnippet, onRecalcDone, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
   const prices = product.prices ?? [];
@@ -895,6 +925,10 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, onRecalc
             </div>
           )}
         </div>
+
+        {/* DT.7H — Read-only Observatory hints (status / opportunity / message).
+            Rendered only when a snippet exists for this product. */}
+        <ObservatoryBadges snippet={observatorySnippet} />
 
         {/* Secondary prices grid */}
         {!isUnavailable && others.length > 0 && (
