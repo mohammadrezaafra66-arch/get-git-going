@@ -26,6 +26,7 @@ import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
+import { Route as AppMarketMatchesRouteImport } from './routes/_app.market-matches'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
 import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppGamificationRouteImport } from './routes/_app.gamification'
@@ -237,6 +238,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
 const AppMessagesRoute = AppMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMarketMatchesRoute = AppMarketMatchesRouteImport.update({
+  id: '/market-matches',
+  path: '/market-matches',
   getParentRoute: () => AppRoute,
 } as any)
 const AppKnowledgeRoute = AppKnowledgeRouteImport.update({
@@ -947,6 +953,7 @@ export interface FileRoutesByFullPath {
   '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
+  '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
   '/price-lists': typeof AppPriceListsRoute
@@ -1092,6 +1099,7 @@ export interface FileRoutesByTo {
   '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
+  '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
   '/price-lists': typeof AppPriceListsRoute
@@ -1238,6 +1246,7 @@ export interface FileRoutesById {
   '/_app/gamification': typeof AppGamificationRouteWithChildren
   '/_app/invoices': typeof AppInvoicesRoute
   '/_app/knowledge': typeof AppKnowledgeRoute
+  '/_app/market-matches': typeof AppMarketMatchesRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/price-lists': typeof AppPriceListsRoute
@@ -1386,6 +1395,7 @@ export interface FileRouteTypes {
     | '/gamification'
     | '/invoices'
     | '/knowledge'
+    | '/market-matches'
     | '/messages'
     | '/notifications'
     | '/price-lists'
@@ -1531,6 +1541,7 @@ export interface FileRouteTypes {
     | '/gamification'
     | '/invoices'
     | '/knowledge'
+    | '/market-matches'
     | '/messages'
     | '/notifications'
     | '/price-lists'
@@ -1676,6 +1687,7 @@ export interface FileRouteTypes {
     | '/_app/gamification'
     | '/_app/invoices'
     | '/_app/knowledge'
+    | '/_app/market-matches'
     | '/_app/messages'
     | '/_app/notifications'
     | '/_app/price-lists'
@@ -1946,6 +1958,13 @@ declare module '@tanstack/react-router' {
       path: '/messages'
       fullPath: '/messages'
       preLoaderRoute: typeof AppMessagesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/market-matches': {
+      id: '/_app/market-matches'
+      path: '/market-matches'
+      fullPath: '/market-matches'
+      preLoaderRoute: typeof AppMarketMatchesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/knowledge': {
@@ -3044,6 +3063,7 @@ interface AppRouteChildren {
   AppGamificationRoute: typeof AppGamificationRouteWithChildren
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppKnowledgeRoute: typeof AppKnowledgeRoute
+  AppMarketMatchesRoute: typeof AppMarketMatchesRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
@@ -3140,6 +3160,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGamificationRoute: AppGamificationRouteWithChildren,
   AppInvoicesRoute: AppInvoicesRoute,
   AppKnowledgeRoute: AppKnowledgeRoute,
+  AppMarketMatchesRoute: AppMarketMatchesRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPriceListsRoute: AppPriceListsRoute,

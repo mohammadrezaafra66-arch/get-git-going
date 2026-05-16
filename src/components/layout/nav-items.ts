@@ -141,6 +141,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing/change-reasons", label: "دلایل تغییر قیمت", icon: ScrollText, module: "pricing", group: "admin", subgroup: "adm-settings", adminOnly: true },
   { to: "/pricing", label: "تنظیمات قیمت‌گذاری", icon: DollarSign, module: "pricing", group: "admin", subgroup: "adm-settings", adminOnly: true },
   { to: "/bot-api-keys", label: "کلیدهای API ربات", icon: KeyRound, module: "bot-api-keys", group: "admin", subgroup: "adm-tools" },
+  { to: "/market-matches", label: "بررسی تطبیق محصولات بازار", icon: BadgeCheck, module: "bot-api-keys", group: "admin", subgroup: "adm-tools", adminOnly: true },
   { to: "/gamification/admin/kpi-rules", label: "قوانین امتیازدهی", icon: Trophy, module: "roles", group: "admin", subgroup: "adm-gamification", adminOnly: true },
   { to: "/gamification/admin/achievements", label: "مدیریت مدال‌ها", icon: Trophy, module: "roles", group: "admin", subgroup: "adm-gamification", adminOnly: true },
   { to: "/gamification/admin/missions", label: "مدیریت مأموریت‌ها", icon: Trophy, module: "roles", group: "admin", subgroup: "adm-gamification", adminOnly: true },
