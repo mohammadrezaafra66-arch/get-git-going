@@ -39,6 +39,10 @@ import {
   type DynamicTableAccessLevel,
   DYNAMIC_TABLE_ACCESS_LEVELS,
   SELECTABLE_ROLES,
+  TOROB_PURCHISTA_SLUG,
+  TOROB_PURCHISTA_REFETCH_MS,
+  FORMULA_KEY_LABELS,
+  type DynamicFormulaKey,
 } from "@/lib/data-tables/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -60,7 +64,12 @@ interface ColumnRow {
   is_filterable: boolean;
   is_editable_by_bot: boolean;
   sort_order: number;
+  is_computed: boolean;
+  formula_key: DynamicFormulaKey | null;
+  formula_config: Record<string, unknown> | null;
 }
+
+const COMPUTED_TOOLTIP = "این مقدار توسط فرمول سیستم محاسبه می‌شود.";
 
 interface RowItem {
   id: string;
@@ -134,14 +143,22 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_table_columns")
-        .select("id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order")
+        .select("id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order, is_computed, formula_key, formula_config")
         .eq("table_id", tableId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as ColumnRow[];
+      return ((data ?? []) as unknown as Array<Partial<ColumnRow>>).map((c) => ({
+        ...c,
+        is_computed: Boolean(c.is_computed),
+        formula_key: (c.formula_key ?? null) as DynamicFormulaKey | null,
+        formula_config: (c.formula_config ?? null) as Record<string, unknown> | null,
+      })) as ColumnRow[];
     },
   });
   const columns = colsQuery.data ?? [];
+
+  const isTorobTable = (tableQuery.data?.slug ?? "") === TOROB_PURCHISTA_SLUG;
+  const rpcName = isTorobTable ? "query_dynamic_table_rows_v2" : "query_dynamic_table_rows";
   const filterableColumns: FilterColumn[] = useMemo(
     () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
     [columns]
@@ -174,10 +191,12 @@ function DataTableDetailPage() {
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount],
+    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount, rpcName],
     staleTime: 10_000,
+    refetchInterval: isTorobTable ? TOROB_PURCHISTA_REFETCH_MS : false,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("query_dynamic_table_rows", {
+      const { data, error } = await supabase.rpc(rpcName, {
         p_table_id: tableId,
         p_filters: serverFilters as unknown as never,
         p_search: search.trim() ? search.trim() : undefined,
@@ -211,6 +230,7 @@ function DataTableDetailPage() {
     mutationFn: async () => {
       const payload: Record<string, string> = {};
       for (const c of columns) {
+        if (c.is_computed) continue;
         const v = (values[c.column_key] ?? "").trim();
         if (v) payload[c.column_key] = v;
         else if (c.is_required) throw new Error(`مقدار ستون «${c.label}» الزامی است.`);
@@ -416,6 +436,16 @@ function DataTableDetailPage() {
         </div>
       )}
 
+      {isTorobTable && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-3 text-xs leading-6 text-foreground/90 space-y-0.5">
+            <div>• این جدول توسط API ربات به‌روزرسانی می‌شود.</div>
+            <div>• ستون‌های فرمولی از قیمت‌های داخلی افراکالا محاسبه می‌شوند.</div>
+            <div>• بروزرسانی نمای جدول هر ۷ ثانیه انجام می‌شود.</div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Columns management */}
       <Card>
         <CardContent className="p-4">
@@ -441,6 +471,19 @@ function DataTableDetailPage() {
                   {c.is_required && <Badge variant="secondary">الزامی</Badge>}
                   {c.is_filterable && <Badge variant="secondary">فیلترپذیر</Badge>}
                   {c.is_editable_by_bot && <Badge variant="secondary">ویرایش‌پذیر ربات</Badge>}
+                  {c.is_computed && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-primary/15 text-primary border-primary/30"
+                      title={
+                        c.formula_key
+                          ? `${COMPUTED_TOOLTIP} (${FORMULA_KEY_LABELS[c.formula_key] ?? c.formula_key})`
+                          : COMPUTED_TOOLTIP
+                      }
+                    >
+                      فرمولی
+                    </Badge>
+                  )}
                   {canEdit && (
                     <div className="ms-auto flex items-center gap-1">
                       <Button size="icon" variant="ghost" title="بالا"
@@ -567,12 +610,23 @@ function DataTableDetailPage() {
                       <div className="space-y-1.5">
                         {columns.map((c) => (
                           <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
-                            <span className="text-xs text-muted-foreground shrink-0">{c.label}</span>
+                            <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+                              {c.label}
+                              {c.is_computed && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-primary/15 text-primary border-primary/30 text-[10px] py-0 px-1"
+                                  title={COMPUTED_TOOLTIP}
+                                >
+                                  فرمولی
+                                </Badge>
+                              )}
+                            </span>
                             <div className="text-end min-w-0">
                               <CellEditor
                                 column={c}
                                 value={stringifyValue(c, r.values[c.column_key])}
-                                canEdit={canEditRows}
+                                canEdit={canEditRows && !c.is_computed}
                                 inactive={inactive}
                                 onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                               />
@@ -595,7 +649,7 @@ function DataTableDetailPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>افزودن ردیف</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            {columns.map((c) => (
+            {columns.filter((c) => !c.is_computed).map((c) => (
               <div key={c.id} className="space-y-1.5">
                 <Label>
                   {c.label}
@@ -740,6 +794,7 @@ function VirtualizedGrid({
                   const value = stringifyValue(c, raw);
                   const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
                   const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
+                  const cellEditable = canEdit && !c.is_computed;
                   return (
                     <GridCell
                       key={c.id}
@@ -747,18 +802,18 @@ function VirtualizedGrid({
                       column={c}
                       value={value}
                       width={COL_W}
-                      canEdit={canEdit}
+                      canEdit={cellEditable}
                       inactive={inactive}
                       isFocused={isFocused}
                       isEditing={isEditing}
                       initialEditValue={isEditing ? editingPos?.initial : undefined}
                       onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
                       onRequestEdit={(initial) => {
-                        if (!canEdit) return;
+                        if (!cellEditable) return;
                         setEditingPos({ row: rowIdx, col: colIdx, initial });
                       }}
                       onClearCell={async () => {
-                        if (!canEdit || !value) return;
+                        if (!cellEditable || !value) return;
                         await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
                       }}
                       onCancelEdit={() => {
@@ -883,6 +938,12 @@ const GridCell = forwardRef<HTMLDivElement, {
   };
 
   const focusedClass = isFocused ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5" : "";
+  const computed = column.is_computed;
+  const titleText = computed
+    ? "این مقدار توسط فرمول سیستم محاسبه می‌شود."
+    : canEdit
+    ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت"
+    : undefined;
   return (
     <div
       ref={ref}
@@ -892,9 +953,9 @@ const GridCell = forwardRef<HTMLDivElement, {
       onFocus={onFocusCell}
       onDoubleClick={() => canEdit && onRequestEdit()}
       onKeyDown={handleKey}
-      className={`px-3 py-2 align-middle truncate focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"}`}
+      className={`px-3 py-2 align-middle truncate focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"} ${computed ? "bg-primary/5" : ""}`}
       style={{ width }}
-      title={canEdit ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت" : undefined}
+      title={titleText}
     >
       {isEditing ? (
         <CellEditorInput
