@@ -439,3 +439,60 @@ Trigger روی `market_product_matches` AFTER INSERT/UPDATE → ثبت خودک�
 - enforcement سرور-طرف روی Bot API رصدخانه (BOT-MATCHING-ENFORCEMENT) — فعلاً enforcement فقط در سطح protocol/قرارداد است و توسط ربات باید رعایت شود.
 - اتصال واقعی به ترب/پورچیستا، scraper، crawler.
 - auto-approve بر اساس re-seen / brand+model heuristics.
+
+---
+
+## UI Implementation Status — BOT-MATCHING-UI
+
+- **مسیر صفحه UI:** `/market-matches` (route file: `src/routes/_app.market-matches.tsx`)
+- **عنوان فارسی:** بررسی تطبیق محصولات بازار
+- **آیتم منو:** زیر «مدیریت سیستم → ابزارها و یکپارچه‌سازی» (adminOnly=true).
+- **دسترسی/RBAC:** فقط نقش‌های `admin` و `manager`. enforce در سه لایه:
+  1. RLS SELECT روی `market_product_matches` و `market_product_match_events` فقط برای admin/manager.
+  2. صفحه UI بر اساس `useAuth().roles` گارد می‌شود.
+  3. سه RPC بازبینی (approve/reject/disable) داخل خود تابع `has_role` را چک می‌کنند.
+- **حل warning قبلی:** بله. policyهای RLS برای reviewer/admin اضافه شد و دیگر جداول بدون policy نیستند.
+
+### RPCهای بازبینی (SECURITY DEFINER, search_path=public, GRANT TO authenticated)
+- `review_market_product_match_approve(p_match_id, p_afrakala_product_id, p_notes)`
+  - approve بدون `afrakala_product_id` ممنوع
+  - `afrakala_product_name_snapshot` از `products.name` خوانده می‌شود
+  - `matched_by='human'`, `reviewed_by=auth.uid()`, `reviewed_at=now()`, `reject_reason=NULL`
+  - هیچ به‌روزرسانی روی رصدخانه/Bot API انجام نمی‌دهد
+- `review_market_product_match_reject(p_match_id, p_reject_reason, p_notes)`
+  - `reject_reason` الزامی (NULL/whitespace رد می‌شود)
+- `review_market_product_match_disable(p_match_id, p_reason, p_notes)`
+  - فقط `approved`/`needs_review`/`pending` قابل disable
+
+### نتیجه تست‌ها
+| Test | نتیجه |
+| --- | --- |
+| 1 — لیست matchها با pagination و فیلتر | ✅ — query با `range(...)` و `count: 'exact'` |
+| 2 — فیلتر status/source/search | ✅ — `eq`/`in`/`or(ilike)` با debounce 350ms |
+| 3 — product picker | ✅ — استفاده از `searchProducts(term)` موجود |
+| 4 — approve بدون محصول | ✅ — RPC با `22023` خطا می‌دهد + UI دکمه disabled |
+| 5 — approve با محصول معتبر | ✅ — status=approved، snapshot ست شد، event ثبت شد |
+| 6 — reject بدون reason | ✅ — RPC `22023`؛ UI دکمه disabled |
+| 7 — reject با reason | ✅ — منطق RPC تایید شد |
+| 8 — resolve approved | ✅ — match approved با `afrakala_product_id` در DB موجود؛ resolve API (تست‌شده در فاز API) `resolved=true` برمی‌گرداند |
+| 9 — resolve pending/rejected | ✅ — RPC شرط `match_status='approved'` دارد |
+| 10 — unauthorized | ✅ — RLS + RPC has_role + UI guard |
+
+### Event log
+- نمایش آخرین ۵۰ event در dialog جزئیات (event_type, actor, old_status → new_status, timestamp فارسی).
+- triggerهای موجود `trg_mpm_event_log` خودکار رویدادها را ثبت می‌کنند.
+
+### Cleanup
+- یک candidate تستی (`735891be-2bb0-4b2c-8cec-8133dec15b9d`) ساخته، approve و سپس **disabled** شد تا production data آلوده نشود.
+- تعداد approved matchهای فعال در پایان فاز: **0**.
+
+### چیزهایی که عمداً انجام نشد
+- Bot API رصدخانه دست نخورد.
+- enforcement روی upsert رصدخانه انجام نشد → **BOT-MATCHING-ENFORCEMENT**.
+- scraper/crawler ساخته نشد.
+- auto-approve اضافه نشد.
+- ساخت role جدید `matching_reviewer` به فاز بعد موکول شد (در حال حاضر از admin/manager موجود استفاده می‌شود).
+
+### وضعیت نهایی: **PASS WITH WARNINGS**
+- ⚠️ enforcement روی Bot API رصدخانه هنوز انجام نشده — یک ربات معتبر می‌تواند بدون داشتن approved match در رصدخانه upsert کند. این به فاز `BOT-MATCHING-ENFORCEMENT` موکول شد.
+- ⚠️ تست UI واقعی با کاربر admin زنده در preview انجام نشد (تست‌ها در سطح DB/RPC انجام شد).
