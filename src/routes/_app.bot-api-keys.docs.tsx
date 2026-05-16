@@ -411,6 +411,11 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
   const [rowId, setRowId] = useState("");
   const [valuesJson, setValuesJson] = useState(`{\n  "column_key": "value"\n}`);
 
+  // POST state (new row)
+  const [postValuesJson, setPostValuesJson] = useState(
+    `{\n  "source": "rubika",\n  "title": "نمونه داده استخراج‌شده",\n  "message": "این یک پیام تستی از ربات است",\n  "status": "new"\n}`,
+  );
+
   // Response state
   const [busy, setBusy] = useState(false);
   const [resStatus, setResStatus] = useState<number | null>(null);
@@ -461,7 +466,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
   const tables = accessQuery.data ?? [];
   const selectedTable = useMemo(() => tables.find((t) => t.id === tableId) ?? null, [tables, tableId]);
 
-  const send = async (mode: "GET" | "PATCH") => {
+  const send = async (mode: "GET" | "PATCH" | "POST") => {
     if (!rawKey.trim()) { toast.error("کلید API را وارد کنید."); return; }
     if (!tableId) { toast.error("یک جدول مجاز انتخاب کنید."); return; }
     if (mode === "PATCH" && !rowId.trim()) { toast.error("شناسه ردیف را وارد کنید."); return; }
@@ -470,6 +475,14 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
     if (mode === "PATCH") {
       try {
         const parsed = JSON.parse(valuesJson);
+        body = JSON.stringify({ values: parsed });
+      } catch {
+        toast.error("JSON ستون‌ها معتبر نیست.");
+        return;
+      }
+    } else if (mode === "POST") {
+      try {
+        const parsed = JSON.parse(postValuesJson);
         body = JSON.stringify({ values: parsed });
       } catch {
         toast.error("JSON ستون‌ها معتبر نیست.");
@@ -487,7 +500,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
         method: mode,
         headers: {
           Authorization: `Bearer ${rawKey.trim()}`,
-          ...(mode === "PATCH" ? { "Content-Type": "application/json" } : {}),
+          ...(mode === "PATCH" || mode === "POST" ? { "Content-Type": "application/json" } : {}),
         },
       };
       if (mode === "GET") {
@@ -497,8 +510,11 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
         if (search.trim()) params.set("search", search.trim());
         const qs = params.toString();
         if (qs) url += `?${qs}`;
-      } else {
+      } else if (mode === "PATCH") {
         url += `/${rowId.trim()}`;
+        init.body = body;
+      } else {
+        // POST — create row
         init.body = body;
       }
 
@@ -596,6 +612,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
       <Tabs defaultValue="get">
         <TabsList>
           <TabsTrigger value="get">GET — خواندن</TabsTrigger>
+          <TabsTrigger value="post">POST — افزودن</TabsTrigger>
           <TabsTrigger value="patch">PATCH — به‌روزرسانی</TabsTrigger>
         </TabsList>
 
@@ -652,6 +669,39 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
               {selectedTable && !selectedTable.can_update && (
                 <p className="text-xs text-muted-foreground">
                   این کلید مجوز به‌روزرسانی این جدول را ندارد.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="post">
+          <Card>
+            <CardContent className="space-y-3 pt-6">
+              <div className="space-y-1">
+                <Label className="text-xs">مقادیر ردیف جدید (JSON object از column_key → value)</Label>
+                <Textarea
+                  dir="ltr"
+                  rows={8}
+                  value={postValuesJson}
+                  onChange={(e) => setPostValuesJson(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  فقط ستون‌هایی پذیرفته می‌شوند که در «ستون‌های قابل به‌روزرسانی» این کلید مجاز هستند.
+                  ستون‌های الزامی باید مقدار داشته باشند.
+                </p>
+              </div>
+              <Button
+                onClick={() => send("POST")}
+                disabled={busy || !selectedTable?.can_update}
+              >
+                {busy ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Play className="ml-2 h-4 w-4" />}
+                ارسال درخواست POST
+              </Button>
+              {selectedTable && !selectedTable.can_update && (
+                <p className="text-xs text-muted-foreground">
+                  برای ثبت ردیف جدید، گزینه «به‌روزرسانی» این جدول باید فعال باشد.
                 </p>
               )}
             </CardContent>
