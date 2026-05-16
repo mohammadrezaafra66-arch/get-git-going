@@ -46,7 +46,7 @@ if (-not (Test-Path $envFile)) {
 # --- helpers ---
 function Read-EnvMap($path) {
     $map = [ordered]@{}
-    $lines = Get-Content -LiteralPath $path
+    $lines = [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)
     foreach ($line in $lines) {
         if ($line -match '^\s*#') { continue }
         if ($line -match '^\s*$') { continue }
@@ -62,7 +62,7 @@ function Read-EnvMap($path) {
 
 function Set-EnvValue($path, $key, $value) {
     $newLine = "{0}={1}" -f $key, $value
-    $lines = Get-Content -LiteralPath $path
+    $lines = [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)
     $found = $false
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i] -match ("^\s*{0}=" -f [regex]::Escape($key))) {
