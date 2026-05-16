@@ -568,6 +568,112 @@ function BotApiDocsPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge>رصدخانه</Badge>
+                قرارداد API رصدخانه قیمت محصولات افراکالا
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-7">
+              <p>
+                این بخش قرارداد ربات قیمت‌گذاری برای جدول «رصدخانه قیمت محصولات افراکالا»
+                را توضیح می‌دهد. ربات فقط داده‌های بازار (ترب و پورچیستا) را برای محصولات
+                فعال افراکالا به‌روز می‌کند و حق ساخت/حذف ردیف یا تغییر ستون‌های دیگر را ندارد.
+              </p>
+              <div className="text-xs space-y-1">
+                <p><span className="font-medium">slug جدول:</span> <code dir="ltr">afrakala-product-price-observatory</code></p>
+                <p><span className="font-medium">unique_by:</span> <code dir="ltr">["afrakala_product_id"]</code></p>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">گرفتن metadata جدول</p>
+                <CodeBlock lang="endpoint" code={`GET /api/public/bot/dynamic-tables/by-slug/afrakala-product-price-observatory`} />
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۹ ستون مجاز برای ربات</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li><code dir="ltr">torob_avg_price_toman</code> — میانگین قیمت ترب</li>
+                  <li><code dir="ltr">torob_min_price_toman</code> — کمترین قیمت ترب</li>
+                  <li><code dir="ltr">torob_max_price_toman</code> — بیشترین قیمت ترب</li>
+                  <li><code dir="ltr">torob_seller_count</code> — تعداد فروشنده ترب</li>
+                  <li><code dir="ltr">torob_last_seen_at</code> — آخرین رصد ترب (datetime ISO)</li>
+                  <li><code dir="ltr">purchista_avg_price_toman</code> — میانگین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_min_price_toman</code> — کمترین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_max_price_toman</code> — بیشترین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_last_seen_at</code> — آخرین رصد پورچیستا (datetime ISO)</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">ستون‌هایی که ربات نباید بفرستد</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li>سیستمی: <code dir="ltr">product_name</code>، <code dir="ltr">brand_name</code>، <code dir="ltr">category_path</code>، <code dir="ltr">product_labels</code> و سایر فیلدهای محصول</li>
+                  <li>محاسباتی: <code dir="ltr">afrakala_purchase_price_toman</code>، <code dir="ltr">afrakala_min_sale_price</code>، <code dir="ltr">price_gap_to_market_avg</code>، <code dir="ltr">price_gap_percent_to_market_avg</code></li>
+                  <li>placeholder تحلیلی: مثل پیام پیشنهادی و امتیاز فرصت فروش</li>
+                  <li>مدیریتی: <code dir="ltr">manager_note</code>، <code dir="ltr">show_in_pdf</code>، <code dir="ltr">show_in_quick_search</code>، <code dir="ltr">monitoring_enabled</code></li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">نمونه upsert با curl</p>
+                <CodeBlock
+                  lang="bash"
+                  code={`curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/{table_id}/rows/upsert" \\
+  -H "Authorization: Bearer $BOT_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "unique_by": ["afrakala_product_id"],
+    "values": {
+      "afrakala_product_id": "<AFRAKALA_PRODUCT_UUID>",
+      "torob_avg_price_toman": 12500000,
+      "torob_min_price_toman": 11900000,
+      "torob_max_price_toman": 13200000,
+      "torob_seller_count": 7,
+      "torob_last_seen_at": "2026-05-16T12:00:00Z",
+      "purchista_avg_price_toman": 12600000,
+      "purchista_min_price_toman": 12000000,
+      "purchista_max_price_toman": 13400000,
+      "purchista_last_seen_at": "2026-05-16T12:05:00Z"
+    }
+  }'`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  پاسخ مورد انتظار برای محصول موجود: <code dir="ltr">HTTP 200</code> با
+                  <code dir="ltr"> {"\"mode\": \"updated\""}</code> و همان <code dir="ltr">row_id</code>.
+                  هیچ ردیف جدیدی ساخته نمی‌شود.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">نمونه خطای ۴۰۳ برای ستون غیرمجاز</p>
+                <CodeBlock
+                  lang="json"
+                  code={`HTTP/1.1 403 Forbidden
+{
+  "error": "column_not_allowed",
+  "message": "این کلید مجاز به تغییر ستون «product_name» نیست. ..."
+}`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  همین خطا برای <code dir="ltr">afrakala_min_sale_price</code> (محاسباتی) و
+                  <code dir="ltr"> manager_note</code> (مدیریتی) نیز بازگردانده می‌شود.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs space-y-1">
+                <p className="font-medium">هشدارهای امنیتی</p>
+                <ul className="list-disc pr-5 space-y-1 text-muted-foreground">
+                  <li>کلید API فقط در backend ربات (ENV سرور) نگهداری شود؛ هرگز در frontend، repo یا لاگ.</li>
+                  <li>دسترسی کلید را فقط به جدول <code dir="ltr">afrakala-product-price-observatory</code> محدود کنید.</li>
+                  <li><code dir="ltr">allowed_update_columns</code> باید دقیقاً همان ۹ ستون بازار باشد — <code dir="ltr">afrakala_product_id</code> را اضافه نکنید. این ستون فقط کلید تطبیق unique_by است و سرور به‌صورت خودکار آن را از payload به‌روزرسانی حذف می‌کند.</li>
+                  <li>ربات اجازه ساخت محصول جدید در این جدول را ندارد؛ ردیف‌ها از روی محصولات فعال داخلی backfill می‌شوند.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
             </TabsContent>
 
 
