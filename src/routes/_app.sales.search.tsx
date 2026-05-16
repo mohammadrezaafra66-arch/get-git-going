@@ -926,6 +926,10 @@ function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, observat
           )}
         </div>
 
+        {/* DT.7H — Read-only Observatory hints (status / opportunity / message).
+            Rendered only when a snippet exists for this product. */}
+        <ObservatoryBadges snippet={observatorySnippet} />
+
         {/* Secondary prices grid */}
         {!isUnavailable && others.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
