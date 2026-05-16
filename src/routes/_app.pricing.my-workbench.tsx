@@ -211,6 +211,8 @@ function WorkbenchPage() {
         });
       }, 2000);
       qc.invalidateQueries({ queryKey: ["workbench-rows"] });
+      qc.invalidateQueries({ queryKey: ["workbench-rows-v2"] });
+      qc.invalidateQueries({ queryKey: ["workbench-health-report"] });
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در ذخیره");
     } finally {
