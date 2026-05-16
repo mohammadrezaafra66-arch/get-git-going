@@ -697,6 +697,8 @@ function DataTableDetailPage() {
                   cellMut={cellMut}
                   toggleRowMut={toggleRowMut}
                   stringifyValue={stringifyValue}
+                  isCellReadOnly={isObservatoryReadOnly}
+                  renderCellOverride={renderObservatoryDisplay}
                 />
               </div>
 
