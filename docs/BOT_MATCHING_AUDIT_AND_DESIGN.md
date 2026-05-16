@@ -496,3 +496,54 @@ Trigger روی `market_product_matches` AFTER INSERT/UPDATE → ثبت خودک�
 ### وضعیت نهایی: **PASS WITH WARNINGS**
 - ⚠️ enforcement روی Bot API رصدخانه هنوز انجام نشده — یک ربات معتبر می‌تواند بدون داشتن approved match در رصدخانه upsert کند. این به فاز `BOT-MATCHING-ENFORCEMENT` موکول شد.
 - ⚠️ تست UI واقعی با کاربر admin زنده در preview انجام نشد (تست‌ها در سطح DB/RPC انجام شد).
+
+---
+
+## Enforcement Status — BOT-MATCHING-ENFORCEMENT
+
+**فایل تغییر یافته:** `src/routes/api.public.bot.dynamic-tables.$tableId.rows.upsert.ts` (هیچ migration یا schema change نیاز نشد).
+
+**رفتار جدید (فقط برای جدول `afrakala-product-price-observatory`):**
+1. backend بعد از احراز هویت ربات، `slug` جدول را از `dynamic_tables` می‌خواند.
+2. اگر slug = `afrakala-product-price-observatory`، body باید شامل `source_match` باشد:
+   ```json
+   {
+     "unique_by": ["afrakala_product_id"],
+     "source_match": {
+       "source_name": "torob",
+       "source_product_url": "https://...",
+       "source_product_id": "torob-123"
+     },
+     "values": { "afrakala_product_id": "UUID", "torob_avg_price_toman": 70000000, ... }
+   }
+   ```
+3. backend `resolve_market_product_match(source_name, url, id)` را صدا می‌زند.
+4. کدهای خطای جدید:
+   - `400 missing_source_match` — body فاقد source_match
+   - `400 invalid_source_name` — source_name غیر از torob/purchista/other
+   - `400 missing_source_reference` — هیچ‌کدام از url/id داده نشده
+   - `400 invalid_afrakala_product_id` — values.afrakala_product_id UUID نیست
+   - `403 approved_match_required` — match با وضعیت approved یافت نشد
+   - `409 match_product_mismatch` — approved match به محصول دیگری وصل است
+   - `500 match_resolve_failed` — خطای داخلی resolve
+5. اگر همه چک‌ها موفق بودند، مسیر قبلی `bot_upsert_table_row` بدون تغییر اجرا می‌شود؛ محدودیت ۹ ستون مجاز همچنان برقرار است (Test 5 تایید کرد `product_name` همچنان `column_not_allowed` می‌دهد).
+
+**سایر dynamic tables:** هیچ تغییری ندارند؛ source_match لازم نیست و مسیر قبلی کار می‌کند.
+
+**Breaking change:** بله، برای رصدخانه upsert بدون source_match دیگر کار نمی‌کند. این تغییر در `BOT_HANDOFF_PRODUCT_PRICE_OBSERVATORY.md` و `FINAL_HANDOFF_PRODUCT_PRICE_OBSERVATORY.md` اعلام شد.
+
+### نتیجه تست‌ها (همگی روی dev server با کلید بات موقت)
+| # | سناریو | Status | Code |
+| - | --- | --- | --- |
+| 1 | بدون source_match | 400 | missing_source_match |
+| 2 | source_match با id ناموجود | 403 | approved_match_required |
+| 3 | approved + product صحیح | 200 | updated |
+| 4 | approved + product mismatch | 409 | match_product_mismatch |
+| 5 | ستون product_name داخل values | 403 | column_not_allowed |
+| 6 | جدول dynamic دیگر | منطقاً پاس (شرط slug فقط برای رصدخانه) |
+| 7 | match رد شده | 403 | approved_match_required |
+| 8 | source_name نامعتبر (amazon) | 400 | invalid_source_name |
+| 9 | source_name بدون url/id | 400 | missing_source_reference |
+| 10 | cleanup | کلید بات حذف، match تستی disabled، approved_left=0 |
+
+### وضعیت نهایی: **PASS**
