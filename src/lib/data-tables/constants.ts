@@ -21,6 +21,31 @@ export const DYNAMIC_TABLE_ROWS_PAGE_SIZE = 20;
 export const SLUG_REGEX = /^[a-z0-9-]+$/;
 export const COLUMN_KEY_REGEX = /^[a-z0-9_]+$/;
 
+// --- Formula / computed columns ---
+export const ALLOWED_FORMULA_KEYS = [
+  "latest_purchase_price_toman",
+  "min_sale_price",
+  "latest_batch_average_price",
+  "price_gap_to_market_avg",
+  "price_gap_percent_to_market_avg",
+] as const;
+
+export type DynamicFormulaKey = typeof ALLOWED_FORMULA_KEYS[number];
+
+export const FORMULA_KEY_LABELS: Record<DynamicFormulaKey, string> = {
+  latest_purchase_price_toman: "آخرین قیمت خرید (تومان) از داده افراکالا",
+  min_sale_price: "حداقل قیمت فروش از داده افراکالا",
+  latest_batch_average_price: "میانگین قیمت در آخرین دسته استخراج",
+  price_gap_to_market_avg: "اختلاف قیمت فروش با میانگین آخرین استخراج",
+  price_gap_percent_to_market_avg: "درصد اختلاف قیمت فروش با میانگین آخرین استخراج",
+};
+
+/** Slug of the seeded Torob/Purchista extracted-data table. */
+export const TOROB_PURCHISTA_SLUG = "torob-purchista-extracted-data";
+
+/** Refresh interval for the Torob/Purchista live data table (ms). */
+export const TOROB_PURCHISTA_REFETCH_MS = 7000;
+
 // --- Access level (RBAC) for dynamic tables ---
 export type DynamicTableAccessLevel =
   | "all"
