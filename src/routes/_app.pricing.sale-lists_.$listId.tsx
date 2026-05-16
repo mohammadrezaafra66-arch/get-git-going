@@ -220,6 +220,52 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  // Category-specific product attributes for items, used only inside PDF "description" column.
+  const productIdsForAttrs = useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of (itemsQ.data ?? [])) {
+      if (it.product?.id) ids.add(it.product.id);
+    }
+    return Array.from(ids).sort();
+  }, [itemsQ.data]);
+
+  const productAttrsQ = useQuery({
+    queryKey: ["sale-list-product-attrs", listId, productIdsForAttrs],
+    enabled: productIdsForAttrs.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_category_attribute_values")
+        .select("product_id, value, def:category_product_attributes(id, label_fa, sort_order, is_active)")
+        .in("product_id", productIdsForAttrs);
+      if (error) throw error;
+      type Row = {
+        product_id: string;
+        value: string | null;
+        def: { id: string; label_fa: string; sort_order: number | null; is_active: boolean | null } | null;
+      };
+      const rows = (data ?? []) as unknown as Row[];
+      const byProduct = new Map<string, { label: string; value: string; sort: number }[]>();
+      for (const r of rows) {
+        const v = (r.value ?? "").trim();
+        if (!v) continue;
+        if (!r.def) continue;
+        if (r.def.is_active === false) continue;
+        const label = (r.def.label_fa ?? "").trim();
+        if (!label) continue;
+        const arr = byProduct.get(r.product_id) ?? [];
+        arr.push({ label, value: v, sort: r.def.sort_order ?? 0 });
+        byProduct.set(r.product_id, arr);
+      }
+      const formatted: Record<string, string> = {};
+      for (const [pid, arr] of byProduct) {
+        arr.sort((a, b) => (a.sort - b.sort) || a.label.localeCompare(b.label, "fa"));
+        formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
+      }
+      return formatted;
+    },
+  });
+
   // PDF density / font controls
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
