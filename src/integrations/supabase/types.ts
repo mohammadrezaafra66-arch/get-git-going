@@ -8034,6 +8034,13 @@ export type Database = {
         Args: { _default: number; _key: string }
         Returns: number
       }
+      get_observatory_pdf_hints_for_products: {
+        Args: { p_product_ids: string[] }
+        Returns: {
+          has_price_advantage: boolean
+          product_id: string
+        }[]
+      }
       get_observatory_snippets_for_products: {
         Args: { p_product_ids: string[] }
         Returns: {
