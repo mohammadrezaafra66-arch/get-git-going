@@ -1164,12 +1164,13 @@ function CellEditorInput({
 
 // =============== Inline cell editor (mobile card view) ===============
 function CellEditor({
-  column, value, canEdit, inactive, onSave,
+  column, value, canEdit, inactive, displayOverride, onSave,
 }: {
   column: ColumnRow;
   value: string;
   canEdit: boolean;
   inactive?: boolean;
+  displayOverride?: React.ReactNode | null;
   onSave: (val: string) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -1180,7 +1181,7 @@ function CellEditor({
   useEffect(() => { setDraft(value); }, [value]);
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
-  const display = useMemo(() => {
+  const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
     if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
@@ -1192,6 +1193,7 @@ function CellEditor({
     if (column.data_type === "phone") return <span dir="ltr">{toFaDigits(value)}</span>;
     return value;
   }, [value, column.data_type]);
+  const display: React.ReactNode = displayOverride ?? defaultDisplay;
 
   if (!editing) {
     return (
