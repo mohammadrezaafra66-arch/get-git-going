@@ -305,3 +305,39 @@ curl -X POST \
 - بدون secret واقعی در سند یا repo.
 - بدون dependency جدید، بدون CDN خارجی، بدون تغییر Docker/Caddy/LAN/SSL.
 - فقط یک فایل مستندات فارسی در `docs/`. کاملاً سازگار با self-host.
+---
+
+## ⚠️ BREAKING CHANGE — BOT-MATCHING-ENFORCEMENT (Phase active)
+
+برای upsert روی جدول **`afrakala-product-price-observatory`** از این به بعد ربات باید **علاوه بر `unique_by` و `values`**، فیلد جدید `source_match` را هم بفرستد:
+
+```json
+{
+  "unique_by": ["afrakala_product_id"],
+  "source_match": {
+    "source_name": "torob",
+    "source_product_url": "https://torob.com/p/123",
+    "source_product_id": "torob-123"
+  },
+  "values": { "afrakala_product_id": "UUID", "torob_avg_price_toman": 70000000 }
+}
+```
+
+### چرخه اجباری ربات
+
+1. ربات candidate را ثبت می‌کند: `POST /api/public/bot/market-matches/candidates/upsert`
+2. reviewer داخلی در صفحه `/market-matches` با approve محصول داخلی افراکالا را وصل می‌کند.
+3. ربات سپس می‌تواند با همان `source_product_id` یا `source_product_url`، رصدخانه را upsert کند.
+
+### کدهای خطای جدید رصدخانه
+
+| HTTP | code | معنا |
+| ---- | ---- | ---- |
+| 400 | `missing_source_match` | body فاقد source_match |
+| 400 | `invalid_source_name` | source_name باید torob/purchista/other باشد |
+| 400 | `missing_source_reference` | باید url یا id باشد |
+| 400 | `invalid_afrakala_product_id` | UUID معتبر نیست |
+| 403 | `approved_match_required` | match با وضعیت approved وجود ندارد |
+| 409 | `match_product_mismatch` | approved match به محصول دیگری وصل است |
+
+`fuzzy name matching` به‌تنهایی همچنان ممنوع است. ربات production بدون approved match اجازه‌ی به‌روزرسانی رصدخانه را ندارد.
