@@ -125,6 +125,51 @@ function BotApiDocsPage() {
     },
   }, null, 2);
 
+  const torobSlug = "torob-purchista-extracted-data";
+  const torobBySlugCurl = `curl -X GET "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}" \\
+  -H "Authorization: Bearer <API_KEY>"`;
+
+  const torobUpsertBody = JSON.stringify({
+    unique_by: ["source", "extraction_batch_id", "external_product_id"],
+    values: {
+      source: "torob",
+      extraction_batch_id: "batch-2026-05-16-001",
+      extracted_at: "2026-05-16T10:00:00Z",
+      external_product_id: "torob-12345",
+      product_url: "https://torob.com/p/12345",
+      product_title_raw: "گوشی سامسونگ گلکسی S24",
+      brand_raw: "Samsung",
+      model_raw: "Galaxy S24",
+      seller_name: "فروشگاه نمونه",
+      extracted_price_toman: 45000000,
+      stock_status_raw: "in_stock",
+      match_key: "samsung-galaxy-s24",
+      afrakala_product_id: "afk-9876",
+      match_confidence: 0.92,
+      bot_notes: "استخراج خودکار",
+    },
+  }, null, 2);
+
+  const torobUpsertCurl = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert" \\
+  -H "Authorization: Bearer <API_KEY>" \\
+  -H "Content-Type: application/json" \\
+  -d '${torobUpsertBody.replace(/\n/g, "\n  ")}'`;
+
+  const torobComputedRejectCurl = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert" \\
+  -H "Authorization: Bearer <API_KEY>" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "unique_by": ["source","extraction_batch_id","external_product_id"],
+    "values": {
+      "source": "torob",
+      "extraction_batch_id": "batch-x",
+      "extracted_at": "2026-05-16T10:00:00Z",
+      "external_product_id": "torob-1",
+      "afrakala_purchase_price_toman": 1
+    }
+  }'
+# انتظار: HTTP 403 با خطای column_not_allowed (ستون محاسباتی فقط خواندنی است)`;
+
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Bot API Docs</h1>
