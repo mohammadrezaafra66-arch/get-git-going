@@ -80,3 +80,14 @@ deploy/backups/**/*.dump
 deploy/backups/**/*.tar
 deploy/backups/**/*.tar.gz
 deploy/backups/**/*.age
+# AfraKala LAN pilot runtime (never commit real secrets)
+deploy/lan/.env
+deploy/lan/.env.lan
+deploy/lan/data/
+deploy/lan/volumes/
+deploy/lan/storage-export/
+deploy/lan/**/*.dump
+deploy/lan/**/*.pem
+deploy/lan/**/*.key
+deploy/lan/**/*.crt
+!deploy/lan/.env.lan.example
