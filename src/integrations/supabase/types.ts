@@ -3277,6 +3277,128 @@ export type Database = {
         }
         Relationships: []
       }
+      market_product_match_events: {
+        Row: {
+          actor: Database["public"]["Enums"]["market_match_actor"]
+          actor_user_id: string | null
+          created_at: string
+          details: Json
+          event_type: string
+          id: string
+          match_id: string
+          new_status: Database["public"]["Enums"]["market_match_status"] | null
+          old_status: Database["public"]["Enums"]["market_match_status"] | null
+        }
+        Insert: {
+          actor?: Database["public"]["Enums"]["market_match_actor"]
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          event_type: string
+          id?: string
+          match_id: string
+          new_status?: Database["public"]["Enums"]["market_match_status"] | null
+          old_status?: Database["public"]["Enums"]["market_match_status"] | null
+        }
+        Update: {
+          actor?: Database["public"]["Enums"]["market_match_actor"]
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json
+          event_type?: string
+          id?: string
+          match_id?: string
+          new_status?: Database["public"]["Enums"]["market_match_status"] | null
+          old_status?: Database["public"]["Enums"]["market_match_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_product_match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "market_product_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_product_matches: {
+        Row: {
+          afrakala_product_id: string | null
+          afrakala_product_name_snapshot: string | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          last_seen_at: string | null
+          match_status: Database["public"]["Enums"]["market_match_status"]
+          matched_by: Database["public"]["Enums"]["market_match_actor"]
+          normalized_source_title: string | null
+          notes: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_name: Database["public"]["Enums"]["market_match_source"]
+          source_product_id: string | null
+          source_product_url: string | null
+          source_title: string
+          updated_at: string
+        }
+        Insert: {
+          afrakala_product_id?: string | null
+          afrakala_product_name_snapshot?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          match_status?: Database["public"]["Enums"]["market_match_status"]
+          matched_by?: Database["public"]["Enums"]["market_match_actor"]
+          normalized_source_title?: string | null
+          notes?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name: Database["public"]["Enums"]["market_match_source"]
+          source_product_id?: string | null
+          source_product_url?: string | null
+          source_title: string
+          updated_at?: string
+        }
+        Update: {
+          afrakala_product_id?: string | null
+          afrakala_product_name_snapshot?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          last_seen_at?: string | null
+          match_status?: Database["public"]["Enums"]["market_match_status"]
+          matched_by?: Database["public"]["Enums"]["market_match_actor"]
+          normalized_source_title?: string | null
+          notes?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name?: Database["public"]["Enums"]["market_match_source"]
+          source_product_id?: string | null
+          source_product_url?: string | null
+          source_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_product_matches_afrakala_product_id_fkey"
+            columns: ["afrakala_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_product_matches_afrakala_product_id_fkey"
+            columns: ["afrakala_product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       market_rate_ingestion_runs: {
         Row: {
           error_message: string | null
@@ -8712,6 +8834,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resolve_market_product_match: {
+        Args: {
+          p_source_name: Database["public"]["Enums"]["market_match_source"]
+          p_source_product_id?: string
+          p_source_product_url?: string
+        }
+        Returns: {
+          afrakala_product_id: string
+          confidence_score: number
+          match_id: string
+          match_status: Database["public"]["Enums"]["market_match_status"]
+        }[]
+      }
       revoke_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -8922,6 +9057,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upsert_market_product_match_candidate: {
+        Args: {
+          p_confidence_score?: number
+          p_normalized_source_title?: string
+          p_notes?: string
+          p_source_name: Database["public"]["Enums"]["market_match_source"]
+          p_source_product_id: string
+          p_source_product_url: string
+          p_source_title: string
+        }
+        Returns: {
+          created_or_updated: string
+          match_id: string
+          match_status: Database["public"]["Enums"]["market_match_status"]
+        }[]
+      }
       validate_journal_entry_balance: {
         Args: { p_journal_entry_id: string }
         Returns: {
@@ -8952,6 +9103,14 @@ export type Database = {
         | "Diamond"
         | "Legend"
       margin_type: "fixed" | "percent" | "mixed"
+      market_match_actor: "system" | "human" | "imported" | "bot"
+      market_match_source: "torob" | "purchista" | "other"
+      market_match_status:
+        | "pending"
+        | "needs_review"
+        | "approved"
+        | "rejected"
+        | "disabled"
       product_attribute_type:
         | "brand"
         | "category"
@@ -9134,6 +9293,15 @@ export const Constants = {
         "Legend",
       ],
       margin_type: ["fixed", "percent", "mixed"],
+      market_match_actor: ["system", "human", "imported", "bot"],
+      market_match_source: ["torob", "purchista", "other"],
+      market_match_status: [
+        "pending",
+        "needs_review",
+        "approved",
+        "rejected",
+        "disabled",
+      ],
       product_attribute_type: [
         "brand",
         "category",
