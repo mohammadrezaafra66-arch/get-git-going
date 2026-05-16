@@ -134,6 +134,12 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
           {incomplete.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">مورد مشکل‌داری پیدا نشد.</div>
           ) : (
+            <>
+            {incomplete.length > 500 && (
+              <div className="px-4 pt-3 text-[11px] text-muted-foreground">
+                ۵۰۰ مورد اول از {formatNumber(incomplete.length)} مورد نمایش داده شده است. خروجی CSV شامل همه موارد است.
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -190,6 +196,7 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>
@@ -206,6 +213,12 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
           {taggedRisk.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">مورد مشکل‌داری پیدا نشد.</div>
           ) : (
+            <>
+            {taggedRisk.length > 500 && (
+              <div className="px-4 pt-3 text-[11px] text-muted-foreground">
+                ۵۰۰ مورد اول از {formatNumber(taggedRisk.length)} مورد نمایش داده شده است. خروجی CSV شامل همه موارد است.
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -264,6 +277,7 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>

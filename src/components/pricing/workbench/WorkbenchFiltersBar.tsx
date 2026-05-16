@@ -8,9 +8,15 @@ import { Search, RotateCcw } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { WorkbenchFilters } from "@/lib/pricing/workbench-filters";
+import type { WorkbenchFilters, CurrencyCodeV } from "@/lib/pricing/workbench-filters";
 import { DEFAULT_WORKBENCH_FILTERS, STOCK_LABEL } from "@/lib/pricing/workbench-filters";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
+
+// منبع رسمی ارز: Database["public"]["Enums"]["currency_code"] = "toman" | "usd" | "aed"
+// فیلتر «ارز خرید» فقط برای محصولات foreign معنی دارد، پس toman از لیست خارج می‌شود.
+const FOREIGN_CURRENCIES: CurrencyCodeV[] = (
+  Object.keys(CURRENCY_LABELS) as CurrencyCodeV[]
+).filter((c) => c !== "toman");
 
 type BrandOpt = { id: string; name: string };
 type CatOpt = { id: string; name: string; parent_id: string | null };
@@ -108,7 +114,9 @@ export function WorkbenchFiltersBar({
           <FilterSelect
             label="نوع خرید / مبنای قیمت"
             value={filters.currencyType}
-            onValue={(v) => set({ currencyType: v as any, currency: "all" })}
+            onValue={(v) =>
+              set({ currencyType: v as WorkbenchFilters["currencyType"], currency: "all" })
+            }
             options={[
               { value: "all", label: "همه محصولات" },
               { value: "toman", label: "محصولات تومانی" },
@@ -121,14 +129,17 @@ export function WorkbenchFiltersBar({
             <Label className="mb-1 block text-xs">ارز خرید</Label>
             <Select
               value={filters.currency}
-              onValueChange={(v) => set({ currency: v as any })}
+              onValueChange={(v) =>
+                set({ currency: v === "all" ? "all" : (v as CurrencyCodeV) })
+              }
               disabled={filters.currencyType !== "foreign"}
             >
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه ارزها</SelectItem>
-                <SelectItem value="usd">{CURRENCY_LABELS.usd}</SelectItem>
-                <SelectItem value="aed">{CURRENCY_LABELS.aed}</SelectItem>
+                {FOREIGN_CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>{CURRENCY_LABELS[c]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -137,7 +148,7 @@ export function WorkbenchFiltersBar({
           <FilterSelect
             label="وضعیت موجودی"
             value={filters.inventory}
-            onValue={(v) => set({ inventory: v as any })}
+            onValue={(v) => set({ inventory: v as WorkbenchFilters["inventory"] })}
             options={[
               { value: "all", label: "همه" },
               { value: "available", label: STOCK_LABEL.available },
@@ -151,7 +162,7 @@ export function WorkbenchFiltersBar({
           <FilterSelect
             label="وضعیت محصول"
             value={filters.productStatus}
-            onValue={(v) => set({ productStatus: v as any })}
+            onValue={(v) => set({ productStatus: v as WorkbenchFilters["productStatus"] })}
             options={[
               { value: "all", label: "همه" },
               { value: "active", label: "فعال" },
@@ -163,7 +174,7 @@ export function WorkbenchFiltersBar({
           <FilterSelect
             label="وضعیت قیمت فروش"
             value={filters.salePrice}
-            onValue={(v) => set({ salePrice: v as any })}
+            onValue={(v) => set({ salePrice: v as WorkbenchFilters["salePrice"] })}
             options={[
               { value: "all", label: "همه" },
               { value: "has", label: "دارای قیمت فروش" },

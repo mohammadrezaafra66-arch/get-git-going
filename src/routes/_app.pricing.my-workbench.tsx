@@ -42,15 +42,17 @@ import {
   upsertPurchasePrice,
   STOCK_STATUS_LABELS,
   STOCK_STATUS_OPTIONS,
-  type WorkbenchRow,
   type StockStatus,
 } from "@/lib/pricing/workbench";
 import {
   fetchWorkbenchRowsV2,
   fetchAllProductOwners,
+  type WorkbenchRowV2,
 } from "@/lib/pricing/workbench-queries";
 import {
   DEFAULT_WORKBENCH_FILTERS,
+  hasValidSalePrice,
+  PRODUCT_STATUS_LABEL,
   type WorkbenchFilters,
 } from "@/lib/pricing/workbench-filters";
 import { WorkbenchFiltersBar } from "@/components/pricing/workbench/WorkbenchFiltersBar";
@@ -122,26 +124,26 @@ function WorkbenchPage() {
   // reset page وقتی فیلتر تغییر کند
   useEffect(() => { setPage(0); }, [filtersWithSearch, showAll]);
 
-  const rows = (listQ.data?.rows ?? []) as unknown as WorkbenchRow[];
+  const rows: WorkbenchRowV2[] = listQ.data?.rows ?? [];
   const total = listQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
-  function setRowPrice(row: WorkbenchRow, value: number) {
+  function setRowPrice(row: WorkbenchRowV2, value: number) {
     setDirty((d) => ({
       ...d,
       [row.id]: { ...d[row.id], price: Math.max(0, Math.round(value)) },
     }));
   }
 
-  function setRowStock(row: WorkbenchRow, status: StockStatus) {
+  function setRowStock(row: WorkbenchRowV2, status: StockStatus) {
     setDirty((d) => ({
       ...d,
       [row.id]: { ...d[row.id], stock: status },
     }));
   }
 
-  function bumpPrice(row: WorkbenchRow, deltaPct: number) {
+  function bumpPrice(row: WorkbenchRowV2, deltaPct: number) {
     const base = dirty[row.id]?.price ?? row.current_price ?? 0;
     if (base <= 0) return;
     const next = base * (1 + deltaPct / 100);
@@ -155,7 +157,7 @@ function WorkbenchPage() {
     });
   }
 
-  async function saveRow(row: WorkbenchRow) {
+  async function saveRow(row: WorkbenchRowV2) {
     if (!user?.id) return;
     const change = dirty[row.id];
     if (!change) return;
@@ -301,7 +303,7 @@ function WorkbenchPage() {
       ) : rows.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            هیچ محصولی برای نمایش وجود ندارد.
+            محصولی با این فیلترها پیدا نشد.
             <br />
             {!showAll && "اگر مسئول هیچ محصولی نیستید، با مدیر تماس بگیرید."}
           </CardContent>
@@ -334,9 +336,13 @@ function WorkbenchPage() {
                 <TableRow>
                   <TableHead className="text-right">محصول</TableHead>
                   <TableHead className="text-right">برند</TableHead>
+                  <TableHead className="text-right">دسته</TableHead>
                   <TableHead className="text-right">قیمت خرید</TableHead>
                   <TableHead className="text-right">ارز</TableHead>
+                  <TableHead className="text-right">قیمت فروش</TableHead>
                   <TableHead className="text-right">موجودی</TableHead>
+                  <TableHead className="text-right">وضعیت</TableHead>
+                  <TableHead className="text-right">مسئول / برچسب</TableHead>
                   <TableHead className="text-right">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
@@ -421,7 +427,7 @@ function WorkbenchPage() {
 function DesktopRow({
   row, dirty, stepPct, saving, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
-  row: WorkbenchRow;
+  row: WorkbenchRowV2;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -437,6 +443,11 @@ function DesktopRow({
   const currentStock = dirty?.stock ?? row.stock_status;
   const isDirty = !!dirty;
   const noSupplier = !row.current_supplier_id;
+  const noSalePrice = !hasValidSalePrice(row.sale_price);
+  const noOwner = row.owners.length === 0;
+  const categoryLabel = row.parent_category_name
+    ? `${row.parent_category_name} / ${row.category_name ?? ""}`
+    : (row.category_name ?? "—");
 
   return (
     <TableRow className={isDirty ? "bg-amber-50 dark:bg-amber-950/20" : undefined}>
@@ -445,6 +456,9 @@ function DesktopRow({
         <div className="text-xs text-muted-foreground" dir="ltr">{row.sku ?? "—"}</div>
       </TableCell>
       <TableCell className="text-sm">{row.brand_name ?? "—"}</TableCell>
+      <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={categoryLabel}>
+        {categoryLabel}
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
           <Button
@@ -478,6 +492,11 @@ function DesktopRow({
         {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
       <TableCell className="text-xs">{(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)}</TableCell>
+      <TableCell className="text-xs">
+        {hasValidSalePrice(row.sale_price)
+          ? formatNumber(row.sale_price as number)
+          : <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>}
+      </TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
           <SelectTrigger className="h-8 w-28">
@@ -492,6 +511,34 @@ function DesktopRow({
             <SelectItem value="unknown">نامشخص</SelectItem>
           </SelectContent>
         </Select>
+      </TableCell>
+      <TableCell className="text-xs">
+        {row.status === "active" ? (
+          <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
+        ) : (
+          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
+        )}
+      </TableCell>
+      <TableCell className="text-xs max-w-[180px]">
+        <div className="space-y-1">
+          {noOwner ? (
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
+          ) : (
+            <div className="truncate text-muted-foreground" title={row.owners.map((o) => o.full_name ?? o.user_id).join("، ")}>
+              {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
+            </div>
+          )}
+          {row.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {row.tags.slice(0, 3).map((t) => (
+                <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
+              ))}
+              {row.tags.length > 3 && (
+                <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 3}</Badge>
+              )}
+            </div>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
@@ -520,7 +567,7 @@ function DesktopRow({
 function MobileCard({
   row, dirty, stepPct, saving, justSaved, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
-  row: WorkbenchRow;
+  row: WorkbenchRowV2;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -617,6 +664,35 @@ function MobileCard({
             </div>
           </div>
           {statusBadge}
+        </div>
+
+        {/* Meta: status + sale price + owner + tags */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          {row.status === "active" ? (
+            <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
+          )}
+          {hasValidSalePrice(row.sale_price) ? (
+            <Badge variant="secondary" className="text-[10px]">
+              فروش: {formatNumber(row.sale_price as number)}
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>
+          )}
+          {row.owners.length === 0 ? (
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px]">
+              مسئول: {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
+            </Badge>
+          )}
+          {row.tags.slice(0, 4).map((t) => (
+            <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
+          ))}
+          {row.tags.length > 4 && (
+            <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 4}</Badge>
+          )}
         </div>
 
         <div>
