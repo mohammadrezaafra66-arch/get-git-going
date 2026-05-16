@@ -362,6 +362,15 @@ function SaleListDetailPage() {
       "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
     ];
     const shop = shopSettingsQ.data;
+    const attrsMap = productAttrsQ.data ?? {};
+    const combineDescAndAttrs = (desc: string | null | undefined, attrs: string | undefined): string | null => {
+      const d = (desc ?? "").trim();
+      const a = (attrs ?? "").trim();
+      if (d && a) return `${d}\nویژگی‌ها: ${a}`;
+      if (d) return d;
+      if (a) return `ویژگی‌ها: ${a}`;
+      return null;
+    };
     return {
       listName: list.name,
       versionNumber: list.version_number,
@@ -412,7 +421,10 @@ function SaleListDetailPage() {
           change_amount,
           change_percent,
           stock_status: it.stock_status,
-          description: it.product?.description ?? null,
+          description: combineDescAndAttrs(
+            it.product?.description ?? null,
+            it.product?.id ? attrsMap[it.product.id] : undefined,
+          ),
         };
       }),
       options: {
