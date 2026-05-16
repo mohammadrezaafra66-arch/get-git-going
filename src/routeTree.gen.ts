@@ -148,6 +148,7 @@ import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as AppSalesInvoicesInvoiceIdWaybillCreateRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill.create'
+import { Route as ApiPublicBotDynamicTablesTableIdRowsUpsertRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.upsert'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows.$rowId'
 
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -890,6 +891,12 @@ const AppSalesInvoicesInvoiceIdWaybillCreateRoute =
     path: '/create',
     getParentRoute: () => AppSalesInvoicesInvoiceIdWaybillRoute,
   } as any)
+const ApiPublicBotDynamicTablesTableIdRowsUpsertRoute =
+  ApiPublicBotDynamicTablesTableIdRowsUpsertRouteImport.update({
+    id: '/upsert',
+    path: '/upsert',
+    getParentRoute: () => ApiPublicBotDynamicTablesTableIdRowsRoute,
+  } as any)
 const ApiPublicBotDynamicTablesTableIdRowsRowIdRoute =
   ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport.update({
     id: '/$rowId',
@@ -1037,6 +1044,7 @@ export interface FileRoutesByFullPath {
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1175,6 +1183,7 @@ export interface FileRoutesByTo {
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1318,6 +1327,7 @@ export interface FileRoutesById {
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
+  '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1461,6 +1471,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1599,6 +1610,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   id:
     | '__root__'
     | '/'
@@ -1741,6 +1753,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
+    | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -2734,6 +2747,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesInvoicesInvoiceIdWaybillCreateRouteImport
       parentRoute: typeof AppSalesInvoicesInvoiceIdWaybillRoute
     }
+    '/api/public/bot/dynamic-tables/$tableId/rows/upsert': {
+      id: '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
+      path: '/upsert'
+      fullPath: '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
+      preLoaderRoute: typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRouteImport
+      parentRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRoute
+    }
     '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': {
       id: '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
       path: '/$rowId'
@@ -3140,12 +3160,15 @@ const ApiPublicBotProductsRouteWithChildren =
 
 interface ApiPublicBotDynamicTablesTableIdRowsRouteChildren {
   ApiPublicBotDynamicTablesTableIdRowsRowIdRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
+  ApiPublicBotDynamicTablesTableIdRowsUpsertRoute: typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
 
 const ApiPublicBotDynamicTablesTableIdRowsRouteChildren: ApiPublicBotDynamicTablesTableIdRowsRouteChildren =
   {
     ApiPublicBotDynamicTablesTableIdRowsRowIdRoute:
       ApiPublicBotDynamicTablesTableIdRowsRowIdRoute,
+    ApiPublicBotDynamicTablesTableIdRowsUpsertRoute:
+      ApiPublicBotDynamicTablesTableIdRowsUpsertRoute,
   }
 
 const ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren =
