@@ -784,6 +784,7 @@ function VirtualizedGrid({
                   const value = stringifyValue(c, raw);
                   const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
                   const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
+                  const cellEditable = canEdit && !c.is_computed;
                   return (
                     <GridCell
                       key={c.id}
@@ -791,18 +792,18 @@ function VirtualizedGrid({
                       column={c}
                       value={value}
                       width={COL_W}
-                      canEdit={canEdit}
+                      canEdit={cellEditable}
                       inactive={inactive}
                       isFocused={isFocused}
                       isEditing={isEditing}
                       initialEditValue={isEditing ? editingPos?.initial : undefined}
                       onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
                       onRequestEdit={(initial) => {
-                        if (!canEdit) return;
+                        if (!cellEditable) return;
                         setEditingPos({ row: rowIdx, col: colIdx, initial });
                       }}
                       onClearCell={async () => {
-                        if (!canEdit || !value) return;
+                        if (!cellEditable || !value) return;
                         await cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: "" });
                       }}
                       onCancelEdit={() => {
