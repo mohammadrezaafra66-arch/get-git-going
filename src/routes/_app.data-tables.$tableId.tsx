@@ -681,10 +681,33 @@ function DataTableDetailPage() {
         <CardContent className="p-0">
           {rowsQuery.isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : rowsQuery.isError ? (
+            <div className="py-10">
+              <EmptyState
+                icon={AlertTriangle}
+                title="خطا در دریافت ردیف‌های جدول"
+                description={
+                  isObservatoryTable
+                    ? "خطا در دریافت ردیف‌های رصدخانه. لطفاً چند لحظه بعد دوباره تلاش کنید."
+                    : "دریافت ردیف‌ها با خطا مواجه شد. لطفاً دوباره تلاش کنید."
+                }
+              />
+              <div className="flex justify-center mt-4">
+                <Button size="sm" variant="outline" onClick={() => rowsQuery.refetch()}>
+                  تلاش مجدد
+                </Button>
+              </div>
+            </div>
           ) : loadedRows.length === 0 ? (
             <div className="py-10">
               <EmptyState icon={Inbox} title="ردیفی یافت نشد"
-                description={search || serverFilters.length ? "با فیلتر یا جستجوی فعلی نتیجه‌ای نیست." : "با دکمه افزودن ردیف، اولین رکورد را وارد کنید."} />
+                description={
+                  search || serverFilters.length
+                    ? "با فیلتر یا جستجوی فعلی نتیجه‌ای نیست."
+                    : isObservatoryTable
+                    ? "هنوز محصولی در رصدخانه ثبت نشده است. ابتدا sync محصولات را اجرا کنید."
+                    : "با دکمه افزودن ردیف، اولین رکورد را وارد کنید."
+                } />
             </div>
           ) : (
             <>

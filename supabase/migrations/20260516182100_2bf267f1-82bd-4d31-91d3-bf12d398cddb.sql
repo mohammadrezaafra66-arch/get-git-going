@@ -1,0 +1,2 @@
+ALTER FUNCTION public.query_dynamic_table_rows(uuid, jsonb, text, boolean, integer, integer) VOLATILE;
+ALTER FUNCTION public.query_dynamic_table_rows_v2(uuid, jsonb, text, boolean, integer, integer) VOLATILE;
