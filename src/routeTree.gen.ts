@@ -117,6 +117,7 @@ import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.acc
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
+import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
@@ -713,6 +714,12 @@ const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
+const AppGamificationAdminIndexRoute =
+  AppGamificationAdminIndexRouteImport.update({
+    id: '/admin/',
+    path: '/admin/',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const ApiPublicHooksProcessPricingQueueRoute =
   ApiPublicHooksProcessPricingQueueRouteImport.update({
     id: '/api/public/hooks/process-pricing-queue',
@@ -1041,6 +1048,7 @@ export interface FileRoutesByFullPath {
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1181,6 +1189,7 @@ export interface FileRoutesByTo {
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/gamification/admin': typeof AppGamificationAdminIndexRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1326,6 +1335,7 @@ export interface FileRoutesById {
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
@@ -1471,6 +1481,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
+    | '/gamification/admin/'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1611,6 +1622,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
+    | '/gamification/admin'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
     | '/pricing/sale-lists/$listId/publish'
@@ -1755,6 +1767,7 @@ export interface FileRouteTypes {
     | '/api/public/bot/products'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
+    | '/_app/gamification/admin/'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/pricing/sale-lists_/$listId/publish'
@@ -2544,6 +2557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesIndexRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
+    '/_app/gamification/admin/': {
+      id: '/_app/gamification/admin/'
+      path: '/admin'
+      fullPath: '/gamification/admin/'
+      preLoaderRoute: typeof AppGamificationAdminIndexRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/api/public/hooks/process-pricing-queue': {
       id: '/api/public/hooks/process-pricing-queue'
       path: '/api/public/hooks/process-pricing-queue'
@@ -2812,6 +2832,7 @@ interface AppGamificationRouteChildren {
   AppGamificationAdminMissionsRoute: typeof AppGamificationAdminMissionsRoute
   AppGamificationAdminPurchaseSettingsRoute: typeof AppGamificationAdminPurchaseSettingsRoute
   AppGamificationAdminRewardsRoute: typeof AppGamificationAdminRewardsRoute
+  AppGamificationAdminIndexRoute: typeof AppGamificationAdminIndexRoute
 }
 
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
@@ -2824,6 +2845,7 @@ const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationAdminPurchaseSettingsRoute:
     AppGamificationAdminPurchaseSettingsRoute,
   AppGamificationAdminRewardsRoute: AppGamificationAdminRewardsRoute,
+  AppGamificationAdminIndexRoute: AppGamificationAdminIndexRoute,
 }
 
 const AppGamificationRouteWithChildren = AppGamificationRoute._addFileChildren(
