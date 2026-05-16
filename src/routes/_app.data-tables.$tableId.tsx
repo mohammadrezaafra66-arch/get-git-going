@@ -290,6 +290,9 @@ function DataTableDetailPage() {
 
   const addRowMut = useMutation({
     mutationFn: async () => {
+      if (isObservatoryTable) {
+        throw new Error("افزودن ردیف دستی برای رصدخانه مجاز نیست.");
+      }
       const payload: Record<string, string> = {};
       for (const c of columns) {
         if (c.is_computed) continue;
@@ -459,9 +462,18 @@ function DataTableDetailPage() {
               </Button>
             )}
             {canEditRows ? (
-              <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
-                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
-              </Button>
+              isObservatoryTable ? (
+                <Button
+                  disabled
+                  title="ردیف‌های رصدخانه از محصولات فعال افراکالا ساخته می‌شوند و دستی اضافه نمی‌شوند."
+                >
+                  <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+                </Button>
+              ) : (
+                <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
+                  <Plus className="ml-2 h-4 w-4" />افزودن ردیف
+                </Button>
+              )
             ) : (
               <Button disabled title="شما دسترسی انجام این عملیات را ندارید">
                 <Plus className="ml-2 h-4 w-4" />افزودن ردیف
