@@ -616,7 +616,7 @@ function DataTableDetailPage() {
                               <CellEditor
                                 column={c}
                                 value={stringifyValue(c, r.values[c.column_key])}
-                                canEdit={canEditRows}
+                                canEdit={canEditRows && !c.is_computed}
                                 inactive={inactive}
                                 onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                               />
