@@ -744,8 +744,13 @@ function DataTableDetailPage() {
                               <CellEditor
                                 column={c}
                                 value={stringifyValue(c, r.values[c.column_key])}
-                                canEdit={canEditRows && !c.is_computed}
+                                canEdit={
+                                  canEditRows &&
+                                  !c.is_computed &&
+                                  !isObservatoryReadOnly(c)
+                                }
                                 inactive={inactive}
+                                displayOverride={renderObservatoryDisplay(c, r.values[c.column_key])}
                                 onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                               />
                             </div>
