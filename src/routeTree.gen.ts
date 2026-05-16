@@ -142,11 +142,13 @@ import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.a
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as ApiPublicBotProductsProductIdRouteImport } from './routes/api.public.bot.products.$productId'
+import { Route as ApiPublicBotMarketMatchesResolveRouteImport } from './routes/api.public.bot.market-matches.resolve'
 import { Route as AppSalesInvoicesInvoiceIdWaybillRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
+import { Route as ApiPublicBotMarketMatchesCandidatesUpsertRouteImport } from './routes/api.public.bot.market-matches.candidates.upsert'
 import { Route as ApiPublicBotDynamicTablesBySlugSlugRouteImport } from './routes/api.public.bot.dynamic-tables.by-slug.$slug'
 import { Route as ApiPublicBotDynamicTablesTableIdRowsRouteImport } from './routes/api.public.bot.dynamic-tables.$tableId.rows'
 import { Route as AppSalesInvoicesInvoiceIdWaybillCreateRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill.create'
@@ -857,6 +859,12 @@ const ApiPublicBotProductsProductIdRoute =
     path: '/$productId',
     getParentRoute: () => ApiPublicBotProductsRoute,
   } as any)
+const ApiPublicBotMarketMatchesResolveRoute =
+  ApiPublicBotMarketMatchesResolveRouteImport.update({
+    id: '/api/public/bot/market-matches/resolve',
+    path: '/api/public/bot/market-matches/resolve',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesInvoicesInvoiceIdWaybillRoute =
   AppSalesInvoicesInvoiceIdWaybillRouteImport.update({
     id: '/waybill',
@@ -886,6 +894,12 @@ const AppAcademyCourseIdLessonIdQuizRoute =
     id: '/academy_/$courseId_/$lessonId_/quiz',
     path: '/academy/$courseId/$lessonId/quiz',
     getParentRoute: () => AppRoute,
+  } as any)
+const ApiPublicBotMarketMatchesCandidatesUpsertRoute =
+  ApiPublicBotMarketMatchesCandidatesUpsertRouteImport.update({
+    id: '/api/public/bot/market-matches/candidates/upsert',
+    path: '/api/public/bot/market-matches/candidates/upsert',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicBotDynamicTablesBySlugSlugRoute =
   ApiPublicBotDynamicTablesBySlugSlugRouteImport.update({
@@ -1055,10 +1069,12 @@ export interface FileRoutesByFullPath {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
+  '/api/public/bot/market-matches/candidates/upsert': typeof ApiPublicBotMarketMatchesCandidatesUpsertRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1196,10 +1212,12 @@ export interface FileRoutesByTo {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
+  '/api/public/bot/market-matches/candidates/upsert': typeof ApiPublicBotMarketMatchesCandidatesUpsertRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1342,10 +1360,12 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/_app/sales_/invoices_/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   '/api/public/bot/dynamic-tables/by-slug/$slug': typeof ApiPublicBotDynamicTablesBySlugSlugRoute
+  '/api/public/bot/market-matches/candidates/upsert': typeof ApiPublicBotMarketMatchesCandidatesUpsertRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/$rowId': typeof ApiPublicBotDynamicTablesTableIdRowsRowIdRoute
   '/api/public/bot/dynamic-tables/$tableId/rows/upsert': typeof ApiPublicBotDynamicTablesTableIdRowsUpsertRoute
 }
@@ -1488,10 +1508,12 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/by-slug/$slug'
+    | '/api/public/bot/market-matches/candidates/upsert'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesByTo: FileRoutesByTo
@@ -1629,10 +1651,12 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/by-slug/$slug'
+    | '/api/public/bot/market-matches/candidates/upsert'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   id:
@@ -1774,10 +1798,12 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/_app/sales_/invoices_/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
     | '/api/public/bot/dynamic-tables/by-slug/$slug'
+    | '/api/public/bot/market-matches/candidates/upsert'
     | '/api/public/bot/dynamic-tables/$tableId/rows/$rowId'
     | '/api/public/bot/dynamic-tables/$tableId/rows/upsert'
   fileRoutesById: FileRoutesById
@@ -1795,8 +1821,10 @@ export interface RootRouteChildren {
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
+  ApiPublicBotMarketMatchesResolveRoute: typeof ApiPublicBotMarketMatchesResolveRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   ApiPublicBotDynamicTablesBySlugSlugRoute: typeof ApiPublicBotDynamicTablesBySlugSlugRoute
+  ApiPublicBotMarketMatchesCandidatesUpsertRoute: typeof ApiPublicBotMarketMatchesCandidatesUpsertRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -2732,6 +2760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotProductsProductIdRouteImport
       parentRoute: typeof ApiPublicBotProductsRoute
     }
+    '/api/public/bot/market-matches/resolve': {
+      id: '/api/public/bot/market-matches/resolve'
+      path: '/api/public/bot/market-matches/resolve'
+      fullPath: '/api/public/bot/market-matches/resolve'
+      preLoaderRoute: typeof ApiPublicBotMarketMatchesResolveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sales_/invoices_/$invoiceId/waybill': {
       id: '/_app/sales_/invoices_/$invoiceId/waybill'
       path: '/waybill'
@@ -2766,6 +2801,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/academy/$courseId/$lessonId/quiz'
       preLoaderRoute: typeof AppAcademyCourseIdLessonIdQuizRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/public/bot/market-matches/candidates/upsert': {
+      id: '/api/public/bot/market-matches/candidates/upsert'
+      path: '/api/public/bot/market-matches/candidates/upsert'
+      fullPath: '/api/public/bot/market-matches/candidates/upsert'
+      preLoaderRoute: typeof ApiPublicBotMarketMatchesCandidatesUpsertRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/bot/dynamic-tables/by-slug/$slug': {
       id: '/api/public/bot/dynamic-tables/by-slug/$slug'
@@ -3233,10 +3275,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
+  ApiPublicBotMarketMatchesResolveRoute: ApiPublicBotMarketMatchesResolveRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
   ApiPublicBotDynamicTablesBySlugSlugRoute:
     ApiPublicBotDynamicTablesBySlugSlugRoute,
+  ApiPublicBotMarketMatchesCandidatesUpsertRoute:
+    ApiPublicBotMarketMatchesCandidatesUpsertRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

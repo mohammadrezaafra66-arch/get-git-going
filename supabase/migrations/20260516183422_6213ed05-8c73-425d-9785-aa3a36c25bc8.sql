@@ -1,0 +1,1 @@
+DELETE FROM public.market_product_matches WHERE source_product_id = 'dt7-test-001';
