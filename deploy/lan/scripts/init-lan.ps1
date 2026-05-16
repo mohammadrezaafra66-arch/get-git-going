@@ -73,7 +73,8 @@ function Set-EnvValue($path, $key, $value) {
     if (-not $found) {
         $lines += $newLine
     }
-    Set-Content -LiteralPath $path -Value $lines -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines($path, [string[]]$lines, $utf8NoBom)
 }
 
 function New-RandomSecret($byteCount) {
@@ -91,7 +92,8 @@ function ConvertTo-Base64Url($bytes) {
 
 function New-SupabaseJwt($role, $secret) {
     $headerObj  = [ordered]@{ alg = "HS256"; typ = "JWT" }
-    $iat = [int][double]::Parse((Get-Date -Date (Get-Date).ToUniversalTime() -UFormat %s))
+    $epoch = New-Object DateTime 1970,1,1,0,0,0,([DateTimeKind]::Utc)
+    $iat = [int][math]::Floor(((Get-Date).ToUniversalTime() - $epoch).TotalSeconds)
     # 10 سال اعتبار
     $exp = $iat + (60 * 60 * 24 * 365 * 10)
     $payloadObj = [ordered]@{
