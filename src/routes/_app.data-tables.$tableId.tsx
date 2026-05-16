@@ -437,6 +437,16 @@ function DataTableDetailPage() {
         </div>
       )}
 
+      {isTorobTable && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-3 text-xs leading-6 text-foreground/90 space-y-0.5">
+            <div>• این جدول توسط API ربات به‌روزرسانی می‌شود.</div>
+            <div>• ستون‌های فرمولی از قیمت‌های داخلی افراکالا محاسبه می‌شوند.</div>
+            <div>• بروزرسانی نمای جدول هر ۷ ثانیه انجام می‌شود.</div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Columns management */}
       <Card>
         <CardContent className="p-4">
@@ -462,6 +472,19 @@ function DataTableDetailPage() {
                   {c.is_required && <Badge variant="secondary">الزامی</Badge>}
                   {c.is_filterable && <Badge variant="secondary">فیلترپذیر</Badge>}
                   {c.is_editable_by_bot && <Badge variant="secondary">ویرایش‌پذیر ربات</Badge>}
+                  {c.is_computed && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-primary/15 text-primary border-primary/30"
+                      title={
+                        c.formula_key
+                          ? `${COMPUTED_TOOLTIP} (${FORMULA_KEY_LABELS[c.formula_key] ?? c.formula_key})`
+                          : COMPUTED_TOOLTIP
+                      }
+                    >
+                      فرمولی
+                    </Badge>
+                  )}
                   {canEdit && (
                     <div className="ms-auto flex items-center gap-1">
                       <Button size="icon" variant="ghost" title="بالا"
