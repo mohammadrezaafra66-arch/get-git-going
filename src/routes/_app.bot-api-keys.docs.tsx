@@ -125,6 +125,51 @@ function BotApiDocsPage() {
     },
   }, null, 2);
 
+  const torobSlug = "torob-purchista-extracted-data";
+  const torobBySlugCurl = `curl -X GET "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}" \\
+  -H "Authorization: Bearer <API_KEY>"`;
+
+  const torobUpsertBody = JSON.stringify({
+    unique_by: ["source", "extraction_batch_id", "external_product_id"],
+    values: {
+      source: "torob",
+      extraction_batch_id: "batch-2026-05-16-001",
+      extracted_at: "2026-05-16T10:00:00Z",
+      external_product_id: "torob-12345",
+      product_url: "https://torob.com/p/12345",
+      product_title_raw: "گوشی سامسونگ گلکسی S24",
+      brand_raw: "Samsung",
+      model_raw: "Galaxy S24",
+      seller_name: "فروشگاه نمونه",
+      extracted_price_toman: 45000000,
+      stock_status_raw: "in_stock",
+      match_key: "samsung-galaxy-s24",
+      afrakala_product_id: "afk-9876",
+      match_confidence: 0.92,
+      bot_notes: "استخراج خودکار",
+    },
+  }, null, 2);
+
+  const torobUpsertCurl = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert" \\
+  -H "Authorization: Bearer <API_KEY>" \\
+  -H "Content-Type: application/json" \\
+  -d '${torobUpsertBody.replace(/\n/g, "\n  ")}'`;
+
+  const torobComputedRejectCurl = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert" \\
+  -H "Authorization: Bearer <API_KEY>" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "unique_by": ["source","extraction_batch_id","external_product_id"],
+    "values": {
+      "source": "torob",
+      "extraction_batch_id": "batch-x",
+      "extracted_at": "2026-05-16T10:00:00Z",
+      "external_product_id": "torob-1",
+      "afrakala_purchase_price_toman": 1
+    }
+  }'
+# انتظار: HTTP 403 با خطای column_not_allowed (ستون محاسباتی فقط خواندنی است)`;
+
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Bot API Docs</h1>
@@ -367,7 +412,164 @@ function BotApiDocsPage() {
               </ol>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge>Torob / Purchista</Badge>
+                قرارداد API جدول دیتای استخراج‌شده ترب - پورچیستا
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm leading-7">
+              <div className="space-y-1">
+                <p>
+                  این بخش قرارداد رسمی ارسال داده توسط ربات استخراج ترب/پورچیستا به جدول داینامیک
+                  <code dir="ltr"> torob-purchista-extracted-data</code> را مستند می‌کند. کلیدهای
+                  ستون‌ها دقیقاً مطابق Seed واقعی دیتابیس هستند و باید بدون تغییر استفاده شوند.
+                </p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground">
+                  <li><strong>Slug:</strong> <code dir="ltr">torob-purchista-extracted-data</code></li>
+                  <li><strong>Table ID:</strong> <code dir="ltr">918c6729-c82c-4f20-8b66-77cf0954ba50</code></li>
+                  <li>تمام درخواست‌ها نیاز به هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code> دارند.</li>
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۱) دریافت متادیتا با Slug</p>
+                <CodeBlock lang="endpoint" code={`GET /api/public/bot/dynamic-tables/by-slug/${torobSlug}`} />
+                <CodeBlock lang="curl" code={torobBySlugCurl} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  پاسخ شامل لیست ستون‌ها، نوع داده، الزامی بودن و فلگ <code dir="ltr">is_computed</code> است.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۲) Upsert ردیف بر اساس کلید یکتا</p>
+                <CodeBlock
+                  lang="endpoint"
+                  code={`POST /api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert`}
+                />
+                <p className="text-xs text-muted-foreground mb-2">
+                  مقدار <code dir="ltr">unique_by</code> الزامی است و باید دقیقاً برابر با
+                  <code dir="ltr"> ["source","extraction_batch_id","external_product_id"]</code> باشد.
+                  در صورت ارسال آرایه خالی یا نادرست، خطای <code dir="ltr">invalid_unique_by</code>
+                  با وضعیت ۴۰۰ برمی‌گردد.
+                </p>
+                <CodeBlock lang="json" code={torobUpsertBody} />
+                <CodeBlock lang="curl" code={torobUpsertCurl} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  پاسخ موفق: <code dir="ltr">201 Created</code> برای ردیف جدید یا
+                  <code dir="ltr"> 200 OK</code> برای به‌روزرسانی ردیف موجود.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۳) ستون‌های قابل نوشتن توسط ربات</p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-xs" dir="ltr">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-2 text-left">column_key</th>
+                        <th className="p-2 text-left">type</th>
+                        <th className="p-2 text-left">required</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {[
+                        ["source", "status (enum)", "✔"],
+                        ["extraction_batch_id", "text", "✔"],
+                        ["extracted_at", "datetime (ISO 8601)", "✔"],
+                        ["external_product_id", "text", "—"],
+                        ["product_url", "text (URL)", "—"],
+                        ["product_title_raw", "text", "✔"],
+                        ["brand_raw", "text", "—"],
+                        ["model_raw", "text", "—"],
+                        ["seller_name", "text", "—"],
+                        ["extracted_price_toman", "number", "—"],
+                        ["stock_status_raw", "status (enum)", "—"],
+                        ["match_key", "text", "—"],
+                        ["afrakala_product_id", "text", "—"],
+                        ["match_confidence", "number (0..1)", "—"],
+                        ["bot_notes", "text", "—"],
+                      ].map(([k, t, r]) => (
+                        <tr key={k} className="border-t border-border">
+                          <td className="p-2">{k}</td>
+                          <td className="p-2">{t}</td>
+                          <td className="p-2">{r}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۴) ستون‌های محاسباتی (Read-only)</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  این ستون‌ها به‌صورت خودکار توسط سرور محاسبه می‌شوند. ربات
+                  <strong> نباید </strong> آن‌ها را در <code dir="ltr">values</code> ارسال کند؛
+                  در غیر این صورت پاسخ <code dir="ltr">403 column_not_allowed</code> دریافت خواهد شد.
+                </p>
+                <ul className="list-disc pr-5 text-xs font-mono" dir="ltr">
+                  <li>afrakala_purchase_price_toman</li>
+                  <li>afrakala_min_sale_price</li>
+                  <li>latest_batch_average_price</li>
+                  <li>price_gap_to_market_avg</li>
+                  <li>price_gap_percent_to_market_avg</li>
+                </ul>
+                <CodeBlock lang="curl" code={torobComputedRejectCurl} />
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۵) جدول تطبیق کلیدهای قدیمی → کلیدهای واقعی</p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-xs" dir="ltr">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-2 text-left">old / wrong key</th>
+                        <th className="p-2 text-left">real seeded key</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {[
+                        ["external_url", "product_url"],
+                        ["matched_product_id", "afrakala_product_id"],
+                        ["availability_status", "stock_status_raw"],
+                        ["notes", "bot_notes"],
+                        ["latest_purchase_price_toman", "afrakala_purchase_price_toman (computed)"],
+                        ["min_sale_price", "afrakala_min_sale_price (computed)"],
+                      ].map(([o, n]) => (
+                        <tr key={o} className="border-t border-border">
+                          <td className="p-2 text-destructive">{o}</td>
+                          <td className="p-2">{n}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  توجه: کلیدهای <code dir="ltr">seller_url</code> و <code dir="ltr">raw_payload</code>
+                  در Seed فعلی جدول تعریف نشده‌اند و ارسال آن‌ها باعث خطای
+                  <code dir="ltr"> unknown_column</code> می‌شود. تا زمانی که migration رسمی برای
+                  افزودن این ستون‌ها ایجاد نشده، نباید ارسال شوند.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">۶) ملاحظات امنیتی</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li>کلید API باید فقط از صفحه <Link to="/bot-api-keys" className="underline">Bot API Keys</Link> ساخته شود.</li>
+                  <li>دسترسی کلید را فقط به همین جدول (<code dir="ltr">{torobSlug}</code>) محدود کنید.</li>
+                  <li>گزینه <code dir="ltr">can_update=true</code> الزامی است (upsert از مسیر update عبور می‌کند).</li>
+                  <li>در «ستون‌های قابل به‌روزرسانی» فقط ستون‌های غیرمحاسباتی بالا را انتخاب کنید.</li>
+                  <li>کلید خام را هرگز در frontend، repo عمومی یا لاگ‌ها قرار ندهید؛ فقط در ENV سرور ربات نگهداری شود.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
             </TabsContent>
+
 
             <TabsContent value="products" className="space-y-4">
               <ProductsDocs baseUrl={baseUrl} />
