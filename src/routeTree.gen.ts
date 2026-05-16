@@ -142,6 +142,7 @@ import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.a
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as ApiPublicBotProductsProductIdRouteImport } from './routes/api.public.bot.products.$productId'
+import { Route as ApiPublicBotMarketMatchesResolveRouteImport } from './routes/api.public.bot.market-matches.resolve'
 import { Route as AppSalesInvoicesInvoiceIdWaybillRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
@@ -858,6 +859,12 @@ const ApiPublicBotProductsProductIdRoute =
     path: '/$productId',
     getParentRoute: () => ApiPublicBotProductsRoute,
   } as any)
+const ApiPublicBotMarketMatchesResolveRoute =
+  ApiPublicBotMarketMatchesResolveRouteImport.update({
+    id: '/api/public/bot/market-matches/resolve',
+    path: '/api/public/bot/market-matches/resolve',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesInvoicesInvoiceIdWaybillRoute =
   AppSalesInvoicesInvoiceIdWaybillRouteImport.update({
     id: '/waybill',
@@ -1062,6 +1069,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -1204,6 +1212,7 @@ export interface FileRoutesByTo {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -1351,6 +1360,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/_app/sales_/invoices_/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
   '/api/public/bot/dynamic-tables/$tableId/rows': typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -1498,6 +1508,7 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1640,6 +1651,7 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1786,6 +1798,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/_app/sales_/invoices_/$invoiceId/waybill'
+    | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
     | '/api/public/bot/dynamic-tables/$tableId/rows'
@@ -1808,6 +1821,7 @@ export interface RootRouteChildren {
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
+  ApiPublicBotMarketMatchesResolveRoute: typeof ApiPublicBotMarketMatchesResolveRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   ApiPublicBotDynamicTablesBySlugSlugRoute: typeof ApiPublicBotDynamicTablesBySlugSlugRoute
   ApiPublicBotMarketMatchesCandidatesUpsertRoute: typeof ApiPublicBotMarketMatchesCandidatesUpsertRoute
@@ -2746,6 +2760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotProductsProductIdRouteImport
       parentRoute: typeof ApiPublicBotProductsRoute
     }
+    '/api/public/bot/market-matches/resolve': {
+      id: '/api/public/bot/market-matches/resolve'
+      path: '/api/public/bot/market-matches/resolve'
+      fullPath: '/api/public/bot/market-matches/resolve'
+      preLoaderRoute: typeof ApiPublicBotMarketMatchesResolveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sales_/invoices_/$invoiceId/waybill': {
       id: '/_app/sales_/invoices_/$invoiceId/waybill'
       path: '/waybill'
@@ -3254,6 +3275,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
+  ApiPublicBotMarketMatchesResolveRoute: ApiPublicBotMarketMatchesResolveRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
   ApiPublicBotDynamicTablesBySlugSlugRoute:
