@@ -121,7 +121,7 @@ Endpointهای واقعی موجود در پروژه (`src/routes/api.public.bot
 
 **Authentication:** header `Authorization: Bearer <BOT_API_KEY>`
 
-**Base URL — TODO:** Base URL محیط production/preview باید توسط ادمین افراکالا تأیید شود (مثلاً `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app` برای preview یا دامنه self-host واقعی). در ربات از متغیر محیطی `AFRAKALA_API_BASE_URL` استفاده شود؛ مقدار آن **در سند یا repo ربات commit نشود**.
+**Base URL — TODO:** Base URL محیط production یا preview/self-host **باید توسط ادمین افراکالا خارج از این سند تأیید و تحویل داده شود** (هیچ دامنه واقعی production در این سند درج نمی‌شود). در ربات از متغیر محیطی `AFRAKALA_API_BASE_URL` استفاده شود؛ مقدار آن **در سند یا repo ربات commit نشود**.
 
 ### مرحله ۱ — گرفتن tableId از slug
 
@@ -172,6 +172,17 @@ curl -X POST \
 ---
 
 ## ۹) قوانین امنیتی API Key
+
+**Scope الزامی کلید ربات (در پنل `/bot-api-keys` افراکالا):**
+
+| فلگ | مقدار |
+|---|---|
+| `can_read` | `true` (برای resolve کردن slug → tableId و خواندن وضعیت ردیف) |
+| `can_update` | `true` |
+| `can_create` | `false` (در صورت وجود permission جداگانه — ربات حق ساخت ردیف ندارد) |
+| `can_delete` | `false` |
+| `allowed_tables` | فقط `afrakala-product-price-observatory` |
+| `allowed_update_columns` | فقط ۹ ستون بخش ۴ (هیچ ستون دیگر، به‌ویژه `afrakala_product_id` در این لیست نیست) |
 
 - API Key ربات **هرگز** در frontend، client bundle، یا برنامه‌های کاربر نهایی نباشد.
 - API Key **هرگز** در Git commit نشود (نه در `.env`، نه در config، نه در docs).
