@@ -232,6 +232,7 @@ function DataTableDetailPage() {
     mutationFn: async () => {
       const payload: Record<string, string> = {};
       for (const c of columns) {
+        if (c.is_computed) continue;
         const v = (values[c.column_key] ?? "").trim();
         if (v) payload[c.column_key] = v;
         else if (c.is_required) throw new Error(`مقدار ستون «${c.label}» الزامی است.`);
@@ -650,7 +651,7 @@ function DataTableDetailPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>افزودن ردیف</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            {columns.map((c) => (
+            {columns.filter((c) => !c.is_computed).map((c) => (
               <div key={c.id} className="space-y-1.5">
                 <Label>
                   {c.label}
