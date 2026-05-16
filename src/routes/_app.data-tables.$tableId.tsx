@@ -915,7 +915,9 @@ function VirtualizedGrid({
                   const value = stringifyValue(c, raw);
                   const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
                   const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
-                  const cellEditable = canEdit && !c.is_computed;
+                  const cellEditable =
+                    canEdit && !c.is_computed && !(isCellReadOnly?.(c) ?? false);
+                  const override = renderCellOverride?.(c, raw) ?? null;
                   return (
                     <GridCell
                       key={c.id}
@@ -928,6 +930,7 @@ function VirtualizedGrid({
                       isFocused={isFocused}
                       isEditing={isEditing}
                       initialEditValue={isEditing ? editingPos?.initial : undefined}
+                      displayOverride={override}
                       onFocusCell={() => setFocused({ row: rowIdx, col: colIdx })}
                       onRequestEdit={(initial) => {
                         if (!cellEditable) return;
