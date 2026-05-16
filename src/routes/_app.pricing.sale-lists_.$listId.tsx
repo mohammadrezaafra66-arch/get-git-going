@@ -102,7 +102,8 @@ type ColumnKey =
   | "stock_status"
   | "product_type"
   | "labels"
-  | "description";
+  | "description"
+  | "observatory_price_advantage";
 
 const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
   { key: "name", label: "نام محصول", locked: true },
@@ -115,6 +116,10 @@ const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
   { key: "product_type", label: "نوع کالا" },
   { key: "labels", label: "برچسب‌ها" },
   { key: "description", label: "توضیحات" },
+  // Customer-safe Observatory hint. NOT included in the default-on
+  // fallback set so existing lists are unaffected — only shows up when
+  // the manager explicitly checks it.
+  { key: "observatory_price_advantage", label: "مزیت قیمت" },
 ];
 
 interface SaleListDetail {
