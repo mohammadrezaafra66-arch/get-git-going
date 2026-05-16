@@ -928,6 +928,12 @@ const GridCell = forwardRef<HTMLDivElement, {
   };
 
   const focusedClass = isFocused ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5" : "";
+  const computed = column.is_computed;
+  const titleText = computed
+    ? "این مقدار توسط فرمول سیستم محاسبه می‌شود."
+    : canEdit
+    ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت"
+    : undefined;
   return (
     <div
       ref={ref}
@@ -937,9 +943,9 @@ const GridCell = forwardRef<HTMLDivElement, {
       onFocus={onFocusCell}
       onDoubleClick={() => canEdit && onRequestEdit()}
       onKeyDown={handleKey}
-      className={`px-3 py-2 align-middle truncate focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"}`}
+      className={`px-3 py-2 align-middle truncate focus:outline-none ${focusedClass} ${canEdit ? "cursor-text" : "cursor-default"} ${computed ? "bg-primary/5" : ""}`}
       style={{ width }}
-      title={canEdit ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت" : undefined}
+      title={titleText}
     >
       {isEditing ? (
         <CellEditorInput
