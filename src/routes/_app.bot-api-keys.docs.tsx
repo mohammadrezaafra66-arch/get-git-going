@@ -568,19 +568,6 @@ function BotApiDocsPage() {
             </CardContent>
           </Card>
 
-          <Card style={{ display: "none" }} aria-hidden="true">
-            <CardHeader><CardTitle className="text-base">__legacy_checklist_anchor__</CardTitle></CardHeader>
-            <CardContent className="text-sm leading-7">
-              <ol className="list-decimal pr-5 space-y-1">
-                <li>یک کلید API بسازید و کلید خام را ذخیره کنید.</li>
-                <li>کلید را به جدول هدف متصل کرده و سطح دسترسی (read / update) را تعیین کنید.</li>
-                <li>اگر نیاز به تغییر ستون‌ها هست، ستون‌های قابل update را مشخص کنید.</li>
-                <li>درخواست را در «<Link to="/bot-api-keys/playground" className="underline">API Playground</Link>» تست کنید.</li>
-                <li>کلید را در ربات/سرویس خود تنظیم کرده و درخواست‌ها را ارسال کنید.</li>
-                <li>مصرف و خطاها را در «<Link to="/bot-api-keys/usage" className="underline">گزارش استفاده</Link>» پایش کنید.</li>
-              </ol>
-            </CardContent>
-          </Card>
             </TabsContent>
 
 
