@@ -110,7 +110,7 @@ const COLUMN_OPTIONS: { key: ColumnKey; label: string; locked?: boolean }[] = [
   { key: "category", label: "دسته‌بندی" },
   { key: "sale_price", label: "قیمت فروش" },
   { key: "previous_price", label: "قیمت قبلی" },
-  { key: "change", label: "میزان تغییر" },
+  { key: "change", label: "میزان تغییرات" },
   { key: "stock_status", label: "وضعیت موجودی" },
   { key: "product_type", label: "نوع کالا" },
   { key: "labels", label: "برچسب‌ها" },
