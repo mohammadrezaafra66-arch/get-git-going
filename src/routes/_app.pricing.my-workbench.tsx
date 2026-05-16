@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2,
-  Search,
   Save,
   Minus,
   Plus,
@@ -247,69 +246,55 @@ function WorkbenchPage() {
 
       <EffectiveCurrenciesPanel />
 
-      {/* فیلترها */}
-      <Card>
-        <CardContent className="grid grid-cols-1 gap-3 p-4 md:grid-cols-5">
-          <div className="md:col-span-2">
-            <Label className="mb-1 block text-xs">جستجو</Label>
-            <div className="relative">
-              <Search className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-                placeholder="نام یا کد محصول..."
-                className="pr-8"
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="mb-1 block text-xs">برند</Label>
-            <Select value={brandId} onValueChange={(v) => { setBrandId(v); setPage(0); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه برندها</SelectItem>
-                {(brandsQ.data ?? []).map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="mb-1 block text-xs">موجودی</Label>
-            <Select value={stockFilter} onValueChange={(v) => { setStockFilter(v as never); setPage(0); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
-                {STOCK_STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="mb-1 block text-xs">گام تغییر قیمت</Label>
-            <Select value={String(stepPct)} onValueChange={(v) => setStepPct(Number(v))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="0.5">۰٫۵٪</SelectItem>
-                <SelectItem value="1">۱٪</SelectItem>
-                <SelectItem value="2">۲٪</SelectItem>
-                <SelectItem value="5">۵٪</SelectItem>
-                <SelectItem value="10">۱۰٪</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {isPrivileged && (
-            <div className="flex items-end gap-2 md:col-span-5">
-              <Switch checked={showAll} onCheckedChange={(v) => { setShowAll(v); setPage(0); }} id="show-all" />
-              <Label htmlFor="show-all" className="text-sm">نمایش همه محصولات (مدیریتی)</Label>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="workbench" className="w-full">
+        <TabsList>
+          <TabsTrigger value="workbench">کارگاه قیمت‌گذاری</TabsTrigger>
+          <TabsTrigger value="health">گزارش سلامت قیمت/فروش</TabsTrigger>
+        </TabsList>
 
-      {/* محتوا */}
-      {listQ.isLoading ? (
+        <TabsContent value="workbench" className="space-y-4">
+          <WorkbenchFiltersBar
+            filters={filters}
+            onChange={(f) => { setFilters(f); setPage(0); }}
+            brands={brandsQ.data ?? []}
+            categories={catsQ.data ?? []}
+            labels={labelsQ.data ?? []}
+            owners={ownersQ.data ?? []}
+            search={search}
+            onSearchChange={(v) => { setSearch(v); setPage(0); }}
+          />
+
+          <Card>
+            <CardContent className="flex flex-wrap items-end gap-3 p-4">
+              <div className="min-w-[160px]">
+                <Label className="mb-1 block text-xs">گام تغییر قیمت</Label>
+                <Select value={String(stepPct)} onValueChange={(v) => setStepPct(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.5">۰٫۵٪</SelectItem>
+                    <SelectItem value="1">۱٪</SelectItem>
+                    <SelectItem value="2">۲٪</SelectItem>
+                    <SelectItem value="5">۵٪</SelectItem>
+                    <SelectItem value="10">۱۰٪</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {isPrivileged && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showAll}
+                    onCheckedChange={(v) => { setShowAll(v); setPage(0); }}
+                    id="show-all"
+                  />
+                  <Label htmlFor="show-all" className="text-sm">
+                    نمایش همه محصولات (مدیریتی)
+                  </Label>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {listQ.isLoading ? (
         <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
           <Loader2 className="ms-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
         </div>
@@ -392,6 +377,14 @@ function WorkbenchPage() {
           </Button>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="health">
+          <HealthReportTab
+            ownedOnly={showAll && isPrivileged ? null : (user?.id ? { userId: user.id } : null)}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* نوار پایین: ذخیره همه */}
       {dirtyCount > 0 && (
