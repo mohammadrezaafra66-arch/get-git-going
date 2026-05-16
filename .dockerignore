@@ -25,6 +25,15 @@ deploy/local/volumes/
 deploy/local/data/
 deploy/local/storage/
 deploy/supabase/volumes/
+
+# LAN pilot runtime — never bake into images
+deploy/lan/.env
+deploy/lan/.env.lan
+deploy/lan/data/
+deploy/lan/volumes/
+deploy/lan/storage-export/
+deploy/lan/**/*.dump
+!deploy/lan/.env.lan.example
 *.pem
 
 # Migration artifacts — never bake into images
