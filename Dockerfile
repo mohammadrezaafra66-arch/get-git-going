@@ -4,10 +4,27 @@
 FROM oven/bun:1-debian AS builder
 WORKDIR /app
 
-COPY package.json bun.lock* bun.lockb* ./
-RUN bun install --frozen-lockfile || bun install
+# --- Self-host / LAN registry hardening ---------------------------------
+# Repo lockfile may contain resolved URLs pointing to Lovable's private
+# npm cache (europe-west1-npm.pkg.dev / lovable-core-prod / sandbox-npm-cache),
+# which returns HTTP 403 for callers outside Lovable. For LAN/self-host
+# builds we always install from the public npm registry.
+ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+    npm_config_registry=https://registry.npmjs.org/ \
+    BUN_CONFIG_REGISTRY=https://registry.npmjs.org/
+
+COPY package.json ./
+# Drop any inherited registry config that could redirect installs to a
+# private cache, then resolve fresh against public npm. We intentionally
+# do NOT copy bun.lock* here, because Bun honors the resolved URLs in the
+# lockfile and would otherwise re-fetch from the private cache.
+RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true \
+ && bun install
 
 COPY . .
+# Re-apply the registry-clean state after `COPY . .` brings repo files back in,
+# so subsequent tooling cannot reach the private cache either.
+RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 
 # Public client-safe build args (baked into client bundle)
 ARG VITE_SUPABASE_URL
