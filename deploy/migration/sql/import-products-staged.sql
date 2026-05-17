@@ -170,6 +170,58 @@ SELECT 'pcp_dedup rows whose product is missing from products_raw' AS check, cou
 FROM _staging_import.product_computed_prices_dedup d
 WHERE NOT EXISTS (SELECT 1 FROM _staging_import.products_raw p WHERE p.id = d.product_id);
 
+\echo '-- enum validation (fails dry-run on any invalid label) --'
+DO $enum_check$
+DECLARE
+  bad_product_type  int;
+  bad_stock_status  int;
+  bad_status        int;
+  sample_pt text;
+  sample_ss text;
+  sample_st text;
+BEGIN
+  SELECT count(*), min(product_type)
+    INTO bad_product_type, sample_pt
+  FROM _staging_import.products_raw
+  WHERE product_type IS NOT NULL
+    AND product_type NOT IN (
+      SELECT unnest(enum_range(NULL::public.product_type))::text
+    );
+
+  SELECT count(*), min(stock_status)
+    INTO bad_stock_status, sample_ss
+  FROM _staging_import.products_raw
+  WHERE stock_status IS NOT NULL
+    AND stock_status NOT IN (
+      SELECT unnest(enum_range(NULL::public.stock_status))::text
+    );
+
+  SELECT count(*), min(status)
+    INTO bad_status, sample_st
+  FROM _staging_import.products_raw
+  WHERE status IS NOT NULL
+    AND status NOT IN (
+      SELECT unnest(enum_range(NULL::public.product_status))::text
+    );
+
+  IF bad_product_type > 0 THEN
+    RAISE EXCEPTION
+      'products_raw has % rows with invalid product_type (e.g. %)',
+      bad_product_type, sample_pt;
+  END IF;
+  IF bad_stock_status > 0 THEN
+    RAISE EXCEPTION
+      'products_raw has % rows with invalid stock_status (e.g. %)',
+      bad_stock_status, sample_ss;
+  END IF;
+  IF bad_status > 0 THEN
+    RAISE EXCEPTION
+      'products_raw has % rows with invalid status (e.g. %)',
+      bad_status, sample_st;
+  END IF;
+END
+$enum_check$;
+
 -- --- 6) Conditional real insert (only when dry_run=false) ------------------
 -- Default to "true" if the variable was not provided.
 \if :{?dry_run}
@@ -211,7 +263,10 @@ SELECT
   p.id, p.sku, p.name, p.description, p.unit, p.category, p.is_active,
   :'lan_admin_user_id'::uuid,
   p.created_at, p.updated_at, p.brand_id, p.category_id,
-  p.product_type, p.base_currency, p.stock_status, p.status,
+  p.product_type::public.product_type,
+  p.base_currency,
+  p.stock_status::public.stock_status,
+  p.status::public.product_status,
   p.technical_notes,
   :'lan_admin_user_id'::uuid,
   p.color, p.capacity, p.model, p.primary_spec, p.dedup_key
