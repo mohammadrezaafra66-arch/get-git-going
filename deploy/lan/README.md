@@ -289,6 +289,14 @@ docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.l
 
 بعد از این، `git status` نباید هیچ فایل `.sh` را به عنوان modified نشان دهد و logهای Postgres باید پیام `[afrakala/zz-10-roles] role bootstrap complete` را نمایش دهند.
 
+**Verify (PowerShell):** بررسی اینکه هیچ CRLF در اسکریپت‌های init باقی نمانده:
+
+```powershell
+Select-String -Path .\deploy\supabase\volumes\db\init\*.sh -Pattern "`r" -List
+```
+
+خروجی موردانتظار: هیچ — هیچ فایلی نباید لیست شود.
+
 ### `role "supabase_auth_admin" does not exist` (یا `authenticator` / `supabase_storage_admin`)
 
 در stack LAN، رول‌های پایه Supabase توسط اسکریپت `deploy/supabase/volumes/db/init/zz-10-afrakala-roles.sh` به‌صورت idempotent ساخته می‌شوند. این اسکریپت **فقط روی volume خالی** اجرا می‌شود. اگر دیتابیس قبلاً با نسخه قدیمی (که فرض می‌کرد رول‌ها از قبل وجود دارند) بالا آمده باشد، volume را پاک کرده و دوباره بالا بیاورید:
