@@ -12,6 +12,7 @@ import { PersonForm, type PersonFormValues } from "@/components/persons/PersonFo
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
 import { PersonContextLinksForm } from "@/components/persons/PersonContextLinksForm";
 import { getPerson, updatePerson } from "@/lib/persons/functions";
+import { toError } from "@/lib/server-fn-error";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
@@ -32,7 +33,7 @@ function PersonEditPage() {
 
   const personQuery = useQuery({
     queryKey: ["person", personId],
-    queryFn: () => getFn({ data: { id: personId } }),
+    queryFn: () => toError(getFn({ data: { id: personId } })),
   });
 
   const identifiersQuery = useQuery({
@@ -52,7 +53,7 @@ function PersonEditPage() {
 
   const updateMut = useMutation({
     mutationFn: (values: PersonFormValues) =>
-      updateFn({
+      toError(updateFn({
         data: {
           id: personId,
           kind: values.kind,
@@ -62,7 +63,7 @@ function PersonEditPage() {
           is_active: values.is_active,
           notes: values.notes.trim() ? values.notes.trim() : null,
         },
-      }),
+      })),
     onSuccess: () => {
       toast.success("تغییرات ذخیره شد");
       qc.invalidateQueries({ queryKey: ["person", personId] });

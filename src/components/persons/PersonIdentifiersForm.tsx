@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toError } from "@/lib/server-fn-error";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ export function PersonIdentifiersForm({
 
   const createMut = useMutation({
     mutationFn: () =>
-      createFn({
+      toError(createFn({
         data: {
           person_id: personId,
           kind,
@@ -89,7 +90,7 @@ export function PersonIdentifiersForm({
           status: confirmed ? "confirmed" : "provisional",
           is_primary: isPrimary,
         },
-      }),
+      })),
     onSuccess: () => {
       toast.success("شناسه افزوده شد");
       setValue("");
@@ -103,7 +104,7 @@ export function PersonIdentifiersForm({
   });
 
   const revokeMut = useMutation({
-    mutationFn: (id: string) => revokeFn({ data: { id } }),
+    mutationFn: (id: string) => toError(revokeFn({ data: { id } })),
     onSuccess: () => {
       toast.success("شناسه ابطال شد");
       qc.invalidateQueries({ queryKey: ["person", personId] });
