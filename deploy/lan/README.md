@@ -271,3 +271,21 @@ docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan u
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan build --no-cache web
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d web
 ```
+
+### `role "supabase_auth_admin" does not exist` (یا `authenticator` / `supabase_storage_admin`)
+
+در stack LAN، رول‌های پایه Supabase توسط اسکریپت `deploy/supabase/volumes/db/init/zz-10-afrakala-roles.sh` به‌صورت idempotent ساخته می‌شوند. این اسکریپت **فقط روی volume خالی** اجرا می‌شود. اگر دیتابیس قبلاً با نسخه قدیمی (که فرض می‌کرد رول‌ها از قبل وجود دارند) بالا آمده باشد، volume را پاک کرده و دوباره بالا بیاورید:
+
+```powershell
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan down -v
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d
+```
+
+### `Cannot find package 'h3-v2' imported from /app/dist/server/server.js`
+
+SSR bundle خروجی Vite برخی dependencyهای runtime (مثل `h3-v2`) را inline نمی‌کند و به `node_modules` در runtime وابسته است. Dockerfile به‌روزرسانی شده تا `node_modules` را در stage نهایی هم کپی کند. image را با `--no-cache` rebuild کنید:
+
+```powershell
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan build --no-cache web
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d web
+```
