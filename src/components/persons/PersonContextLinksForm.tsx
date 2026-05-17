@@ -81,8 +81,7 @@ export function PersonContextLinksForm({
   const queryKey = ["person", personId, "context-links"] as const;
   const linksQuery = useQuery({
     queryKey,
-    queryFn: () =>
-      listFn({ data: { person_id: personId, include_ended: true } }),
+    queryFn: () => listFn({ data: { person_id: personId, include_ended: true } }),
   });
 
   const [kind, setKind] = useState<PersonContextKind>("customer");
@@ -186,11 +185,7 @@ export function PersonContextLinksForm({
                 maxLength={2000}
               />
             </div>
-            <Button
-              type="button"
-              onClick={() => addMut.mutate()}
-              disabled={addMut.isPending}
-            >
+            <Button type="button" onClick={() => addMut.mutate()} disabled={addMut.isPending}>
               {addMut.isPending ? (
                 <Loader2 className="ml-2 h-4 w-4 animate-spin" />
               ) : (
@@ -255,19 +250,28 @@ export function PersonContextLinksForm({
           <TableBody>
             {linksQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={canManage ? 7 : 6} className="py-6 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={canManage ? 7 : 6}
+                  className="py-6 text-center text-muted-foreground"
+                >
                   <Loader2 className="ml-2 inline h-4 w-4 animate-spin" /> در حال بارگذاری...
                 </TableCell>
               </TableRow>
             ) : linksQuery.error ? (
               <TableRow>
-                <TableCell colSpan={canManage ? 7 : 6} className="py-6 text-center text-destructive">
+                <TableCell
+                  colSpan={canManage ? 7 : 6}
+                  className="py-6 text-center text-destructive"
+                >
                   بارگذاری ارتباط‌ها با خطا مواجه شد.
                 </TableCell>
               </TableRow>
             ) : (linksQuery.data ?? []).length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canManage ? 7 : 6} className="py-6 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={canManage ? 7 : 6}
+                  className="py-6 text-center text-muted-foreground"
+                >
                   ارتباطی ثبت نشده است.
                 </TableCell>
               </TableRow>
@@ -308,11 +312,7 @@ export function PersonContextLinksForm({
                               >
                                 <Save className="ml-1 h-3 w-3" /> ذخیره
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingId(null)}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                                 <X className="ml-1 h-3 w-3" /> انصراف
                               </Button>
                             </>
