@@ -62,6 +62,10 @@ RUN apk add --no-cache wget tini \
 COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=builder --chown=app:app /app/server ./server
 COPY --from=builder --chown=app:app /app/package.json ./package.json
+# LAN/self-host: ship node_modules so the SSR bundle can resolve runtime
+# packages like `h3-v2` that are not pre-bundled by the Vite Node build.
+# Image gets bigger; acceptable for self-host pilots.
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 
 USER app
 EXPOSE 3000

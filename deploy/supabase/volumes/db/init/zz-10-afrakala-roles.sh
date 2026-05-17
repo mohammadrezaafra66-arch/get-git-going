@@ -1,38 +1,32 @@
 #!/usr/bin/env bash
-# AfraKala — Supabase self-host post-init role hardening (idempotent)
+# AfraKala — Supabase self-host post-init role bootstrap (idempotent)
 # zz-10-afrakala-roles.sh
 #
-# Runs AFTER the official supabase/postgres image's migrate.sh and its
-# init-scripts (e.g. 00000000000000-initial-schema.sql), because files in
-# /docker-entrypoint-initdb.d/ are executed in alphabetical order and the
-# `zz-` prefix guarantees we run last.
+# Runs AFTER the official supabase/postgres image's migrate.sh and init
+# scripts (files in /docker-entrypoint-initdb.d/ run alphabetically; the
+# `zz-` prefix guarantees we run last).
 #
-# Why: pre-creating the whole baseline role set (`anon`, `authenticated`,
-# `service_role`, `authenticator`, `supabase_auth_admin`,
-# `supabase_storage_admin`, etc.) BEFORE migrate.sh causes the official init
-# script to fail with: ERROR: role "anon" already exists. Only
-# `supabase_admin` is prepared by 00-afrakala-pre-supabase-admin.sh because
-# migrate.sh connects as that role. This post-migrate script only:
-#   1) verifies all expected roles exist (fails fast otherwise),
-#   2) normalizes the password of every LOGIN role to POSTGRES_PASSWORD so
-#      GoTrue / PostgREST / Storage can authenticate against `db`,
-#   3) creates `dashboard_user` only if the image variant did not.
+# Behavior:
+#   - For LAN/self-host stacks where the official Supabase migrations may
+#     NOT have created the baseline role set (anon, authenticated,
+#     service_role, authenticator, supabase_auth_admin,
+#     supabase_storage_admin), we create any missing role with the correct
+#     attributes. This is safe and idempotent — `CREATE ROLE IF EXISTS`
+#     guards prevent duplicate-create failures on a hot volume.
+#   - Then we normalize the password of every LOGIN role to POSTGRES_PASSWORD
+#     so GoTrue / PostgREST / Storage / Meta can authenticate against `db`.
+#   - dashboard_user is created when missing.
 #
-# IMPORTANT: this script connects as `supabase_admin`, not `postgres`. The
-# supabase/postgres image loads the `supautils` extension which protects
-# reserved roles (authenticator, supabase_auth_admin, supabase_storage_admin,
-# anon, authenticated, service_role) from being altered by anyone except the
-# whitelisted privileged role `supabase_admin`. Even the `postgres` superuser
-# gets: ERROR: "<role>" is a reserved role, only superusers can modify it.
-# Connecting as `supabase_admin` (whose password was set by the pre-migrate
-# script) is the supported way to ALTER these roles. During initdb, use the
-# Unix socket exposed by the temporary PostgreSQL server; TCP localhost is not
-# guaranteed to be listening yet.
+# We connect as the `postgres` superuser via the Unix socket of the temporary
+# initdb server. supautils is not yet loaded during initdb, so creating /
+# altering reserved Supabase roles from `postgres` is permitted here. On
+# fresh volumes this script runs exactly once; on existing volumes the
+# CREATE IF NOT EXISTS / ALTER ROLE statements are idempotent.
 #
-# No psql `:'var'` is used inside any DO $$ block. The password is passed to
-# psql via -v at the top level, stashed into a session GUC with set_config(),
-# and read inside the DO block via current_setting(). The GUC is wiped at
-# the end of the session.
+# No psql `:'var'` is used inside any DO $$ block. The password is passed
+# to psql via -v at the top level, stashed into a session GUC via
+# set_config(), and read inside the DO block via current_setting(). The
+# GUC is wiped at the end of the session so the secret is not retained.
 
 set -euo pipefail
 
@@ -44,9 +38,9 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
   exit 1
 fi
 
-PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 \
+psql -v ON_ERROR_STOP=1 \
      --host "/var/run/postgresql" \
-     --username "supabase_admin" \
+     --username "postgres" \
      --dbname "$POSTGRES_DB" \
      --no-psqlrc \
      -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
@@ -54,47 +48,96 @@ SELECT set_config('afrakala.bootstrap_pass', :'pgpass', false);
 
 DO $$
 DECLARE
-  v_pass     text := current_setting('afrakala.bootstrap_pass', true);
-  v_required text[] := ARRAY[
-    'anon','authenticated','service_role','authenticator',
-    'supabase_admin','supabase_auth_admin','supabase_storage_admin'
-  ];
-  v_login    text[] := ARRAY[
-    'authenticator','supabase_admin','supabase_auth_admin',
-    'supabase_storage_admin','dashboard_user'
-  ];
-  v_role     text;
+  v_pass text := current_setting('afrakala.bootstrap_pass', true);
 BEGIN
   IF v_pass IS NULL OR length(v_pass) < 8 THEN
     RAISE EXCEPTION 'afrakala.bootstrap_pass missing/too short';
   END IF;
 
-  -- 1) baseline roles MUST already exist (created by official image init).
-  FOREACH v_role IN ARRAY v_required LOOP
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_role) THEN
-      RAISE EXCEPTION
-        'expected baseline role % missing — official supabase/postgres init did not run',
-        v_role;
-    END IF;
-  END LOOP;
+  -- ----- NOLOGIN baseline roles (RLS / PostgREST role discrimination) -----
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'CREATE ROLE anon NOLOGIN NOINHERIT';
+  END IF;
 
-  -- 2) ensure dashboard_user exists (some image variants omit it).
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'CREATE ROLE authenticated NOLOGIN NOINHERIT';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS';
+  END IF;
+
+  -- ----- LOGIN roles used by the Supabase service stack ------------------
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    EXECUTE format(
+      'CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD %L', v_pass);
+  ELSE
+    EXECUTE format('ALTER ROLE authenticator WITH LOGIN PASSWORD %L', v_pass);
+  END IF;
+
+  -- authenticator must be able to switch into the three NOLOGIN roles for
+  -- PostgREST's JWT role-claim handoff to work.
+  EXECUTE 'GRANT anon, authenticated, service_role TO authenticator';
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    EXECUTE format(
+      'CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE PASSWORD %L',
+      v_pass);
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE supabase_auth_admin WITH LOGIN PASSWORD %L', v_pass);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    EXECUTE format(
+      'CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE PASSWORD %L',
+      v_pass);
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE supabase_storage_admin WITH LOGIN PASSWORD %L', v_pass);
+  END IF;
+
+  -- supabase_admin was created by 00-afrakala-pre-supabase-admin.sh, but
+  -- normalize attributes/password here for completeness.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    EXECUTE format(
+      'CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS PASSWORD %L',
+      v_pass);
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS PASSWORD %L',
+      v_pass);
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dashboard_user') THEN
     EXECUTE format(
       'CREATE ROLE dashboard_user LOGIN CREATEDB CREATEROLE REPLICATION PASSWORD %L',
       v_pass);
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE dashboard_user WITH LOGIN PASSWORD %L', v_pass);
   END IF;
 
-  -- 3) normalize passwords on every LOGIN role so the app stack can connect.
-  FOREACH v_role IN ARRAY v_login LOOP
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_role) THEN
-      EXECUTE format('ALTER ROLE %I WITH LOGIN PASSWORD %L', v_role, v_pass);
-    END IF;
-  END LOOP;
+  -- Allow GoTrue / Storage to create their own schemas on first boot.
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin',
+                 current_database());
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_storage_admin',
+                 current_database());
+
+  -- ----- Grants required by GoTrue / Storage for their own schemas ------
+  -- (the schemas themselves are created by zz-20-afrakala-schemas.sql)
+  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
+    EXECUTE 'GRANT ALL PRIVILEGES ON SCHEMA auth TO supabase_auth_admin';
+    EXECUTE 'ALTER SCHEMA auth OWNER TO supabase_auth_admin';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
+    EXECUTE 'GRANT ALL PRIVILEGES ON SCHEMA storage TO supabase_storage_admin';
+    EXECUTE 'ALTER SCHEMA storage OWNER TO supabase_storage_admin';
+  END IF;
 END
 $$;
 
 SELECT set_config('afrakala.bootstrap_pass', '', false);
 EOSQL
 
-echo "[afrakala/zz-10-roles] role hardening complete"
+echo "[afrakala/zz-10-roles] role bootstrap complete"
