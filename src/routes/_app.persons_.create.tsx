@@ -42,7 +42,11 @@ function PersonCreatePage() {
       // `toError` already converts any TanStack "unhandled" envelope into a
       // proper Error. Reaching here means the server returned a real DTO; a
       // missing id at this point is a true contract violation worth flagging.
-      if (!person || typeof person !== "object" || typeof (person as { id?: unknown }).id !== "string") {
+      if (
+        !person ||
+        typeof person !== "object" ||
+        typeof (person as { id?: unknown }).id !== "string"
+      ) {
         throw new Error("ایجاد شخص ناموفق بود — پاسخ سرور نامعتبر بود");
       }
       return person;

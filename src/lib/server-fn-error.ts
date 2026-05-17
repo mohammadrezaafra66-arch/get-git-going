@@ -34,7 +34,8 @@ function envelopeToError(env: UnhandledEnvelope): Error {
   const status = env.status ?? 0;
   if (status === 401) return new Error("نشست شما منقضی شده است. لطفاً دوباره وارد شوید.");
   if (status === 403) return new Error("دسترسی لازم برای این عملیات را ندارید.");
-  if (status >= 500) return new Error("خطای داخلی سرور هنگام پردازش درخواست. لطفاً دوباره تلاش کنید.");
+  if (status >= 500)
+    return new Error("خطای داخلی سرور هنگام پردازش درخواست. لطفاً دوباره تلاش کنید.");
   return new Error(env.message || `خطای سرور (${status || "نامشخص"})`);
 }
 
