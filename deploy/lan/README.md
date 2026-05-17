@@ -254,7 +254,17 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 
 ### `password authentication failed for user "supabase_auth_admin"` (و مشابه برای `authenticator`, `supabase_storage_admin`)
 
-در LAN علاوه بر اسکریپت‌های init دیتابیس، سرویس one-shot به نام `db-role-fix` بعد از healthy شدن دیتابیس اجرا می‌شود و password رول‌های سرویس را با `POSTGRES_PASSWORD` فعلی هماهنگ می‌کند. اگر خروجی verify هنوز `has_password=false` نشان داد، fixer را دستی اجرا کنید و سپس سرویس‌های وابسته را restart کنید:
+در LAN علاوه بر اسکریپت‌های init دیتابیس، سرویس one-shot به نام `db-role-fix` بعد از healthy شدن دیتابیس اجرا می‌شود و password رول‌های سرویس را با `POSTGRES_PASSWORD` فعلی هماهنگ می‌کند. این سرویس یک فایل واقعی و read-only را اجرا می‌کند: `deploy/lan/scripts/db-role-fix.sh`.
+
+⚠️ اگر logهای `db-role-fix` شامل `BASH_EXECUTION_STRING=set` یا خود `POSTGRES_PASSWORD` بود، یعنی command داخل compose خراب اجرا شده و secret در Docker logs لو رفته است. در این حالت باید secretها را rotate کنید: `.env.lan` را با اجرای دوباره `init-lan.ps1` بازتولید کنید یا حداقل `POSTGRES_PASSWORD` را عوض کنید، سپس stack را با volume پاک‌شده از نو بالا بیاورید.
+
+برای پاک کردن stack/volume و حذف logهای قدیمی کانتینرها:
+
+```powershell
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
+```
+
+اگر خروجی verify هنوز `has_password=false` نشان داد، fixer را دستی اجرا کنید و سپس سرویس‌های وابسته را restart کنید:
 
 ```powershell
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d db-role-fix
@@ -278,6 +288,22 @@ docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rol
 خروجی موردانتظار: برای هر ۵ role مقدار `has_password` باید `true` باشد و `db-role-fix` باید با status `Exited (0)` دیده شود. اسکریپت `check-lan.ps1` کانتینرهای exited را هم نمایش می‌دهد تا وضعیت این سرویس مشخص باشد.
 
 ⚠️ `down -v` تمام دیتای LAN را پاک می‌کند. در فاز LAN Pilot این قابل قبول است چون دیتای واقعی نیست.
+
+مسیر کامل پیشنهادی بعد از pull روی Windows:
+
+```powershell
+cd C:\afrakala-lan\get-git-going
+git pull origin main
+Select-String -Path .\deploy\lan\scripts\*.sh,.\deploy\supabase\volumes\db\init\*.sh -Pattern "`r" -List
+powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
+# wait 90 seconds manually
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan ps
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan logs --tail=80 db-role-fix
+docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rolcanlogin, rolpassword is not null as has_password from pg_authid where rolname in ('authenticator','supabase_auth_admin','supabase_storage_admin','supabase_admin','dashboard_user') order by rolname;"
+powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\check-lan.ps1
+```
 
 ### `Cannot find module '/app/dist/server/index.js'` در سرویس `web`
 
