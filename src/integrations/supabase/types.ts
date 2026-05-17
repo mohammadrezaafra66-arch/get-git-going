@@ -4153,6 +4153,45 @@ export type Database = {
         }
         Relationships: []
       }
+      persons: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          kind: string
+          legal_name: string | null
+          notes: string | null
+          updated_at: string
+          visibility_scope: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          legal_name?: string | null
+          notes?: string | null
+          updated_at?: string
+          visibility_scope?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          kind?: string
+          legal_name?: string | null
+          notes?: string | null
+          updated_at?: string
+          visibility_scope?: string
+        }
+        Relationships: []
+      }
       price_alert_notifications: {
         Row: {
           alert_rule_id: string
