@@ -12,9 +12,13 @@ import { createPerson } from "@/lib/persons/functions";
 import { toError } from "@/lib/server-fn-error";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/persons_/create")({
+  beforeLoad: async () => {
+    await requirePermission("persons", "create");
+  },
   component: PersonCreatePage,
 });
 
