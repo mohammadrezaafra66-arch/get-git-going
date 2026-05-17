@@ -34,10 +34,7 @@ const emailSchema = z
   .max(255)
   .optional()
   .nullable()
-  .refine(
-    (v) => !v || z.string().email().safeParse(v).success,
-    "ایمیل نامعتبر است",
-  );
+  .refine((v) => !v || z.string().email().safeParse(v).success, "ایمیل نامعتبر است");
 
 const citySchema = z.string().trim().max(80).optional().nullable();
 const addressSchema = z.string().trim().max(500).optional().nullable();
@@ -49,12 +46,7 @@ const taxIdSchema = z
   .nullable()
   .refine((v) => !v || /^[0-9]{1,20}$/.test(v), "شناسه مالیاتی فقط شامل ارقام است");
 
-const notesSchema = z
-  .string()
-  .trim()
-  .max(500, "حداکثر ۵۰۰ کاراکتر")
-  .optional()
-  .nullable();
+const notesSchema = z.string().trim().max(500, "حداکثر ۵۰۰ کاراکتر").optional().nullable();
 
 const accountingCodeSchema = z
   .string()
@@ -168,9 +160,7 @@ export const UnlinkCustomerFromPersonInputSchema = z.object({
   customer_id: customerIdSchema,
   note: noteSchema,
 });
-export type UnlinkCustomerFromPersonInput = z.infer<
-  typeof UnlinkCustomerFromPersonInputSchema
->;
+export type UnlinkCustomerFromPersonInput = z.infer<typeof UnlinkCustomerFromPersonInputSchema>;
 
 /* ---------- DTO ---------- */
 

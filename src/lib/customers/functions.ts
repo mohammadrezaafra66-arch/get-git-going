@@ -48,42 +48,40 @@ const SELECT_COLS =
 
 /* ---------- error envelope (same pattern as persons.functions.ts) ---------- */
 
-const surfaceAuthError = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
-    try {
-      return await next();
-    } catch (e) {
-      if (typeof Response !== "undefined" && e instanceof Response) {
-        let body = "";
-        try {
-          body = (await e.clone().text()).slice(0, 200);
-        } catch {
-          /* ignore */
-        }
-        console.error(
-          `[customers.serverFn] auth/middleware threw Response status=${e.status} body=${JSON.stringify(body)}`,
-        );
-        if (e.status === 401) {
-          throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
-        }
-        if (e.status === 403) {
-          throw new Error("دسترسی لازم برای این عملیات را ندارید");
-        }
-        throw new Error(`خطای سرور (${e.status})`);
-      }
-      if (e instanceof Error) {
-        console.error(
-          `[customers.serverFn] handler threw Error name=${e.name} message=${JSON.stringify(e.message).slice(0, 200)}`,
-        );
-        throw e;
+const surfaceAuthError = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  try {
+    return await next();
+  } catch (e) {
+    if (typeof Response !== "undefined" && e instanceof Response) {
+      let body = "";
+      try {
+        body = (await e.clone().text()).slice(0, 200);
+      } catch {
+        /* ignore */
       }
       console.error(
-        `[customers.serverFn] non-Error throw type=${typeof e} value=${JSON.stringify(e)?.slice(0, 200)}`,
+        `[customers.serverFn] auth/middleware threw Response status=${e.status} body=${JSON.stringify(body)}`,
       );
-      throw new Error("خطای ناشناخته در پردازش درخواست");
+      if (e.status === 401) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
+      if (e.status === 403) {
+        throw new Error("دسترسی لازم برای این عملیات را ندارید");
+      }
+      throw new Error(`خطای سرور (${e.status})`);
     }
-  },
-);
+    if (e instanceof Error) {
+      console.error(
+        `[customers.serverFn] handler threw Error name=${e.name} message=${JSON.stringify(e.message).slice(0, 200)}`,
+      );
+      throw e;
+    }
+    console.error(
+      `[customers.serverFn] non-Error throw type=${typeof e} value=${JSON.stringify(e)?.slice(0, 200)}`,
+    );
+    throw new Error("خطای ناشناخته در پردازش درخواست");
+  }
+});
 
 function mapPgError(code: string | undefined, message: string): Error {
   if (code === "23505") {
