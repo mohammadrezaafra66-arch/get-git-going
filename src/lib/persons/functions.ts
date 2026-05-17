@@ -186,6 +186,7 @@ export const createPerson = createServerFn({ method: "POST" })
           visibility_scope: input.visibility_scope,
           is_active: input.is_active,
           notes: input.notes ?? null,
+          created_by: context.userId,
         })
         .select(
           "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
@@ -195,6 +196,9 @@ export const createPerson = createServerFn({ method: "POST" })
       if (!personRow) throw new Error("ایجاد شخص ناموفق بود — رکوردی بازگردانده نشد");
 
       const person = personRow as PersonDTO;
+      if (!person.id) {
+        throw new Error("ایجاد شخص ناموفق بود — شناسه‌ای بازگردانده نشد");
+      }
       const values = await insertFieldValues(supabase, person.id, input.field_values);
 
       return { ...person, field_values: values };
