@@ -31,9 +31,26 @@ function PersonEditPage() {
   const getFn = useServerFn(getPerson);
   const updateFn = useServerFn(updatePerson);
 
+  // Belt-and-suspenders: explicitly attach the bearer token at the call site.
+  // The global `attachSupabaseAuth` functionMiddleware does this too, but if
+  // it fails to run (hydration timing, bundler quirk), `requireSupabaseAuth`
+  // sees no Authorization header and the UI surfaces «نشست کاربری معتبر نیست».
+  // Mirrors the pattern used in /persons/create.
+  async function authHeaders(): Promise<{ Authorization: string }> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
   const personQuery = useQuery({
     queryKey: ["person", personId],
-    queryFn: () => toError(getFn({ data: { id: personId } })),
+    queryFn: async () => {
+      const headers = await authHeaders();
+      return toError(getFn({ headers, data: { id: personId } }));
+    },
   });
 
   const identifiersQuery = useQuery({
@@ -52,9 +69,11 @@ function PersonEditPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: (values: PersonFormValues) =>
-      toError(
+    mutationFn: async (values: PersonFormValues) => {
+      const headers = await authHeaders();
+      return toError(
         updateFn({
+          headers,
           data: {
             id: personId,
             kind: values.kind,
@@ -65,7 +84,8 @@ function PersonEditPage() {
             notes: values.notes.trim() ? values.notes.trim() : null,
           },
         }),
-      ),
+      );
+    },
     onSuccess: () => {
       toast.success("تغییرات ذخیره شد");
       qc.invalidateQueries({ queryKey: ["person", personId] });
