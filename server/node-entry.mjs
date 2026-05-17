@@ -131,8 +131,8 @@ function tryServeStatic(req, res, pathname) {
   }
   if (decoded.includes("\0")) return false;
 
-  const candidate = pathResolve(clientDirAbs, "." + decoded);
-  if (candidate !== clientDirAbs && !candidate.startsWith(clientDirAbs + pathSep)) {
+  const candidate = pathResolve(clientDir, "." + decoded);
+  if (candidate !== clientDir && !candidate.startsWith(clientDir + pathSep)) {
     return false;
   }
 
