@@ -257,7 +257,7 @@ INSERT INTO public.products (
   created_by, created_at, updated_at, brand_id, category_id,
   product_type, base_currency, stock_status, status,
   technical_notes, updated_by, color, capacity, model,
-  primary_spec, dedup_key
+  primary_spec
 )
 SELECT
   p.id, p.sku, p.name, p.description, p.unit, p.category, p.is_active,
@@ -269,7 +269,10 @@ SELECT
   p.status::public.product_status,
   p.technical_notes,
   :'lan_admin_user_id'::uuid,
-  p.color, p.capacity, p.model, p.primary_spec, p.dedup_key
+  p.color, p.capacity, p.model, p.primary_spec
+  -- dedup_key intentionally omitted: it is a GENERATED ALWAYS column in
+  -- public.products and Postgres rejects explicit values. The CSV value
+  -- remains in _staging_import.products_raw for audit/inspection only.
 FROM _staging_import.products_raw p
 WHERE :'dry_run' = 'false'
 ON CONFLICT (id) DO NOTHING;
