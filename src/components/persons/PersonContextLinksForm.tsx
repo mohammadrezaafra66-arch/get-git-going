@@ -35,6 +35,35 @@ import {
   type PersonContextLinkDTO,
 } from "@/lib/persons/context-links.schemas";
 
+/**
+ * Server functions (via `requireSupabaseAuth`) may throw a raw `Response`
+ * (e.g. 401/500) instead of an `Error`. React Query stores whatever is
+ * thrown, and a raw Response surfaces in window.onerror as the literal
+ * string "[object Response]" — which blanks the page. Wrap every server
+ * function call so the rejection is always a proper Error with a Persian
+ * message, and the inline error row in the table renders normally.
+ */
+async function toError<T>(p: Promise<T>): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof Error) throw e;
+    if (e instanceof Response) {
+      let detail = "";
+      try {
+        detail = await e.clone().text();
+      } catch {
+        /* ignore */
+      }
+      if (e.status === 401) {
+        throw new Error("نشست شما منقضی شده است. لطفاً دوباره وارد شوید.");
+      }
+      throw new Error(detail || `خطای سرور (${e.status})`);
+    }
+    throw new Error("خطای ناشناخته در ارتباط با سرور");
+  }
+}
+
 const KIND_LABEL: Record<PersonContextKind, string> = {
   customer: "مشتری",
   supplier: "تأمین‌کننده",
@@ -81,7 +110,7 @@ export function PersonContextLinksForm({
   const queryKey = ["person", personId, "context-links"] as const;
   const linksQuery = useQuery({
     queryKey,
-    queryFn: () => listFn({ data: { person_id: personId, include_ended: true } }),
+    queryFn: () => toError(listFn({ data: { person_id: personId, include_ended: true } })),
   });
 
   const [kind, setKind] = useState<PersonContextKind>("customer");
@@ -99,15 +128,17 @@ export function PersonContextLinksForm({
     mutationFn: () => {
       const rt = refTable.trim() || null;
       const ri = refId.trim() || null;
-      return addFn({
-        data: {
-          person_id: personId,
-          context_kind: kind,
-          ref_table: rt,
-          ref_id: ri,
-          note: note.trim() ? note.trim() : null,
-        },
-      });
+      return toError(
+        addFn({
+          data: {
+            person_id: personId,
+            context_kind: kind,
+            ref_table: rt,
+            ref_id: ri,
+            note: note.trim() ? note.trim() : null,
+          },
+        }),
+      );
     },
     onSuccess: () => {
       toast.success("ارتباط افزوده شد");
@@ -123,7 +154,9 @@ export function PersonContextLinksForm({
 
   const updateMut = useMutation({
     mutationFn: (vars: { id: string; note: string }) =>
-      updateFn({ data: { id: vars.id, note: vars.note.trim() ? vars.note.trim() : null } }),
+      toError(
+        updateFn({ data: { id: vars.id, note: vars.note.trim() ? vars.note.trim() : null } }),
+      ),
     onSuccess: () => {
       toast.success("یادداشت ذخیره شد");
       setEditingId(null);
@@ -135,7 +168,7 @@ export function PersonContextLinksForm({
   });
 
   const endMut = useMutation({
-    mutationFn: (id: string) => endFn({ data: { id } }),
+    mutationFn: (id: string) => toError(endFn({ data: { id } })),
     onSuccess: () => {
       toast.success("ارتباط بسته شد");
       invalidate();
