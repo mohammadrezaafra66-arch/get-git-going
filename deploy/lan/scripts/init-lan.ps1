@@ -145,19 +145,27 @@ Write-Host "IP and ports set in .env.lan." -ForegroundColor Green
 # --- 4/5/6/7. Generate secrets if empty ---
 $env = Read-EnvMap $envFile
 
-if ([string]::IsNullOrWhiteSpace($env["POSTGRES_PASSWORD"])) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($env["POSTGRES_PASSWORD"])) {
     Set-EnvValue $envFile "POSTGRES_PASSWORD" (New-RandomSecret 24)
-    Write-Host "POSTGRES_PASSWORD generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "POSTGRES_PASSWORD rotated." -ForegroundColor Green
+    } else {
+        Write-Host "POSTGRES_PASSWORD generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "POSTGRES_PASSWORD already set - kept." -ForegroundColor Yellow
 }
 
 $env = Read-EnvMap $envFile
 $jwtSecret = $env["JWT_SECRET"]
-if ([string]::IsNullOrWhiteSpace($jwtSecret) -or $jwtSecret.Length -lt 32) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($jwtSecret) -or $jwtSecret.Length -lt 32) {
     $jwtSecret = New-RandomSecret 48
     Set-EnvValue $envFile "JWT_SECRET" $jwtSecret
-    Write-Host "JWT_SECRET generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "JWT_SECRET rotated." -ForegroundColor Green
+    } else {
+        Write-Host "JWT_SECRET generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "JWT_SECRET already set - kept." -ForegroundColor Yellow
 }
@@ -167,12 +175,16 @@ $env = Read-EnvMap $envFile
 $anon    = $env["ANON_KEY"]
 $service = $env["SERVICE_ROLE_KEY"]
 
-if ([string]::IsNullOrWhiteSpace($anon) -or [string]::IsNullOrWhiteSpace($service)) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($anon) -or [string]::IsNullOrWhiteSpace($service)) {
     $anon    = New-SupabaseJwt "anon"         $jwtSecret
     $service = New-SupabaseJwt "service_role" $jwtSecret
     Set-EnvValue $envFile "ANON_KEY"         $anon
     Set-EnvValue $envFile "SERVICE_ROLE_KEY" $service
-    Write-Host "ANON_KEY and SERVICE_ROLE_KEY generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "ANON_KEY and SERVICE_ROLE_KEY rotated." -ForegroundColor Green
+    } else {
+        Write-Host "ANON_KEY and SERVICE_ROLE_KEY generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "ANON_KEY and SERVICE_ROLE_KEY already set - kept." -ForegroundColor Yellow
 }
