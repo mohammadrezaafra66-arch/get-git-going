@@ -1,4 +1,4 @@
-# AfraKala — Phase 3/B3 / Task AFRA-20260517-PRICING-RELINK-U02-S02
+# AfraKala - Phase 3/B3 / Task AFRA-20260517-PRICING-RELINK-U02-S02
 # PowerShell wrapper for relink-product-computed-prices-purchase-price.sql on LAN.
 #
 # Mirrors the dry-run / real-run discipline of import-purchase-prices-staged.ps1:
@@ -107,7 +107,7 @@ if ($UseDocker) {
 
     & docker @dockerArgs
     if ($LASTEXITCODE -ne 0) {
-      throw "psql (in $DbContainerName) exited with code $LASTEXITCODE — ON_ERROR_STOP aborted; no COMMIT was issued."
+      throw "psql (in $DbContainerName) exited with code $LASTEXITCODE - ON_ERROR_STOP aborted; no COMMIT was issued."
     }
 
     if ($DryRun) {
@@ -117,7 +117,7 @@ if ($UseDocker) {
       Write-Host "  .\relink-product-computed-prices-purchase-price.ps1 -UseDocker -DbContainerName '$DbContainerName' -DryRun:`$false -BackupFile '<path-to-backup>'"
     } else {
       Write-Host ""
-      Write-Host "[done] Relink committed. Run verification queries (see SQL §5)."
+      Write-Host "[done] Relink committed. Run verification queries (see SQL section 5)."
     }
   } finally {
     & docker exec $DbContainerName sh -c "rm -rf '$DockerStageDir'" 2>$null | Out-Null
@@ -147,7 +147,7 @@ else {
   try {
     & psql @psqlArgs
     if ($LASTEXITCODE -ne 0) {
-      throw "psql exited with code $LASTEXITCODE — ON_ERROR_STOP aborted; no COMMIT was issued."
+      throw "psql exited with code $LASTEXITCODE - ON_ERROR_STOP aborted; no COMMIT was issued."
     }
 
     if ($DryRun) {
@@ -157,7 +157,7 @@ else {
       Write-Host "  .\relink-product-computed-prices-purchase-price.ps1 -DryRun:`$false -BackupFile '<path-to-backup>'"
     } else {
       Write-Host ""
-      Write-Host "[done] Relink committed. Run verification queries (see SQL §5)."
+      Write-Host "[done] Relink committed. Run verification queries (see SQL section 5)."
     }
   } finally {
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
