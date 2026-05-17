@@ -118,6 +118,12 @@ BEGIN
       'ALTER ROLE dashboard_user WITH LOGIN PASSWORD %L', v_pass);
   END IF;
 
+  -- Allow GoTrue / Storage to create their own schemas on first boot.
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin',
+                 current_database());
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_storage_admin',
+                 current_database());
+
   -- ----- Grants required by GoTrue / Storage for their own schemas ------
   -- (the schemas themselves are created by zz-20-afrakala-schemas.sql)
   IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
