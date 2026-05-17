@@ -133,13 +133,27 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         link_group: values.link_group?.trim() || null,
         birth_date: values.birth_date ? values.birth_date : null,
       };
+      // Belt-and-suspenders: explicitly attach bearer token at call site.
+      // Mirrors the proven persons pattern — guarantees Authorization header
+      // is present even if the global attachSupabaseAuth middleware misfires
+      // (hydration timing, bundler quirk), avoiding «نشست کاربری معتبر نیست».
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
+      const authHeaders = { Authorization: `Bearer ${token}` };
       if (customerId) {
         const row = await updateCustomerFn({
+          headers: authHeaders,
           data: { id: customerId, patch: payload },
         });
         return row.id;
       }
-      const row = await createCustomerFn({ data: payload });
+      const row = await createCustomerFn({
+        headers: authHeaders,
+        data: payload,
+      });
       return row.id;
     },
     onSuccess: () => {
