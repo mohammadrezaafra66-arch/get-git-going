@@ -8054,6 +8054,14 @@ export type Database = {
         Args: { p_invoice_id: string; p_register?: boolean; p_waybills: Json }
         Returns: string[]
       }
+      customer_clear_person: {
+        Args: { p_customer_id: string; p_note?: string }
+        Returns: boolean
+      }
+      customer_set_person: {
+        Args: { p_customer_id: string; p_note?: string; p_person_id: string }
+        Returns: string
+      }
       deactivate_user: { Args: { _user_id: string }; Returns: undefined }
       delete_bot_api_key_table_access: {
         Args: { p_key_id: string; p_table_id: string }
