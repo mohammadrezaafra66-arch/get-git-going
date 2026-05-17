@@ -177,16 +177,24 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
     } = {};
     const wantsRevalue = data.value_raw !== undefined || data.kind !== undefined;
 
-    if (wantsRevalue) {
-      // Need the current row to know the effective kind/value when only one changes.
-      const { data: cur, error: curErr } = await supabase
+    // Always fetch the current row when we might need a duplicate check
+    // (revalue OR status transition from revoked -> non-revoked).
+    const wantsStatusChange = data.status !== undefined;
+    let cur:
+      | { kind: IdentifierKind; value_raw: string; value_normalized: string; status: string; person_id: string }
+      | null = null;
+    if (wantsRevalue || wantsStatusChange) {
+      const { data: row, error: curErr } = await supabase
         .from("person_identifiers")
-        .select("kind, value_raw")
+        .select("kind, value_raw, value_normalized, status, person_id")
         .eq("id", data.id)
         .maybeSingle();
       if (curErr) throw mapPgError(curErr.code, curErr.message);
-      if (!cur) throw new Error("شناسه یافت نشد یا دسترسی به آن ندارید");
+      if (!row) throw new Error("شناسه یافت نشد یا دسترسی به آن ندارید");
+      cur = row as typeof cur;
+    }
 
+    if (wantsRevalue && cur) {
       const effectiveKind = (data.kind ?? cur.kind) as IdentifierKind;
       const effectiveRaw = data.value_raw ?? cur.value_raw;
       const norm = normalizeIdentifier(effectiveKind, effectiveRaw);
@@ -203,6 +211,22 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
 
     if (Object.keys(patch).length === 0) {
       throw new Error("هیچ تغییری برای اعمال وجود ندارد");
+    }
+
+    // S12: server-side cross-person duplicate guard for UPDATE.
+    if (cur) {
+      const effectiveKind = (patch.kind ?? cur.kind) as IdentifierKind;
+      const effectiveValueNormalized = patch.value_normalized ?? cur.value_normalized;
+      const effectiveStatus = (patch.status ?? cur.status) as string;
+      if (effectiveStatus !== "revoked") {
+        const dupMsg = await findCrossPersonDuplicate(supabase, {
+          kind: effectiveKind,
+          value_normalized: effectiveValueNormalized,
+          person_id: cur.person_id,
+          excludeId: data.id,
+        });
+        if (dupMsg) throw new Error(dupMsg);
+      }
     }
 
     const { data: row, error } = await supabase
