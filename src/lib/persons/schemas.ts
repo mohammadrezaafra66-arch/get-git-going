@@ -9,6 +9,15 @@
 import { z } from "zod";
 import { IDENTIFIER_KINDS, type IdentifierKind } from "./identifiers-normalize";
 
+/** Serializable JSON value — used for jsonb fields shipped across serverFn boundary. */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 /* ---------- persons ---------- */
 
 export const PERSON_KINDS = ["individual", "organization"] as const;
@@ -22,14 +31,16 @@ export const PERSON_VISIBILITY_SCOPES = [
 export type PersonVisibilityScope = (typeof PERSON_VISIBILITY_SCOPES)[number];
 
 /** jsonb value stored in person_field_values.value */
-export const PersonFieldValueJsonSchema: z.ZodType<unknown> = z.union([
-  z.string(),
-  z.number(),
-  z.boolean(),
-  z.null(),
-  z.array(z.unknown()),
-  z.record(z.string(), z.unknown()),
-]);
+export const PersonFieldValueJsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(PersonFieldValueJsonSchema),
+    z.record(z.string(), PersonFieldValueJsonSchema),
+  ]),
+);
 
 /** One entry of {definition_id, value} provided alongside a person mutation */
 export const PersonFieldValueInputSchema = z.object({
@@ -121,7 +132,7 @@ export type PersonFieldValueDTO = {
   id: string;
   person_id: string;
   field_definition_id: string;
-  value: unknown;
+  value: JsonValue;
   updated_at: string;
 };
 
