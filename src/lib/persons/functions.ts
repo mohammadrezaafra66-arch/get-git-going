@@ -60,42 +60,40 @@ const GetPersonInputSchema = z.object({
  * It does NOT bypass authentication: the original throw is re-raised as an
  * Error, so the handler still never runs on auth failure.
  */
-const surfaceAuthError = createMiddleware({ type: "function" }).server(
-  async ({ next }) => {
-    try {
-      return await next();
-    } catch (e) {
-      if (typeof Response !== "undefined" && e instanceof Response) {
-        let body = "";
-        try {
-          body = (await e.clone().text()).slice(0, 200);
-        } catch {
-          /* ignore body read failure */
-        }
-        console.error(
-          `[persons.serverFn] auth/middleware threw Response status=${e.status} body=${JSON.stringify(body)}`,
-        );
-        if (e.status === 401) {
-          throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
-        }
-        if (e.status === 403) {
-          throw new Error("دسترسی لازم برای این عملیات را ندارید");
-        }
-        throw new Error(`خطای سرور (${e.status})`);
-      }
-      if (e instanceof Error) {
-        console.error(
-          `[persons.serverFn] handler/middleware threw Error name=${e.name} message=${JSON.stringify(e.message).slice(0, 200)}`,
-        );
-        throw e;
+const surfaceAuthError = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  try {
+    return await next();
+  } catch (e) {
+    if (typeof Response !== "undefined" && e instanceof Response) {
+      let body = "";
+      try {
+        body = (await e.clone().text()).slice(0, 200);
+      } catch {
+        /* ignore body read failure */
       }
       console.error(
-        `[persons.serverFn] non-Error throw type=${typeof e} value=${JSON.stringify(e)?.slice(0, 200)}`,
+        `[persons.serverFn] auth/middleware threw Response status=${e.status} body=${JSON.stringify(body)}`,
       );
-      throw new Error("خطای ناشناخته در پردازش درخواست");
+      if (e.status === 401) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
+      if (e.status === 403) {
+        throw new Error("دسترسی لازم برای این عملیات را ندارید");
+      }
+      throw new Error(`خطای سرور (${e.status})`);
     }
-  },
-);
+    if (e instanceof Error) {
+      console.error(
+        `[persons.serverFn] handler/middleware threw Error name=${e.name} message=${JSON.stringify(e.message).slice(0, 200)}`,
+      );
+      throw e;
+    }
+    console.error(
+      `[persons.serverFn] non-Error throw type=${typeof e} value=${JSON.stringify(e)?.slice(0, 200)}`,
+    );
+    throw new Error("خطای ناشناخته در پردازش درخواست");
+  }
+});
 
 function mapPgError(code: string | undefined, message: string): Error {
   if (code === "23505") return new Error("مقدار تکراری است");
