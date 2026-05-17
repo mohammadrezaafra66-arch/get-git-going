@@ -17,7 +17,7 @@ fi
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 
-psql -v ON_ERROR_STOP=1 \
+psql -q -v ON_ERROR_STOP=1 \
   -h db \
   -U postgres \
   -d "$POSTGRES_DB" \
