@@ -132,6 +132,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
+import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId.edit'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
@@ -799,6 +800,11 @@ const AppPricingSaleListsListIdRoute =
     path: '/pricing/sale-lists/$listId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPersonsPersonIdEditRoute = AppPersonsPersonIdEditRouteImport.update({
+  id: '/persons_/$personId/edit',
+  path: '/persons/$personId/edit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsDailyMoodAdminRoute =
   AppOperationsDailyMoodAdminRouteImport.update({
     id: '/admin',
@@ -1072,6 +1078,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
@@ -1218,6 +1225,7 @@ export interface FileRoutesByTo {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
@@ -1369,6 +1377,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/_app/persons_/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
@@ -1520,6 +1529,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/sales/customers/import'
@@ -1666,6 +1676,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/sales/customers/import'
@@ -1816,6 +1827,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
+    | '/_app/persons_/$personId/edit'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/sales/customers_/import'
@@ -2726,6 +2738,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/persons_/$personId/edit': {
+      id: '/_app/persons_/$personId/edit'
+      path: '/persons/$personId/edit'
+      fullPath: '/persons/$personId/edit'
+      preLoaderRoute: typeof AppPersonsPersonIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/daily-mood/admin': {
       id: '/_app/operations/daily-mood/admin'
       path: '/admin'
@@ -3181,6 +3200,7 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
+  AppPersonsPersonIdEditRoute: typeof AppPersonsPersonIdEditRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
@@ -3282,6 +3302,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
+  AppPersonsPersonIdEditRoute: AppPersonsPersonIdEditRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
