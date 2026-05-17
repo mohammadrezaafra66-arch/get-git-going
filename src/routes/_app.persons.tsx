@@ -14,15 +14,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import {
-  PERSON_KINDS, PERSON_VISIBILITY_SCOPES,
-  type PersonKind, type PersonVisibilityScope,
+  PERSON_KINDS,
+  PERSON_VISIBILITY_SCOPES,
+  type PersonKind,
+  type PersonVisibilityScope,
 } from "@/lib/persons/schemas";
 
 const PAGE_SIZE = 20;
@@ -67,10 +78,9 @@ function PersonsListPage() {
     queryFn: async () => {
       let q = supabase
         .from("persons")
-        .select(
-          "id, kind, display_name, legal_name, visibility_scope, is_active, created_at",
-          { count: "exact" },
-        )
+        .select("id, kind, display_name, legal_name, visibility_scope, is_active, created_at", {
+          count: "exact",
+        })
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
       if (kind !== "all") q = q.eq("kind", kind);
@@ -112,16 +122,29 @@ function PersonsListPage() {
               <Input
                 placeholder="جستجو در نام نمایشی یا نام رسمی..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(0);
+                }}
                 className="pr-10"
               />
             </div>
-            <Select value={kind} onValueChange={(v) => { setKind(v as typeof kind); setPage(0); }}>
-              <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+            <Select
+              value={kind}
+              onValueChange={(v) => {
+                setKind(v as typeof kind);
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه انواع</SelectItem>
                 {PERSON_KINDS.map((k) => (
-                  <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>
+                  <SelectItem key={k} value={k}>
+                    {KIND_LABEL[k]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -136,9 +159,7 @@ function PersonsListPage() {
               بارگذاری فهرست با خطا مواجه شد. لطفاً دوباره تلاش کنید.
             </div>
           ) : rows.length === 0 ? (
-            <div className="py-10 text-center text-muted-foreground">
-              هیچ شخصی ثبت نشده است.
-            </div>
+            <div className="py-10 text-center text-muted-foreground">هیچ شخصی ثبت نشده است.</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -158,12 +179,18 @@ function PersonsListPage() {
                       <TableCell className="font-medium">{r.display_name}</TableCell>
                       <TableCell className="text-muted-foreground">{r.legal_name ?? "—"}</TableCell>
                       <TableCell>{KIND_LABEL[r.kind]}</TableCell>
-                      <TableCell className="text-muted-foreground">{SCOPE_LABEL[r.visibility_scope]}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {SCOPE_LABEL[r.visibility_scope]}
+                      </TableCell>
                       <TableCell>
                         {r.is_active ? (
-                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">فعال</Badge>
+                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                            فعال
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-muted-foreground">غیرفعال</Badge>
+                          <Badge variant="outline" className="text-muted-foreground">
+                            غیرفعال
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -183,9 +210,25 @@ function PersonsListPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div>مجموع: {toFaDigits(total)} مورد</div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
-              <span>صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}</span>
-              <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                قبلی
+              </Button>
+              <span>
+                صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                بعدی
+              </Button>
             </div>
           </div>
         </CardContent>

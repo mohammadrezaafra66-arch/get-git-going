@@ -81,6 +81,7 @@ import { Route as AppPricingCurrenciesRouteImport } from './routes/_app.pricing.
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
+import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
@@ -131,6 +132,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
+import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId.edit'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
@@ -526,6 +528,11 @@ const AppPricingAminHozoorBoardRoute =
     path: '/pricing/amin-hozoor-board',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPersonsCreateRoute = AppPersonsCreateRouteImport.update({
+  id: '/persons_/create',
+  path: '/persons/create',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   id: '/operations/tasks',
   path: '/operations/tasks',
@@ -793,6 +800,11 @@ const AppPricingSaleListsListIdRoute =
     path: '/pricing/sale-lists/$listId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPersonsPersonIdEditRoute = AppPersonsPersonIdEditRouteImport.update({
+  id: '/persons_/$personId/edit',
+  path: '/persons/$personId/edit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsDailyMoodAdminRoute =
   AppOperationsDailyMoodAdminRouteImport.update({
     id: '/admin',
@@ -1008,6 +1020,7 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -1065,6 +1078,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
@@ -1154,6 +1168,7 @@ export interface FileRoutesByTo {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -1210,6 +1225,7 @@ export interface FileRoutesByTo {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/customers/import': typeof AppSalesCustomersImportRoute
@@ -1303,6 +1319,7 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/gamification': typeof AppOperationsGamificationRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
+  '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
@@ -1360,6 +1377,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/_app/persons_/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
@@ -1453,6 +1471,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/gamification'
     | '/operations/tasks'
+    | '/persons/create'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
@@ -1510,6 +1529,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/sales/customers/import'
@@ -1599,6 +1619,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/gamification'
     | '/operations/tasks'
+    | '/persons/create'
     | '/pricing/amin-hozoor-board'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
@@ -1655,6 +1676,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
     | '/sales/customers/import'
@@ -1747,6 +1769,7 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood'
     | '/_app/operations/gamification'
     | '/_app/operations/tasks'
+    | '/_app/persons_/create'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
@@ -1804,6 +1827,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
+    | '/_app/persons_/$personId/edit'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/sales/customers_/import'
@@ -2357,6 +2381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingAminHozoorBoardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/persons_/create': {
+      id: '/_app/persons_/create'
+      path: '/persons/create'
+      fullPath: '/persons/create'
+      preLoaderRoute: typeof AppPersonsCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/tasks': {
       id: '/_app/operations/tasks'
       path: '/operations/tasks'
@@ -2705,6 +2736,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/sale-lists/$listId'
       fullPath: '/pricing/sale-lists/$listId'
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/persons_/$personId/edit': {
+      id: '/_app/persons_/$personId/edit'
+      path: '/persons/$personId/edit'
+      fullPath: '/persons/$personId/edit'
+      preLoaderRoute: typeof AppPersonsPersonIdEditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/daily-mood/admin': {
@@ -3126,6 +3164,7 @@ interface AppRouteChildren {
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
+  AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
@@ -3161,6 +3200,7 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
+  AppPersonsPersonIdEditRoute: typeof AppPersonsPersonIdEditRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
@@ -3226,6 +3266,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsGamificationRoute: AppOperationsGamificationRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
+  AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
@@ -3261,6 +3302,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
+  AppPersonsPersonIdEditRoute: AppPersonsPersonIdEditRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
