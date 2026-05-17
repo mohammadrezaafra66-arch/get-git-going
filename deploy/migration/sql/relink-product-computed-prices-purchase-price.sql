@@ -40,6 +40,12 @@
 
 BEGIN;
 
+-- Capture psql variable :dry_run into a TEMP table so DO $$...$$ blocks
+-- (which do NOT expand psql variables) can read it via plain SQL.
+DROP TABLE IF EXISTS _relink_flags;
+CREATE TEMP TABLE _relink_flags ON COMMIT DROP AS
+SELECT (:'dry_run')::text AS dry_run;
+
 -- --- 0) Snapshot baseline counters ----------------------------------------
 DROP TABLE IF EXISTS _relink_before;
 CREATE TEMP TABLE _relink_before ON COMMIT DROP AS
@@ -137,7 +143,7 @@ WITH plan AS (
   SELECT pcp_id, matched_pp_id
   FROM _relink_plan
   WHERE matched_pp_id IS NOT NULL
-    AND :'dry_run' = 'false'
+    AND (SELECT dry_run FROM _relink_flags) = 'false'
 )
 UPDATE public.product_computed_prices AS pcp
 SET purchase_price_id = plan.matched_pp_id
@@ -162,8 +168,9 @@ DECLARE
   v_after_not_null  bigint;
   v_planned_matches bigint;
   v_orphan_after    bigint;
-  v_dry             text := :'dry_run';
+  v_dry             text;
 BEGIN
+  SELECT dry_run INTO v_dry FROM _relink_flags;
   SELECT pcp_not_null INTO v_before_not_null FROM _relink_before;
   SELECT count(*) INTO v_after_not_null
   FROM public.product_computed_prices WHERE purchase_price_id IS NOT NULL;
