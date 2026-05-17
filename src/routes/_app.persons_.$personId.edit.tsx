@@ -16,8 +16,12 @@ import { toError } from "@/lib/server-fn-error";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/persons_/$personId/edit")({
+  beforeLoad: async () => {
+    await requirePermission("persons", "update");
+  },
   component: PersonEditPage,
 });
 
