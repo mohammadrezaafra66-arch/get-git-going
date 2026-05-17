@@ -12,6 +12,7 @@ import { createPerson } from "@/lib/persons/functions";
 import { toError } from "@/lib/server-fn-error";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/persons_/create")({
   component: PersonCreatePage,
@@ -26,8 +27,22 @@ function PersonCreatePage() {
 
   const mut = useMutation({
     mutationFn: async (values: PersonFormValues) => {
+      // Belt-and-suspenders: explicitly fetch a fresh session and attach the
+      // bearer token at the call site. The global `attachSupabaseAuth`
+      // functionMiddleware also does this, but if the global middleware fails
+      // to run for any reason (hydration timing, bundler quirk), the request
+      // would reach `requireSupabaseAuth` with no Authorization header and
+      // surface as «نشست کاربری معتبر نیست». Reading the session here +
+      // passing `headers` via the per-call option guarantees the header is
+      // present.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
       const person = await toError(
         createFn({
+          headers: { Authorization: `Bearer ${token}` },
           data: {
             kind: values.kind,
             display_name: values.display_name.trim(),
