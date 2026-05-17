@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PersonForm, type PersonFormValues } from "@/components/persons/PersonForm";
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
+import { PersonContextLinksForm } from "@/components/persons/PersonContextLinksForm";
 import { getPerson, updatePerson } from "@/lib/persons/functions";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -176,6 +177,15 @@ function PersonEditPage() {
               canManage={canManage}
             />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>ارتباط‌های شخص</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PersonContextLinksForm personId={personId} canManage={canManage} />
         </CardContent>
       </Card>
     </div>
