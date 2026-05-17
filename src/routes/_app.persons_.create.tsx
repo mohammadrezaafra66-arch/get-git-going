@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,13 +19,14 @@ export const Route = createFileRoute("/_app/persons_/create")({
 
 function PersonCreatePage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { roles } = useAuth();
   const canManage = hasAnyRole(roles, ["admin", "manager"]);
   const createFn = useServerFn(createPerson);
 
   const mut = useMutation({
-    mutationFn: (values: PersonFormValues) =>
-      toError(
+    mutationFn: async (values: PersonFormValues) => {
+      const person = await toError(
         createFn({
           data: {
             kind: values.kind,
@@ -37,17 +38,19 @@ function PersonCreatePage() {
             field_values: [],
           },
         }),
-      ),
-    onSuccess: (person) => {
-      toast.success("شخص با موفقیت ایجاد شد");
-      if (person?.id) {
-        navigate({
-          to: "/persons/$personId/edit",
-          params: { personId: person.id },
-        });
-      } else {
-        navigate({ to: "/persons" });
+      );
+      if (!person?.id) {
+        throw new Error("ایجاد شخص ناموفق بود — پاسخ سرور بدون شناسه بود");
       }
+      return person;
+    },
+    onSuccess: (person) => {
+      qc.invalidateQueries({ queryKey: ["persons"] });
+      toast.success("شخص با موفقیت ایجاد شد");
+      navigate({
+        to: "/persons/$personId/edit",
+        params: { personId: person.id },
+      });
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : "ایجاد شخص ناموفق بود");
