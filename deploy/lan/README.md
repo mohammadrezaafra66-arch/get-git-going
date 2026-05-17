@@ -256,7 +256,23 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 
 در LAN علاوه بر اسکریپت‌های init دیتابیس، سرویس one-shot به نام `db-role-fix` بعد از healthy شدن دیتابیس اجرا می‌شود و password رول‌های سرویس را با `POSTGRES_PASSWORD` فعلی هماهنگ می‌کند. این سرویس یک فایل واقعی و read-only را اجرا می‌کند: `deploy/lan/scripts/db-role-fix.sh`.
 
-⚠️ اگر logهای `db-role-fix` شامل `BASH_EXECUTION_STRING=set` یا خود `POSTGRES_PASSWORD` بود، یعنی command داخل compose خراب اجرا شده و secret در Docker logs لو رفته است. در این حالت باید secretها را rotate کنید: `.env.lan` را با اجرای دوباره `init-lan.ps1` بازتولید کنید یا حداقل `POSTGRES_PASSWORD` را عوض کنید، سپس stack را با volume پاک‌شده از نو بالا بیاورید.
+`db-role-fix` فقط roleهای LOGIN را repair می‌کند: `authenticator`، `supabase_auth_admin`، `supabase_storage_admin`، `supabase_admin` و `dashboard_user`. roleهای رزرو شده `anon`، `authenticated` و `service_role` فقط verify می‌شوند و بعد از bootstrap نباید `ALTER ROLE` شوند.
+
+اگر log این خطا را نشان داد:
+
+```text
+ERROR: "anon" is a reserved role, only superusers can modify it
+```
+
+یعنی نسخه قدیمی fixer تلاش کرده role رزرو شده را تغییر دهد. آخرین کد را pull کنید، secretها را در صورت leak rotate کنید، و stack را با volume پاک‌شده دوباره بسازید.
+
+⚠️ اگر logهای `db-role-fix` شامل `BASH_EXECUTION_STRING=set` یا خود `POSTGRES_PASSWORD` بود، یعنی command داخل compose خراب اجرا شده و secret در Docker logs لو رفته است. در این حالت secretهای LAN را با سوییچ امن rotate کنید و سپس stack را با volume پاک‌شده از نو بالا بیاورید:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1 -RotateSecrets
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
+```
 
 برای پاک کردن stack/volume و حذف logهای قدیمی کانتینرها:
 
