@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PersonForm, type PersonFormValues } from "@/components/persons/PersonForm";
 import { createPerson } from "@/lib/persons/functions";
+import { toError } from "@/lib/server-fn-error";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 
@@ -24,7 +25,7 @@ function PersonCreatePage() {
 
   const mut = useMutation({
     mutationFn: (values: PersonFormValues) =>
-      createFn({
+      toError(createFn({
         data: {
           kind: values.kind,
           display_name: values.display_name.trim(),
@@ -34,7 +35,7 @@ function PersonCreatePage() {
           notes: values.notes.trim() ? values.notes.trim() : null,
           field_values: [],
         },
-      }),
+      })),
     onSuccess: (person) => {
       toast.success("شخص با موفقیت ایجاد شد");
       if (person?.id) {
