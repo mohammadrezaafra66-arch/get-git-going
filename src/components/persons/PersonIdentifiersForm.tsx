@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toError } from "@/lib/server-fn-error";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,15 @@ const STATUS_LABEL: Record<PersonIdentifierDTO["status"], string> = {
   revoked: "ابطال‌شده",
 };
 
+async function authHeaders(): Promise<{ Authorization: string }> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 function statusBadge(s: PersonIdentifierDTO["status"]) {
   if (s === "confirmed")
     return (
@@ -81,9 +91,11 @@ export function PersonIdentifiersForm({
   const [isPrimary, setIsPrimary] = useState(false);
 
   const createMut = useMutation({
-    mutationFn: () =>
-      toError(
+    mutationFn: async () => {
+      const headers = await authHeaders();
+      return toError(
         createFn({
+          headers,
           data: {
             person_id: personId,
             kind,
@@ -92,7 +104,8 @@ export function PersonIdentifiersForm({
             is_primary: isPrimary,
           },
         }),
-      ),
+      );
+    },
     onSuccess: () => {
       toast.success("شناسه افزوده شد");
       setValue("");
@@ -106,7 +119,10 @@ export function PersonIdentifiersForm({
   });
 
   const revokeMut = useMutation({
-    mutationFn: (id: string) => toError(revokeFn({ data: { id } })),
+    mutationFn: async (id: string) => {
+      const headers = await authHeaders();
+      return toError(revokeFn({ headers, data: { id } }));
+    },
     onSuccess: () => {
       toast.success("شناسه ابطال شد");
       qc.invalidateQueries({ queryKey: ["person", personId] });
