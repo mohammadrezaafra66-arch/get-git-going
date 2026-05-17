@@ -20,7 +20,7 @@
  *  a future step).
  */
 
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createMiddleware } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
@@ -38,6 +38,64 @@ import {
 const GetPersonInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
 });
+
+/**
+ * Diagnostic + error-normalization middleware.
+ *
+ * `requireSupabaseAuth` (auto-generated, must not be edited) short-circuits
+ * with `throw new Response(...)` on auth failure. In TanStack Start's Worker
+ * SSR runtime, h3 swallows a thrown `Response` from a serverFn middleware and
+ * collapses it into the opaque envelope
+ *   { status: 500, unhandled: true, message: "HTTPError" }
+ * dropping the original status and body. The browser then sees a generic 500
+ * even though the real reason is concrete (missing header, invalid token,
+ * missing env, etc.) and no log line is written.
+ *
+ * This wrapper runs BEFORE `requireSupabaseAuth` in the middleware chain. It
+ * awaits `next()`, catches any thrown `Response`, logs a sanitized line
+ * (status + truncated body — never tokens/cookies/secrets), and re-throws a
+ * proper `Error` with a Persian message so the client receives a real
+ * actionable error instead of `HTTPError`.
+ *
+ * It does NOT bypass authentication: the original throw is re-raised as an
+ * Error, so the handler still never runs on auth failure.
+ */
+const surfaceAuthError = createMiddleware({ type: "function" }).server(
+  async ({ next }) => {
+    try {
+      return await next();
+    } catch (e) {
+      if (typeof Response !== "undefined" && e instanceof Response) {
+        let body = "";
+        try {
+          body = (await e.clone().text()).slice(0, 200);
+        } catch {
+          /* ignore body read failure */
+        }
+        console.error(
+          `[persons.serverFn] auth/middleware threw Response status=${e.status} body=${JSON.stringify(body)}`,
+        );
+        if (e.status === 401) {
+          throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+        }
+        if (e.status === 403) {
+          throw new Error("دسترسی لازم برای این عملیات را ندارید");
+        }
+        throw new Error(`خطای سرور (${e.status})`);
+      }
+      if (e instanceof Error) {
+        console.error(
+          `[persons.serverFn] handler/middleware threw Error name=${e.name} message=${JSON.stringify(e.message).slice(0, 200)}`,
+        );
+        throw e;
+      }
+      console.error(
+        `[persons.serverFn] non-Error throw type=${typeof e} value=${JSON.stringify(e)?.slice(0, 200)}`,
+      );
+      throw new Error("خطای ناشناخته در پردازش درخواست");
+    }
+  },
+);
 
 function mapPgError(code: string | undefined, message: string): Error {
   if (code === "23505") return new Error("مقدار تکراری است");
@@ -158,7 +216,7 @@ async function insertFieldValues(
 /* ---------- createPerson ---------- */
 
 export const createPerson = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([surfaceAuthError, requireSupabaseAuth])
   .inputValidator((input) => CreatePersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO> => {
     try {
@@ -210,7 +268,7 @@ export const createPerson = createServerFn({ method: "POST" })
 /* ---------- updatePerson ---------- */
 
 export const updatePerson = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([surfaceAuthError, requireSupabaseAuth])
   .inputValidator((input) => UpdatePersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO> => {
     try {
@@ -312,7 +370,7 @@ export const updatePerson = createServerFn({ method: "POST" })
 /* ---------- getPerson ---------- */
 
 export const getPerson = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([surfaceAuthError, requireSupabaseAuth])
   .inputValidator((input) => GetPersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO | null> => {
     try {
