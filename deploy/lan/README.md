@@ -48,7 +48,7 @@
    powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1
    ```
 
-   این اسکریپت `POSTGRES_PASSWORD`، `JWT_SECRET`، `ANON_KEY` و `SERVICE_ROLE_KEY` را در صورت خالی بودن خودش تولید می‌کند. مقادیر در console چاپ نمی‌شوند.
+   این اسکریپت `POSTGRES_PASSWORD`، `JWT_SECRET`، `ANON_KEY` و `SERVICE_ROLE_KEY` را در صورت خالی بودن خودش تولید می‌کند. برای چرخاندن secretهای LAN بعد از leak یا تست خراب، همین اسکریپت را با `-RotateSecrets` اجرا کنید. مقادیر در console چاپ نمی‌شوند.
 
 7. باز کردن پورت‌های Firewall فقط با **PowerShell Admin**:
 
