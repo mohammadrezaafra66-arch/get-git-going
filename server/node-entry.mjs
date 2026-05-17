@@ -2,7 +2,33 @@
 // produced by `vite build` (dist/server/server.js). No Worker/Cloudflare runtime.
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import handler from "../dist/server/index.js";
+import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve as pathResolve } from "node:path";
+
+// vite build (with cloudflare plugin disabled via SELF_HOST_NODE=1) emits the
+// SSR bundle as dist/server/server.js. Older builds wrote dist/server/index.js.
+// Try the current path first, then fall back, so the Node host works against
+// either layout without manual changes.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const candidates = ["../dist/server/server.js", "../dist/server/index.js"];
+let ssrEntry;
+for (const rel of candidates) {
+  const abs = pathResolve(__dirname, rel);
+  if (existsSync(abs)) {
+    ssrEntry = rel;
+    break;
+  }
+}
+if (!ssrEntry) {
+  throw new Error(
+    `[afrakala] SSR bundle not found. Looked for: ${candidates.join(", ")}. ` +
+      `Run \`vite build\` (with SELF_HOST_NODE=1) before starting the Node host.`,
+  );
+}
+const mod = await import(ssrEntry);
+const handler = mod.default ?? mod;
 
 // Allow CLI overrides: `node server/node-entry.mjs --host 127.0.0.1 --port 8080`
 // (used by `npm run preview -- --host ... --port ...`).
