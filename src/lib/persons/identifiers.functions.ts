@@ -130,7 +130,13 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<PersonIdentifierDTO> => {
     const { supabase } = context;
 
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      kind?: IdentifierKind;
+      value_raw?: string;
+      value_normalized?: string;
+      status?: "provisional" | "confirmed" | "revoked";
+      is_primary?: boolean;
+    } = {};
     const wantsRevalue = data.value_raw !== undefined || data.kind !== undefined;
 
     if (wantsRevalue) {
@@ -153,7 +159,8 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
       patch.value_normalized = norm.value_normalized;
     }
 
-    if (data.status !== undefined) patch.status = data.status;
+    if (data.status !== undefined)
+      patch.status = data.status as "provisional" | "confirmed" | "revoked";
     if (data.is_primary !== undefined) patch.is_primary = data.is_primary;
 
     if (Object.keys(patch).length === 0) {
