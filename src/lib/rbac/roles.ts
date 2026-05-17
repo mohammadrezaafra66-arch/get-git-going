@@ -96,8 +96,8 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   // به‌صورت پویا کنترل می‌شوند؛ اینجا فقط چهار اقدام پایه تعریف می‌شود.
   persons: {
     view: ALL_ROLES,
-    create: ["admin","manager"],
-    update: ["admin","manager"],
+    create: ["admin", "manager"],
+    update: ["admin", "manager"],
     delete: ["admin"],
   },
   // UI-NAV.4 — ماژول جداگانه برای منوهای «مالی و حسابداری».
