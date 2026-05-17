@@ -2,9 +2,8 @@
 // produced by `vite build` (dist/server/server.js). No Worker/Cloudflare runtime.
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve as pathResolve } from "node:path";
 
 // vite build (with cloudflare plugin disabled via SELF_HOST_NODE=1) emits the
@@ -13,21 +12,21 @@ import { dirname, resolve as pathResolve } from "node:path";
 // either layout without manual changes.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const candidates = ["../dist/server/server.js", "../dist/server/index.js"];
-let ssrEntry;
+let ssrEntryAbs;
 for (const rel of candidates) {
   const abs = pathResolve(__dirname, rel);
   if (existsSync(abs)) {
-    ssrEntry = rel;
+    ssrEntryAbs = abs;
     break;
   }
 }
-if (!ssrEntry) {
+if (!ssrEntryAbs) {
   throw new Error(
     `[afrakala] SSR bundle not found. Looked for: ${candidates.join(", ")}. ` +
       `Run \`vite build\` (with SELF_HOST_NODE=1) before starting the Node host.`,
   );
 }
-const mod = await import(ssrEntry);
+const mod = await import(pathToFileURL(ssrEntryAbs).href);
 const handler = mod.default ?? mod;
 
 // Allow CLI overrides: `node server/node-entry.mjs --host 127.0.0.1 --port 8080`
