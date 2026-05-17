@@ -252,16 +252,34 @@ services:
     container_name: afrakala-lan-kong
     restart: unless-stopped
     # Kong 2.8.1 does NOT auto-substitute env vars in declarative YAML.
-    # We mount kong.yml as a template and expand $SUPABASE_ANON_KEY /
-    # $SUPABASE_SERVICE_KEY via bash before Kong reads it. Same trick the
-    # official supabase/docker compose uses. Without this, Kong stores the
-    # literal strings "$SUPABASE_ANON_KEY" / "$SUPABASE_SERVICE_KEY" as the
-    # valid key-auth credentials and every real client key is rejected with
-    # {"message":"Invalid authentication credentials"}.
-    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > /home/kong/kong.yml && /docker-entrypoint.sh kong docker-start'
+    # We mount kong.yml as a READ-ONLY TEMPLATE and render a runtime config
+    # inside the container using sed (POSIX, available on the kong:2.8.1
+    # Alpine image without bash). The rendered file lives at
+    # /home/kong/kong.rendered.yml and KONG_DECLARATIVE_CONFIG points to it.
+    # If substitution fails (literal placeholders survive), the container
+    # exits non-zero BEFORE Kong starts, so we never serve a broken config.
+    # Required because Kong otherwise loads literal "$SUPABASE_ANON_KEY" /
+    # "$SUPABASE_SERVICE_KEY" as key-auth credentials and every real client
+    # key is rejected with {"message":"Invalid authentication credentials"}.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        : "$${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY env var missing}"
+        : "$${SUPABASE_SERVICE_KEY:?SUPABASE_SERVICE_KEY env var missing}"
+        sed \
+          -e "s|\$$SUPABASE_ANON_KEY|$${SUPABASE_ANON_KEY}|g" \
+          -e "s|\$$SUPABASE_SERVICE_KEY|$${SUPABASE_SERVICE_KEY}|g" \
+          /home/kong/kong.yml.template > /home/kong/kong.rendered.yml
+        if grep -q '\$$SUPABASE_ANON_KEY\|\$$SUPABASE_SERVICE_KEY' /home/kong/kong.rendered.yml; then
+          echo "[kong-entrypoint] FATAL: rendered kong.yml still contains literal placeholders" >&2
+          exit 1
+        fi
+        exec /docker-entrypoint.sh kong docker-start
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.rendered.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
@@ -271,10 +289,12 @@ services:
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-admin}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-changeme}
     volumes:
-      # از kong.yml مشترک با production stack استفاده می‌شود.
-      # فایل واقعی را از deploy/supabase/kong.yml.example بسازید:
+      # Template only. Real secrets are NEVER written into this file.
+      # Create it once from the example template:
       #   cp deploy/supabase/kong.yml.example deploy/supabase/volumes/api/kong.yml
-      - ../supabase/volumes/api/kong.yml:/home/kong/temp.yml:ro
+      # The container renders /home/kong/kong.rendered.yml at startup from
+      # this template + env vars (see entrypoint above).
+      - ../supabase/volumes/api/kong.yml:/home/kong/kong.yml.template:ro
     depends_on:
       - auth
       - rest
