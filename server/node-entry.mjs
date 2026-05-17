@@ -2,9 +2,9 @@
 // produced by `vite build` (dist/server/server.js). No Worker/Cloudflare runtime.
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
-import { existsSync } from "node:fs";
+import { existsSync, createReadStream, readdirSync, statSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, resolve as pathResolve } from "node:path";
+import { dirname, resolve as pathResolve, sep as pathSep, extname } from "node:path";
 
 // vite build (with cloudflare plugin disabled via SELF_HOST_NODE=1) emits the
 // SSR bundle as dist/server/server.js. Older builds wrote dist/server/index.js.
@@ -29,6 +29,146 @@ if (!ssrEntryAbs) {
 const mod = await import(pathToFileURL(ssrEntryAbs).href);
 const handler = mod.default ?? mod;
 
+// ---------------------------------------------------------------------------
+// Static file layer for self-host (Node + Docker).
+// The Cloudflare/Workers SSR bundle does NOT serve dist/client/** itself — on
+// Cloudflare that is the `assets` binding's job. In a Node host we have to do
+// it ourselves, before delegating unknown paths to the SSR handler.
+// ---------------------------------------------------------------------------
+const clientDirAbs = pathResolve(__dirname, "../dist/client");
+const assetsDirAbs = pathResolve(clientDirAbs, "assets");
+const fontsDirAbs = pathResolve(clientDirAbs, "fonts");
+
+function countByExt(dir, exts) {
+  try {
+    const files = readdirSync(dir);
+    const out = Object.fromEntries(exts.map((e) => [e, 0]));
+    for (const f of files) {
+      const e = extname(f).toLowerCase();
+      if (e in out) out[e] += 1;
+    }
+    return out;
+  } catch {
+    return Object.fromEntries(exts.map((e) => [e, 0]));
+  }
+}
+
+const clientExists = existsSync(clientDirAbs);
+const assetsExists = existsSync(assetsDirAbs);
+const fontsExists = existsSync(fontsDirAbs);
+const assetCounts = assetsExists ? countByExt(assetsDirAbs, [".js", ".css"]) : { ".js": 0, ".css": 0 };
+
+console.log("[afrakala] static layer config:");
+console.log("  cwd          :", process.cwd());
+console.log("  server dir   :", __dirname);
+console.log("  client dir   :", clientDirAbs, clientExists ? "(exists)" : "(MISSING)");
+console.log("  assets dir   :", assetsDirAbs, assetsExists ? "(exists)" : "(MISSING)");
+console.log("  fonts dir    :", fontsDirAbs, fontsExists ? "(exists)" : "(MISSING)");
+console.log(`  asset files  : js=${assetCounts[".js"]} css=${assetCounts[".css"]}`);
+
+if (!clientExists) {
+  console.error(
+    "[afrakala] FATAL: dist/client is missing. The Node host cannot serve the SPA. " +
+      "Rebuild the image with `vite build` (SELF_HOST_NODE=1) so dist/client is populated.",
+  );
+  process.exit(1);
+}
+if (!assetsExists) {
+  console.error(
+    "[afrakala] ERROR: dist/client/assets is missing. /assets/* requests will 404. " +
+      "Static layer will still run for other paths, but the app will not boot in the browser.",
+  );
+} else if (assetCounts[".js"] === 0) {
+  console.error(
+    "[afrakala] ERROR: no .js files in dist/client/assets. The browser will not be able to bootstrap.",
+  );
+}
+
+const MIME = {
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".txt": "text/plain; charset=utf-8",
+};
+
+function pickCacheControl(pathname) {
+  if (pathname.startsWith("/assets/") || pathname.startsWith("/fonts/")) {
+    return "public, max-age=31536000, immutable";
+  }
+  return "public, max-age=3600";
+}
+
+/**
+ * Try to serve `pathname` from dist/client. Returns true if the response was
+ * sent (or is in the process of streaming) and the SSR handler must NOT run.
+ */
+function tryServeStatic(req, res, pathname) {
+  if (!clientExists) return false;
+  if (pathname === "/" || pathname === "") return false; // let SSR render the shell
+
+  // Decode + normalize the URL path against the client root, and guard against
+  // path traversal (e.g. /../etc/passwd, encoded variants).
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  if (decoded.includes("\0")) return false;
+
+  const candidate = pathResolve(clientDirAbs, "." + decoded);
+  if (candidate !== clientDirAbs && !candidate.startsWith(clientDirAbs + pathSep)) {
+    return false;
+  }
+
+  let st;
+  try {
+    st = statSync(candidate);
+  } catch {
+    return false;
+  }
+  if (!st.isFile()) return false;
+
+  const ext = extname(candidate).toLowerCase();
+  const type = MIME[ext] ?? "application/octet-stream";
+  res.statusCode = 200;
+  res.setHeader("content-type", type);
+  res.setHeader("content-length", String(st.size));
+  res.setHeader("cache-control", pickCacheControl(decoded));
+  res.setHeader("x-static-handler", "node-entry");
+
+  if ((req.method || "GET").toUpperCase() === "HEAD") {
+    res.end();
+    return true;
+  }
+
+  const stream = createReadStream(candidate);
+  stream.on("error", (err) => {
+    console.error("[afrakala] static stream error:", candidate, err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+    }
+    res.destroy(err);
+  });
+  stream.pipe(res);
+  return true;
+}
+
 // Allow CLI overrides: `node server/node-entry.mjs --host 127.0.0.1 --port 8080`
 // (used by `npm run preview -- --host ... --port ...`).
 function getArg(name) {
@@ -49,6 +189,20 @@ const httpServer = createServer(async (req, res) => {
     const host = req.headers.host || `${HOST}:${PORT}`;
     const url = `${proto}://${host}${req.url}`;
     const method = (req.method || "GET").toUpperCase();
+
+    // Serve dist/client/** BEFORE the SSR catch-all. Only GET/HEAD; everything
+    // else (POST/PUT/PATCH/DELETE) goes straight to the SSR / server-fn router.
+    if (method === "GET" || method === "HEAD") {
+      let pathname = "/";
+      try {
+        pathname = new URL(url).pathname;
+      } catch {
+        pathname = req.url || "/";
+      }
+      if (tryServeStatic(req, res, pathname)) {
+        return;
+      }
+    }
 
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) {
