@@ -19,7 +19,7 @@ export PGPASSWORD="$POSTGRES_PASSWORD"
 
 psql -q -v ON_ERROR_STOP=1 \
   -h db \
-  -U postgres \
+  -U supabase_admin \
   -d "$POSTGRES_DB" \
   --no-psqlrc \
   -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
