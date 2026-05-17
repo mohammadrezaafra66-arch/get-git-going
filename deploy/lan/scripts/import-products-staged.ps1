@@ -137,10 +137,34 @@ if ($UseDocker) {
     if ($LASTEXITCODE -ne 0) { throw "[ERROR] docker cp products.csv failed." }
     & docker cp $PcpCsv        "${DbContainerName}:$InPcp"
     if ($LASTEXITCODE -ne 0) { throw "[ERROR] docker cp product_computed_prices.csv failed." }
-    & docker cp $SqlFile       "${DbContainerName}:$InSql"
-    if ($LASTEXITCODE -ne 0) { throw "[ERROR] docker cp import-products-staged.sql failed." }
+
+    # ---------------------------------------------------------------------
+    # FIX: psql variable interpolation inside backslash meta-commands like
+    # \copy is unreliable across psql builds; the previous dry-run failed
+    # with `:: No such file or directory` on the first \copy line because
+    # :'brands_csv' was not expanded inside the meta-command.
+    #
+    # Mitigation (Docker mode only): rewrite the four \copy lines with
+    # literal in-container CSV paths before docker-cp'ing the SQL into the
+    # container. The host SQL file is NOT modified; we materialize a
+    # patched copy under the user's TEMP dir and ship that one.
+    # ---------------------------------------------------------------------
+    $sqlText = Get-Content -Raw -LiteralPath $SqlFile
+    $sqlText = $sqlText -replace [regex]::Escape(":'brands_csv'"),                  ("'" + $InBrands + "'")
+    $sqlText = $sqlText -replace [regex]::Escape(":'categories_csv'"),              ("'" + $InCats   + "'")
+    $sqlText = $sqlText -replace [regex]::Escape(":'products_csv'"),                ("'" + $InProds  + "'")
+    $sqlText = $sqlText -replace [regex]::Escape(":'product_computed_prices_csv'"), ("'" + $InPcp    + "'")
+
+    $PatchedSqlHost = Join-Path ([System.IO.Path]::GetTempPath()) ("afrakala-import-products-docker-" + [Guid]::NewGuid().ToString("N") + ".sql")
+    # Write as UTF-8 without BOM so psql parses it cleanly.
+    [System.IO.File]::WriteAllText($PatchedSqlHost, $sqlText, (New-Object System.Text.UTF8Encoding($false)))
+
+    & docker cp $PatchedSqlHost "${DbContainerName}:$InSql"
+    if ($LASTEXITCODE -ne 0) { throw "[ERROR] docker cp import-products-staged.sql (patched) failed." }
 
     # Run psql inside the container. Local Unix socket - no password needed.
+    # Note: in Docker mode the four *_csv variables are no longer needed
+    # because the patched SQL hard-codes the in-container paths.
     $dockerArgs = @(
       "exec", "-e", "PAGER=cat", $DbContainerName,
       "psql", "-P", "pager=off",
@@ -150,10 +174,6 @@ if ($UseDocker) {
       "-v", "dry_run=$DryRunStr",
       "-v", "lan_cash_price_id=$LanCashPriceId",
       "-v", "lan_admin_user_id=$LanAdminUserId",
-      "-v", "brands_csv=$InBrands",
-      "-v", "categories_csv=$InCats",
-      "-v", "products_csv=$InProds",
-      "-v", "product_computed_prices_csv=$InPcp",
       "-f", $InSql,
       "-c", $EndStmt
     )
@@ -175,6 +195,9 @@ if ($UseDocker) {
   } finally {
     # Best-effort cleanup of staged files inside the container.
     & docker exec $DbContainerName sh -c "rm -rf '$DockerStageDir'" 2>$null | Out-Null
+    if ($PatchedSqlHost -and (Test-Path $PatchedSqlHost)) {
+      Remove-Item -LiteralPath $PatchedSqlHost -Force -ErrorAction SilentlyContinue
+    }
   }
 }
 else {
