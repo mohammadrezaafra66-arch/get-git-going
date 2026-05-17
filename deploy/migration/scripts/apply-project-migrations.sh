@@ -46,10 +46,14 @@ read -r -p "آیا مطمئن هستید روی target اجرا شود؟ تای�
 [[ "${ans}" == "APPLY" ]] || { echo "لغو شد."; exit 1; }
 
 export PGPASSWORD="${TARGET_DB_PASSWORD}"
+# اطمینان از client encoding برای جلوگیری از خراب شدن متن فارسی (UTF-8)
+export PGCLIENTENCODING="UTF8"
 for f in "${FILES[@]}"; do
   echo ">>> running $(basename "$f")"
   psql -v ON_ERROR_STOP=1 -h "${TARGET_DB_HOST}" -p "${TARGET_DB_PORT}" \
-       -U "${TARGET_DB_USER}" -d "${TARGET_DB_NAME}" -f "$f"
+       -U "${TARGET_DB_USER}" -d "${TARGET_DB_NAME}" \
+       -v client_encoding=UTF8 \
+       -f "$f"
 done
 unset PGPASSWORD
 echo "[OK] all migrations applied."

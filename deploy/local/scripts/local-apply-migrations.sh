@@ -62,12 +62,16 @@ echo "[apply-migrations] برای ادامه ENTER بزنید (Ctrl+C برای �
 read -r _
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
+# اطمینان از client encoding برای جلوگیری از خراب شدن متن فارسی (UTF-8)
+export PGCLIENTENCODING="UTF8"
 for f in "${FILES[@]}"; do
   echo "[apply-migrations] اجرای: $(basename "$f")"
   psql -v ON_ERROR_STOP=1 \
        --host 127.0.0.1 --port 54322 \
        --username postgres --dbname "$POSTGRES_DB" \
-       --no-psqlrc -f "$f"
+       --no-psqlrc \
+       -v client_encoding=UTF8 \
+       -f "$f"
 done
 unset PGPASSWORD
 

@@ -16,12 +16,15 @@ if [ "${#POSTGRES_PASSWORD}" -lt 8 ]; then
 fi
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
+# UTF-8 client encoding برای جلوگیری از خراب شدن متن فارسی
+export PGCLIENTENCODING="UTF8"
 
 psql -q -v ON_ERROR_STOP=1 \
   -h db \
   -U supabase_admin \
   -d "$POSTGRES_DB" \
   --no-psqlrc \
+  -v client_encoding=UTF8 \
   -v pgpass="$POSTGRES_PASSWORD" <<'EOSQL'
 SELECT set_config('afrakala.final_role_password', :'pgpass', false) AS ignored
 \gset
