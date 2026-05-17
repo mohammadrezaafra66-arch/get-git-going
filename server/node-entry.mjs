@@ -35,9 +35,9 @@ const handler = mod.default ?? mod;
 // Cloudflare that is the `assets` binding's job. In a Node host we have to do
 // it ourselves, before delegating unknown paths to the SSR handler.
 // ---------------------------------------------------------------------------
-const clientDirAbs = pathResolve(__dirname, "../dist/client");
-const assetsDirAbs = pathResolve(clientDirAbs, "assets");
-const fontsDirAbs = pathResolve(clientDirAbs, "fonts");
+const clientDir = pathResolve(__dirname, "../dist/client");
+const assetsDir = pathResolve(clientDir, "assets");
+const fontsDir = pathResolve(clientDir, "fonts");
 
 function countByExt(dir, exts) {
   try {
@@ -53,17 +53,17 @@ function countByExt(dir, exts) {
   }
 }
 
-const clientExists = existsSync(clientDirAbs);
-const assetsExists = existsSync(assetsDirAbs);
-const fontsExists = existsSync(fontsDirAbs);
-const assetCounts = assetsExists ? countByExt(assetsDirAbs, [".js", ".css"]) : { ".js": 0, ".css": 0 };
+const clientExists = existsSync(clientDir);
+const assetsExists = existsSync(assetsDir);
+const fontsExists = existsSync(fontsDir);
+const assetCounts = assetsExists ? countByExt(assetsDir, [".js", ".css"]) : { ".js": 0, ".css": 0 };
 
 console.log("[afrakala] static layer config:");
 console.log("  cwd          :", process.cwd());
 console.log("  server dir   :", __dirname);
-console.log("  client dir   :", clientDirAbs, clientExists ? "(exists)" : "(MISSING)");
-console.log("  assets dir   :", assetsDirAbs, assetsExists ? "(exists)" : "(MISSING)");
-console.log("  fonts dir    :", fontsDirAbs, fontsExists ? "(exists)" : "(MISSING)");
+console.log("  client dir   :", clientDir, clientExists ? "(exists)" : "(MISSING)");
+console.log("  assets dir   :", assetsDir, assetsExists ? "(exists)" : "(MISSING)");
+console.log("  fonts dir    :", fontsDir, fontsExists ? "(exists)" : "(MISSING)");
 console.log(`  asset files  : js=${assetCounts[".js"]} css=${assetCounts[".css"]}`);
 
 if (!clientExists) {
