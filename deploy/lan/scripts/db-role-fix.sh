@@ -35,21 +35,15 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    EXECUTE 'CREATE ROLE anon NOLOGIN NOINHERIT';
-  ELSE
-    EXECUTE 'ALTER ROLE anon WITH NOLOGIN NOINHERIT';
+    RAISE EXCEPTION 'Reserved role "anon" is missing. Fresh database initialization is broken; recreate the LAN DB volume after pulling the latest code.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    EXECUTE 'CREATE ROLE authenticated NOLOGIN NOINHERIT';
-  ELSE
-    EXECUTE 'ALTER ROLE authenticated WITH NOLOGIN NOINHERIT';
+    RAISE EXCEPTION 'Reserved role "authenticated" is missing. Fresh database initialization is broken; recreate the LAN DB volume after pulling the latest code.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    EXECUTE 'CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS';
-  ELSE
-    EXECUTE 'ALTER ROLE service_role WITH NOLOGIN NOINHERIT BYPASSRLS';
+    RAISE EXCEPTION 'Reserved role "service_role" is missing. Fresh database initialization is broken; recreate the LAN DB volume after pulling the latest code.';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
@@ -77,7 +71,12 @@ BEGIN
   END IF;
   EXECUTE format('ALTER ROLE dashboard_user WITH LOGIN CREATEDB CREATEROLE REPLICATION PASSWORD %L', v_pass);
 
-  EXECUTE 'GRANT anon, authenticated, service_role TO authenticator';
+  BEGIN
+    EXECUTE 'GRANT anon, authenticated, service_role TO authenticator';
+  EXCEPTION WHEN insufficient_privilege OR reserved_name THEN
+    RAISE NOTICE 'Skipping reserved role grants to authenticator because PostgreSQL refused the operation; LOGIN passwords were already assigned.';
+  END;
+
   EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin', current_database());
   EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_storage_admin', current_database());
 
