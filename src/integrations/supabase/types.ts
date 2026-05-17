@@ -1484,6 +1484,7 @@ export type Database = {
           link_group: string | null
           name: string
           notes: string | null
+          person_id: string | null
           phone: string | null
           responsible_id: string | null
           tax_id: string | null
@@ -1501,6 +1502,7 @@ export type Database = {
           link_group?: string | null
           name: string
           notes?: string | null
+          person_id?: string | null
           phone?: string | null
           responsible_id?: string | null
           tax_id?: string | null
@@ -1518,12 +1520,20 @@ export type Database = {
           link_group?: string | null
           name?: string
           notes?: string | null
+          person_id?: string | null
           phone?: string | null
           responsible_id?: string | null
           tax_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_responsible_id_fkey"
             columns: ["responsible_id"]
