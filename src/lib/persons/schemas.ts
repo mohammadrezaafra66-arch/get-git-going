@@ -139,3 +139,36 @@ export type PersonFieldValueDTO = {
 export type PersonWithFieldValuesDTO = PersonDTO & {
   field_values: PersonFieldValueDTO[];
 };
+
+/* ---------- searchPersons (S19B) ---------- */
+
+/**
+ * Read-only person picker search input.
+ *
+ * Behavior:
+ *  - `query` is trimmed; if its trimmed length is < 2 the serverFn returns []
+ *    (cheap, predictable, no PG round-trip).
+ *  - `limit` is clamped server-side to [1..20]; default 20.
+ *  - `kind` defaults to "all" → no kind filter.
+ *  - `include_inactive` defaults to false → only active rows.
+ */
+export const SearchPersonsInputSchema = z.object({
+  query: z.string().max(80, "طول عبارت جستجو بیش از حد مجاز است"),
+  limit: z.number().int().min(1).max(20).optional().default(20),
+  kind: z.enum(["individual", "organization", "all"]).optional().default("all"),
+  include_inactive: z.boolean().optional().default(false),
+});
+export type SearchPersonsInput = z.infer<typeof SearchPersonsInputSchema>;
+
+/**
+ * Narrow picker DTO — INTENTIONALLY excludes notes, identifiers, field_values,
+ * created_by, audit timestamps, and visibility_scope. Do NOT widen this shape
+ * without a fresh RLS/leak review.
+ */
+export type SearchPersonResultDTO = {
+  id: string;
+  display_name: string;
+  legal_name: string | null;
+  kind: PersonKind;
+  is_active: boolean;
+};

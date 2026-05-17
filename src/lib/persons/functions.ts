@@ -25,6 +25,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   CreatePersonInputSchema,
+  SearchPersonsInputSchema,
   UpdatePersonInputSchema,
   type CreatePersonInput,
   type PersonDTO,
@@ -32,6 +33,8 @@ import {
   type PersonFieldValueInput,
   type PersonKind,
   type PersonWithFieldValuesDTO,
+  type SearchPersonResultDTO,
+  type SearchPersonsInput,
   type UpdatePersonInput,
 } from "./schemas";
 
@@ -393,6 +396,68 @@ export const getPerson = createServerFn({ method: "POST" })
         ...(personRow as PersonDTO),
         field_values: (fvRows as PersonFieldValueDTO[]) ?? [],
       };
+    } catch (e) {
+      throw toServerError(e);
+    }
+  });
+
+/* ---------- searchPersons (S19B) ---------- */
+
+/**
+ * Sanitize a free-text search term for safe use inside a PostgREST `.or()`
+ * ilike filter. PostgREST parses the filter string itself, so commas /
+ * parentheses / quotes can change the meaning of the query, and `%` / `_`
+ * are SQL ilike wildcards we do not want users to inject. We replace any
+ * such character with a single space and collapse whitespace.
+ */
+function sanitizeSearchTerm(raw: string): string {
+  return raw
+    .replace(/[%_,()*"'\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Read-only person picker search.
+ *
+ * - Auth: `requireSupabaseAuth` (same chain + `surfaceAuthError` as the rest
+ *   of this module). No service role, no SECURITY DEFINER.
+ * - RLS: relies on the user-scoped Supabase client from middleware context.
+ *   Restricted persons are filtered automatically by
+ *   `persons_select_by_visibility_scope`.
+ * - Columns: narrow DTO only — id, display_name, legal_name, kind, is_active.
+ *   No notes, no identifiers, no field_values, no visibility_scope.
+ * - Search: ilike on `display_name` OR `legal_name`. Identifier search is
+ *   deliberately NOT included in this step (existence-leak risk for
+ *   restricted persons).
+ * - If trimmed query length < 2 → returns [] without hitting the DB.
+ */
+export const searchPersons = createServerFn({ method: "POST" })
+  .middleware([surfaceAuthError, requireSupabaseAuth])
+  .inputValidator((input) => SearchPersonsInputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<SearchPersonResultDTO[]> => {
+    try {
+      const input: SearchPersonsInput = data;
+      const term = sanitizeSearchTerm(input.query ?? "");
+      if (term.length < 2) return [];
+
+      const { supabase } = context;
+      const pattern = `%${term}%`;
+
+      let q = supabase
+        .from("persons")
+        .select("id, display_name, legal_name, kind, is_active")
+        .or(`display_name.ilike.${pattern},legal_name.ilike.${pattern}`)
+        .order("display_name", { ascending: true })
+        .limit(input.limit);
+
+      if (!input.include_inactive) q = q.eq("is_active", true);
+      if (input.kind !== "all") q = q.eq("kind", input.kind);
+
+      const { data: rows, error } = await q;
+      if (error) throw mapPgError(error.code, error.message);
+
+      return (rows as SearchPersonResultDTO[] | null) ?? [];
     } catch (e) {
       throw toServerError(e);
     }
