@@ -63,6 +63,42 @@ export type PersonIdentifierDTO = {
 };
 
 /**
+ * S12 — Cross-person duplicate guard (D2).
+ *
+ * Reject when another person already has a non-revoked identifier with the
+ * same (kind, value_normalized). Admin/manager (the only roles allowed to
+ * insert/update identifiers per S06 RLS) can SELECT all persons across
+ * visibility scopes, so RLS does not hide rows from this check.
+ *
+ * Returns the Persian rejection message if a conflict exists, otherwise null.
+ */
+async function findCrossPersonDuplicate(
+  supabase: import("@supabase/supabase-js").SupabaseClient,
+  args: {
+    kind: IdentifierKind;
+    value_normalized: string;
+    person_id: string;
+    excludeId?: string;
+  },
+): Promise<string | null> {
+  let q = supabase
+    .from("person_identifiers")
+    .select("id, person_id, status")
+    .eq("kind", args.kind)
+    .eq("value_normalized", args.value_normalized)
+    .neq("status", "revoked")
+    .neq("person_id", args.person_id)
+    .limit(1);
+  if (args.excludeId) q = q.neq("id", args.excludeId);
+  const { data, error } = await q;
+  if (error) throw mapPgError(error.code, error.message);
+  if (data && data.length > 0) {
+    return "این شناسه قبلاً برای شخص دیگری ثبت شده است.";
+  }
+  return null;
+}
+
+/**
  * Map raw Postgres / RLS errors to Persian, business-safe messages.
  * Never echoes value_raw back.
  */
@@ -95,6 +131,14 @@ export const createPersonIdentifier = createServerFn({ method: "POST" })
     }
 
     const { supabase } = context;
+    // S12: server-side cross-person duplicate guard (provisional + confirmed).
+    const dupMsg = await findCrossPersonDuplicate(supabase, {
+      kind: data.kind,
+      value_normalized: norm.value_normalized,
+      person_id: data.person_id,
+    });
+    if (dupMsg) throw new Error(dupMsg);
+
     const { data: row, error } = await supabase
       .from("person_identifiers")
       .insert({
