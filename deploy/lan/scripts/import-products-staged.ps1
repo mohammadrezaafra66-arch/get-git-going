@@ -1,20 +1,26 @@
-# AfraKala — Phase 3 / Task AFRA-20260517-PRODUCTS-U02-S02
-# Wrapper PowerShell برای اجرای import-products-staged.sql روی LAN.
+# AfraKala - Phase 3 / Task AFRA-20260517-PRODUCTS-U02-S02 (Corrected)
+# PowerShell wrapper for import-products-staged.sql on LAN.
 #
-# نقش این اسکریپت:
-#   1) چک backup قبل از import (اجباری).
-#   2) اجرای فایل SQL با DRY_RUN=true به‌صورت پیش‌فرض.
-#   3) در حالت واقعی: BEGIN/COMMIT دستی، در صورت خطا ROLLBACK.
-#   4) هیچ secret داخل فایل ذخیره نمی‌شود؛ از env یا prompt گرفته می‌شود.
+# Responsibilities:
+#   1) Verify required CSV files exist in -StagingDir.
+#   2) Require an existing backup file before any real import.
+#   3) Pass each CSV path as a separate psql -v variable (Windows-safe;
+#      no path concatenation inside SQL).
+#   4) Always run inside a transaction:
+#        dry-run  -> issue ROLLBACK at the end (public.* untouched).
+#        real run -> issue COMMIT on success, ROLLBACK on any error.
+#   5) No secret is stored in the file. PGPASSWORD is read from env and
+#      cleared in finally.
 #
-# نمونه اجرا (dry-run):
+# Dry-run example:
 #   $env:LAN_DB_HOST="127.0.0.1"; $env:LAN_DB_PORT="5432"
-#   $env:LAN_DB_NAME="postgres"; $env:LAN_DB_USER="postgres"
-#   $env:LAN_DB_PASSWORD="..."  # خارج از ریپو
+#   $env:LAN_DB_NAME="postgres";  $env:LAN_DB_USER="postgres"
+#   $env:LAN_DB_PASSWORD="..."    # never commit this
 #   .\import-products-staged.ps1 -StagingDir 'C:\afra\dumps\products-20260517-...'
 #
-# اجرای واقعی پس از تأیید U01:
-#   .\import-products-staged.ps1 -StagingDir '...' -DryRun:$false -BackupFile 'C:\afra\backups\lan-YYYYMMDD.dump'
+# Real run (only after U01 approval and backup):
+#   .\import-products-staged.ps1 -StagingDir '...' -DryRun:$false `
+#                                -BackupFile 'C:\afra\backups\lan-YYYYMMDD.dump'
 
 [CmdletBinding()]
 param(
@@ -39,14 +45,20 @@ $DbName = Require-Env "LAN_DB_NAME"
 $DbUser = Require-Env "LAN_DB_USER"
 $DbPass = Require-Env "LAN_DB_PASSWORD"
 
-# ── Pre-flight: CSV files exist ─────────────────────────────────────────────
-$required = @("brands.csv","categories.csv","products.csv","product_computed_prices.csv")
-foreach ($f in $required) {
-  $p = Join-Path $StagingDir $f
+# --- Pre-flight: resolve staging dir and required CSVs ---------------------
+if (-not (Test-Path $StagingDir)) { throw "[ERROR] staging dir not found: $StagingDir" }
+$StagingDir = (Resolve-Path $StagingDir).Path
+
+$BrandsCsv     = (Join-Path $StagingDir "brands.csv")
+$CategoriesCsv = (Join-Path $StagingDir "categories.csv")
+$ProductsCsv   = (Join-Path $StagingDir "products.csv")
+$PcpCsv        = (Join-Path $StagingDir "product_computed_prices.csv")
+
+foreach ($p in @($BrandsCsv,$CategoriesCsv,$ProductsCsv,$PcpCsv)) {
   if (-not (Test-Path $p)) { throw "[ERROR] missing CSV: $p" }
 }
 
-# ── Pre-flight: backup قبل از real import اجباری ────────────────────────────
+# --- Pre-flight: backup is mandatory for real import -----------------------
 if (-not $DryRun) {
   if ([string]::IsNullOrWhiteSpace($BackupFile) -or -not (Test-Path $BackupFile)) {
     throw "[ERROR] real import requires -BackupFile pointing to an existing LAN backup."
@@ -54,39 +66,55 @@ if (-not $DryRun) {
   Write-Host "[ok] backup verified: $BackupFile"
 }
 
-# ── psql variables ─────────────────────────────────────────────────────────
+# --- Build psql invocation -------------------------------------------------
 $SqlFile = Join-Path $PSScriptRoot "..\..\migration\sql\import-products-staged.sql"
 $SqlFile = (Resolve-Path $SqlFile).Path
+
+$DryRunStr = if ($DryRun) { "true" } else { "false" }
+
+# The SQL file opens its own BEGIN. Both -f and -c run in the SAME psql
+# session, so the wrapper just appends COMMIT or ROLLBACK to terminate the
+# transaction explicitly. Do NOT pass -1 here (it would conflict with the
+# explicit BEGIN inside the SQL).
+$EndStmt = if ($DryRun) { "ROLLBACK;" } else { "COMMIT;" }
 
 $env:PGPASSWORD = $DbPass
 $psqlArgs = @(
   "-h", $DbHost, "-p", $DbPort, "-U", $DbUser, "-d", $DbName,
+  "-X",
   "-v", "ON_ERROR_STOP=1",
-  "-v", "staging_dir=$StagingDir",
+  "-v", "dry_run=$DryRunStr",
   "-v", "lan_cash_price_id=$LanCashPriceId",
   "-v", "lan_admin_user_id=$LanAdminUserId",
-  "-v", "dry_run=$($DryRun.ToString().ToLower())",
-  "-f", $SqlFile
+  "-v", "brands_csv=$BrandsCsv",
+  "-v", "categories_csv=$CategoriesCsv",
+  "-v", "products_csv=$ProductsCsv",
+  "-v", "product_computed_prices_csv=$PcpCsv",
+  "-f", $SqlFile,
+  "-c", $EndStmt
 )
 
 Write-Host ""
 Write-Host "Target  : $DbUser@${DbHost}:${DbPort}/${DbName}"
 Write-Host "Staging : $StagingDir"
 Write-Host "SqlFile : $SqlFile"
-Write-Host "DryRun  : $DryRun"
+Write-Host "DryRun  : $DryRun  (terminator: $EndStmt)"
 Write-Host ""
 
 try {
   & psql @psqlArgs
-  if ($LASTEXITCODE -ne 0) { throw "psql exited with code $LASTEXITCODE" }
+  if ($LASTEXITCODE -ne 0) {
+    throw "psql exited with code $LASTEXITCODE - ON_ERROR_STOP aborted the transaction; no COMMIT was issued."
+  }
 
   if ($DryRun) {
     Write-Host ""
-    Write-Host "[dry-run] هیچ ردیفی درج نشد. برای اجرای واقعی پس از تأیید U01:"
+    Write-Host "[dry-run] No rows were inserted; the transaction was rolled back."
+    Write-Host "  Next step (after U01 approval and a fresh backup):"
     Write-Host "  .\import-products-staged.ps1 -StagingDir '$StagingDir' -DryRun:`$false -BackupFile '<path-to-backup>'"
   } else {
     Write-Host ""
-    Write-Host "[done] import کامل شد. لطفاً سناریوهای verification UI را اجرا کنید."
+    Write-Host "[done] Import committed. Run UI verification scenarios next."
   }
 } finally {
   Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
