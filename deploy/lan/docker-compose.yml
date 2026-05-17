@@ -92,14 +92,123 @@ services:
     #   - "127.0.0.1:5432:5432"   # فقط برای debug ادمین روی همان لپ‌تاپ
 
   # -------------------------------------------------------------
+  # DB role password fixer — LAN-only post-start reliability layer.
+  # Supabase/Postgres bootstrap can leave service roles without passwords on
+  # Windows LAN volumes, so this one-shot runs after db is healthy and before
+  # auth/rest/storage/meta start.
+  # -------------------------------------------------------------
+  db-role-fix:
+    image: supabase/postgres:15.6.1.139
+    container_name: afrakala-lan-db-role-fix
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    entrypoint: ["/bin/bash", "-lc"]
+    command: |
+      set -euo pipefail
+
+      if [ -z "$${POSTGRES_PASSWORD:-}" ] || [ "$${#POSTGRES_PASSWORD}" -lt 8 ]; then
+        echo "POSTGRES_PASSWORD missing or too short" >&2
+        exit 1
+      fi
+
+      export PGPASSWORD="$$POSTGRES_PASSWORD"
+
+      psql -v ON_ERROR_STOP=1 \
+        -h db \
+        -U postgres \
+        -d "$$POSTGRES_DB" \
+        --no-psqlrc \
+        -v pgpass="$$POSTGRES_PASSWORD" <<'EOSQL'
+      SELECT set_config('afrakala.final_role_password', :'pgpass', false);
+
+      DO $$$$
+      DECLARE
+        v_pass text := current_setting('afrakala.final_role_password', true);
+      BEGIN
+        IF v_pass IS NULL OR length(v_pass) < 8 THEN
+          RAISE EXCEPTION 'afrakala.final_role_password missing/too short';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+          EXECUTE 'CREATE ROLE anon NOLOGIN NOINHERIT';
+        ELSE
+          EXECUTE 'ALTER ROLE anon WITH NOLOGIN NOINHERIT';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          EXECUTE 'CREATE ROLE authenticated NOLOGIN NOINHERIT';
+        ELSE
+          EXECUTE 'ALTER ROLE authenticated WITH NOLOGIN NOINHERIT';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+          EXECUTE 'CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS';
+        ELSE
+          EXECUTE 'ALTER ROLE service_role WITH NOLOGIN NOINHERIT BYPASSRLS';
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+          EXECUTE format('CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD %L', v_pass);
+        END IF;
+        EXECUTE format('ALTER ROLE authenticator WITH LOGIN NOINHERIT PASSWORD %L', v_pass);
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+          EXECUTE format('CREATE ROLE supabase_auth_admin LOGIN NOINHERIT CREATEROLE PASSWORD %L', v_pass);
+        END IF;
+        EXECUTE format('ALTER ROLE supabase_auth_admin WITH LOGIN NOINHERIT CREATEROLE PASSWORD %L', v_pass);
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+          EXECUTE format('CREATE ROLE supabase_storage_admin LOGIN NOINHERIT CREATEROLE PASSWORD %L', v_pass);
+        END IF;
+        EXECUTE format('ALTER ROLE supabase_storage_admin WITH LOGIN NOINHERIT CREATEROLE PASSWORD %L', v_pass);
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+          EXECUTE format('CREATE ROLE supabase_admin LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS PASSWORD %L', v_pass);
+        END IF;
+        EXECUTE format('ALTER ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS PASSWORD %L', v_pass);
+
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dashboard_user') THEN
+          EXECUTE format('CREATE ROLE dashboard_user LOGIN CREATEDB CREATEROLE REPLICATION PASSWORD %L', v_pass);
+        END IF;
+        EXECUTE format('ALTER ROLE dashboard_user WITH LOGIN CREATEDB CREATEROLE REPLICATION PASSWORD %L', v_pass);
+
+        EXECUTE 'GRANT anon, authenticated, service_role TO authenticator';
+        EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin', current_database());
+        EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_storage_admin', current_database());
+
+        IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
+          EXECUTE 'GRANT ALL PRIVILEGES ON SCHEMA auth TO supabase_auth_admin';
+          EXECUTE 'ALTER SCHEMA auth OWNER TO supabase_auth_admin';
+        END IF;
+
+        IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
+          EXECUTE 'GRANT ALL PRIVILEGES ON SCHEMA storage TO supabase_storage_admin';
+          EXECUTE 'ALTER SCHEMA storage OWNER TO supabase_storage_admin';
+        END IF;
+      END
+      $$$$;
+
+      SELECT set_config('afrakala.final_role_password', '', false);
+      EOSQL
+
+      echo "LAN DB role password fix complete"
+    networks:
+      - afrakala-lan-net
+
+  # -------------------------------------------------------------
   # Auth (GoTrue)
   # -------------------------------------------------------------
   auth:
     image: supabase/gotrue:v2.158.1
     container_name: afrakala-lan-auth
     depends_on:
-      db:
-        condition: service_healthy
+      db-role-fix:
+        condition: service_completed_successfully
     restart: unless-stopped
     environment:
       GOTRUE_API_HOST: 0.0.0.0
@@ -131,8 +240,8 @@ services:
     image: postgrest/postgrest:v12.2.0
     container_name: afrakala-lan-rest
     depends_on:
-      db:
-        condition: service_healthy
+      db-role-fix:
+        condition: service_completed_successfully
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -152,8 +261,8 @@ services:
     image: supabase/storage-api:v1.11.13
     container_name: afrakala-lan-storage
     depends_on:
-      db:
-        condition: service_healthy
+      db-role-fix:
+        condition: service_completed_successfully
       rest:
         condition: service_started
     restart: unless-stopped
@@ -182,8 +291,8 @@ services:
     image: supabase/postgres-meta:v0.84.2
     container_name: afrakala-lan-meta
     depends_on:
-      db:
-        condition: service_healthy
+      db-role-fix:
+        condition: service_completed_successfully
     restart: unless-stopped
     environment:
       PG_META_PORT: 8080
