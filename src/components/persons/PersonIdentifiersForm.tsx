@@ -82,15 +82,17 @@ export function PersonIdentifiersForm({
 
   const createMut = useMutation({
     mutationFn: () =>
-      toError(createFn({
-        data: {
-          person_id: personId,
-          kind,
-          value_raw: value,
-          status: confirmed ? "confirmed" : "provisional",
-          is_primary: isPrimary,
-        },
-      })),
+      toError(
+        createFn({
+          data: {
+            person_id: personId,
+            kind,
+            value_raw: value,
+            status: confirmed ? "confirmed" : "provisional",
+            is_primary: isPrimary,
+          },
+        }),
+      ),
     onSuccess: () => {
       toast.success("شناسه افزوده شد");
       setValue("");

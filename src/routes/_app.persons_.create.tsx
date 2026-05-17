@@ -25,17 +25,19 @@ function PersonCreatePage() {
 
   const mut = useMutation({
     mutationFn: (values: PersonFormValues) =>
-      toError(createFn({
-        data: {
-          kind: values.kind,
-          display_name: values.display_name.trim(),
-          legal_name: values.legal_name.trim() ? values.legal_name.trim() : null,
-          visibility_scope: values.visibility_scope,
-          is_active: values.is_active,
-          notes: values.notes.trim() ? values.notes.trim() : null,
-          field_values: [],
-        },
-      })),
+      toError(
+        createFn({
+          data: {
+            kind: values.kind,
+            display_name: values.display_name.trim(),
+            legal_name: values.legal_name.trim() ? values.legal_name.trim() : null,
+            visibility_scope: values.visibility_scope,
+            is_active: values.is_active,
+            notes: values.notes.trim() ? values.notes.trim() : null,
+            field_values: [],
+          },
+        }),
+      ),
     onSuccess: (person) => {
       toast.success("شخص با موفقیت ایجاد شد");
       if (person?.id) {

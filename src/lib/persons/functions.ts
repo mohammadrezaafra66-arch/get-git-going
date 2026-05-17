@@ -209,100 +209,100 @@ export const updatePerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => UpdatePersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO> => {
-   try {
-    const input: UpdatePersonInput = data;
-    const { supabase } = context;
+    try {
+      const input: UpdatePersonInput = data;
+      const { supabase } = context;
 
-    // Build sparse patch.
-    const patch: {
-      kind?: PersonKind;
-      display_name?: string;
-      legal_name?: string | null;
-      visibility_scope?: PersonDTO["visibility_scope"];
-      is_active?: boolean;
-      notes?: string | null;
-    } = {};
-    if (input.kind !== undefined) patch.kind = input.kind;
-    if (input.display_name !== undefined) patch.display_name = input.display_name;
-    if (input.legal_name !== undefined) patch.legal_name = input.legal_name ?? null;
-    if (input.visibility_scope !== undefined) patch.visibility_scope = input.visibility_scope;
-    if (input.is_active !== undefined) patch.is_active = input.is_active;
-    if (input.notes !== undefined) patch.notes = input.notes ?? null;
+      // Build sparse patch.
+      const patch: {
+        kind?: PersonKind;
+        display_name?: string;
+        legal_name?: string | null;
+        visibility_scope?: PersonDTO["visibility_scope"];
+        is_active?: boolean;
+        notes?: string | null;
+      } = {};
+      if (input.kind !== undefined) patch.kind = input.kind;
+      if (input.display_name !== undefined) patch.display_name = input.display_name;
+      if (input.legal_name !== undefined) patch.legal_name = input.legal_name ?? null;
+      if (input.visibility_scope !== undefined) patch.visibility_scope = input.visibility_scope;
+      if (input.is_active !== undefined) patch.is_active = input.is_active;
+      if (input.notes !== undefined) patch.notes = input.notes ?? null;
 
-    // If field_values are provided, re-validate required against effective kind.
-    if (input.field_values !== undefined && input.field_values.length > 0) {
-      // Need the current kind to evaluate against effective kind.
-      const { data: cur, error: curErr } = await supabase
-        .from("persons")
-        .select("kind")
-        .eq("id", input.id)
-        .maybeSingle();
-      if (curErr) throw mapPgError(curErr.code, curErr.message);
-      if (!cur) throw new Error("شخص یافت نشد یا دسترسی به آن ندارید");
+      // If field_values are provided, re-validate required against effective kind.
+      if (input.field_values !== undefined && input.field_values.length > 0) {
+        // Need the current kind to evaluate against effective kind.
+        const { data: cur, error: curErr } = await supabase
+          .from("persons")
+          .select("kind")
+          .eq("id", input.id)
+          .maybeSingle();
+        if (curErr) throw mapPgError(curErr.code, curErr.message);
+        if (!cur) throw new Error("شخص یافت نشد یا دسترسی به آن ندارید");
 
-      const effectiveKind = (patch.kind ?? (cur.kind as PersonKind)) as PersonKind;
-      const check = await validateRequiredPersonFields(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        supabase as any,
-        effectiveKind,
-        input.field_values,
-      );
-      if (!check.ok) {
-        const labels = check.missing.map((m) => m.label).join("، ");
-        throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
+        const effectiveKind = (patch.kind ?? (cur.kind as PersonKind)) as PersonKind;
+        const check = await validateRequiredPersonFields(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          supabase as any,
+          effectiveKind,
+          input.field_values,
+        );
+        if (!check.ok) {
+          const labels = check.missing.map((m) => m.label).join("، ");
+          throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
+        }
       }
-    }
 
-    let person: PersonDTO;
-    if (Object.keys(patch).length > 0) {
-      const { data: row, error } = await supabase
-        .from("persons")
-        .update(patch)
-        .eq("id", input.id)
-        .select(
-          "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
-        )
-        .single();
-      if (error) throw mapPgError(error.code, error.message);
-      person = row as PersonDTO;
-    } else {
-      const { data: row, error } = await supabase
-        .from("persons")
-        .select(
-          "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
-        )
-        .eq("id", input.id)
-        .single();
-      if (error) throw mapPgError(error.code, error.message);
-      person = row as PersonDTO;
-    }
-
-    // Upsert field values one-by-one (per-row upsert to respect unique
-    // (person_id, field_definition_id) and surface per-row RLS denials).
-    const upserted: PersonFieldValueDTO[] = [];
-    if (input.field_values) {
-      for (const fv of input.field_values) {
+      let person: PersonDTO;
+      if (Object.keys(patch).length > 0) {
         const { data: row, error } = await supabase
-          .from("person_field_values")
-          .upsert(
-            {
-              person_id: person.id,
-              field_definition_id: fv.field_definition_id,
-              value: fv.value as never,
-            },
-            { onConflict: "person_id,field_definition_id" },
+          .from("persons")
+          .update(patch)
+          .eq("id", input.id)
+          .select(
+            "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
           )
-          .select("id, person_id, field_definition_id, value, updated_at")
           .single();
         if (error) throw mapPgError(error.code, error.message);
-        upserted.push(row as PersonFieldValueDTO);
+        person = row as PersonDTO;
+      } else {
+        const { data: row, error } = await supabase
+          .from("persons")
+          .select(
+            "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
+          )
+          .eq("id", input.id)
+          .single();
+        if (error) throw mapPgError(error.code, error.message);
+        person = row as PersonDTO;
       }
-    }
 
-    return { ...person, field_values: upserted };
-   } catch (e) {
-    throw toServerError(e);
-   }
+      // Upsert field values one-by-one (per-row upsert to respect unique
+      // (person_id, field_definition_id) and surface per-row RLS denials).
+      const upserted: PersonFieldValueDTO[] = [];
+      if (input.field_values) {
+        for (const fv of input.field_values) {
+          const { data: row, error } = await supabase
+            .from("person_field_values")
+            .upsert(
+              {
+                person_id: person.id,
+                field_definition_id: fv.field_definition_id,
+                value: fv.value as never,
+              },
+              { onConflict: "person_id,field_definition_id" },
+            )
+            .select("id, person_id, field_definition_id, value, updated_at")
+            .single();
+          if (error) throw mapPgError(error.code, error.message);
+          upserted.push(row as PersonFieldValueDTO);
+        }
+      }
+
+      return { ...person, field_values: upserted };
+    } catch (e) {
+      throw toServerError(e);
+    }
   });
 
 /* ---------- getPerson ---------- */
@@ -311,29 +311,29 @@ export const getPerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => GetPersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO | null> => {
-   try {
-    const { supabase } = context;
-    const { data: personRow, error: personErr } = await supabase
-      .from("persons")
-      .select(
-        "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
-      )
-      .eq("id", data.id)
-      .maybeSingle();
-    if (personErr) throw mapPgError(personErr.code, personErr.message);
-    if (!personRow) return null;
+    try {
+      const { supabase } = context;
+      const { data: personRow, error: personErr } = await supabase
+        .from("persons")
+        .select(
+          "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
+        )
+        .eq("id", data.id)
+        .maybeSingle();
+      if (personErr) throw mapPgError(personErr.code, personErr.message);
+      if (!personRow) return null;
 
-    const { data: fvRows, error: fvErr } = await supabase
-      .from("person_field_values")
-      .select("id, person_id, field_definition_id, value, updated_at")
-      .eq("person_id", data.id);
-    if (fvErr) throw mapPgError(fvErr.code, fvErr.message);
+      const { data: fvRows, error: fvErr } = await supabase
+        .from("person_field_values")
+        .select("id, person_id, field_definition_id, value, updated_at")
+        .eq("person_id", data.id);
+      if (fvErr) throw mapPgError(fvErr.code, fvErr.message);
 
-    return {
-      ...(personRow as PersonDTO),
-      field_values: (fvRows as PersonFieldValueDTO[]) ?? [],
-    };
-   } catch (e) {
-    throw toServerError(e);
-   }
+      return {
+        ...(personRow as PersonDTO),
+        field_values: (fvRows as PersonFieldValueDTO[]) ?? [],
+      };
+    } catch (e) {
+      throw toServerError(e);
+    }
   });

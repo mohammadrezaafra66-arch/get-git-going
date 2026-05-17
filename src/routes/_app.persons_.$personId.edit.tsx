@@ -53,17 +53,19 @@ function PersonEditPage() {
 
   const updateMut = useMutation({
     mutationFn: (values: PersonFormValues) =>
-      toError(updateFn({
-        data: {
-          id: personId,
-          kind: values.kind,
-          display_name: values.display_name.trim(),
-          legal_name: values.legal_name.trim() ? values.legal_name.trim() : null,
-          visibility_scope: values.visibility_scope,
-          is_active: values.is_active,
-          notes: values.notes.trim() ? values.notes.trim() : null,
-        },
-      })),
+      toError(
+        updateFn({
+          data: {
+            id: personId,
+            kind: values.kind,
+            display_name: values.display_name.trim(),
+            legal_name: values.legal_name.trim() ? values.legal_name.trim() : null,
+            visibility_scope: values.visibility_scope,
+            is_active: values.is_active,
+            notes: values.notes.trim() ? values.notes.trim() : null,
+          },
+        }),
+      ),
     onSuccess: () => {
       toast.success("تغییرات ذخیره شد");
       qc.invalidateQueries({ queryKey: ["person", personId] });
