@@ -98,12 +98,25 @@ if (-not $kongRunning) {
         Fail "SUPABASE_SERVICE_KEY داخل kong با SERVICE_ROLE_KEY در .env.lan برابر نیست. کانتینر را با --force-recreate دوباره بسازید."
     } else { Ok "SUPABASE_SERVICE_KEY داخل kong = SERVICE_ROLE_KEY" }
 
-    # Verify the rendered kong.yml has expanded placeholders, not literal '$SUPABASE_ANON_KEY'
-    $rendered = docker exec $kongName sh -c 'cat /home/kong/kong.yml 2>/dev/null || cat /var/lib/kong/kong.yml 2>/dev/null' 2>$null
-    if ($rendered -match '\$SUPABASE_ANON_KEY' -or $rendered -match '\$SUPABASE_SERVICE_KEY') {
-        Fail "kong.yml داخل کانتینر هنوز شامل placeholderهای \$SUPABASE_ANON_KEY / \$SUPABASE_SERVICE_KEY است. entrypoint envsubst اعمال نشده — docker-compose.yml بخش kong را به‌روزرسانی کرده و --force-recreate کنید."
+    # Verify the rendered runtime config exists and has expanded placeholders.
+    # We deliberately do NOT print the file contents (it contains real keys).
+    $renderedPath = '/home/kong/kong.rendered.yml'
+    $exists = docker exec $kongName sh -c "test -s $renderedPath && echo yes || echo no" 2>$null
+    if ($exists -notmatch 'yes') {
+        Fail "فایل رندر شده $renderedPath داخل کانتینر kong وجود ندارد. entrypoint render اجرا نشده — kong را با --force-recreate دوباره بسازید."
     } else {
-        Ok "kong.yml داخل کانتینر، placeholderهای env را جایگزین کرده است."
+        Ok "فایل رندر شده $renderedPath داخل کانتینر kong موجود است."
+        $hasPlaceholder = docker exec $kongName sh -c "grep -q '\$SUPABASE_ANON_KEY\|\$SUPABASE_SERVICE_KEY' $renderedPath && echo yes || echo no" 2>$null
+        if ($hasPlaceholder -match 'yes') {
+            Fail "فایل رندر شده هنوز شامل placeholderهای \$SUPABASE_ANON_KEY / \$SUPABASE_SERVICE_KEY است. entrypoint sed درست عمل نکرده — kong را با --force-recreate دوباره بسازید."
+        } else {
+            Ok "فایل رندر شده placeholder ندارد (مقادیر env جایگزین شده‌اند)."
+        }
+        # Also confirm the legacy path is NOT being used by Kong anymore.
+        $legacy = docker exec $kongName sh -c "grep -q '\$SUPABASE_ANON_KEY' /var/lib/kong/kong.yml 2>/dev/null && echo yes || echo no" 2>$null
+        if ($legacy -match 'yes') {
+            Info "توجه: /var/lib/kong/kong.yml هنوز placeholder دارد ولی Kong از $renderedPath استفاده می‌کند (KONG_DECLARATIVE_CONFIG)."
+        }
     }
 }
 
