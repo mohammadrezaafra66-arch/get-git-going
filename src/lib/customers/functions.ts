@@ -193,7 +193,7 @@ export const updateCustomer = createServerFn({ method: "POST" })
 
       const { data: row, error } = await supabase
         .from("customers")
-        .update(patch)
+        .update(patch as never)
         .eq("id", data.id)
         .select(SELECT_COLS)
         .single();
