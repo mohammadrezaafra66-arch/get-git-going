@@ -6,11 +6,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { createCustomer, updateCustomer } from "@/lib/customers/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,6 +88,8 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles } = useAuth();
+  const createCustomerFn = useServerFn(createCustomer);
+  const updateCustomerFn = useServerFn(updateCustomer);
 
   const isAdminOrManager = roles.includes("admin") || roles.includes("manager");
   const isSales = roles.includes("sales");
@@ -130,20 +134,13 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         birth_date: values.birth_date ? values.birth_date : null,
       };
       if (customerId) {
-        const { error } = await supabase
-          .from("customers")
-          .update(payload as never)
-          .eq("id", customerId);
-        if (error) throw error;
-        return customerId;
+        const row = await updateCustomerFn({
+          data: { id: customerId, patch: payload },
+        });
+        return row.id;
       }
-      const { data, error } = await supabase
-        .from("customers")
-        .insert(payload as never)
-        .select("id")
-        .single();
-      if (error) throw error;
-      return (data as { id: string }).id;
+      const row = await createCustomerFn({ data: payload });
+      return row.id;
     },
     onSuccess: () => {
       toast.success(customerId ? "مشتری ویرایش شد" : "مشتری ثبت شد");
@@ -152,10 +149,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
     },
     onError: (err: unknown) => {
       const raw = err instanceof Error ? err.message : "خطای ناشناخته";
-      const msg = /accounting_code/i.test(raw) || /duplicate key/i.test(raw)
-        ? "کد حسابداری تکراری است یا قالب نامعتبر دارد"
-        : raw;
-      toast.error(`عملیات ناموفق بود: ${msg}`);
+      toast.error(`عملیات ناموفق بود: ${raw}`);
     },
   });
 
