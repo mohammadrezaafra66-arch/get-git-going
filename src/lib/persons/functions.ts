@@ -21,11 +21,13 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   CreatePersonInputSchema,
   UpdatePersonInputSchema,
   type CreatePersonInput,
+  type JsonValue,
   type PersonDTO,
   type PersonFieldValueDTO,
   type PersonFieldValueInput,
@@ -34,10 +36,8 @@ import {
   type UpdatePersonInput,
 } from "./schemas";
 
-const GetPersonInputSchema = (
-  (await import("zod")).z
-).object({
-  id: (await import("zod")).z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
+const GetPersonInputSchema = z.object({
+  id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
 });
 
 function mapPgError(code: string | undefined, message: string): Error {
