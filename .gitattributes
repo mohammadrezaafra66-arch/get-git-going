@@ -1,0 +1,49 @@
+# AfraKala — line-ending policy
+#
+# Why this file exists:
+# On Windows hosts, Git's default `core.autocrlf=true` rewrites checked-out
+# text files with CRLF line endings. When such files are bind-mounted into
+# Linux containers (e.g. Supabase Postgres init scripts under
+# deploy/supabase/volumes/db/init/), the shebang line becomes `#!/usr/bin/env bash\r`
+# and the container fails with:
+#   /usr/bin/env: 'bash\r': No such file or directory
+# That in turn skips role bootstrap and causes Auth/REST/Storage to crash
+# with "role \"authenticator\" does not exist".
+#
+# These rules force LF for every shell script and Linux-side config that may
+# be mounted into a container, regardless of the developer's OS.
+
+# Default: let Git auto-detect text vs binary, normalize to LF in the repo.
+* text=auto eol=lf
+
+# Linux shell scripts and container init must always be LF.
+*.sh                                       text eol=lf
+deploy/supabase/volumes/db/init/*.sh       text eol=lf
+deploy/supabase/volumes/db/init/*.sql      text eol=lf
+deploy/lan/**/*.sh                         text eol=lf
+deploy/app/**/*.sh                         text eol=lf
+deploy/backups/**/*.sh                     text eol=lf
+deploy/local/**/*.sh                       text eol=lf
+deploy/migration/**/*.sh                   text eol=lf
+deploy/proxy/**/*.sh                       text eol=lf
+Dockerfile                                 text eol=lf
+*.dockerfile                               text eol=lf
+docker-compose*.yml                        text eol=lf
+
+# Windows-only scripts must remain CRLF so PowerShell on Windows runs them cleanly.
+*.ps1                                      text eol=crlf
+*.cmd                                      text eol=crlf
+*.bat                                      text eol=crlf
+
+# Binaries — never touch.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
