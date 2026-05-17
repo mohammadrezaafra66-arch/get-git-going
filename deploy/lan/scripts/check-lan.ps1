@@ -29,12 +29,18 @@ $appPort = Get-EnvValue $envFile "APP_PORT"          "3000"
 $apiPort = Get-EnvValue $envFile "SUPABASE_API_PORT" "8000"
 $lanIp   = Get-EnvValue $envFile "LAN_HOST_IP"       "LAN_HOST_IP"
 
-function Test-Http($name, $url) {
+function Test-Http($name, $url, $acceptStatus) {
+    if (-not $acceptStatus) { $acceptStatus = @(200) }
     try {
         $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 -Uri $url
-        Write-Host ("[OK ] {0,-18} {1}  HTTP {2}" -f $name, $url, $r.StatusCode) -ForegroundColor Green
+        Write-Host ("[OK  ] {0,-18} {1}  HTTP {2}" -f $name, $url, $r.StatusCode) -ForegroundColor Green
     } catch {
-        Write-Host ("[FAIL] {0,-18} {1}  -> {2}" -f $name, $url, $_.Exception.Message) -ForegroundColor Red
+        $resp = $_.Exception.Response
+        if ($resp -and $acceptStatus -contains [int]$resp.StatusCode) {
+            Write-Host ("[OK  ] {0,-18} {1}  HTTP {2} (reachable)" -f $name, $url, [int]$resp.StatusCode) -ForegroundColor Green
+        } else {
+            Write-Host ("[FAIL] {0,-18} {1}  -> {2}" -f $name, $url, $_.Exception.Message) -ForegroundColor Red
+        }
     }
 }
 
@@ -55,7 +61,9 @@ docker ps --filter "name=afrakala-lan-" --format "table {{.Names}}\t{{.Status}}\
 Write-Host ""
 Write-Host "=== Endpoints ===" -ForegroundColor Cyan
 Test-Http "App health"    ("http://localhost:{0}/api/healthz" -f $appPort)
-Test-Http "Supabase Kong" ("http://localhost:{0}/" -f $apiPort)
+# Kong returns 404 on "/" by design (no route). Treat 404 as reachable.
+Test-Http "Supabase Kong" ("http://localhost:{0}/" -f $apiPort) @(200, 404)
+Test-Http "Auth health"   ("http://localhost:{0}/auth/v1/health" -f $apiPort) @(200, 401, 404)
 
 Write-Host ""
 Write-Host "=== LAN IPs ===" -ForegroundColor Cyan

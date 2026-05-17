@@ -249,3 +249,25 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 - بدون realtime/analytics گسترده، بدون edge functions، بدون imgproxy.
 - OCR در LAN pilot غیرفعال است (`OCR_ENABLED=false`).
 - migration واقعی، backup/restore production و انتقال دیتای واقعی جزو این فاز نیست.
+
+## ۱۸. عیب‌یابی LAN
+
+### `password authentication failed for user "supabase_auth_admin"` (و مشابه برای `authenticator`, `supabase_storage_admin`)
+
+اسکریپت‌های init دیتابیس (`deploy/supabase/volumes/db/init/*`) فقط روی **volume خالی** اجرا می‌شوند. اگر قبلاً stack با مقدار قدیمی `POSTGRES_PASSWORD` بالا آمده باشد، رمزهای رول‌ها داخل volume باقی می‌مانند. بعد از pull کردن fix، volume دیتابیس را پاک و دوباره بالا بیاورید:
+
+```powershell
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan down -v
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d
+```
+
+⚠️ `down -v` تمام دیتای LAN را پاک می‌کند. در فاز LAN Pilot این قابل قبول است چون دیتای واقعی نیست.
+
+### `Cannot find module '/app/dist/server/index.js'` در سرویس `web`
+
+`vite build` در حالت Node SSR خروجی را در `dist/server/server.js` می‌سازد، نه `dist/server/index.js`. فایل `server/node-entry.mjs` به‌روزرسانی شده و هر دو مسیر را بررسی می‌کند. اگر هنوز این خطا را دیدید، image را با `--no-cache` rebuild کنید:
+
+```powershell
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan build --no-cache web
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d web
+```
