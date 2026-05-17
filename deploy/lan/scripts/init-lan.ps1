@@ -7,6 +7,10 @@
 # Secrets are never printed. Nothing is committed.
 # ASCII-only. Compatible with Windows PowerShell 5.1.
 
+param(
+    [switch]$RotateSecrets
+)
+
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -42,6 +46,9 @@ if (-not (Test-Path $envFile)) {
     Write-Host ".env.lan created from example." -ForegroundColor Green
 } else {
     Write-Host ".env.lan already exists; existing values are preserved." -ForegroundColor Yellow
+}
+if ($RotateSecrets) {
+    Write-Host "RotateSecrets enabled: LAN database/JWT/API secrets will be regenerated without printing values." -ForegroundColor Yellow
 }
 
 # --- helpers ---
