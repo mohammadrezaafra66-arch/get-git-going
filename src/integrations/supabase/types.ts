@@ -4153,6 +4153,99 @@ export type Database = {
         }
         Relationships: []
       }
+      person_field_definitions: {
+        Row: {
+          applies_to_kind: string
+          created_at: string
+          created_by: string | null
+          field_type: string
+          help_text: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          name: string
+          options: Json | null
+          sort_order: number
+          updated_at: string
+          validation_regex: string | null
+        }
+        Insert: {
+          applies_to_kind?: string
+          created_at?: string
+          created_by?: string | null
+          field_type: string
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          name: string
+          options?: Json | null
+          sort_order?: number
+          updated_at?: string
+          validation_regex?: string | null
+        }
+        Update: {
+          applies_to_kind?: string
+          created_at?: string
+          created_by?: string | null
+          field_type?: string
+          help_text?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          name?: string
+          options?: Json | null
+          sort_order?: number
+          updated_at?: string
+          validation_regex?: string | null
+        }
+        Relationships: []
+      }
+      person_field_values: {
+        Row: {
+          field_definition_id: string
+          id: string
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          field_definition_id: string
+          id?: string
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          field_definition_id?: string
+          id?: string
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_field_values_field_definition_id_fkey"
+            columns: ["field_definition_id"]
+            isOneToOne: false
+            referencedRelation: "person_field_definitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_field_values_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persons: {
         Row: {
           created_at: string
