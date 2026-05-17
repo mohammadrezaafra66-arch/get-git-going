@@ -272,6 +272,23 @@ docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan b
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d web
 ```
 
+### `/usr/bin/env: 'bash\r': No such file or directory` در logهای Postgres
+
+این یعنی اسکریپت‌های init داخل `deploy/supabase/volumes/db/init/` با line ending ویندوزی (CRLF) چک‌اوت شده‌اند و کانتینر لینوکسی نمی‌تواند shebang را parse کند. در نتیجه رول‌های پایه Supabase ساخته نمی‌شوند و سرویس‌های auth/rest/storage با `role "authenticator" does not exist` کرش می‌کنند.
+
+فایل `.gitattributes` در ریشهٔ ریپو این مسیرها را به LF قفل می‌کند. روی لپ‌تاپ LAN یک بار این کارها را انجام دهید:
+
+```powershell
+cd C:\afrakala-lan\get-git-going
+git pull origin main
+git rm --cached -r deploy/supabase/volumes/db/init
+git reset --hard origin/main
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
+docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
+```
+
+بعد از این، `git status` نباید هیچ فایل `.sh` را به عنوان modified نشان دهد و logهای Postgres باید پیام `[afrakala/zz-10-roles] role bootstrap complete` را نمایش دهند.
+
 ### `role "supabase_auth_admin" does not exist` (یا `authenticator` / `supabase_storage_admin`)
 
 در stack LAN، رول‌های پایه Supabase توسط اسکریپت `deploy/supabase/volumes/db/init/zz-10-afrakala-roles.sh` به‌صورت idempotent ساخته می‌شوند. این اسکریپت **فقط روی volume خالی** اجرا می‌شود. اگر دیتابیس قبلاً با نسخه قدیمی (که فرض می‌کرد رول‌ها از قبل وجود دارند) بالا آمده باشد، volume را پاک کرده و دوباره بالا بیاورید:
