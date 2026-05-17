@@ -33,7 +33,8 @@ export type ModuleKey =
   | "suppliers"
   | "academy"
   | "hr"
-  | "market-rates";
+  | "market-rates"
+  | "persons";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -88,6 +89,15 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     view: ["admin","manager","accountant","sales"],
     create: ["admin","manager","accountant"],
     update: ["admin","manager","accountant"],
+    delete: ["admin"],
+  },
+  // S15 — ماژول «اشخاص» (پرونده‌ی یکپارچه شخص حقیقی/حقوقی).
+  // اقدامات extended (approve/export/view_sensitive) از طریق role_permissions
+  // به‌صورت پویا کنترل می‌شوند؛ اینجا فقط چهار اقدام پایه تعریف می‌شود.
+  persons: {
+    view: ALL_ROLES,
+    create: ["admin","manager"],
+    update: ["admin","manager"],
     delete: ["admin"],
   },
   // UI-NAV.4 — ماژول جداگانه برای منوهای «مالی و حسابداری».
