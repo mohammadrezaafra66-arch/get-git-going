@@ -180,9 +180,14 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
     // Always fetch the current row when we might need a duplicate check
     // (revalue OR status transition from revoked -> non-revoked).
     const wantsStatusChange = data.status !== undefined;
-    let cur:
-      | { kind: IdentifierKind; value_raw: string; value_normalized: string; status: string; person_id: string }
-      | null = null;
+    type CurRow = {
+      kind: IdentifierKind;
+      value_raw: string;
+      value_normalized: string;
+      status: string;
+      person_id: string;
+    };
+    let cur: CurRow | null = null;
     if (wantsRevalue || wantsStatusChange) {
       const { data: row, error: curErr } = await supabase
         .from("person_identifiers")
@@ -191,7 +196,7 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
         .maybeSingle();
       if (curErr) throw mapPgError(curErr.code, curErr.message);
       if (!row) throw new Error("شناسه یافت نشد یا دسترسی به آن ندارید");
-      cur = row as typeof cur;
+      cur = row as CurRow;
     }
 
     if (wantsRevalue && cur) {
