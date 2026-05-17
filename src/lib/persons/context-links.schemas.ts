@@ -57,11 +57,7 @@ export const AddPersonContextLinkInputSchema = z
     person_id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
     context_kind: PersonContextKindEnum,
     ref_table: RefTableSchema.nullable().optional(),
-    ref_id: z
-      .string()
-      .uuid({ message: "شناسه ردیف مرجع نامعتبر است" })
-      .nullable()
-      .optional(),
+    ref_id: z.string().uuid({ message: "شناسه ردیف مرجع نامعتبر است" }).nullable().optional(),
     note: NoteSchema,
     started_at: z.string().datetime({ offset: true }).optional(),
   })
