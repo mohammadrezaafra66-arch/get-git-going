@@ -9,9 +9,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PersonForm, type PersonFormValues } from "@/components/persons/PersonForm";
-import {
-  PersonIdentifiersForm,
-} from "@/components/persons/PersonIdentifiersForm";
+import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
 import { getPerson, updatePerson } from "@/lib/persons/functions";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";

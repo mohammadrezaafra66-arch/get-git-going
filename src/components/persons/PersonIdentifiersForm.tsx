@@ -9,10 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
   createPersonIdentifier,
@@ -39,8 +48,16 @@ const STATUS_LABEL: Record<PersonIdentifierDTO["status"], string> = {
 };
 
 function statusBadge(s: PersonIdentifierDTO["status"]) {
-  if (s === "confirmed") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">{STATUS_LABEL[s]}</Badge>;
-  if (s === "revoked") return <Badge variant="outline" className="text-muted-foreground">{STATUS_LABEL[s]}</Badge>;
+  if (s === "confirmed")
+    return (
+      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">{STATUS_LABEL[s]}</Badge>
+    );
+  if (s === "revoked")
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        {STATUS_LABEL[s]}
+      </Badge>
+    );
   return <Badge className="bg-amber-500 text-white hover:bg-amber-500">{STATUS_LABEL[s]}</Badge>;
 }
 
@@ -103,10 +120,14 @@ export function PersonIdentifiersForm({
           <div className="space-y-2">
             <Label>نوع شناسه</Label>
             <Select value={kind} onValueChange={(v) => setKind(v as IdentifierKind)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {IDENTIFIER_KINDS.map((k) => (
-                  <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>
+                  <SelectItem key={k} value={k}>
+                    {KIND_LABEL[k]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -136,11 +157,15 @@ export function PersonIdentifiersForm({
           <div className="flex items-center gap-3 sm:col-span-3">
             <div className="flex items-center gap-2">
               <Switch id="id-confirmed" checked={confirmed} onCheckedChange={setConfirmed} />
-              <Label htmlFor="id-confirmed" className="text-sm">تأییدشده</Label>
+              <Label htmlFor="id-confirmed" className="text-sm">
+                تأییدشده
+              </Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="id-primary" checked={isPrimary} onCheckedChange={setIsPrimary} />
-              <Label htmlFor="id-primary" className="text-sm">شناسه اصلی</Label>
+              <Label htmlFor="id-primary" className="text-sm">
+                شناسه اصلی
+              </Label>
             </div>
           </div>
         </div>
@@ -160,7 +185,10 @@ export function PersonIdentifiersForm({
           <TableBody>
             {identifiers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canManage ? 5 : 4} className="py-6 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={canManage ? 5 : 4}
+                  className="py-6 text-center text-muted-foreground"
+                >
                   شناسه‌ای ثبت نشده است.
                 </TableCell>
               </TableRow>
@@ -168,7 +196,9 @@ export function PersonIdentifiersForm({
               identifiers.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>{KIND_LABEL[r.kind]}</TableCell>
-                  <TableCell dir="ltr" className="font-mono text-sm">{r.value_normalized}</TableCell>
+                  <TableCell dir="ltr" className="font-mono text-sm">
+                    {r.value_normalized}
+                  </TableCell>
                   <TableCell>{statusBadge(r.status)}</TableCell>
                   <TableCell>{r.is_primary ? "بله" : "—"}</TableCell>
                   {canManage && (

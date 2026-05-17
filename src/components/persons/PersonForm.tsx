@@ -6,11 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  PERSON_KINDS, PERSON_VISIBILITY_SCOPES,
-  type PersonKind, type PersonVisibilityScope,
+  PERSON_KINDS,
+  PERSON_VISIBILITY_SCOPES,
+  type PersonKind,
+  type PersonVisibilityScope,
 } from "@/lib/persons/schemas";
 
 export interface PersonFormValues {
@@ -75,10 +81,14 @@ export function PersonForm({
         <div className="space-y-2">
           <Label>نوع شخص</Label>
           <Select value={values.kind} onValueChange={(v) => set("kind", v as PersonKind)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {PERSON_KINDS.map((k) => (
-                <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>
+                <SelectItem key={k} value={k}>
+                  {KIND_LABEL[k]}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -89,10 +99,14 @@ export function PersonForm({
             value={values.visibility_scope}
             onValueChange={(v) => set("visibility_scope", v as PersonVisibilityScope)}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {PERSON_VISIBILITY_SCOPES.map((s) => (
-                <SelectItem key={s} value={s}>{SCOPE_LABEL[s]}</SelectItem>
+                <SelectItem key={s} value={s}>
+                  {SCOPE_LABEL[s]}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
