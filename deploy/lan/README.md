@@ -261,6 +261,14 @@ docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan d
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d
 ```
 
+پس از `up -d`، وجود password برای roleهای سرویس را این‌طور verify کنید:
+
+```powershell
+docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rolcanlogin, rolpassword is not null as has_password from pg_authid where rolname in ('authenticator','supabase_auth_admin','supabase_storage_admin','supabase_admin','dashboard_user') order by rolname;"
+```
+
+خروجی موردانتظار: برای هر ۵ role مقدار `has_password` باید `true` باشد.
+
 ⚠️ `down -v` تمام دیتای LAN را پاک می‌کند. در فاز LAN Pilot این قابل قبول است چون دیتای واقعی نیست.
 
 ### `Cannot find module '/app/dist/server/index.js'` در سرویس `web`
