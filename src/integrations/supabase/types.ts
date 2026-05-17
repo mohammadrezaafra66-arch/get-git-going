@@ -4246,6 +4246,59 @@ export type Database = {
           },
         ]
       }
+      person_identifiers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          kind: string
+          person_id: string
+          status: string
+          updated_at: string
+          value_normalized: string
+          value_raw: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          kind: string
+          person_id: string
+          status?: string
+          updated_at?: string
+          value_normalized: string
+          value_raw: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          kind?: string
+          person_id?: string
+          status?: string
+          updated_at?: string
+          value_normalized?: string
+          value_raw?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_identifiers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persons: {
         Row: {
           created_at: string
