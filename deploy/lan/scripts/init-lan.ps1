@@ -26,6 +26,13 @@ $kongExample = Join-Path $repoRoot "deploy\supabase\kong.yml.example"
 
 # --- 1. Get IP ---
 $defaultIp = "192.168.170.10"
+if (Test-Path $envFile) {
+    $existingIpLine = Select-String -Path $envFile -Pattern '^\s*LAN_HOST_IP=(.*)$' | Select-Object -First 1
+    if ($existingIpLine) {
+        $existingIp = $existingIpLine.Matches.Groups[1].Value.Trim().Trim('"').Trim("'")
+        if ($existingIp) { $defaultIp = $existingIp }
+    }
+}
 $inputIp = Read-Host ("Enter laptop LAN IP [{0}]" -f $defaultIp)
 if ([string]::IsNullOrWhiteSpace($inputIp)) { $inputIp = $defaultIp }
 
