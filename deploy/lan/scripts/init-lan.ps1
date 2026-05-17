@@ -7,6 +7,10 @@
 # Secrets are never printed. Nothing is committed.
 # ASCII-only. Compatible with Windows PowerShell 5.1.
 
+param(
+    [switch]$RotateSecrets
+)
+
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -22,6 +26,13 @@ $kongExample = Join-Path $repoRoot "deploy\supabase\kong.yml.example"
 
 # --- 1. Get IP ---
 $defaultIp = "192.168.170.10"
+if (Test-Path $envFile) {
+    $existingIpLine = Select-String -Path $envFile -Pattern '^\s*LAN_HOST_IP=(.*)$' | Select-Object -First 1
+    if ($existingIpLine) {
+        $existingIp = $existingIpLine.Matches.Groups[1].Value.Trim().Trim('"').Trim("'")
+        if ($existingIp) { $defaultIp = $existingIp }
+    }
+}
 $inputIp = Read-Host ("Enter laptop LAN IP [{0}]" -f $defaultIp)
 if ([string]::IsNullOrWhiteSpace($inputIp)) { $inputIp = $defaultIp }
 
@@ -42,6 +53,9 @@ if (-not (Test-Path $envFile)) {
     Write-Host ".env.lan created from example." -ForegroundColor Green
 } else {
     Write-Host ".env.lan already exists; existing values are preserved." -ForegroundColor Yellow
+}
+if ($RotateSecrets) {
+    Write-Host "RotateSecrets enabled: LAN database/JWT/API secrets will be regenerated without printing values." -ForegroundColor Yellow
 }
 
 # --- helpers ---
@@ -118,19 +132,25 @@ function New-SupabaseJwt($role, $secret) {
 }
 
 # --- 3. Set IP and ports ---
+$env = Read-EnvMap $envFile
+$appPort = $env["APP_PORT"]
+$apiPort = $env["SUPABASE_API_PORT"]
+if ([string]::IsNullOrWhiteSpace($appPort)) { $appPort = "3000" }
+if ([string]::IsNullOrWhiteSpace($apiPort)) { $apiPort = "8000" }
+
 Set-EnvValue $envFile "LAN_HOST_IP"             $lanIp
-Set-EnvValue $envFile "APP_PORT"                "3000"
-Set-EnvValue $envFile "SUPABASE_API_PORT"       "8000"
-Set-EnvValue $envFile "VITE_SUPABASE_URL"       ("http://{0}:8000" -f $lanIp)
-Set-EnvValue $envFile "SITE_URL"                ("http://{0}:3000" -f $lanIp)
-Set-EnvValue $envFile "API_EXTERNAL_URL"        ("http://{0}:8000" -f $lanIp)
-Set-EnvValue $envFile "ADDITIONAL_REDIRECT_URLS" ("http://{0}:3000,http://localhost:3000" -f $lanIp)
+Set-EnvValue $envFile "APP_PORT"                $appPort
+Set-EnvValue $envFile "SUPABASE_API_PORT"       $apiPort
+Set-EnvValue $envFile "VITE_SUPABASE_URL"       ("http://{0}:{1}" -f $lanIp, $apiPort)
+Set-EnvValue $envFile "SITE_URL"                ("http://{0}:{1}" -f $lanIp, $appPort)
+Set-EnvValue $envFile "API_EXTERNAL_URL"        ("http://{0}:{1}" -f $lanIp, $apiPort)
+Set-EnvValue $envFile "ADDITIONAL_REDIRECT_URLS" ("http://{0}:{1},http://localhost:{1}" -f $lanIp, $appPort)
 Set-EnvValue $envFile "VITE_SUPABASE_PROJECT_ID" "afrakala-lan"
 Set-EnvValue $envFile "SUPABASE_URL"            "http://kong:8000"
 Set-EnvValue $envFile "OCR_ENABLED"             "false"
 Set-EnvValue $envFile "LOVABLE_API_KEY"         ""
 Set-EnvValue $envFile "NODE_ENV"                "production"
-Set-EnvValue $envFile "PORT"                    "3000"
+Set-EnvValue $envFile "PORT"                    $appPort
 Set-EnvValue $envFile "HOST"                    "0.0.0.0"
 
 Write-Host "IP and ports set in .env.lan." -ForegroundColor Green
@@ -138,19 +158,27 @@ Write-Host "IP and ports set in .env.lan." -ForegroundColor Green
 # --- 4/5/6/7. Generate secrets if empty ---
 $env = Read-EnvMap $envFile
 
-if ([string]::IsNullOrWhiteSpace($env["POSTGRES_PASSWORD"])) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($env["POSTGRES_PASSWORD"])) {
     Set-EnvValue $envFile "POSTGRES_PASSWORD" (New-RandomSecret 24)
-    Write-Host "POSTGRES_PASSWORD generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "POSTGRES_PASSWORD rotated." -ForegroundColor Green
+    } else {
+        Write-Host "POSTGRES_PASSWORD generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "POSTGRES_PASSWORD already set - kept." -ForegroundColor Yellow
 }
 
 $env = Read-EnvMap $envFile
 $jwtSecret = $env["JWT_SECRET"]
-if ([string]::IsNullOrWhiteSpace($jwtSecret) -or $jwtSecret.Length -lt 32) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($jwtSecret) -or $jwtSecret.Length -lt 32) {
     $jwtSecret = New-RandomSecret 48
     Set-EnvValue $envFile "JWT_SECRET" $jwtSecret
-    Write-Host "JWT_SECRET generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "JWT_SECRET rotated." -ForegroundColor Green
+    } else {
+        Write-Host "JWT_SECRET generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "JWT_SECRET already set - kept." -ForegroundColor Yellow
 }
@@ -160,12 +188,16 @@ $env = Read-EnvMap $envFile
 $anon    = $env["ANON_KEY"]
 $service = $env["SERVICE_ROLE_KEY"]
 
-if ([string]::IsNullOrWhiteSpace($anon) -or [string]::IsNullOrWhiteSpace($service)) {
+if ($RotateSecrets -or [string]::IsNullOrWhiteSpace($anon) -or [string]::IsNullOrWhiteSpace($service)) {
     $anon    = New-SupabaseJwt "anon"         $jwtSecret
     $service = New-SupabaseJwt "service_role" $jwtSecret
     Set-EnvValue $envFile "ANON_KEY"         $anon
     Set-EnvValue $envFile "SERVICE_ROLE_KEY" $service
-    Write-Host "ANON_KEY and SERVICE_ROLE_KEY generated." -ForegroundColor Green
+    if ($RotateSecrets) {
+        Write-Host "ANON_KEY and SERVICE_ROLE_KEY rotated." -ForegroundColor Green
+    } else {
+        Write-Host "ANON_KEY and SERVICE_ROLE_KEY generated." -ForegroundColor Green
+    }
 } else {
     Write-Host "ANON_KEY and SERVICE_ROLE_KEY already set - kept." -ForegroundColor Yellow
 }
