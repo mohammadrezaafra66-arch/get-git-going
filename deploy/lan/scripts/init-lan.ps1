@@ -132,19 +132,25 @@ function New-SupabaseJwt($role, $secret) {
 }
 
 # --- 3. Set IP and ports ---
+$env = Read-EnvMap $envFile
+$appPort = $env["APP_PORT"]
+$apiPort = $env["SUPABASE_API_PORT"]
+if ([string]::IsNullOrWhiteSpace($appPort)) { $appPort = "3000" }
+if ([string]::IsNullOrWhiteSpace($apiPort)) { $apiPort = "8000" }
+
 Set-EnvValue $envFile "LAN_HOST_IP"             $lanIp
-Set-EnvValue $envFile "APP_PORT"                "3000"
-Set-EnvValue $envFile "SUPABASE_API_PORT"       "8000"
-Set-EnvValue $envFile "VITE_SUPABASE_URL"       ("http://{0}:8000" -f $lanIp)
-Set-EnvValue $envFile "SITE_URL"                ("http://{0}:3000" -f $lanIp)
-Set-EnvValue $envFile "API_EXTERNAL_URL"        ("http://{0}:8000" -f $lanIp)
-Set-EnvValue $envFile "ADDITIONAL_REDIRECT_URLS" ("http://{0}:3000,http://localhost:3000" -f $lanIp)
+Set-EnvValue $envFile "APP_PORT"                $appPort
+Set-EnvValue $envFile "SUPABASE_API_PORT"       $apiPort
+Set-EnvValue $envFile "VITE_SUPABASE_URL"       ("http://{0}:{1}" -f $lanIp, $apiPort)
+Set-EnvValue $envFile "SITE_URL"                ("http://{0}:{1}" -f $lanIp, $appPort)
+Set-EnvValue $envFile "API_EXTERNAL_URL"        ("http://{0}:{1}" -f $lanIp, $apiPort)
+Set-EnvValue $envFile "ADDITIONAL_REDIRECT_URLS" ("http://{0}:{1},http://localhost:{1}" -f $lanIp, $appPort)
 Set-EnvValue $envFile "VITE_SUPABASE_PROJECT_ID" "afrakala-lan"
 Set-EnvValue $envFile "SUPABASE_URL"            "http://kong:8000"
 Set-EnvValue $envFile "OCR_ENABLED"             "false"
 Set-EnvValue $envFile "LOVABLE_API_KEY"         ""
 Set-EnvValue $envFile "NODE_ENV"                "production"
-Set-EnvValue $envFile "PORT"                    "3000"
+Set-EnvValue $envFile "PORT"                    $appPort
 Set-EnvValue $envFile "HOST"                    "0.0.0.0"
 
 Write-Host "IP and ports set in .env.lan." -ForegroundColor Green
