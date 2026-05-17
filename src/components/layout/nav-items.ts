@@ -81,6 +81,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/invoices", label: "فاکتورها", icon: FileText, module: "invoices", group: "sales-customers", subgroup: "sc-sales" },
   { to: "/sales/stock-alerts", label: "هشدار موجودی", icon: AlertTriangle, module: "sales", group: "sales-customers", subgroup: "sc-sales" },
   { to: "/sales/customers", label: "مشتریان", icon: UserSquare2, module: "sales", group: "sales-customers", subgroup: "sc-customers" },
+  { to: "/persons", label: "اشخاص", icon: UserSquare2, module: "persons", group: "sales-customers", subgroup: "sc-customers" },
   { to: "/sales/credit-customers", label: "اعتبار مشتریان", icon: BadgeCheck, module: "sales", group: "sales-customers", subgroup: "sc-customers" },
   { to: "/sales/credit-rules", label: "قوانین اعتبار", icon: ShieldCheck, module: "sales", group: "sales-customers", subgroup: "sc-customers" },
 
