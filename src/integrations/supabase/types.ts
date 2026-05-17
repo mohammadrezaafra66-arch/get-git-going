@@ -4153,6 +4153,56 @@ export type Database = {
         }
         Relationships: []
       }
+      person_context_links: {
+        Row: {
+          context_kind: string
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          id: string
+          note: string | null
+          person_id: string
+          ref_id: string | null
+          ref_table: string | null
+          started_at: string
+          updated_at: string
+        }
+        Insert: {
+          context_kind: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          note?: string | null
+          person_id: string
+          ref_id?: string | null
+          ref_table?: string | null
+          started_at?: string
+          updated_at?: string
+        }
+        Update: {
+          context_kind?: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          note?: string | null
+          person_id?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          started_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_context_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_field_definitions: {
         Row: {
           applies_to_kind: string
