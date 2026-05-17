@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +65,21 @@ async function toError<T>(p: Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Belt-and-suspenders: attach the bearer token at the call site.
+ * Mirrors the pattern in /persons/create and /persons/$id/edit — guards
+ * against the global `attachSupabaseAuth` middleware failing to run on
+ * first paint, which would otherwise blank the page with "[object Response]".
+ */
+async function authHeaders(): Promise<{ Authorization: string }> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+  }
+  return { Authorization: `Bearer ${token}` };
+}
+
 const KIND_LABEL: Record<PersonContextKind, string> = {
   customer: "مشتری",
   supplier: "تأمین‌کننده",
@@ -110,7 +126,12 @@ export function PersonContextLinksForm({
   const queryKey = ["person", personId, "context-links"] as const;
   const linksQuery = useQuery({
     queryKey,
-    queryFn: () => toError(listFn({ data: { person_id: personId, include_ended: true } })),
+    queryFn: async () => {
+      const headers = await authHeaders();
+      return toError(
+        listFn({ headers, data: { person_id: personId, include_ended: true } }),
+      );
+    },
   });
 
   const [kind, setKind] = useState<PersonContextKind>("customer");
@@ -125,11 +146,13 @@ export function PersonContextLinksForm({
   const invalidate = () => qc.invalidateQueries({ queryKey });
 
   const addMut = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const rt = refTable.trim() || null;
       const ri = refId.trim() || null;
+      const headers = await authHeaders();
       return toError(
         addFn({
+          headers,
           data: {
             person_id: personId,
             context_kind: kind,
@@ -153,10 +176,15 @@ export function PersonContextLinksForm({
   });
 
   const updateMut = useMutation({
-    mutationFn: (vars: { id: string; note: string }) =>
-      toError(
-        updateFn({ data: { id: vars.id, note: vars.note.trim() ? vars.note.trim() : null } }),
-      ),
+    mutationFn: async (vars: { id: string; note: string }) => {
+      const headers = await authHeaders();
+      return toError(
+        updateFn({
+          headers,
+          data: { id: vars.id, note: vars.note.trim() ? vars.note.trim() : null },
+        }),
+      );
+    },
     onSuccess: () => {
       toast.success("یادداشت ذخیره شد");
       setEditingId(null);
@@ -168,7 +196,10 @@ export function PersonContextLinksForm({
   });
 
   const endMut = useMutation({
-    mutationFn: (id: string) => toError(endFn({ data: { id } })),
+    mutationFn: async (id: string) => {
+      const headers = await authHeaders();
+      return toError(endFn({ headers, data: { id } }));
+    },
     onSuccess: () => {
       toast.success("ارتباط بسته شد");
       invalidate();
