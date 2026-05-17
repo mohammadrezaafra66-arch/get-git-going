@@ -72,15 +72,16 @@ $SqlFile = (Resolve-Path $SqlFile).Path
 
 $DryRunStr = if ($DryRun) { "true" } else { "false" }
 
-# Transaction control is owned by this wrapper (-1 = single tx).
-# A trailing COMMIT/ROLLBACK is appended after the script body via stdin so
-# the entire run is a single psql session and one atomic transaction.
+# The SQL file opens its own BEGIN. Both -f and -c run in the SAME psql
+# session, so the wrapper just appends COMMIT or ROLLBACK to terminate the
+# transaction explicitly. Do NOT pass -1 here (it would conflict with the
+# explicit BEGIN inside the SQL).
 $EndStmt = if ($DryRun) { "ROLLBACK;" } else { "COMMIT;" }
 
 $env:PGPASSWORD = $DbPass
 $psqlArgs = @(
   "-h", $DbHost, "-p", $DbPort, "-U", $DbUser, "-d", $DbName,
-  "-X", "-1",
+  "-X",
   "-v", "ON_ERROR_STOP=1",
   "-v", "dry_run=$DryRunStr",
   "-v", "lan_cash_price_id=$LanCashPriceId",
@@ -103,7 +104,7 @@ Write-Host ""
 try {
   & psql @psqlArgs
   if ($LASTEXITCODE -ne 0) {
-    throw "psql exited with code $LASTEXITCODE - transaction was rolled back by -1 / ON_ERROR_STOP."
+    throw "psql exited with code $LASTEXITCODE - ON_ERROR_STOP aborted the transaction; no COMMIT was issued."
   }
 
   if ($DryRun) {
