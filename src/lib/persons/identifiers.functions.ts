@@ -22,9 +22,7 @@ import {
   type IdentifierKind,
 } from "./identifiers-normalize";
 
-const KindEnum = z.enum(
-  IDENTIFIER_KINDS as unknown as [IdentifierKind, ...IdentifierKind[]],
-);
+const KindEnum = z.enum(IDENTIFIER_KINDS as unknown as [IdentifierKind, ...IdentifierKind[]]);
 
 const StatusEnum = z.enum(["provisional", "confirmed", "revoked"]);
 
@@ -42,11 +40,7 @@ const CreateInputSchema = z.object({
 const UpdateInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه ردیف نامعتبر است" }),
   // Optional fields. value_raw triggers re-normalization.
-  value_raw: z
-    .string()
-    .min(1)
-    .max(512)
-    .optional(),
+  value_raw: z.string().min(1).max(512).optional(),
   kind: KindEnum.optional(),
   status: StatusEnum.optional(),
   is_primary: z.boolean().optional(),
