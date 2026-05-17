@@ -27,7 +27,6 @@ import {
   CreatePersonInputSchema,
   UpdatePersonInputSchema,
   type CreatePersonInput,
-  type JsonValue,
   type PersonDTO,
   type PersonFieldValueDTO,
   type PersonFieldValueInput,
