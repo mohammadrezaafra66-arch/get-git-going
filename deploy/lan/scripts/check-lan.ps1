@@ -56,7 +56,7 @@ try {
 
 Write-Host ""
 Write-Host "=== Containers ===" -ForegroundColor Cyan
-docker ps --filter "name=afrakala-lan-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker ps -a --filter "name=afrakala-lan-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 Write-Host ""
 Write-Host "=== Endpoints ===" -ForegroundColor Cyan
