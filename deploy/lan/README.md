@@ -311,7 +311,7 @@ docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rol
 cd C:\afrakala-lan\get-git-going
 git pull origin main
 Select-String -Path .\deploy\lan\scripts\*.sh,.\deploy\supabase\volumes\db\init\*.sh -Pattern "`r" -List
-powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1
+powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1 -RotateSecrets
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
 # wait 90 seconds manually
