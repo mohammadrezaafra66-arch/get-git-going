@@ -3,10 +3,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { createCustomer } from "@/lib/customers/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,6 +73,7 @@ export function QuickAddCustomerDialog({
 }: Props) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const createCustomerFn = useServerFn(createCustomer);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -87,13 +90,23 @@ export function QuickAddCustomerDialog({
         city: v.city?.trim() || null,
         notes: v.notes?.trim() || null,
       };
-      const { data, error } = await supabase
-        .from("customers")
-        .insert(payload as never)
-        .select("id, name, phone, accounting_code")
-        .single();
-      if (error) throw error;
-      return data as QuickAddCustomerResult;
+      // Mirror CustomerForm: explicitly attach bearer token at call site to
+      // avoid hydration/timing races with the global attachSupabaseAuth middleware.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
+      const row = await createCustomerFn({
+        headers: { Authorization: `Bearer ${token}` },
+        data: payload,
+      });
+      return {
+        id: row.id,
+        name: row.name,
+        phone: row.phone ?? payload.phone,
+        accounting_code: row.accounting_code ?? payload.accounting_code,
+      } satisfies QuickAddCustomerResult;
     },
     onSuccess: (c) => {
       toast.success(`شخص «${c.name}» با موفقیت ثبت شد`);
@@ -103,11 +116,9 @@ export function QuickAddCustomerDialog({
       setOpen(false);
     },
     onError: (err: unknown) => {
-      const raw = err instanceof Error ? err.message : "خطای ناشناخته";
-      const msg =
-        /accounting_code/i.test(raw) || /duplicate key/i.test(raw)
-          ? "کد آسان تکراری یا قالب نامعتبر دارد"
-          : raw;
+      // createCustomer serverFn already maps duplicate accounting_code and
+      // RLS errors to Persian messages via mapPgError/toServerError.
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
       toast.error(`ثبت ناموفق بود: ${msg}`);
     },
   });
