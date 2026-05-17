@@ -47,6 +47,26 @@ function mapPgError(code: string | undefined, message: string): Error {
   return new Error(message || "خطای ناشناخته در پایگاه داده");
 }
 
+/**
+ * Guarantee any thrown value bubbles out of a serverFn handler as a proper
+ * `Error` with a Persian message. Without this, raw `Response` objects or
+ * non-Error rejections cross the serverFn boundary and the client surfaces
+ * them as the literal string "[object Response]", blanking the page.
+ */
+function toServerError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  if (typeof Response !== "undefined" && e instanceof Response) {
+    if (e.status === 401) return new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+    if (e.status === 403) return new Error("دسترسی لازم برای این عملیات را ندارید");
+    return new Error(`خطای سرور (${e.status})`);
+  }
+  if (e && typeof e === "object") {
+    const obj = e as { code?: string; message?: string };
+    if (obj.code || obj.message) return mapPgError(obj.code, obj.message ?? "");
+  }
+  return new Error("خطای ناشناخته در پردازش درخواست");
+}
+
 function valueIsEmpty(v: unknown): boolean {
   if (v === null || v === undefined) return true;
   if (typeof v === "string") return v.trim().length === 0;
@@ -141,41 +161,46 @@ export const createPerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => CreatePersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO> => {
-    const input: CreatePersonInput = data;
-    const { supabase } = context;
+    try {
+      const input: CreatePersonInput = data;
+      const { supabase } = context;
 
-    // Required-field pre-check (best-effort: not atomic with INSERTs).
-    const check = await validateRequiredPersonFields(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      supabase as any,
-      input.kind,
-      input.field_values,
-    );
-    if (!check.ok) {
-      const labels = check.missing.map((m) => m.label).join("، ");
-      throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
+      // Required-field pre-check (best-effort: not atomic with INSERTs).
+      const check = await validateRequiredPersonFields(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        supabase as any,
+        input.kind,
+        input.field_values,
+      );
+      if (!check.ok) {
+        const labels = check.missing.map((m) => m.label).join("، ");
+        throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
+      }
+
+      const { data: personRow, error: personErr } = await supabase
+        .from("persons")
+        .insert({
+          kind: input.kind,
+          display_name: input.display_name,
+          legal_name: input.legal_name ?? null,
+          visibility_scope: input.visibility_scope,
+          is_active: input.is_active,
+          notes: input.notes ?? null,
+        })
+        .select(
+          "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
+        )
+        .single();
+      if (personErr) throw mapPgError(personErr.code, personErr.message);
+      if (!personRow) throw new Error("ایجاد شخص ناموفق بود — رکوردی بازگردانده نشد");
+
+      const person = personRow as PersonDTO;
+      const values = await insertFieldValues(supabase, person.id, input.field_values);
+
+      return { ...person, field_values: values };
+    } catch (e) {
+      throw toServerError(e);
     }
-
-    const { data: personRow, error: personErr } = await supabase
-      .from("persons")
-      .insert({
-        kind: input.kind,
-        display_name: input.display_name,
-        legal_name: input.legal_name ?? null,
-        visibility_scope: input.visibility_scope,
-        is_active: input.is_active,
-        notes: input.notes ?? null,
-      })
-      .select(
-        "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
-      )
-      .single();
-    if (personErr) throw mapPgError(personErr.code, personErr.message);
-
-    const person = personRow as PersonDTO;
-    const values = await insertFieldValues(supabase, person.id, input.field_values);
-
-    return { ...person, field_values: values };
   });
 
 /* ---------- updatePerson ---------- */
@@ -184,6 +209,7 @@ export const updatePerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => UpdatePersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO> => {
+   try {
     const input: UpdatePersonInput = data;
     const { supabase } = context;
 
@@ -274,6 +300,9 @@ export const updatePerson = createServerFn({ method: "POST" })
     }
 
     return { ...person, field_values: upserted };
+   } catch (e) {
+    throw toServerError(e);
+   }
   });
 
 /* ---------- getPerson ---------- */
@@ -282,6 +311,7 @@ export const getPerson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => GetPersonInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<PersonWithFieldValuesDTO | null> => {
+   try {
     const { supabase } = context;
     const { data: personRow, error: personErr } = await supabase
       .from("persons")
@@ -303,4 +333,7 @@ export const getPerson = createServerFn({ method: "POST" })
       ...(personRow as PersonDTO),
       field_values: (fvRows as PersonFieldValueDTO[]) ?? [],
     };
+   } catch (e) {
+    throw toServerError(e);
+   }
   });
