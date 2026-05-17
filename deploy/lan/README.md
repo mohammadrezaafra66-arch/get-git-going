@@ -266,6 +266,14 @@ ERROR: "anon" is a reserved role, only superusers can modify it
 
 یعنی نسخه قدیمی fixer تلاش کرده role رزرو شده را تغییر دهد. آخرین کد را pull کنید، secretها را در صورت leak rotate کنید، و stack را با volume پاک‌شده دوباره بسازید.
 
+اگر log این خطا را نشان داد:
+
+```text
+ERROR: "authenticator" is a reserved role, only superusers can modify it
+```
+
+یعنی `db-role-fix` به جای superuser واقعی Supabase با `-U postgres` وصل شده است. اسکریپت `deploy/lan/scripts/db-role-fix.sh` باید با `-U supabase_admin` و `PGPASSWORD=$POSTGRES_PASSWORD` وصل شود (Phase LAN.11). آخرین کد را pull کنید و stack را با volume پاک‌شده دوباره بالا بیاورید.
+
 ⚠️ اگر logهای `db-role-fix` شامل `BASH_EXECUTION_STRING=set` یا خود `POSTGRES_PASSWORD` بود، یعنی command داخل compose خراب اجرا شده و secret در Docker logs لو رفته است. در این حالت secretهای LAN را با سوییچ امن rotate کنید و سپس stack را با volume پاک‌شده از نو بالا بیاورید:
 
 ```powershell
