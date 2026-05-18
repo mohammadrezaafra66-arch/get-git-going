@@ -124,6 +124,11 @@ export const Route = createRootRoute({
       { property: "og:title", content: "دستیار هوشمند افراکالا" },
       { property: "og:description", content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا." },
       { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "دستیار هوشمند افراکالا" },
+      { name: "twitter:description", content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
