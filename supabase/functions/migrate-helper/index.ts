@@ -77,6 +77,56 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (body?.action === "diag_db_url") {
+    try {
+      // node-postgres style URLs use postgres:// or postgresql://
+      const u = new URL(supabaseDbUrl);
+      const host = u.hostname;
+      const port = u.port || (u.protocol.startsWith("postgres") ? "5432" : "");
+      const database = decodeURIComponent(u.pathname.replace(/^\//, "")) || null;
+      const username = decodeURIComponent(u.username) || null;
+      const password = u.password ? decodeURIComponent(u.password) : "";
+      const sslmode = u.searchParams.get("sslmode");
+
+      const isPrivateIp = (h: string) =>
+        /^10\./.test(h) ||
+        /^192\.168\./.test(h) ||
+        /^127\./.test(h) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(h);
+      const looks_internal =
+        host === "localhost" ||
+        host.endsWith(".internal") ||
+        host.endsWith(".svc") ||
+        host.endsWith(".local") ||
+        isPrivateIp(host);
+      const is_pooler =
+        host.includes("pooler.supabase.com") || port === "6543";
+
+      const masked_url =
+        `${u.protocol}//${u.username}:***@${host}${port ? ":" + port : ""}` +
+        (u.pathname || "") +
+        (u.search || "");
+
+      return jsonResponse({
+        build_id: BUILD_ID,
+        generated_at: new Date().toISOString(),
+        protocol: u.protocol,
+        host,
+        port,
+        database,
+        username,
+        sslmode,
+        password_present: password.length > 0,
+        password_length: password.length,
+        is_pooler,
+        looks_internal,
+        masked_url,
+      });
+    } catch (e) {
+      return errorResponse(500, `Failed to parse SUPABASE_DB_URL: ${(e as Error).message}`);
+    }
+  }
+
   return jsonResponse({
     build_id: BUILD_ID,
     generated_at: new Date().toISOString(),
