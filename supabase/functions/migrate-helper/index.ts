@@ -21,7 +21,8 @@ const jsonResponse = (payload: unknown, status = 200) =>
     headers: responseHeaders,
   });
 
-const errorResponse = (status: number, error: string) => jsonResponse({ build_id: BUILD_ID, error }, status);
+const errorResponse = (status: number, error: string) =>
+  jsonResponse({ build_id: BUILD_ID, error }, status);
 
 const requiredEnv = (name: string): string | null => {
   const value = Deno.env.get(name)?.trim();
@@ -31,13 +32,11 @@ const requiredEnv = (name: string): string | null => {
 const readJsonBody = async (req: Request): Promise<Record<string, unknown> | null> => {
   const raw = await req.text();
   if (!raw.trim()) return null;
-
   try {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return null;
     }
-
     return parsed as Record<string, unknown>;
   } catch {
     return null;
