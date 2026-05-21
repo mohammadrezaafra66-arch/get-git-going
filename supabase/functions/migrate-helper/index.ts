@@ -1,5 +1,5 @@
 const BUILD_ID = "2026-03-04";
-const ACCESS_KEY = "afra_migrate_14050231";
+const ACCESS_KEY = "afra_migrate_2_14050231";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
