@@ -799,6 +799,30 @@ function NewSaleListPage() {
               <div>تعداد محصولات: {formatNumber(selectedIds.length)}</div>
               <div>ستون‌های نمایشی: {formatNumber(selectedColumns.length)}</div>
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="sl-settlement">نوع تسویه (نمایش در PDF)</Label>
+              <Select
+                value={settlementTypeId}
+                onValueChange={(v) => setSettlementTypeId(v)}
+                dir="rtl"
+              >
+                <SelectTrigger id="sl-settlement">
+                  <SelectValue placeholder="انتخاب نوع تسویه" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
+                  {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
+                    <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-[11px] text-muted-foreground">
+                این مقدار فقط در سربرگ PDF نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری ندارد.
+              </div>
+            </div>
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              پس از ایجاد لیست، می‌توانید ترتیب برند و محصول در PDF را از صفحه ویرایش تنظیم کنید.
+            </div>
           </CardContent>
         </Card>
       )}
