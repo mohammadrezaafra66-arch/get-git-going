@@ -26,6 +26,11 @@ export interface AuthSnapshot {
   lastLoadedUserId: string | null;
 }
 
+type AuthQueryResult<T> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
 const listeners = new Set<() => void>();
 
 let snapshot: AuthSnapshot = {
@@ -101,8 +106,8 @@ async function loadIdentity(user: User, force = false) {
     rolesError: null,
   });
 
-  let profileResult: Awaited<ReturnType<typeof supabase.from<"profiles">>> extends never ? never : Awaited<ReturnType<ReturnType<ReturnType<ReturnType<typeof supabase.from<"profiles">["select"]>["eq"]>["maybeSingle"]>>;
-  let rolesResult: Awaited<ReturnType<ReturnType<ReturnType<typeof supabase.from<"user_roles">["select"]>["eq"]>>;
+  let profileResult: AuthQueryResult<AuthProfile>;
+  let rolesResult: AuthQueryResult<Array<{ role: string }>>;
   try {
     [profileResult, rolesResult] = await Promise.all([
       withAuthTimeout(
