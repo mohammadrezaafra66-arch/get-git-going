@@ -50,6 +50,15 @@ export interface SaleListPdfInput {
   versionNumber: number;
   createdByName: string;
   salePriceTypeTitle: string;
+  /**
+   * Optional settlement type title (e.g. "نقدی", "چک ۳۰ روزه").
+   *
+   * IMPORTANT: This is metadata only and is rendered as a single info line
+   * in the PDF header. It MUST NOT be used to recalculate product prices
+   * — pricing comes from `current_price` / `previous_price` on each item
+   * exactly as stored on the sale list snapshot.
+   */
+  settlementTypeTitle?: string | null;
   termsText?: string | null;
   selectedColumns: SaleListPdfColumn[];
   items: SaleListPdfItem[];
