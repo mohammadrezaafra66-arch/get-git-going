@@ -722,6 +722,28 @@ function SaleListDetailPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+          <div className="flex min-w-0 items-start gap-2">
+            <Badge variant="secondary" className="shrink-0">ترتیب PDF</Badge>
+            <div className="space-y-0.5">
+              <div className="font-semibold">ترتیب نمایش برندها و محصولات در PDF</div>
+              <div className="text-xs text-muted-foreground">
+                می‌توانید ترتیب برندها و ترتیب محصولات داخل هر برند را برای فایل PDF تنظیم کنید. تنظیمات ذخیره و در دفعات بعد استفاده می‌شود.
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-1"
+            onClick={openPdfOrderDialog}
+          >
+            <ArrowUpDown className="h-4 w-4" /> تنظیم ترتیب نمایش در PDF
+          </Button>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="items" dir="rtl">
         <TabsList>
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
