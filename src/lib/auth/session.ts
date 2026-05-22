@@ -53,7 +53,7 @@ let subscribed = false;
 
 const AUTH_REQUEST_TIMEOUT_MS = 10_000;
 
-async function withAuthTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+async function withAuthTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -110,11 +110,14 @@ async function loadIdentity(user: User, force = false) {
   let rolesResult: AuthQueryResult<Array<{ role: string }>>;
   try {
     [profileResult, rolesResult] = await Promise.all([
-      withAuthTimeout(
+      withAuthTimeout<AuthQueryResult<AuthProfile>>(
         supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
         "profile load",
       ),
-      withAuthTimeout(supabase.from("user_roles").select("role").eq("user_id", user.id), "roles load"),
+      withAuthTimeout<AuthQueryResult<Array<{ role: string }>>>(
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+        "roles load",
+      ),
     ]);
   } catch (error) {
     const message = getAuthClientError(error);
