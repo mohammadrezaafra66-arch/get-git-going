@@ -20,6 +20,7 @@ import {
   Link2,
   ArrowUp,
   ArrowDown,
+  ArrowUpDown,
   AlertTriangle,
   RefreshCw,
 } from "lucide-react";
