@@ -26,6 +26,11 @@ export interface AuthSnapshot {
   lastLoadedUserId: string | null;
 }
 
+type AuthQueryResult<T> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
 const listeners = new Set<() => void>();
 
 let snapshot: AuthSnapshot = {
@@ -45,6 +50,23 @@ let snapshot: AuthSnapshot = {
 
 let initPromise: Promise<AuthSnapshot> | null = null;
 let subscribed = false;
+
+const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+
+async function withAuthTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label}: timeout`));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 function getAuthClientError(error: unknown) {
   return error instanceof Error ? error.message : "اتصال به سرویس احراز هویت برقرار نشد.";
@@ -84,24 +106,59 @@ async function loadIdentity(user: User, force = false) {
     rolesError: null,
   });
 
-  const [profileResult, rolesResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
-    supabase.from("user_roles").select("role").eq("user_id", user.id),
-  ]);
+  let profileResult: AuthQueryResult<AuthProfile>;
+  let rolesResult: AuthQueryResult<Array<{ role: string }>>;
+  try {
+    [profileResult, rolesResult] = await Promise.all([
+      withAuthTimeout<AuthQueryResult<AuthProfile>>(
+        supabase
+          .from("profiles")
+          .select("id, full_name, phone, is_active, status")
+          .eq("id", user.id)
+          .maybeSingle(),
+        "profile load",
+      ),
+      withAuthTimeout<AuthQueryResult<Array<{ role: string }>>>(
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
+        "roles load",
+      ),
+    ]);
+  } catch (error) {
+    const message = getAuthClientError(error);
+    console.error("[auth] identity load timed out", error);
+    logAuthDiagnostic("session.loadIdentity.timeout", message, error);
+    setSnapshot({
+      profileLoading: false,
+      rolesLoading: false,
+      profileError: "بارگذاری پروفایل کاربر بیش از حد طول کشید.",
+      rolesError: "بارگذاری نقش‌های کاربر بیش از حد طول کشید.",
+      authError: "بارگذاری اطلاعات کاربری بیش از حد طول کشید. لطفاً دوباره تلاش کنید.",
+      lastLoadedUserId: user.id,
+    });
+    return snapshot;
+  }
 
   const profileError = profileResult.error?.message ?? null;
   const rolesError = rolesResult.error?.message ?? null;
 
   if (profileResult.error) console.error("[auth] profile fetch failed", profileResult.error);
   if (rolesResult.error) console.error("[auth] roles fetch failed", rolesResult.error);
-  if (profileResult.error) logAuthDiagnostic("session.loadIdentity.profile", profileResult.error.message, profileResult.error);
-  if (rolesResult.error) logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
+  if (profileResult.error)
+    logAuthDiagnostic(
+      "session.loadIdentity.profile",
+      profileResult.error.message,
+      profileResult.error,
+    );
+  if (rolesResult.error)
+    logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
 
   const roles = (rolesResult.data ?? []).map((row) => row.role as AppRole);
   const normalizedRoles = !rolesError && roles.length === 0 ? (["viewer"] as AppRole[]) : roles;
 
   if (!rolesError && roles.length === 0) {
-    console.warn("[auth] no role found for authenticated user; defaulting to viewer", { userId: user.id });
+    console.warn("[auth] no role found for authenticated user; defaulting to viewer", {
+      userId: user.id,
+    });
   }
 
   setSnapshot({
@@ -141,11 +198,7 @@ async function applySession(session: Session | null, force = false) {
   // Do NOT toggle global loading or re-fetch profile/roles, otherwise the
   // entire app tree unmounts and component state (forms, search inputs)
   // is lost when the user switches tabs and comes back.
-  if (
-    !force &&
-    snapshot.initialized &&
-    snapshot.lastLoadedUserId === session.user.id
-  ) {
+  if (!force && snapshot.initialized && snapshot.lastLoadedUserId === session.user.id) {
     setSnapshot({ session, user: session.user });
     return snapshot;
   }
@@ -171,8 +224,7 @@ export function initializeAuthSession() {
       // TOKEN_REFRESHED and USER_UPDATED happen frequently (incl. on tab focus)
       // and must not trigger a global loading screen.
       const isFullReload =
-        event === "SIGNED_IN" &&
-        (!snapshot.user || snapshot.user.id !== session?.user?.id);
+        event === "SIGNED_IN" && (!snapshot.user || snapshot.user.id !== session?.user?.id);
       const isSignOut = event === "SIGNED_OUT";
       logAuthDiagnostic("session.onAuthStateChange", event, {
         hasSession: !!session,
@@ -217,7 +269,7 @@ export async function ensureAuthReady(force = false) {
       setSnapshot({ loading: true });
       let result: Awaited<ReturnType<typeof supabase.auth.getSession>>;
       try {
-        result = await supabase.auth.getSession();
+        result = await withAuthTimeout(supabase.auth.getSession(), "get session");
       } catch (error) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);

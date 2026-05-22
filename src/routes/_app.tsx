@@ -3,8 +3,12 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { logAuthDiagnostic, getAuthDiagnostics, clearAuthDiagnostics } from "@/lib/auth/diagnostics";
-import { useState } from "react";
+import {
+  logAuthDiagnostic,
+  getAuthDiagnostics,
+  clearAuthDiagnostics,
+} from "@/lib/auth/diagnostics";
+import { useEffect, useState } from "react";
 
 export function AuthLoadingScreen() {
   return (
@@ -62,8 +66,31 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { loading, profileLoading, rolesLoading, authError, retryAuth } = useAuth();
   const [showDiag, setShowDiag] = useState(false);
+  const [stuckLoading, setStuckLoading] = useState(false);
+
+  useEffect(() => {
+    if (!(loading || profileLoading || rolesLoading)) {
+      setStuckLoading(false);
+      return;
+    }
+    const id = window.setTimeout(() => setStuckLoading(true), 12_000);
+    return () => window.clearTimeout(id);
+  }, [loading, profileLoading, rolesLoading]);
 
   if (loading || profileLoading || rolesLoading) {
+    if (stuckLoading) {
+      return (
+        <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="max-w-md space-y-3 text-center">
+            <h1 className="text-lg font-semibold text-foreground">بررسی جلسه کاربری طولانی شد</h1>
+            <p className="text-sm text-muted-foreground">
+              ارتباط با اطلاعات کاربری کامل نشده است. اگر اینترنت ناپایدار است، دوباره تلاش کنید.
+            </p>
+            <Button onClick={() => void retryAuth()}>تلاش دوباره</Button>
+          </div>
+        </div>
+      );
+    }
     return <AuthLoadingScreen />;
   }
 
@@ -80,14 +107,23 @@ function AppLayout() {
               {showDiag ? "بستن گزارش خطا" : "نمایش گزارش خطا"}
             </Button>
             {diag.length > 0 && (
-              <Button variant="ghost" onClick={() => { clearAuthDiagnostics(); setShowDiag(false); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  clearAuthDiagnostics();
+                  setShowDiag(false);
+                }}
+              >
                 پاک‌کردن لاگ
               </Button>
             )}
           </div>
           {showDiag && (
-            <pre dir="ltr" className="max-h-80 overflow-auto rounded border border-border bg-muted p-3 text-left text-xs text-foreground">
-{JSON.stringify(diag, null, 2)}
+            <pre
+              dir="ltr"
+              className="max-h-80 overflow-auto rounded border border-border bg-muted p-3 text-left text-xs text-foreground"
+            >
+              {JSON.stringify(diag, null, 2)}
             </pre>
           )}
         </div>
