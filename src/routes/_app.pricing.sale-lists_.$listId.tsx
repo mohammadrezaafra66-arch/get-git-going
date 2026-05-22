@@ -1528,6 +1528,9 @@ function SettingsTab({
     if ((description.trim() || null) !== (list.description ?? null)) return true;
     if ((termsText.trim() || null) !== (list.terms_text ?? null)) return true;
     if ((sellerInfo.trim() || null) !== (list.seller_info ?? null)) return true;
+    const settlementSaved = list.settlement_type_id ?? null;
+    const settlementCurrent = settlementTypeId === "__none" ? null : settlementTypeId;
+    if (settlementSaved !== settlementCurrent) return true;
     const a = [...selectedColumns].sort().join(",");
     const b = [...initialColumns].sort().join(",");
     if (a !== b) return true;
@@ -1535,7 +1538,7 @@ function SettingsTab({
     const p2 = [...items.map((it) => it.product_id)].sort().join(",");
     if (p1 !== p2) return true;
     return false;
-  }, [name, description, termsText, sellerInfo, selectedColumns, productIds, items, list, initialColumns]);
+  }, [name, description, termsText, sellerInfo, settlementTypeId, selectedColumns, productIds, items, list, initialColumns]);
 
   const handleSave = async () => {
     const trimmed = name.trim();
