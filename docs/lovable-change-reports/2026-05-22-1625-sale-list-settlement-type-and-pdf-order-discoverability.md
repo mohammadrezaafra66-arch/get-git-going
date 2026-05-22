@@ -110,3 +110,9 @@ LOW. Metadata-only column; UI is additive; pricing engine untouched.
 ## 16. Build / Lint Status
 
 TypeScript compiles via the Lovable build pipeline. No new dependencies added.
+
+## 17. Branch Sync Note
+
+Re-applied / verified on branch `feature/sale-list-settlement-type` to ensure
+the named branch on GitHub contains the full settlement-type changeset
+(migration + frontend + change report). No code logic changed by this note.
