@@ -1,3 +1,4 @@
+// Branch marker: feature/sale-list-settlement-type (no behavior change).
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
