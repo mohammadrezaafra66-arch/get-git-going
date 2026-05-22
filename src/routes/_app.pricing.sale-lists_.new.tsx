@@ -342,6 +342,7 @@ function NewSaleListPage() {
           terms_text: termsText.trim() || null,
           seller_info: sellerInfo.trim() || null,
           sale_price_type_id: salePriceTypeId,
+          settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
           created_by: userData.user.id,
           version_number: 1,
           status: "draft",
