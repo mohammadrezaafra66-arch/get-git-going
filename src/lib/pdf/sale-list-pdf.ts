@@ -1,6 +1,8 @@
 /**
  * Sale-list "PDF" generator.
  *
+ * Branch marker: feature/sale-list-settlement-type (no behavior change).
+ *
  * History: previous attempts used pdfmake + arabic-persian-reshaper + bidi-js
  * to render Persian text in PDF directly. pdfmake's text engine does NOT
  * implement Arabic/Persian shaping or the Unicode Bidi algorithm correctly,
