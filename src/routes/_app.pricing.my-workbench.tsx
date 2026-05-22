@@ -483,13 +483,14 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row, dirty, stepPct, saving, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
   canLabel: boolean;
+  publishError?: string;
   onLabel: () => void;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
@@ -554,6 +555,13 @@ function DesktopRow({
         {hasValidSalePrice(row.sale_price)
           ? formatNumber(row.sale_price as number)
           : <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>}
+        {publishError && (
+          <div className="mt-1">
+            <Badge variant="destructive" className="text-[10px]" title={publishError}>
+              خطای محاسبه
+            </Badge>
+          </div>
+        )}
       </TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
