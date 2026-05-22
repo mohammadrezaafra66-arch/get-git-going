@@ -46,6 +46,23 @@ let snapshot: AuthSnapshot = {
 let initPromise: Promise<AuthSnapshot> | null = null;
 let subscribed = false;
 
+const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+
+async function withAuthTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label}: timeout`));
+    }, AUTH_REQUEST_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 function getAuthClientError(error: unknown) {
   return error instanceof Error ? error.message : "اتصال به سرویس احراز هویت برقرار نشد.";
 }
@@ -84,10 +101,30 @@ async function loadIdentity(user: User, force = false) {
     rolesError: null,
   });
 
-  const [profileResult, rolesResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
-    supabase.from("user_roles").select("role").eq("user_id", user.id),
-  ]);
+  let profileResult: Awaited<ReturnType<typeof supabase.from<"profiles">>> extends never ? never : Awaited<ReturnType<ReturnType<ReturnType<ReturnType<typeof supabase.from<"profiles">["select"]>["eq"]>["maybeSingle"]>>;
+  let rolesResult: Awaited<ReturnType<ReturnType<ReturnType<typeof supabase.from<"user_roles">["select"]>["eq"]>>;
+  try {
+    [profileResult, rolesResult] = await Promise.all([
+      withAuthTimeout(
+        supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
+        "profile load",
+      ),
+      withAuthTimeout(supabase.from("user_roles").select("role").eq("user_id", user.id), "roles load"),
+    ]);
+  } catch (error) {
+    const message = getAuthClientError(error);
+    console.error("[auth] identity load timed out", error);
+    logAuthDiagnostic("session.loadIdentity.timeout", message, error);
+    setSnapshot({
+      profileLoading: false,
+      rolesLoading: false,
+      profileError: "بارگذاری پروفایل کاربر بیش از حد طول کشید.",
+      rolesError: "بارگذاری نقش‌های کاربر بیش از حد طول کشید.",
+      authError: "بارگذاری اطلاعات کاربری بیش از حد طول کشید. لطفاً دوباره تلاش کنید.",
+      lastLoadedUserId: user.id,
+    });
+    return snapshot;
+  }
 
   const profileError = profileResult.error?.message ?? null;
   const rolesError = rolesResult.error?.message ?? null;
@@ -217,7 +254,7 @@ export async function ensureAuthReady(force = false) {
       setSnapshot({ loading: true });
       let result: Awaited<ReturnType<typeof supabase.auth.getSession>>;
       try {
-        result = await supabase.auth.getSession();
+        result = await withAuthTimeout(supabase.auth.getSession(), "get session");
       } catch (error) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);
