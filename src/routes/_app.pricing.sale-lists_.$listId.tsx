@@ -1740,6 +1740,27 @@ function SettingsTab({
               dir="rtl"
             />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="ed-settlement">نوع تسویه (نمایش در PDF)</Label>
+            <Select
+              value={settlementTypeId}
+              onValueChange={(v) => setSettlementTypeId(v)}
+              dir="rtl"
+            >
+              <SelectTrigger id="ed-settlement">
+                <SelectValue placeholder="انتخاب نوع تسویه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
+                {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-[11px] text-muted-foreground">
+              این مقدار فقط در سربرگ PDF لیست فروش نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری ندارد.
+            </div>
+          </div>
         </CardContent>
       </Card>
 
