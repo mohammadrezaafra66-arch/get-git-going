@@ -40,6 +40,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { fetchSettlementTypes } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
 import { fetchShopSettings } from "@/lib/shop/settings";
 import {
@@ -127,6 +128,8 @@ function NewSaleListPage() {
   const [termsText, setTermsText] = useState("");
   const [sellerInfo, setSellerInfo] = useState("");
   const [sellerInfoTouched, setSellerInfoTouched] = useState(false);
+  // Settlement type is PDF/header metadata only — never affects pricing.
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("__none");
   const [saving, setSaving] = useState(false);
 
   const shopSettingsQ = useQuery({
@@ -149,6 +152,11 @@ function NewSaleListPage() {
   const salePriceTypesQ = useQuery({
     queryKey: ["sale-price-types-active"],
     queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 60_000,
+  });
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
     staleTime: 60_000,
   });
   const brandsQ = useQuery({
