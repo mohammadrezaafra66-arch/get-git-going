@@ -1627,6 +1627,7 @@ function SettingsTab({
         terms_text: termsText.trim() || null,
         seller_info: sellerInfo.trim() || null,
         sale_price_type_id: list.sale_price_type_id,
+        settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
         selected_columns: selectedColumns,
         items: snapItems,
       };
