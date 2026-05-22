@@ -18,25 +18,45 @@ export interface RolePermissionRow {
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const PERMISSIONS_TIMEOUT_MS = 10_000;
 let cache: { rows: RolePermissionRow[]; ts: number } | null = null;
 let inflight: Promise<RolePermissionRow[]> | null = null;
+
+async function withPermissionsTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("role permissions timeout")), PERMISSIONS_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 export async function loadRolePermissions(force = false): Promise<RolePermissionRow[]> {
   if (!force && cache && Date.now() - cache.ts < CACHE_TTL_MS) return cache.rows;
   if (inflight) return inflight;
   inflight = (async () => {
-    const { data, error } = await supabase
-      .from("role_permissions" as never)
-      .select("role_name,module,can_view,can_create,can_update,can_delete,can_approve,can_export,can_view_sensitive");
-    if (error) {
+    try {
+      const { data, error } = await withPermissionsTimeout(
+        supabase
+          .from("role_permissions" as never)
+          .select("role_name,module,can_view,can_create,can_update,can_delete,can_approve,can_export,can_view_sensitive"),
+      );
+      if (error) {
+        inflight = null;
+        return cache?.rows ?? [];
+      }
+      const rows = (data ?? []) as unknown as RolePermissionRow[];
+      cache = { rows, ts: Date.now() };
+      setCachedRolePermissions(rows);
+      inflight = null;
+      return rows;
+    } catch {
       inflight = null;
       return cache?.rows ?? [];
     }
-    const rows = (data ?? []) as unknown as RolePermissionRow[];
-    cache = { rows, ts: Date.now() };
-    setCachedRolePermissions(rows);
-    inflight = null;
-    return rows;
   })();
   return inflight;
 }
