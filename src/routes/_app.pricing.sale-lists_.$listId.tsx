@@ -1489,6 +1489,16 @@ function SettingsTab({
   const [description, setDescription] = useState(list.description ?? "");
   const [termsText, setTermsText] = useState(list.terms_text ?? "");
   const [sellerInfo, setSellerInfo] = useState(list.seller_info ?? "");
+  // Settlement type is PDF/header metadata only — it never recalculates
+  // product prices. Persisted on the sale_lists row so it survives reload.
+  const [settlementTypeId, setSettlementTypeId] = useState<string>(
+    list.settlement_type_id ?? "__none",
+  );
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
+    staleTime: 60_000,
+  });
   const sellerDefaultQ = useQuery({
     queryKey: ["shop-settings"],
     queryFn: fetchShopSettings,
