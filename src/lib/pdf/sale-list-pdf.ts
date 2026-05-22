@@ -335,6 +335,11 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   const title = `لیست فروش - ${input.listName}`;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
+  const settlementLine =
+    input.settlementTypeTitle && input.settlementTypeTitle.trim()
+      ? `<div>نوع تسویه: ${escapeHtml(input.settlementTypeTitle.trim())}</div>`
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
