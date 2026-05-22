@@ -761,6 +761,11 @@ function MobileCard({
             <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 4}</Badge>
           )}
         </div>
+        {publishError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+            ⚠️ {publishError}
+          </div>
+        )}
 
         <div>
           <Label className="mb-1 flex items-center justify-between text-xs">
