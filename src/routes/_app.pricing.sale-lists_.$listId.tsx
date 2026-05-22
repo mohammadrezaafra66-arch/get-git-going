@@ -1682,6 +1682,7 @@ function SettingsTab({
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
           seller_info: sellerInfo.trim() || null,
+          settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
           selected_columns: selectedColumns,
           version_number: newVersionNumber,
         })
