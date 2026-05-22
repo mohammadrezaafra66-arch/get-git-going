@@ -56,6 +56,7 @@ import {
   type WorkbenchFilters,
 } from "@/lib/pricing/workbench-filters";
 import { WorkbenchFiltersBar } from "@/components/pricing/workbench/WorkbenchFiltersBar";
+import type { WorkbenchScope } from "@/components/pricing/workbench/WorkbenchFiltersBar";
 import { HealthReportTab } from "@/components/pricing/workbench/HealthReportTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
@@ -92,6 +93,7 @@ function WorkbenchPage() {
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
+  const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
@@ -128,6 +130,42 @@ function WorkbenchPage() {
   const total = listQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
+
+  // Map English engine errors → Persian row-level messages.
+  function mapPublishError(raw: string | null | undefined): string {
+    const msg = (raw ?? "").toString();
+    if (!msg) return "خطای ناشناخته در محاسبه قیمت فروش.";
+    if (msg.includes("قانون") || /NO_RULE/i.test(msg)) {
+      return "قانون قیمت‌گذاری منطبق برای این محصول وجود ندارد. نگاشت pricing_rules را بررسی کنید.";
+    }
+    if (msg.includes("نرخ") || /NO_(CURRENCY|SHIPPING)_RATE/i.test(msg)) {
+      return "نرخ ارز فعال برای محاسبه قیمت فروش موجود نیست.";
+    }
+    if (msg.includes("قیمت خرید") || /NO_PURCHASE_PRICE/i.test(msg)) {
+      return "قیمت خرید معتبر برای این محصول ثبت نشده است.";
+    }
+    return msg;
+  }
+
+  // Scope chips: derived from existing showAll + filters.ownerId, no new state.
+  const scope: WorkbenchScope =
+    !showAll ? "mine"
+    : filters.ownerId === "none" ? "no-owner"
+    : "all";
+
+  function handleScopeChange(next: WorkbenchScope) {
+    if (next === "mine") {
+      setShowAll(false);
+      setFilters((f) => ({ ...f, ownerId: "all" }));
+    } else if (next === "all") {
+      setShowAll(true);
+      setFilters((f) => ({ ...f, ownerId: "all" }));
+    } else {
+      setShowAll(true);
+      setFilters((f) => ({ ...f, ownerId: "none" }));
+    }
+    setPage(0);
+  }
 
   function setRowPrice(row: WorkbenchRowV2, value: number) {
     setDirty((d) => ({
@@ -183,18 +221,29 @@ function WorkbenchPage() {
           });
           if (pubRes.succeeded > 0) {
             toast.success(`${formatNumber(pubRes.succeeded)} قیمت فروش به‌روزرسانی شد`);
+            setPublishErrors((e) => {
+              const { [row.id]: _, ...rest } = e;
+              return rest;
+            });
           }
-          if (pubRes.failed > 0) {
+          if (pubRes.failed > 0 && pubRes.succeeded === 0) {
+            const firstErr = pubRes.results.find((r) => !r.ok)?.error;
+            const fa = mapPublishError(firstErr);
+            setPublishErrors((e) => ({ ...e, [row.id]: fa }));
+            toast.warning(fa);
+          } else if (pubRes.failed > 0) {
             const firstErr = pubRes.results.find((r) => !r.ok)?.error;
             toast.warning(
-              `بازمحاسبهٔ ${formatNumber(pubRes.failed)} قیمت فروش ناموفق بود${firstErr ? `: ${firstErr}` : ""}`,
+              `بازمحاسبهٔ ${formatNumber(pubRes.failed)} قیمت فروش ناموفق بود${firstErr ? `: ${mapPublishError(firstErr)}` : ""}`,
             );
           }
           qc.invalidateQueries({ queryKey: ["product-price-history", row.id] });
           qc.invalidateQueries({ queryKey: ["product-computed-prices"] });
         } catch (pubErr: any) {
           // تغییر قیمت خرید قبلاً ذخیره شده — فقط هشدار بده.
-          toast.warning(`بازمحاسبه قیمت فروش ناموفق بود: ${pubErr?.message ?? "خطای ناشناخته"}`);
+          const fa = mapPublishError(pubErr?.message);
+          setPublishErrors((e) => ({ ...e, [row.id]: fa }));
+          toast.warning(`بازمحاسبه قیمت فروش ناموفق بود: ${fa}`);
         }
       }
       // سپس موجودی
@@ -213,6 +262,8 @@ function WorkbenchPage() {
       qc.invalidateQueries({ queryKey: ["workbench-rows"] });
       qc.invalidateQueries({ queryKey: ["workbench-rows-v2"] });
       qc.invalidateQueries({ queryKey: ["workbench-health-report"] });
+      // Ensure the sale price column refreshes immediately, regardless of staleTime.
+      await qc.refetchQueries({ queryKey: ["workbench-rows-v2"], type: "active" });
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در ذخیره");
     } finally {
@@ -266,6 +317,9 @@ function WorkbenchPage() {
             owners={ownersQ.data ?? []}
             search={search}
             onSearchChange={(v) => { setSearch(v); setPage(0); }}
+            scope={scope}
+            onScopeChange={handleScopeChange}
+            canShowAll={isPrivileged}
           />
 
           <Card>
@@ -321,6 +375,7 @@ function WorkbenchPage() {
               saving={saving === row.id}
               justSaved={!!savedFlash[row.id]}
               canLabel={canLabel}
+              publishError={publishErrors[row.id]}
               onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
               onPrice={(v) => setRowPrice(row, v)}
               onBump={(p) => bumpPrice(row, p)}
@@ -357,6 +412,7 @@ function WorkbenchPage() {
                     stepPct={stepPct}
                     saving={saving === row.id}
                     canLabel={canLabel}
+                    publishError={publishErrors[row.id]}
                     onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
                     onPrice={(v) => setRowPrice(row, v)}
                     onBump={(p) => bumpPrice(row, p)}
@@ -427,13 +483,14 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row, dirty, stepPct, saving, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
   canLabel: boolean;
+  publishError?: string;
   onLabel: () => void;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
@@ -498,6 +555,13 @@ function DesktopRow({
         {hasValidSalePrice(row.sale_price)
           ? formatNumber(row.sale_price as number)
           : <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>}
+        {publishError && (
+          <div className="mt-1">
+            <Badge variant="destructive" className="text-[10px]" title={publishError}>
+              خطای محاسبه
+            </Badge>
+          </div>
+        )}
       </TableCell>
       <TableCell>
         <Select value={currentStock} onValueChange={(v) => onStock(v as StockStatus)}>
@@ -567,7 +631,7 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row, dirty, stepPct, saving, justSaved, canLabel, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
   dirty?: Dirty;
@@ -575,6 +639,7 @@ function MobileCard({
   saving: boolean;
   justSaved: boolean;
   canLabel: boolean;
+  publishError?: string;
   onLabel: () => void;
   onPrice: (v: number) => void;
   onBump: (pct: number) => void;
@@ -696,6 +761,11 @@ function MobileCard({
             <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 4}</Badge>
           )}
         </div>
+        {publishError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+            ⚠️ {publishError}
+          </div>
+        )}
 
         <div>
           <Label className="mb-1 flex items-center justify-between text-xs">
