@@ -6281,6 +6281,7 @@ export type Database = {
           sale_price_type_id: string
           selected_columns: Json | null
           seller_info: string | null
+          settlement_type_id: string | null
           status: string
           terms_text: string | null
           updated_at: string
@@ -6298,6 +6299,7 @@ export type Database = {
           sale_price_type_id: string
           selected_columns?: Json | null
           seller_info?: string | null
+          settlement_type_id?: string | null
           status?: string
           terms_text?: string | null
           updated_at?: string
@@ -6315,6 +6317,7 @@ export type Database = {
           sale_price_type_id?: string
           selected_columns?: Json | null
           seller_info?: string | null
+          settlement_type_id?: string | null
           status?: string
           terms_text?: string | null
           updated_at?: string
@@ -6340,6 +6343,13 @@ export type Database = {
             columns: ["sale_price_type_id"]
             isOneToOne: false
             referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_lists_settlement_type_id_fkey"
+            columns: ["settlement_type_id"]
+            isOneToOne: false
+            referencedRelation: "settlement_types"
             referencedColumns: ["id"]
           },
         ]
