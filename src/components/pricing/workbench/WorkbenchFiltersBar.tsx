@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, RotateCcw } from "lucide-react";
+import { User, Users, UserX } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -23,9 +24,12 @@ type CatOpt = { id: string; name: string; parent_id: string | null };
 type LabelOpt = { id: string; title: string };
 type OwnerOpt = { user_id: string; full_name: string | null };
 
+export type WorkbenchScope = "mine" | "all" | "no-owner";
+
 export function WorkbenchFiltersBar({
   filters, onChange, brands, categories, labels, owners,
   search, onSearchChange,
+  scope, onScopeChange, canShowAll,
 }: {
   filters: WorkbenchFilters;
   onChange: (f: WorkbenchFilters) => void;
@@ -35,6 +39,9 @@ export function WorkbenchFiltersBar({
   owners: OwnerOpt[];
   search: string;
   onSearchChange: (v: string) => void;
+  scope?: WorkbenchScope;
+  onScopeChange?: (scope: WorkbenchScope) => void;
+  canShowAll?: boolean;
 }) {
   const parents = useMemo(() => categories.filter((c) => !c.parent_id), [categories]);
   const subs = useMemo(
@@ -61,6 +68,42 @@ export function WorkbenchFiltersBar({
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
+        {onScopeChange && (
+          <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+            <span className="text-xs font-medium text-muted-foreground">دامنه مسئولیت:</span>
+            <Button
+              type="button"
+              size="sm"
+              variant={scope === "mine" ? "default" : "outline"}
+              className="h-8 gap-1"
+              onClick={() => onScopeChange("mine")}
+            >
+              <User className="h-3.5 w-3.5" /> محصولات من
+            </Button>
+            {canShowAll && (
+              <Button
+                type="button"
+                size="sm"
+                variant={scope === "all" ? "default" : "outline"}
+                className="h-8 gap-1"
+                onClick={() => onScopeChange("all")}
+              >
+                <Users className="h-3.5 w-3.5" /> همه محصولات
+              </Button>
+            )}
+            {canShowAll && (
+              <Button
+                type="button"
+                size="sm"
+                variant={scope === "no-owner" ? "destructive" : "outline"}
+                className="h-8 gap-1"
+                onClick={() => onScopeChange("no-owner")}
+              >
+                <UserX className="h-3.5 w-3.5" /> بدون مسئول
+              </Button>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {/* Search */}
           <div className="md:col-span-2">
@@ -184,7 +227,7 @@ export function WorkbenchFiltersBar({
 
           {/* Owner */}
           <FilterSelect
-            label="مسئول محصول"
+            label="👤 مسئول محصول (فیلتر دقیق)"
             value={filters.ownerId}
             onValue={(v) => set({ ownerId: v })}
             options={[
