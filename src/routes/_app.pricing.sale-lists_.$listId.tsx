@@ -392,6 +392,8 @@ function SaleListDetailPage() {
       versionNumber: list.version_number,
       createdByName: "—",
       salePriceTypeTitle: list.sale_price_type?.title ?? "—",
+      // Metadata only — never feeds into price calculation.
+      settlementTypeTitle: list.settlement_type?.title ?? null,
       termsText: list.terms_text,
       sellerInfo: list.seller_info ?? null,
       shopInfo: shop
