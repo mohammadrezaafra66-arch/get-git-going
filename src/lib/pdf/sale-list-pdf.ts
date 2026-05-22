@@ -503,6 +503,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       <div class="meta">
         <div>تاریخ: ${escapeHtml(formatDateFa(new Date()))}</div>
         <div>ایجادکننده: ${escapeHtml(input.createdByName)}</div>
+        ${settlementLine}
       </div>
     </div>
   </div>
