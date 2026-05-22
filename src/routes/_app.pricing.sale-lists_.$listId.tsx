@@ -62,6 +62,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
+import { fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -135,9 +136,11 @@ interface SaleListDetail {
   status: string;
   version_number: number;
   sale_price_type_id: string;
+  settlement_type_id: string | null;
   selected_columns: string[] | null;
   created_at: string;
   sale_price_type: { id: string; title: string } | null;
+  settlement_type: { id: string; title: string } | null;
   pdf_brand_order: string[] | null;
   pdf_product_order_by_brand: Record<string, string[]> | null;
 }
@@ -184,7 +187,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
