@@ -111,7 +111,11 @@ async function loadIdentity(user: User, force = false) {
   try {
     [profileResult, rolesResult] = await Promise.all([
       withAuthTimeout<AuthQueryResult<AuthProfile>>(
-        supabase.from("profiles").select("id, full_name, phone, is_active, status").eq("id", user.id).maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("id, full_name, phone, is_active, status")
+          .eq("id", user.id)
+          .maybeSingle(),
         "profile load",
       ),
       withAuthTimeout<AuthQueryResult<Array<{ role: string }>>>(
@@ -139,14 +143,22 @@ async function loadIdentity(user: User, force = false) {
 
   if (profileResult.error) console.error("[auth] profile fetch failed", profileResult.error);
   if (rolesResult.error) console.error("[auth] roles fetch failed", rolesResult.error);
-  if (profileResult.error) logAuthDiagnostic("session.loadIdentity.profile", profileResult.error.message, profileResult.error);
-  if (rolesResult.error) logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
+  if (profileResult.error)
+    logAuthDiagnostic(
+      "session.loadIdentity.profile",
+      profileResult.error.message,
+      profileResult.error,
+    );
+  if (rolesResult.error)
+    logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
 
   const roles = (rolesResult.data ?? []).map((row) => row.role as AppRole);
   const normalizedRoles = !rolesError && roles.length === 0 ? (["viewer"] as AppRole[]) : roles;
 
   if (!rolesError && roles.length === 0) {
-    console.warn("[auth] no role found for authenticated user; defaulting to viewer", { userId: user.id });
+    console.warn("[auth] no role found for authenticated user; defaulting to viewer", {
+      userId: user.id,
+    });
   }
 
   setSnapshot({
@@ -186,11 +198,7 @@ async function applySession(session: Session | null, force = false) {
   // Do NOT toggle global loading or re-fetch profile/roles, otherwise the
   // entire app tree unmounts and component state (forms, search inputs)
   // is lost when the user switches tabs and comes back.
-  if (
-    !force &&
-    snapshot.initialized &&
-    snapshot.lastLoadedUserId === session.user.id
-  ) {
+  if (!force && snapshot.initialized && snapshot.lastLoadedUserId === session.user.id) {
     setSnapshot({ session, user: session.user });
     return snapshot;
   }
@@ -216,8 +224,7 @@ export function initializeAuthSession() {
       // TOKEN_REFRESHED and USER_UPDATED happen frequently (incl. on tab focus)
       // and must not trigger a global loading screen.
       const isFullReload =
-        event === "SIGNED_IN" &&
-        (!snapshot.user || snapshot.user.id !== session?.user?.id);
+        event === "SIGNED_IN" && (!snapshot.user || snapshot.user.id !== session?.user?.id);
       const isSignOut = event === "SIGNED_OUT";
       logAuthDiagnostic("session.onAuthStateChange", event, {
         hasSession: !!session,

@@ -25,7 +25,10 @@ let inflight: Promise<RolePermissionRow[]> | null = null;
 async function withPermissionsTimeout<T>(promise: PromiseLike<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error("role permissions timeout")), PERMISSIONS_TIMEOUT_MS);
+    timeoutId = setTimeout(
+      () => reject(new Error("role permissions timeout")),
+      PERMISSIONS_TIMEOUT_MS,
+    );
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -42,7 +45,9 @@ export async function loadRolePermissions(force = false): Promise<RolePermission
       const { data, error } = await withPermissionsTimeout(
         supabase
           .from("role_permissions" as never)
-          .select("role_name,module,can_view,can_create,can_update,can_delete,can_approve,can_export,can_view_sensitive"),
+          .select(
+            "role_name,module,can_view,can_create,can_update,can_delete,can_approve,can_export,can_view_sensitive",
+          ),
       );
       if (error) {
         inflight = null;

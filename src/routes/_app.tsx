@@ -3,7 +3,11 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { logAuthDiagnostic, getAuthDiagnostics, clearAuthDiagnostics } from "@/lib/auth/diagnostics";
+import {
+  logAuthDiagnostic,
+  getAuthDiagnostics,
+  clearAuthDiagnostics,
+} from "@/lib/auth/diagnostics";
 import { useEffect, useState } from "react";
 
 export function AuthLoadingScreen() {
@@ -103,14 +107,23 @@ function AppLayout() {
               {showDiag ? "بستن گزارش خطا" : "نمایش گزارش خطا"}
             </Button>
             {diag.length > 0 && (
-              <Button variant="ghost" onClick={() => { clearAuthDiagnostics(); setShowDiag(false); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  clearAuthDiagnostics();
+                  setShowDiag(false);
+                }}
+              >
                 پاک‌کردن لاگ
               </Button>
             )}
           </div>
           {showDiag && (
-            <pre dir="ltr" className="max-h-80 overflow-auto rounded border border-border bg-muted p-3 text-left text-xs text-foreground">
-{JSON.stringify(diag, null, 2)}
+            <pre
+              dir="ltr"
+              className="max-h-80 overflow-auto rounded border border-border bg-muted p-3 text-left text-xs text-foreground"
+            >
+              {JSON.stringify(diag, null, 2)}
             </pre>
           )}
         </div>
