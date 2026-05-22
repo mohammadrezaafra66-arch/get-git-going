@@ -20,6 +20,7 @@ import {
   Link2,
   ArrowUp,
   ArrowDown,
+  ArrowUpDown,
   AlertTriangle,
   RefreshCw,
 } from "lucide-react";
@@ -62,6 +63,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
+import { fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -135,9 +137,11 @@ interface SaleListDetail {
   status: string;
   version_number: number;
   sale_price_type_id: string;
+  settlement_type_id: string | null;
   selected_columns: string[] | null;
   created_at: string;
   sale_price_type: { id: string; title: string } | null;
+  settlement_type: { id: string; title: string } | null;
   pdf_brand_order: string[] | null;
   pdf_product_order_by_brand: Record<string, string[]> | null;
 }
@@ -184,7 +188,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -389,6 +393,8 @@ function SaleListDetailPage() {
       versionNumber: list.version_number,
       createdByName: "—",
       salePriceTypeTitle: list.sale_price_type?.title ?? "—",
+      // Metadata only — never feeds into price calculation.
+      settlementTypeTitle: list.settlement_type?.title ?? null,
       termsText: list.terms_text,
       sellerInfo: list.seller_info ?? null,
       shopInfo: shop
@@ -713,6 +719,28 @@ function SaleListDetailPage() {
             onClick={() => { setPdfFontSize(10); setPdfRowPadY(2); setPdfCellPadX(4); }}
           >
             بازنشانی
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+          <div className="flex min-w-0 items-start gap-2">
+            <Badge variant="secondary" className="shrink-0">ترتیب PDF</Badge>
+            <div className="space-y-0.5">
+              <div className="font-semibold">ترتیب نمایش برندها و محصولات در PDF</div>
+              <div className="text-xs text-muted-foreground">
+                می‌توانید ترتیب برندها و ترتیب محصولات داخل هر برند را برای فایل PDF تنظیم کنید. تنظیمات ذخیره و در دفعات بعد استفاده می‌شود.
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-1"
+            onClick={openPdfOrderDialog}
+          >
+            <ArrowUpDown className="h-4 w-4" /> تنظیم ترتیب نمایش در PDF
           </Button>
         </CardContent>
       </Card>
@@ -1461,6 +1489,16 @@ function SettingsTab({
   const [description, setDescription] = useState(list.description ?? "");
   const [termsText, setTermsText] = useState(list.terms_text ?? "");
   const [sellerInfo, setSellerInfo] = useState(list.seller_info ?? "");
+  // Settlement type is PDF/header metadata only — it never recalculates
+  // product prices. Persisted on the sale_lists row so it survives reload.
+  const [settlementTypeId, setSettlementTypeId] = useState<string>(
+    list.settlement_type_id ?? "__none",
+  );
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
+    staleTime: 60_000,
+  });
   const sellerDefaultQ = useQuery({
     queryKey: ["shop-settings"],
     queryFn: fetchShopSettings,
@@ -1490,6 +1528,9 @@ function SettingsTab({
     if ((description.trim() || null) !== (list.description ?? null)) return true;
     if ((termsText.trim() || null) !== (list.terms_text ?? null)) return true;
     if ((sellerInfo.trim() || null) !== (list.seller_info ?? null)) return true;
+    const settlementSaved = list.settlement_type_id ?? null;
+    const settlementCurrent = settlementTypeId === "__none" ? null : settlementTypeId;
+    if (settlementSaved !== settlementCurrent) return true;
     const a = [...selectedColumns].sort().join(",");
     const b = [...initialColumns].sort().join(",");
     if (a !== b) return true;
@@ -1497,7 +1538,7 @@ function SettingsTab({
     const p2 = [...items.map((it) => it.product_id)].sort().join(",");
     if (p1 !== p2) return true;
     return false;
-  }, [name, description, termsText, sellerInfo, selectedColumns, productIds, items, list, initialColumns]);
+  }, [name, description, termsText, sellerInfo, settlementTypeId, selectedColumns, productIds, items, list, initialColumns]);
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -1586,6 +1627,7 @@ function SettingsTab({
         terms_text: termsText.trim() || null,
         seller_info: sellerInfo.trim() || null,
         sale_price_type_id: list.sale_price_type_id,
+        settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
         selected_columns: selectedColumns,
         items: snapItems,
       };
@@ -1640,6 +1682,7 @@ function SettingsTab({
           description: description.trim() || null,
           terms_text: termsText.trim() || null,
           seller_info: sellerInfo.trim() || null,
+          settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
           selected_columns: selectedColumns,
           version_number: newVersionNumber,
         })
@@ -1696,6 +1739,27 @@ function SettingsTab({
               placeholder="نام، شماره تماس و سمت فروشنده (اختیاری، حداکثر ۵۰۰ کاراکتر)"
               dir="rtl"
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="ed-settlement">نوع تسویه (نمایش در PDF)</Label>
+            <Select
+              value={settlementTypeId}
+              onValueChange={(v) => setSettlementTypeId(v)}
+              dir="rtl"
+            >
+              <SelectTrigger id="ed-settlement">
+                <SelectValue placeholder="انتخاب نوع تسویه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
+                {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-[11px] text-muted-foreground">
+              این مقدار فقط در سربرگ PDF لیست فروش نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری ندارد.
+            </div>
           </div>
         </CardContent>
       </Card>

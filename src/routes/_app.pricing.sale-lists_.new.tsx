@@ -40,6 +40,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { fetchSettlementTypes } from "@/lib/pricing/queries";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
 import { fetchShopSettings } from "@/lib/shop/settings";
 import {
@@ -127,6 +128,8 @@ function NewSaleListPage() {
   const [termsText, setTermsText] = useState("");
   const [sellerInfo, setSellerInfo] = useState("");
   const [sellerInfoTouched, setSellerInfoTouched] = useState(false);
+  // Settlement type is PDF/header metadata only — never affects pricing.
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("__none");
   const [saving, setSaving] = useState(false);
 
   const shopSettingsQ = useQuery({
@@ -149,6 +152,11 @@ function NewSaleListPage() {
   const salePriceTypesQ = useQuery({
     queryKey: ["sale-price-types-active"],
     queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 60_000,
+  });
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
     staleTime: 60_000,
   });
   const brandsQ = useQuery({
@@ -334,6 +342,7 @@ function NewSaleListPage() {
           terms_text: termsText.trim() || null,
           seller_info: sellerInfo.trim() || null,
           sale_price_type_id: salePriceTypeId,
+          settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
           created_by: userData.user.id,
           version_number: 1,
           status: "draft",
@@ -789,6 +798,30 @@ function NewSaleListPage() {
             <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               <div>تعداد محصولات: {formatNumber(selectedIds.length)}</div>
               <div>ستون‌های نمایشی: {formatNumber(selectedColumns.length)}</div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="sl-settlement">نوع تسویه (نمایش در PDF)</Label>
+              <Select
+                value={settlementTypeId}
+                onValueChange={(v) => setSettlementTypeId(v)}
+                dir="rtl"
+              >
+                <SelectTrigger id="sl-settlement">
+                  <SelectValue placeholder="انتخاب نوع تسویه" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
+                  {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
+                    <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-[11px] text-muted-foreground">
+                این مقدار فقط در سربرگ PDF نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری ندارد.
+              </div>
+            </div>
+            <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              پس از ایجاد لیست، می‌توانید ترتیب برند و محصول در PDF را از صفحه ویرایش تنظیم کنید.
             </div>
           </CardContent>
         </Card>
