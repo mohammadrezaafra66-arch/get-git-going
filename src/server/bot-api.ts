@@ -169,6 +169,20 @@ export function extractBearer(headerValue: string | null | undefined): string | 
   return m ? m[1].trim() : null;
 }
 
+/**
+ * Extract the bot API key from an incoming request.
+ * Order of precedence:
+ *   1. `x-bot-api-key: bk_...` (preferred for WooCommerce / external bots)
+ *   2. `Authorization: Bearer bk_...` (backward compatible)
+ */
+export function extractBotKey(request: Request): string | null {
+  const headerKey = request.headers.get("x-bot-api-key");
+  if (headerKey && headerKey.trim().length > 0) {
+    return headerKey.trim();
+  }
+  return extractBearer(request.headers.get("authorization"));
+}
+
 /** Authenticate by raw key via the SECURITY DEFINER RPC. */
 export async function authenticateBot(rawKey: string | null): Promise<BotAuthResult> {
   if (!rawKey) {
