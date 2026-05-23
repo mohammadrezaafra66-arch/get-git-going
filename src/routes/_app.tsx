@@ -48,7 +48,14 @@ export const Route = createFileRoute("/_app")({
         logAuthDiagnostic("redirect.pending", "_app.beforeLoad: status not active", { status });
         throw redirect({ to: "/pending-approval" });
       }
-      if (auth.authError) {
+      if (auth.user && !auth.profile && auth.authError) {
+        // Profile load failed; do NOT redirect. AppLayout renders the error
+        // screen with retry + copy diagnostic.
+        logAuthDiagnostic("_app.beforeLoad.profileMissing", auth.authError, {
+          profileError: auth.profileError,
+          rolesError: auth.rolesError,
+        });
+      } else if (auth.authError) {
         logAuthDiagnostic("_app.beforeLoad.authError", auth.authError, {
           profileError: auth.profileError,
           rolesError: auth.rolesError,
