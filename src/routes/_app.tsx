@@ -7,8 +7,10 @@ import {
   logAuthDiagnostic,
   getAuthDiagnostics,
   clearAuthDiagnostics,
+  sanitizeDiagnosticsForClipboard,
 } from "@/lib/auth/diagnostics";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export function AuthLoadingScreen() {
   return (
@@ -41,8 +43,15 @@ export const Route = createFileRoute("/_app")({
         });
         throw redirect({ to: "/login" });
       }
+      if (auth.user && !auth.profile && auth.authError) {
+        logAuthDiagnostic("_app.beforeLoad.profileMissing", "user exists but profile is unavailable", {
+          authError: auth.authError,
+          profileError: auth.profileError,
+          rolesError: auth.rolesError,
+        });
+      }
       const status = auth.profile?.status;
-      if (status && status !== "active") {
+      if (auth.profile && status && status !== "active") {
         logAuthDiagnostic("redirect.pending", "_app.beforeLoad: status not active", { status });
         throw redirect({ to: "/pending-approval" });
       }
@@ -64,7 +73,15 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { loading, profileLoading, rolesLoading, authError, retryAuth } = useAuth();
+  const {
+    loading,
+    profileLoading,
+    rolesLoading,
+    authError,
+    profileError,
+    rolesError,
+    retryAuth,
+  } = useAuth();
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
 
@@ -76,6 +93,17 @@ function AppLayout() {
     const id = window.setTimeout(() => setStuckLoading(true), 12_000);
     return () => window.clearTimeout(id);
   }, [loading, profileLoading, rolesLoading]);
+
+  const copyDiagnostics = async () => {
+    const diag = getAuthDiagnostics();
+    try {
+      await navigator.clipboard.writeText(sanitizeDiagnosticsForClipboard(diag));
+      toast.success("گزارش خطا کپی شد");
+    } catch (error) {
+      console.error("[auth] copy diagnostics failed", error);
+      toast.error("کپی گزارش خطا ناموفق بود");
+    }
+  };
 
   if (loading || profileLoading || rolesLoading) {
     if (stuckLoading) {
@@ -100,11 +128,18 @@ function AppLayout() {
       <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="max-w-2xl space-y-3 text-center">
           <h1 className="text-lg font-semibold text-foreground">خطا در بارگذاری جلسه کاربری</h1>
-          <p className="text-sm text-muted-foreground">{authError}</p>
-          <div className="flex justify-center gap-2">
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>{authError}</p>
+            {profileError && <p>خطای پروفایل: {profileError}</p>}
+            {rolesError && <p>خطای نقش‌ها: {rolesError}</p>}
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => void retryAuth()}>تلاش دوباره</Button>
             <Button variant="outline" onClick={() => setShowDiag((v) => !v)}>
               {showDiag ? "بستن گزارش خطا" : "نمایش گزارش خطا"}
+            </Button>
+            <Button variant="outline" onClick={() => void copyDiagnostics()}>
+              کپی گزارش خطا
             </Button>
             {diag.length > 0 && (
               <Button
@@ -123,7 +158,7 @@ function AppLayout() {
               dir="ltr"
               className="max-h-80 overflow-auto rounded border border-border bg-muted p-3 text-left text-xs text-foreground"
             >
-              {JSON.stringify(diag, null, 2)}
+              {sanitizeDiagnosticsForClipboard(diag)}
             </pre>
           )}
         </div>
