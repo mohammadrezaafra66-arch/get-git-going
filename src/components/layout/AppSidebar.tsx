@@ -1,34 +1,23 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
+  Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { NAV_ITEMS, type NavItem } from "./nav-items";
 import {
-  NAV_ITEMS, GROUP_LABELS, SUBGROUP_LABELS, type NavItem, type SubgroupKey,
-} from "./nav-items";
+  PRIMARY_MODULES, resolveActiveModule, itemsForModule,
+  type PrimaryModuleKey,
+} from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermissionEx } from "@/lib/rbac/roles";
-import { Sparkles, ChevronDown, Zap, Search } from "lucide-react";
+import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
+import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
-
-const GROUPS: NavItem["group"][] = [
-  "main",
-  "products-pricing",
-  "purchasing",
-  "sales-customers",
-  "finance",
-  "operations",
-  "reports",
-  "knowledge-comms",
-  "admin",
-];
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -52,49 +41,21 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
 };
 const QUICK_ACCESS_LIMIT = 6;
 
-const SIDEBAR_OPEN_GROUPS_KEY = "afrakala.sidebar.openGroups.v1";
-type GroupKey = NavItem["group"];
-
-function loadSavedOpenGroups(): Partial<Record<GroupKey, boolean>> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(SIDEBAR_OPEN_GROUPS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    const out: Partial<Record<GroupKey, boolean>> = {};
-    for (const g of GROUPS) {
-      const v = (parsed as Record<string, unknown>)[g];
-      if (typeof v === "boolean") out[g] = v;
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
 export function AppSidebar() {
-  const { roles } = useAuth();
+  const { roles, user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
-  const [savedOpenGroups, setSavedOpenGroups] = useState<Partial<Record<GroupKey, boolean>>>(
-    () => loadSavedOpenGroups(),
-  );
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeModule, setActiveModule] = useState<PrimaryModuleKey>(
+    () => resolveActiveModule(location.pathname),
+  );
 
-  const handleGroupOpenChange = (g: GroupKey, open: boolean) => {
-    setSavedOpenGroups((prev) => {
-      const next = { ...prev, [g]: open };
-      if (typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem(SIDEBAR_OPEN_GROUPS_KEY, JSON.stringify(next));
-        } catch {
-          /* ignore quota / disabled storage */
-        }
-      }
-      return next;
-    });
-  };
+  // Keep active module in sync with current route.
+  useEffect(() => {
+    setActiveModule(resolveActiveModule(location.pathname));
+  }, [location.pathname]);
+
   const isAdmin = roles.includes("admin");
   const isManager = roles.includes("manager");
   const isAccountant = roles.includes("accountant");
@@ -111,6 +72,20 @@ export function AppSidebar() {
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
+  // Per-module visible item count — drives empty-state and module-button enable.
+  const moduleCounts = useMemo(() => {
+    const out: Partial<Record<PrimaryModuleKey, number>> = {};
+    for (const m of PRIMARY_MODULES) {
+      out[m.key] = itemsForModule(m.key, visible).length;
+    }
+    return out;
+  }, [visible]);
+
+  const submenuItems = useMemo(
+    () => itemsForModule(activeModule, visible),
+    [activeModule, visible],
+  );
+
   const quickAccess = useMemo(() => {
     const seen = new Set<string>();
     const paths: string[] = [];
@@ -204,207 +179,247 @@ export function AppSidebar() {
     const showPricingBadge =
       item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
     return (
-      <SidebarMenuItem key={item.to}>
-        <SidebarMenuButton
-          asChild
-          isActive={active}
-          tooltip={item.label}
-          className="relative h-9 gap-2.5 rounded-lg transition-colors data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-primary data-[active=true]:font-semibold data-[active=true]:shadow-sm data-[active=true]:before:absolute data-[active=true]:before:inset-y-1.5 data-[active=true]:before:right-0 data-[active=true]:before:w-[3px] data-[active=true]:before:rounded-l-full data-[active=true]:before:bg-sidebar-primary [&>a>svg]:data-[active=true]:text-sidebar-primary"
-        >
-          <Link to={item.to}>
-            <item.icon className="h-4 w-4" />
-            <span>{item.label}</span>
-            {showBadge && (
-              <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                {pendingCount}
-              </span>
-            )}
-            {showPricingBadge && (
-              <span
-                className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
-                  pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
-                }`}
-                title={
-                  pricingAlertVariant === "alert"
-                    ? `${failedCount} مورد ناموفق در صف قیمت`
-                    : `${pendingPricing} مورد در انتظار در صف قیمت`
-                }
-              >
-                {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
-              </span>
-            )}
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
+      <Link
+        key={item.to}
+        to={item.to}
+        aria-current={active ? "page" : undefined}
+        className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors
+          ${active
+            ? "bg-sidebar-accent/70 font-semibold text-sidebar-primary shadow-sm"
+            : "text-sidebar-foreground/85 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"}`}
+      >
+        {active && (
+          <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
+        )}
+        <item.icon className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`} />
+        <span className="truncate">{item.label}</span>
+        {showBadge && (
+          <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+            {pendingCount}
+          </span>
+        )}
+        {showPricingBadge && (
+          <span
+            className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
+              pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+            }`}
+            title={
+              pricingAlertVariant === "alert"
+                ? `${failedCount} مورد ناموفق در صف قیمت`
+                : `${pendingPricing} مورد در انتظار در صف قیمت`
+            }
+          >
+            {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+          </span>
+        )}
+      </Link>
     );
   };
 
+  const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
+  const roleLabel = roles.map((r) => ROLE_LABELS[r]).join("، ") || "بدون نقش";
+  const activeModuleMeta = PRIMARY_MODULES.find((m) => m.key === activeModule);
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/login" });
+  };
+
   return (
-    <Sidebar side="right" collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Sparkles className="h-5 w-5" />
+    <TooltipProvider delayDuration={120}>
+    <Sidebar side="right" collapsible="icon" className="border-l-0">
+      <SidebarHeader className="border-b border-sidebar-border p-0">
+        <div className="flex items-center gap-2 px-3 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+            <Sparkles className="h-4.5 w-4.5" />
           </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="truncate text-sm font-bold text-sidebar-foreground">دستیار افراکالا</span>
-            <span className="truncate text-xs text-sidebar-foreground/70">سامانه مدیریت یکپارچه</span>
+          <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-[13px] font-bold leading-tight text-sidebar-foreground">افراکالا</span>
+            <span className="truncate text-[10.5px] text-sidebar-foreground/65">دستیار هوشمند کسب‌وکار</span>
+          </div>
+        </div>
+        {/* Global search */}
+        <div className="border-t border-sidebar-border/60 px-2 py-2 group-data-[collapsible=icon]:hidden">
+          <div className="relative">
+            <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="جستجوی سریع..."
+              aria-label="جستجوی سریع"
+              className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
+            />
+            <kbd className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-sidebar-border/60 bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60">
+              Ctrl K
+            </kbd>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        {quickAccess.length > 0 && !isSearching && (
-          <SidebarGroup className="pb-1">
-            <SidebarGroupLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
-              <Zap className="h-3 w-3" />
-              <span>دسترسی سریع</span>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="grid grid-cols-2 gap-1 group-data-[collapsible=icon]:grid-cols-1">
-                {quickAccess.map((item) => {
-                  const active = isItemActive(item.to);
-                  return (
-                    <SidebarMenuItem key={`qa-${item.to}`}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        tooltip={item.label}
-                        size="sm"
-                        className="h-8 rounded-md border border-sidebar-border/50 bg-sidebar-accent/20 text-xs hover:bg-sidebar-accent/60 data-[active=true]:border-sidebar-primary/40 data-[active=true]:bg-sidebar-accent/70 data-[active=true]:text-sidebar-primary"
-                      >
-                        <Link to={item.to}>
-                          <item.icon className="h-3.5 w-3.5" />
+      <SidebarContent className="flex flex-row gap-0 overflow-hidden p-0">
+        {/* RAIL — 7 primary module icons */}
+        <div className="flex w-14 shrink-0 flex-col items-center gap-1 border-l border-sidebar-border/60 bg-sidebar/40 py-2 group-data-[collapsible=icon]:border-l-0">
+          {PRIMARY_MODULES.map((m) => {
+            const count = moduleCounts[m.key] ?? 0;
+            const isActive = activeModule === m.key;
+            const disabled = count === 0;
+            return (
+              <Tooltip key={m.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={m.label}
+                    aria-current={isActive ? "page" : undefined}
+                    disabled={disabled}
+                    onClick={() => {
+                      setActiveModule(m.key);
+                      if (m.defaultTo && visible.some((i) => i.to === m.defaultTo)) {
+                        navigate({ to: m.defaultTo });
+                      }
+                    }}
+                    className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-all
+                      ${disabled ? "cursor-not-allowed opacity-30" : "hover:bg-sidebar-accent/50"}
+                      ${isActive
+                        ? "bg-sidebar-accent text-sidebar-primary shadow-sm ring-1 ring-sidebar-primary/30"
+                        : "text-sidebar-foreground/70"}`}
+                  >
+                    {isActive && (
+                      <span className="absolute inset-y-2 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
+                    )}
+                    <m.icon className="h-[18px] w-[18px]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  {m.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+
+        {/* SUBMENU PANEL — only the active module's items, or search results */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto py-2 pl-2 group-data-[collapsible=icon]:hidden">
+          {isSearching ? (
+            <>
+              <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                نتایج جستجو
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {searchResults.length > 0 ? (
+                  searchResults.map(renderItem)
+                ) : (
+                  <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
+                    موردی یافت نشد
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                {activeModuleMeta && (
+                  <>
+                    <activeModuleMeta.icon className="h-3.5 w-3.5" />
+                    <span>{activeModuleMeta.label}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {submenuItems.length > 0 ? (
+                  submenuItems.map(renderItem)
+                ) : (
+                  <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
+                    موردی برای نمایش وجود ندارد
+                  </div>
+                )}
+              </div>
+
+              {/* Quick access at the bottom of dashboard module only */}
+              {activeModule === "dashboard" && quickAccess.length > 0 && (
+                <>
+                  <div className="mt-4 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
+                    دسترسی سریع
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {quickAccess.map((item) => {
+                      const active = isItemActive(item.to);
+                      return (
+                        <Link
+                          key={`qa-${item.to}`}
+                          to={item.to}
+                          className={`flex h-8 items-center gap-1.5 truncate rounded-md border px-2 text-[11px] transition-colors ${
+                            active
+                              ? "border-sidebar-primary/40 bg-sidebar-accent/70 text-sidebar-primary"
+                              : "border-sidebar-border/50 bg-sidebar-accent/20 text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                          }`}
+                        >
+                          <item.icon className="h-3.5 w-3.5 shrink-0" />
                           <span className="truncate">{item.label}</span>
                         </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        <SidebarGroup className="pb-1 group-data-[collapsible=icon]:hidden">
-          <SidebarGroupContent>
-            <div className="relative px-1">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="جستجو در منو..."
-                aria-label="جستجو در منو"
-                className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 pr-8 pl-2 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
-              />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        {isSearching ? (
-          <SidebarGroup className="pb-1">
-            <SidebarGroupContent className="space-y-0.5">
-              {searchResults.length > 0 ? (
-                <SidebarMenu>{searchResults.map(renderItem)}</SidebarMenu>
-              ) : (
-                <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
-                  موردی یافت نشد
-                </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : (
-        GROUPS.map((g) => {
-          const items = visible.filter((i) => i.group === g);
-          if (!items.length) return null;
-          const groupActive = items.some((i) => isItemActive(i.to));
-
-          // Group items into subgroups (preserving order). Items without subgroup go first.
-          const flatItems = items.filter((i) => !i.subgroup);
-          const subgroupOrder: SubgroupKey[] = [];
-          const bySubgroup = new Map<SubgroupKey, NavItem[]>();
-          for (const it of items) {
-            if (!it.subgroup) continue;
-            if (!bySubgroup.has(it.subgroup)) {
-              bySubgroup.set(it.subgroup, []);
-              subgroupOrder.push(it.subgroup);
-            }
-            bySubgroup.get(it.subgroup)!.push(it);
-          }
-          const hasSubgroups = subgroupOrder.length > 0;
-
-          // "main" group is always flat — no collapse.
-          if (g === "main") {
-            return (
-              <SidebarGroup key={g} className="pb-1">
-                <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
-                  {GROUP_LABELS[g]}
-                </SidebarGroupLabel>
-                <SidebarGroupContent className="space-y-0.5">
-                  <SidebarMenu>{items.map(renderItem)}</SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            );
-          }
-
-          return (
-            <Collapsible
-              key={g}
-              open={groupActive || savedOpenGroups[g] === true}
-              onOpenChange={(open) => handleGroupOpenChange(g, open)}
-              className="group/collapsible"
-            >
-          <SidebarGroup className="pb-1">
-                <CollapsibleTrigger asChild>
-                  <SidebarGroupLabel
-                className={`flex cursor-pointer items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider transition-colors hover:text-sidebar-foreground ${groupActive ? "text-sidebar-foreground" : "text-sidebar-foreground/55"}`}
-                  >
-                    <span>{GROUP_LABELS[g]}</span>
-                    <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
-                  </SidebarGroupLabel>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-              <SidebarGroupContent className="space-y-0.5">
-                    {flatItems.length > 0 && (
-                      <SidebarMenu>{flatItems.map(renderItem)}</SidebarMenu>
-                    )}
-                    {hasSubgroups &&
-                      subgroupOrder.map((sg) => {
-                        const sgItems = bySubgroup.get(sg)!;
-                        const sgActive = sgItems.some((i) => isItemActive(i.to));
-                        return (
-                          <Collapsible
-                            key={sg}
-                            defaultOpen={sgActive}
-                        className="group/sub mt-1.5"
-                          >
-                            <CollapsibleTrigger asChild>
-                              <button
-                                type="button"
-                            className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-xs font-medium tracking-wide transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground ${sgActive ? "text-sidebar-foreground" : "text-sidebar-foreground/60"}`}
-                              >
-                                <span>{SUBGROUP_LABELS[sg]}</span>
-                                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=closed]/sub:-rotate-90" />
-                              </button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                          <SidebarMenu className="mr-2 border-r border-sidebar-border/50 pr-1.5">
-                                {sgItems.map(renderItem)}
-                              </SidebarMenu>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        );
-                      })}
-                  </SidebarGroupContent>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-          );
-        }))}
+            </>
+          )}
+        </div>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
-        <div className="px-2 py-2 text-[10px] text-sidebar-foreground/60">نسخه ۱.۰.۰ — فاز پایه</div>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <div className="flex flex-col gap-1 group-data-[collapsible=icon]:hidden">
+          <div className="flex items-center gap-1">
+            <Link
+              to="/notifications"
+              className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              <span>اعلان‌ها</span>
+            </Link>
+            <Link
+              to="/knowledge"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span>راهنما</span>
+            </Link>
+          </div>
+          <div className="mt-1 flex items-center gap-2 rounded-md border border-sidebar-border/60 bg-sidebar-accent/20 px-2 py-1.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/20 text-[10px] font-bold text-sidebar-primary">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[11px] font-semibold text-sidebar-foreground">
+                {user?.email ?? "کاربر"}
+              </div>
+              <div className="truncate text-[10px] text-sidebar-foreground/60">{roleLabel}</div>
+            </div>
+            <button
+              type="button"
+              aria-label="خروج"
+              onClick={handleSignOut}
+              className="rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-destructive"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="hidden flex-col items-center gap-1 group-data-[collapsible=icon]:flex">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                to="/notifications"
+                aria-label="اعلان‌ها"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/40"
+              >
+                <Bell className="h-4 w-4" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs">اعلان‌ها</TooltipContent>
+          </Tooltip>
+        </div>
       </SidebarFooter>
     </Sidebar>
+    </TooltipProvider>
   );
 }
