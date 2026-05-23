@@ -10,6 +10,12 @@ import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureAuthReady, getAuthSnapshot } from "@/lib/auth/session";
+import {
+  logAuthDiagnostic,
+  getAuthDiagnostics,
+  sanitizeDiagnosticsForClipboard,
+} from "@/lib/auth/diagnostics";
+import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
@@ -46,6 +52,7 @@ function LoginPage() {
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [initStatus, setInitStatus] = useState<"pending" | "ready" | "failed">("pending");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -69,7 +76,38 @@ function LoginPage() {
       window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }
     setHydrated(true);
+    setInitStatus("ready");
   }, []);
+
+  // Independent watchdog: if hydration effect doesn't run within 3s (e.g.
+  // a chunk failed to fetch), surface a Persian failure panel instead of a
+  // permanently disabled button.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setInitStatus((s) => {
+        if (s === "pending") {
+          logAuthDiagnostic(
+            "login.hydration.failed",
+            "useEffect did not run within 3s",
+          );
+          return "failed";
+        }
+        return s;
+      });
+    }, 3000);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  const copyInitDiagnostics = async () => {
+    try {
+      const text = sanitizeDiagnosticsForClipboard(getAuthDiagnostics());
+      await navigator.clipboard.writeText(text);
+      toast.success("گزارش مشکل در حافظه کپی شد");
+    } catch (err) {
+      console.error("[login] copy diagnostics failed", err);
+      toast.error("کپی گزارش مشکل ناموفق بود");
+    }
+  };
 
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
@@ -133,7 +171,9 @@ function LoginPage() {
           await new Promise((r) => setTimeout(r, 50));
         }
         await refreshRoles();
-      } catch { /* non-blocking */ }
+      } catch {
+        // non-blocking
+      }
       toast.success("خوش آمدید");
       navigate({ to: "/dashboard", replace: true });
     } catch (err) {
@@ -227,6 +267,37 @@ function LoginPage() {
             <CardDescription>برای دسترسی به سامانه وارد شوید یا ثبت‌نام کنید.</CardDescription>
           </CardHeader>
           <CardContent>
+            {initStatus === "failed" && (
+              <div
+                role="alert"
+                className="mb-4 space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-right"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <p className="text-sm text-foreground">
+                    صفحهٔ ورود به‌درستی بارگذاری نشد. این معمولاً به‌خاطر نسخهٔ کش‌شدهٔ قدیمی مرورگر
+                    یا قطع لحظه‌ای اتصال است، نه مشکل ورود.
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => window.location.reload()}
+                  >
+                    تلاش مجدد
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void copyInitDiagnostics()}
+                  >
+                    کپی گزارش مشکل
+                  </Button>
+                </div>
+              </div>
+            )}
             <Tabs defaultValue="login" dir="rtl">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="login">ورود</TabsTrigger>
