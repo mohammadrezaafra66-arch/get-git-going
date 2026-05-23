@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  authenticateBot, checkBotRateLimit, clientIp, extractBearer, isUuid, jsonResponse,
+  authenticateBot, checkBotRateLimit, clientIp, extractBotKey, isUuid, jsonResponse,
   logBotUsage, mapBotError,
 } from "@/server/bot-api";
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/public/bot/products")({
         const ip = clientIp(request);
         const endpoint = "/api/public/bot/products";
 
-        const auth = await authenticateBot(extractBearer(request.headers.get("authorization")));
+        const auth = await authenticateBot(extractBotKey(request));
         if (!auth.ok) {
           logBotUsage({ api_key_id: null, table_id: null, endpoint, method: "GET",
             status_code: auth.status, error_code: auth.code, ip });
@@ -35,7 +35,9 @@ export const Route = createFileRoute("/api/public/bot/products")({
         const rawSize = Number(url.searchParams.get("page_size") ?? "50") || 50;
         const pageSize = Math.min(100, Math.max(1, rawSize));
         const labelParam = url.searchParams.get("label_id");
-        const updatedSince = url.searchParams.get("updated_since");
+        // Accept both `updated_after` (WooCommerce-friendly) and legacy `updated_since`.
+        const updatedSince =
+          url.searchParams.get("updated_after") ?? url.searchParams.get("updated_since");
 
         if (labelParam && !isUuid(labelParam)) {
           logBotUsage({ api_key_id: auth.keyId, table_id: null, endpoint, method: "GET",
@@ -81,6 +83,7 @@ export const Route = createFileRoute("/api/public/bot/products")({
           pagination: {
             page, page_size: pageSize, total,
             total_pages: Math.ceil(total / pageSize),
+            has_more: page * pageSize < total,
           },
         });
       },

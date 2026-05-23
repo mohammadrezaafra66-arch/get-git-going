@@ -1,120 +1,112 @@
-## نسخهٔ بازنگری‌شدهٔ پلن (Scope کوچک و امن)
 
-این پلن فقط frontend است، بدون فرمول جدید، بدون پیش‌نمایش زنده، بدون تغییر DB/RLS/auth/storage و بدون migration.
+# Plan — Secure Product Export API برای WooCommerce
 
----
+## یافته‌های مرحله بررسی (پاسخ به ۱۰ سؤال شما)
 
-### تأییدیه‌های الزامی
-- ❌ **بدون** هیچ تغییر در database/schema/tables/columns/enums.
-- ❌ **بدون** هیچ migration.
-- ❌ **بدون** تغییر در RLS / policies / triggers / functions / foreign keys / indexes / constraints.
-- ❌ **بدون** تغییر در auth / storage / buckets / storage policies.
-- ❌ **بدون** فرمول جعلی یا تقریب قیمت فروش.
-- ❌ **بدون** هوک live preview جدید.
-- ❌ **بدون** لمس فایل‌های نامرتبط (engine.ts، publish-prices.ts، workbench.ts، workbench-queries.ts، RBAC، routes غیرمرتبط).
-- ✅ Risk Level: **LOW**.
-- ✅ نیاز به backup/export ندارد (شرط 🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨 برقرار **نیست**).
+1. **`bot_api_keys` موجود است؟** بله. شامل `id, name, key_hash, key_prefix, is_active, allowed_table_ids, expires_at`.
+2. **کلیدها hash شده‌اند؟** بله. فقط `key_hash` ذخیره می‌شود؛ raw key از مسیر RPC `bot_authenticate_key` با hash مقایسه می‌شود.
+3. **Middleware برای کلید `bk_` موجود است؟** بله. `src/server/bot-api.ts` شامل `authenticateBot()`, `extractBearer()`, `checkBotRateLimit()`, `logBotUsage()`, `mapBotError()`.
+4. **سیستم scope/permission موجود است؟** بله، اما **نه به‌صورت enum `read_products`**. دسترسی محصولات از طریق **ACL مبتنی بر برچسب (label)** اعمال می‌شود: جدول `bot_api_key_label_access` + RPC `bot_list_products_for_key` خود مجوز را بررسی می‌کند (خطاهای `forbidden_no_labels`, `forbidden_label`, `forbidden_product`).
+5. **`bot_api_usage_logs` موجود است؟** بله، با ایندکس‌های لازم روی `api_key_id`, `ip`, `status_code`, `created_at`.
+6. **`read_products` پشتیبانی می‌شود؟** عملاً بله، از طریق ACL برچسب (هر کلیدی که برچسب مجاز روی محصولات داشته باشد می‌تواند بخواند). یک scope جداگانه با نام `read_products` وجود ندارد.
+7. **Endpoint مورد نظر موجود است؟** **بله، از قبل پیاده‌سازی شده** در `src/routes/api.public.bot.products.ts` (لیست) و `src/routes/api.public.bot.products.$productId.ts` (تک محصول). فیلدهای امن: `id, name, sku, status, stock_status, brand, category, model, color, capacity, updated_at` و قیمت‌ها از RPC برمی‌گردد.
+8. **آیا فقط با کد قابل پیاده‌سازی است؟** بله، تغییرات درخواستی شما بدون migration ممکن است.
+9. **آیا schema/RLS/storage/auth تغییر می‌کند؟** خیر در پلن پیشنهادی (همه چیز code-only). فقط اگر تصمیم بگیریم rate limit از ۱۲۰ به ۶۰ کاهش یابد یا scope enum مجزا اضافه شود، migration لازم می‌شود — که در پلن **پیشنهاد نمی‌کنم**.
+10. **آیا برای Local نیاز به backup/export است؟** **خیر** در پلن پیشنهادی.
 
----
+## شکاف بین درخواست شما و وضعیت فعلی
 
-## یافته‌های کلیدی (تأیید کاربر)
-- فیلتر مسئول در `/pricing/my-workbench` از قبل وجود دارد و به `product_owner_assignments` متصل است. فقط discoverability ضعیف است.
-- ستون «قیمت فروش» در workbench از `product_computed_prices.rounded_sale_price` خوانده می‌شود.
-- پس از save، کد فعلی این invalidationها را انجام می‌دهد:
-  - `["workbench-rows-v2"]`
-  - `["product-price-history", row.id]`
-  - `["product-computed-prices"]`
-- این invalidate در حال حاضر هست؛ اما اگر `publishProductPrices` به دلایلی مثل `NO_RULE` ناموفق شود، فقط یک toast کلی نمایش داده می‌شود و **در همان ردیف هیچ پیامی نیست**؛ کاربر گمان می‌کند «refresh نشده» در حالی که واقعاً سمت سرور هیچ مقدار جدیدی تولید نشده.
+| نیاز | وضعیت فعلی | اقدام پیشنهادی |
+|---|---|---|
+| Endpoint `/api/public/bot/products` | ✅ موجود | بدون تغییر مسیر |
+| Auth با bot key (hash شده) | ✅ موجود | بدون تغییر |
+| هدر `x-bot-api-key: bk_xxx` | ❌ فقط `Authorization: Bearer` | **افزودن alias** در `extractBearer` |
+| فیلدهای امن محصول | ✅ موجود (RPC) | بدون تغییر |
+| Pagination | ✅ `page, page_size, total, total_pages` | **افزودن فیلد `has_more`** به پاسخ |
+| Incremental sync `updated_after` | فعلاً `updated_since` | **افزودن alias `updated_after`** |
+| Rate limit per key | ✅ ۱۲۰/دقیقه + ۵۰۰۰/روز (سرور) | **پیشنهاد: حفظ ۱۲۰**. تغییر به ۶۰ نیازمند migration روی تابع `bot_check_rate_limit` است. |
+| Usage logging | ✅ موجود | بدون تغییر |
+| عدم افشای service_role | ✅ `supabaseAdmin` فقط server-side | بدون تغییر |
+| عدم افشای `/rest/v1/products` | ✅ Wooo فقط با bot key به این endpoint می‌زند | مستندسازی در گزارش |
+| scope `read_products` | ACL برچسب | **حفظ مدل برچسب**. افزودن enum scope مجزا = migration که توصیه نمی‌کنم. |
 
-نتیجه: «refresh نشدن قیمت فروش» در عمل یا (الف) به‌خاطر شکست محاسبه سمت سرور است، یا (ب) نبود feedback روشن در سطح ردیف. این پلن همین دو موضوع را در حداقل ممکن اصلاح می‌کند.
+## تغییرات پیشنهادی (Code-only — بدون migration)
 
----
+### فایل‌های تغییر:
 
-## تغییرات (دقیقاً ۲ فایل، Frontend-only)
+1. **`src/server/bot-api.ts`**
+   - تابع جدید `extractBotKey(request)`: ابتدا `x-bot-api-key` را می‌خواند، اگر نبود `Authorization: Bearer` را.
+   - بدون تغییر در `extractBearer` (سازگاری عقب‌رو).
 
-### فایل ۱: `src/components/pricing/workbench/WorkbenchFiltersBar.tsx`
-**هدف:** فقط discoverability فیلتر مسئول موجود.
-- اضافه کردن یک ردیف Quick Chips بالای فیلترهای موجود با ۳ گزینه:
-  - «محصولات من» → معادل state فعلی `showAll=false` (سیگنال به والد از طریق `onChange` فعلی + یک callback جدید `onScopeChange?: (scope: "mine" | "all" | "no-owner") => void` که والد آن را به state `showAll` و `filters.ownerId` mapping می‌کند).
-  - «همه محصولات» → `showAll=true`, `ownerId="all"` (فقط برای admin/manager).
-  - «بدون مسئول» → `showAll=true`, `ownerId="none"`.
-- Select «مسئول» موجود **حذف یا تغییر نمی‌کند**؛ فقط label فارسی بزرگ‌تر و آیکن مسئول به آن اضافه می‌شود.
-- هیچ منطق فیلتری جدید اضافه نمی‌شود؛ همان فیلدهای `WorkbenchFilters` موجود استفاده می‌شود.
+2. **`src/routes/api.public.bot.products.ts`**
+   - استفاده از `extractBotKey` به جای `extractBearer`.
+   - پذیرش هر دو پارامتر `updated_after` و `updated_since` (اولویت با `updated_after`).
+   - افزودن `has_more: page < total_pages` به پاسخ pagination.
+   - بدون تغییر در منطق ACL یا فیلدهای خروجی.
 
-### فایل ۲: `src/routes/_app.pricing.my-workbench.tsx`
-**هدف:** اتصال chips، نمایش feedback شکست publish در سطح ردیف، و تضمین refresh.
+3. **`src/routes/api.public.bot.products.$productId.ts`**
+   - استفاده از `extractBotKey` (هماهنگی هدرها).
 
-تغییرات حداقلی:
-1. **اتصال chips:** والد، callback جدید را به state موجود `showAll` و `filters.ownerId` تبدیل می‌کند. هیچ state جدیدی فراتر از این اضافه نمی‌شود.
-2. **نگه‌داری نتیجهٔ publish per-row:** یک state کوچک `publishErrors: Record<string, string>` (محصول → پیام فارسی) اضافه می‌شود.
-3. **در `saveRow` (بدون تغییر `upsertPurchasePrice` و بدون تغییر `publishProductPrices`):**
-   - بعد از فراخوانی `publishProductPrices`:
-     - اگر `pubRes.succeeded > 0` → پاک کردن `publishErrors[row.id]` و نمایش toast موفقیت (مانند الان).
-     - اگر `pubRes.failed > 0 && pubRes.succeeded === 0` → استخراج اولین `error` از `pubRes.results` و map کردن متن انگلیسی `PricingError` به پیام فارسی:
-       - شامل `"قانون"` یا کد `NO_RULE` → «قانون قیمت‌گذاری منطبق برای این محصول وجود ندارد. نگاشت `pricing_rules` را بررسی کنید.»
-       - شامل `"نرخ ارز"` یا `NO_CURRENCY_RATE` / `NO_SHIPPING_RATE` → «نرخ ارز فعال برای محاسبه موجود نیست.»
-       - شامل `"قیمت خرید"` یا `NO_PURCHASE_PRICE` → «قیمت خرید معتبر برای این محصول ثبت نشده.»
-       - در غیر این صورت همان متن خام برگشتی.
-     - ذخیره در `publishErrors[row.id]` + toast هشدار با همان متن فارسی.
-   - **invalidate موجود حفظ می‌شود** و **یک invalidate جدید اضافه می‌شود** تا اطمینان کامل از refresh ردیف لیست:
-     ```ts
-     qc.invalidateQueries({ queryKey: ["workbench-rows-v2"] });
-     await qc.refetchQueries({ queryKey: ["workbench-rows-v2"], type: "active" });
-     ```
-     (تنها تفاوت با وضع فعلی: یک `refetchQueries` صریح تا اگر کاربر فاصلهٔ زمانی staleTime را تجربه نکند، ستون قیمت فروش بلافاصله تازه شود.)
-4. **نمایش پیام شکست در ردیف:**
-   - در `DesktopRow` و `MobileCard`، اگر `publishErrors[row.id]` تنظیم شده، یک Badge کوچک قرمز زیر/کنار ستون «قیمت فروش» با متن کوتاه (مثلاً «خطای محاسبه — جزئیات در پیام») نمایش داده می‌شود و عنوان (title) آن متن کامل فارسی دارد.
-   - وقتی کاربر مجدد ذخیره کرد و موفق شد، پیام پاک می‌شود.
+4. **`docs/lovable-change-reports/2026-05-23-HHMM-bot-products-api-woocommerce-aliases.md`** (جدید)
+   - گزارش کامل با ۱۵ بخش الزامی پروتکل.
+   - **بدون** نشان `🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨` (چون فقط کد است).
 
-**هیچ کد دیگری در این فایل دست‌کاری نمی‌شود.**
+### فایل‌هایی که **تغییر نمی‌کنند**:
+- `supabase/migrations/*` — هیچ migration جدیدی.
+- جداول، توابع RPC، RLS، policy، auth، storage — هیچ تغییری.
+- `bot_check_rate_limit` (DB function) — حفظ ۱۲۰/دقیقه.
 
----
+## ریسک
 
-## آنچه انجام **نمی‌شود** (در پاسخ به اصلاحات کاربر)
-- ❌ هوک `useSaleP ricePreview` ساخته نمی‌شود.
-- ❌ هیچ پیش‌نمایش زنده‌ای از قیمت فروش هنگام تایپ نشان داده نمی‌شود.
-- ❌ کارت دیاگنوستیک `PricingRulesMappingDiagnostics` ساخته نمی‌شود (در صورت نیاز، در یک تسک جداگانه و فقط با کوئری‌های read-only پیشنهاد خواهد شد).
-- ❌ موتور قیمت‌گذاری (`engine.ts`) لمس نمی‌شود.
-- ❌ `publish-prices.ts` لمس نمی‌شود.
-- ❌ `workbench.ts` و `workbench-queries.ts` لمس نمی‌شوند.
-- ❌ schema/migration/RLS/auth/storage بدون تغییر.
+**LOW** — تغییرات کاملاً additive و backward-compatible.
 
----
+- هدر قدیمی `Authorization: Bearer` همچنان کار می‌کند.
+- پارامتر قدیمی `updated_since` همچنان کار می‌کند.
+- `has_more` فقط فیلد جدید در پاسخ است (مصرف‌کننده‌های موجود نشکست).
 
-## فایل‌های لمس‌شده (کامل)
-1. `src/components/pricing/workbench/WorkbenchFiltersBar.tsx`
-2. `src/routes/_app.pricing.my-workbench.tsx`
+## Local Update Steps
 
-## فایل‌های لمس‌نشده (تأیید)
-- `src/lib/pricing/engine.ts`
-- `src/lib/pricing/publish-prices.ts`
-- `src/lib/pricing/workbench.ts`
-- `src/lib/pricing/workbench-queries.ts`
-- `src/lib/pricing/process-recompute-queue.server.ts`
-- هیچ migration، RLS، policy، trigger، function، storage یا auth.
+نوع آپدیت: **A (فقط کد)** طبق `LOCAL_UPDATE_PROTOCOL.md`.
 
----
+1. `git pull` روی سرور Local.
+2. Build مجدد image: `docker build -t afrakala-app:lan ...` (با همان build-args موجود).
+3. `docker compose ... up -d --force-recreate web`.
+4. بدون migration، بدون backup، بدون storage export.
 
-## مراحل آزمون دستی
-1. ورود با admin → `/pricing/my-workbench`.
-2. سه chip «محصولات من / همه محصولات / بدون مسئول» در بالای فیلترها قابل کلیک باشد و رفتار درست داشته باشد.
-3. Select «مسئول» موجود همچنان کار کند.
-4. ویرایش قیمت خرید یک محصولی که `pricing_rules` منطبق دارد → بعد از Save، ستون «قیمت فروش» همان ردیف **بلافاصله** مقدار جدید از `product_computed_prices` را نشان دهد.
-5. ویرایش قیمت خرید محصولی که rule منطبق ندارد → Badge قرمز فارسی در ردیف + toast فارسی واضح. ستون قیمت فروش تغییر نمی‌کند (چون سمت سرور هیچ مقدار جدیدی تولید نشده) و **هیچ عدد جعلی نمایش داده نمی‌شود**.
-6. اجرای `npm run build` و `npm run lint` — نتایج گزارش می‌شود.
+## Rollback Plan
 
----
+برگرداندن به image قبلی web. هیچ تغییر دیتابیسی برای rollback لازم نیست.
 
-## گزارش پایان تغییر
-بعد از اعمال تغییرات، یک فایل گزارش جدید با ۱۵ بخش الزامی ساخته می‌شود:
-`docs/lovable-change-reports/YYYY-MM-DD-HHMM-fix-pricing-workshop-owner-chips-and-refresh.md`
+## Post-Update Tests
 
-### پیش‌نمایش بخش‌های حساس گزارش
-- Database Changes: None
-- Schema Changes: None
-- Storage Changes: None
-- Migration Required: No
-- Backup Required: No
-- Export Required: No
-- Risk Level: LOW
-- Rollback Plan: revert دو فایل ذکر شده در commit واحد روی branch `fix-pricing-workshop-dashboard-and-sale-price`.
+روی هر دو محیط Lovable و Local:
+
+```
+# 1. هدر قدیمی همچنان کار می‌کند
+curl -H "Authorization: Bearer bk_..." \
+  "https://<host>/api/public/bot/products?page=1&page_size=2"
+
+# 2. هدر جدید WooCommerce-friendly
+curl -H "x-bot-api-key: bk_..." \
+  "https://<host>/api/public/bot/products?page=1&page_size=2"
+
+# 3. Incremental sync با نام جدید
+curl -H "x-bot-api-key: bk_..." \
+  "https://<host>/api/public/bot/products?updated_after=2026-05-01T00:00:00Z"
+
+# 4. has_more در پاسخ موجود باشد
+# 5. کلید بدون برچسب → 403 forbidden_no_labels
+# 6. بدون کلید → 401 missing_key
+# 7. ۱۲۱ درخواست پشت‌سرهم → 429 با Retry-After
+# 8. لاگ در bot_api_usage_logs ثبت شود
+```
+
+## نکات تصمیم‌گیری برای تأیید شما
+
+قبل از build، لطفاً درباره این دو مورد تصمیم بگیرید:
+
+1. **Rate limit ۶۰/دقیقه به جای ۱۲۰؟** اگر بله → نیازمند migration کوچک روی تابع `bot_check_rate_limit` (ریسک LOW، بدون نیاز به backup چون فقط منطق تابع). در غیر این صورت، ۱۲۰/دقیقه فعلی حفظ می‌شود.
+
+2. **افزودن scope enum `read_products` مجزا؟** پیشنهاد من **خیر** است؛ مدل label-ACL فعلی هم همان نقش را با granularity بیشتر ایفا می‌کند و افزودن enum یعنی migration + UI جدید برای مدیریت scope. اگر اصرار دارید، در فاز جداگانه پیشنهاد می‌شود.
+
+اگر هر دو را با پیش‌فرض من (حفظ ۱۲۰ و حفظ label-ACL) تأیید کنید، پلن **۱۰۰٪ code-only** و بدون نیاز به backup/export است.

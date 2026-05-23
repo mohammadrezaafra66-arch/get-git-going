@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
-  authenticateBot, checkBotRateLimit, clientIp, extractBearer, isUuid, jsonResponse,
+  authenticateBot, checkBotRateLimit, clientIp, extractBotKey, isUuid, jsonResponse,
   logBotUsage, mapBotError,
 } from "@/server/bot-api";
 
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/public/bot/products/$productId")({
           return jsonResponse(400, { error: "invalid_product_id", message: "شناسه محصول نامعتبر است." });
         }
 
-        const auth = await authenticateBot(extractBearer(request.headers.get("authorization")));
+        const auth = await authenticateBot(extractBotKey(request));
         if (!auth.ok) {
           logBotUsage({ api_key_id: null, table_id: null, endpoint, method: "GET",
             status_code: auth.status, error_code: auth.code, ip });
