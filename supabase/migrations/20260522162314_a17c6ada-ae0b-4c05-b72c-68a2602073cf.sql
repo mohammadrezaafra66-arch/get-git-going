@@ -1,6 +1,5 @@
 -- Add nullable settlement_type_id to sale_lists as PDF/metadata only.
 -- Does NOT affect pricing engine, pricing_rules, invoices, or price_calculation_snapshots.
--- Branch sync touch: keeps the migration visible in the feature branch diff without changing schema behavior.
 ALTER TABLE public.sale_lists
   ADD COLUMN IF NOT EXISTS settlement_type_id uuid NULL;
 

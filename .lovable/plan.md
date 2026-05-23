@@ -1,135 +1,120 @@
-# طرح بازطراحی Shell / Sidebar / Dashboard افراکالا
+## نسخهٔ بازنگری‌شدهٔ پلن (Scope کوچک و امن)
 
-شاخه پیشنهادی: `feature/rtl-dashboard-shell-sidebar`
-نوع تغییر: فقط Frontend/UI. بدون migration، بدون تغییر RLS/auth/storage/pricing/sale-list PDF/invoices/business logic.
-
----
-
-## ۱) بررسی وضعیت موجود (Files inspected)
-
-| لایه | فایل فعلی | وضعیت |
-|---|---|---|
-| Shell | `src/components/layout/AppShell.tsx` | RTL با `SidebarProvider` و `SidebarInset` — سالم، قابل استفاده مجدد. |
-| Header | `src/components/layout/AppHeader.tsx` | شامل `SidebarTrigger`, `NotificationBell`, user menu. |
-| Sidebar | `src/components/layout/AppSidebar.tsx` | کامل، RTL (`side="right"`)، با quick-access، جستجو، گروه‌های collapsible، badge صف قیمت‌گذاری، realtime users pending. |
-| Nav config | `src/components/layout/nav-items.ts` | data-driven، ۹ گروه، ~۹۰ آیتم، با RBAC (`module`, `adminOnly`). |
-| Mobile nav | `src/components/layout/MobileBottomNav.tsx` | role-aware. |
-| Dashboard | `src/routes/_app.dashboard.tsx` | ساده، KPIهای خالی `—`، صرفاً معرفی فاز ۱. |
-| Auth wrapper | `src/routes/_app.tsx` | مدیریت loading/error session. |
-| UI kit | `src/components/ui/sidebar.tsx`, `card`, `button`, `collapsible`, `tooltip`, `dropdown-menu` (shadcn). | کامل. |
-| Tokens | `src/styles.css` | شامل `--sidebar-*`, `--background`, `--primary` با oklch. |
-
-**روت‌های موجود مرتبط (نمونه):** `/dashboard`, `/products`, `/products/categories`, `/products/brands`, `/pricing/*`, `/sales`, `/sales/quotes`, `/sales/invoices`, `/sales/customers`, `/accounting/receipts`, `/accounting/payables`, `/accounting/bank-accounts`, `/reports`, `/marketing/suggestions-history`, `/users`, `/roles`, `/admin/settings`, `/audit-logs`, `/notifications`, `/messages`, `/operations/tasks`.
-
-**یافته‌های مهم:**
-- زیرساخت shell/sidebar/RBAC کامل است؛ نیازی به بازنویسی نیست.
-- `nav-items.ts` دقیقاً همان منبع data-driven مطلوب طرح است → فقط mapping به ۷ ماژول لازم است.
-- هیچ روت اختصاصی برای «دستیار» (assistant) وجود ندارد. (سؤال در بخش ۸.)
-- روت‌های «بازگشت از فروش»، «چک‌ها»، «پشتیبان‌گیری»، «هماهنگی‌ها»، «پرسش‌های پرتکرار»، «تحلیل پیش‌بینی»، «داشبوردهای تحلیلی»، «گزارش‌ساز پیشرفته» وجود ندارند — برای آن‌ها item ایجاد **نمی‌شود** (طبق دستور: «روت‌های خالی نسازید»).
+این پلن فقط frontend است، بدون فرمول جدید، بدون پیش‌نمایش زنده، بدون تغییر DB/RLS/auth/storage و بدون migration.
 
 ---
 
-## ۲) رویکرد طراحی — حداقل تهاجم
-
-سه تغییر مستقل:
-
-### الف) معماری ناوبری ۲-سطحی با ۷ ماژول اصلی (progressive disclosure)
-
-افزودن یک «لایه نگاشت» روی `nav-items.ts` بدون تغییر ساختار خود فایل (تا RBAC، AppSidebar فعلی و mobile nav سالم بمانند). فایل جدید:
-
-- `src/components/layout/primary-modules.ts` — تعریف ۷ ماژول اصلی (`dashboard | assistant | catalog | sales | finance | analytics | admin`) با: کلید، برچسب فارسی، آیکون، روت پیش‌فرض، و **لیست `to`های زیرمنو** که به آیتم‌های موجود `NAV_ITEMS` map می‌شوند.
-
-نگاشت پیشنهادی (فقط روت‌های موجود):
-
-- **داشبورد** → `/dashboard`, `/operations/tasks`, `/notifications`, `/reports` (به‌عنوان «نمای کلی/گزارش‌ها»)
-- **دستیار** → `/pricing/market-intelligence`, `/pricing/product-recommendations`, `/marketing/suggestions`, `/marketing/suggestions-history`, `/pricing/price-alerts`, `/messages`
-- **کالا** → `/products`, `/products/categories`, `/products/brands`, `/products/labels`, `/pricing/quick-price`, `/pricing/sale-lists`, `/price-lists`, `/pricing/purchase-prices`
-- **فروش** → `/sales/customers`, `/sales`, `/sales/quotes`, `/sales/invoices`, `/sales/stock-alerts`, `/sales/credit-customers`
-- **مالی** → `/accounting/receipts`, `/accounting/purchase-payments`, `/accounting/bank-accounts`, `/accounting/external-parties`, `/accounting/daily-capital`, `/accounting/receivables`, `/accounting/payables`
-- **تحلیل** → `/reports`, `/sales/quote-share-logs`, `/pricing/amin-hozoor-board`, `/pricing/market-intelligence`, `/marketing/suggestions-history`
-- **مدیریت** → `/users`, `/roles`, `/admin/roles`, `/admin/settings`, `/audit-logs`, `/bot-api-keys` و سایر `/admin/*`
-
-### ب) بازنویسی `AppSidebar.tsx` به مدل ۲-سطحی
-
-- نوار آیکونی باریک سمت راست (۷۶px) با ۷ آیکون ماژول؛ فعال‌شدن با کلیک یا بر اساس روت فعلی.
-- پنل زیرمنوی متنی (۲۲۰px) فقط برای ماژول فعال (progressive disclosure).
-- بالای ماژول‌ها: لوگو + «افراکالا / دستیار هوشمند کسب‌وکار» + search box (Ctrl+K placeholder، عملکرد جستجوی فعلی منو حفظ شود).
-- پایین: لینک‌های «اعلان‌ها» با badge موجود، «راهنما» (لینک به `/knowledge`)، پروفایل کاربر (email + roles از `useAuth`)، دکمه collapse.
-- حالت collapsed: فقط ستون آیکونی ۷-تایی + tooltip.
-- موبایل: drawer از سمت راست (همان رفتار فعلی `SidebarProvider` با `side="right"`).
-- **حفظ:** badge صف pricing recompute، badge pending users، realtime subscription، RBAC از `hasPermissionEx`، quick-access در پایین زیرمنوی داشبورد.
-
-### ج) ارتقای صفحه داشبورد (`_app.dashboard.tsx`)
-
-- breadcrumb «خانه / داشبورد».
-- KPI cards با مقادیر **placeholder واضح** («—» یا «در حال آماده‌سازی») — **هیچ داده fake که با backend در تضاد باشد ساخته نمی‌شود**. مقادیر نمونه پیشنهادی فقط در صورت اجازه شما اضافه می‌شود (سؤال در بخش ۸).
-- دو کارت چارت placeholder (بدون افزودن کتابخانه چارت جدید — از div + متن «نمودار به‌زودی»).
-- لیست فعالیت‌های اخیر: استفاده از داده واقعی notifications اگر RLS اجازه دهد، در غیر این‌صورت skeleton.
-- لیست وظایف: لینک به `/operations/tasks` با وضعیت empty.
-- دکمه «بررسی تولدهای امروز» فعلی حفظ می‌شود.
+### تأییدیه‌های الزامی
+- ❌ **بدون** هیچ تغییر در database/schema/tables/columns/enums.
+- ❌ **بدون** هیچ migration.
+- ❌ **بدون** تغییر در RLS / policies / triggers / functions / foreign keys / indexes / constraints.
+- ❌ **بدون** تغییر در auth / storage / buckets / storage policies.
+- ❌ **بدون** فرمول جعلی یا تقریب قیمت فروش.
+- ❌ **بدون** هوک live preview جدید.
+- ❌ **بدون** لمس فایل‌های نامرتبط (engine.ts، publish-prices.ts، workbench.ts، workbench-queries.ts، RBAC، routes غیرمرتبط).
+- ✅ Risk Level: **LOW**.
+- ✅ نیاز به backup/export ندارد (شرط 🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨 برقرار **نیست**).
 
 ---
 
-## ۳) فایل‌هایی که تغییر می‌کنند
+## یافته‌های کلیدی (تأیید کاربر)
+- فیلتر مسئول در `/pricing/my-workbench` از قبل وجود دارد و به `product_owner_assignments` متصل است. فقط discoverability ضعیف است.
+- ستون «قیمت فروش» در workbench از `product_computed_prices.rounded_sale_price` خوانده می‌شود.
+- پس از save، کد فعلی این invalidationها را انجام می‌دهد:
+  - `["workbench-rows-v2"]`
+  - `["product-price-history", row.id]`
+  - `["product-computed-prices"]`
+- این invalidate در حال حاضر هست؛ اما اگر `publishProductPrices` به دلایلی مثل `NO_RULE` ناموفق شود، فقط یک toast کلی نمایش داده می‌شود و **در همان ردیف هیچ پیامی نیست**؛ کاربر گمان می‌کند «refresh نشده» در حالی که واقعاً سمت سرور هیچ مقدار جدیدی تولید نشده.
 
-| فایل | نوع | علت |
-|---|---|---|
-| `src/components/layout/primary-modules.ts` | **جدید** | تعریف ۷ ماژول و نگاشت به روت‌های موجود. |
-| `src/components/layout/AppSidebar.tsx` | ویرایش | ساختار ۲-سطحی، layout دو-ستونی. RBAC و badgeها حفظ. |
-| `src/routes/_app.dashboard.tsx` | ویرایش | KPI cards + breadcrumb + activities/tasks placeholders. |
-| `src/styles.css` | ویرایش جزئی | tuning متغیرهای sidebar (پالت دقیق درخواست: `#0F172A`, `#3B82F6`,…) فقط در صورت اختلاف. |
-| `docs/lovable-change-reports/2026-05-23-HHMM-rtl-dashboard-shell-sidebar.md` | جدید | گزارش تغییرات. |
-
-**عمداً تغییر نمی‌کنند:** `AppShell.tsx`, `AppHeader.tsx`, `MobileBottomNav.tsx`, `nav-items.ts`, `_app.tsx`, تمام روت‌های زیر `_app.*`, تمام فایل‌های pricing/sale-list/PDF/invoice/auth/supabase/migration/deploy.
-
----
-
-## ۴) تأیید مرزهای ایمنی
-
-- ❌ بدون DB migration. ❌ بدون تغییر RLS/policies. ❌ بدون تغییر auth/storage. ❌ بدون تغییر pricing engine, sale-list PDF, settlement types, invoices, pricing_rules.
-- ❌ بدون تغییر روت‌های public sale list (`public.sale-lists.$listId.tsx`).
-- ❌ بدون رنامیگ روت‌ها یا حذف کد.
-- ❌ بدون افزودن dependency جدید (از shadcn + lucide موجود استفاده می‌شود).
-- ✅ تماماً Frontend.
+نتیجه: «refresh نشدن قیمت فروش» در عمل یا (الف) به‌خاطر شکست محاسبه سمت سرور است، یا (ب) نبود feedback روشن در سطح ردیف. این پلن همین دو موضوع را در حداقل ممکن اصلاح می‌کند.
 
 ---
 
-## ۵) سطح ریسک
+## تغییرات (دقیقاً ۲ فایل، Frontend-only)
 
-**LOW** — تغییرات روی shell/sidebar نمایش‌محور است و RBAC / data hooks فعلی حفظ می‌شود. تنها ریسک واقعی: اگر آیتمی از `NAV_ITEMS` در نگاشت ۷ ماژول قرار نگیرد، کاربر آن را در سایدبار نمی‌بیند (اما روت همچنان قابل دسترس مستقیم است). برای پوشش: یک ماژول fallback «بیشتر» اضافه می‌کنیم که آیتم‌های unmapped را در پایین زیرمنوی «مدیریت» نشان دهد.
+### فایل ۱: `src/components/pricing/workbench/WorkbenchFiltersBar.tsx`
+**هدف:** فقط discoverability فیلتر مسئول موجود.
+- اضافه کردن یک ردیف Quick Chips بالای فیلترهای موجود با ۳ گزینه:
+  - «محصولات من» → معادل state فعلی `showAll=false` (سیگنال به والد از طریق `onChange` فعلی + یک callback جدید `onScopeChange?: (scope: "mine" | "all" | "no-owner") => void` که والد آن را به state `showAll` و `filters.ownerId` mapping می‌کند).
+  - «همه محصولات» → `showAll=true`, `ownerId="all"` (فقط برای admin/manager).
+  - «بدون مسئول» → `showAll=true`, `ownerId="none"`.
+- Select «مسئول» موجود **حذف یا تغییر نمی‌کند**؛ فقط label فارسی بزرگ‌تر و آیکن مسئول به آن اضافه می‌شود.
+- هیچ منطق فیلتری جدید اضافه نمی‌شود؛ همان فیلدهای `WorkbenchFilters` موجود استفاده می‌شود.
+
+### فایل ۲: `src/routes/_app.pricing.my-workbench.tsx`
+**هدف:** اتصال chips، نمایش feedback شکست publish در سطح ردیف، و تضمین refresh.
+
+تغییرات حداقلی:
+1. **اتصال chips:** والد، callback جدید را به state موجود `showAll` و `filters.ownerId` تبدیل می‌کند. هیچ state جدیدی فراتر از این اضافه نمی‌شود.
+2. **نگه‌داری نتیجهٔ publish per-row:** یک state کوچک `publishErrors: Record<string, string>` (محصول → پیام فارسی) اضافه می‌شود.
+3. **در `saveRow` (بدون تغییر `upsertPurchasePrice` و بدون تغییر `publishProductPrices`):**
+   - بعد از فراخوانی `publishProductPrices`:
+     - اگر `pubRes.succeeded > 0` → پاک کردن `publishErrors[row.id]` و نمایش toast موفقیت (مانند الان).
+     - اگر `pubRes.failed > 0 && pubRes.succeeded === 0` → استخراج اولین `error` از `pubRes.results` و map کردن متن انگلیسی `PricingError` به پیام فارسی:
+       - شامل `"قانون"` یا کد `NO_RULE` → «قانون قیمت‌گذاری منطبق برای این محصول وجود ندارد. نگاشت `pricing_rules` را بررسی کنید.»
+       - شامل `"نرخ ارز"` یا `NO_CURRENCY_RATE` / `NO_SHIPPING_RATE` → «نرخ ارز فعال برای محاسبه موجود نیست.»
+       - شامل `"قیمت خرید"` یا `NO_PURCHASE_PRICE` → «قیمت خرید معتبر برای این محصول ثبت نشده.»
+       - در غیر این صورت همان متن خام برگشتی.
+     - ذخیره در `publishErrors[row.id]` + toast هشدار با همان متن فارسی.
+   - **invalidate موجود حفظ می‌شود** و **یک invalidate جدید اضافه می‌شود** تا اطمینان کامل از refresh ردیف لیست:
+     ```ts
+     qc.invalidateQueries({ queryKey: ["workbench-rows-v2"] });
+     await qc.refetchQueries({ queryKey: ["workbench-rows-v2"], type: "active" });
+     ```
+     (تنها تفاوت با وضع فعلی: یک `refetchQueries` صریح تا اگر کاربر فاصلهٔ زمانی staleTime را تجربه نکند، ستون قیمت فروش بلافاصله تازه شود.)
+4. **نمایش پیام شکست در ردیف:**
+   - در `DesktopRow` و `MobileCard`، اگر `publishErrors[row.id]` تنظیم شده، یک Badge کوچک قرمز زیر/کنار ستون «قیمت فروش» با متن کوتاه (مثلاً «خطای محاسبه — جزئیات در پیام») نمایش داده می‌شود و عنوان (title) آن متن کامل فارسی دارد.
+   - وقتی کاربر مجدد ذخیره کرد و موفق شد، پیام پاک می‌شود.
+
+**هیچ کد دیگری در این فایل دست‌کاری نمی‌شود.**
 
 ---
 
-## ۶) پلن تست دستی
-
-1. Login → `/dashboard` → سایدبار راست، ۷ آیکون.
-2. کلیک روی هر ۷ ماژول → فقط زیرمنوی همان ماژول دیده شود.
-3. ناوبری به `/products`, `/sales/quotes`, `/accounting/receipts` → آیتم active درست highlight شود.
-4. RBAC: ورود با کاربر `sales` → ماژول «مدیریت» نباید قابل کلیک باشد یا زیرمنوی خالی نشان دهد.
-5. collapse sidebar → فقط ۷ آیکون + tooltip.
-6. Mobile (<768px) → drawer از راست باز شود.
-7. صف pricing recompute (admin) → badge قرمز/زرد روی آیتم آن دیده شود.
-8. کاربران در انتظار تأیید (admin) → badge کنار «کاربران».
-9. جستجوی منو از بالای سایدبار → نتایج همان آیتم‌های مجاز.
-10. داشبورد → KPI cards، breadcrumb، دکمه تولد همچنان کار کند.
-11. `npm run build` و `npm run lint`.
+## آنچه انجام **نمی‌شود** (در پاسخ به اصلاحات کاربر)
+- ❌ هوک `useSaleP ricePreview` ساخته نمی‌شود.
+- ❌ هیچ پیش‌نمایش زنده‌ای از قیمت فروش هنگام تایپ نشان داده نمی‌شود.
+- ❌ کارت دیاگنوستیک `PricingRulesMappingDiagnostics` ساخته نمی‌شود (در صورت نیاز، در یک تسک جداگانه و فقط با کوئری‌های read-only پیشنهاد خواهد شد).
+- ❌ موتور قیمت‌گذاری (`engine.ts`) لمس نمی‌شود.
+- ❌ `publish-prices.ts` لمس نمی‌شود.
+- ❌ `workbench.ts` و `workbench-queries.ts` لمس نمی‌شوند.
+- ❌ schema/migration/RLS/auth/storage بدون تغییر.
 
 ---
 
-## ۷) Self-Host Acceptance Check
+## فایل‌های لمس‌شده (کامل)
+1. `src/components/pricing/workbench/WorkbenchFiltersBar.tsx`
+2. `src/routes/_app.pricing.my-workbench.tsx`
 
-- بدون CDN/فونت آنلاین جدید (فونت Vazirmatn اگر قبلاً local نباشد، اضافه نمی‌شود مگر اجازه دهید).
-- بدون secret جدید.
-- بدون وابستگی به سرویس خارجی.
-- سازگار با Docker/Linux deployment فعلی.
+## فایل‌های لمس‌نشده (تأیید)
+- `src/lib/pricing/engine.ts`
+- `src/lib/pricing/publish-prices.ts`
+- `src/lib/pricing/workbench.ts`
+- `src/lib/pricing/workbench-queries.ts`
+- `src/lib/pricing/process-recompute-queue.server.ts`
+- هیچ migration، RLS، policy، trigger، function، storage یا auth.
 
 ---
 
-## ۸) پرسش‌ها قبل از پیاده‌سازی
+## مراحل آزمون دستی
+1. ورود با admin → `/pricing/my-workbench`.
+2. سه chip «محصولات من / همه محصولات / بدون مسئول» در بالای فیلترها قابل کلیک باشد و رفتار درست داشته باشد.
+3. Select «مسئول» موجود همچنان کار کند.
+4. ویرایش قیمت خرید یک محصولی که `pricing_rules` منطبق دارد → بعد از Save، ستون «قیمت فروش» همان ردیف **بلافاصله** مقدار جدید از `product_computed_prices` را نشان دهد.
+5. ویرایش قیمت خرید محصولی که rule منطبق ندارد → Badge قرمز فارسی در ردیف + toast فارسی واضح. ستون قیمت فروش تغییر نمی‌کند (چون سمت سرور هیچ مقدار جدیدی تولید نشده) و **هیچ عدد جعلی نمایش داده نمی‌شود**.
+6. اجرای `npm run build` و `npm run lint` — نتایج گزارش می‌شود.
 
-1. **«دستیار»**: روت اختصاصی assistant/chat وجود ندارد. آیا این ماژول را به ابزارهای هوشمند موجود (`/pricing/market-intelligence`, `/pricing/product-recommendations`, `/marketing/suggestions`) map کنم، یا روت placeholder `/assistant` بسازم با صفحه «به‌زودی»؟
-2. **KPIهای داشبورد**: مقادیر نمونه (۱۲۸,۴۵۰,۰۰۰ تومان و …) را به‌صورت **placeholder ثابت** نمایش دهم (هشدار: داده fake) یا فقط skeleton/«—» تا اتصال به backend واقعی در فاز بعد؟
-3. **فونت Vazirmatn**: اگر در پروژه local نیست، اضافه کنم به `src/assets/fonts/` و در `styles.css` بارگذاری کنم؟ (سازگار با self-host)
-4. **آیتم‌های unmapped**: ماژول fallback «بیشتر» اضافه شود یا همه آیتم‌ها به یکی از ۷ ماژول map شوند (با کمی فشار معنایی)؟
+---
 
-پس از تأیید این ۴ مورد، پیاده‌سازی را آغاز می‌کنم.
+## گزارش پایان تغییر
+بعد از اعمال تغییرات، یک فایل گزارش جدید با ۱۵ بخش الزامی ساخته می‌شود:
+`docs/lovable-change-reports/YYYY-MM-DD-HHMM-fix-pricing-workshop-owner-chips-and-refresh.md`
+
+### پیش‌نمایش بخش‌های حساس گزارش
+- Database Changes: None
+- Schema Changes: None
+- Storage Changes: None
+- Migration Required: No
+- Backup Required: No
+- Export Required: No
+- Risk Level: LOW
+- Rollback Plan: revert دو فایل ذکر شده در commit واحد روی branch `fix-pricing-workshop-dashboard-and-sale-price`.

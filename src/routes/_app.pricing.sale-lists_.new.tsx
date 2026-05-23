@@ -1,4 +1,3 @@
-// Branch sync touch: settlement type is saved as metadata only; no pricing logic is changed.
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
