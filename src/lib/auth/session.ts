@@ -289,13 +289,21 @@ export function initializeAuthSession() {
       const isFullReload =
         event === "SIGNED_IN" && (!snapshot.user || snapshot.user.id !== session?.user?.id);
       const isSignOut = event === "SIGNED_OUT";
-      logAuthDiagnostic("session.onAuthStateChange", event, {
-        hasSession: !!session,
-        sessionUserId: session?.user?.id ?? null,
-        previousUserId: snapshot.user?.id ?? null,
-        isFullReload,
-        isSignOut,
-      });
+      // Only log noteworthy transitions. Routine TOKEN_REFRESHED /
+      // SIGNED_IN-same-user / INITIAL_SESSION-same-user fire on every tab
+      // focus and dev-server reconnect; logging each one floods the
+      // console (and previously triggered a stack-trace capture per event)
+      // which made the app feel sluggish.
+      const isUserUpdated = event === "USER_UPDATED";
+      if (isFullReload || isSignOut || isUserUpdated) {
+        logAuthDiagnostic("session.onAuthStateChange", event, {
+          hasSession: !!session,
+          sessionUserId: session?.user?.id ?? null,
+          previousUserId: snapshot.user?.id ?? null,
+          isFullReload,
+          isSignOut,
+        });
+      }
       void applySession(session, isFullReload || isSignOut);
     });
   } catch (error) {
