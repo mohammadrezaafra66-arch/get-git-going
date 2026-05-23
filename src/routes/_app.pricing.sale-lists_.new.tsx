@@ -385,6 +385,7 @@ function NewSaleListPage() {
       toast.success("لیست فروش با موفقیت ایجاد شد.");
       navigate({ to: "/pricing/sale-lists" });
     } catch (e) {
+      console.error("[sale-lists/new] insert failed:", e);
       const msg = e instanceof Error ? e.message : "خطا در ذخیره لیست فروش.";
       toast.error(msg);
     } finally {
