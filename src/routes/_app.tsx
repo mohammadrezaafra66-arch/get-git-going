@@ -73,7 +73,8 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const { loading, profileLoading, rolesLoading, authError, retryAuth } = useAuth();
+  const { loading, profileLoading, rolesLoading, authError, profileError, rolesError, retryAuth } =
+    useAuth();
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
 
@@ -105,15 +106,34 @@ function AppLayout() {
 
   if (authError) {
     const diag = getAuthDiagnostics();
+    const copyDiagnostics = async () => {
+      try {
+        const text = sanitizeDiagnosticsForClipboard(getAuthDiagnostics());
+        await navigator.clipboard.writeText(text);
+        toast.success("گزارش خطا در حافظه کپی شد");
+      } catch (err) {
+        console.error("[_app] copy diagnostics failed", err);
+        toast.error("کپی گزارش خطا ناموفق بود");
+      }
+    };
     return (
       <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="max-w-2xl space-y-3 text-center">
           <h1 className="text-lg font-semibold text-foreground">خطا در بارگذاری جلسه کاربری</h1>
           <p className="text-sm text-muted-foreground">{authError}</p>
+          {profileError && profileError !== authError && (
+            <p className="text-xs text-muted-foreground">پروفایل: {profileError}</p>
+          )}
+          {rolesError && rolesError !== authError && (
+            <p className="text-xs text-muted-foreground">نقش‌ها: {rolesError}</p>
+          )}
           <div className="flex justify-center gap-2">
             <Button onClick={() => void retryAuth()}>تلاش دوباره</Button>
             <Button variant="outline" onClick={() => setShowDiag((v) => !v)}>
               {showDiag ? "بستن گزارش خطا" : "نمایش گزارش خطا"}
+            </Button>
+            <Button variant="outline" onClick={() => void copyDiagnostics()}>
+              کپی گزارش خطا
             </Button>
             {diag.length > 0 && (
               <Button
