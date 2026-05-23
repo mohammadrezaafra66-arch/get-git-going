@@ -1,112 +1,135 @@
+# طرح بازطراحی Shell / Sidebar / Dashboard افراکالا
 
-# Plan — Secure Product Export API برای WooCommerce
+شاخه پیشنهادی: `feature/rtl-dashboard-shell-sidebar`
+نوع تغییر: فقط Frontend/UI. بدون migration، بدون تغییر RLS/auth/storage/pricing/sale-list PDF/invoices/business logic.
 
-## یافته‌های مرحله بررسی (پاسخ به ۱۰ سؤال شما)
+---
 
-1. **`bot_api_keys` موجود است؟** بله. شامل `id, name, key_hash, key_prefix, is_active, allowed_table_ids, expires_at`.
-2. **کلیدها hash شده‌اند؟** بله. فقط `key_hash` ذخیره می‌شود؛ raw key از مسیر RPC `bot_authenticate_key` با hash مقایسه می‌شود.
-3. **Middleware برای کلید `bk_` موجود است؟** بله. `src/server/bot-api.ts` شامل `authenticateBot()`, `extractBearer()`, `checkBotRateLimit()`, `logBotUsage()`, `mapBotError()`.
-4. **سیستم scope/permission موجود است؟** بله، اما **نه به‌صورت enum `read_products`**. دسترسی محصولات از طریق **ACL مبتنی بر برچسب (label)** اعمال می‌شود: جدول `bot_api_key_label_access` + RPC `bot_list_products_for_key` خود مجوز را بررسی می‌کند (خطاهای `forbidden_no_labels`, `forbidden_label`, `forbidden_product`).
-5. **`bot_api_usage_logs` موجود است؟** بله، با ایندکس‌های لازم روی `api_key_id`, `ip`, `status_code`, `created_at`.
-6. **`read_products` پشتیبانی می‌شود؟** عملاً بله، از طریق ACL برچسب (هر کلیدی که برچسب مجاز روی محصولات داشته باشد می‌تواند بخواند). یک scope جداگانه با نام `read_products` وجود ندارد.
-7. **Endpoint مورد نظر موجود است؟** **بله، از قبل پیاده‌سازی شده** در `src/routes/api.public.bot.products.ts` (لیست) و `src/routes/api.public.bot.products.$productId.ts` (تک محصول). فیلدهای امن: `id, name, sku, status, stock_status, brand, category, model, color, capacity, updated_at` و قیمت‌ها از RPC برمی‌گردد.
-8. **آیا فقط با کد قابل پیاده‌سازی است؟** بله، تغییرات درخواستی شما بدون migration ممکن است.
-9. **آیا schema/RLS/storage/auth تغییر می‌کند؟** خیر در پلن پیشنهادی (همه چیز code-only). فقط اگر تصمیم بگیریم rate limit از ۱۲۰ به ۶۰ کاهش یابد یا scope enum مجزا اضافه شود، migration لازم می‌شود — که در پلن **پیشنهاد نمی‌کنم**.
-10. **آیا برای Local نیاز به backup/export است؟** **خیر** در پلن پیشنهادی.
+## ۱) بررسی وضعیت موجود (Files inspected)
 
-## شکاف بین درخواست شما و وضعیت فعلی
-
-| نیاز | وضعیت فعلی | اقدام پیشنهادی |
+| لایه | فایل فعلی | وضعیت |
 |---|---|---|
-| Endpoint `/api/public/bot/products` | ✅ موجود | بدون تغییر مسیر |
-| Auth با bot key (hash شده) | ✅ موجود | بدون تغییر |
-| هدر `x-bot-api-key: bk_xxx` | ❌ فقط `Authorization: Bearer` | **افزودن alias** در `extractBearer` |
-| فیلدهای امن محصول | ✅ موجود (RPC) | بدون تغییر |
-| Pagination | ✅ `page, page_size, total, total_pages` | **افزودن فیلد `has_more`** به پاسخ |
-| Incremental sync `updated_after` | فعلاً `updated_since` | **افزودن alias `updated_after`** |
-| Rate limit per key | ✅ ۱۲۰/دقیقه + ۵۰۰۰/روز (سرور) | **پیشنهاد: حفظ ۱۲۰**. تغییر به ۶۰ نیازمند migration روی تابع `bot_check_rate_limit` است. |
-| Usage logging | ✅ موجود | بدون تغییر |
-| عدم افشای service_role | ✅ `supabaseAdmin` فقط server-side | بدون تغییر |
-| عدم افشای `/rest/v1/products` | ✅ Wooo فقط با bot key به این endpoint می‌زند | مستندسازی در گزارش |
-| scope `read_products` | ACL برچسب | **حفظ مدل برچسب**. افزودن enum scope مجزا = migration که توصیه نمی‌کنم. |
+| Shell | `src/components/layout/AppShell.tsx` | RTL با `SidebarProvider` و `SidebarInset` — سالم، قابل استفاده مجدد. |
+| Header | `src/components/layout/AppHeader.tsx` | شامل `SidebarTrigger`, `NotificationBell`, user menu. |
+| Sidebar | `src/components/layout/AppSidebar.tsx` | کامل، RTL (`side="right"`)، با quick-access، جستجو، گروه‌های collapsible، badge صف قیمت‌گذاری، realtime users pending. |
+| Nav config | `src/components/layout/nav-items.ts` | data-driven، ۹ گروه، ~۹۰ آیتم، با RBAC (`module`, `adminOnly`). |
+| Mobile nav | `src/components/layout/MobileBottomNav.tsx` | role-aware. |
+| Dashboard | `src/routes/_app.dashboard.tsx` | ساده، KPIهای خالی `—`، صرفاً معرفی فاز ۱. |
+| Auth wrapper | `src/routes/_app.tsx` | مدیریت loading/error session. |
+| UI kit | `src/components/ui/sidebar.tsx`, `card`, `button`, `collapsible`, `tooltip`, `dropdown-menu` (shadcn). | کامل. |
+| Tokens | `src/styles.css` | شامل `--sidebar-*`, `--background`, `--primary` با oklch. |
 
-## تغییرات پیشنهادی (Code-only — بدون migration)
+**روت‌های موجود مرتبط (نمونه):** `/dashboard`, `/products`, `/products/categories`, `/products/brands`, `/pricing/*`, `/sales`, `/sales/quotes`, `/sales/invoices`, `/sales/customers`, `/accounting/receipts`, `/accounting/payables`, `/accounting/bank-accounts`, `/reports`, `/marketing/suggestions-history`, `/users`, `/roles`, `/admin/settings`, `/audit-logs`, `/notifications`, `/messages`, `/operations/tasks`.
 
-### فایل‌های تغییر:
+**یافته‌های مهم:**
+- زیرساخت shell/sidebar/RBAC کامل است؛ نیازی به بازنویسی نیست.
+- `nav-items.ts` دقیقاً همان منبع data-driven مطلوب طرح است → فقط mapping به ۷ ماژول لازم است.
+- هیچ روت اختصاصی برای «دستیار» (assistant) وجود ندارد. (سؤال در بخش ۸.)
+- روت‌های «بازگشت از فروش»، «چک‌ها»، «پشتیبان‌گیری»، «هماهنگی‌ها»، «پرسش‌های پرتکرار»، «تحلیل پیش‌بینی»، «داشبوردهای تحلیلی»، «گزارش‌ساز پیشرفته» وجود ندارند — برای آن‌ها item ایجاد **نمی‌شود** (طبق دستور: «روت‌های خالی نسازید»).
 
-1. **`src/server/bot-api.ts`**
-   - تابع جدید `extractBotKey(request)`: ابتدا `x-bot-api-key` را می‌خواند، اگر نبود `Authorization: Bearer` را.
-   - بدون تغییر در `extractBearer` (سازگاری عقب‌رو).
+---
 
-2. **`src/routes/api.public.bot.products.ts`**
-   - استفاده از `extractBotKey` به جای `extractBearer`.
-   - پذیرش هر دو پارامتر `updated_after` و `updated_since` (اولویت با `updated_after`).
-   - افزودن `has_more: page < total_pages` به پاسخ pagination.
-   - بدون تغییر در منطق ACL یا فیلدهای خروجی.
+## ۲) رویکرد طراحی — حداقل تهاجم
 
-3. **`src/routes/api.public.bot.products.$productId.ts`**
-   - استفاده از `extractBotKey` (هماهنگی هدرها).
+سه تغییر مستقل:
 
-4. **`docs/lovable-change-reports/2026-05-23-HHMM-bot-products-api-woocommerce-aliases.md`** (جدید)
-   - گزارش کامل با ۱۵ بخش الزامی پروتکل.
-   - **بدون** نشان `🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨` (چون فقط کد است).
+### الف) معماری ناوبری ۲-سطحی با ۷ ماژول اصلی (progressive disclosure)
 
-### فایل‌هایی که **تغییر نمی‌کنند**:
-- `supabase/migrations/*` — هیچ migration جدیدی.
-- جداول، توابع RPC، RLS، policy، auth، storage — هیچ تغییری.
-- `bot_check_rate_limit` (DB function) — حفظ ۱۲۰/دقیقه.
+افزودن یک «لایه نگاشت» روی `nav-items.ts` بدون تغییر ساختار خود فایل (تا RBAC، AppSidebar فعلی و mobile nav سالم بمانند). فایل جدید:
 
-## ریسک
+- `src/components/layout/primary-modules.ts` — تعریف ۷ ماژول اصلی (`dashboard | assistant | catalog | sales | finance | analytics | admin`) با: کلید، برچسب فارسی، آیکون، روت پیش‌فرض، و **لیست `to`های زیرمنو** که به آیتم‌های موجود `NAV_ITEMS` map می‌شوند.
 
-**LOW** — تغییرات کاملاً additive و backward-compatible.
+نگاشت پیشنهادی (فقط روت‌های موجود):
 
-- هدر قدیمی `Authorization: Bearer` همچنان کار می‌کند.
-- پارامتر قدیمی `updated_since` همچنان کار می‌کند.
-- `has_more` فقط فیلد جدید در پاسخ است (مصرف‌کننده‌های موجود نشکست).
+- **داشبورد** → `/dashboard`, `/operations/tasks`, `/notifications`, `/reports` (به‌عنوان «نمای کلی/گزارش‌ها»)
+- **دستیار** → `/pricing/market-intelligence`, `/pricing/product-recommendations`, `/marketing/suggestions`, `/marketing/suggestions-history`, `/pricing/price-alerts`, `/messages`
+- **کالا** → `/products`, `/products/categories`, `/products/brands`, `/products/labels`, `/pricing/quick-price`, `/pricing/sale-lists`, `/price-lists`, `/pricing/purchase-prices`
+- **فروش** → `/sales/customers`, `/sales`, `/sales/quotes`, `/sales/invoices`, `/sales/stock-alerts`, `/sales/credit-customers`
+- **مالی** → `/accounting/receipts`, `/accounting/purchase-payments`, `/accounting/bank-accounts`, `/accounting/external-parties`, `/accounting/daily-capital`, `/accounting/receivables`, `/accounting/payables`
+- **تحلیل** → `/reports`, `/sales/quote-share-logs`, `/pricing/amin-hozoor-board`, `/pricing/market-intelligence`, `/marketing/suggestions-history`
+- **مدیریت** → `/users`, `/roles`, `/admin/roles`, `/admin/settings`, `/audit-logs`, `/bot-api-keys` و سایر `/admin/*`
 
-## Local Update Steps
+### ب) بازنویسی `AppSidebar.tsx` به مدل ۲-سطحی
 
-نوع آپدیت: **A (فقط کد)** طبق `LOCAL_UPDATE_PROTOCOL.md`.
+- نوار آیکونی باریک سمت راست (۷۶px) با ۷ آیکون ماژول؛ فعال‌شدن با کلیک یا بر اساس روت فعلی.
+- پنل زیرمنوی متنی (۲۲۰px) فقط برای ماژول فعال (progressive disclosure).
+- بالای ماژول‌ها: لوگو + «افراکالا / دستیار هوشمند کسب‌وکار» + search box (Ctrl+K placeholder، عملکرد جستجوی فعلی منو حفظ شود).
+- پایین: لینک‌های «اعلان‌ها» با badge موجود، «راهنما» (لینک به `/knowledge`)، پروفایل کاربر (email + roles از `useAuth`)، دکمه collapse.
+- حالت collapsed: فقط ستون آیکونی ۷-تایی + tooltip.
+- موبایل: drawer از سمت راست (همان رفتار فعلی `SidebarProvider` با `side="right"`).
+- **حفظ:** badge صف pricing recompute، badge pending users، realtime subscription، RBAC از `hasPermissionEx`، quick-access در پایین زیرمنوی داشبورد.
 
-1. `git pull` روی سرور Local.
-2. Build مجدد image: `docker build -t afrakala-app:lan ...` (با همان build-args موجود).
-3. `docker compose ... up -d --force-recreate web`.
-4. بدون migration، بدون backup، بدون storage export.
+### ج) ارتقای صفحه داشبورد (`_app.dashboard.tsx`)
 
-## Rollback Plan
+- breadcrumb «خانه / داشبورد».
+- KPI cards با مقادیر **placeholder واضح** («—» یا «در حال آماده‌سازی») — **هیچ داده fake که با backend در تضاد باشد ساخته نمی‌شود**. مقادیر نمونه پیشنهادی فقط در صورت اجازه شما اضافه می‌شود (سؤال در بخش ۸).
+- دو کارت چارت placeholder (بدون افزودن کتابخانه چارت جدید — از div + متن «نمودار به‌زودی»).
+- لیست فعالیت‌های اخیر: استفاده از داده واقعی notifications اگر RLS اجازه دهد، در غیر این‌صورت skeleton.
+- لیست وظایف: لینک به `/operations/tasks` با وضعیت empty.
+- دکمه «بررسی تولدهای امروز» فعلی حفظ می‌شود.
 
-برگرداندن به image قبلی web. هیچ تغییر دیتابیسی برای rollback لازم نیست.
+---
 
-## Post-Update Tests
+## ۳) فایل‌هایی که تغییر می‌کنند
 
-روی هر دو محیط Lovable و Local:
+| فایل | نوع | علت |
+|---|---|---|
+| `src/components/layout/primary-modules.ts` | **جدید** | تعریف ۷ ماژول و نگاشت به روت‌های موجود. |
+| `src/components/layout/AppSidebar.tsx` | ویرایش | ساختار ۲-سطحی، layout دو-ستونی. RBAC و badgeها حفظ. |
+| `src/routes/_app.dashboard.tsx` | ویرایش | KPI cards + breadcrumb + activities/tasks placeholders. |
+| `src/styles.css` | ویرایش جزئی | tuning متغیرهای sidebar (پالت دقیق درخواست: `#0F172A`, `#3B82F6`,…) فقط در صورت اختلاف. |
+| `docs/lovable-change-reports/2026-05-23-HHMM-rtl-dashboard-shell-sidebar.md` | جدید | گزارش تغییرات. |
 
-```
-# 1. هدر قدیمی همچنان کار می‌کند
-curl -H "Authorization: Bearer bk_..." \
-  "https://<host>/api/public/bot/products?page=1&page_size=2"
+**عمداً تغییر نمی‌کنند:** `AppShell.tsx`, `AppHeader.tsx`, `MobileBottomNav.tsx`, `nav-items.ts`, `_app.tsx`, تمام روت‌های زیر `_app.*`, تمام فایل‌های pricing/sale-list/PDF/invoice/auth/supabase/migration/deploy.
 
-# 2. هدر جدید WooCommerce-friendly
-curl -H "x-bot-api-key: bk_..." \
-  "https://<host>/api/public/bot/products?page=1&page_size=2"
+---
 
-# 3. Incremental sync با نام جدید
-curl -H "x-bot-api-key: bk_..." \
-  "https://<host>/api/public/bot/products?updated_after=2026-05-01T00:00:00Z"
+## ۴) تأیید مرزهای ایمنی
 
-# 4. has_more در پاسخ موجود باشد
-# 5. کلید بدون برچسب → 403 forbidden_no_labels
-# 6. بدون کلید → 401 missing_key
-# 7. ۱۲۱ درخواست پشت‌سرهم → 429 با Retry-After
-# 8. لاگ در bot_api_usage_logs ثبت شود
-```
+- ❌ بدون DB migration. ❌ بدون تغییر RLS/policies. ❌ بدون تغییر auth/storage. ❌ بدون تغییر pricing engine, sale-list PDF, settlement types, invoices, pricing_rules.
+- ❌ بدون تغییر روت‌های public sale list (`public.sale-lists.$listId.tsx`).
+- ❌ بدون رنامیگ روت‌ها یا حذف کد.
+- ❌ بدون افزودن dependency جدید (از shadcn + lucide موجود استفاده می‌شود).
+- ✅ تماماً Frontend.
 
-## نکات تصمیم‌گیری برای تأیید شما
+---
 
-قبل از build، لطفاً درباره این دو مورد تصمیم بگیرید:
+## ۵) سطح ریسک
 
-1. **Rate limit ۶۰/دقیقه به جای ۱۲۰؟** اگر بله → نیازمند migration کوچک روی تابع `bot_check_rate_limit` (ریسک LOW، بدون نیاز به backup چون فقط منطق تابع). در غیر این صورت، ۱۲۰/دقیقه فعلی حفظ می‌شود.
+**LOW** — تغییرات روی shell/sidebar نمایش‌محور است و RBAC / data hooks فعلی حفظ می‌شود. تنها ریسک واقعی: اگر آیتمی از `NAV_ITEMS` در نگاشت ۷ ماژول قرار نگیرد، کاربر آن را در سایدبار نمی‌بیند (اما روت همچنان قابل دسترس مستقیم است). برای پوشش: یک ماژول fallback «بیشتر» اضافه می‌کنیم که آیتم‌های unmapped را در پایین زیرمنوی «مدیریت» نشان دهد.
 
-2. **افزودن scope enum `read_products` مجزا؟** پیشنهاد من **خیر** است؛ مدل label-ACL فعلی هم همان نقش را با granularity بیشتر ایفا می‌کند و افزودن enum یعنی migration + UI جدید برای مدیریت scope. اگر اصرار دارید، در فاز جداگانه پیشنهاد می‌شود.
+---
 
-اگر هر دو را با پیش‌فرض من (حفظ ۱۲۰ و حفظ label-ACL) تأیید کنید، پلن **۱۰۰٪ code-only** و بدون نیاز به backup/export است.
+## ۶) پلن تست دستی
+
+1. Login → `/dashboard` → سایدبار راست، ۷ آیکون.
+2. کلیک روی هر ۷ ماژول → فقط زیرمنوی همان ماژول دیده شود.
+3. ناوبری به `/products`, `/sales/quotes`, `/accounting/receipts` → آیتم active درست highlight شود.
+4. RBAC: ورود با کاربر `sales` → ماژول «مدیریت» نباید قابل کلیک باشد یا زیرمنوی خالی نشان دهد.
+5. collapse sidebar → فقط ۷ آیکون + tooltip.
+6. Mobile (<768px) → drawer از راست باز شود.
+7. صف pricing recompute (admin) → badge قرمز/زرد روی آیتم آن دیده شود.
+8. کاربران در انتظار تأیید (admin) → badge کنار «کاربران».
+9. جستجوی منو از بالای سایدبار → نتایج همان آیتم‌های مجاز.
+10. داشبورد → KPI cards، breadcrumb، دکمه تولد همچنان کار کند.
+11. `npm run build` و `npm run lint`.
+
+---
+
+## ۷) Self-Host Acceptance Check
+
+- بدون CDN/فونت آنلاین جدید (فونت Vazirmatn اگر قبلاً local نباشد، اضافه نمی‌شود مگر اجازه دهید).
+- بدون secret جدید.
+- بدون وابستگی به سرویس خارجی.
+- سازگار با Docker/Linux deployment فعلی.
+
+---
+
+## ۸) پرسش‌ها قبل از پیاده‌سازی
+
+1. **«دستیار»**: روت اختصاصی assistant/chat وجود ندارد. آیا این ماژول را به ابزارهای هوشمند موجود (`/pricing/market-intelligence`, `/pricing/product-recommendations`, `/marketing/suggestions`) map کنم، یا روت placeholder `/assistant` بسازم با صفحه «به‌زودی»؟
+2. **KPIهای داشبورد**: مقادیر نمونه (۱۲۸,۴۵۰,۰۰۰ تومان و …) را به‌صورت **placeholder ثابت** نمایش دهم (هشدار: داده fake) یا فقط skeleton/«—» تا اتصال به backend واقعی در فاز بعد؟
+3. **فونت Vazirmatn**: اگر در پروژه local نیست، اضافه کنم به `src/assets/fonts/` و در `styles.css` بارگذاری کنم؟ (سازگار با self-host)
+4. **آیتم‌های unmapped**: ماژول fallback «بیشتر» اضافه شود یا همه آیتم‌ها به یکی از ۷ ماژول map شوند (با کمی فشار معنایی)؟
+
+پس از تأیید این ۴ مورد، پیاده‌سازی را آغاز می‌کنم.
