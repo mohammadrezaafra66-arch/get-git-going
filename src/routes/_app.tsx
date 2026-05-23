@@ -29,11 +29,17 @@ export const Route = createFileRoute("/_app")({
     try {
       let auth = await ensureAuthReady();
       // Defensive re-check: if user is missing but we're still mid-load
-      // (e.g. SIGNED_IN handler hasn't finished applySession yet), force a
-      // fresh resolve before deciding to redirect. Prevents bouncing the
-      // user back to /login right after a successful sign-in.
+      // (e.g. SIGNED_IN handler hasn't finished applySession yet), wait a
+      // short tick for the in-flight init to settle BEFORE forcing a fresh
+      // resolve. ensureAuthReady(true) now avoids toggling global loading
+      // for an already-initialized session, but we still prefer to let the
+      // current init promise finish rather than start a new one.
       if (!auth.user && (auth.loading || !auth.initialized)) {
-        auth = await ensureAuthReady(true);
+        for (let i = 0; i < 10; i += 1) {
+          await new Promise((r) => setTimeout(r, 50));
+          auth = await ensureAuthReady();
+          if (auth.user || (!auth.loading && auth.initialized)) break;
+        }
       }
       if (!auth.user) {
         logAuthDiagnostic("redirect.login", "_app.beforeLoad: no user", {
