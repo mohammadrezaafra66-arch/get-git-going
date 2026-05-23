@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Sparkles, Package, ShoppingCart, Wallet, BarChart3, Settings, MoreHorizontal,
+  LayoutDashboard, Sparkles, Package, ShoppingCart, Wallet, BarChart3, Settings,
 } from "lucide-react";
 import type { NavItem } from "./nav-items";
 
@@ -10,8 +10,7 @@ export type PrimaryModuleKey =
   | "sales"
   | "finance"
   | "analytics"
-  | "admin"
-  | "more";
+  | "admin";
 
 export interface PrimaryModule {
   key: PrimaryModuleKey;
@@ -24,9 +23,9 @@ export interface PrimaryModule {
 }
 
 /**
- * 7 primary modules + fallback "more". Mapping references only routes that
- * exist in NAV_ITEMS — no new routes are created. RBAC filtering happens
- * downstream against NAV_ITEMS.
+ * Exactly 7 primary modules. No fallback module is permitted. Every
+ * user-facing route in NAV_ITEMS must be mapped intentionally into one of
+ * these 7. RBAC filtering happens downstream against NAV_ITEMS.
  */
 export const PRIMARY_MODULES: PrimaryModule[] = [
   {
@@ -48,6 +47,8 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/marketing/suggestions",
       "/marketing/suggestions-history",
       "/messages",
+      "/knowledge",
+      "/academy",
     ],
   },
   {
@@ -123,6 +124,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/gamification/leaderboard",
       "/gamification/admin/analytics",
       "/audit-logs",
+      "/data-tables",
     ],
   },
   {
@@ -155,13 +157,8 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/bot-api-keys",
       "/market-matches",
       "/operations/daily-mood/admin",
+      "/feedback",
     ],
-  },
-  {
-    key: "more",
-    label: "بیشتر",
-    icon: MoreHorizontal,
-    paths: ["/feedback", "/knowledge", "/academy", "/data-tables"],
   },
 ];
 
