@@ -1,8 +1,6 @@
 /**
  * Sale-list "PDF" generator.
  *
- * Branch sync touch: settlement type is display-only PDF metadata and has no pricing effect.
- *
  * History: previous attempts used pdfmake + arabic-persian-reshaper + bidi-js
  * to render Persian text in PDF directly. pdfmake's text engine does NOT
  * implement Arabic/Persian shaping or the Unicode Bidi algorithm correctly,

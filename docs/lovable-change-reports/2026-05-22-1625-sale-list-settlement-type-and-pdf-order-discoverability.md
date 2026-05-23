@@ -1,9 +1,3 @@
-
-## §18. Branch marker pass
-
-Added one-line marker comments to `src/lib/pdf/sale-list-pdf.ts`, `src/routes/_app.pricing.sale-lists_.$listId.tsx`, and `src/routes/_app.pricing.sale-lists_.new.tsx` so GitHub compare on `feature/sale-list-settlement-type` shows the feature files as changed. Migration file is read-only and cannot be re-touched; it is already present at `supabase/migrations/20260522162314_a17c6ada-ae0b-4c05-b72c-68a2602073cf.sql` and applied. No behavioral change.
-
-Note: the underlying feature commit `6a54e07` is already reachable from `main`, so before this pass `git diff main...HEAD` was empty for feature files by design (they were identical to main).
 # Sale list: settlement type metadata + PDF brand/product order discoverability
 
 Date: 2026-05-22 16:25
@@ -116,9 +110,3 @@ LOW. Metadata-only column; UI is additive; pricing engine untouched.
 ## 16. Build / Lint Status
 
 TypeScript compiles via the Lovable build pipeline. No new dependencies added.
-
-## 17. Branch Sync Note
-
-Re-applied / verified on branch `feature/sale-list-settlement-type` to ensure
-the named branch on GitHub contains the full settlement-type changeset
-(migration + frontend + change report). No code logic changed by this note.
