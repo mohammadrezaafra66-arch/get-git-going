@@ -7,8 +7,10 @@ import {
   logAuthDiagnostic,
   getAuthDiagnostics,
   clearAuthDiagnostics,
+  sanitizeDiagnosticsForClipboard,
 } from "@/lib/auth/diagnostics";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export function AuthLoadingScreen() {
   return (
