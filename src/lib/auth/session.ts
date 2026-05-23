@@ -254,6 +254,18 @@ async function applySession(session: Session | null, force = false) {
     return snapshot;
   }
 
+  // Same authenticated user, but caller forced a refresh (e.g. retry after
+  // an error, or post-login confirmation). Refresh identity WITHOUT toggling
+  // the global `loading` flag — otherwise AppShell unmounts and the user
+  // briefly sees "در حال بررسی جلسه کاربری..." on every refresh / reconnect.
+  // loadIdentity already sets profileLoading/rolesLoading, which is enough.
+  if (snapshot.initialized && snapshot.user?.id === session.user.id) {
+    setSnapshot({ session, user: session.user });
+    await loadIdentity(session.user, force);
+    setSnapshot({ session, user: session.user });
+    return snapshot;
+  }
+
   setSnapshot({
     initialized: true,
     loading: true,
@@ -319,7 +331,12 @@ export async function ensureAuthReady(force = false) {
 
   if (!initPromise || force) {
     initPromise = (async () => {
-      setSnapshot({ loading: true });
+      // Only flip the global loading flag on the very first init. On a forced
+      // refresh for an already-initialized session, leave `loading` alone so
+      // AppShell doesn't unmount into the "بررسی جلسه کاربری" screen.
+      if (!snapshot.initialized) {
+        setSnapshot({ loading: true });
+      }
       let result: Awaited<ReturnType<typeof supabase.auth.getSession>>;
       try {
         result = await withAuthTimeout(supabase.auth.getSession(), "get session");
@@ -348,9 +365,7 @@ export async function ensureAuthReady(force = false) {
 
 export async function refreshAuthIdentity() {
   if (!snapshot.user) return ensureAuthReady(true);
-  setSnapshot({ loading: true });
   await loadIdentity(snapshot.user, true);
-  setSnapshot({ loading: false });
   return snapshot;
 }
 
