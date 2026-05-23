@@ -230,7 +230,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border p-0">
         <div className="flex items-center gap-2 px-3 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-            <Sparkles className="h-4.5 w-4.5" />
+            <Sparkles className="h-[18px] w-[18px]" />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
             <span className="truncate text-[13px] font-bold leading-tight text-sidebar-foreground">افراکالا</span>

@@ -94,7 +94,7 @@ function DashboardPage() {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${k.bg} ${k.accent}`}>
-                  <k.icon className="h-4.5 w-4.5" />
+                  <k.icon className="h-[18px] w-[18px]" />
                 </div>
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
                   در حال آماده‌سازی
