@@ -28,18 +28,13 @@ export const Route = createFileRoute("/_app")({
     if (typeof window === "undefined") return;
     try {
       let auth = await ensureAuthReady();
-      // Defensive re-check: if user is missing but we're still mid-load
-      // (e.g. SIGNED_IN handler hasn't finished applySession yet), wait a
-      // short tick for the in-flight init to settle BEFORE forcing a fresh
-      // resolve. ensureAuthReady(true) now avoids toggling global loading
-      // for an already-initialized session, but we still prefer to let the
-      // current init promise finish rather than start a new one.
-      if (!auth.user && (auth.loading || !auth.initialized)) {
-        for (let i = 0; i < 10; i += 1) {
-          await new Promise((r) => setTimeout(r, 50));
-          auth = await ensureAuthReady();
-          if (auth.user || (!auth.loading && auth.initialized)) break;
-        }
+      // Defensive single retry only for the genuine race where the auth
+      // module hasn't initialized yet on first paint. A 10-step polling
+      // loop here added up to 500ms to every navigation, even on the
+      // happy path — re-calling ensureAuthReady() once is enough because
+      // it dedups in-flight init via initPromise.
+      if (!auth.user && !auth.initialized) {
+        auth = await ensureAuthReady();
       }
       if (!auth.user) {
         logAuthDiagnostic("redirect.login", "_app.beforeLoad: no user", {
