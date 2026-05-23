@@ -23,6 +23,8 @@ function safeDetail(detail: unknown): unknown {
   return detail;
 }
 
+const ERROR_LEVEL_PATTERN = /error|fail|timeout|throw|retry|stuck|missing/i;
+
 export function logAuthDiagnostic(scope: string, message: string, detail?: unknown) {
   const entry: AuthDiagnosticEntry = {
     ts: new Date().toISOString(),
@@ -31,8 +33,19 @@ export function logAuthDiagnostic(scope: string, message: string, detail?: unkno
     detail: safeDetail(detail),
     stack: detail instanceof Error ? detail.stack : undefined,
   };
-  // Always log to console for live debugging
-  console.error(`[auth-diagnostic][${scope}] ${message}`, detail ?? "");
+  // Only escalate to console.error for genuine anomalies. Routine auth
+  // events (SIGNED_IN, INITIAL_SESSION, TOKEN_REFRESHED) used to log as
+  // error and Chrome captured a full stack trace on every navigation /
+  // tab focus, which noticeably slowed the preview.
+  const isError =
+    ERROR_LEVEL_PATTERN.test(scope) ||
+    ERROR_LEVEL_PATTERN.test(message) ||
+    detail instanceof Error;
+  if (isError) {
+    console.error(`[auth-diagnostic][${scope}] ${message}`, detail ?? "");
+  } else {
+    console.debug(`[auth-diagnostic][${scope}] ${message}`, detail ?? "");
+  }
   if (typeof window === "undefined") return;
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
