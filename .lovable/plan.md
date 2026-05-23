@@ -1,85 +1,86 @@
-## تشخیص
+# Revised Plan — Sale List `settlement_type_id` Local sync
 
-با بررسی کنسول و کد، سه regression عملکردی از تغییرات auth/session امروز پیدا شد:
+🚨 **DATABASE_EXPORT_OR_BACKUP_REQUIRED** 🚨
+(فقط برای گرفتن backup احتیاطی Local قبل از اجرای migration موجود — هیچ export از Lovable لازم نیست.)
 
-### 1. `diagnostics.ts` — هر event عادی به‌عنوان `console.error` لاگ می‌شود
+## 1. بازرسی migration موجود
+فایل: `supabase/migrations/20260522162314_a17c6ada-fb05-4b07-bc2f-68a2602073cf.sql`
 
-در `logAuthDiagnostic` خط ۳۵، **همه** رویدادها (حتی `SIGNED_IN` و `INITIAL_SESSION` کاملاً نرمال) با `console.error` لاگ می‌شوند. در کنسول می‌بینید:
+محتوا (تأییدشده):
+1. `ALTER TABLE public.sale_lists ADD COLUMN IF NOT EXISTS settlement_type_id uuid NULL;` — idempotent، nullable.
+2. `DO $$ ... IF NOT EXISTS (pg_constraint conname='sale_lists_settlement_type_id_fkey') THEN ADD CONSTRAINT ... FOREIGN KEY → settlement_types(id) ON DELETE SET NULL; END $$;` — idempotent، safe.
+3. `CREATE INDEX IF NOT EXISTS idx_sale_lists_settlement_type_id ...` — idempotent.
 
+**نتیجه بازرسی:** migration موجود **کامل، idempotent، nullable، و safe** است و دقیقاً همان چیزی است که برای رفع `PGRST204` لازم است. **مغایرت Local صرفاً به‌دلیل اجرا نشدن این migration روی Local Postgres** است.
+
+## 2. تصمیم
+- **هیچ migration جدید ساخته نمی‌شود** (مطابق قانون شما، duplicate ممنوع).
+- فقط همین migration موجود باید روی Local اعمال شود.
+- در کد، فقط یک خط `console.error` دفاعی به catch بلوک ایجاد لیست اضافه می‌شود تا در صورت خطاهای آینده، PostgREST error خام در DevTools دیده شود (پیام فارسی کاربر دست‌نخورده می‌ماند).
+
+## 3. پاسخ صریح به سؤالات اجباری
+
+| # | سؤال | پاسخ |
+|---|---|---|
+| الف | آیا `20260522162314_a17c6ada-…sql` تغییر schema لازم را در `sale_lists.settlement_type_id` دارد؟ | **بله، کامل و idempotent.** |
+| ب | آیا migration جدید لازم است؟ | **خیر.** |
+| ج | اگر migration جدید لازم نیست، دستور دقیق اعمال روی Local؟ | پایین، بخش ۶. |
+| د | اگر migration جدید لازم باشد، نام فایل و دلیل؟ | لازم نیست. |
+| 1 | فایل‌های تغییریافته در ریپو | `src/routes/_app.pricing.sale-lists_.new.tsx` (فقط افزودن یک `console.error("[sale-lists/new] insert failed:", e)` در catch موجود) |
+| 2 | فایل‌های جدید | فقط گزارش: `docs/lovable-change-reports/YYYY-MM-DD-HHMM-sale-list-settlement-type-schema-sync.md` |
+| 3 | تغییر schema در `public.sale_lists`؟ | روی Lovable Cloud قبلاً انجام شده؛ روی Local با اجرای migration موجود انجام می‌شود (no-op برای Cloud). |
+| 4 | تغییر schema در `public.sale_list_versions`؟ | خیر (کد به آن نیاز ندارد) |
+| 5 | RLS / policy / function / trigger؟ | خیر |
+| 6 | `package.json` / lockfile؟ | خیر |
+| 7 | `src/routeTree.gen.ts`؟ | خیر |
+| 8 | Backup Local لازم است؟ | **بله** — pg_dump قبل از اجرای migration |
+| 9 | Lovable DB export لازم است؟ | خیر |
+| 10 | Storage export لازم است؟ | خیر |
+| 11 | Risk Level | **LOW** — additive، nullable، idempotent |
+| 12 | Rollback | `ALTER TABLE public.sale_lists DROP CONSTRAINT IF EXISTS sale_lists_settlement_type_id_fkey; DROP INDEX IF EXISTS public.idx_sale_lists_settlement_type_id; ALTER TABLE public.sale_lists DROP COLUMN IF EXISTS settlement_type_id;` (فقط مقادیر همین ستون از دست می‌رود) |
+
+## 4. تغییر کد (دقیق)
+در `src/routes/_app.pricing.sale-lists_.new.tsx`، در `catch (e)` فعلی (~خط 387)، **فقط یک خط** قبل از `toast.error` افزوده می‌شود:
+```ts
+console.error("[sale-lists/new] insert failed:", e);
 ```
-error: [auth-diagnostic][session.onAuthStateChange] SIGNED_IN { hasSession: true, ... }
-error: [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION { hasSession: true, ... }
+هیچ تغییر دیگری در منطق ذخیره، UI، یا پیام کاربر نیست.
+
+## 5. آنچه تغییر نمی‌کند
+sidebar, dashboard, auth, pricing engine, bot API, ports, Docker, package.json/lockfile, routeTree.gen.ts, RLS, storage, sale-list PDF، صفحه view لیست، public sale-list. هیچ migration جدید.
+
+## 6. دستور دقیق اعمال migration موجود روی Local
+
+پیش‌نیاز: روی سرور Local، در ریپو افراکالا، با `psql` نصب‌شده و `deploy/local/.env.local` پر.
+
+```bash
+# 1) Backup احتیاطی Local
+DRY_RUN=false bash deploy/backups/scripts/backup-postgres.sh
+
+# 2) Pull آخرین main (پس از merge این PR)
+git pull --ff-only origin main
+
+# 3) اعمال migrationها (idempotent — قدیمی‌ها no-op)
+DRY_RUN=true  bash deploy/local/scripts/local-apply-migrations.sh   # پیش‌نمایش
+DRY_RUN=false bash deploy/local/scripts/local-apply-migrations.sh   # اجرا
+
+# 4) (اختیاری ولی توصیه‌شده) Reload schema cache برای PostgREST/Kong
+docker exec -i <POSTGRES_CONTAINER_NAME> psql -U postgres -d postgres \
+  -c "NOTIFY pgrst, 'reload schema';"
+# یا restart کانتینر PostgREST/Kong افراکالا
 ```
 
-هر `console.error` در Chrome یک **stack trace کامل** ضبط می‌کند که سنگین است. این بر هر تب‌فوکوس، هر vite reconnect، و هر token refresh تکرار می‌شود. در preview با devtools باز، خود مرورگر را کند می‌کند.
+اگر pg_dump گرفته نشد، حق ادامه نیست.
 
-### 2. `session.ts` — لاگ دیاگنوستیک روی هر event نرمال
+## 7. Validation پس از اعمال روی Local
+- `psql ... -c "\d public.sale_lists"` نشان دهد `settlement_type_id uuid` وجود دارد.
+- ایجاد لیست جدید از `/pricing/sale-lists/new` بدون `PGRST204` انجام شود.
+- باز کردن یک لیست قدیمی (با `settlement_type_id IS NULL`) و یک لیست جدید — هر دو header/items/PDF را درست رندر کنند.
+- در DevTools، اگر بعداً خطایی رخ داد، خط `console.error` پیام خام PostgREST را لاگ کند.
 
-خط ۲۹۲: `logAuthDiagnostic("session.onAuthStateChange", event, {...})` برای **هر** event صدا می‌خورد. ترکیب با مورد ۱ یعنی روی هر navigation/refresh یک `console.error` + یک write به sessionStorage. روی navigation شدید (مثل کلیک پشت سرهم روی منو در replay) صدها لاگ تولید می‌کند.
+## 8. Branch و گزارش (پس از Apply)
+- branch: `feature/sale-list-settlement-type-schema-sync`
+- محتوای branch فقط: ۱ خط تغییر در `_app.pricing.sale-lists_.new.tsx` + فایل گزارش جدید با ۲۲ بخش الزامی.
+- گزارش صراحتاً ذکر خواهد کرد: «migration جدید ساخته نشد؛ migration موجود `20260522162314_a17c6ada-…sql` باید روی Local اعمال شود.»
 
-### 3. `_app.tsx` — حلقه polling تا ۵۰۰ms روی هر navigation
-
-خطوط ۳۷–۴۳: حلقه `for (let i = 0; i < 10; i++) { await sleep(50); ... }` در `beforeLoad`. روی هر تغییر مسیر، اگر `auth.user` به دلیلی غایب باشد، تا ۵۰۰ms ناوبری بلاک می‌شود. این برای حالت race اولیه گذاشته شد ولی روی navigation سالم هم احتمال trigger دارد و تأخیر اضافه می‌کند.
-
-### درباره گزارش "Local هم کند است"
-
-تغییرات auth امروز فقط در Lovable است و هنوز به GHCR/سرور Local push نشده (طبق گفته خودتان در سشن‌های قبلی). پس کندی Local **نمی‌تواند از این تغییرات باشد**. در پایان از شما درباره Local جداگانه می‌پرسم.
-
----
-
-## تغییرات پیشنهادی (محدود، کم‌ریسک)
-
-### فایل ۱: `src/lib/auth/diagnostics.ts`
-- در `logAuthDiagnostic`، انتخاب سطح کنسول را هوشمند کنید: فقط زمانی `console.error` که scope/message یکی از `error|fail|timeout|throw|retry|stuck` را دارد. در غیر این‌صورت `console.debug` (که در سطح production فیلتر می‌شود).
-- نوشتن به sessionStorage را حفظ کنید تا دکمه «کپی گزارش خطا» همچنان کار کند.
-
-### فایل ۲: `src/lib/auth/session.ts`
-- در `onAuthStateChange` فقط زمانی `logAuthDiagnostic` صدا بزنید که `isFullReload || isSignOut || event === "USER_UPDATED"` یا یک خطا رخ داده باشد. event‌های روتین (`INITIAL_SESSION` با همان user، `TOKEN_REFRESHED`، `SIGNED_IN` همان user) لاگ نشوند.
-- بقیه منطق session دست‌نخورده می‌ماند (همان منطق `applySession` / force / loadIdentity).
-
-### فایل ۳: `src/routes/_app.tsx`
-- حلقه ۱۰×۵۰ms را با یک تلاش مجدد ساده جایگزین کنید: اگر `!auth.user && !auth.initialized`، **یک‌بار** `await ensureAuthReady()` دوباره صدا بزنید (بدون force). اگر باز user نبود، redirect. این مسیر race اولیه را پوشش می‌دهد بدون اضافه‌کردن ۵۰۰ms به هر navigation.
-- بقیه `beforeLoad` و کامپوننت `AppLayout` بدون تغییر.
-
-### فایل ۴ (اختیاری، فقط اگر لازم باشد)
-بدون نیاز به تغییر.
-
----
-
-## محدودیت‌های صریح (طبق قوانین AfraKala)
-
-- **فقط ۳ فایل**: `diagnostics.ts`, `session.ts`, `_app.tsx`.
-- **بدون** تغییر در: pricing, sale-list PDF, bot API, dashboard/sidebar, invoices, migrations, deploy/*, RLS/RBAC, Auth config, AuthProvider.tsx, login.tsx.
-- **بدون** migration، **بدون** secret جدید، **بدون** dependency جدید.
-- رفتار `TOKEN_REFRESHED`/`USER_UPDATED` در `applySession` حفظ می‌شود.
-- مقدار اولیه `hydrated` تغییر نمی‌کند.
-- پاکسازی sessionStorage لاگ‌ها (manual button) همچنان کار می‌کند.
-
----
-
-## ریسک و rollback
-
-- **ریسک**: کم. تغییرات صرفاً «صدایی که در کنسول/sessionStorage تولید می‌شود» و یک حلقه دفاعی را کاهش می‌دهند، نه منطق احراز هویت را.
-- **اثر جانبی محتمل**: اگر در آینده برای دیباگ یک نشست خاص نیاز به لاگ همه event‌ها داشتید، باید این فیلتر را موقتاً برداشت. به‌جای حذف، می‌توان یک flag دیباگ گذاشت ولی برای اجتناب از scope-creep این کار را نمی‌کنم مگر بخواهید.
-- **Rollback**: `git revert <commit>` روی همین سه فایل.
-
----
-
-## چک‌لیست تست دستی پس از پیاده‌سازی
-
-1. لاگین تازه → AppShell سریع باز شود، بدون فلش "بررسی جلسه".
-2. کلیک سریع پشت‌سرهم روی منو (sidebar) → تأخیر محسوس نباید باشد.
-3. باز/بسته کردن تب چندبار → بدون reload صفحه، بدون فلاش لودینگ.
-4. کنسول devtools باز: روی navigation معمولی نباید `console.error` تازه‌ای از auth-diagnostic دیده شود.
-5. خطای واقعی auth (مثلاً قطع موقت اینترنت روی refresh) → همچنان در sessionStorage ذخیره شود و دکمه «کپی گزارش خطا» کار کند.
-
----
-
-## سؤال مهم درباره Local
-
-شما گفتید "Local هم کند است". اما تغییرات auth امروز هنوز در Local نیست (طبق سشن‌های قبلی، در شاخه داخلی Lovable است و push به GHCR نشده). یعنی:
-
-- اگر Local **به‌تازگی build/pull تازه‌ای داشته**، لطفاً تأیید کنید چه commit‌ای روی آن است.
-- اگر Local commit قدیمی‌تری دارد و باز هم کند است، **دلیل کندی Local از این تغییرات نیست** و باید جداگانه بررسی شود (احتمالاً DB query، یا فشار روی worker قیمت‌گذاری، یا اینترنت ضعیف به Lovable Cloud).
-
-بعد از تأیید پلن، اول این سه فایل را برای رفع کندی Lovable اصلاح می‌کنم، سپس اگر تأیید کردید درباره Local بپرسیم، یک تشخیص جداگانه انجام می‌دهم.
+منتظر **Build/Apply/Proceed** هستم.
