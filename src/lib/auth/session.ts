@@ -52,6 +52,8 @@ let initPromise: Promise<AuthSnapshot> | null = null;
 let subscribed = false;
 
 const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+const PROFILE_ROLES_MAX_ATTEMPTS = 3; // initial + 2 retries
+const PROFILE_ROLES_BACKOFF_MS = [800, 1600];
 
 async function withAuthTimeout<T>(promise: PromiseLike<T>, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -86,6 +88,40 @@ function buildAuthError(profileError: string | null, rolesError: string | null) 
   return [profileError, rolesError].filter(Boolean).join(" | ");
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchProfileAndRoles(
+  user: User,
+): Promise<{
+  profile: AuthProfile | null;
+  roles: Array<{ role: string }>;
+  profileError: string | null;
+  rolesError: string | null;
+}> {
+  const [profileResult, rolesResult] = await Promise.all([
+    withAuthTimeout<AuthQueryResult<AuthProfile>>(
+      supabase
+        .from("profiles")
+        .select("id, full_name, phone, is_active, status")
+        .eq("id", user.id)
+        .maybeSingle(),
+      "profile load",
+    ),
+    withAuthTimeout<AuthQueryResult<Array<{ role: string }>>>(
+      supabase.from("user_roles").select("role").eq("user_id", user.id),
+      "roles load",
+    ),
+  ]);
+  return {
+    profile: (profileResult.data as AuthProfile | null) ?? null,
+    roles: rolesResult.data ?? [],
+    profileError: profileResult.error?.message ?? null,
+    rolesError: rolesResult.error?.message ?? null,
+  };
+}
+
 async function loadIdentity(user: User, force = false) {
   if (
     !force &&
@@ -106,70 +142,85 @@ async function loadIdentity(user: User, force = false) {
     rolesError: null,
   });
 
-  let profileResult: AuthQueryResult<AuthProfile>;
-  let rolesResult: AuthQueryResult<Array<{ role: string }>>;
-  try {
-    [profileResult, rolesResult] = await Promise.all([
-      withAuthTimeout<AuthQueryResult<AuthProfile>>(
-        supabase
-          .from("profiles")
-          .select("id, full_name, phone, is_active, status")
-          .eq("id", user.id)
-          .maybeSingle(),
-        "profile load",
-      ),
-      withAuthTimeout<AuthQueryResult<Array<{ role: string }>>>(
-        supabase.from("user_roles").select("role").eq("user_id", user.id),
-        "roles load",
-      ),
-    ]);
-  } catch (error) {
-    const message = getAuthClientError(error);
-    console.error("[auth] identity load timed out", error);
-    logAuthDiagnostic("session.loadIdentity.timeout", message, error);
+  const startedAt = Date.now();
+  let lastProfile: AuthProfile | null = null;
+  let lastRoles: Array<{ role: string }> = [];
+  let lastProfileError: string | null = null;
+  let lastRolesError: string | null = null;
+  let timedOut = false;
+
+  for (let attempt = 1; attempt <= PROFILE_ROLES_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const r = await fetchProfileAndRoles(user);
+      lastProfile = r.profile;
+      lastRoles = r.roles;
+      lastProfileError = r.profileError;
+      lastRolesError = r.rolesError;
+      timedOut = false;
+      if (r.profileError) {
+        console.error("[auth] profile fetch failed", r.profileError);
+        logAuthDiagnostic("session.loadIdentity.profile", r.profileError, { attempt });
+      }
+      if (r.rolesError) {
+        console.error("[auth] roles fetch failed", r.rolesError);
+        logAuthDiagnostic("session.loadIdentity.roles", r.rolesError, { attempt });
+      }
+      if (!r.profileError && !r.rolesError) break;
+    } catch (error) {
+      timedOut = true;
+      const message = getAuthClientError(error);
+      console.error("[auth] identity load timed out", error);
+      logAuthDiagnostic("session.loadIdentity.timeout", message, { attempt });
+    }
+    if (attempt < PROFILE_ROLES_MAX_ATTEMPTS) {
+      logAuthDiagnostic("session.loadIdentity.retry", `attempt ${attempt + 1}`, {
+        prevAttempt: attempt,
+      });
+      await sleep(PROFILE_ROLES_BACKOFF_MS[attempt - 1] ?? 1600);
+    }
+  }
+
+  const elapsed = Date.now() - startedAt;
+  if (elapsed > 3000) {
+    logAuthDiagnostic("session.loadIdentity.slow", `took ${elapsed}ms`, { elapsed });
+  }
+
+  if (timedOut && !lastProfile && lastRoles.length === 0 && !lastProfileError && !lastRolesError) {
+    // All attempts threw (no result at all). Do NOT set lastLoadedUserId so a
+    // subsequent ensureAuthReady() call retries instead of short-circuiting.
     setSnapshot({
       profileLoading: false,
       rolesLoading: false,
       profileError: "بارگذاری پروفایل کاربر بیش از حد طول کشید.",
       rolesError: "بارگذاری نقش‌های کاربر بیش از حد طول کشید.",
       authError: "بارگذاری اطلاعات کاربری بیش از حد طول کشید. لطفاً دوباره تلاش کنید.",
-      lastLoadedUserId: user.id,
     });
     return snapshot;
   }
 
-  const profileError = profileResult.error?.message ?? null;
-  const rolesError = rolesResult.error?.message ?? null;
+  const rolesList = lastRoles.map((row) => row.role as AppRole);
+  const normalizedRoles =
+    !lastRolesError && rolesList.length === 0 ? (["viewer"] as AppRole[]) : rolesList;
 
-  if (profileResult.error) console.error("[auth] profile fetch failed", profileResult.error);
-  if (rolesResult.error) console.error("[auth] roles fetch failed", rolesResult.error);
-  if (profileResult.error)
-    logAuthDiagnostic(
-      "session.loadIdentity.profile",
-      profileResult.error.message,
-      profileResult.error,
-    );
-  if (rolesResult.error)
-    logAuthDiagnostic("session.loadIdentity.roles", rolesResult.error.message, rolesResult.error);
-
-  const roles = (rolesResult.data ?? []).map((row) => row.role as AppRole);
-  const normalizedRoles = !rolesError && roles.length === 0 ? (["viewer"] as AppRole[]) : roles;
-
-  if (!rolesError && roles.length === 0) {
+  if (!lastRolesError && rolesList.length === 0) {
     console.warn("[auth] no role found for authenticated user; defaulting to viewer", {
       userId: user.id,
     });
   }
 
+  const hasError = !!(lastProfileError || lastRolesError);
+
   setSnapshot({
-    profile: (profileResult.data as AuthProfile | null) ?? null,
+    profile: lastProfile,
     roles: normalizedRoles,
     profileLoading: false,
     rolesLoading: false,
-    profileError,
-    rolesError,
-    authError: buildAuthError(profileError, rolesError),
-    lastLoadedUserId: user.id,
+    profileError: lastProfileError,
+    rolesError: lastRolesError,
+    authError: buildAuthError(lastProfileError, lastRolesError),
+    // Only mark as loaded for this user when we got a clean result; otherwise
+    // leave lastLoadedUserId untouched so the next ensureAuthReady retries.
+    ...(hasError ? {} : { lastLoadedUserId: user.id }),
   });
 
   return snapshot;
@@ -259,7 +310,9 @@ export async function ensureAuthReady(force = false) {
     snapshot.initialized &&
     !snapshot.loading &&
     !snapshot.profileLoading &&
-    !snapshot.rolesLoading
+    !snapshot.rolesLoading &&
+    !snapshot.authError &&
+    (!snapshot.user || snapshot.profile)
   ) {
     return snapshot;
   }

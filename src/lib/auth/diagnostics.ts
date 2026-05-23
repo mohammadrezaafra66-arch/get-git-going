@@ -63,3 +63,43 @@ export function clearAuthDiagnostics() {
     /* noop */
   }
 }
+
+const SENSITIVE_KEY_PATTERN =
+  /access[_-]?token|refresh[_-]?token|password|secret|api[_-]?key|jwt|bearer|authorization|session/i;
+const MAX_STRING_LEN = 400;
+
+function sanitizeValue(value: unknown, depth = 0): unknown {
+  if (depth > 6) return "[truncated:depth]";
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return value.length > MAX_STRING_LEN ? `${value.slice(0, MAX_STRING_LEN)}…[truncated]` : value;
+  }
+  if (typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map((v) => sanitizeValue(v, depth + 1));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (SENSITIVE_KEY_PATTERN.test(k)) {
+      out[k] = "[redacted]";
+      continue;
+    }
+    out[k] = sanitizeValue(v, depth + 1);
+  }
+  return out;
+}
+
+/**
+ * Returns a JSON string of diagnostics with sensitive keys redacted, stacks
+ * stripped, and long strings truncated. Safe to put on the user's clipboard.
+ */
+export function sanitizeDiagnosticsForClipboard(entries: AuthDiagnosticEntry[]): string {
+  const safe = entries.map((entry) => ({
+    ts: entry.ts,
+    scope: entry.scope,
+    message:
+      typeof entry.message === "string" && entry.message.length > MAX_STRING_LEN
+        ? `${entry.message.slice(0, MAX_STRING_LEN)}…[truncated]`
+        : entry.message,
+    detail: sanitizeValue(entry.detail),
+  }));
+  return JSON.stringify(safe, null, 2);
+}
