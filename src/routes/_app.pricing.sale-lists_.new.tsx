@@ -382,6 +382,81 @@ function NewSaleListPage() {
         throw itemsErr;
       }
 
+      // Build initial version snapshot (v1) so detail page can render via snapshot_data.
+      // Snapshot shape mirrors the edit flow in _app.pricing.sale-lists_.$listId.tsx.
+      const visibleProductMap = new Map<string, ProductRow>(
+        (productsQ.data?.rows ?? []).map((p) => [p.id, p]),
+      );
+      const missingProductIds = selectedIds.filter((id) => !visibleProductMap.has(id));
+      if (missingProductIds.length > 0) {
+        const { data: missingRows, error: missingErr } = await supabase
+          .from("products")
+          .select(
+            "id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)",
+          )
+          .in("id", missingProductIds);
+        if (missingErr) {
+          await supabase.from("sale_list_items").delete().eq("sale_list_id", listData.id);
+          await supabase.from("sale_lists").delete().eq("id", listData.id);
+          throw missingErr;
+        }
+        for (const p of (missingRows ?? []) as unknown as ProductRow[]) {
+          visibleProductMap.set(p.id, p);
+        }
+      }
+
+      const snapItems = selectedIds.map((pid, idx) => {
+        const pe = priceMap.get(pid);
+        const current = pe?.current ?? 0;
+        const previous = pe?.previous ?? null;
+        const change_amount =
+          previous !== null && previous !== undefined ? current - previous : null;
+        const change_percent =
+          previous && previous !== 0
+            ? Number((((current - previous) / previous) * 100).toFixed(2))
+            : null;
+        const p = visibleProductMap.get(pid);
+        return {
+          product_id: pid,
+          product_name: p?.name ?? "",
+          sku: p?.sku ?? null,
+          brand_name: p?.brand?.name ?? null,
+          category_name: p?.category?.name ?? null,
+          current_price: current,
+          previous_price: previous,
+          change_amount,
+          change_percent,
+          stock_status: stockMap.get(pid) ?? p?.stock_status ?? null,
+          sort_order: idx,
+        };
+      });
+
+      const snapshot = {
+        id: listData.id,
+        name: trimmedName,
+        description: description.trim() || null,
+        terms_text: termsText.trim() || null,
+        seller_info: sellerInfo.trim() || null,
+        status: "draft" as const,
+        sale_price_type_id: salePriceTypeId,
+        settlement_type_id: settlementTypeId === "__none" ? null : settlementTypeId,
+        selected_columns: selectedColumns,
+        items: snapItems,
+      };
+
+      const { error: versionErr } = await supabase.from("sale_list_versions").insert({
+        sale_list_id: listData.id,
+        version_number: 1,
+        snapshot_data: snapshot,
+        created_by: userData.user.id,
+      });
+      if (versionErr) {
+        // Rollback: remove items and list to avoid orphan
+        await supabase.from("sale_list_items").delete().eq("sale_list_id", listData.id);
+        await supabase.from("sale_lists").delete().eq("id", listData.id);
+        throw versionErr;
+      }
+
       toast.success("لیست فروش با موفقیت ایجاد شد.");
       navigate({ to: "/pricing/sale-lists" });
     } catch (e) {
