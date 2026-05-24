@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
+import { CURRENCY_LABELS as PRICING_CURRENCY_LABELS } from "@/lib/pricing/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ const schema = z.object({
   purchase_price: z
     .number({ message: "قیمت خرید الزامی است" })
     .positive("قیمت خرید باید مثبت باشد"),
-  currency: z.enum(["toman", "usd", "aed"], { message: "ارز نامعتبر است" }),
+  currency: z.enum(["toman", "usd", "aed", "usd_us"], { message: "ارز نامعتبر است" }),
   quantity: z
     .number({ message: "تعداد الزامی است" })
     .int("تعداد باید عدد صحیح باشد")
@@ -59,9 +60,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const CURRENCY_LABELS: Record<FormValues["currency"], string> = {
-  toman: "تومان", usd: "دلار", aed: "درهم",
-};
+const CURRENCY_LABELS: Record<FormValues["currency"], string> = PRICING_CURRENCY_LABELS;
 
 const defaultValues: FormValues = {
   product_id: "",

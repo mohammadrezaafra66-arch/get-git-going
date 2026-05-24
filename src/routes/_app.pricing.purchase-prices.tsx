@@ -747,9 +747,9 @@ function PurchasePriceDialog({
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="toman">تومان</SelectItem>
-                  <SelectItem value="usd">دلار</SelectItem>
-                  <SelectItem value="aed">درهم</SelectItem>
+                  {(Object.keys(CURRENCY_LABELS) as CurrencyCode[]).map((c) => (
+                    <SelectItem key={c} value={c}>{CURRENCY_LABELS[c]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
