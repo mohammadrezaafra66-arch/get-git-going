@@ -5,6 +5,45 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+/**
+ * Server-side Supabase admin client — RPC / REST only.
+ *
+ * IMPORTANT (self-host, Node 20 runner):
+ * `@supabase/supabase-js` v2.10x constructs a `RealtimeClient` inside its own
+ * constructor, which in turn calls `WebSocketFactory.getWebSocketConstructor()`.
+ * On Node.js < 22 there is no global `WebSocket`, so that call throws
+ * "Node.js 20 detected without native WebSocket support" and the whole
+ * `createClient(...)` invocation fails BEFORE any request is handled. The
+ * symptom is a generic `500 { "unhandled": true, "message": "HTTPError" }`
+ * the first time a server function touches `supabaseAdmin` (for example,
+ * `authenticateBot` in `/api/public/bot/*`).
+ *
+ * Realtime is NEVER used through this server-side admin client. Browser-side
+ * realtime continues to work via the regular frontend client in
+ * `./client.ts`, which runs in environments that have a native `WebSocket`.
+ *
+ * To avoid the eager Node-version check without adding the `ws` package or
+ * changing the Node runtime, we pass a tiny no-op transport stub. The stub
+ * satisfies the `transport` option so `getWebSocketConstructor()` is not
+ * called, and because we never invoke `.channel()` / `.connect()` on the
+ * admin client, the stub is never instantiated as an actual socket.
+ *
+ * Do NOT use this client for realtime subscriptions. Do NOT import this file
+ * from any browser-side code — the service-role key must stay server-only.
+ */
+class NoopRealtimeTransport {
+  // Minimal WebSocket-shaped surface — intentionally inert.
+  // Realtime will never call .connect() on the admin client, so this class
+  // is never used to open a real socket. Throwing here makes accidental
+  // realtime usage on the server fail loudly instead of silently no-op'ing.
+  constructor() {
+    throw new Error(
+      '[supabaseAdmin] Realtime is disabled on the server-side admin client. ' +
+        'Use the browser client for realtime subscriptions.',
+    );
+  }
+}
+
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,7 +59,15 @@ function createSupabaseAdminClient() {
       storage: undefined,
       persistSession: false,
       autoRefreshToken: false,
-    }
+    },
+    // See NoopRealtimeTransport comment above. Supplying any value here makes
+    // realtime-js skip its Node-version / native-WebSocket detection.
+    realtime: {
+      // Cast required: the option type expects `typeof WebSocket`, but at
+      // runtime realtime-js only stores the reference until `.connect()` is
+      // called, which never happens on this admin client.
+      transport: NoopRealtimeTransport as unknown as typeof WebSocket,
+    },
   });
 }
 
