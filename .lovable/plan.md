@@ -1,105 +1,90 @@
-# افزودن ارز usd_us (دلار تهران) به فرم ثبت قیمت خرید
+## هدف
+افزودن endpoint عمومی `GET /api/version` به AfraKala برای نمایش نسخه فعلی اجراشده، بدون افشای هیچ secret. علاوه بر آن، Dockerfile و LAN compose و GitHub Actions workflow طوری به‌روز شوند که commit hash و زمان build در runtime در دسترس باشند.
 
-## یافته‌های بررسی دیتابیس
+## فایل‌هایی که ساخته یا تغییر می‌کنند
 
-- `public.currencies` چهار ارز را دارد: `toman`, `usd` (دلار سلیمانیه), `aed`, `usd_us` (دلار تهران). ✅
-- `public.currency_rates.currency` از نوع **text** با FK به `currencies.code` است → نیازی به migration ندارد. اگر برای usd_us نرخ ثبت شود همین حالا قابل استفاده است.
-- `public.purchase_prices.currency` از نوع **enum `currency_code**` است و enum فقط شامل `{toman, usd, aed}` است → **migration الزامی** برای افزودن مقدار `usd_us` به enum.
-- `currency_rates` در حال حاضر هیچ ردیف فعالی برای `usd_us` ندارد. موتور قیمت‌گذاری (`src/lib/pricing/engine.ts`) از قبل وقتی نرخ پیدا نشود `PricingError('NO_CURRENCY_RATE', 'نرخ ارز معتبر برای محاسبه قیمت موجود نیست.')` می‌اندازد، پس قید ۵ درخواست شما به‌صورت طبیعی پوشش داده می‌شود (پیام واضح فارسی موجود است).
+1. **افزودن** `src/routes/api.version.ts`
+   - TanStack Start file route مشابه `src/routes/api.healthz.ts`
+   - Handler GET، خروجی JSON با ساختار خواسته‌شده
+   - فقط whitelist زیر خوانده شود (هیچ secret/private/password):
+     - `process.env.APP_ENV || process.env.NODE_ENV || "unknown"`
+     - `process.env.APP_GIT_SHA || "unknown"` (و `commitShort` = 7 کاراکتر اول)
+     - `process.env.APP_BUILD_TIME || "unknown"`
+     - `process.env.VITE_SUPABASE_URL || "unknown"` (publishable URL، public)
+   - Header `cache-control: no-store`
+   - `content-type: application/json`
+   - بدون auth (مشابه healthz)؛ مسیر زیر `/api/` می‌ماند نه `/api/public/`، چون hosting LAN است و prefix `public` فقط برای bypass auth در published Lovable لازم است؛ برای سازگاری با الگوی healthz همان روش نگه داشته می‌شود.
 
-## 🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨
+2. **به‌روزرسانی** `Dockerfile`
+   - افزودن سه ARG در runtime stage (یا قبل از build stage تا در client هم در صورت نیاز در دسترس باشد — اینجا فقط server نیاز است، پس در runtime stage کافی است، ولی برای امن‌سازی و در دسترس بودن در SSR و در صورت نیاز در آینده، در هر دو stage تعریف می‌کنیم):
+     ```
+     ARG GIT_SHA
+     ARG BUILD_TIME
+     ARG APP_ENV
+     ENV APP_GIT_SHA=$GIT_SHA \
+         APP_BUILD_TIME=$BUILD_TIME \
+         APP_ENV=$APP_ENV
+     ```
+   - این ENVها هیچ‌کدام `VITE_` ندارند، پس به client bundle نشت نمی‌کنند.
+   - چون مقدارها در runtime stage تنظیم می‌شوند، در `process.env` داخل server route قابل خواندن‌اند.
 
-این تغییر یک migration روی enum دارد. قبل از اجرای migration روی Local:
+3. **به‌روزرسانی** `deploy/lan/docker-compose.yml`
+   - در سرویس `web` → `build.args` اضافه شود:
+     ```yaml
+     GIT_SHA: ${GIT_SHA:-local-unknown}
+     BUILD_TIME: ${BUILD_TIME:-local-unknown}
+     APP_ENV: lan
+     ```
+   - بقیه ساختار، ENVها، secrets، Kong و db دست‌نخورده باقی می‌ماند.
 
-1. **Backup دیتابیس Local** الزامی است.
-2. **Export از Lovable لازم نیست** (فقط افزودن مقدار به enum).
-3. **Storage export لازم نیست**.
+4. **به‌روزرسانی** `.github/workflows/build-image.yml`
+   - در step `Build & push` افزودن `build-args`:
+     ```yaml
+     build-args: |
+       GIT_SHA=${{ github.sha }}
+       BUILD_TIME=${{ github.run_id }}
+       APP_ENV=production
+     ```
+   - بقیه workflow (tags، scan، GHCR push) بدون تغییر.
 
-### مشخصات تغییر دیتابیس
+5. **افزودن** `docs/lovable-change-reports/2026-05-27-api-version-endpoint.md`
+   - گزارش استاندارد طبق قوانین پروژه (فایل‌های تغییریافته، دلیل، RLS/RBAC impact = none، migration impact = none، self-host acceptance، تست LAN).
 
-- **بخش تغییرکننده:** فقط enum `public.currency_code` (افزودن مقدار `usd_us`).
-- **چرا ضروری است:** ستون `purchase_prices.currency` از این enum استفاده می‌کند و بدون افزودن مقدار، insert با `usd_us` در سطح دیتابیس reject می‌شود.
-- **Migration:** بله — یک migration کوتاه با `ALTER TYPE public.currency_code ADD VALUE IF NOT EXISTS 'usd_us';`
-- **Backup Local:** بله، قبل از apply.
-- **Export از Lovable:** خیر.
-- **Storage export:** خیر.
-- **ریسک:** **LOW** — فقط افزودن یک مقدار جدید به enum؛ روی داده‌های موجود اثر ندارد، reversible نیست به‌سادگی (Postgres حذف مقدار enum را به‌صورت built-in پشتیبانی نمی‌کند) ولی استفاده‌نکردن از مقدار جدید عملاً معادل rollback است.
+## امنیت
+- خروجی فقط شامل فیلدهای whitelist است؛ ساخت dynamic از `process.env` انجام نمی‌شود.
+- هیچ‌کدام از `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `POSTGRES_PASSWORD`, `LOVABLE_API_KEY`, `SMTP_PASS` و سایر secrets خوانده یا برگردانده نمی‌شود.
+- `VITE_SUPABASE_URL` عمومی است (به client bundle هم بسته می‌شود) و افشای آن مشکل امنیتی نیست.
+- بدون auth قرار داده می‌شود تا برای health-check و عیب‌یابی نسخه روی LAN در دسترس باشد؛ هیچ اطلاعات حساسی برنمی‌گرداند.
+- `cache-control: no-store` برای جلوگیری از cache در پراکسی‌ها.
 
-## تغییرات کد (جراحی)
+## بدون تغییر
+- هیچ migration، RLS، RBAC، storage policy، auth config، schema، types.ts، edge function، یا frontend بیزینس‌لاجیک تغییر نمی‌کند.
+- `deploy/local/docker-compose.yml` و `deploy/app/docker-compose.yml` در این فاز تغییر نمی‌کنند مگر بخواهید (در گزارش ذکر می‌کنم به‌عنوان "remaining manual"). اگر می‌خواهید همه composeها همین build-args را داشته باشند، بگویید تا اضافه کنم.
 
-### 1. `src/lib/pricing/constants.ts`
+## تست روی LAN
+1. در پوشه `deploy/lan/` این متغیرها را قبل از build set کنید (یا در `.env.lan`):
+   ```powershell
+   $env:GIT_SHA = (git rev-parse HEAD)
+   $env:BUILD_TIME = (Get-Date -Format "o")
+   ```
+2. اجرای rebuild:
+   ```
+   docker compose -f deploy/lan/docker-compose.yml build web
+   docker compose -f deploy/lan/docker-compose.yml up -d web
+   ```
+3. تست با curl:
+   ```
+   curl -s http://localhost:3000/api/version
+   curl -s http://LAN_HOST_IP:3000/api/version
+   ```
+   انتظار: JSON شامل `commit`, `commitShort`, `buildTime`, `environment: "lan"`, `supabasePublicUrl`.
+4. تست header:
+   ```
+   curl -sI http://localhost:3000/api/version | grep -i cache-control
+   ```
 
-- افزودن `usd_us` به `CURRENCY_LABELS`:
-  - `toman` → "تومان"
-  - `usd` → "دلار سلیمانیه" (تغییر از "دلار")
-  - `aed` → "درهم امارات" (تغییر از "درهم")
-  - `usd_us` → "دلار تهران"
-- `CurrencyCode` خودش از `Database["public"]["Enums"]["currency_code"]` می‌آید؛ پس از regenerate شدن `types.ts` بعد از migration، نوع به‌صورت خودکار شامل `usd_us` می‌شود.
+## ریسک‌ها
+- LOW. فقط یک route read-only و چند build-arg جدید.
+- اگر کاربر `GIT_SHA` در محیط set نکند، مقدار "local-unknown" برمی‌گردد (طبق default در compose).
 
-### 2. `src/lib/pricing/schemas.ts`
-
-- `purchasePriceSchema.currency`: `z.enum(["toman","usd","aed"])` → `z.enum(["toman","usd","aed","usd_us"])`.
-- `currencyRateSchema.currency` فعلاً `z.enum(["usd","aed"])` است؛ خارج از scope این درخواست است و دست‌نخورده می‌ماند (آن schema مربوط به فرم ثبت نرخ ارز است، نه ثبت قیمت خرید).
-
-### 3. `src/shared/components/PurchaseForm.tsx`
-
-- حذف `CURRENCY_LABELS` و `currency` enum محلی داخل فایل و استفاده از `CURRENCY_LABELS` و `CurrencyCode` از `@/lib/pricing/constants` (تک‌منبع حقیقت).
-- `schema.currency` به‌جای `z.enum(["toman","usd","aed"])` از `z.enum(["toman","usd","aed","usd_us"])` استفاده می‌کند.
-- بقیه‌ی فرم بدون تغییر.
-
-### 4. `src/routes/_app.pricing.purchase-prices.tsx`
-
-- چون از همان `CURRENCY_LABELS` و `purchasePriceSchema` import می‌کند، با اصلاح موارد بالا، dropdown به‌صورت خودکار همهٔ چهار ارز را نشان می‌دهد. تغییر مستقیم اضافی در این فایل لازم نیست (در صورت نیاز، صرفاً فیلتر `currency: 'all' | CurrencyCode` به‌خاطر type گسترش‌یافته همچنان معتبر باقی می‌ماند).
-
-### بدون تغییر
-
-- موتور قیمت‌گذاری (`src/lib/pricing/engine.ts`) — از قبل با هر کد ارز موجود در `currency_rates` کار می‌کند و خطای واضح فارسی برای نبود نرخ برمی‌گرداند.
-- RLS / RBAC / Storage / Auth / Docker / env: بدون تغییر.
-- `src/integrations/supabase/types.ts`: پس از apply شدن migration به‌صورت خودکار regenerate می‌شود (دست‌نخورده).
-
-## گزارش تغییر
-
-ساخت فایل `docs/lovable-change-reports/2026-05-24-purchase-price-currency-options.md` با ۱۵ بخش استاندارد افراکالا، شامل بنر `🚨 DATABASE_EXPORT_OR_BACKUP_REQUIRED 🚨` و مراحل Local update:
-
-```text
-1. Backup Local DB: pg_dump ...
-2. git pull origin main
-3. اجرای migration جدید روی Local (افزودن usd_us به enum)
-4. ثبت یک نرخ فعال برای usd_us در صفحه /pricing/currency-rates (در صورت نیاز)
-5. تست ثبت قیمت خرید با ارز «دلار تهران»
-6. تست محاسبه قیمت برای محصول با قیمت خرید usd_us
-```
-
-## Rollback Plan
-
-- Frontend: revert commit.
-- Migration: حذف مقدار از enum به‌سادگی ممکن نیست؛ ولی اگر استفاده نشود مشکلی ندارد. در صورت اصرار، باید enum بازسازی شود (procedure در گزارش مستند می‌شود) یا از backup قبل از apply استفاده شود.
-
-## Post-Update Tests
-
-1. `/pricing/purchase-prices` → دکمه «ثبت قیمت خرید» → dropdown ارز ۴ گزینه نشان می‌دهد با labelهای جدید.
-2. انتخاب «دلار تهران» و ثبت موفق (با وجود نرخ فعال usd_us).
-3. اگر نرخ usd_us فعال نیست → موتور قیمت در `/pricing/calculator` یا انتشار قیمت پیام «نرخ ارز معتبر برای محاسبه قیمت موجود نیست» را نشان می‌دهد.
-4. ارزهای قبلی (toman/usd/aed) همچنان کار می‌کنند.
-5. `npm run build` و `npm run lint` پاس می‌شوند.
-
-## GitHub
-
-پس از apply: branch و commit hash نهایی در پیام پایانی اعلام می‌شود (طبق رویه Lovable به branch پیش‌فرض GitHub sync می‌شود).  
-  
-  
-Approved with one clarification:
-
-Because public.purchase_prices.currency uses enum public.currency_code and generated Supabase types currently only include toman/usd/aed, please ensure the commit also keeps TypeScript build green.
-
-Either:
-
-1. regenerate/update src/integrations/supabase/types.ts after adding usd_us to enum,
-
-or
-
-2. adjust the CurrencyCode typing locally so the app accepts usd_us without type errors.
-
-Do not assume types.ts regenerates automatically unless the generated file is actually updated in the commit or build confirms it.
-
-Also please include the exact migration file name and final branch + commit hash.
+آماده برای پیاده‌سازی.
