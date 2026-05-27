@@ -46,6 +46,10 @@ jobs:
           tags: |
             ${{ steps.img.outputs.name }}:latest
             ${{ steps.img.outputs.name }}:sha-${{ github.sha }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ github.run_id }}
+            APP_ENV=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

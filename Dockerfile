@@ -56,6 +56,15 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0
 
+# Build metadata (set via `docker build --build-arg ...`).
+# These are non-secret runtime values surfaced by GET /api/version.
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
+ARG APP_ENV=unknown
+ENV APP_GIT_SHA=$GIT_SHA \
+    APP_BUILD_TIME=$BUILD_TIME \
+    APP_ENV=$APP_ENV
+
 RUN apk add --no-cache wget tini \
  && addgroup -S app && adduser -S app -G app
 
