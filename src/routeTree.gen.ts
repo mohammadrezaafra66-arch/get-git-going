@@ -16,6 +16,7 @@ import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiVersionRouteImport } from './routes/api.version'
 import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
@@ -191,6 +192,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVersionRoute = ApiVersionRouteImport.update({
+  id: '/api/version',
+  path: '/api/version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthzRoute = ApiHealthzRouteImport.update({
@@ -983,6 +989,7 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -1131,6 +1138,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -1282,6 +1290,7 @@ export interface FileRoutesById {
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
@@ -1434,6 +1443,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/api/version'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
@@ -1582,6 +1592,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/api/version'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
@@ -1732,6 +1743,7 @@ export interface FileRouteTypes {
     | '/_app/suppliers'
     | '/_app/users'
     | '/api/healthz'
+    | '/api/version'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/accounting/bank-accounts'
@@ -1865,6 +1877,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
+  ApiVersionRoute: typeof ApiVersionRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
@@ -1924,6 +1937,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/version': {
+      id: '/api/version'
+      path: '/api/version'
+      fullPath: '/api/version'
+      preLoaderRoute: typeof ApiVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/healthz': {
@@ -3354,6 +3374,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   ApiHealthzRoute: ApiHealthzRoute,
+  ApiVersionRoute: ApiVersionRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
@@ -3370,13 +3391,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
