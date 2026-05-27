@@ -33,6 +33,9 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+        GIT_SHA: ${GIT_SHA:-local-unknown}
+        BUILD_TIME: ${BUILD_TIME:-local-unknown}
+        APP_ENV: lan
     image: afrakala-app:lan
     container_name: afrakala-lan-web
     environment:
@@ -44,6 +47,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       LOVABLE_API_KEY: ${LOVABLE_API_KEY}
       OCR_ENABLED: ${OCR_ENABLED:-false}
+      APP_SUPABASE_PUBLIC_URL: ${APP_SUPABASE_PUBLIC_URL:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
