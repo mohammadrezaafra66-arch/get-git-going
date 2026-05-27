@@ -13,7 +13,10 @@ export const Route = createFileRoute("/api/version")({
           commit,
           commitShort: commit.slice(0, 7),
           buildTime: process.env.APP_BUILD_TIME || "unknown",
-          supabasePublicUrl: process.env.VITE_SUPABASE_URL || "unknown",
+          supabasePublicUrl:
+            process.env.APP_SUPABASE_PUBLIC_URL ||
+            process.env.VITE_SUPABASE_URL ||
+            "unknown",
         };
         return new Response(JSON.stringify(body), {
           status: 200,
