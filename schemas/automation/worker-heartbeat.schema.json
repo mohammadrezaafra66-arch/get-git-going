@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/worker-heartbeat.schema.json",
+  "title": "Automation Worker Heartbeat",
+  "type": "object",
+  "required": ["worker_id", "status", "sent_at"],
+  "properties": {
+    "worker_id": { "type": "string" },
+    "job_id": { "type": ["string", "null"] },
+    "status": { "type": "string" },
+    "active_jobs": { "type": "integer", "minimum": 0 },
+    "sent_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
