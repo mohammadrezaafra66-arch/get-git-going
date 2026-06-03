@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/output.schema.json",
+  "title": "Automation Output",
+  "type": "object",
+  "required": ["id", "job_id", "type", "created_at"],
+  "properties": {
+    "id": { "type": "string" },
+    "job_id": { "type": "string" },
+    "type": { "type": "string" },
+    "name": { "type": "string" },
+    "uri": { "type": "string" },
+    "metadata": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
