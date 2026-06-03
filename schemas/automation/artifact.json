@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Automation Artifact",
+  "type": "object",
+  "required": ["id", "job_id", "kind", "created_at"],
+  "properties": {
+    "id": { "type": "string" },
+    "job_id": { "type": "string" },
+    "kind": { "type": "string" },
+    "name": { "type": "string" },
+    "location": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
