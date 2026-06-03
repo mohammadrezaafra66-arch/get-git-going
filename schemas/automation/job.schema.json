@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/job.schema.json",
+  "title": "Automation Job",
+  "type": "object",
+  "required": ["id", "type", "status", "created_at"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string" },
+    "status": { "type": "string" },
+    "payload": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}
