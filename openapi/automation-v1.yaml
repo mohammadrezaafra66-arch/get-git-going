@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: Afra Automation API
+  version: 0.1.0
+  description: Phase 0 placeholder contract for dummy automation flow only.
+paths:
+  /automation/jobs:
+    post:
+      summary: Create dummy automation job
+      responses:
+        '202':
+          description: Accepted
+  /automation/jobs/claim:
+    post:
+      summary: Claim next dummy job
+      responses:
+        '200':
+          description: Claimed
+  /automation/jobs/{jobId}/heartbeat:
+    post:
+      summary: Send worker heartbeat
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Heartbeat accepted
+  /automation/jobs/{jobId}/status:
+    patch:
+      summary: Update dummy job status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Status updated
