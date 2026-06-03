@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/plugin-manifest.schema.json",
+  "title": "Automation Plugin Manifest",
+  "type": "object",
+  "required": ["id", "name", "version", "phase"],
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "phase": { "type": "string", "enum": ["BASELINE", "PHASE-0", "PHASE-1", "FUTURE"] },
+    "capabilities": { "type": "array", "items": { "type": "string" } },
+    "enabled": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}
