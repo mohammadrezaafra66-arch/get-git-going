@@ -1,9 +1,180 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afrakala.local/schemas/automation/integration.schema.json",
-  "title": "Automation Integration",
+  "title": "Afra Automation Integration Contract",
+  "description": "Secret-safe metadata contract for Phase 0 automation integration planning. This schema must not contain real secrets or production credentials.",
   "type": "object",
   "additionalProperties": false,
-  "properties": {},
-  "required": []
+  "required": [
+    "integration_id",
+    "name",
+    "description",
+    "phase_label",
+    "integration_type",
+    "owner",
+    "reviewer",
+    "status",
+    "capabilities",
+    "data_classification",
+    "secret_location_reference",
+    "manual_fallback",
+    "timeout_policy",
+    "retry_policy",
+    "audit_required",
+    "disabled_by_default"
+  ],
+  "properties": {
+    "integration_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{2,80}$",
+      "description": "Stable integration identifier. Example: dummy-worker, future-google-maps-driver."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 800
+    },
+    "phase_label": {
+      "type": "string",
+      "enum": ["BASELINE", "PHASE-0", "PHASE-1", "FUTURE"]
+    },
+    "integration_type": {
+      "type": "string",
+      "enum": [
+        "control_plane",
+        "worker_runtime",
+        "plugin_driver",
+        "external_service",
+        "storage",
+        "reporting",
+        "dummy"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120
+    },
+    "reviewer": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 120
+    },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "documented", "contract_ready", "blocked", "future_only", "deprecated"]
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{2,80}$"
+      }
+    },
+    "data_classification": {
+      "type": "string",
+      "enum": ["public", "internal", "sensitive", "restricted"]
+    },
+    "secret_location_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "reference_type", "reference_name"],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reference_type": {
+          "type": "string",
+          "enum": ["none", "server_env", "vault_path", "ops_manual", "future_decision"]
+        },
+        "reference_name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160,
+          "description": "A safe pointer name only. Do not place real secret values here."
+        }
+      }
+    },
+    "manual_fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exists", "summary"],
+      "properties": {
+        "exists": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 600
+        }
+      }
+    },
+    "timeout_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connect_timeout_seconds", "operation_timeout_seconds"],
+      "properties": {
+        "connect_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "operation_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        }
+      }
+    },
+    "retry_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_attempts", "backoff_strategy", "jitter_required"],
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "backoff_strategy": {
+          "type": "string",
+          "enum": ["none", "fixed", "linear", "exponential"]
+        },
+        "jitter_required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "audit_required": {
+      "type": "boolean"
+    },
+    "disabled_by_default": {
+      "type": "boolean",
+      "const": true,
+      "description": "All Phase 0 and future integrations must be disabled by default unless a later ADR changes this rule."
+    },
+    "related_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 220
+      },
+      "default": []
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 1000,
+      "default": ""
+    }
+  }
 }
