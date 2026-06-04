@@ -1,15 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/artifact.schema.json",
   "title": "Automation Artifact",
+  "description": "Canonical Phase 0 automation artifact schema. Artifact means safe dummy output metadata only and must not contain secrets, signed URLs, tokens, cookies, real storage credentials, or production data.",
   "type": "object",
-  "required": ["id", "job_id", "kind", "created_at"],
+  "required": [
+    "id",
+    "job_id",
+    "kind",
+    "created_at"
+  ],
   "properties": {
-    "id": { "type": "string" },
-    "job_id": { "type": "string" },
-    "kind": { "type": "string" },
-    "name": { "type": "string" },
-    "location": { "type": "string" },
-    "created_at": { "type": "string", "format": "date-time" }
+    "id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string",
+      "description": "Safe dummy artifact reference only. Must not contain signed URLs, tokens, cookies, storage credentials, or secret-bearing locations."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_type": {
+      "type": "string"
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "checksum": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "created_by_worker_id": {
+      "type": "string"
+    }
   },
   "additionalProperties": true
 }
