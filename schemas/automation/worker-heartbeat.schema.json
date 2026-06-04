@@ -2,14 +2,82 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afrakala.local/schemas/automation/worker-heartbeat.schema.json",
   "title": "Automation Worker Heartbeat",
+  "description": "Phase 0 dummy worker heartbeat contract. This schema must not contain secrets, credentials, production identifiers, or real external automation status fields.",
   "type": "object",
-  "required": ["worker_id", "status", "sent_at"],
+  "required": [
+    "worker_id",
+    "status",
+    "sent_at"
+  ],
   "properties": {
-    "worker_id": { "type": "string" },
-    "job_id": { "type": ["string", "null"] },
-    "status": { "type": "string" },
-    "active_jobs": { "type": "integer", "minimum": 0 },
-    "sent_at": { "type": "string", "format": "date-time" }
+    "worker_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "IDLE",
+        "CLAIMING",
+        "RUNNING",
+        "PAUSED",
+        "STOPPING",
+        "STOPPED",
+        "ERROR",
+        "OFFLINE"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "PHASE-0"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "dummy"
+      ]
+    },
+    "active_jobs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "current_job_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "heartbeat_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "host_label": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "uptime_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
   "additionalProperties": true
 }
