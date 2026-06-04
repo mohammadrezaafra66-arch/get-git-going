@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.local/schemas/automation/integration.schema.json",
+  "title": "Automation Integration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {},
+  "required": []
+}
