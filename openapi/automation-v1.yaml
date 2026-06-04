@@ -2,41 +2,652 @@ openapi: 3.1.0
 info:
   title: Afra Automation API
   version: 0.1.0
-  description: Phase 0 placeholder contract for dummy automation flow only.
+  description: >-
+    Phase 0 contract for dummy automation flow only. This OpenAPI document
+    describes contracts, not implementation. It does not authorize real bots,
+    scraping, sending, OCR/STT, AI pipelines, browser automation, proxy/account
+    automation, production integrations, migrations, or real credentials.
+servers: []
+tags:
+  - name: Jobs
+    description: Dummy job lifecycle contract endpoints.
+  - name: Workers
+    description: Dummy worker identity and status contract endpoints.
 paths:
   /automation/jobs:
     post:
+      tags:
+        - Jobs
       summary: Create dummy automation job
+      description: >-
+        Creates a Phase 0 dummy automation job only. This endpoint is a contract
+        placeholder and must not be used for real external automation.
+      operationId: createDummyAutomationJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDummyJobRequest"
       responses:
-        '202':
-          description: Accepted
+        "202":
+          description: Dummy job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /automation/jobs/claim:
     post:
-      summary: Claim next dummy job
+      tags:
+        - Jobs
+      summary: Claim next available dummy job
+      description: >-
+        Allows a dummy worker to claim the next available dummy job. This is a
+        contract-only endpoint for Phase 0 dummy flow.
+      operationId: claimDummyAutomationJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimJobRequest"
       responses:
-        '200':
-          description: Claimed
+        "200":
+          description: Dummy job claimed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimJobResponse"
+        "204":
+          description: No dummy job available.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /automation/jobs/{jobId}/heartbeat:
     post:
-      summary: Send worker heartbeat
+      tags:
+        - Jobs
+      summary: Send dummy worker heartbeat
+      description: >-
+        Records or accepts heartbeat for a dummy job. Heartbeat payloads must be
+        safe and must not include secrets or production data.
+      operationId: sendDummyJobHeartbeat
       parameters:
-        - name: jobId
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerHeartbeat"
       responses:
-        '204':
-          description: Heartbeat accepted
+        "204":
+          description: Heartbeat accepted.
+        "200":
+          description: Heartbeat accepted with response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /automation/jobs/{jobId}/progress:
+    patch:
+      tags:
+        - Jobs
+      summary: Update safe dummy progress
+      description: >-
+        Updates progress for a dummy job. Progress messages must be safe and must
+        not contain secrets, credentials, customer data, or real external data.
+      operationId: updateDummyJobProgress
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressUpdateRequest"
+      responses:
+        "200":
+          description: Progress updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "204":
+          description: Progress accepted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /automation/jobs/{jobId}/logs:
+    post:
+      tags:
+        - Jobs
+      summary: Append safe dummy log entry
+      description: >-
+        Appends a safe dummy log entry. Secrets, credentials, tokens, cookies,
+        production endpoints, customer private data, and real external data are
+        forbidden in logs.
+      operationId: appendDummyJobLog
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogEntryRequest"
+      responses:
+        "202":
+          description: Log entry accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /automation/jobs/{jobId}/checkpoint:
+    post:
+      tags:
+        - Jobs
+      summary: Save dummy checkpoint state
+      description: >-
+        Saves safe dummy checkpoint state for a Phase 0 job. Checkpoints must not
+        contain secrets, credentials, real scraped data, or private operational data.
+      operationId: saveDummyJobCheckpoint
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckpointRequest"
+      responses:
+        "202":
+          description: Checkpoint accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /automation/jobs/{jobId}/artifacts:
+    post:
+      tags:
+        - Jobs
+      summary: Register dummy artifact metadata
+      description: >-
+        Registers dummy artifact metadata using the canonical artifact contract.
+        The canonical artifact schema is schemas/automation/artifact.schema.json.
+      operationId: registerDummyJobArtifact
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Artifact"
+      responses:
+        "202":
+          description: Artifact metadata accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Artifact"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /automation/jobs/{jobId}/status:
     patch:
+      tags:
+        - Jobs
       summary: Update dummy job status
+      description: >-
+        Updates a dummy job state according to the Phase 0 Job Lifecycle. Only
+        canonical lifecycle statuses are allowed.
+      operationId: updateDummyJobStatus
       parameters:
-        - name: jobId
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusUpdateRequest"
       responses:
-        '204':
-          description: Status updated
+        "200":
+          description: Status updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "204":
+          description: Status accepted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /automation/workers/register:
+    post:
+      tags:
+        - Workers
+      summary: Register dummy worker identity and capabilities
+      description: >-
+        Registers or identifies a Phase 0 dummy worker. This endpoint is
+        contract-only and must not register production workers in Phase 0.
+      operationId: registerDummyWorker
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerRegistrationRequest"
+      responses:
+        "202":
+          description: Dummy worker registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /automation/workers/{workerId}:
+    get:
+      tags:
+        - Workers
+      summary: Read dummy worker status
+      description: >-
+        Reads safe status for a dummy worker. This endpoint is contract-only for
+        Phase 0 worker status visibility.
+      operationId: getDummyWorkerStatus
+      parameters:
+        - $ref: "#/components/parameters/WorkerId"
+      responses:
+        "200":
+          description: Dummy worker status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Worker"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Safe dummy job identifier.
+    WorkerId:
+      name: workerId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Safe dummy worker identifier.
+  responses:
+    BadRequest:
+      description: Invalid dummy contract request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Request is not allowed by Phase 0 contract boundaries.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested dummy contract resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    JobStatus:
+      type: string
+      enum:
+        - PENDING
+        - CLAIMED
+        - RUNNING
+        - PAUSED
+        - SUCCEEDED
+        - FAILED
+        - CANCELLED
+        - RETRY_WAITING
+      description: Canonical Phase 0 dummy job lifecycle status.
+    CreateDummyJobRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - job_type
+        - requested_by
+      properties:
+        job_type:
+          type: string
+          enum:
+            - dummy.noop
+            - dummy.success
+            - dummy.failure
+            - dummy.checkpoint
+            - dummy.cancel
+          description: Safe dummy job type only.
+        requested_by:
+          type: string
+          description: Safe operator or system label. Must not contain secrets.
+        request_metadata:
+          type: object
+          additionalProperties: true
+          description: Safe non-sensitive metadata for Phase 0 only.
+        payload:
+          type: object
+          additionalProperties: true
+          description: Safe dummy payload. Must not contain real external data.
+    ClaimJobRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - worker_id
+      properties:
+        worker_id:
+          type: string
+          description: Safe dummy worker id.
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Dummy capabilities only.
+    ClaimJobResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - job_available
+      properties:
+        job_available:
+          type: boolean
+        job:
+          $ref: "#/components/schemas/Job"
+        message:
+          type: string
+    WorkerHeartbeat:
+      type: object
+      additionalProperties: false
+      required:
+        - worker_id
+        - status
+        - timestamp
+      properties:
+        worker_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        timestamp:
+          type: string
+          format: date-time
+        progress_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        message:
+          type: string
+          description: Safe heartbeat message with no secrets.
+      description: Aligns with schemas/automation/worker-heartbeat.schema.json.
+    ProgressUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - progress_percent
+        - message
+      properties:
+        progress_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        message:
+          type: string
+          description: Safe dummy progress message with no secrets.
+    LogEntryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - level
+        - message
+        - timestamp
+      properties:
+        level:
+          type: string
+          enum:
+            - debug
+            - info
+            - warning
+            - error
+        message:
+          type: string
+          description: Safe log message. Secrets and private data are forbidden.
+        timestamp:
+          type: string
+          format: date-time
+        context:
+          type: object
+          additionalProperties: true
+          description: Safe non-sensitive context only.
+    CheckpointRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - checkpoint_ref
+        - timestamp
+      properties:
+        checkpoint_ref:
+          type: string
+          description: Safe checkpoint reference.
+        timestamp:
+          type: string
+          format: date-time
+        state:
+          type: object
+          additionalProperties: true
+          description: Safe dummy checkpoint state only.
+    StatusUpdateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - reason
+      properties:
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        reason:
+          type: string
+          description: Safe status-change reason with no secrets.
+        actor:
+          type: string
+          description: Safe actor label.
+        checkpoint_ref:
+          type: string
+        artifact_refs:
+          type: array
+          items:
+            type: string
+    Artifact:
+      type: object
+      required:
+        - id
+        - job_id
+        - kind
+        - created_at
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        job_id:
+          type: string
+        kind:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      description: Aligns with schemas/automation/artifact.schema.json.
+    PluginManifest:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phase:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+      description: Aligns with schemas/automation/plugin-manifest.schema.json for future driver registration planning only.
+    WorkerRegistrationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - worker_id
+        - worker_mode
+      properties:
+        worker_id:
+          type: string
+        worker_mode:
+          type: string
+          enum:
+            - dummy
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Dummy capabilities only.
+        plugin_manifest:
+          $ref: "#/components/schemas/PluginManifest"
+    Worker:
+      type: object
+      additionalProperties: false
+      required:
+        - worker_id
+        - worker_mode
+        - status
+      properties:
+        worker_id:
+          type: string
+        worker_mode:
+          type: string
+          enum:
+            - dummy
+        status:
+          type: string
+          enum:
+            - registered
+            - available
+            - busy
+            - stale
+            - unavailable
+        last_heartbeat_at:
+          type: string
+          format: date-time
+        capabilities:
+          type: array
+          items:
+            type: string
+    Job:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - job_type
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+        job_type:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        worker_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        progress_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        metadata:
+          type: object
+          additionalProperties: true
+      description: Aligns with schemas/automation/job.schema.json.
+    SuccessResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+          description: Safe error message with no secrets.
+x-afra-phase0-rules:
+  scope: Phase 0 dummy automation flow only.
+  forbidden:
+    - real Divar automation
+    - real WhatsApp automation
+    - real Instagram automation
+    - real Torob automation
+    - OCR/STT pipeline
+    - AI/LLM pipeline
+    - scraping
+    - sending
+    - browser automation
+    - proxy/account automation
+    - production integrations
+    - real credentials
+    - migration implementation
+  canonical_schema_references:
+    - schemas/automation/job.schema.json
+    - schemas/automation/worker-heartbeat.schema.json
+    - schemas/automation/artifact.schema.json
+    - schemas/automation/plugin-manifest.schema.json
