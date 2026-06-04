@@ -2,14 +2,119 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afrakala.local/schemas/automation/job.schema.json",
   "title": "Automation Job",
+  "description": "Phase 0 dummy automation job contract. This schema is generic and must not contain external platform credentials or real automation details.",
   "type": "object",
-  "required": ["id", "type", "status", "created_at"],
+  "required": [
+    "id",
+    "type",
+    "status",
+    "created_at"
+  ],
   "properties": {
-    "id": { "type": "string" },
-    "type": { "type": "string" },
-    "status": { "type": "string" },
-    "payload": { "type": "object" },
-    "created_at": { "type": "string", "format": "date-time" }
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "CLAIMED",
+        "RUNNING",
+        "PAUSED",
+        "SUCCEEDED",
+        "FAILED",
+        "CANCELLED",
+        "RETRY_WAITING"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "PHASE-0",
+        "PHASE-1",
+        "FUTURE"
+      ]
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "progress_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_retries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "claimed_by": {
+      "type": "string"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancelled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "next_retry_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "checkpoint_id": {
+      "type": "string"
+    },
+    "artifact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
   "additionalProperties": true
 }
