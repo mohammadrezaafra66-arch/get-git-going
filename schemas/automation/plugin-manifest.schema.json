@@ -2,15 +2,73 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afrakala.local/schemas/automation/plugin-manifest.schema.json",
   "title": "Automation Plugin Manifest",
+  "description": "Phase 0 future contract placeholder for automation plugin metadata. This schema does not authorize real plugins, real drivers, runtime implementation, external platform configuration, or production integrations.",
   "type": "object",
-  "required": ["id", "name", "version", "phase"],
+  "required": [
+    "id",
+    "name",
+    "version",
+    "phase"
+  ],
   "properties": {
-    "id": { "type": "string" },
-    "name": { "type": "string" },
-    "version": { "type": "string" },
-    "phase": { "type": "string", "enum": ["BASELINE", "PHASE-0", "PHASE-1", "FUTURE"] },
-    "capabilities": { "type": "array", "items": { "type": "string" } },
-    "enabled": { "type": "boolean" }
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "BASELINE",
+        "PHASE-0",
+        "PHASE-1",
+        "FUTURE"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_job_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "required_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Non-secret configuration shape only. Must not contain credentials, tokens, cookies, API keys, or real external platform values."
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
   },
   "additionalProperties": true
 }
