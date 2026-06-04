@@ -61,10 +61,10 @@ Do not mark a test `PASS` without evidence.
 | TC-0-024 | Operations | Incident template availability | `INCIDENT_STATE_TEMPLATE.md` exists and covers security, secrets, migration/RLS impact, and escalation fields. | TODO | Link template review. |
 | TC-0-025 | Operations | Postmortem template availability | `POSTMORTEM_TEMPLATE.md` exists and is blameless, learning-focused, and action-oriented. | TODO | Link template review. |
 | TC-0-026 | Migration | Migration/rollback gate | `MIGRATION_ROLLBACK.md` exists and Phase 0 changes do not include unapproved migrations. | TODO | Link migration review. |
-| TC-0-027 | Environment | Environment matrix clarity | `ENVIRONMENT_MATRIX.md` clearly separates local, LAN, staging-like, and production boundaries for Phase 0. | TODO | Link environment review. |
+| TC-0-027 | Environment | Environment matrix clarity | `ENVIRONMENT_MATRIX.md` clearly separates local, LAN, and production boundaries for Phase 0. | TODO | Link environment review. |
 | TC-0-028 | Review | PR template gate | `.github/pull_request_template.md` includes Phase 0 scope, no-runtime, no-secret, no-migration, testing, and reviewer gates. | TODO | Link PR template review. |
 | TC-0-029 | Release | Release checklist gate | `RELEASE_CHECKLIST.md` includes scope, contract, security, RLS/RBAC, migration, testing, environment, reviewer, and forbidden-work gates. | TODO | Link release checklist review. |
-| TC-0-030 | Worker | Worker skeleton readiness | `afrakala-worker/` has README, `.env.example`, `src/`, and `tests/` placeholders without runtime automation. | TODO | Link worker folder review. |
+| TC-0-030 | Worker | Worker skeleton readiness | `afrakala-worker/` has README, `.env.example`, `src/`, and `tests` placeholders without runtime automation. | TODO | Link worker folder review. |
 | TC-0-031 | Worker | Dummy Worker spec readiness | `DUMMY_WORKER_SPEC.md` defines only simulated dummy behavior and forbids real external calls. | TODO | Link module spec review. |
 | TC-0-032 | E2E | Safe dummy E2E readiness | Safe dummy E2E flow is defined as create/claim/heartbeat/log/progress/checkpoint/artifact/final-status only. | TODO | Link requirements and acceptance review. |
 | TC-0-033 | Forbidden work | Real bot exclusion | PR contains no real Divar, WhatsApp, Instagram, Torob, Google Maps, Telegram, Rubika, Bale, or SMS runtime integration. | TODO | Link PR diff review. |
