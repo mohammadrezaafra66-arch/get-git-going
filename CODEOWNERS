@@ -1,1 +1,55 @@
+# AfraKala CODEOWNERS
+# Phase 0 ownership follows docs/automation/06_team_delivery/RACI_OWNERSHIP.md.
+# This file uses GitHub handles only. Internal RACI names stay in the RACI document.
+# Mohammadreza Afra remains the final GitHub owner until more team GitHub handles are approved.
+
+# Default owner for every change.
 * @mohammadrezaafra66-arch
+
+# GitHub governance and contribution controls.
+/.github/ @mohammadrezaafra66-arch
+/CODEOWNERS @mohammadrezaafra66-arch
+/CONTRIBUTING.md @mohammadrezaafra66-arch
+/LOVABLE_RULES.md @mohammadrezaafra66-arch
+/AGENTS.md @mohammadrezaafra66-arch
+
+# Repository documentation and baseline references.
+/docs/ @mohammadrezaafra66-arch
+/docs/REPO_STATE_INVENTORY.md @mohammadrezaafra66-arch
+/docs/AFRAKALA_ACCEPTANCE_CRITERIA.md @mohammadrezaafra66-arch
+/docs/MIGRATION_SAFETY_POLICY.md @mohammadrezaafra66-arch
+
+# Afra Automation Phase 0 documentation.
+/docs/automation/ @mohammadrezaafra66-arch
+/docs/automation/00_master/ @mohammadrezaafra66-arch
+/docs/automation/01_product_scope/ @mohammadrezaafra66-arch
+/docs/automation/02_phases/ @mohammadrezaafra66-arch
+/docs/automation/03_architecture/ @mohammadrezaafra66-arch
+/docs/automation/03_architecture/adr/ @mohammadrezaafra66-arch
+/docs/automation/04_contracts/ @mohammadrezaafra66-arch
+/docs/automation/05_security_ops/ @mohammadrezaafra66-arch
+/docs/automation/06_team_delivery/ @mohammadrezaafra66-arch
+/docs/automation/07_modules/ @mohammadrezaafra66-arch
+
+# Machine-readable automation contracts.
+/openapi/ @mohammadrezaafra66-arch
+/openapi/automation-v1.yaml @mohammadrezaafra66-arch
+/schemas/ @mohammadrezaafra66-arch
+/schemas/automation/ @mohammadrezaafra66-arch
+/schemas/automation/*.schema.json @mohammadrezaafra66-arch
+/schemas/automation/artifact.schema.json @mohammadrezaafra66-arch
+
+# Worker runtime skeleton and dummy-worker-only Phase 0 area.
+/afrakala-worker/ @mohammadrezaafra66-arch
+/afrakala-worker/README.md @mohammadrezaafra66-arch
+/afrakala-worker/.env.example @mohammadrezaafra66-arch
+/afrakala-worker/src/ @mohammadrezaafra66-arch
+/afrakala-worker/tests/ @mohammadrezaafra66-arch
+
+# Existing self-host, deployment, migration, and security-sensitive areas.
+/deploy/ @mohammadrezaafra66-arch
+/supabase/migrations/ @mohammadrezaafra66-arch
+/src/integrations/supabase/ @mohammadrezaafra66-arch
+/src/server/ @mohammadrezaafra66-arch
+/src/routes/api.* @mohammadrezaafra66-arch
+/src/lib/rbac/ @mohammadrezaafra66-arch
