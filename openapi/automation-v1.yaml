@@ -337,14 +337,26 @@ components:
         - CANCELLED
         - RETRY_WAITING
       description: Canonical Phase 0 dummy job lifecycle status.
+    WorkerStatus:
+      type: string
+      enum:
+        - IDLE
+        - CLAIMING
+        - RUNNING
+        - PAUSED
+        - STOPPING
+        - STOPPED
+        - ERROR
+        - OFFLINE
+      description: Canonical Phase 0 dummy worker heartbeat status.
     CreateDummyJobRequest:
       type: object
       additionalProperties: false
       required:
-        - job_type
+        - type
         - requested_by
       properties:
-        job_type:
+        type:
           type: string
           enum:
             - dummy.noop
@@ -396,13 +408,13 @@ components:
       required:
         - worker_id
         - status
-        - timestamp
+        - sent_at
       properties:
         worker_id:
           type: string
         status:
-          $ref: "#/components/schemas/JobStatus"
-        timestamp:
+          $ref: "#/components/schemas/WorkerStatus"
+        sent_at:
           type: string
           format: date-time
         progress_percent:
@@ -433,7 +445,7 @@ components:
       required:
         - level
         - message
-        - timestamp
+        - sent_at
       properties:
         level:
           type: string
@@ -445,7 +457,7 @@ components:
         message:
           type: string
           description: Safe log message. Secrets and private data are forbidden.
-        timestamp:
+        sent_at:
           type: string
           format: date-time
         context:
@@ -457,12 +469,12 @@ components:
       additionalProperties: false
       required:
         - checkpoint_ref
-        - timestamp
+        - sent_at
       properties:
         checkpoint_ref:
           type: string
           description: Safe checkpoint reference.
-        timestamp:
+        sent_at:
           type: string
           format: date-time
         state:
@@ -563,13 +575,7 @@ components:
           enum:
             - dummy
         status:
-          type: string
-          enum:
-            - registered
-            - available
-            - busy
-            - stale
-            - unavailable
+          $ref: "#/components/schemas/WorkerStatus"
         last_heartbeat_at:
           type: string
           format: date-time
@@ -582,13 +588,13 @@ components:
       additionalProperties: true
       required:
         - id
-        - job_type
+        - type
         - status
         - created_at
       properties:
         id:
           type: string
-        job_type:
+        type:
           type: string
         status:
           $ref: "#/components/schemas/JobStatus"
