@@ -1,0 +1,3 @@
+# Plugin Manifest Standard
+
+reserved
