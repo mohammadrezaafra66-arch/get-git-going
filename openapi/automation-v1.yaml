@@ -1,0 +1,227 @@
+openapi: 3.0.3
+info:
+  title: AfraKala Phase-0 Automation API
+  version: 0.1.0
+  description: |
+    Phase-0 only contract between the existing AfraKala Control Plane and a Dummy Worker.
+    No real bots, no Divar, no WhatsApp, no Instagram, no real Torob, no OCR/STT, and no production AI.
+servers:
+  - url: /api/automation/v1
+paths:
+  /workers/heartbeat:
+    post:
+      summary: Register or update worker heartbeat
+      operationId: postWorkerHeartbeat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+      responses:
+        '202':
+          description: Heartbeat accepted
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /commands/claim:
+    post:
+      summary: Claim one pending automation command
+      operationId: claimAutomationCommand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [worker_id]
+              properties:
+                worker_id:
+                  type: string
+                  format: uuid
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                  example: [dummy]
+      responses:
+        '200':
+          description: Command claimed or no command available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  command:
+                    nullable: true
+                    $ref: '#/components/schemas/AutomationCommand'
+        '409':
+          description: Command already claimed
+  /runs/{run_id}/events:
+    post:
+      summary: Append an event to an automation run
+      operationId: appendAutomationRunEvent
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutomationRunEvent'
+      responses:
+        '201':
+          description: Event recorded
+        '400':
+          description: Invalid event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /runs/{run_id}:
+    get:
+      summary: Get automation run status
+      operationId: getAutomationRun
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutomationRun'
+        '404':
+          description: Run not found
+components:
+  schemas:
+    WorkerHeartbeat:
+      type: object
+      required: [worker_id, worker_name, status, observed_at]
+      properties:
+        worker_id:
+          type: string
+          format: uuid
+        worker_name:
+          type: string
+        status:
+          type: string
+          enum: [ONLINE, DEGRADED, OFFLINE]
+        capabilities:
+          type: array
+          items:
+            type: string
+          example: [dummy]
+        active_run_id:
+          type: string
+          format: uuid
+          nullable: true
+        observed_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    AutomationCommand:
+      type: object
+      required: [command_id, command_type, status, payload, created_at]
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        command_type:
+          type: string
+          enum: [DUMMY_RUN]
+        status:
+          type: string
+          enum: [PENDING, CLAIMED, CANCELLED, EXPIRED]
+        payload:
+          type: object
+          additionalProperties: true
+        claimed_by_worker_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        claimed_at:
+          type: string
+          format: date-time
+          nullable: true
+    AutomationRun:
+      type: object
+      required: [run_id, command_id, status, created_at]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        command_id:
+          type: string
+          format: uuid
+        worker_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED]
+        result:
+          type: object
+          additionalProperties: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+    AutomationRunEvent:
+      type: object
+      required: [event_type, occurred_at]
+      properties:
+        event_id:
+          type: string
+          format: uuid
+          readOnly: true
+        event_type:
+          type: string
+          enum: [RUN_STARTED, HEARTBEAT, CHECKPOINT_SAVED, RUN_COMPLETED, RUN_FAILED, RUN_CANCELLED]
+        message:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        occurred_at:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
