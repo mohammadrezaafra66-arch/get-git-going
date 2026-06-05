@@ -1,6 +1,6 @@
 -- =========================================================
 -- PHASE-0: Automation tables (database-backed queue)
--- ADR-0001, G-04, WPC-0-001
+-- ADR-0001, G-04, WPC-0-003
 --
 -- Scope:
 --   - Generic automation persistence only (dummy_worker enabled)
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS public.automation_jobs (
 );
 
 COMMENT ON TABLE public.automation_jobs IS
-  'Database-backed automation command queue. Maps to OpenAPI AutomationCommand / claim flow. Phase-0 allows only dummy/generic job types.';
+  'Database-backed automation command queue. Maps to job.schema.json and POST /jobs/claim (automation/openapi/automation-v1.yaml). Phase-0 allows only dummy/generic job types.';
 
 CREATE INDEX IF NOT EXISTS idx_automation_jobs_dispatch
   ON public.automation_jobs (status, priority DESC, created_at ASC)
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS public.automation_job_runs (
 );
 
 COMMENT ON TABLE public.automation_job_runs IS
-  'Execution run for a claimed automation job. Maps to OpenAPI AutomationRun and GET /runs/{run_id}.';
+  'Execution run for a claimed automation job. Run lifecycle aligns with PATCH /jobs/{jobId}/status (future implementation).';
 
 CREATE INDEX IF NOT EXISTS idx_automation_job_runs_job_created
   ON public.automation_job_runs (job_id, created_at DESC);
@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS public.automation_log_events (
 );
 
 COMMENT ON TABLE public.automation_log_events IS
-  'Append-only run event stream. Maps to OpenAPI POST /runs/{run_id}/events.';
+  'Append-only run event stream. Persisted for operator visibility and future worker event ingestion.';
 
 CREATE INDEX IF NOT EXISTS idx_automation_log_events_run_occurred
   ON public.automation_log_events (run_id, occurred_at ASC);
