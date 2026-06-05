@@ -40,10 +40,10 @@ Phase 0 is **not complete** until every criterion below is checked and signed. O
 
 | ID | Criterion | Evidence | Status |
 |----|-----------|----------|--------|
-| C1 | Automation tables migration applied (staging/self-host) | migration file + apply log | [ ] |
-| C2 | RLS enabled; write path documented | migration + security note | [ ] |
-| C3 | `dummy_worker` module seeded only | seed row | [ ] |
-| C4 | No real-bot domain tables | schema review | [ ] |
+| C1 | Automation tables migration applied (staging/self-host) | migration file + apply log | [ ] — on main at `9c54ea9` (PR #15); staging/self-host apply pending |
+| C2 | RLS enabled; write path documented | migration + security note | [x] — PR #15 `20260605120000_phase0_automation_tables.sql`; `PHASE0_AUTOMATION_TABLES.md` § Security |
+| C3 | `dummy_worker` module seeded only | seed row | [x] — seed in migration; no other modules enabled |
+| C4 | No real-bot domain tables | schema review | [x] — PR #15 scope review; 8 generic `automation_*` tables only |
 
 ### D. Worker Dummy (no real bot)
 
