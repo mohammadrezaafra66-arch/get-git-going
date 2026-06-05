@@ -10,6 +10,12 @@
 | Release notes | [RELEASE_NOTES_2026-06-05.md](./RELEASE_NOTES_2026-06-05.md) |
 | Phase label policy | [PHASE_LABEL_POLICY.md](./PHASE_LABEL_POLICY.md) |
 | Phase 0 runbook | [../ops/RUNBOOK_PHASE0.md](../ops/RUNBOOK_PHASE0.md) |
+| **Execution decision (final)** | [../automation/EXECUTION_DECISION_FINAL.md](../automation/EXECUTION_DECISION_FINAL.md) |
+| Review Baseline checklist | [../automation/REVIEW_BASELINE_CHECKLIST.md](../automation/REVIEW_BASELINE_CHECKLIST.md) |
+| Phase 0 acceptance gate | [../automation/PHASE0_ACCEPTANCE_GATE.md](../automation/PHASE0_ACCEPTANCE_GATE.md) |
+| G-01…G-08 status | [../automation/G01_G08_CLOSURE_STATUS.md](../automation/G01_G08_CLOSURE_STATUS.md) |
+| Phase 1 packet index (locked) | [../automation/PHASE1_TASK_PACKET_INDEX.md](../automation/PHASE1_TASK_PACKET_INDEX.md) |
+| Baseline review (2026-06-05) | [BASELINE_REVIEW_2026_06_05.md](./BASELINE_REVIEW_2026_06_05.md) |
 
 ## Quick navigation
 
