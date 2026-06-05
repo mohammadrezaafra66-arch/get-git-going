@@ -12,7 +12,8 @@ Status: Ready for Planning
 ## 2. محدوده مجاز
 
 - docs/automation/**
-- openapi/automation-v1.yaml
+- automation/openapi/automation-v1.yaml
+- automation/schemas/*.json
 - مسیر Worker جداگانه یا repo جدا برای Python Worker
 - migrationهای automation، فقط در صورت Task Packet جدا
 
