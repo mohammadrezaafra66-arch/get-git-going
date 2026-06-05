@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afrakala.ir/schemas/automation/job.schema.json",
+  "title": "AutomationJob",
+  "description": "Generic automation job envelope. Phase 0 contract only — no Divar/Torob/WhatsApp/Instagram/OCR/STT/AI job types.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "status",
+    "created_at",
+    "payload"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{1,63}$",
+      "description": "Generic job type identifier.",
+      "examples": ["generic.echo", "generic.noop", "generic.healthcheck"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "claimed", "running", "succeeded", "failed", "cancelled"]
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "claimed_by": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Worker that claimed this job."
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400,
+      "default": 300
+    },
+    "payload": {
+      "$ref": "#/$defs/JobPayload"
+    },
+    "result": {
+      "$ref": "#/$defs/JobResult"
+    }
+  },
+  "$defs": {
+    "JobPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["echo", "noop", "healthcheck"],
+          "description": "Phase 0 allowed actions only."
+        },
+        "input": {
+          "type": "object",
+          "description": "Action-specific input. Keep small; no binary blobs in Phase 0.",
+          "additionalProperties": true
+        },
+        "correlation_id": {
+          "type": "string",
+          "maxLength": 128
+        }
+      }
+    },
+    "JobResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
