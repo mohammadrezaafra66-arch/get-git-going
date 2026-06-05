@@ -15,6 +15,7 @@
 | Phase 0 acceptance gate | [../automation/PHASE0_ACCEPTANCE_GATE.md](../automation/PHASE0_ACCEPTANCE_GATE.md) |
 | G-01…G-08 status | [../automation/G01_G08_CLOSURE_STATUS.md](../automation/G01_G08_CLOSURE_STATUS.md) |
 | Phase 1 packet index (locked) | [../automation/PHASE1_TASK_PACKET_INDEX.md](../automation/PHASE1_TASK_PACKET_INDEX.md) |
+| Baseline review (2026-06-05) | [BASELINE_REVIEW_2026_06_05.md](./BASELINE_REVIEW_2026_06_05.md) |
 
 ## Quick navigation
 
