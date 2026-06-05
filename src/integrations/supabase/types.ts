@@ -9439,7 +9439,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
       base_currency: "toman" | "usd" | "aed"
-      currency_code: "toman" | "usd" | "aed"
+      currency_code: "toman" | "usd" | "aed" | "usd_us"
       dynamic_column_data_type:
         | "text"
         | "number"
@@ -9627,7 +9627,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "manager", "sales", "accountant", "viewer"],
       base_currency: ["toman", "usd", "aed"],
-      currency_code: ["toman", "usd", "aed"],
+      currency_code: ["toman", "usd", "aed", "usd_us"],
       dynamic_column_data_type: [
         "text",
         "number",
