@@ -1,7 +1,7 @@
 # Phase 1 Task Packet Index
 
 **Phase Label:** PHASE-1 (partial unlock)  
-**Status:** **PARTIAL** — Packet **1.1** unlocked; Packets 1.2 … 2.6 remain locked  
+**Status:** **PARTIAL** — Packet **1.1** ready for review; Packets 1.2 … 2.6 remain locked  
 **Owner:** محمدرضا افرا
 
 مرجع: [`EXECUTION_DECISION_FINAL.md`](./EXECUTION_DECISION_FINAL.md) — بند ۹، ۱۰
@@ -28,27 +28,29 @@ Individual packets unlock **one at a time** via index update + baseline unlock r
 
 | Packet | Title | Phase | Status | Task file | Depends on |
 |--------|-------|-------|--------|-----------|------------|
-| **1.1** | TBD — first Phase 1 module (low-risk) | PHASE-1 | ✅ **UNLOCKED** | _not created_ | [Phase 0 sign-off](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md) |
-| **1.2** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | 1.1 |
-| **1.3** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.4** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.5** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.6** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.1** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | 1.x complete |
-| **2.2** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.3** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.4** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.5** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.6** | TBD — Phase 1 closure / review | PHASE-1 | 🔒 LOCKED | _not created_ | 2.5 |
+| **1.1** | TPC-1-001 — Planning and First Module Selection — Torob limited selected | PHASE-1 | **READY FOR REVIEW** | [TPC-1-001](./task-packets/TPC-1-001-phase1-packet-1.1-planning-and-first-module-selection.md) | [Phase 0 sign-off](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md) |
+| **1.2** | TBD | PHASE-1 | LOCKED | _not created_ | 1.1 |
+| **1.3** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **1.4** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **1.5** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **1.6** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **2.1** | TBD | PHASE-1 | LOCKED | _not created_ | 1.x complete |
+| **2.2** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **2.3** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **2.4** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **2.5** | TBD | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **2.6** | TBD — Phase 1 closure / review | PHASE-1 | LOCKED | _not created_ | 2.5 |
 
 ---
 
-## Candidate modules (planning only — not authorized until packet created)
+## Candidate modules (planning only — not authorized until packet is approved)
 
 Per `docs/process/PHASE_LABEL_POLICY.md`, possible Phase 1 candidates after acceptance:
 
 - Google Maps (limited)
 - Torob (limited, not real extractor at scale)
+
+**Packet 1.1 selection for review:** Torob limited.
 
 **Forbidden in Phase 1 without new ADR:** Divar, WhatsApp, Instagram, OCR/STT, AI production.
 
