@@ -1,7 +1,7 @@
 # Phase 1 Task Packet Index
 
 **Phase Label:** PHASE-1  
-**Status:** PARTIAL — Packets 1.1 to 1.5 accepted; Packet 1.6 ready for review; later packets locked  
+**Status:** PARTIAL — Packets 1.1 to 1.6 accepted; Packet 2.1 ready for review; later packets locked  
 **Owner:** محمدرضا افرا
 
 ---
@@ -15,9 +15,9 @@
 | **1.3** | TPC-1-003 — Worker Runtime Boundary | PHASE-1 | ACCEPTED | [TPC-1-003](./task-packets/TPC-1-003-worker-runtime-boundary.md) | [Packet 1.2 acceptance](../baseline/PHASE1_PACKET_1_2_ACCEPTANCE_2026_06_07.md) |
 | **1.4** | TPC-1-004 — Plugin / Driver SDK Boundary | PHASE-1 | ACCEPTED | [TPC-1-004](./task-packets/TPC-1-004-plugin-driver-sdk-boundary.md) | [Packet 1.3 acceptance](../baseline/PHASE1_PACKET_1_3_ACCEPTANCE_2026_06_07.md) |
 | **1.5** | TPC-1-005 — Torob Limited Implementation Design | PHASE-1 | ACCEPTED | [TPC-1-005](./task-packets/TPC-1-005-torob-limited-implementation-design.md) | [Packet 1.4 acceptance](../baseline/PHASE1_PACKET_1_4_ACCEPTANCE_2026_06_07.md) |
-| **1.6** | TPC-1-006 — Torob Limited Execution | PHASE-1 | READY FOR REVIEW | [TPC-1-006](./task-packets/TPC-1-006-torob-limited-execution.md) | [Packet 1.5 acceptance](../baseline/PHASE1_PACKET_1_5_ACCEPTANCE_2026_06_07.md) |
-| **2.1** | TBD — Supabase output persistence | PHASE-1 | LOCKED | _not created_ | 1.x complete |
-| **2.2** | TBD — UI output display | PHASE-1 | LOCKED | _not created_ | Prior packets |
+| **1.6** | TPC-1-006 — Torob Limited Execution | PHASE-1 | ACCEPTED | [TPC-1-006](./task-packets/TPC-1-006-torob-limited-execution.md) | [Packet 1.5 acceptance](../baseline/PHASE1_PACKET_1_5_ACCEPTANCE_2026_06_07.md) |
+| **2.1** | TPC-2-001 — Supabase Output Persistence | PHASE-1 | READY FOR REVIEW | [TPC-2-001](./task-packets/TPC-2-001-supabase-output-persistence.md) | [Packet 1.6 acceptance](../baseline/PHASE1_PACKET_1_6_ACCEPTANCE_2026_06_07.md) |
+| **2.2** | TBD — UI output display | PHASE-1 | LOCKED | _not created_ | 2.1 |
 | **2.3** | TBD — Retry / Failure / Checkpoint tests | PHASE-1 | LOCKED | _not created_ | Prior packets |
 | **2.4** | TBD — Resource usage test | PHASE-1 | LOCKED | _not created_ | Prior packets |
 | **2.5** | TBD — Phase 1 evidence sync | PHASE-1 | LOCKED | _not created_ | Prior packets |
@@ -29,9 +29,9 @@
 
 Packet 1.1 selected **Torob limited** as the first Phase 1 module.
 
-Packets 1.2 to 1.5 completed planning and boundaries.
+Packets 1.2 to 1.6 completed planning, boundaries, and limited execution authorization only.
 
-Packet 1.6 defines limited execution authorization for review only; implementation has not started.
+Packet 2.1 defines Supabase output persistence planning only; no migration is authorized.
 
 ---
 
@@ -43,5 +43,6 @@ Packet 1.6 defines limited execution authorization for review only; implementati
 - [TPC-1-004](./task-packets/TPC-1-004-plugin-driver-sdk-boundary.md)
 - [TPC-1-005](./task-packets/TPC-1-005-torob-limited-implementation-design.md)
 - [TPC-1-006](./task-packets/TPC-1-006-torob-limited-execution.md)
-- [Packet 1.5 acceptance](../baseline/PHASE1_PACKET_1_5_ACCEPTANCE_2026_06_07.md)
+- [TPC-2-001](./task-packets/TPC-2-001-supabase-output-persistence.md)
+- [Packet 1.6 acceptance](../baseline/PHASE1_PACKET_1_6_ACCEPTANCE_2026_06_07.md)
 - [Phase 0 acceptance](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md)
