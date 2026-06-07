@@ -18,7 +18,7 @@
 | G-05 | No real bot in Phase 0 | PR template + DoD | PRs attest no real bot | **CLOSED** | Ongoing enforcement |
 | G-06 | Control Plane contract | `automation/openapi/automation-v1.yaml` | Canonical path; stub deprecated | **CLOSED** | WPC-0-002; run/events TBD in API packet |
 | G-07 | auth/RLS/secrets | `docs/security/SECURITY_BASELINE.md` | Baseline on main | **CLOSED** | Per-migration RLS review |
-| G-08 | E2E dummy path | WPC-0-001 | Full path tested without real bot | **OPEN** | Worker + UI packets pending |
+| G-08 | E2E dummy path | WPC-0-001 | Full path tested without real bot | **CLOSED** | PR #19 merge `cb7c070`; LAN/local E2E `automation/worker-dummy/run-e2e.mjs` — job CLAIMED, run COMPLETED, heartbeat + checkpoint + events (RUN_STARTED, CHECKPOINT_SAVED, RUN_COMPLETED); `real_bot_scope: false`; idempotency_rerun_check ok |
 
 ---
 
@@ -26,10 +26,10 @@
 
 | State | Count |
 |-------|-------|
-| CLOSED | 7 |
-| OPEN | 1 (G-08) |
+| CLOSED | 8 |
+| OPEN | 0 |
 
-**Phase 1 entry:** Blocked until G-04 and G-08 are **CLOSED** and `PHASE0_ACCEPTANCE_GATE.md` is signed.
+**Phase 1 entry:** Blocked until `PHASE0_ACCEPTANCE_GATE.md` is signed (G-01…G-08 are **CLOSED** as of 2026-06-05).
 
 ---
 

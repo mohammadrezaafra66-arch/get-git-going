@@ -24,7 +24,7 @@ Phase 0 is **not complete** until every criterion below is checked and signed. O
 | A1 | Baseline frozen and tagged | [BASELINE_POINTER.md](../baseline/BASELINE_POINTER.md), [BASELINE_MANIFEST.md](../baseline/BASELINE_MANIFEST.md) | [x] — freeze `baseline-2026-06-05`; tag `baseline/v2026.06.05` on main |
 | A2 | GitHub SoT policy active | [SOURCE_OF_TRUTH.md](../process/SOURCE_OF_TRUTH.md) | [x] — policy Active on main |
 | A3 | Drive mirror-only acknowledged | [ADR-0008-drive-is-mirror.md](../adr/ADR-0008-drive-is-mirror.md) | [x] — Accepted; GitHub → Drive sync only |
-| A4 | G-01 … G-08 closed | [G01_G08_CLOSURE_STATUS.md](./G01_G08_CLOSURE_STATUS.md) | [ ] — 7/8 CLOSED; **G-08 OPEN** (operator E2E test log pending) |
+| A4 | G-01 … G-08 closed | [G01_G08_CLOSURE_STATUS.md](./G01_G08_CLOSURE_STATUS.md) | [x] — 8/8 CLOSED (G-08 E2E evidence 2026-06-05; PR #19) |
 | A5 | Review Baseline passed on acceptance commit | [BASELINE_REVIEW_2026_06_05.md](../baseline/BASELINE_REVIEW_2026_06_05.md), [REVIEW_BASELINE_CHECKLIST.md](./REVIEW_BASELINE_CHECKLIST.md) | [x] — build PASS; lint baseline debt; OpenAPI PASS (PR #16 / `92ef42a`) |
 
 ### B. Contract
@@ -49,18 +49,18 @@ Phase 0 is **not complete** until every criterion below is checked and signed. O
 
 | ID | Criterion | Evidence | Status |
 |----|-----------|----------|--------|
-| D1 | Worker Dummy sends heartbeat (contract/dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md), [`automation/worker-dummy/README.md`](../../automation/worker-dummy/README.md) | [ ] — PR #19 merged; operator test log not yet recorded |
-| D2 | Claim → run → events → complete (dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md), [`automation/worker-dummy/README.md`](../../automation/worker-dummy/README.md) | [ ] — E2E script on main; operator run log pending |
-| D3 | Checkpoint recorded (dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) | [ ] — pending operator E2E evidence |
-| D4 | Job lifecycle statuses correct (PENDING/CLAIMED vs RUNNING/COMPLETED) | [PHASE0_AUTOMATION_TABLES.md](./PHASE0_AUTOMATION_TABLES.md) § Status enums | [ ] — schema documented; runtime verification pending |
-| D5 | No external platform calls | [ADR-0005-phase-zero-scope.md](../adr/ADR-0005-phase-zero-scope.md), [`automation/worker-dummy/README.md`](../../automation/worker-dummy/README.md) | [ ] — scope attested in docs/code; formal network review log pending |
+| D1 | Worker Dummy sends heartbeat (contract/dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — `heartbeat_recorded: true` (LAN/local, PR #19) |
+| D2 | Claim → run → events → complete (dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — job `CLAIMED`, run `COMPLETED`; events RUN_STARTED, CHECKPOINT_SAVED, RUN_COMPLETED |
+| D3 | Checkpoint recorded (dummy) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — `checkpoint_count: 1` |
+| D4 | Job lifecycle statuses correct (PENDING/CLAIMED vs RUNNING/COMPLETED) | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — job CLAIMED; run COMPLETED |
+| D5 | No external platform calls | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — `real_bot_scope: false`; no Divar/WhatsApp/Instagram/Torob/OCR/AI |
 
 ### E. E2E demo
 
 | ID | Criterion | Evidence | Status |
 |----|-----------|----------|--------|
 | E1 | UI command → DB job created | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) | [ ] — UI enqueue path not yet demonstrated |
-| E2 | Worker claims and completes dummy job | [`automation/worker-dummy/run-e2e.mjs`](../../automation/worker-dummy/run-e2e.mjs) | [ ] — DB-only smoke on main; operator log pending |
+| E2 | Worker claims and completes dummy job | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence, [`automation/worker-dummy/run-e2e.mjs`](../../automation/worker-dummy/run-e2e.mjs) | [x] — LAN/local E2E; PR #19 on main |
 | E3 | UI or admin query shows completed status | — | [ ] — pending manual test path / screenshot |
 
 ### F. Hard prohibitions (must be NO)
