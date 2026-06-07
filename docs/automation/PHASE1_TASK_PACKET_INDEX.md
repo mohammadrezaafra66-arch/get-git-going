@@ -1,7 +1,7 @@
 # Phase 1 Task Packet Index
 
 **Phase Label:** PHASE-1  
-**Status:** PARTIAL — Packets 1.1 to 2.3 accepted; Packet 2.4 ready for review; later packets locked  
+**Status:** PARTIAL — Packets 1.1 to 2.4 accepted; Packet 2.5 ready for review; Packet 2.6 locked  
 **Owner:** محمدرضا افرا
 
 ---
@@ -19,8 +19,8 @@
 | **2.1** | TPC-2-001 — Supabase Output Persistence | PHASE-1 | ACCEPTED | [TPC-2-001](./task-packets/TPC-2-001-supabase-output-persistence.md) | [Packet 1.6 acceptance](../baseline/PHASE1_PACKET_1_6_ACCEPTANCE_2026_06_07.md) |
 | **2.2** | TPC-2-002 — UI Output Display | PHASE-1 | ACCEPTED | [TPC-2-002](./task-packets/TPC-2-002-ui-output-display.md) | [Packet 2.1 acceptance](../baseline/PHASE1_PACKET_2_1_ACCEPTANCE_2026_06_07.md) |
 | **2.3** | TPC-2-003 — Retry / Failure / Checkpoint Tests | PHASE-1 | ACCEPTED | [TPC-2-003](./task-packets/TPC-2-003-retry-failure-checkpoint-tests.md) | [Packet 2.2 acceptance](../baseline/PHASE1_PACKET_2_2_ACCEPTANCE_2026_06_07.md) |
-| **2.4** | TPC-2-004 — Resource Usage Test | PHASE-1 | READY FOR REVIEW | [TPC-2-004](./task-packets/TPC-2-004-resource-usage-test.md) | [Packet 2.3 acceptance](../baseline/PHASE1_PACKET_2_3_ACCEPTANCE_2026_06_07.md) |
-| **2.5** | TBD — Phase 1 evidence sync | PHASE-1 | LOCKED | _not created_ | 2.4 |
+| **2.4** | TPC-2-004 — Resource Usage Test | PHASE-1 | ACCEPTED | [TPC-2-004](./task-packets/TPC-2-004-resource-usage-test.md) | [Packet 2.3 acceptance](../baseline/PHASE1_PACKET_2_3_ACCEPTANCE_2026_06_07.md) |
+| **2.5** | TPC-2-005 — Phase 1 Evidence Sync | PHASE-1 | READY FOR REVIEW | [TPC-2-005](./task-packets/TPC-2-005-phase1-evidence-sync.md) | [Packet 2.4 acceptance](../baseline/PHASE1_PACKET_2_4_ACCEPTANCE_2026_06_07.md) |
 | **2.6** | TBD — Phase 1 closure / review | PHASE-1 | LOCKED | _not created_ | 2.5 |
 
 ---
@@ -29,9 +29,9 @@
 
 Packet 1.1 selected **Torob limited** as the first Phase 1 module.
 
-Packets 1.2 to 2.3 completed planning, boundaries, limited execution authorization, output/UI planning, and resilience test planning only.
+Packets 1.2 to 2.4 completed planning, boundaries, limited execution authorization, output/UI planning, resilience test planning, and resource usage test planning only.
 
-Packet 2.4 defines resource usage test planning only; no tests are implemented.
+Packet 2.5 defines evidence sync planning only; Phase 1 is not closed until Packet 2.6 is accepted.
 
 ---
 
@@ -47,5 +47,6 @@ Packet 2.4 defines resource usage test planning only; no tests are implemented.
 - [TPC-2-002](./task-packets/TPC-2-002-ui-output-display.md)
 - [TPC-2-003](./task-packets/TPC-2-003-retry-failure-checkpoint-tests.md)
 - [TPC-2-004](./task-packets/TPC-2-004-resource-usage-test.md)
-- [Packet 2.3 acceptance](../baseline/PHASE1_PACKET_2_3_ACCEPTANCE_2026_06_07.md)
+- [TPC-2-005](./task-packets/TPC-2-005-phase1-evidence-sync.md)
+- [Packet 2.4 acceptance](../baseline/PHASE1_PACKET_2_4_ACCEPTANCE_2026_06_07.md)
 - [Phase 0 acceptance](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md)
