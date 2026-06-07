@@ -16,6 +16,7 @@
 | G-01…G-08 status | [../automation/G01_G08_CLOSURE_STATUS.md](../automation/G01_G08_CLOSURE_STATUS.md) |
 | Phase 1 packet index (locked) | [../automation/PHASE1_TASK_PACKET_INDEX.md](../automation/PHASE1_TASK_PACKET_INDEX.md) |
 | Baseline review (2026-06-05) | [BASELINE_REVIEW_2026_06_05.md](./BASELINE_REVIEW_2026_06_05.md) |
+| Phase 0 C1 migration apply evidence (2026-06-06) | [PHASE0_MIGRATION_APPLY_EVIDENCE_2026_06_06.md](./PHASE0_MIGRATION_APPLY_EVIDENCE_2026_06_06.md) |
 
 ## Quick navigation
 
