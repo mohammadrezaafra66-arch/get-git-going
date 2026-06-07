@@ -1,7 +1,7 @@
 # Phase 0 Acceptance Gate
 
 **Phase Label:** PHASE-0  
-**Status:** Open — not yet accepted  
+**Status:** Accepted — signed 2026-06-07  
 **Owner:** محمدرضا افرا  
 **Blocks:** All Phase 1 Task Packets (1.1 … 2.6) — **Phase 1 BLOCKED**
 
@@ -11,7 +11,7 @@
 
 ## Purpose
 
-Phase 0 is **not complete** until every criterion below is checked and signed. Only then may Phase 1 Task Packets start.
+Phase 0 is **complete** when every criterion below is checked and signed. Phase 1 Task Packets remain blocked until explicitly unlocked in a separate PR.
 
 ---
 
@@ -78,12 +78,12 @@ Phase 0 is **not complete** until every criterion below is checked and signed. O
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
-| Owner | محمدرضا افرا | | [ ] |
-| Reviewer | | | [ ] |
+| Owner | محمدرضا افرا | 2026-06-07 | accepted |
+| Reviewer | Platform review | 2026-06-07 | reviewed |
 
-**Phase 0 Status:** `OPEN` → change to `ACCEPTED` only when all required rows are checked.
+**Phase 0 Status:** `ACCEPTED` — signed 2026-06-07 ([sign-off record](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md))
 
-**Phase 1 Status:** `BLOCKED` — packets 1.1 … 2.6 remain locked until acceptance signed.
+**Phase 1 Status:** `BLOCKED` — packets 1.1 … 2.6 remain locked; unlock requires separate PR updating `PHASE1_TASK_PACKET_INDEX.md`.
 
 ---
 
