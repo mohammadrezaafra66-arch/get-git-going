@@ -59,9 +59,9 @@ Phase 0 is **not complete** until every criterion below is checked and signed. O
 
 | ID | Criterion | Evidence | Status |
 |----|-----------|----------|--------|
-| E1 | UI command → DB job created | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) | [ ] — UI enqueue path not yet demonstrated |
+| E1 | UI command → DB job created | [PHASE0_E1_E3_BLOCKER_2026_06_07.md](../baseline/PHASE0_E1_E3_BLOCKER_2026_06_07.md) § E1 | [ ] — no merged UI enqueue route; service-role insert only in worker E2E script |
 | E2 | Worker claims and completes dummy job | [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence, [`automation/worker-dummy/run-e2e.mjs`](../../automation/worker-dummy/run-e2e.mjs) | [x] — LAN/local E2E; PR #19 on main |
-| E3 | UI or admin query shows completed status | — | [ ] — pending manual test path / screenshot |
+| E3 | UI or admin query shows completed status | [PHASE0_E1_E3_BLOCKER_2026_06_07.md](../baseline/PHASE0_E1_E3_BLOCKER_2026_06_07.md) § E3, [WPC-0-001-worker-dummy.md](./task-packets/WPC-0-001-worker-dummy.md) § E2E evidence | [x] — admin query path; `run_status: COMPLETED` recorded 2026-06-05; read-only SQL documented |
 
 ### F. Hard prohibitions (must be NO)
 
