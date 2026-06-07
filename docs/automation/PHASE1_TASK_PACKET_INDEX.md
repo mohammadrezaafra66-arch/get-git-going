@@ -1,7 +1,7 @@
 # Phase 1 Task Packet Index
 
 **Phase Label:** PHASE-1  
-**Status:** READY FOR CLOSURE REVIEW — Packets 1.1 to 2.5 accepted; Packet 2.6 ready for review  
+**Status:** ACCEPTED — Planning / governance baseline complete  
 **Owner:** محمدرضا افرا
 
 ---
@@ -21,23 +21,20 @@
 | **2.3** | TPC-2-003 — Retry / Failure / Checkpoint Tests | PHASE-1 | ACCEPTED | [TPC-2-003](./task-packets/TPC-2-003-retry-failure-checkpoint-tests.md) | [Packet 2.2 acceptance](../baseline/PHASE1_PACKET_2_2_ACCEPTANCE_2026_06_07.md) |
 | **2.4** | TPC-2-004 — Resource Usage Test | PHASE-1 | ACCEPTED | [TPC-2-004](./task-packets/TPC-2-004-resource-usage-test.md) | [Packet 2.3 acceptance](../baseline/PHASE1_PACKET_2_3_ACCEPTANCE_2026_06_07.md) |
 | **2.5** | TPC-2-005 — Phase 1 Evidence Sync | PHASE-1 | ACCEPTED | [TPC-2-005](./task-packets/TPC-2-005-phase1-evidence-sync.md) | [Packet 2.4 acceptance](../baseline/PHASE1_PACKET_2_4_ACCEPTANCE_2026_06_07.md) |
-| **2.6** | TPC-2-006 — Phase 1 Closure / Review | PHASE-1 | READY FOR REVIEW | [TPC-2-006](./task-packets/TPC-2-006-phase1-closure-review.md) | [Packet 2.5 acceptance](../baseline/PHASE1_PACKET_2_5_ACCEPTANCE_2026_06_07.md) |
+| **2.6** | TPC-2-006 — Phase 1 Closure / Review | PHASE-1 | ACCEPTED | [TPC-2-006](./task-packets/TPC-2-006-phase1-closure-review.md) | [Packet 2.5 acceptance](../baseline/PHASE1_PACKET_2_5_ACCEPTANCE_2026_06_07.md) |
 
 ---
 
-## Current decision
+## Final decision
 
-Packet 1.1 selected **Torob limited** as the first Phase 1 module.
+Phase 1 is accepted as a planning / governance baseline.
 
-Packets 1.2 to 2.5 completed planning, boundaries, evidence sync, and review preparation only.
-
-Packet 2.6 performs Phase 1 closure review. Phase 1 is not final until Packet 2.6 is accepted.
+This does not mean production automation was implemented.
 
 ---
 
 ## Related
 
-- [TPC-2-006](./task-packets/TPC-2-006-phase1-closure-review.md)
+- [Phase 1 acceptance sign-off](../baseline/PHASE1_ACCEPTANCE_SIGNOFF_2026_06_07.md)
 - [Phase 1 closure review](../baseline/PHASE1_CLOSURE_REVIEW_2026_06_07.md)
-- [Packet 2.5 acceptance](../baseline/PHASE1_PACKET_2_5_ACCEPTANCE_2026_06_07.md)
 - [Phase 0 acceptance](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md)
