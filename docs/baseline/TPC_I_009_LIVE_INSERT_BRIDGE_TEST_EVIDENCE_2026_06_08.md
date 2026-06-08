@@ -1,0 +1,119 @@
+# TPC-I-009 Live Insert Bridge Test Evidence — 2026-06-08
+
+**Phase Label:** PHASE-1-IMPLEMENTATION  
+**Packet:** TPC-I-009-IMPLEMENTATION — Live Insert Bridge Implementation  
+**Status:** TEST EVIDENCE RECORDED — operator verified  
+**Source of Truth:** GitHub  
+**Operator:** محمدرضا افرا  
+**Reviewer:** Platform review
+
+---
+
+## 1. Summary
+
+TPC-I-009 test evidence records the operator-run worker-runtime test result after the live bridge guard implementation was merged.
+
+The test run validates the current Worker Runtime surface after the live bridge guard was added.
+
+No implementation is added by this evidence file.
+
+---
+
+## 2. Environment
+
+| Field | Value |
+|-------|-------|
+| Environment | Local Windows workstation |
+| Working directory | `C:\Users\AFRA\AfraKala\get-git-going\automation\worker-runtime` |
+| Package mode | editable install with dev extra |
+| Operator | محمدرضا افرا |
+
+No passwords, service-role keys, connection strings, `.env` contents, or Docker secrets were recorded.
+
+---
+
+## 3. Commands Run
+
+```powershell
+cd C:\Users\AFRA\AfraKala\get-git-going\automation\worker-runtime
+python -m pip install -e ".[dev]"
+python -m pytest -q
+```
+
+---
+
+## 4. Install Result
+
+The editable package was installed successfully with the dev extra.
+
+Observed summary:
+
+```text
+Requirement already satisfied: pytest>=8.0
+Successfully built afrakala-worker-runtime
+Successfully installed afrakala-worker-runtime-0.1.0
+```
+
+Pip displayed an update notice. That notice is not a blocker for this gate.
+
+---
+
+## 5. Test Result
+
+Observed command:
+
+```powershell
+python -m pytest -q
+```
+
+Observed output:
+
+```text
+.........                                                                                                               [100%]
+9 passed in 0.03s
+```
+
+Result:
+
+```text
+PASS
+```
+
+---
+
+## 6. Evidence Scope Review
+
+Confirmed:
+
+```text
+Worker-runtime tests passed
+Live bridge guard tests passed
+Mock-only constraints remain enforced
+No production credentials were required
+No secrets were recorded
+No UI evidence was required
+No migration was run in this evidence step
+No real source integration was executed
+```
+
+---
+
+## 7. Gate Impact
+
+```text
+TPC-I-009 implementation = MERGED
+TPC-I-009 test evidence = RECORDED
+Issue #78 = ready to close after this evidence PR merges
+TPC-I-010 = may be defined after this evidence PR merges
+Real source execution = still forbidden
+```
+
+---
+
+## 8. Final Decision
+
+```text
+TPC-I-009 live bridge guard test evidence = PASS
+Worker-runtime tests = 9 passed
+Next allowed step after merge = define TPC-I-010 — Live Bridge Test Evidence / Credential Boundary Gate
+```
