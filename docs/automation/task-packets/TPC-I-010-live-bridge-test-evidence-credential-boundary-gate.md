@@ -1,7 +1,7 @@
 # TPC-I-010 — Live Bridge Test Evidence / Credential Boundary Gate
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for credential boundary evidence gate  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -200,14 +200,28 @@ Real source execution remains forbidden after TPC-I-010.
 
 ---
 
-## 13. Final Decision
+## 13. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-010 is accepted as the credential boundary evidence gate.
+
+Next allowed PR: credential boundary evidence sync only.
+
+No implementation, migration, UI, API route, credentialed database write, real source integration, external source call, or production automation is allowed in the next evidence PR.
+
+---
+
+## 14. Final Decision
 
 ```text
-TPC-I-010 may define credential boundary evidence only.
+TPC-I-010 may define and record credential boundary evidence only.
 No implementation.
 No migration.
 No UI.
 No API route.
 No real source call.
 No credentialed write.
+Evidence sync may proceed after this packet is merged.
 ```
