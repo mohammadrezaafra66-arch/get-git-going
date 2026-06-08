@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION  
-**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, and controlled bridge contract
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION  
+**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, and live bridge contract guard
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -28,6 +28,7 @@ The worker skeleton provides:
 - mock output persistence
 - controlled output insert contract
 - controlled bridge contract
+- live bridge contract guard
 
 ## Out of scope
 
@@ -149,7 +150,17 @@ build_controlled_driver_output_row(...)
 
 The mock bridge stores accepted rows in `inserted_driver_outputs` and rejects malformed or non-mock rows.
 
-This still does not implement real source execution.
+## Live bridge contract guard
+
+TPC-I-009-IMPLEMENTATION adds a live bridge guard in mock mode.
+
+The live bridge guard accepts only validated mock rows and stores them in `live_inserted_driver_outputs` with:
+
+```text
+bridge_mode = mock_verified
+```
+
+This still does not implement real source execution or a live credentialed database path.
 
 ## Environment variables
 
@@ -159,4 +170,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation and bridge validation so the next packet can add the next approved step safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, and live bridge guarding so the next packet can add the next approved step safely.
