@@ -55,8 +55,11 @@ function fmt(n: number, digits = 2) {
 }
 
 function PromotionSuggestionsPage() {
-  const { user, roles } = useAuth();
+  const { user, roles, initialized, loading, profile, profileLoading, rolesLoading, authError } = useAuth();
+  const authPending = !initialized || loading || profileLoading || rolesLoading || (!!user && !profile && !authError);
+  const authReady = initialized && !loading && !profileLoading && !rolesLoading && !!user;
   const allowed = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const canQuery = authReady && allowed;
   const queryClient = useQueryClient();
 
   const [channelId, setChannelId] = useState<string>("__all__");
@@ -67,7 +70,7 @@ function PromotionSuggestionsPage() {
 
   const channelsQuery = useQuery({
     queryKey: ["marketing-channels", "active"],
-    enabled: allowed,
+    enabled: canQuery,
     staleTime: 60_000,
     queryFn: async (): Promise<Channel[]> => {
       const { data, error } = await supabase
@@ -88,7 +91,7 @@ function PromotionSuggestionsPage() {
 
   const suggestionsQuery = useQuery({
     queryKey: ["promotion-suggestions", channelId, minScore],
-    enabled: allowed,
+    enabled: canQuery,
     staleTime: 30_000,
     queryFn: async (): Promise<Suggestion[]> => {
       const args: { _channel_id?: string; _min_score?: number; _limit?: number } = {
@@ -105,6 +108,17 @@ function PromotionSuggestionsPage() {
   useEffect(() => {
     setUsedKeys({});
   }, [channelId, minScore]);
+
+  if (authPending) {
+    return (
+      <div dir="rtl" className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          در حال آماده‌سازی دسترسی‌ها...
+        </span>
+      </div>
+    );
+  }
 
   if (!allowed) return <Navigate to="/unauthorized" />;
 
