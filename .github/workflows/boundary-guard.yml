@@ -1,0 +1,31 @@
+name: Boundary Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  boundary-guard:
+    name: Boundary Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Report PR boundary context
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          echo "Boundary Guard"
+          echo "Head branch: ${HEAD_BRANCH}"
+          echo "Base branch: ${BASE_BRANCH}"
+          echo "Boundary Guard passed."
