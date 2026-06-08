@@ -28,6 +28,7 @@ export default defineConfig({
   // SELF_HOST_NODE=1 to switch to a pure Node SSR build. The current
   // @lovable.dev/vite-tanstack-config no longer exposes that option,
   // so the toggle must be handled at the Dockerfile/runtime level.
+  // See deploy/app/README.md section "Build target — Cloudflare Workers vs Node SSR".
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
