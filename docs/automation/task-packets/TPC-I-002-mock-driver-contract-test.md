@@ -1,7 +1,7 @@
 # TPC-I-002 — Mock Driver Contract Test
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for implementation packet  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -100,7 +100,7 @@ Production schedule
 
 The driver contract must be small and stable.
 
-Recommended minimum interface:
+Minimum interface:
 
 ```text
 validate_input(job: dict) -> None
@@ -109,7 +109,7 @@ run(job: dict, context: DriverContext) -> DriverResult
 cleanup(job: dict) -> None
 ```
 
-Recommended result shape:
+Required result shape:
 
 ```text
 status
@@ -118,7 +118,7 @@ checkpoint
 errors
 ```
 
-Recommended status values:
+Allowed status values:
 
 ```text
 COMPLETED
@@ -390,7 +390,20 @@ Real Torob execution is still forbidden after TPC-I-002.
 
 ---
 
-## 17. Final Decision
+## 17. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-002 is accepted as the next Phase 1 implementation packet.
+
+Next allowed PR: Mock Driver Contract implementation only.
+
+No real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI, migration, or UI implementation is allowed in the next implementation PR.
+
+---
+
+## 18. Final Decision
 
 ```text
 TPC-I-002 may define and test a mock-only driver contract.
@@ -398,4 +411,5 @@ No real automation.
 No real source call.
 No migration.
 No UI.
+Implementation may proceed only for mock driver contract.
 ```
