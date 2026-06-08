@@ -32,8 +32,16 @@ export const Route = createFileRoute("/_app")({
       // (e.g. SIGNED_IN handler hasn't finished applySession yet), force a
       // fresh resolve before deciding to redirect. Prevents bouncing the
       // user back to /login right after a successful sign-in.
-      if (!auth.user && (auth.loading || !auth.initialized)) {
+      if (!auth.user && (auth.loading || !auth.initialized) && !auth.authError) {
         auth = await ensureAuthReady(true);
+      }
+      if (!auth.user && auth.authError) {
+        logAuthDiagnostic("_app.beforeLoad.authTransient", "auth unavailable; showing retry screen", {
+          initialized: auth.initialized,
+          loading: auth.loading,
+          authError: auth.authError,
+        });
+        return;
       }
       if (!auth.user) {
         logAuthDiagnostic("redirect.login", "_app.beforeLoad: no user", {
