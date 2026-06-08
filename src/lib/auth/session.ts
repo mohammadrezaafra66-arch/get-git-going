@@ -255,7 +255,7 @@ async function applySession(session: Session | null, force = false) {
   const sameInitializedUser = snapshot.initialized && snapshot.user?.id === session.user.id;
   const identityAlreadyLoaded =
     snapshot.lastLoadedUserId === session.user.id ||
-    (!!snapshot.profile && !snapshot.profileLoading && !snapshot.rolesLoading);
+    (snapshot.profile?.id === session.user.id && !snapshot.profileLoading && !snapshot.rolesLoading);
   const identityLoadInProgress = snapshot.profileLoading || snapshot.rolesLoading;
   if (!force && sameInitializedUser && (identityAlreadyLoaded || identityLoadInProgress)) {
     setSnapshot({
@@ -325,7 +325,7 @@ export async function ensureAuthReady(force = false) {
     !snapshot.profileLoading &&
     !snapshot.rolesLoading &&
     !snapshot.authError &&
-    (!snapshot.user || snapshot.profile)
+    (!snapshot.user || snapshot.profile || snapshot.lastLoadedUserId === snapshot.user.id)
   ) {
     return snapshot;
   }
