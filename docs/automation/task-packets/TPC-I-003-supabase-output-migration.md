@@ -1,7 +1,7 @@
 # TPC-I-003 — Supabase Output Migration
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for migration implementation packet  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -328,11 +328,24 @@ Real Torob execution is still forbidden after TPC-I-003 docs approval.
 
 ---
 
-## 16. Final Decision
+## 16. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-003 is accepted as the Supabase output migration contract.
+
+Next allowed PR: Supabase Output Migration implementation only.
+
+No real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI, UI implementation, worker code change, API route, or real source integration is allowed in the next migration implementation PR.
+
+---
+
+## 17. Final Decision
 
 ```text
-TPC-I-003 may define the Supabase output migration contract.
-No migration in this PR.
+TPC-I-003 may define and approve the Supabase output migration contract.
+Migration implementation may proceed only in the next PR.
 No real automation.
 No real source call.
 No UI.
