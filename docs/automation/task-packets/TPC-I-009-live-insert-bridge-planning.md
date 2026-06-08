@@ -1,7 +1,7 @@
 # TPC-I-009 — Live Insert Bridge Planning
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for live insert bridge planning  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -267,7 +267,20 @@ Real source execution remains forbidden after TPC-I-009.
 
 ---
 
-## 15. Final Decision
+## 15. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-009 is accepted as the live insert bridge planning packet.
+
+Next allowed PR: docs-only implementation packet for live insert bridge, or a separate controlled implementation packet after approval.
+
+No implementation, migration, UI, API route, live insert, real source integration, external source call, or production automation is allowed in this PR.
+
+---
+
+## 16. Final Decision
 
 ```text
 TPC-I-009 may define live insert bridge planning only.
@@ -276,4 +289,5 @@ No migration.
 No UI.
 No real source call.
 No live insert.
+Implementation planning may proceed only after this packet is merged.
 ```
