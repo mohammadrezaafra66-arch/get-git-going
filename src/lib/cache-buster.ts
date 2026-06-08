@@ -234,7 +234,7 @@ export function initCacheBuster() {
     if (prev !== BUILD_TAG) {
       localStorage.setItem(STORAGE_KEY, BUILD_TAG);
       // New build successfully loaded → reset any prior failure counter
-      resetReloadCounter();
+      resetTransientErrorCounters();
       if (prev) {
         // Async cache clear; ok to fire-and-forget
         void clearAllCaches();
@@ -243,7 +243,7 @@ export function initCacheBuster() {
     } else {
       // Same build loaded successfully → clear stale reload flag
       if (sessionStorage.getItem(RELOAD_FLAG) === "1") {
-        resetReloadCounter();
+        resetTransientErrorCounters();
       }
     }
   } catch {
@@ -253,6 +253,11 @@ export function initCacheBuster() {
   // 2) Listen for stale-chunk errors
   const onError = (event: ErrorEvent) => {
     const msg = event?.message ?? event?.error?.message;
+    if (isDevImportError(msg)) {
+      event.preventDefault();
+      handleDevImportError(`window.error: ${msg}`);
+      return;
+    }
     if (isStaleChunkError(msg)) {
       void forceHardReload(`window.error: ${msg}`);
     }
@@ -263,6 +268,11 @@ export function initCacheBuster() {
       typeof reason === "string"
         ? reason
         : reason?.message ?? String(reason ?? "");
+    if (isDevImportError(msg)) {
+      event.preventDefault();
+      handleDevImportError(`unhandledrejection: ${msg}`);
+      return;
+    }
     if (isStaleChunkError(msg)) {
       void forceHardReload(`unhandledrejection: ${msg}`);
     }
