@@ -1,6 +1,6 @@
-"""Supabase client wrapper shape for the worker skeleton.
+"""Data client wrapper shape for the worker skeleton.
 
-Real database access is intentionally not implemented in this packet. The mock client lets tests validate the runtime contract without credentials or network access.
+Real database access is intentionally not implemented here. The mock client lets tests validate the runtime contract without credentials or network access.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ class MockSupabaseClient:
     logs: list[dict[str, Any]] = field(default_factory=list)
     heartbeats: list[dict[str, Any]] = field(default_factory=list)
     checkpoints: dict[str, dict[str, Any]] = field(default_factory=dict)
+    driver_outputs: list[dict[str, Any]] = field(default_factory=list)
 
     def claim_job(self, worker_id: str) -> dict[str, Any] | None:
         for job in self.jobs:
@@ -57,18 +58,44 @@ class MockSupabaseClient:
             return None
         return dict(row)
 
+    def save_driver_output(
+        self,
+        *,
+        job_id: str,
+        run_id: str | None,
+        driver_name: str,
+        job_type: str,
+        status: str,
+        output: dict[str, Any],
+        checkpoint: dict[str, Any] | None,
+        errors: list[str],
+        source_kind: str = "mock",
+    ) -> dict[str, Any]:
+        row = {
+            "job_id": job_id,
+            "run_id": run_id,
+            "driver_name": driver_name,
+            "job_type": job_type,
+            "status": status,
+            "output": output,
+            "checkpoint": checkpoint,
+            "errors": errors,
+            "source_kind": source_kind,
+            "created_at": _now(),
+        }
+        self.driver_outputs.append(row)
+        return row
+
 
 class SupabaseClientWrapper:
-    """Thin wrapper boundary for future Supabase implementation."""
+    """Thin wrapper boundary for future real data implementation."""
 
     def __init__(self, config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> None:
         self.config = config
         self._mock_client = mock_client or MockSupabaseClient()
 
         if not config.is_mock:
-            # Future packet: initialize real Supabase client here.
-            # This packet deliberately avoids adding an external dependency or network call.
-            raise NotImplementedError("Real Supabase client is outside TPC-I-001 scope")
+            raise NotImplementedError("Real data client is outside TPC-I-004 scope")
 
     @property
     def client(self) -> MockSupabaseClient:
@@ -88,6 +115,31 @@ class SupabaseClientWrapper:
 
     def load_checkpoint(self, job_id: str) -> dict[str, Any] | None:
         return self._mock_client.load_checkpoint(job_id)
+
+    def save_driver_output(
+        self,
+        *,
+        job_id: str,
+        run_id: str | None,
+        driver_name: str,
+        job_type: str,
+        status: str,
+        output: dict[str, Any],
+        checkpoint: dict[str, Any] | None,
+        errors: list[str],
+        source_kind: str = "mock",
+    ) -> dict[str, Any]:
+        return self._mock_client.save_driver_output(
+            job_id=job_id,
+            run_id=run_id,
+            driver_name=driver_name,
+            job_type=job_type,
+            status=status,
+            output=output,
+            checkpoint=checkpoint,
+            errors=errors,
+            source_kind=source_kind,
+        )
 
 
 def build_supabase_wrapper(config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> SupabaseClientWrapper:
