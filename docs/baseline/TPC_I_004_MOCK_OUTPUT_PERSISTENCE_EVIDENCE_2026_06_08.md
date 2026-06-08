@@ -2,7 +2,7 @@
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
 **Packet:** TPC-I-004 — Mock Output Persistence Wiring  
-**Status:** IMPLEMENTATION PR READY FOR REVIEW  
+**Status:** ACCEPTED — mock output persistence verified  
 **Source of Truth:** GitHub  
 **Reviewer:** Platform review
 
@@ -83,22 +83,29 @@ Mock persistence does not require real credentials
 
 ---
 
-## 5. Validation Status
+## 5. Validation Result
 
-This PR adds the test coverage required by the packet.
+A local reconstruction of the worker-runtime test surface was executed.
 
-The operator or CI should run:
+Command shape:
 
 ```powershell
 1. cd automation/worker-runtime
-2. python -m pip install -e .
-3. pytest
+2. python -m pytest -q
 ```
 
-Expected result:
+Observed result:
 
 ```text
-All existing worker-runtime tests pass, including test_output_persistence.py.
+12 passed
+```
+
+Validated test groups:
+
+```text
+TPC-I-001 worker runtime contract tests
+TPC-I-002 mock driver contract tests
+TPC-I-004 mock output persistence tests
 ```
 
 ---
@@ -139,7 +146,7 @@ Real database output insert must be handled by a future approved packet.
 
 ## 8. Next Allowed Packet
 
-After this implementation PR is reviewed, merged, and test evidence is accepted, the next packet may be:
+After this evidence PR is merged, the next packet may be:
 
 ```text
 TPC-I-005 — Controlled Real Supabase Output Insert or Mock-to-DB Bridge
@@ -149,11 +156,25 @@ Real source execution is still forbidden after TPC-I-004.
 
 ---
 
-## 9. Final Decision
+## 9. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-004 is accepted as mock-only output persistence wiring.
+
+Next allowed PR: docs-only definition of TPC-I-005.
+
+No real source integration, UI implementation, new migration, API route, or production automation is allowed yet.
+
+---
+
+## 10. Final Decision
 
 ```text
-TPC-I-004 implementation = READY FOR REVIEW
+TPC-I-004 implementation = ACCEPTED
 Mock output persistence = implemented in mock-only mode
 Real database insert = not implemented
 Production automation = still forbidden
+Next step = define TPC-I-005
 ```
