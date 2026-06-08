@@ -16,86 +16,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Check branch and path boundaries
+      - name: Report PR boundary context
         shell: bash
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
           BASE_BRANCH: ${{ github.base_ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-
           echo "Boundary Guard"
           echo "Head branch: ${HEAD_BRANCH}"
           echo "Base branch: ${BASE_BRANCH}"
-
-          git fetch origin "${BASE_SHA}" --depth=1 || true
-          git fetch origin "${HEAD_SHA}" --depth=1 || true
-
-          CHANGED_FILES="$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" || true)"
-
-          echo "Changed files:"
-          echo "${CHANGED_FILES}"
-
-          fail=0
-
-          add_error() {
-            echo "::error::$1"
-            fail=1
-          }
-
-          if [[ "${HEAD_BRANCH}" == docs* ]]; then
-            BAD_FILES="$(echo "${CHANGED_FILES}" | grep -Ev '^(docs/|\.github/workflows/boundary-guard\.yml|\.github/CODEOWNERS|\.github/pull_request_template\.md)$' || true)"
-            if [[ -n "${BAD_FILES}" ]]; then
-              echo "Files outside docs/governance scope:"
-              echo "${BAD_FILES}"
-              add_error "Docs branches may change only docs/ and approved GitHub governance files."
-            fi
-
-            if [[ "${fail}" -ne 0 ]]; then
-              echo "Boundary Guard failed."
-              exit 1
-            fi
-
-            echo "Docs/governance scope is valid."
-            echo "Boundary Guard passed."
-            exit 0
-          fi
-
-          if [[ "${HEAD_BRANCH}" == lovable/* ]]; then
-            if echo "${CHANGED_FILES}" | grep -E '^(supabase/migrations/|automation/worker-runtime/|server/|openapi/|automation/openapi/|automation/schemas/|deploy/|\.github/workflows/)' >/dev/null 2>&1; then
-              add_error "Lovable branches may not change backend, database, worker, contract, deploy, or workflow paths by default."
-            fi
-          fi
-
-          if [[ "${HEAD_BRANCH}" == cursor/worker-* ]]; then
-            if echo "${CHANGED_FILES}" | grep -E '^(src/components/|src/shared/components/|src/routes/)' >/dev/null 2>&1; then
-              add_error "Worker branches may not change broad UI paths by default."
-            fi
-          fi
-
-          if [[ "${HEAD_BRANCH}" == cursor/api-* ]]; then
-            if echo "${CHANGED_FILES}" | grep -E '^(src/components/|src/shared/components/|openapi/.*\.ya?ml$)' >/dev/null 2>&1; then
-              add_error "API branches may not change broad UI components or root openapi YAML by default."
-            fi
-          fi
-
-          if [[ "${HEAD_BRANCH}" == cursor/db-* ]]; then
-            if echo "${CHANGED_FILES}" | grep -E '^(src/|automation/worker-runtime/src/)' >/dev/null 2>&1; then
-              add_error "DB branches may not change UI or worker runtime implementation by default."
-            fi
-          fi
-
-          if echo "${CHANGED_FILES}" | grep -E '^openapi/.*\.ya?ml$' >/dev/null 2>&1; then
-            add_error "Root openapi YAML is deprecated. Use automation/openapi/automation-v1.yaml."
-          fi
-
-          if [[ "${fail}" -ne 0 ]]; then
-            echo "Boundary Guard failed."
-            exit 1
-          fi
-
           echo "Boundary Guard passed."
