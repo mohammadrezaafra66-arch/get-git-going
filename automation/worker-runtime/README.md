@@ -1,12 +1,12 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002  
-**Status:** Minimal skeleton with mock-only driver contract
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004  
+**Status:** Minimal skeleton with mock-only driver contract and mock output persistence
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
-It is intentionally small. It does **not** implement any real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI, browser automation, migration, or UI work.
+It is intentionally small. It does **not** implement any real source integration, browser automation, migration, API route, or UI work.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The worker skeleton provides:
 
 - environment-based config loading
 - structured logging
-- Supabase client wrapper shape
+- data client wrapper shape
 - job claim skeleton
 - heartbeat skeleton
 - checkpoint save/load skeleton
@@ -25,21 +25,15 @@ The worker skeleton provides:
 - mock/test mode
 - mock-only driver contract
 - mock driver registry
+- mock output persistence
 
 ## Out of scope
 
 The following are forbidden in this packet:
 
 ```text
-Real Torob extraction
-Google Maps extraction
-Divar
-WhatsApp
-Instagram
-OCR/STT
-AI production
-Playwright
-Selenium
+Real source integrations
+Browser automation
 External website calls
 Redis
 RabbitMQ
@@ -99,6 +93,32 @@ checkpoint
 errors
 ```
 
+## Mock output persistence
+
+TPC-I-004 adds mock output persistence.
+
+When a `MOCK_DRIVER_RUN` job completes, JobRunner stores the driver output in the mock client's `driver_outputs` list.
+
+The stored output preserves:
+
+```text
+job_id
+run_id
+driver_name
+job_type
+status
+output
+checkpoint
+errors
+source_kind
+```
+
+Expected mock persistence event:
+
+```text
+DRIVER_OUTPUT_SAVED
+```
+
 Real source integrations remain forbidden until a future approved packet.
 
 ## Environment variables
@@ -109,4 +129,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton so the next packet can add persistence and output handling safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with mock output persistence so the next packet can add the next approved bridge safely.

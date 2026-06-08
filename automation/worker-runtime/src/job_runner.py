@@ -55,6 +55,8 @@ class JobRunner:
 
     def _run_mock_driver_job(self, job: dict[str, Any]) -> dict[str, Any]:
         job_id = str(job.get("id", "mock-driver-job"))
+        run_id = _optional_string(job.get("run_id"))
+        job_type = str(job.get("type", "MOCK_DRIVER_RUN"))
         driver_name = str(job.get("driver", "mock"))
         driver = self.registry.get(driver_name)
 
@@ -75,12 +77,26 @@ class JobRunner:
             save_checkpoint(self.store, job_id, driver_result.checkpoint)
             self.store.write_log(worker_id=self.worker_id, job_id=job_id, event="CHECKPOINT_SAVED", level="INFO")
 
+        saved_output = self.store.save_driver_output(
+            job_id=job_id,
+            run_id=run_id,
+            driver_name=driver_name,
+            job_type=job_type,
+            status=driver_result.status,
+            output=driver_result.output,
+            checkpoint=driver_result.checkpoint,
+            errors=driver_result.errors,
+            source_kind="mock",
+        )
+        self.store.write_log(worker_id=self.worker_id, job_id=job_id, event="DRIVER_OUTPUT_SAVED", level="INFO")
+
         result = {
             "job_id": job_id,
             "status": driver_result.status,
             "output": driver_result.output,
             "checkpoint": driver_result.checkpoint,
             "errors": driver_result.errors,
+            "persisted_output": saved_output,
         }
 
         log_event(
@@ -95,3 +111,10 @@ class JobRunner:
         self.store.write_log(worker_id=self.worker_id, job_id=job_id, event="DRIVER_RUN_COMPLETED", level="INFO")
 
         return result
+
+
+def _optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
