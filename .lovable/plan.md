@@ -1,45 +1,46 @@
-## مشکل گزارش‌شده
-صفحه روی پیام «در حال بررسی جلسه کاربری...» باقی می‌ماند و رد نمی‌شود.
+## مسئله واقعی
+صفحه روی «در حال بررسی جلسه کاربری...» می‌ماند، در حالی‌که لاگ‌ها نشان می‌دهند session معتبر وجود دارد. همزمان خطای runtime زیر ثبت شده است:
 
-## یافته‌ها از بررسی لاگ و کد
-- در `client-console` رویدادهای `SIGNED_IN` و `INITIAL_SESSION` با `hasSession: true` به‌درستی ثبت شده‌اند — یعنی توکن سشن سالم است.
-- بلافاصله بعد از هر `SIGNED_IN`، پیام `[vite] server connection lost. Polling for restart...` می‌آید و چند ثانیه بعد چرخه تکرار می‌شود. این یعنی preview در حال reload شدن مداوم است و فرصت کامل‌شدن `loadIdentity` (واکشی `profiles` + `user_roles`) را پیدا نمی‌کند، پس صفحه روی pendingComponent (`AuthLoadingScreen`) قفل می‌ماند.
-- داده‌های کاربر در دیتابیس سالم است: profile با `status=active`، نقش `admin` در `user_roles` موجود است. پس مشکل از RLS یا داده نیست.
-- در `src/routes/_app.tsx` خط ۷۰: `pendingMs: 0` باعث می‌شود حتی برای کوتاه‌ترین تأخیر beforeLoad، pendingComponent فوراً نمایش داده شود. در ترکیب با reloadهای پی‌درپی preview، کاربر فقط لودینگ می‌بیند.
-- آستانه «stuckLoading» داخل `AppLayout` روی ۱۲ ثانیه است؛ تا قبل از آن هیچ دکمه «تلاش دوباره» نمایش داده نمی‌شود.
+```text
+Failed to fetch dynamically imported module: /@id/virtual:tanstack-start-client-entry
+```
 
-## فرضیه‌های اصلی (به ترتیب احتمال)
-1. حلقهٔ reload preview (dev server): تغییرات اخیر فایل‌ها (migration + ویرایش `_app.admin.marketing-channels.tsx` و `_app.marketing.suggestions.tsx`) باعث HMR ناپایدار شده. این مهم‌ترین گزینه است چون لاگ کنسول دقیقاً همین را نشان می‌دهد.
-2. کندی یک کوئری وابسته (مثلاً `role_permissions` در `loadRolePermissions` یا view جدید `v_promotion_suggestions`) که هر بار از نو روی همان session اجرا می‌شود و قبل از تمام شدن، صفحه reload می‌شود.
-3. باگ منطقی در `ensureAuthReady` بعید است چون لاگ‌های `session.loadIdentity.*` در کنسول دیده نمی‌شوند.
+این یعنی مشکل فقط auth نیست؛ dev/preview نمی‌تواند entry مجازی TanStack Start را پایدار بارگذاری کند و صفحه قبل از تکمیل hydrate/auth دوباره در وضعیت pending می‌افتد.
 
-## برنامه تشخیص و رفع (در حالت build اجرا می‌شود)
-گام‌ها به ترتیب، هر کدام کوچک و قابل بازگشت:
+## برنامه رفع
 
-1. تأیید پایداری dev server
-   - اجرای `code--restart_dev_server` برای شکستن چرخهٔ reload فعلی.
-   - سپس مشاهدهٔ preview در `/admin/marketing-channels` و بررسی اینکه آیا پیام «vite server connection lost» همچنان تکرار می‌شود.
+1. **پایدارسازی بارگذاری اولیه preview**
+   - `src/lib/cache-buster.ts` را اصلاح می‌کنم تا خطاهای dynamic import را فقط reload نکند، بلکه در محیط preview/dev Lovable از loop بی‌پایان جلوگیری کند و بعد از سقف تلاش، یک پیام قابل‌فهم/اقدام‌پذیر فارسی نمایش داده شود.
+   - اگر لازم باشد `BUILD_TAG` را bump می‌کنم تا cache قدیمی مرورگر کنار گذاشته شود.
 
-2. بررسی سلامت کوئری‌های auth
-   - گرفتن `client-console` تازه و دیدن لاگ‌های `[auth-diagnostic][session.loadIdentity.*]`.
-   - در صورت دیدن `timeout`/`slow`/`retry`، اجرای همان کوئری‌ها مستقیماً روی DB با `supabase--read_query` برای اطمینان از سرعت.
+2. **رفع race در auth loading**
+   - در `src/lib/auth/session.ts` ترتیب `initializeAuthSession` و `ensureAuthReady` را کم‌ریسک‌تر می‌کنم تا `INITIAL_SESSION`/`SIGNED_IN` تکراری نتوانند `loading=true` را بی‌دلیل نگه دارند.
+   - از `onAuthStateChange` برای کار سنگین await نمی‌کنم؛ فقط fire-and-forget می‌ماند.
+   - حالت «همان کاربر قبلاً identity کامل دارد» باید بدون نمایش loading کلی، فقط session را به‌روزرسانی کند.
 
-3. کاهش حساسیت UI به تأخیرهای کوتاه (اگر مرحلهٔ ۱ کافی نبود)
-   - در `src/routes/_app.tsx`: تغییر `pendingMs: 0` به مقدار کوچک ولی غیرصفر (مثلاً `300`) تا برای انتقال‌های زیر ۳۰۰ms اصلاً pendingComponent نمایش داده نشود و چشمک «در حال بررسی...» کمتر شود.
-   - کاهش آستانهٔ `stuckLoading` از ۱۲s به ۶s تا اگر واقعاً گیر کرد، دکمهٔ «تلاش دوباره» زودتر دیده شود.
-   - این تغییرات فقط در لایهٔ presentation هستند و منطق auth را دست نمی‌زنند.
+3. **عدم اجرای زودهنگام queryهای صفحه پیشنهادها**
+   - در `src/routes/_app.marketing.suggestions.tsx` queryها را علاوه بر role، به آماده‌بودن auth/profile هم وابسته می‌کنم تا قبل از آماده‌شدن session و roles اجرا نشوند.
+   - اگر نقش‌ها هنوز آماده نیستند، صفحه پیام لودینگ کوتاه/واضح نشان می‌دهد، نه redirect اشتباه یا صفحه قفل‌شده.
 
-4. اگر علت، کوئری خاصی بود (مرحلهٔ ۲ تشخیص داد)
-   - فقط همان کوئری/view بهینه می‌شود (افزودن index یا limit). بدون تغییر گسترده.
+4. **بازبینی route guard اصلی**
+   - در `src/routes/_app.tsx` بررسی می‌کنم که guard در حالت خطای موقت auth وارد چرخه pending نشود.
+   - تغییرات محدود به loading/retry خواهد بود؛ RBAC، schema و RLS دست نمی‌خورد.
 
-## فایل‌های احتمالی مورد ویرایش
-- `src/routes/_app.tsx` (فقط دو ثابت عددی — `pendingMs` و timeout داخل `useEffect`).
-- در صورت نیاز: migration کوچک برای ایندکس روی کوئری کند (فقط بعد از تأیید مرحلهٔ ۲).
+5. **اعتبارسنجی بعد از اجرا**
+   - preview را روی `/marketing/suggestions` بررسی می‌کنم.
+   - console/runtime را برای نبودن loop `INITIAL_SESSION`/`SIGNED_IN` و خطای `virtual:tanstack-start-client-entry` چک می‌کنم.
+   - اگر خطای مجازی TanStack همچنان از خود dev server باشد، dev server را restart می‌کنم و نتیجه را گزارش می‌دهم.
 
-## ریسک و تطبیق با قواعد پروژه
-- بدون refactor، بدون تغییر schema/RBAC، بدون حذف کد.
-- بدون وابستگی به CDN یا سرویس خارجی — کاملاً سازگار با self-host.
-- بدون دست‌کاری در فایل‌های auto-generated یا فایل‌های Supabase client.
+## فایل‌های احتمالی تغییر
+- `src/lib/cache-buster.ts`
+- `src/lib/build-info.ts` در صورت نیاز برای invalidation cache
+- `src/lib/auth/session.ts`
+- `src/routes/_app.tsx`
+- `src/routes/_app.marketing.suggestions.tsx`
 
-## تأییدیه قبل از اجرا
-لطفاً تأیید کنید که با مراحل ۱ تا ۳ شروع کنم؛ مرحلهٔ ۴ فقط در صورت لزوم و با گزارش جداگانه انجام می‌شود.
+## اثرات امنیتی و self-host
+- Migration ندارد.
+- RLS/RBAC تغییر نمی‌کند.
+- Audit log تغییر نمی‌کند.
+- وابستگی خارجی/CDN اضافه نمی‌شود.
+- با Linux/Docker/self-host سازگار می‌ماند.
