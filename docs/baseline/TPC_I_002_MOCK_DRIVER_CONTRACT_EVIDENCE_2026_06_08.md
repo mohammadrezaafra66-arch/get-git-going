@@ -2,7 +2,7 @@
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
 **Packet:** TPC-I-002 — Mock Driver Contract Test  
-**Status:** IMPLEMENTATION EVIDENCE RECORDED  
+**Status:** ACCEPTED — implementation evidence recorded  
 **Source of Truth:** GitHub  
 **Reviewer:** Platform review
 
@@ -124,11 +124,24 @@ Real Torob execution is still forbidden after TPC-I-002.
 
 ---
 
-## 7. Final Decision
+## 7. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-002 is accepted as mock-only driver contract implementation.
+
+Next allowed PR: docs-only definition and approval of TPC-I-003 — Supabase Output Migration.
+
+No real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI, UI implementation, or real source integration is allowed yet.
+
+---
+
+## 8. Final Decision
 
 ```text
-TPC-I-002 = READY FOR REVIEW
+TPC-I-002 = ACCEPTED
 Mock Driver Contract = implemented in mock-only mode
 Production automation = still forbidden
-Next step = review PR and then define/accept TPC-I-003
+Next step = define and approve TPC-I-003
 ```
