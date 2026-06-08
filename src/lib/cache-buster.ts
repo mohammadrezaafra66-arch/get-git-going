@@ -90,22 +90,84 @@ async function clearAllCaches() {
 }
 
 function bumpReloadCounter(): number {
+  return bumpSessionCounter(RELOAD_COUNT_KEY);
+}
+
+function bumpSessionCounter(key: string): number {
   try {
-    const cur = Number(sessionStorage.getItem(RELOAD_COUNT_KEY) ?? "0") || 0;
+    const cur = Number(sessionStorage.getItem(key) ?? "0") || 0;
     const next = cur + 1;
-    sessionStorage.setItem(RELOAD_COUNT_KEY, String(next));
+    sessionStorage.setItem(key, String(next));
     return next;
   } catch {
     return 0;
   }
 }
 
-function resetReloadCounter() {
+function resetTransientErrorCounters() {
   try {
     sessionStorage.removeItem(RELOAD_COUNT_KEY);
     sessionStorage.removeItem(RELOAD_FLAG);
+    sessionStorage.removeItem(DEV_IMPORT_ERROR_COUNT_KEY);
   } catch {
     /* noop */
+  }
+}
+
+function showDevImportRecoveryNotice(reason: string) {
+  if (typeof document === "undefined" || document.getElementById(DEV_IMPORT_NOTICE_ID)) return;
+
+  const notice = document.createElement("div");
+  notice.id = DEV_IMPORT_NOTICE_ID;
+  notice.dir = "rtl";
+  notice.setAttribute("role", "alert");
+  notice.style.cssText = [
+    "position:fixed",
+    "inset-inline:16px",
+    "bottom:16px",
+    "z-index:2147483647",
+    "max-width:520px",
+    "margin-inline:auto",
+    "border:1px solid hsl(var(--border, 214 32% 91%))",
+    "border-radius:8px",
+    "background:hsl(var(--background, 0 0% 100%))",
+    "color:hsl(var(--foreground, 222 47% 11%))",
+    "box-shadow:0 16px 40px rgba(15,23,42,.18)",
+    "padding:16px",
+    "font:14px/1.8 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = "بارگذاری پیش‌نمایش کامل نشد";
+  title.style.cssText = "font-weight:700;margin-bottom:6px";
+
+  const body = document.createElement("div");
+  body.textContent =
+    "ماژول داخلی محیط توسعه موقتاً در دسترس نیست. چند ثانیه صبر کنید؛ اگر صفحه برنگشت، یک‌بار تازه‌سازی کنید.";
+  body.style.cssText = "color:hsl(var(--muted-foreground, 215 16% 47%));margin-bottom:12px";
+
+  const detail = document.createElement("pre");
+  detail.textContent = reason;
+  detail.dir = "ltr";
+  detail.style.cssText =
+    "max-height:80px;overflow:auto;white-space:pre-wrap;text-align:left;background:hsl(var(--muted, 210 40% 96%));padding:8px;border-radius:6px;font-size:11px;margin:0 0 12px";
+
+  const refresh = document.createElement("button");
+  refresh.type = "button";
+  refresh.textContent = "تازه‌سازی صفحه";
+  refresh.style.cssText =
+    "border:0;border-radius:6px;background:hsl(var(--primary, 222 47% 11%));color:hsl(var(--primary-foreground, 210 40% 98%));padding:8px 12px;cursor:pointer";
+  refresh.addEventListener("click", () => window.location.reload());
+
+  notice.append(title, body, detail, refresh);
+  document.body.appendChild(notice);
+}
+
+function handleDevImportError(reason: string) {
+  const count = bumpSessionCounter(DEV_IMPORT_ERROR_COUNT_KEY);
+  console.warn(`[cache-buster] Dev/preview import failed (attempt ${count}): ${reason}`);
+  if (count >= MAX_DEV_IMPORT_ERRORS) {
+    showDevImportRecoveryNotice(reason);
   }
 }
 
