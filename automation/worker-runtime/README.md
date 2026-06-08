@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packet:** TPC-I-001 — Minimal Worker Runtime Skeleton  
-**Status:** Skeleton only
+**Packets:** TPC-I-001 + TPC-I-002  
+**Status:** Minimal skeleton with mock-only driver contract
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -23,6 +23,8 @@ The worker skeleton provides:
 - job runner skeleton
 - graceful shutdown hooks
 - mock/test mode
+- mock-only driver contract
+- mock driver registry
 
 ## Out of scope
 
@@ -72,6 +74,33 @@ If `pytest` is not available in your environment, install it in your local devel
 
 No real secrets are required for mock mode.
 
+## Mock driver contract
+
+TPC-I-002 adds a mock-only driver contract.
+
+The mock driver is deterministic and must not call any external website or browser automation.
+
+Allowed mock job shape:
+
+```text
+{
+  "id": "job-1",
+  "type": "MOCK_DRIVER_RUN",
+  "driver": "mock"
+}
+```
+
+The mock driver returns:
+
+```text
+status
+output
+checkpoint
+errors
+```
+
+Real source integrations remain forbidden until a future approved packet.
+
 ## Environment variables
 
 See `.env.example`.
@@ -80,4 +109,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton so the next packet can add a mock driver contract test safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton so the next packet can add persistence and output handling safely.
