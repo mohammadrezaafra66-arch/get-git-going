@@ -1,7 +1,7 @@
 # TPC-I-001 — Minimal Worker Runtime Skeleton
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved via PR #40  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -491,3 +491,16 @@ No external source call.
 No migration.
 No UI.
 ```
+
+---
+
+## 17. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-001 is accepted as the first Phase 1 implementation packet.
+
+Next allowed PR: Minimal Worker Runtime Skeleton implementation only.
+
+No real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI, migration, or UI implementation is allowed in this PR.
