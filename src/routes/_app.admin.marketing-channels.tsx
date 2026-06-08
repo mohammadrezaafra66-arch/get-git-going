@@ -189,6 +189,25 @@ function MarketingChannelsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) || 0 }))}
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label>سهمیه روزانه</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    dir="ltr"
+                    value={form.daily_quota ?? ""}
+                    placeholder="نامحدود"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        daily_quota: v === "" ? null : Math.max(0, Math.min(10000, Math.floor(Number(v) || 0))),
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">خالی یا ۰ یعنی نامحدود. حداکثر تعداد پیشنهاد قابل ثبت در روز برای این کانال.</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
                   <Label>فعال</Label>
@@ -220,15 +239,16 @@ function MarketingChannelsPage() {
               <TableHead className="text-right">نام</TableHead>
               <TableHead className="text-right">وزن</TableHead>
               <TableHead className="text-right">ترتیب</TableHead>
+              <TableHead className="text-right">سهمیه روزانه</TableHead>
               <TableHead className="text-right">وضعیت</TableHead>
               <TableHead className="text-right">عملیات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">در حال بارگذاری...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">در حال بارگذاری...</TableCell></TableRow>
             ) : items.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">کانالی یافت نشد</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">کانالی یافت نشد</TableCell></TableRow>
             ) : items.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
@@ -244,6 +264,9 @@ function MarketingChannelsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="tabular-nums">{c.sort_order}</TableCell>
+                <TableCell className="tabular-nums">
+                  {c.daily_quota && c.daily_quota > 0 ? c.daily_quota : <span className="text-muted-foreground">نامحدود</span>}
+                </TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"
