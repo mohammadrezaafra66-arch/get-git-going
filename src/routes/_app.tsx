@@ -67,7 +67,7 @@ export const Route = createFileRoute("/_app")({
       logAuthDiagnostic("_app.beforeLoad", "auth check failed", err);
     }
   },
-  pendingMs: 0,
+  pendingMs: 300,
   pendingComponent: AuthLoadingScreen,
   component: AppLayout,
 });
@@ -90,7 +90,7 @@ function AppLayout() {
       setStuckLoading(false);
       return;
     }
-    const id = window.setTimeout(() => setStuckLoading(true), 12_000);
+    const id = window.setTimeout(() => setStuckLoading(true), 6_000);
     return () => window.clearTimeout(id);
   }, [loading, profileLoading, rolesLoading]);
 
