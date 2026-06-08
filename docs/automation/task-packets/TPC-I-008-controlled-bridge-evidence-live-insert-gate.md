@@ -1,7 +1,7 @@
 # TPC-I-008 — Controlled Bridge Evidence / Live Insert Gate
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled bridge evidence gate  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -206,14 +206,28 @@ Real source execution remains forbidden after TPC-I-008.
 
 ---
 
-## 13. Final Decision
+## 13. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-008 is accepted as the controlled bridge evidence and live insert gate packet.
+
+Next allowed PR: controlled bridge evidence sync only.
+
+No implementation, migration, UI, API route, live insert, real source integration, external source call, or production automation is allowed in the next evidence PR.
+
+---
+
+## 14. Final Decision
 
 ```text
-TPC-I-008 may define controlled bridge evidence and live insert gate only.
+TPC-I-008 may define and record controlled bridge evidence and live insert gate only.
 No implementation.
 No migration.
 No UI.
 No API route.
 No real source call.
 No live insert.
+Evidence sync may proceed after this packet is merged.
 ```
