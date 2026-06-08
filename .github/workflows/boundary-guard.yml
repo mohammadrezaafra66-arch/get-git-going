@@ -49,6 +49,15 @@ jobs:
             echo "${CHANGED_FILES}" | grep -E "${pattern}" >/dev/null 2>&1
           }
 
+          changed_route_not_api() {
+            echo "${CHANGED_FILES}" | while IFS= read -r file; do
+              case "${file}" in
+                src/routes/api*) ;;
+                src/routes/*) echo "${file}" ;;
+              esac
+            done | grep . >/dev/null 2>&1
+          }
+
           add_error() {
             local message="$1"
             echo "::error::${message}"
@@ -94,7 +103,7 @@ jobs:
           # Cursor worker branches must not perform broad UI work.
           if [[ "${HEAD_BRANCH}" == cursor/worker-* ]]; then
             echo "Applying Cursor worker branch rules"
-            if has_changes_matching '^(src/components/|src/shared/components/|src/routes/(?!api\.).*)'; then
+            if has_changes_matching '^(src/components/|src/shared/components/)' || changed_route_not_api; then
               add_error "cursor/worker-* branches must not change broad UI paths unless a UI task explicitly approves it."
             fi
             if has_changes_matching '^supabase/migrations/'; then
@@ -116,8 +125,11 @@ jobs:
           # Cursor DB branches should keep migration/database scope isolated.
           if [[ "${HEAD_BRANCH}" == cursor/db-* ]]; then
             echo "Applying Cursor DB branch rules"
-            if has_changes_matching '^(src/components/|src/shared/components/|src/routes/(?!api\.).*|automation/worker-runtime/src/)'; then
+            if has_changes_matching '^(src/components/|src/shared/components/|automation/worker-runtime/src/)'; then
               add_error "cursor/db-* branches must not change broad UI or worker runtime implementation without explicit approval."
+            fi
+            if changed_route_not_api; then
+              add_error "cursor/db-* branches must not change broad UI routes without explicit approval."
             fi
           fi
 
