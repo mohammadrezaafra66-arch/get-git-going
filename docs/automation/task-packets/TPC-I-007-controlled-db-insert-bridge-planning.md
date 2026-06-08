@@ -1,7 +1,7 @@
 # TPC-I-007 — Controlled Database Insert Bridge Planning
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled database bridge planning  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -249,7 +249,20 @@ Real source execution remains forbidden after TPC-I-007.
 
 ---
 
-## 15. Final Decision
+## 15. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-007 is accepted as the controlled database insert bridge planning packet.
+
+Next allowed PR: docs-only definition or implementation packet for controlled database bridge only.
+
+No UI implementation, new migration, API route, real source integration, external source call, or production automation is allowed yet.
+
+---
+
+## 16. Final Decision
 
 ```text
 TPC-I-007 may define controlled database insert bridge planning only.
@@ -257,4 +270,5 @@ No implementation.
 No migration.
 No UI.
 No real source call.
+Implementation planning may proceed only within the accepted bridge boundary.
 ```
