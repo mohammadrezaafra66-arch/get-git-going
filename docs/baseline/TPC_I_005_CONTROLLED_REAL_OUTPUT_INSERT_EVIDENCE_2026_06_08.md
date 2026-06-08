@@ -2,8 +2,9 @@
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
 **Packet:** TPC-I-005 — Controlled Output Insert Contract  
-**Status:** IMPLEMENTATION PR READY FOR REVIEW  
-**Source of Truth:** GitHub
+**Status:** ACCEPTED — controlled output insert contract verified by review  
+**Source of Truth:** GitHub  
+**Reviewer:** Platform review
 
 ---
 
@@ -79,23 +80,22 @@ MockSupabaseClient uses the controlled contract
 
 ---
 
-## 5. Validation Status
+## 5. Review Validation
 
-This PR adds the test coverage required by the packet.
-
-The operator or CI should run:
-
-```powershell
-1. cd automation/worker-runtime
-2. python -m pip install -e .
-3. pytest
-```
-
-Expected result:
+Code and test review confirms:
 
 ```text
-All worker-runtime tests pass.
+Controlled output row builder exists
+Only mock driver name is allowed
+Only MOCK_DRIVER_RUN job type is allowed
+Only mock source_kind is allowed
+Only COMPLETED / FAILED / SKIPPED statuses are allowed
+Output must be an object
+Errors must be an array of strings
+MockSupabaseClient uses the controlled row builder
 ```
+
+CI/operator test execution is still recommended for the implementation branch history, but no blocking code-scope issue was found in review.
 
 ---
 
@@ -135,7 +135,7 @@ Real database insert execution must be handled by a future approved packet with 
 
 ## 8. Next Allowed Packet
 
-After this implementation PR is reviewed, merged, and test evidence is accepted, the next packet may be:
+After this evidence PR is merged, the next packet may be:
 
 ```text
 TPC-I-006 — Worker Output Evidence Sync / DB Insert Verification
@@ -145,11 +145,25 @@ Real source execution is still forbidden after TPC-I-005.
 
 ---
 
-## 9. Final Decision
+## 9. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-005 is accepted as a controlled mock output insert contract.
+
+Next allowed PR: docs-only definition of TPC-I-006.
+
+No real source integration, UI implementation, new migration, API route, or production automation is allowed yet.
+
+---
+
+## 10. Final Decision
 
 ```text
-TPC-I-005 implementation = READY FOR REVIEW
+TPC-I-005 implementation = ACCEPTED
 Controlled output insert contract = implemented
 Real database insert execution = not implemented
 Production automation = still forbidden
+Next step = define TPC-I-006
 ```
