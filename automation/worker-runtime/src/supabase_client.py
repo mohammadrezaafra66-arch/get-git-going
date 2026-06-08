@@ -1,8 +1,3 @@
-"""Data client wrapper shape for the worker skeleton.
-
-Real source integrations are intentionally not implemented here. The mock client lets tests validate the runtime contract without credentials or network access.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,17 +11,29 @@ ALLOWED_OUTPUT_STATUSES = {"COMPLETED", "FAILED", "SKIPPED"}
 ALLOWED_OUTPUT_SOURCE_KINDS = {"mock"}
 ALLOWED_OUTPUT_DRIVER_NAMES = {"mock"}
 ALLOWED_OUTPUT_JOB_TYPES = {"MOCK_DRIVER_RUN"}
+REQUIRED_OUTPUT_ROW_KEYS = {
+    "job_id",
+    "run_id",
+    "driver_name",
+    "job_type",
+    "status",
+    "output",
+    "checkpoint",
+    "errors",
+    "source_kind",
+    "phase_label",
+    "created_at",
+}
 
 
 @dataclass
 class MockSupabaseClient:
-    """In-memory mock for worker contract tests."""
-
     jobs: list[dict[str, Any]] = field(default_factory=list)
     logs: list[dict[str, Any]] = field(default_factory=list)
     heartbeats: list[dict[str, Any]] = field(default_factory=list)
     checkpoints: dict[str, dict[str, Any]] = field(default_factory=dict)
     driver_outputs: list[dict[str, Any]] = field(default_factory=list)
+    inserted_driver_outputs: list[dict[str, Any]] = field(default_factory=list)
 
     def claim_job(self, worker_id: str) -> dict[str, Any] | None:
         for job in self.jobs:
@@ -43,13 +50,7 @@ class MockSupabaseClient:
         return row
 
     def write_log(self, *, worker_id: str, event: str, job_id: str | None = None, level: str = "INFO") -> dict[str, Any]:
-        row = {
-            "worker_id": worker_id,
-            "job_id": job_id,
-            "event": event,
-            "level": level,
-            "created_at": _now(),
-        }
+        row = {"worker_id": worker_id, "job_id": job_id, "event": event, "level": level, "created_at": _now()}
         self.logs.append(row)
         return row
 
@@ -91,16 +92,19 @@ class MockSupabaseClient:
         self.driver_outputs.append(row)
         return row
 
+    def insert_controlled_driver_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        safe_row = validate_controlled_driver_output_row(row)
+        inserted = {**safe_row, "inserted_at": _now()}
+        self.inserted_driver_outputs.append(inserted)
+        return inserted
+
 
 class SupabaseClientWrapper:
-    """Thin wrapper boundary for future real data implementation."""
-
     def __init__(self, config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> None:
         self.config = config
         self._mock_client = mock_client or MockSupabaseClient()
-
         if not config.is_mock:
-            raise NotImplementedError("Real data client is outside TPC-I-005 implementation scope")
+            raise NotImplementedError("non-mock mode is outside TPC-I-007 scope")
 
     @property
     def client(self) -> MockSupabaseClient:
@@ -146,6 +150,9 @@ class SupabaseClientWrapper:
             source_kind=source_kind,
         )
 
+    def insert_controlled_driver_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        return self._mock_client.insert_controlled_driver_output(row)
+
 
 def build_controlled_driver_output_row(
     *,
@@ -159,10 +166,6 @@ def build_controlled_driver_output_row(
     errors: list[str],
     source_kind: str = "mock",
 ) -> dict[str, Any]:
-    """Build a row matching the verified automation_driver_outputs table contract.
-
-    TPC-I-005 intentionally allows only mock driver output.
-    """
     _validate_controlled_driver_output(
         job_id=job_id,
         run_id=run_id,
@@ -189,6 +192,30 @@ def build_controlled_driver_output_row(
     }
 
 
+def validate_controlled_driver_output_row(row: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        raise TypeError("row must be a dict")
+    missing = sorted(REQUIRED_OUTPUT_ROW_KEYS - set(row))
+    if missing:
+        raise ValueError(f"Missing required output row keys: {', '.join(missing)}")
+    if row["phase_label"] != "PHASE-1":
+        raise ValueError("Only PHASE-1 output rows are allowed")
+    if not isinstance(row["created_at"], str) or not row["created_at"].strip():
+        raise ValueError("created_at is required")
+    _validate_controlled_driver_output(
+        job_id=row["job_id"],
+        run_id=row["run_id"],
+        driver_name=row["driver_name"],
+        job_type=row["job_type"],
+        status=row["status"],
+        output=row["output"],
+        checkpoint=row["checkpoint"],
+        errors=row["errors"],
+        source_kind=row["source_kind"],
+    )
+    return dict(row)
+
+
 def _validate_controlled_driver_output(
     *,
     job_id: str,
@@ -206,13 +233,13 @@ def _validate_controlled_driver_output(
     if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
         raise ValueError("run_id must be a non-empty string or None")
     if driver_name not in ALLOWED_OUTPUT_DRIVER_NAMES:
-        raise ValueError("Only mock driver output is allowed in TPC-I-005")
+        raise ValueError("Only mock driver output is allowed in TPC-I-007")
     if job_type not in ALLOWED_OUTPUT_JOB_TYPES:
-        raise ValueError("Only MOCK_DRIVER_RUN output is allowed in TPC-I-005")
+        raise ValueError("Only MOCK_DRIVER_RUN output is allowed in TPC-I-007")
     if status not in ALLOWED_OUTPUT_STATUSES:
         raise ValueError("Invalid output status")
     if source_kind not in ALLOWED_OUTPUT_SOURCE_KINDS:
-        raise ValueError("Only mock source_kind is allowed in TPC-I-005")
+        raise ValueError("Only mock source_kind is allowed in TPC-I-007")
     if not isinstance(output, dict):
         raise TypeError("output must be a dict")
     if checkpoint is not None and not isinstance(checkpoint, dict):
