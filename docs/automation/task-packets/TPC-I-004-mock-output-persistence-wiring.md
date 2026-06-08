@@ -1,7 +1,7 @@
 # TPC-I-004 — Mock Output Persistence Wiring
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for mock output persistence implementation  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -17,7 +17,7 @@ Wire the mock-only Worker Runtime output path to the verified `automation_driver
 
 This packet must persist only mock driver output.
 
-It must not implement real Torob, Google Maps, Divar, WhatsApp, Instagram, OCR/STT, AI production, UI, API routes, or external source calls.
+It must not implement any real source integration, UI, API route, or production automation.
 
 ---
 
@@ -87,15 +87,8 @@ automation/worker-runtime/README.md
 The following are forbidden:
 
 ```text
-Real Torob extraction
-Real Google Maps extraction
-Divar
-WhatsApp
-Instagram
-OCR/STT
-AI production
-Playwright
-Selenium
+Real source integrations
+Browser automation
 External website calls
 Redis
 RabbitMQ
@@ -277,7 +270,7 @@ Stop immediately if:
 
 ```text
 A real source integration is added
-A real Torob or Google Maps call is added
+A real source call is added
 A migration is added
 UI is changed
 API route is changed
@@ -308,7 +301,7 @@ If implementation fails:
 ```text
 Revert implementation PR
 Keep automation_driver_outputs table intact
-Keep real Torob execution blocked
+Keep real source execution blocked
 Do not proceed to read-only real source integration
 Create review note explaining failure
 ```
@@ -323,17 +316,30 @@ Only after TPC-I-004 is accepted and implemented, the next packet may be opened:
 TPC-I-005 — Controlled Real Supabase Output Insert or Mock-to-DB Bridge
 ```
 
-Real Torob execution is still forbidden after TPC-I-004.
+Real source execution is still forbidden after TPC-I-004.
 
 ---
 
-## 17. Final Decision
+## 17. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-004 is accepted as the mock output persistence wiring packet.
+
+Next allowed PR: Mock Output Persistence Wiring implementation only.
+
+No real source integration, UI implementation, new migration, API route, or production automation is allowed in the next implementation PR.
+
+---
+
+## 18. Final Decision
 
 ```text
-TPC-I-004 may define mock output persistence wiring.
+TPC-I-004 may define and implement mock output persistence wiring.
 No real automation.
 No real source call.
 No migration.
 No UI.
-Implementation may proceed only after this packet is accepted.
+Implementation may proceed only for mock output persistence.
 ```
