@@ -1,0 +1,8 @@
+This file is intentionally added by a temporary negative test PR.
+
+Expected result:
+- Branch pattern: lovable/*
+- Changed path: server/
+- Boundary Guard should fail.
+
+This PR must not be merged.
