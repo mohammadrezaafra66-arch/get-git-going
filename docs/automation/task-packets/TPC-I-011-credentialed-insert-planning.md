@@ -1,7 +1,7 @@
 # TPC-I-011 — Credentialed Insert Planning
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for credentialed insert planning  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -262,7 +262,20 @@ Real source execution remains forbidden after TPC-I-011.
 
 ---
 
-## 15. Final Decision
+## 15. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed
+
+Decision: TPC-I-011 is accepted as the credentialed insert planning packet.
+
+Next allowed PR: docs-only implementation packet or separate controlled implementation packet after approval.
+
+No implementation, migration, UI, API route, credentialed database write, real source integration, external source call, or production automation is allowed in this PR.
+
+---
+
+## 16. Final Decision
 
 ```text
 TPC-I-011 may define credentialed insert planning only.
@@ -272,4 +285,5 @@ No UI.
 No API route.
 No real source call.
 No credentialed write.
+Implementation planning may proceed only after this packet is merged.
 ```
