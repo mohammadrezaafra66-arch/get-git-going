@@ -3,7 +3,10 @@ import { BUILD_TAG } from "./build-info";
 const STORAGE_KEY = "afrakala:build-tag";
 const RELOAD_FLAG = "afrakala:cache-buster:reloading";
 const RELOAD_COUNT_KEY = "afrakala:cache-buster:count";
+const DEV_IMPORT_ERROR_COUNT_KEY = "afrakala:cache-buster:dev-import-count";
+const DEV_IMPORT_NOTICE_ID = "afrakala-dev-import-recovery";
 const MAX_RELOADS = 2;
+const MAX_DEV_IMPORT_ERRORS = 2;
 
 /**
  * Pattern for chunk/module loading errors that indicate the user has stale
@@ -51,6 +54,11 @@ function isDevMode(): boolean {
   } catch {
     return false;
   }
+}
+
+function isDevImportError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return isDevModuleUrl(message) && STALE_CHUNK_PATTERNS.some((rx) => rx.test(message));
 }
 
 function isStaleChunkError(message: string | undefined | null): boolean {
