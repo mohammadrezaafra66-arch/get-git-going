@@ -128,10 +128,10 @@ function showDevImportRecoveryNotice(reason: string) {
     "z-index:2147483647",
     "max-width:520px",
     "margin-inline:auto",
-    "border:1px solid hsl(var(--border, 214 32% 91%))",
+    "border:1px solid var(--border, #e2e8f0)",
     "border-radius:8px",
-    "background:hsl(var(--background, 0 0% 100%))",
-    "color:hsl(var(--foreground, 222 47% 11%))",
+    "background:var(--background, #ffffff)",
+    "color:var(--foreground, #0f172a)",
     "box-shadow:0 16px 40px rgba(15,23,42,.18)",
     "padding:16px",
     "font:14px/1.8 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -144,19 +144,19 @@ function showDevImportRecoveryNotice(reason: string) {
   const body = document.createElement("div");
   body.textContent =
     "ماژول داخلی محیط توسعه موقتاً در دسترس نیست. چند ثانیه صبر کنید؛ اگر صفحه برنگشت، یک‌بار تازه‌سازی کنید.";
-  body.style.cssText = "color:hsl(var(--muted-foreground, 215 16% 47%));margin-bottom:12px";
+  body.style.cssText = "color:var(--muted-foreground, #64748b);margin-bottom:12px";
 
   const detail = document.createElement("pre");
   detail.textContent = reason;
   detail.dir = "ltr";
   detail.style.cssText =
-    "max-height:80px;overflow:auto;white-space:pre-wrap;text-align:left;background:hsl(var(--muted, 210 40% 96%));padding:8px;border-radius:6px;font-size:11px;margin:0 0 12px";
+    "max-height:80px;overflow:auto;white-space:pre-wrap;text-align:left;background:var(--muted, #f1f5f9);padding:8px;border-radius:6px;font-size:11px;margin:0 0 12px";
 
   const refresh = document.createElement("button");
   refresh.type = "button";
   refresh.textContent = "تازه‌سازی صفحه";
   refresh.style.cssText =
-    "border:0;border-radius:6px;background:hsl(var(--primary, 222 47% 11%));color:hsl(var(--primary-foreground, 210 40% 98%));padding:8px 12px;cursor:pointer";
+    "border:0;border-radius:6px;background:var(--primary, #0f172a);color:var(--primary-foreground, #f8fafc);padding:8px 12px;cursor:pointer";
   refresh.addEventListener("click", () => window.location.reload());
 
   notice.append(title, body, detail, refresh);

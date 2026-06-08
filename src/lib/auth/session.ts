@@ -340,7 +340,7 @@ export async function ensureAuthReady(force = false) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);
         logAuthDiagnostic("session.getSession.throw", message, error);
-      setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : message });
+        setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : message });
         return snapshot;
       }
       const { data, error } = result;
