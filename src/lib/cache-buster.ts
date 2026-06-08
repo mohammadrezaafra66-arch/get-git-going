@@ -22,8 +22,41 @@ const STALE_CHUNK_PATTERNS = [
   /MIME type \("text\/html"\)/i,
 ];
 
+/**
+ * Patterns that indicate the failing module URL belongs to the Vite dev
+ * server itself (virtual modules, /@id/, /@vite/, /@fs/, optimized deps).
+ * When the dev server restarts (HMR, .env change, sandbox restart), these
+ * URLs temporarily 404 and the browser reports a dynamic-import failure —
+ * but this is NOT a stale production chunk and MUST NOT trigger a hard
+ * reload loop, because the dev server reconnects automatically and a
+ * full page reload re-mounts the React tree (resetting auth/session
+ * state to the "checking session…" screen indefinitely).
+ */
+const DEV_URL_PATTERNS = [
+  /\/@id\//,
+  /\/@vite\//,
+  /\/@fs\//,
+  /virtual:/,
+  /node_modules\/\.vite\//,
+];
+
+function isDevModuleUrl(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return DEV_URL_PATTERNS.some((rx) => rx.test(message));
+}
+
+function isDevMode(): boolean {
+  try {
+    return Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+  } catch {
+    return false;
+  }
+}
+
 function isStaleChunkError(message: string | undefined | null): boolean {
   if (!message) return false;
+  // Dev-server transient failures are not stale chunks.
+  if (isDevModuleUrl(message)) return false;
   return STALE_CHUNK_PATTERNS.some((rx) => rx.test(message));
 }
 
@@ -77,6 +110,15 @@ let triggered = false;
 export async function forceHardReload(reason: string) {
   if (triggered) return;
   triggered = true;
+
+  // In dev, never auto-reload on chunk/import errors — the Vite dev server
+  // restart cycle would loop the page and wipe in-memory auth/session
+  // state, leaving the user stuck on the loading screen.
+  if (isDevMode()) {
+    console.warn(`[cache-buster] DEV mode — skipping hard reload: ${reason}`);
+    triggered = false;
+    return;
+  }
 
   const count = bumpReloadCounter();
   if (count > MAX_RELOADS) {
