@@ -24,12 +24,10 @@ const cloudProjectId =
   "kwwkppkcihrbeurwudjh";
 
 export default defineConfig({
-  // Build target is conditional:
-  //   - SELF_HOST_NODE=1  → disable Cloudflare Workers plugin so `vite build`
-  //     produces a pure Node SSR bundle (used by Dockerfile / SH.3A self-host).
-  //   - default           → keep Cloudflare Workers build (required for
-  //     Lovable preview & published deployments which run on Workers).
-  cloudflare: process.env.SELF_HOST_NODE === "1" ? false : undefined,
+  // NOTE: previously a `cloudflare: false` toggle was used when
+  // SELF_HOST_NODE=1 to switch to a pure Node SSR build. The current
+  // @lovable.dev/vite-tanstack-config no longer exposes that option,
+  // so the toggle must be handled at the Dockerfile/runtime level.
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
