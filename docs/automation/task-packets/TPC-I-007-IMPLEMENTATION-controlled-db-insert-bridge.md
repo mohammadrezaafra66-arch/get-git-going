@@ -1,7 +1,7 @@
 # TPC-I-007-IMPLEMENTATION — Controlled DB Insert Bridge Implementation
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled bridge implementation  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -242,11 +242,24 @@ Real source execution remains forbidden.
 
 ---
 
-## 14. Final Decision
+## 14. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-007-IMPLEMENTATION is accepted as the controlled bridge implementation boundary.
+
+Next allowed PR: controlled bridge implementation inside the allowed files only.
+
+No UI implementation, new migration, API route, real source integration, external source call, or production automation is allowed in the next implementation PR.
+
+---
+
+## 15. Final Decision
 
 ```text
 TPC-I-007-IMPLEMENTATION may define the controlled bridge implementation boundary.
-No implementation in this PR.
+Implementation may proceed only inside the allowed files.
 No migration.
 No UI.
 No real source call.
