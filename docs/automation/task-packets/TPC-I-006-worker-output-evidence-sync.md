@@ -1,7 +1,7 @@
 # TPC-I-006 — Worker Output Evidence Sync / DB Insert Verification
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for worker output evidence sync  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -197,12 +197,26 @@ Real source execution remains forbidden after TPC-I-006.
 
 ---
 
-## 13. Final Decision
+## 13. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-006 is accepted as the worker output evidence sync packet.
+
+Next allowed PR: Worker Output Evidence Sync only.
+
+No implementation, migration, UI, API route, real source integration, external source call, or secret is allowed in the next evidence PR.
+
+---
+
+## 14. Final Decision
 
 ```text
-TPC-I-006 may define worker output evidence sync only.
+TPC-I-006 may define and record worker output evidence sync only.
 No implementation.
 No migration.
 No UI.
 No real source call.
+Evidence sync may proceed after this packet is merged.
 ```
