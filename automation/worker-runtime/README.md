@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005  
-**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, and controlled output insert contract
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION  
+**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, and controlled bridge contract
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -27,6 +27,7 @@ The worker skeleton provides:
 - mock driver registry
 - mock output persistence
 - controlled output insert contract
+- controlled bridge contract
 
 ## Out of scope
 
@@ -52,11 +53,11 @@ Production schedule
 
 ```powershell
 1. cd automation/worker-runtime
-2. python -m pip install -e .
-3. pytest
+2. python -m pip install -e .[dev]
+3. python -m pytest -q
 ```
 
-If `pytest` is not available in your environment, install it in your local development environment only.
+If `pytest` is not available in your environment, install it through the dev extra.
 
 ## Run in mock mode
 
@@ -136,6 +137,18 @@ phase_label = PHASE-1
 
 Non-mock driver names, non-mock source kinds, invalid statuses, non-object output payloads, and non-array errors are rejected by tests.
 
+## Controlled bridge contract
+
+TPC-I-007-IMPLEMENTATION adds a controlled bridge contract.
+
+The bridge accepts only rows already shaped and validated by:
+
+```text
+build_controlled_driver_output_row(...)
+```
+
+The mock bridge stores accepted rows in `inserted_driver_outputs` and rejects malformed or non-mock rows.
+
 This still does not implement real source execution.
 
 ## Environment variables
@@ -146,4 +159,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output insert validation so the next packet can add the next approved bridge safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation and bridge validation so the next packet can add the next approved step safely.
