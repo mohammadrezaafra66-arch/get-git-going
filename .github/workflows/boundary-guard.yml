@@ -49,15 +49,6 @@ jobs:
             echo "${CHANGED_FILES}" | grep -E "${pattern}" >/dev/null 2>&1
           }
 
-          changed_route_not_api() {
-            echo "${CHANGED_FILES}" | while IFS= read -r file; do
-              case "${file}" in
-                src/routes/api*) ;;
-                src/routes/*) echo "${file}" ;;
-              esac
-            done | grep . >/dev/null 2>&1
-          }
-
           add_error() {
             local message="$1"
             echo "::error::${message}"
@@ -69,7 +60,16 @@ jobs:
             echo "::warning::${message}"
           }
 
-          # Generic secret/file safety checks
+          changed_route_not_api() {
+            echo "${CHANGED_FILES}" | while IFS= read -r file; do
+              case "${file}" in
+                src/routes/api*) ;;
+                src/routes/*) echo "${file}" ;;
+              esac
+            done | grep . >/dev/null 2>&1
+          }
+
+          # Generic secret/file safety checks.
           if has_changes_matching '(^|/)\.env($|\.)'; then
             if ! echo "${CHANGED_FILES}" | grep -E '(^|/)\.env(\.[A-Za-z0-9_-]+)?\.example$' >/dev/null 2>&1; then
               add_error "Unsafe .env file detected. Commit only .env.example templates, never real environment files."
@@ -87,6 +87,26 @@ jobs:
           # Root openapi is deprecated pointer-only.
           if has_changes_matching '^openapi/.*\.ya?ml$'; then
             add_error "Root openapi/ YAML is deprecated pointer-only. Use automation/openapi/automation-v1.yaml unless an ADR approves otherwise."
+          fi
+
+          # Docs/governance branches are allowed to change docs and GitHub governance files only.
+          if [[ "${HEAD_BRANCH}" == docs/* || "${HEAD_BRANCH}" == docs* ]]; then
+            echo "Applying docs/governance branch rules"
+            NON_GOVERNANCE_FILES="$(echo "${CHANGED_FILES}" | grep -Ev '^(docs/|\.github/workflows/boundary-guard\.yml|\.github/CODEOWNERS|\.github/pull_request_template\.md)$' || true)"
+            if [[ -n "${NON_GOVERNANCE_FILES}" ]]; then
+              echo "Non-governance files detected:"
+              echo "${NON_GOVERNANCE_FILES}"
+              add_error "Docs/governance branches must only change docs/ and approved GitHub governance files."
+            fi
+
+            if [[ "${fail}" -ne 0 ]]; then
+              echo "Boundary Guard failed for docs/governance branch."
+              exit 1
+            fi
+
+            echo "Docs/governance branch contains only allowed governance files."
+            echo "Boundary Guard passed."
+            exit 0
           fi
 
           # Lovable branches are UI-only by default.
@@ -130,14 +150,6 @@ jobs:
             fi
             if changed_route_not_api; then
               add_error "cursor/db-* branches must not change broad UI routes without explicit approval."
-            fi
-          fi
-
-          # Docs branches must stay docs/governance-only.
-          if [[ "${HEAD_BRANCH}" == docs/* || "${HEAD_BRANCH}" == docs* ]]; then
-            echo "Applying docs branch rules"
-            if has_changes_matching '^(src/|server/|supabase/migrations/|automation/worker-runtime/src/|automation/worker-runtime/tests/|deploy/app/|deploy/supabase/|package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb)'; then
-              add_error "Docs/governance branches must not change implementation, migration, worker runtime tests/src, deploy app/supabase, or dependency files."
             fi
           fi
 
