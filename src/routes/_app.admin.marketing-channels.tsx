@@ -25,6 +25,7 @@ type Channel = {
   weight: number;
   is_active: boolean;
   sort_order: number;
+  daily_quota: number | null;
 };
 
 function MarketingChannelsPage() {
@@ -38,8 +39,8 @@ function MarketingChannelsPage() {
 
   const [editing, setEditing] = useState<Channel | null>(null);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<{ name: string; weight: number; sort_order: number; is_active: boolean }>({
-    name: "", weight: 50, sort_order: 0, is_active: true,
+  const [form, setForm] = useState<{ name: string; weight: number; sort_order: number; is_active: boolean; daily_quota: number | null }>({
+    name: "", weight: 50, sort_order: 0, is_active: true, daily_quota: null,
   });
   const [saving, setSaving] = useState(false);
 
@@ -47,7 +48,7 @@ function MarketingChannelsPage() {
     setLoading(true);
     let q = supabase
       .from("marketing_channels")
-      .select("id,name,weight,is_active,sort_order")
+      .select("id,name,weight,is_active,sort_order,daily_quota")
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true })
       .limit(500);
@@ -66,13 +67,13 @@ function MarketingChannelsPage() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ name: "", weight: 50, sort_order: (items[items.length - 1]?.sort_order ?? 0) + 10, is_active: true });
+    setForm({ name: "", weight: 50, sort_order: (items[items.length - 1]?.sort_order ?? 0) + 10, is_active: true, daily_quota: null });
     setOpen(true);
   };
 
   const openEdit = (c: Channel) => {
     setEditing(c);
-    setForm({ name: c.name, weight: c.weight, sort_order: c.sort_order, is_active: c.is_active });
+    setForm({ name: c.name, weight: c.weight, sort_order: c.sort_order, is_active: c.is_active, daily_quota: c.daily_quota });
     setOpen(true);
   };
 
@@ -93,27 +94,30 @@ function MarketingChannelsPage() {
     if (name.length < 2 || name.length > 100) { toast.error("نام باید بین ۲ تا ۱۰۰ کاراکتر باشد"); return; }
     const weight = Math.max(0, Math.min(100, Number(form.weight) || 0));
     const sort_order = Number.isFinite(form.sort_order) ? form.sort_order : 0;
+    const daily_quota = form.daily_quota === null || form.daily_quota === undefined
+      ? null
+      : Math.max(0, Math.min(10000, Math.floor(Number(form.daily_quota) || 0)));
     setSaving(true);
     try {
       if (editing) {
         const { error } = await supabase
           .from("marketing_channels")
-          .update({ name, weight, sort_order, is_active: form.is_active })
+          .update({ name, weight, sort_order, is_active: form.is_active, daily_quota })
           .eq("id", editing.id);
         if (error) throw error;
         await audit("marketing_channel_updated", editing.id, {
-          before: { name: editing.name, weight: editing.weight, sort_order: editing.sort_order, is_active: editing.is_active },
-          after: { name, weight, sort_order, is_active: form.is_active },
+          before: { name: editing.name, weight: editing.weight, sort_order: editing.sort_order, is_active: editing.is_active, daily_quota: editing.daily_quota },
+          after: { name, weight, sort_order, is_active: form.is_active, daily_quota },
         });
         toast.success("به‌روزرسانی شد");
       } else {
         const { data, error } = await supabase
           .from("marketing_channels")
-          .insert({ name, weight, sort_order, is_active: form.is_active })
+          .insert({ name, weight, sort_order, is_active: form.is_active, daily_quota })
           .select("id")
           .single();
         if (error) throw error;
-        await audit("marketing_channel_created", data!.id, { name, weight, sort_order, is_active: form.is_active });
+        await audit("marketing_channel_created", data!.id, { name, weight, sort_order, is_active: form.is_active, daily_quota });
         toast.success("کانال افزوده شد");
       }
       setOpen(false);
@@ -185,6 +189,25 @@ function MarketingChannelsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) || 0 }))}
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label>سهمیه روزانه</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    dir="ltr"
+                    value={form.daily_quota ?? ""}
+                    placeholder="نامحدود"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        daily_quota: v === "" ? null : Math.max(0, Math.min(10000, Math.floor(Number(v) || 0))),
+                      }));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">خالی یا ۰ یعنی نامحدود. حداکثر تعداد پیشنهاد قابل ثبت در روز برای این کانال.</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
                   <Label>فعال</Label>
@@ -216,15 +239,16 @@ function MarketingChannelsPage() {
               <TableHead className="text-right">نام</TableHead>
               <TableHead className="text-right">وزن</TableHead>
               <TableHead className="text-right">ترتیب</TableHead>
+              <TableHead className="text-right">سهمیه روزانه</TableHead>
               <TableHead className="text-right">وضعیت</TableHead>
               <TableHead className="text-right">عملیات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">در حال بارگذاری...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">در حال بارگذاری...</TableCell></TableRow>
             ) : items.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">کانالی یافت نشد</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">کانالی یافت نشد</TableCell></TableRow>
             ) : items.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
@@ -240,6 +264,9 @@ function MarketingChannelsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="tabular-nums">{c.sort_order}</TableCell>
+                <TableCell className="tabular-nums">
+                  {c.daily_quota && c.daily_quota > 0 ? c.daily_quota : <span className="text-muted-foreground">نامحدود</span>}
+                </TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"

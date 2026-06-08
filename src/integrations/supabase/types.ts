@@ -3627,6 +3627,7 @@ export type Database = {
       marketing_channels: {
         Row: {
           created_at: string
+          daily_quota: number | null
           id: string
           is_active: boolean
           name: string
@@ -3636,6 +3637,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_quota?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -3645,6 +3647,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_quota?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -7488,15 +7491,18 @@ export type Database = {
           channel_id: string | null
           channel_name: string | null
           channel_weight: number | null
+          daily_quota: number | null
           label_weight_sum: number | null
           product_id: string | null
           product_name: string | null
           qty_90d: number | null
           recency_factor: number | null
+          remaining_today: number | null
           score: number | null
           sku: string | null
           stock_factor: number | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
+          used_today: number | null
         }
         Relationships: []
       }
@@ -7977,15 +7983,18 @@ export type Database = {
           channel_id: string | null
           channel_name: string | null
           channel_weight: number | null
+          daily_quota: number | null
           label_weight_sum: number | null
           product_id: string | null
           product_name: string | null
           qty_90d: number | null
           recency_factor: number | null
+          remaining_today: number | null
           score: number | null
           sku: string | null
           stock_factor: number | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
+          used_today: number | null
         }[]
         SetofOptions: {
           from: "*"
