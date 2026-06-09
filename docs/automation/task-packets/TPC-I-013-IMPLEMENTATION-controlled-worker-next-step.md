@@ -1,7 +1,7 @@
 # TPC-I-013-IMPLEMENTATION — Controlled Worker Next-Step Packet
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled Worker Runtime next-step boundary  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -247,12 +247,25 @@ Real source execution remains forbidden.
 
 ---
 
-## 12. Final Decision
+## 12. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed
+
+Decision: TPC-I-013-IMPLEMENTATION is accepted as the controlled Worker Runtime next-step implementation boundary.
+
+Next allowed PR: controlled Worker Runtime next-step implementation inside the allowed files only.
+
+No migration, UI, API route, real source execution, production schedule, or sensitive value recording is allowed in this acceptance PR.
+
+---
+
+## 13. Final Decision
 
 ```text
+TPC-I-013-IMPLEMENTATION = ACCEPTED
 TPC-I-013-IMPLEMENTATION may define a controlled Worker Runtime next-step implementation boundary.
-This PR is docs-only.
-No implementation.
+Future implementation may proceed only inside the allowed files.
 No migration.
 No UI.
 No API route.
