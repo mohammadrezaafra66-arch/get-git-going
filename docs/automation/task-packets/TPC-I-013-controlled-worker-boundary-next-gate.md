@@ -1,7 +1,7 @@
 # TPC-I-013 — Controlled Worker Boundary Next Gate
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved as the next controlled Worker boundary gate  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -190,9 +190,23 @@ Real source execution remains forbidden.
 
 ---
 
-## 10. Final Decision
+## 10. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed
+
+Decision: TPC-I-013 is accepted as the next controlled Worker boundary gate only.
+
+Next allowed PR: a separate docs-only concrete packet for the next controlled Worker Runtime step.
+
+No implementation, migration, UI, API route, real source execution, production schedule, or sensitive value recording is allowed in this PR.
+
+---
+
+## 11. Final Decision
 
 ```text
+TPC-I-013 = ACCEPTED
 TPC-I-013 may define the next controlled Worker boundary gate.
 This PR is docs-only.
 No implementation.
