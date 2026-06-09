@@ -30,6 +30,10 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+        VITE_APP_ENV: ${VITE_APP_ENV:-staging}
+        VITE_ENVIRONMENT_NAME: ${VITE_APP_ENV:-staging}
+        VITE_SHOW_ENVIRONMENT_BANNER: ${VITE_SHOW_ENVIRONMENT_BANNER:-true}
+        VITE_ENVIRONMENT_BANNER_TEXT: ${VITE_ENVIRONMENT_BANNER_TEXT:-محیط تست افراکالا - اطلاعات این بخش واقعی نیست}
     image: afrakala-app:local
     container_name: afrakala-local-web
     env_file:
