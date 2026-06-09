@@ -37,6 +37,7 @@ class MockSupabaseClient:
     live_inserted_driver_outputs: list[dict[str, Any]] = field(default_factory=list)
     credentialed_driver_outputs: list[dict[str, Any]] = field(default_factory=list)
     worker_integrated_outputs: list[dict[str, Any]] = field(default_factory=list)
+    worker_next_step_outputs: list[dict[str, Any]] = field(default_factory=list)
 
     def claim_job(self, worker_id: str) -> dict[str, Any] | None:
         for job in self.jobs:
@@ -119,13 +120,19 @@ class MockSupabaseClient:
         self.worker_integrated_outputs.append(integrated)
         return integrated
 
+    def run_controlled_worker_next_step(self, row: dict[str, Any]) -> dict[str, Any]:
+        safe_row = validate_controlled_driver_output_row(row)
+        next_step = {**safe_row, "worker_next_step_at": _now(), "next_step_boundary": "controlled_mock_only"}
+        self.worker_next_step_outputs.append(next_step)
+        return next_step
+
 
 class SupabaseClientWrapper:
     def __init__(self, config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> None:
         self.config = config
         self._mock_client = mock_client or MockSupabaseClient()
         if not config.is_mock:
-            raise NotImplementedError("non-mock mode is outside TPC-I-012 implementation scope")
+            raise NotImplementedError("non-mock mode is outside TPC-I-013 implementation scope")
 
     @property
     def client(self) -> MockSupabaseClient:
@@ -182,6 +189,9 @@ class SupabaseClientWrapper:
 
     def integrate_controlled_worker_output(self, row: dict[str, Any]) -> dict[str, Any]:
         return self._mock_client.integrate_controlled_worker_output(row)
+
+    def run_controlled_worker_next_step(self, row: dict[str, Any]) -> dict[str, Any]:
+        return self._mock_client.run_controlled_worker_next_step(row)
 
 
 def build_controlled_driver_output_row(
@@ -263,13 +273,13 @@ def _validate_controlled_driver_output(
     if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
         raise ValueError("run_id must be a non-empty string or None")
     if driver_name not in ALLOWED_OUTPUT_DRIVER_NAMES:
-        raise ValueError("Only mock driver output is allowed in TPC-I-012")
+        raise ValueError("Only mock driver output is allowed in TPC-I-013")
     if job_type not in ALLOWED_OUTPUT_JOB_TYPES:
-        raise ValueError("Only MOCK_DRIVER_RUN output is allowed in TPC-I-012")
+        raise ValueError("Only MOCK_DRIVER_RUN output is allowed in TPC-I-013")
     if status not in ALLOWED_OUTPUT_STATUSES:
         raise ValueError("Invalid output status")
     if source_kind not in ALLOWED_OUTPUT_SOURCE_KINDS:
-        raise ValueError("Only mock source_kind is allowed in TPC-I-012")
+        raise ValueError("Only mock source_kind is allowed in TPC-I-013")
     if not isinstance(output, dict):
         raise TypeError("output must be a dict")
     if checkpoint is not None and not isinstance(checkpoint, dict):
