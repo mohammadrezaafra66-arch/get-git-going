@@ -1,7 +1,7 @@
 # TPC-I-012 — Guarded Insert Integration Gate
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved as the guarded insert integration gate  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -211,9 +211,23 @@ Real source execution remains forbidden.
 
 ---
 
-## 11. Final Decision
+## 11. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed
+
+Decision: TPC-I-012 is accepted as a guarded integration gate only.
+
+Next allowed PR: a separate docs-only concrete implementation packet.
+
+No implementation, migration, UI, API route, real source execution, external source call, production schedule, or secret is allowed in this acceptance PR.
+
+---
+
+## 12. Final Decision
 
 ```text
+TPC-I-012 = ACCEPTED
 TPC-I-012 may define the guarded insert integration gate.
 This PR is docs-only.
 No implementation.
