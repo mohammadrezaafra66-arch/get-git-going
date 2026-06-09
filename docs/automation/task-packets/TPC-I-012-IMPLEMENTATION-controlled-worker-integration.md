@@ -1,7 +1,7 @@
 # TPC-I-012-IMPLEMENTATION — Controlled Worker Integration Packet
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled Worker Runtime integration boundary  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -59,7 +59,7 @@ Not allowed in this packet:
 ```text
 No code implementation
 No database write implementation
-No credential use
+No runtime-sensitive value use
 No migration
 No RLS change
 No UI
@@ -68,7 +68,7 @@ No browser automation
 No real source integration
 No external source call
 No production automation
-No secret recording
+No sensitive value recording
 ```
 
 ---
@@ -169,7 +169,7 @@ invalid phase_label is rejected
 missing job_id is rejected
 bad output shape is rejected
 bad errors shape is rejected
-unit tests do not need production credentials
+unit tests do not need production runtime values
 unit tests do not need external network
 ```
 
@@ -184,8 +184,8 @@ Changed files
 Command used
 Test result summary
 Worker boundary review
-Credential boundary review without exposing secrets
-No-secret review
+Runtime value boundary review without exposing values
+Sensitive-value review
 No UI change review
 No migration review
 No API route review
@@ -194,17 +194,7 @@ No production schedule review
 Operator name/date
 ```
 
-Evidence must not include:
-
-```text
-connection strings
-access tokens
-service-role keys
-.env contents
-browser session data
-customer data
-production payload dumps
-```
+Evidence must not include runtime-sensitive values, browser session data, customer data, or production payload dumps.
 
 ---
 
@@ -213,8 +203,8 @@ production payload dumps
 Stop immediately if the future implementation requires:
 
 ```text
-committing secrets
-copying .env values into docs
+committing sensitive values
+copying local runtime values into docs
 adding UI write path
 adding API route
 adding migration
@@ -242,7 +232,7 @@ No migration is included
 No UI is changed
 No API route is added
 No real source integration is added
-No secret is recorded
+No sensitive value is recorded
 ```
 
 ---
@@ -255,15 +245,27 @@ Real source execution remains forbidden.
 
 ---
 
-## 12. Final Decision
+## 12. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed
+
+Decision: TPC-I-012-IMPLEMENTATION is accepted as the controlled Worker Runtime integration implementation boundary.
+
+Next allowed PR: controlled Worker Runtime integration implementation inside the allowed files only.
+
+No migration, UI, API route, real source execution, external source call, production schedule, or sensitive value recording is allowed in this acceptance PR.
+
+---
+
+## 13. Final Decision
 
 ```text
-TPC-I-012-IMPLEMENTATION may define a controlled Worker Runtime integration implementation boundary.
-This PR is docs-only.
-No implementation.
+TPC-I-012-IMPLEMENTATION = ACCEPTED
+Future implementation may proceed only inside the allowed files.
 No migration.
 No UI.
 No API route.
 No real source call.
-No secret.
+No sensitive value.
 ```
