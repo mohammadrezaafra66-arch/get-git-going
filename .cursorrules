@@ -1,0 +1,12 @@
+AfraKala API work is contract-first.
+
+Canonical contract file: automation/openapi/automation-v1.yaml
+
+Before API-related work, read the canonical contract, check endpoint and schemas, update the contract first when missing, validate with Redocly, then implement after review.
+
+Validation command:
+npx --yes @redocly/cli lint automation/openapi/automation-v1.yaml
+
+Do not use root openapi/ for YAML contract files.
+
+Order: Contract, Implementation, UI, Production.
