@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION + TPC-I-011-IMPLEMENTATION + TPC-I-012-IMPLEMENTATION  
-**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, live bridge contract guard, guarded insert contract, and controlled worker boundary
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION + TPC-I-011-IMPLEMENTATION + TPC-I-012-IMPLEMENTATION + TPC-I-013-IMPLEMENTATION  
+**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, live bridge contract guard, guarded insert contract, controlled worker boundary, and controlled worker next-step boundary
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -31,6 +31,7 @@ The worker skeleton provides:
 - live bridge contract guard
 - guarded insert contract
 - controlled worker boundary
+- controlled worker next-step boundary
 
 ## Out of scope
 
@@ -186,6 +187,18 @@ worker_boundary = controlled_mock_only
 
 This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
 
+## Controlled worker next-step boundary
+
+TPC-I-013-IMPLEMENTATION adds a controlled worker next-step boundary in mock mode.
+
+The next-step boundary accepts only validated mock rows and stores them in `worker_next_step_outputs` with:
+
+```text
+next_step_boundary = controlled_mock_only
+```
+
+This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
+
 ## Environment variables
 
 See `.env.example`.
@@ -194,4 +207,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, live bridge guarding, guarded insert validation, and controlled worker boundary validation so the next packet can add the next approved step safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, live bridge guarding, guarded insert validation, controlled worker boundary validation, and controlled next-step validation so the next packet can add the next approved step safely.
