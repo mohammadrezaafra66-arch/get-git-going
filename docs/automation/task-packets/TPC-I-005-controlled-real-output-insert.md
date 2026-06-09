@@ -1,7 +1,7 @@
 # TPC-I-005 — Controlled Real Supabase Output Insert / Mock-to-DB Bridge
 
 **Phase Label:** PHASE-1-IMPLEMENTATION  
-**Packet Status:** READY FOR REVIEW  
+**Packet Status:** ACCEPTED — approved for controlled mock-to-database insert implementation  
 **Owner:** محمدرضا افرا  
 **Technical Owner:** خانم پورچیستا  
 **Reviewer:** Platform review  
@@ -283,13 +283,26 @@ Real source execution is still forbidden after TPC-I-005.
 
 ---
 
-## 16. Final Decision
+## 16. Approval / Sign-off
+
+Owner: محمدرضا افرا — approved  
+Reviewer: Platform review — reviewed  
+
+Decision: TPC-I-005 is accepted as the controlled mock-to-database output insert packet.
+
+Next allowed PR: Controlled mock-to-database insert implementation only.
+
+No real source integration, UI implementation, new migration, API route, external source call, or production automation is allowed in the next implementation PR.
+
+---
+
+## 17. Final Decision
 
 ```text
-TPC-I-005 may define a controlled mock-to-database output insert path.
+TPC-I-005 may define and implement a controlled mock-to-database output insert path.
 No real automation.
 No real source call.
 No migration.
 No UI.
-Implementation may proceed only after this packet is accepted.
+Implementation may proceed only for controlled mock output insert.
 ```

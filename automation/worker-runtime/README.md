@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004  
-**Status:** Minimal skeleton with mock-only driver contract and mock output persistence
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION + TPC-I-011-IMPLEMENTATION + TPC-I-012-IMPLEMENTATION + TPC-I-013-IMPLEMENTATION  
+**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, live bridge contract guard, guarded insert contract, controlled worker boundary, and controlled worker next-step boundary
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -26,6 +26,12 @@ The worker skeleton provides:
 - mock-only driver contract
 - mock driver registry
 - mock output persistence
+- controlled output insert contract
+- controlled bridge contract
+- live bridge contract guard
+- guarded insert contract
+- controlled worker boundary
+- controlled worker next-step boundary
 
 ## Out of scope
 
@@ -51,11 +57,11 @@ Production schedule
 
 ```powershell
 1. cd automation/worker-runtime
-2. python -m pip install -e .
-3. pytest
+2. python -m pip install -e .[dev]
+3. python -m pytest -q
 ```
 
-If `pytest` is not available in your environment, install it in your local development environment only.
+If `pytest` is not available in your environment, install it through the dev extra.
 
 ## Run in mock mode
 
@@ -119,7 +125,79 @@ Expected mock persistence event:
 DRIVER_OUTPUT_SAVED
 ```
 
-Real source integrations remain forbidden until a future approved packet.
+## Controlled output insert contract
+
+TPC-I-005 adds a controlled output insert contract.
+
+The contract only accepts:
+
+```text
+driver_name = mock
+job_type = MOCK_DRIVER_RUN
+source_kind = mock
+status = COMPLETED | FAILED | SKIPPED
+phase_label = PHASE-1
+```
+
+Non-mock driver names, non-mock source kinds, invalid statuses, non-object output payloads, and non-array errors are rejected by tests.
+
+## Controlled bridge contract
+
+TPC-I-007-IMPLEMENTATION adds a controlled bridge contract.
+
+The bridge accepts only rows already shaped and validated by:
+
+```text
+build_controlled_driver_output_row(...)
+```
+
+The mock bridge stores accepted rows in `inserted_driver_outputs` and rejects malformed or non-mock rows.
+
+## Live bridge contract guard
+
+TPC-I-009-IMPLEMENTATION adds a live bridge guard in mock mode.
+
+The live bridge guard accepts only validated mock rows and stores them in `live_inserted_driver_outputs` with:
+
+```text
+bridge_mode = mock_verified
+```
+
+## Guarded insert contract
+
+TPC-I-011-IMPLEMENTATION adds a guarded insert contract in mock mode.
+
+The guard accepts only validated mock rows and stores them in `credentialed_driver_outputs` with:
+
+```text
+credential_boundary = worker_runtime_mock_only
+```
+
+This still does not implement real source execution or a credentialed database path.
+
+## Controlled worker boundary
+
+TPC-I-012-IMPLEMENTATION adds a controlled worker boundary in mock mode.
+
+The boundary accepts only validated mock rows and stores them in `worker_integrated_outputs` with:
+
+```text
+worker_boundary = controlled_mock_only
+```
+
+This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
+
+## Controlled worker next-step boundary
+
+TPC-I-013-IMPLEMENTATION adds a controlled worker next-step boundary in mock mode.
+
+The next-step boundary accepts only validated mock rows and stores them in `worker_next_step_outputs` with:
+
+```text
+next_step_boundary = controlled_mock_only
+```
+
+This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
 
 ## Environment variables
 
@@ -129,4 +207,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with mock output persistence so the next packet can add the next approved bridge safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, live bridge guarding, guarded insert validation, controlled worker boundary validation, and controlled next-step validation so the next packet can add the next approved step safely.
