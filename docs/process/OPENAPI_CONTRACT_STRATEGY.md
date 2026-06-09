@@ -1,10 +1,12 @@
 # OpenAPI / Contract Strategy Policy
 
-Phase Label: PHASE-0  
+Phase Label: PHASE-1  
 Owner: محمدرضا افرا  
-Status: Proposed for Phase-0 governance  
+Status: Active governance for API-contract work  
 Source of Truth: GitHub  
-Related policies:
+Branch: `cursor/api-contract`
+
+Related policies and contract files:
 
 ```text
 docs/process/SOURCE_OF_TRUTH.md
@@ -31,7 +33,7 @@ The goal is to prevent guessed endpoints, duplicate contracts, direct browser da
 API contract comes before implementation.
 Lovable must not invent API endpoints.
 Cursor must not implement API endpoints outside an approved contract.
-The canonical Phase-0 automation contract is automation/openapi/automation-v1.yaml.
+The canonical automation contract is automation/openapi/automation-v1.yaml.
 Root openapi/ is deprecated pointer-only unless a future ADR changes it.
 ```
 
@@ -41,7 +43,7 @@ No API behavior is official until it is defined in GitHub through an approved co
 
 ## 3. Canonical Contract Location
 
-The canonical Phase-0 automation OpenAPI contract is:
+The canonical automation OpenAPI contract is:
 
 ```text
 automation/openapi/automation-v1.yaml
@@ -174,7 +176,7 @@ Breaking changes must not be hidden inside implementation PRs.
 
 ## 9. Versioning Rules
 
-Phase-0 automation contract version is:
+Current automation contract version is:
 
 ```text
 1.0.0-phase0
@@ -214,7 +216,7 @@ Direct browser writes to sensitive operational, accounting, automation, pricing,
 
 Worker Runtime must communicate through approved automation contracts.
 
-Allowed Phase-0 worker concepts:
+Allowed worker concepts:
 
 ```text
 worker heartbeat
@@ -279,7 +281,7 @@ Real source execution is added during contract-only work.
 This strategy is accepted when:
 
 ```text
-automation/openapi/automation-v1.yaml is treated as canonical for Phase-0 automation.
+automation/openapi/automation-v1.yaml is treated as canonical for automation.
 openapi/ remains deprecated pointer-only.
 Lovable consumes approved APIs only.
 Cursor implements approved contracts only.
