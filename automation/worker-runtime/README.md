@@ -1,8 +1,8 @@
 # AfraKala Worker Runtime — Minimal Skeleton
 
 **Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION  
-**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, and live bridge contract guard
+**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION + TPC-I-011-IMPLEMENTATION  
+**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, live bridge contract guard, and guarded insert contract
 
 This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
 
@@ -29,6 +29,7 @@ The worker skeleton provides:
 - controlled output insert contract
 - controlled bridge contract
 - live bridge contract guard
+- guarded insert contract
 
 ## Out of scope
 
@@ -160,7 +161,17 @@ The live bridge guard accepts only validated mock rows and stores them in `live_
 bridge_mode = mock_verified
 ```
 
-This still does not implement real source execution or a live credentialed database path.
+## Guarded insert contract
+
+TPC-I-011-IMPLEMENTATION adds a guarded insert contract in mock mode.
+
+The guard accepts only validated mock rows and stores them in `credentialed_driver_outputs` with:
+
+```text
+credential_boundary = worker_runtime_mock_only
+```
+
+This still does not implement real source execution or a credentialed database path.
 
 ## Environment variables
 
@@ -170,4 +181,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, and live bridge guarding so the next packet can add the next approved step safely.
+This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, live bridge guarding, and guarded insert validation so the next packet can add the next approved step safely.
