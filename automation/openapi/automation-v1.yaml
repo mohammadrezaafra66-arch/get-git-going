@@ -1,38 +1,76 @@
 openapi: 3.1.0
+
 info:
   title: AfraKala Automation Control Plane API
-  version: 1.0.0-phase0
+  version: 1.1.0-phase1
   description: |
-    Contract-only specification for Phase 0 baseline freeze (2026-06-05).
-    No server implementation is required in Phase 0.
-    Workers are external runtimes; control plane is the existing afrakala-platform repository.
-    Supabase/PostgreSQL is the source of truth for persistent job state (future phases).
+    Canonical OpenAPI contract for AfraKala automation and assistant control plane.
+    This file is the approved API boundary between Lovable UI, Cursor backend/API work,
+    Worker Runtime, Dashboard, and future automation modules.
+    No implementation is approved unless it is defined here first.
   contact:
     name: AfraKala Platform
   license:
     name: Proprietary
+    url: http://afrakala.local/legal/api-license
 
 servers:
-  - url: https://app.afrakala.ir/api/automation/v1
-    description: Production control plane (future implementation)
-  - url: http://localhost:3000/api/automation/v1
-    description: Local development (future implementation)
+  - url: http://staging-api.afrakala.local/api/automation/v1
+    description: Staging API placeholder
+  - url: http://api.afrakala.local/api/automation/v1
+    description: Production LAN API placeholder
+
+security:
+  - WorkerBearerAuth: []
 
 tags:
+  - name: health
+    description: API health and readiness checks
   - name: workers
     description: Worker registration, heartbeat, and capacity
   - name: jobs
-    description: Job dispatch and status (generic — no marketplace-specific ops in Phase 0)
+    description: Job dispatch, creation, and status tracking
+  - name: outputs
+    description: Worker execution outputs
+  - name: bots
+    description: Bot and automation status
+  - name: products
+    description: Product catalog endpoints required by UI
+  - name: prices
+    description: Pricing and calculation endpoints required by UI
 
 paths:
+  /health:
+    get:
+      operationId: getApiHealth
+      tags: [health]
+      summary: Check API health
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: API health check failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
   /workers/heartbeat:
     post:
       operationId: postWorkerHeartbeat
       tags: [workers]
       summary: Report worker liveness and capacity
-      description: |
-        Workers call this endpoint on a fixed interval. Payload must validate against
-        `automation/schemas/heartbeat.schema.json`.
       security:
         - WorkerBearerAuth: []
       requestBody:
@@ -70,15 +108,65 @@ paths:
               $ref: '#/components/schemas/JobClaimRequest'
       responses:
         '200':
-          description: Job claimed (or empty queue)
+          description: Job claimed or empty queue
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobClaimResponse'
-        '401':
-          description: Unauthorized
         '204':
           description: No job available
+        '401':
+          description: Unauthorized
+
+  /jobs:
+    post:
+      operationId: createWorkerJob
+      tags: [jobs]
+      summary: Create a worker job
+      security:
+        - WorkerBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkerJobRequest'
+      responses:
+        '201':
+          description: Worker job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerJob'
+        '400':
+          description: Invalid worker job input
+        '401':
+          description: Unauthorized
+
+  /jobs/{jobId}:
+    get:
+      operationId: getWorkerJob
+      tags: [jobs]
+      summary: Get worker job status
+      security:
+        - WorkerBearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Worker job returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerJob'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Worker job not found
 
   /jobs/{jobId}/status:
     patch:
@@ -110,15 +198,133 @@ paths:
         '404':
           description: Job not found
 
+  /outputs:
+    get:
+      operationId: listWorkerOutputs
+      tags: [outputs]
+      summary: Get worker outputs
+      security:
+        - WorkerBearerAuth: []
+      parameters:
+        - name: jobId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            example: torob
+      responses:
+        '200':
+          description: Worker outputs returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerOutputListResponse'
+        '401':
+          description: Unauthorized
+
+  /bots/status:
+    get:
+      operationId: listBotStatuses
+      tags: [bots]
+      summary: Get bot status list
+      security:
+        - WorkerBearerAuth: []
+      responses:
+        '200':
+          description: Bot status list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BotStatusListResponse'
+        '401':
+          description: Unauthorized
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: Get product list
+      security:
+        - WorkerBearerAuth: []
+      parameters:
+        - name: brand
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: availableOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Product list returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '401':
+          description: Unauthorized
+
+  /prices/calculate:
+    post:
+      operationId: calculatePrice
+      tags: [prices]
+      summary: Calculate product sale price
+      security:
+        - WorkerBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceCalculationRequest'
+      responses:
+        '200':
+          description: Price calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceCalculationResponse'
+        '400':
+          description: Invalid price calculation input
+        '401':
+          description: Unauthorized
+
 components:
   securitySchemes:
     WorkerBearerAuth:
       type: http
       scheme: bearer
-      description: |
-        Server-issued worker token. Must never use VITE_ prefix or ship in frontend bundles.
+      bearerFormat: JWT
+      description: Server-issued token. Must never use VITE_ prefix or ship in frontend bundles.
 
   schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          example: afrakala-automation-control-plane
+        timestamp:
+          type: string
+          format: date-time
+
     HeartbeatAck:
       type: object
       required: [accepted_at, next_heartbeat_seconds]
@@ -143,7 +349,6 @@ components:
           type: array
           items:
             type: string
-          description: Generic capability tags (e.g. `generic.echo`). No marketplace-specific enums in Phase 0.
         max_jobs:
           type: integer
           minimum: 1
@@ -157,7 +362,7 @@ components:
         claimed:
           type: boolean
         job:
-          $ref: '../schemas/job.schema.json'
+          $ref: '#/components/schemas/WorkerJob'
 
     JobStatusUpdate:
       type: object
@@ -176,3 +381,185 @@ components:
         error_code:
           type: string
           maxLength: 64
+
+    CreateWorkerJobRequest:
+      type: object
+      required: [type, source]
+      properties:
+        type:
+          type: string
+          example: price_scrape
+        source:
+          type: string
+          example: torob
+        payload:
+          type: object
+          additionalProperties: true
+
+    WorkerJob:
+      type: object
+      required: [id, type, source, status, createdAt]
+      properties:
+        id:
+          type: string
+          example: job_001
+        type:
+          type: string
+          example: price_scrape
+        source:
+          type: string
+          example: torob
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkerOutput:
+      type: object
+      required: [id, jobId, source, createdAt]
+      properties:
+        id:
+          type: string
+          example: out_001
+        jobId:
+          type: string
+          example: job_001
+        source:
+          type: string
+          example: torob
+        status:
+          type: string
+          example: succeeded
+        data:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+
+    WorkerOutputListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerOutput'
+
+    BotStatus:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: string
+          example: bot_torob
+        name:
+          type: string
+          example: Torob Bot
+        status:
+          type: string
+          enum: [active, inactive, error, paused]
+        lastRunAt:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    BotStatusListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BotStatus'
+
+    Product:
+      type: object
+      required: [id, name, brand]
+      properties:
+        id:
+          type: string
+          example: prod_001
+        name:
+          type: string
+          example: کولر گازی 24000 جنرال گلد پلاتینیوم
+        brand:
+          type: string
+          example: General Gold
+        model:
+          type: string
+          example: GG-S24000 PLATINUM
+        category:
+          type: string
+          example: air_conditioner
+        available:
+          type: boolean
+          example: true
+        finalPrice:
+          type: integer
+          example: 45000000
+
+    ProductListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+
+    PriceCalculationRequest:
+      type: object
+      required: [productId, purchasePrice, marginPercent]
+      properties:
+        productId:
+          type: string
+          example: prod_001
+        purchasePrice:
+          type: integer
+          example: 40000000
+        marginPercent:
+          type: number
+          example: 10
+        transportCost:
+          type: integer
+          default: 0
+          example: 500000
+        discount:
+          type: integer
+          default: 0
+          example: 0
+
+    PriceCalculationResponse:
+      type: object
+      required: [productId, finalPrice]
+      properties:
+        productId:
+          type: string
+          example: prod_001
+        landedCost:
+          type: integer
+          example: 40500000
+        finalPrice:
+          type: integer
+          example: 44550000
+        marginAmount:
+          type: integer
+          example: 4050000
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: invalid_input
+        message:
+          type: string
+          example: Invalid request input.
