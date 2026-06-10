@@ -379,9 +379,10 @@ function WorkbenchPage() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-3">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <MobileCard
               key={row.id}
+              rowIndex={(page * effectivePageSize) + index + 1}
               row={row}
               dirty={dirty[row.id]}
               stepPct={stepPct}
@@ -404,6 +405,7 @@ function WorkbenchPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="text-right w-12">ردیف</TableHead>
                   <TableHead className="text-right">محصول</TableHead>
                   <TableHead className="text-right">برند</TableHead>
                   <TableHead className="text-right">دسته</TableHead>
@@ -417,9 +419,10 @@ function WorkbenchPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {rows.map((row, index) => (
                   <DesktopRow
                     key={row.id}
+                    rowIndex={(page * effectivePageSize) + index + 1}
                     row={row}
                     dirty={dirty[row.id]}
                     stepPct={stepPct}
@@ -496,9 +499,10 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, rowIndex, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -523,6 +527,9 @@ function DesktopRow({
 
   return (
     <TableRow className={isDirty ? "bg-amber-50 dark:bg-amber-950/20" : undefined}>
+      <TableCell className="text-center text-sm text-muted-foreground">
+        {formatNumber(rowIndex)}
+      </TableCell>
       <TableCell className="font-medium">
         <div>{row.name}</div>
         <div className="text-xs text-muted-foreground" dir="ltr">{row.sku ?? "—"}</div>
@@ -644,9 +651,10 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, rowIndex, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -738,7 +746,10 @@ function MobileCard({
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{row.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">#{formatNumber(rowIndex)}</span>
+              <span className="truncate font-medium">{row.name}</span>
+            </div>
             <div className="truncate text-xs text-muted-foreground" dir="ltr">
               {row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}
             </div>
