@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import {
   Check,
   CircleDot,
   Tag,
+  LifeBuoy,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -299,6 +300,12 @@ function WorkbenchPage() {
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
       <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm" className="me-2">
+          <Link to="/pricing/attention">
+            <LifeBuoy className="ms-1 h-4 w-4" />
+            فرصت جبران
+          </Link>
+        </Button>
         <QuickAddCustomerDialog />
       </div>
 
