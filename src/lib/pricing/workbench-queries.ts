@@ -67,12 +67,12 @@ async function resolveCategoryIds(filters: WorkbenchFilters): Promise<string[] |
 }
 
 async function fetchProductIdsBySalePrice(want: "has" | "missing"): Promise<Set<string>> {
-  const { data } = await supabase
-    .from("product_computed_prices_public" as never)
+  const { data } = await (supabase as any)
+    .from("product_computed_prices_public")
     .select("product_id, rounded_sale_price")
     .gt("rounded_sale_price", 0)
     .limit(PRE_FILTER_LIMIT);
-  const has = new Set<string>((data ?? []).map((r) => r.product_id as string));
+  const has = new Set<string>(((data ?? []) as Array<{ product_id: string }>).map((r) => r.product_id));
   return want === "has" ? has : has; // caller uses positive set then inverts
 }
 
@@ -263,8 +263,8 @@ export async function fetchWorkbenchRowsV2(opts: {
       .eq("is_active", true)
       .lte("effective_at", nowIso)
       .order("effective_at", { ascending: false }),
-    supabase
-      .from("product_computed_prices_public" as never)
+    (supabase as any)
+      .from("product_computed_prices_public")
       .select("product_id, rounded_sale_price, computed_at")
       .in("product_id", productIds)
       .order("computed_at", { ascending: false }),
