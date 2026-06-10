@@ -405,6 +405,7 @@ function WorkbenchPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="text-right w-12">ردیف</TableHead>
                   <TableHead className="text-right">محصول</TableHead>
                   <TableHead className="text-right">برند</TableHead>
                   <TableHead className="text-right">دسته</TableHead>
@@ -418,9 +419,10 @@ function WorkbenchPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {rows.map((row, index) => (
                   <DesktopRow
                     key={row.id}
+                    rowIndex={(page * effectivePageSize) + index + 1}
                     row={row}
                     dirty={dirty[row.id]}
                     stepPct={stepPct}
