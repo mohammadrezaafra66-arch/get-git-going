@@ -499,9 +499,10 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, rowIndex, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
