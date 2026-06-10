@@ -203,8 +203,8 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
                   payload.api_key = apiKey;
                 }
                 const op = editing
-                  ? supabase.from("currency_sources").update(payload).eq("id", editing.id)
-                  : supabase.from("currency_sources").insert(payload);
+                  ? supabase.from("currency_sources").update(payload as never).eq("id", editing.id)
+                  : supabase.from("currency_sources").insert({ name: String(payload.name), ...(payload as never) } as never);
                 const { error } = await op;
                 if (error) throw error;
                 const { data: u } = await supabase.auth.getUser();
@@ -218,8 +218,8 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
                   entity_type: "currency_sources",
                   entity_id: editing?.id ?? "new",
                   actor_id: u.user?.id ?? null,
-                  diff: auditDiff,
-                });
+                  diff: auditDiff as never,
+                } as never);
                 toast.success(editing ? "منبع ویرایش شد" : "منبع ثبت شد");
                 onSaved();
                 onOpenChange(false);
