@@ -379,9 +379,10 @@ function WorkbenchPage() {
         </Card>
       ) : isMobile ? (
         <div className="space-y-3">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <MobileCard
               key={row.id}
+              rowIndex={(page * effectivePageSize) + index + 1}
               row={row}
               dirty={dirty[row.id]}
               stepPct={stepPct}
