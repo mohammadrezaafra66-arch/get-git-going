@@ -424,6 +424,6 @@ function LoginPage() {
           <Link to="/" className="hover:text-primary">بازگشت به خانه</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
