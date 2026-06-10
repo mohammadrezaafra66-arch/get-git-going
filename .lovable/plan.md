@@ -1,20 +1,34 @@
-## Plan: Toggle between all-in-one-page and paginated (25-row) view in Workbench
+## مشکل
+- `QuickAddCustomerDialog` خطاهای سرور را به فارسی map می‌کند (دیدن خطی ۱۱۸-۱۵۶)، اما صفحه‌ی «مشتری جدید» (`/sales/customers/create`) از `CustomerForm` استفاده می‌کند که در `onError` فقط پیام خام را با پیشوند «عملیات ناموفق بود:» نشان می‌دهد (خط ۱۶۴-۱۶۷ از `CustomerForm.tsx`). به همین دلیل کاربر پیام مبهم «ناموفق» می‌بیند.
+- در حالت موفقیت هم فقط `["customers"]` invalidate می‌شود؛ برای پایداری بهتر است کلیدهای مرتبط جستجو/persons هم invalidate شوند و در حالت «ایجاد» فرم reset شود.
 
-### File
-`src/routes/_app.pricing.my-workbench.tsx`
+## محدوده تغییر
+فقط UI، بدون تغییر در سرور/DB/RLS. تنها فایل اصلاحی:
+- `src/shared/components/CustomerForm.tsx`
 
-### Changes
-1. **State**: Add `showAllInOnePage` boolean state (default `false`) and derive `effectivePageSize` (`10_000` vs `25`).
-2. **Query wiring**: Include `effectivePageSize` in the React Query key so cache stays correct. Pass it to `fetchWorkbenchRowsV2` instead of the hard-coded `PAGE_SIZE`.
-3. **Reset on toggle**: Reset `page` to `0` whenever `showAllInOnePage` changes.
-4. **Pagination visibility**: Show pagination controls only when `total > effectivePageSize`.
-5. **UI control**: Add a `Switch` + `Label` ("نمایش همه در یک صفحه") inside the existing controls card, available to all users.
+`QuickAddCustomerDialog.tsx` از قبل صحیح است و تغییر نمی‌کند. فایل‌های مسیر (`_app.sales_.customers_.create.tsx` و `_app.sales_.customers_.$customerId.edit.tsx`) تغییر نمی‌کنند چون فقط `CustomerForm` را mount می‌کنند.
 
-### No changes to
-- Database / migrations
-- RLS / RBAC
-- Server functions / endpoints
-- Any other files
+## تغییرات در `CustomerForm.tsx`
 
-### Risk
-LOW — pure UI/frontend change using existing query patterns.
+1. **map کردن خطاهای سرور در `onError`** — همان منطق `QuickAddCustomerDialog`:
+   - خطای شبکه/`TypeError`/`failed to fetch` → «ارتباط با سرور برقرار نشد…»
+   - شامل `کد حسابداری تکراری` یا `accounting_code` → `form.setError("accounting_code", …)` + toast «کد حسابداری تکراری است…»
+   - شامل `unauthorized`/`401`/`نشست کاربری` → «نشست منقضی شده…»
+   - شامل `forbidden`/`403`/`rls`/`دسترسی` → «دسترسی لازم را ندارید.»
+   - شامل `phone` یا `موبایل نامعتبر` → `form.setError("phone", …)` + toast
+   - در غیر این صورت پیام خام فارسی serverFn نمایش داده شود؛ اگر خالی بود پیام عمومی «ثبت ناموفق بود…»
+
+2. **به‌روزرسانی `onSuccess`**:
+   - `queryClient.invalidateQueries({ queryKey: ["customers"] })` نگه‌داری می‌شود.
+   - اضافه: invalidate برای `["customers", "search"]` و `["persons"]` (اگر key وجود نداشته باشد، invalidate بی‌اثر است و امن).
+   - در حالت «ایجاد جدید» (نه ویرایش)، قبل از `navigate` فرم `reset` شود تا اگر کاربر برگردد، state تمیز باشد.
+   - رفتار navigate به `/sales/customers` بدون تغییر.
+
+3. **حفظ RTL**: کل فرم در حال حاضر `dir="rtl"` دارد؛ تغییری لازم نیست.
+
+## ریسک
+LOW — فقط UI و error-mapping. هیچ تغییری در serverFn `createCustomer/updateCustomer`، schema، RLS، migration یا route گزارش نمی‌شود.
+
+## خروجی نهایی
+- فایل تغییر یافته: `src/shared/components/CustomerForm.tsx`
+- ریسک: LOW
