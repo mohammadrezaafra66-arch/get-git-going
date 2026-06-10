@@ -148,7 +148,7 @@ function rowToForm(row: ComputeRow | null | undefined): InputForm {
 }
 
 function toNum(s: string): number {
-  const n = Number(String(s).replace(/[^\d.\-]/g, ""));
+  const n = Number(String(s).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 

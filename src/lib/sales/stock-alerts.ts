@@ -20,10 +20,10 @@ export const STOCK_ALERT_TRIGGER_STATUSES = new Set(["unavailable", "limited", "
 
 /** نرمال‌سازی شماره تماس برای مقایسه و ذخیره. */
 export function normalizeStockAlertPhone(raw: string): string {
-  return raw.replace(/[\s\-]/g, "").trim();
+  return raw.replace(/[\s-]/g, "").trim();
 }
 
-const PHONE_REGEX = /^[+\d][\d+\-\s]{3,39}$/;
+const PHONE_REGEX = /^[+\d][\d+\s-]{3,39}$/;
 
 export interface StockAlertCreateInput {
   product_id: string;

@@ -151,7 +151,6 @@ function KnowledgeDocumentPage() {
         <CardContent className="p-5">
           <div
             className="prose prose-sm max-w-none text-foreground rtl:prose-headings:text-right [&_*]:break-words"
-            // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </CardContent>
