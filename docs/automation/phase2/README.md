@@ -18,18 +18,19 @@ This folder tracks entry gate, scope, roadmap, module candidates, risks, task pa
 |----|-------|--------|------|
 | TPC-2-001 | Phase 2 Unlock and Torob Limited Read-Only Gate | merged | [TPC-2-001](../task-packets/TPC-2-001-phase2-unlock-torob-readonly-gate.md) |
 | TPC-2-002 | Torob Limited Read-Only Design | merged | [TPC-2-002](../task-packets/TPC-2-002-torob-limited-readonly-design.md) |
-| TPC-2-003 | Torob Limited Read-Only Implementation Packet | ready for review | [TPC-2-003](../task-packets/TPC-2-003-torob-limited-readonly-implementation-packet.md) |
+| TPC-2-003 | Torob Limited Read-Only Implementation Packet | approved | [TPC-2-003](../task-packets/TPC-2-003-torob-limited-readonly-implementation-packet.md) |
 
 > **Note:** Phase 1 also uses `TPC-2-00x` IDs for a different track (persistence, UI, tests). Always use the full filename when citing packets.
 
 ## Baseline
 
 - [PHASE2_PLANNING_BASELINE_2026_06_10.md](../../baseline/PHASE2_PLANNING_BASELINE_2026_06_10.md)
+- [PHASE2_TPC_2_003_APPROVAL_2026_06_10.md](../../baseline/PHASE2_TPC_2_003_APPROVAL_2026_06_10.md)
 
-## Next step after TPC-2-003 merge
+## Next step after TPC-2-003 approval
 
-1. Owner / Reviewer approval on TPC-2-003.
-2. Open a **separate** implementation PR within Allowed Files defined in TPC-2-003.
+1. Open a **separate** implementation PR within Allowed Files defined in TPC-2-003.
+2. Keep the first implementation PR minimal and guarded.
 3. Record evidence in `docs/baseline/PHASE2_TOROB_LIMITED_READONLY_EXECUTION_EVIDENCE_YYYY_MM_DD.md`.
 
-No Torob live execution before TPC-2-003 is approved and merged.
+No Torob live execution before the separate implementation PR is reviewed and accepted.
