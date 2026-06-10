@@ -41,7 +41,7 @@ function CurrencySourcesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("currency_sources")
-        .select("id, name, url, api_key, is_active, created_at")
+        .select("id, name, url, is_active, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       // Strip api_key from the client-side row shape; only expose a boolean.
@@ -49,7 +49,7 @@ function CurrencySourcesPage() {
         id: r.id as string,
         name: r.name as string,
         url: (r.url as string | null) ?? null,
-        has_api_key: Boolean(r.api_key),
+        has_api_key: false,
         is_active: Boolean(r.is_active),
         created_at: r.created_at as string,
       })) as SourceRow[];
