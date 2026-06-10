@@ -206,6 +206,63 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function normalizeEnvironmentName(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isLocalOrTestHost(hostname: string) {
+  const normalizedHost = hostname.trim().toLowerCase();
+  return (
+    normalizedHost === "localhost" ||
+    normalizedHost === "127.0.0.1" ||
+    normalizedHost === "0.0.0.0" ||
+    normalizedHost.startsWith("192.168.") ||
+    normalizedHost.startsWith("10.") ||
+    normalizedHost.includes("staging") ||
+    normalizedHost.includes("test")
+  );
+}
+
+function EnvironmentSafetyBanner() {
+  const appEnv = normalizeEnvironmentName(
+    import.meta.env.VITE_APP_ENV ?? import.meta.env.VITE_ENVIRONMENT_NAME ?? import.meta.env.MODE,
+  );
+  const bannerEnabled = normalizeEnvironmentName(import.meta.env.VITE_SHOW_ENVIRONMENT_BANNER) === "true";
+  const configuredBannerText = String(import.meta.env.VITE_ENVIRONMENT_BANNER_TEXT ?? "").trim();
+  const [hostname, setHostname] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setHostname(window.location.hostname);
+    }
+  }, []);
+
+  const isProduction = appEnv === "production";
+  const isStaging = appEnv === "staging";
+  const shouldShowNonProductionBanner = bannerEnabled || (appEnv !== "" && !isProduction);
+  const suspiciousProductionRuntime = isProduction && hostname !== "" && isLocalOrTestHost(hostname);
+
+  if (!shouldShowNonProductionBanner && !suspiciousProductionRuntime) {
+    return null;
+  }
+
+  const bannerText = suspiciousProductionRuntime
+    ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
+    : configuredBannerText || (isStaging
+      ? "محیط تست افراکالا - اطلاعات این بخش واقعی نیست"
+      : `محیط غیرعملیاتی افراکالا${appEnv ? ` - ${appEnv}` : ""}`);
+
+  const className = suspiciousProductionRuntime
+    ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"
+    : "border-b border-amber-300 bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-950 shadow-sm";
+
+  return (
+    <div dir="rtl" role="alert" className={className} data-environment={appEnv || "unknown"}>
+      {bannerText}
+    </div>
+  );
+}
+
 function RootComponent() {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } } })
@@ -217,6 +274,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthErrorBoundary>
         <AuthProvider>
+          <EnvironmentSafetyBanner />
           <Outlet />
           <Toaster richColors position="top-center" />
         </AuthProvider>

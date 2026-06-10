@@ -14,8 +14,13 @@
 | Review Baseline checklist | [../automation/REVIEW_BASELINE_CHECKLIST.md](../automation/REVIEW_BASELINE_CHECKLIST.md) |
 | Phase 0 acceptance gate | [../automation/PHASE0_ACCEPTANCE_GATE.md](../automation/PHASE0_ACCEPTANCE_GATE.md) |
 | G-01…G-08 status | [../automation/G01_G08_CLOSURE_STATUS.md](../automation/G01_G08_CLOSURE_STATUS.md) |
-| Phase 1 packet index (locked) | [../automation/PHASE1_TASK_PACKET_INDEX.md](../automation/PHASE1_TASK_PACKET_INDEX.md) |
+| Phase 1 packet index | [../automation/PHASE1_TASK_PACKET_INDEX.md](../automation/PHASE1_TASK_PACKET_INDEX.md) — Packet 1.1 unlocked |
+| Phase 1 unlock record (2026-06-07) | [PHASE1_UNLOCK_2026_06_07.md](./PHASE1_UNLOCK_2026_06_07.md) |
 | Baseline review (2026-06-05) | [BASELINE_REVIEW_2026_06_05.md](./BASELINE_REVIEW_2026_06_05.md) |
+| Phase 0 C1 migration apply evidence (2026-06-06) | [PHASE0_MIGRATION_APPLY_EVIDENCE_2026_06_06.md](./PHASE0_MIGRATION_APPLY_EVIDENCE_2026_06_06.md) |
+| Phase 0 E1/E3 evidence & blocker (2026-06-07) | [PHASE0_E1_E3_BLOCKER_2026_06_07.md](./PHASE0_E1_E3_BLOCKER_2026_06_07.md) |
+| Phase 0 E1 UI enqueue evidence (2026-06-07) | [PHASE0_E1_UI_ENQUEUE_EVIDENCE_2026_06_07.md](./PHASE0_E1_UI_ENQUEUE_EVIDENCE_2026_06_07.md) |
+| Phase 0 acceptance sign-off (2026-06-07) | [PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md](./PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md) |
 
 ## Quick navigation
 

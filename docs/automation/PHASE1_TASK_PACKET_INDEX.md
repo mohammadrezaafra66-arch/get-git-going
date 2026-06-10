@@ -1,70 +1,40 @@
 # Phase 1 Task Packet Index
 
-**Phase Label:** PHASE-1 (locked)  
-**Status:** **LOCKED** — Phase 0 not yet accepted  
+**Phase Label:** PHASE-1  
+**Status:** ACCEPTED — Planning / governance baseline complete  
 **Owner:** محمدرضا افرا
 
-مرجع: [`EXECUTION_DECISION_FINAL.md`](./EXECUTION_DECISION_FINAL.md) — بند ۹، ۱۰
-
 ---
 
-## Lock rule
-
-```
-IF Phase0AcceptanceGate != ACCEPTED
-THEN no Phase 1 packet may start
-```
-
-Check: [`PHASE0_ACCEPTANCE_GATE.md`](./PHASE0_ACCEPTANCE_GATE.md)
-
----
-
-## Packet registry (1.1 → 2.6)
+## Packet registry
 
 | Packet | Title | Phase | Status | Task file | Depends on |
 |--------|-------|-------|--------|-----------|------------|
-| **1.1** | TBD — first Phase 1 module (low-risk) | PHASE-1 | 🔒 LOCKED | _not created_ | Phase 0 ACCEPTED |
-| **1.2** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | 1.1 |
-| **1.3** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.4** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.5** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **1.6** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.1** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | 1.x complete |
-| **2.2** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.3** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.4** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.5** | TBD | PHASE-1 | 🔒 LOCKED | _not created_ | Prior packets |
-| **2.6** | TBD — Phase 1 closure / review | PHASE-1 | 🔒 LOCKED | _not created_ | 2.5 |
+| **1.1** | TPC-1-001 — Planning and First Module Selection | PHASE-1 | ACCEPTED | [TPC-1-001](./task-packets/TPC-1-001-phase1-packet-1.1-planning-and-first-module-selection.md) | Phase 0 sign-off |
+| **1.2** | TPC-1-002 — Phase 1 Scope Lock | PHASE-1 | ACCEPTED | [TPC-1-002](./task-packets/TPC-1-002-phase1-scope-lock.md) | [Packet 1.1 acceptance](../baseline/PHASE1_PACKET_1_1_ACCEPTANCE_2026_06_07.md) |
+| **1.3** | TPC-1-003 — Worker Runtime Boundary | PHASE-1 | ACCEPTED | [TPC-1-003](./task-packets/TPC-1-003-worker-runtime-boundary.md) | [Packet 1.2 acceptance](../baseline/PHASE1_PACKET_1_2_ACCEPTANCE_2026_06_07.md) |
+| **1.4** | TPC-1-004 — Plugin / Driver SDK Boundary | PHASE-1 | ACCEPTED | [TPC-1-004](./task-packets/TPC-1-004-plugin-driver-sdk-boundary.md) | [Packet 1.3 acceptance](../baseline/PHASE1_PACKET_1_3_ACCEPTANCE_2026_06_07.md) |
+| **1.5** | TPC-1-005 — Torob Limited Implementation Design | PHASE-1 | ACCEPTED | [TPC-1-005](./task-packets/TPC-1-005-torob-limited-implementation-design.md) | [Packet 1.4 acceptance](../baseline/PHASE1_PACKET_1_4_ACCEPTANCE_2026_06_07.md) |
+| **1.6** | TPC-1-006 — Torob Limited Execution | PHASE-1 | ACCEPTED | [TPC-1-006](./task-packets/TPC-1-006-torob-limited-execution.md) | [Packet 1.5 acceptance](../baseline/PHASE1_PACKET_1_5_ACCEPTANCE_2026_06_07.md) |
+| **2.1** | TPC-2-001 — Supabase Output Persistence | PHASE-1 | ACCEPTED | [TPC-2-001](./task-packets/TPC-2-001-supabase-output-persistence.md) | [Packet 1.6 acceptance](../baseline/PHASE1_PACKET_1_6_ACCEPTANCE_2026_06_07.md) |
+| **2.2** | TPC-2-002 — UI Output Display | PHASE-1 | ACCEPTED | [TPC-2-002](./task-packets/TPC-2-002-ui-output-display.md) | [Packet 2.1 acceptance](../baseline/PHASE1_PACKET_2_1_ACCEPTANCE_2026_06_07.md) |
+| **2.3** | TPC-2-003 — Retry / Failure / Checkpoint Tests | PHASE-1 | ACCEPTED | [TPC-2-003](./task-packets/TPC-2-003-retry-failure-checkpoint-tests.md) | [Packet 2.2 acceptance](../baseline/PHASE1_PACKET_2_2_ACCEPTANCE_2026_06_07.md) |
+| **2.4** | TPC-2-004 — Resource Usage Test | PHASE-1 | ACCEPTED | [TPC-2-004](./task-packets/TPC-2-004-resource-usage-test.md) | [Packet 2.3 acceptance](../baseline/PHASE1_PACKET_2_3_ACCEPTANCE_2026_06_07.md) |
+| **2.5** | TPC-2-005 — Phase 1 Evidence Sync | PHASE-1 | ACCEPTED | [TPC-2-005](./task-packets/TPC-2-005-phase1-evidence-sync.md) | [Packet 2.4 acceptance](../baseline/PHASE1_PACKET_2_4_ACCEPTANCE_2026_06_07.md) |
+| **2.6** | TPC-2-006 — Phase 1 Closure / Review | PHASE-1 | ACCEPTED | [TPC-2-006](./task-packets/TPC-2-006-phase1-closure-review.md) | [Packet 2.5 acceptance](../baseline/PHASE1_PACKET_2_5_ACCEPTANCE_2026_06_07.md) |
 
 ---
 
-## Candidate modules (planning only — not authorized)
+## Final decision
 
-Per `docs/process/PHASE_LABEL_POLICY.md`, possible Phase 1 candidates after acceptance:
+Phase 1 is accepted as a planning / governance baseline.
 
-- Google Maps (limited)
-- Torob (limited, not real extractor at scale)
-
-**Forbidden in Phase 1 without new ADR:** Divar, WhatsApp, Instagram, OCR/STT, AI production.
+This does not mean production automation was implemented.
 
 ---
 
-## Creating a Phase 1 packet
+## Related
 
-When Phase 0 is accepted, owner must:
-
-1. Copy `docs/process/DOR.md` minimum template
-2. Assign Packet ID (e.g. `TPC-1-001`)
-3. Set `Phase Label: PHASE-1`
-4. List Allowed/Forbidden files
-5. Reference ADR-0001 … ADR-0008
-6. Unlock row in this index
-
----
-
-## Phase 0 packets (reference — not Phase 1)
-
-| Packet | Title | Status |
-|--------|-------|--------|
-| WPC-0-001 | Worker Dummy E2E | Ready for Planning |
-| WPC-0-002 | OpenAPI canonical cleanup | In Progress / PR |
+- [Phase 1 acceptance sign-off](../baseline/PHASE1_ACCEPTANCE_SIGNOFF_2026_06_07.md)
+- [Phase 1 closure review](../baseline/PHASE1_CLOSURE_REVIEW_2026_06_07.md)
+- [Phase 0 acceptance](../baseline/PHASE0_ACCEPTANCE_SIGNOFF_2026_06_07.md)

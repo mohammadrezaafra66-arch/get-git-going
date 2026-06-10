@@ -111,6 +111,7 @@ import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.p
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
+import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAccountingSalespersonCapitalAllocationsRouteImport } from './routes/_app.accounting.salesperson-capital-allocations'
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
@@ -686,6 +687,11 @@ const AppAdminGamificationRoute = AppAdminGamificationRouteImport.update({
   path: '/admin/gamification',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminAutomationRoute = AppAdminAutomationRouteImport.update({
+  id: '/admin/automation',
+  path: '/admin/automation',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingSalespersonCapitalAllocationsRoute =
   AppAccountingSalespersonCapitalAllocationsRouteImport.update({
     id: '/accounting/salesperson-capital-allocations',
@@ -1014,6 +1020,7 @@ export interface FileRoutesByFullPath {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
@@ -1165,6 +1172,7 @@ export interface FileRoutesByTo {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
@@ -1319,6 +1327,7 @@ export interface FileRoutesById {
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/_app/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/_app/admin/automation': typeof AppAdminAutomationRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
@@ -1474,6 +1483,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/automation'
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
@@ -1625,6 +1635,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/automation'
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
@@ -1778,6 +1789,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receipts'
     | '/_app/accounting/receivables'
     | '/_app/accounting/salesperson-capital-allocations'
+    | '/_app/admin/automation'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/payment-terms'
@@ -2628,6 +2640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminGamificationRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/automation': {
+      id: '/_app/admin/automation'
+      path: '/admin/automation'
+      fullPath: '/admin/automation'
+      preLoaderRoute: typeof AppAdminAutomationRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/salesperson-capital-allocations': {
       id: '/_app/accounting/salesperson-capital-allocations'
       path: '/accounting/salesperson-capital-allocations'
@@ -3201,6 +3220,7 @@ interface AppRouteChildren {
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
   AppAccountingSalespersonCapitalAllocationsRoute: typeof AppAccountingSalespersonCapitalAllocationsRoute
+  AppAdminAutomationRoute: typeof AppAdminAutomationRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
@@ -3305,6 +3325,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingReceivablesRoute: AppAccountingReceivablesRoute,
   AppAccountingSalespersonCapitalAllocationsRoute:
     AppAccountingSalespersonCapitalAllocationsRoute,
+  AppAdminAutomationRoute: AppAdminAutomationRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
