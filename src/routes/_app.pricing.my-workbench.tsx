@@ -89,6 +89,7 @@ function WorkbenchPage() {
   const [filters, setFilters] = useState<WorkbenchFilters>(DEFAULT_WORKBENCH_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(0);
+  const [showAllInOnePage, setShowAllInOnePage] = useState(false);
   const [stepPct, setStepPct] = useState<number>(1);
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -105,15 +106,17 @@ function WorkbenchPage() {
     [filters, dSearch],
   );
 
+  const effectivePageSize = showAllInOnePage ? 10_000 : PAGE_SIZE;
+
   const listQ = useQuery({
-    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page],
+    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page, effectivePageSize],
     enabled: !!user?.id,
     queryFn: () =>
       fetchWorkbenchRowsV2({
         filters: filtersWithSearch,
         ownedOnly: showAll && isPrivileged ? null : { userId: user!.id },
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: effectivePageSize,
       }),
     staleTime: 15_000,
   });
@@ -121,14 +124,14 @@ function WorkbenchPage() {
   // reset dirty وقتی فیلتر/صفحه عوض میشه
   useEffect(() => {
     setDirty({});
-  }, [filtersWithSearch, showAll, page]);
+  }, [filtersWithSearch, showAll, page, showAllInOnePage]);
 
   // reset page وقتی فیلتر تغییر کند
-  useEffect(() => { setPage(0); }, [filtersWithSearch, showAll]);
+  useEffect(() => { setPage(0); }, [filtersWithSearch, showAll, showAllInOnePage]);
 
   const rows: WorkbenchRowV2[] = listQ.data?.rows ?? [];
   const total = listQ.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
   // Map English engine errors → Persian row-level messages.
@@ -349,6 +352,16 @@ function WorkbenchPage() {
                   </Label>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={showAllInOnePage}
+                  onCheckedChange={(v) => { setShowAllInOnePage(v); setPage(0); }}
+                  id="show-all-one-page"
+                />
+                <Label htmlFor="show-all-one-page" className="text-sm">
+                  نمایش همه در یک صفحه
+                </Label>
+              </div>
             </CardContent>
           </Card>
 
@@ -428,7 +441,7 @@ function WorkbenchPage() {
       )}
 
       {/* صفحه‌بندی */}
-      {total > PAGE_SIZE && (
+      {total > effectivePageSize && (
         <div className="flex items-center justify-between text-sm">
           <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
             <ChevronRight className="ms-1 h-4 w-4" /> قبلی
