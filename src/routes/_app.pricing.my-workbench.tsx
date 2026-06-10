@@ -97,10 +97,10 @@ function WorkbenchPage() {
   const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
   const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
 
-  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
-  const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
-  const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite, staleTime: 60_000 });
-  const ownersQ = useQuery({ queryKey: ["product-owners-lite"], queryFn: fetchAllProductOwners, staleTime: 60_000 });
+  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 5 * 60_000, gcTime: 30 * 60_000 });
+  const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 5 * 60_000, gcTime: 30 * 60_000 });
+  const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite, staleTime: 5 * 60_000, gcTime: 30 * 60_000 });
+  const ownersQ = useQuery({ queryKey: ["product-owners-lite"], queryFn: fetchAllProductOwners, staleTime: 5 * 60_000, gcTime: 30 * 60_000 });
 
   const filtersWithSearch: WorkbenchFilters = useMemo(
     () => ({ ...filters, search: dSearch }),
@@ -119,7 +119,7 @@ function WorkbenchPage() {
         page,
         pageSize: effectivePageSize,
       }),
-    staleTime: 15_000,
+    staleTime: 30_000,
   });
 
   // reset dirty وقتی فیلتر/صفحه عوض میشه
@@ -263,8 +263,6 @@ function WorkbenchPage() {
           return rest;
         });
       }, 2000);
-      qc.invalidateQueries({ queryKey: ["workbench-rows"] });
-      qc.invalidateQueries({ queryKey: ["workbench-rows-v2"] });
       qc.invalidateQueries({ queryKey: ["workbench-health-report"] });
       // Ensure the sale price column refreshes immediately, regardless of staleTime.
       await qc.refetchQueries({ queryKey: ["workbench-rows-v2"], type: "active" });
