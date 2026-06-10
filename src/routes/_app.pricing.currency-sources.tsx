@@ -148,7 +148,8 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
   const reset = () => {
     setName(editing?.name ?? "");
     setUrl(editing?.url ?? "");
-    setApiKey(editing?.api_key ?? "");
+    // Never preload the stored api_key into the client. Blank = keep as is on update.
+    setApiKey("");
     setIsActive(editing?.is_active ?? true);
   };
 
@@ -169,7 +170,14 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
           </div>
           <div>
             <Label>API Key</Label>
-            <Input dir="ltr" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="اختیاری" />
+            <Input
+              dir="ltr"
+              type="password"
+              autoComplete="new-password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={editing ? "بدون تغییر — برای جایگزینی، مقدار جدید وارد کنید" : "اختیاری"}
+            />
           </div>
           <div className="flex items-center gap-2">
             <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -184,19 +192,33 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
               if (url && !/^https?:\/\//i.test(url)) { toast.error("URL باید با http یا https شروع شود."); return; }
               setLoading(true);
               try {
-                const payload = { name: name.trim(), url: url || null, api_key: apiKey || null, is_active: isActive };
+                const payload: Record<string, unknown> = {
+                  name: name.trim(),
+                  url: url || null,
+                  is_active: isActive,
+                };
+                if (!editing) {
+                  payload.api_key = apiKey || null;
+                } else if (apiKey.trim().length > 0) {
+                  payload.api_key = apiKey;
+                }
                 const op = editing
                   ? supabase.from("currency_sources").update(payload).eq("id", editing.id)
                   : supabase.from("currency_sources").insert(payload);
                 const { error } = await op;
                 if (error) throw error;
                 const { data: u } = await supabase.auth.getUser();
+                // Redact api_key before persisting to audit log.
+                const auditDiff: Record<string, unknown> = { ...payload };
+                if ("api_key" in auditDiff) {
+                  auditDiff.api_key = auditDiff.api_key ? "[REDACTED]" : null;
+                }
                 await supabase.from("audit_logs").insert({
                   action: editing ? "currency_source_updated" : "currency_source_created",
                   entity_type: "currency_sources",
                   entity_id: editing?.id ?? "new",
                   actor_id: u.user?.id ?? null,
-                  diff: payload,
+                  diff: auditDiff,
                 });
                 toast.success(editing ? "منبع ویرایش شد" : "منبع ثبت شد");
                 onSaved();
@@ -219,32 +241,13 @@ function FetchDialog({ source, onOpenChange, onSaved }: { source: SourceRow | nu
   const [rate, setRate] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [autoFetching, setAutoFetching] = useState(false);
+  const autoFetchFn = useServerFn(autoFetchCurrencyRate);
 
   const tryAutoFetch = async () => {
     if (!source?.url) { toast.error("URL منبع تعریف نشده است."); return; }
     setAutoFetching(true);
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 15000);
-      const headers: Record<string, string> = { Accept: "application/json" };
-      if (source.api_key) headers.Authorization = `Bearer ${source.api_key}`;
-      const res = await fetch(source.url, { signal: ctrl.signal, headers });
-      clearTimeout(t);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      // try JSON
-      let parsed: number | null = null;
-      try {
-        const j = JSON.parse(text);
-        const candidate = j?.[currency] ?? j?.rate ?? j?.price ?? j?.value;
-        if (typeof candidate === "number") parsed = candidate;
-        else if (typeof candidate === "string") parsed = Number(candidate);
-      } catch { /* not JSON */ }
-      if (parsed === null) {
-        const num = Number(text.replace(/[^0-9.]/g, ""));
-        if (Number.isFinite(num) && num > 0) parsed = num;
-      }
-      if (!parsed || parsed <= 0) throw new Error("نرخ معتبری در پاسخ منبع یافت نشد");
+      const { rate: parsed } = await autoFetchFn({ data: { sourceId: source.id, currency } });
       setRate(String(parsed));
       toast.success("نرخ از منبع دریافت شد، لطفاً تأیید نهایی کنید.");
     } catch (e: any) {
