@@ -1,32 +1,41 @@
 /**
- * توابع pure برای محاسبه سهمیه و خلاصه وضعیت برچسب‌گذاری مالک محصول.
- * بدون وابستگی به Supabase، بدون Date.now، کاملاً تست‌پذیر.
+ * توابع pure برای محاسبه سهمیه برچسب‌گذاری مالک محصول.
+ * بدون وابستگی به Supabase/React/شبکه. کاملاً قابل unit-test.
  */
 
-import type { OwnerLabelQuotaRounding } from "./owner-label-config";
+export type OwnerLabelQuotaRounding = "floor" | "round" | "ceil";
 
-function applyRounding(value: number, rounding: OwnerLabelQuotaRounding): number {
-  switch (rounding) {
-    case "ceil":
-      return Math.ceil(value);
-    case "round":
-      return Math.round(value);
-    case "floor":
-    default:
-      return Math.floor(value);
-  }
+export interface OwnerLabelSummary {
+  /** تعداد distinct محصولات واجد شرایط منسوب به owner. */
+  eligibleCount: number;
+  /** تعداد distinct محصولات eligible که حداقل یک owner-assignable label دارند. */
+  taggedCount: number;
+  /** سهمیه نهایی محاسبه‌شده. */
+  quota: number;
+  /** باقی‌مانده تا رسیدن به سهمیه؛ هرگز منفی نمی‌شود. */
+  remaining: number;
+  /** درصد پیشرفت [0..100]، نسبت به quota (نه نسبت به eligible). */
+  progressPct: number;
+  /** آیا سهمیه پوشش داده شده؟ */
+  isMet: boolean;
 }
 
-function safeNonNegativeInt(n: number): number {
-  if (!Number.isFinite(n) || n < 0) return 0;
+function roundBy(value: number, rounding: OwnerLabelQuotaRounding): number {
+  if (rounding === "ceil") return Math.ceil(value);
+  if (rounding === "round") return Math.round(value);
+  return Math.floor(value);
+}
+
+function safeNonNegInt(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.floor(n);
 }
 
 /**
- * محاسبه سهمیه برچسب‌گذاری برای یک مالک.
- * - ورودی منفی/NaN به صفر clamp می‌شود.
- * - اگر eligibleCount === 0 → خروجی 0 (min بی‌اثر؛ چیزی برای هدف‌گیری نیست).
- * - در غیر این صورت: max(minQuota, round(eligibleCount * ratio)).
+ * محاسبه سهمیه:
+ *  - eligibleCount <= 0 → 0
+ *  - در غیر این صورت: quota = round(eligibleCount * ratio) با rounding انتخاب‌شده،
+ *    سپس quota = max(minQuota, quota)، سپس quota = min(quota, eligibleCount).
  */
 export function computeOwnerLabelQuota(
   eligibleCount: number,
@@ -34,34 +43,19 @@ export function computeOwnerLabelQuota(
   rounding: OwnerLabelQuotaRounding,
   minQuota: number,
 ): number {
-  const eligible = safeNonNegativeInt(eligibleCount);
-  if (eligible === 0) return 0;
+  const eligible = safeNonNegInt(eligibleCount);
+  if (eligible <= 0) return 0;
 
   const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
-  const safeMin = safeNonNegativeInt(minQuota);
+  const safeMin = Math.max(0, safeNonNegInt(minQuota));
 
-  const raw = applyRounding(eligible * safeRatio, rounding);
-  return Math.max(safeMin, Math.max(0, raw));
+  let quota = roundBy(eligible * safeRatio, rounding);
+  if (quota < safeMin) quota = safeMin;
+  if (quota > eligible) quota = eligible;
+  if (quota < 0) quota = 0;
+  return quota;
 }
 
-export interface OwnerLabelSummary {
-  /** distinct productهای منسوب به این owner که واجد شرایط هستند. */
-  eligibleCount: number;
-  /** distinct productهای این owner که حداقل یک owner-assignable label دارند. */
-  taggedCount: number;
-  /** سهمیه محاسبه‌شده. */
-  quota: number;
-  /** باقی‌مانده تا رسیدن به سهمیه (هرگز منفی). */
-  remaining: number;
-  /** درصد پیشرفت در بازه [0, 100]. */
-  progressPct: number;
-  /** آیا سهمیه برآورده شده است؟ */
-  isMet: boolean;
-}
-
-/**
- * ساخت خلاصه کامل وضعیت سهمیه برای نمایش در UI/گزارش‌ها.
- */
 export function buildOwnerLabelSummary(input: {
   eligibleCount: number;
   taggedCount: number;
@@ -69,31 +63,33 @@ export function buildOwnerLabelSummary(input: {
   rounding: OwnerLabelQuotaRounding;
   minQuota: number;
 }): OwnerLabelSummary {
-  const eligibleCount = safeNonNegativeInt(input.eligibleCount);
-  const taggedCountRaw = safeNonNegativeInt(input.taggedCount);
-  // taggedCount نباید از eligibleCount بیشتر شود (محافظت در برابر دیتای ناسازگار).
+  const eligibleCount = safeNonNegInt(input.eligibleCount);
+  const taggedCountRaw = safeNonNegInt(input.taggedCount);
+  // tagged نمی‌تواند از eligible بیشتر باشد.
   const taggedCount = Math.min(taggedCountRaw, eligibleCount);
 
   const quota = computeOwnerLabelQuota(eligibleCount, input.ratio, input.rounding, input.minQuota);
   const remaining = Math.max(0, quota - taggedCount);
-  const denominator = Math.max(quota, 1);
-  const progressPct = Math.max(0, Math.min(100, (taggedCount / denominator) * 100));
-  const isMet = quota === 0 ? true : taggedCount >= quota;
+  const denom = quota > 0 ? quota : 1;
+  const progressPct = Math.max(0, Math.min(100, (taggedCount / denom) * 100));
+  const isMet = quota > 0 && taggedCount >= quota;
 
   return { eligibleCount, taggedCount, quota, remaining, progressPct, isMet };
 }
 
 /**
- * تشخیص transition `untagged → tagged` برای یک محصول.
- * true فقط اگر prev هیچ owner-assignable label نداشته و next حداقل یکی داشته باشد.
- * تشخیص جهت معکوس (tagged → untagged) خارج از scope این تابع است.
+ * تشخیص transition یک محصول از حالت untagged → tagged
+ * نسبت به مجموعه owner-assignable labels.
+ * فقط جهت تشخیص لحظهٔ ورود به «tagged» استفاده می‌شود؛ untagging جدا و خارج از scope این تابع.
  */
 export function didProductBecomeTagged(
   prevLabelIds: readonly string[],
   nextLabelIds: readonly string[],
   ownerAssignableLabelIds: ReadonlySet<string>,
 ): boolean {
-  const hadAny = prevLabelIds.some((id) => ownerAssignableLabelIds.has(id));
-  if (hadAny) return false;
-  return nextLabelIds.some((id) => ownerAssignableLabelIds.has(id));
+  if (ownerAssignableLabelIds.size === 0) return false;
+  const prevHas = prevLabelIds.some((id) => ownerAssignableLabelIds.has(id));
+  if (prevHas) return false;
+  const nextHas = nextLabelIds.some((id) => ownerAssignableLabelIds.has(id));
+  return nextHas;
 }

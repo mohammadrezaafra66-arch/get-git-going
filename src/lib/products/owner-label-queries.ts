@@ -1,19 +1,21 @@
 /**
- * کوئری‌های فقط‌خواندنی برای feature «سهمیه برچسب‌گذاری مالک محصول».
- * - بدون write، بدون RPC جدید، بدون endpoint.
- * - فقط از جدول‌های موجود استفاده می‌کند: product_labels, product_label_links,
- *   product_owner_assignments, products.
+ * لایه read-only برای فیچر «سهمیه برچسب‌گذاری مالک محصول».
+ * فقط Supabase client و جداول موجود. بدون write، بدون RPC، بدون migration.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import {
   OWNER_ASSIGNABLE_LABEL_VISIBILITY,
   OWNER_LABEL_ALLOW_SHARED_PRODUCTS,
+  OWNER_LABEL_IN_CHUNK_SIZE,
+  OWNER_LABEL_MIN_QUOTA,
   OWNER_LABEL_QUOTA_RATIO,
   OWNER_LABEL_QUOTA_ROUNDING,
-  OWNER_LABEL_MIN_QUOTA,
 } from "./owner-label-config";
-import { buildOwnerLabelSummary, type OwnerLabelSummary } from "./owner-label-quota";
+import {
+  buildOwnerLabelSummary,
+  type OwnerLabelSummary,
+} from "./owner-label-quota";
 
 export interface OwnerAssignableLabel {
   id: string;
@@ -24,19 +26,32 @@ export interface OwnerAssignableLabel {
   weight: number | null;
 }
 
-/** سقف امن برای هر `in(...)` تا از 414 URI Too Long جلوگیری شود. */
-const IN_CHUNK_SIZE = 500;
+export interface OwnerEligibleProducts {
+  eligibleProductIds: string[];
+  sharedProductIds: string[];
+  excludedSharedCount: number;
+}
+
+export interface OwnerLabelOverview {
+  labels: OwnerAssignableLabel[];
+  eligibleProductIds: string[];
+  sharedProductIds: string[];
+  excludedSharedCount: number;
+  taggedProductIds: string[];
+  summary: OwnerLabelSummary;
+}
 
 function chunk<T>(arr: readonly T[], size: number): T[][] {
-  if (size <= 0) return [arr.slice()];
+  if (size <= 0) return [Array.from(arr)];
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
 
 /**
- * برچسب‌های قابل اختصاص توسط مالک محصول.
- * فعال + visibility='internal'، مرتب‌شده بر اساس weight نزولی، سپس title صعودی.
+ * برچسب‌های قابل انتساب توسط owner:
+ *  is_active = true AND visibility = OWNER_ASSIGNABLE_LABEL_VISIBILITY
+ * مرتب‌سازی: weight desc، سپس title asc.
  */
 export async function fetchOwnerAssignableLabels(): Promise<OwnerAssignableLabel[]> {
   const { data, error } = await supabase
@@ -52,49 +67,40 @@ export async function fetchOwnerAssignableLabels(): Promise<OwnerAssignableLabel
 }
 
 /**
- * محصولات واجد شرایط یک مالک:
- * - distinct product_idهای منسوب از product_owner_assignments
- * - حذف محصولات shared اگر OWNER_LABEL_ALLOW_SHARED_PRODUCTS=false
- * - cross-check با products.is_active=true و status='active'
+ * محصولات eligible این owner:
+ *  1) product_owner_assignments.user_id = ownerUserId → product_idهای انتسابی
+ *  2) فیلتر «محصول فعال»: products.is_active = true AND status = 'active'
+ *  3) اگر OWNER_LABEL_ALLOW_SHARED_PRODUCTS=false: محصولاتی که در
+ *     product_owner_assignments بیش از یک ردیف دارند، از eligible خارج
+ *     و در sharedProductIds برگردانده می‌شوند.
+ *
+ * همه `.in(...)` ها chunk شده‌اند (≤ OWNER_LABEL_IN_CHUNK_SIZE).
  */
-export async function fetchOwnerProductCounts(
+export async function fetchOwnerEligibleProductIds(
   ownerUserId: string,
-): Promise<{ eligibleProductIds: string[] }> {
-  if (!ownerUserId) return { eligibleProductIds: [] };
+): Promise<OwnerEligibleProducts> {
+  if (!ownerUserId) {
+    return { eligibleProductIds: [], sharedProductIds: [], excludedSharedCount: 0 };
+  }
 
-  // 1) همه product_idهای منسوب به این مالک.
-  const { data: ownerRows, error: ownerErr } = await supabase
+  // 1) product_idهای انتسابی به owner
+  const { data: ownAssignments, error: ownErr } = await supabase
     .from("product_owner_assignments")
     .select("product_id")
     .eq("user_id", ownerUserId);
-  if (ownerErr) throw ownerErr;
+  if (ownErr) throw ownErr;
 
-  const ownProductIds = Array.from(
-    new Set(((ownerRows ?? []) as Array<{ product_id: string }>).map((r) => r.product_id)),
+  const ownedIds = Array.from(
+    new Set((ownAssignments ?? []).map((r) => r.product_id).filter(Boolean) as string[]),
   );
-  if (ownProductIds.length === 0) return { eligibleProductIds: [] };
-
-  // 2) در صورت لزوم، حذف محصولاتی که بیش از یک owner دارند (shared).
-  let candidateIds = ownProductIds;
-  if (!OWNER_LABEL_ALLOW_SHARED_PRODUCTS) {
-    const ownerCount = new Map<string, number>();
-    for (const ids of chunk(ownProductIds, IN_CHUNK_SIZE)) {
-      const { data, error } = await supabase
-        .from("product_owner_assignments")
-        .select("product_id, user_id")
-        .in("product_id", ids);
-      if (error) throw error;
-      for (const row of (data ?? []) as Array<{ product_id: string; user_id: string }>) {
-        ownerCount.set(row.product_id, (ownerCount.get(row.product_id) ?? 0) + 1);
-      }
-    }
-    candidateIds = ownProductIds.filter((pid) => (ownerCount.get(pid) ?? 0) <= 1);
-    if (candidateIds.length === 0) return { eligibleProductIds: [] };
+  if (ownedIds.length === 0) {
+    return { eligibleProductIds: [], sharedProductIds: [], excludedSharedCount: 0 };
   }
 
-  // 3) فقط محصولات فعال و با status='active'.
-  const eligible = new Set<string>();
-  for (const ids of chunk(candidateIds, IN_CHUNK_SIZE)) {
+  // 2) فیلتر «محصول فعال» — chunked
+  const activeIds = new Set<string>();
+  for (const ids of chunk(ownedIds, OWNER_LABEL_IN_CHUNK_SIZE)) {
+    if (ids.length === 0) continue;
     const { data, error } = await supabase
       .from("products")
       .select("id")
@@ -102,66 +108,108 @@ export async function fetchOwnerProductCounts(
       .eq("is_active", true)
       .eq("status", "active");
     if (error) throw error;
-    for (const row of (data ?? []) as Array<{ id: string }>) eligible.add(row.id);
+    for (const row of data ?? []) activeIds.add(row.id);
+  }
+  if (activeIds.size === 0) {
+    return { eligibleProductIds: [], sharedProductIds: [], excludedSharedCount: 0 };
   }
 
-  return { eligibleProductIds: Array.from(eligible) };
+  // 3) شمارش owners متمایز برای هر محصول — chunked
+  const activeIdList = Array.from(activeIds);
+  const distinctOwners = new Map<string, Set<string>>();
+  for (const ids of chunk(activeIdList, OWNER_LABEL_IN_CHUNK_SIZE)) {
+    if (ids.length === 0) continue;
+    const { data, error } = await supabase
+      .from("product_owner_assignments")
+      .select("product_id, user_id")
+      .in("product_id", ids);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const pid = row.product_id as string;
+      const uid = row.user_id as string;
+      if (!pid || !uid) continue;
+      let set = distinctOwners.get(pid);
+      if (!set) {
+        set = new Set<string>();
+        distinctOwners.set(pid, set);
+      }
+      set.add(uid);
+    }
+  }
+
+  const eligibleProductIds: string[] = [];
+  const sharedProductIds: string[] = [];
+  for (const pid of activeIdList) {
+    const owners = distinctOwners.get(pid);
+    const ownersCount = owners ? owners.size : 0;
+    const isShared = ownersCount > 1;
+    if (isShared) {
+      sharedProductIds.push(pid);
+      if (!OWNER_LABEL_ALLOW_SHARED_PRODUCTS) continue;
+    }
+    eligibleProductIds.push(pid);
+  }
+
+  return {
+    eligibleProductIds,
+    sharedProductIds,
+    excludedSharedCount: OWNER_LABEL_ALLOW_SHARED_PRODUCTS ? 0 : sharedProductIds.length,
+  };
 }
 
 /**
- * مجموعه product_idهایی که حداقل یک owner-assignable label دارند،
- * محدود به productهای داده‌شده و labelهای داده‌شده.
+ * شناسه محصولاتی از eligible که حداقل یک owner-assignable label دارند.
+ * هر دو `in(product_id)` و `in(label_id)` chunk می‌شوند.
  */
 export async function fetchOwnerTaggedProductIds(
   eligibleProductIds: readonly string[],
   ownerAssignableLabelIds: readonly string[],
-): Promise<Set<string>> {
-  const tagged = new Set<string>();
-  if (eligibleProductIds.length === 0 || ownerAssignableLabelIds.length === 0) {
-    return tagged;
-  }
+): Promise<string[]> {
+  if (eligibleProductIds.length === 0 || ownerAssignableLabelIds.length === 0) return [];
 
-  // chunk روی product_ids؛ label_ids معمولاً کوچک است ولی برای ایمنی chunk می‌شود.
-  for (const productIds of chunk(eligibleProductIds, IN_CHUNK_SIZE)) {
-    for (const labelIds of chunk(ownerAssignableLabelIds, IN_CHUNK_SIZE)) {
+  const tagged = new Set<string>();
+  const labelChunks = chunk(ownerAssignableLabelIds, OWNER_LABEL_IN_CHUNK_SIZE);
+
+  for (const pids of chunk(eligibleProductIds, OWNER_LABEL_IN_CHUNK_SIZE)) {
+    if (pids.length === 0) continue;
+    for (const lids of labelChunks) {
+      if (lids.length === 0) continue;
       const { data, error } = await supabase
         .from("product_label_links")
         .select("product_id, label_id")
-        .in("product_id", productIds)
-        .in("label_id", labelIds);
+        .in("product_id", pids)
+        .in("label_id", lids);
       if (error) throw error;
-      for (const row of (data ?? []) as Array<{ product_id: string; label_id: string }>) {
-        tagged.add(row.product_id);
+      for (const row of data ?? []) {
+        if (row.product_id) tagged.add(row.product_id as string);
       }
     }
   }
-
-  return tagged;
-}
-
-export interface OwnerLabelOverview {
-  labels: OwnerAssignableLabel[];
-  eligibleProductIds: string[];
-  taggedProductIds: string[];
-  summary: OwnerLabelSummary;
+  return Array.from(tagged);
 }
 
 /**
- * Orchestrator نازک: سه کوئری بالا را اجرا و خلاصه نهایی را می‌سازد.
- * Caching در لایه UI (React Query) با OWNER_LABEL_STALE_TIME_MS انجام می‌شود.
+ * Orchestrator نازک: سه call بالا + buildOwnerLabelSummary.
+ * هیچ cache داخلی ندارد؛ caching را فاز UI با React Query
+ * (staleTime = OWNER_LABEL_STALE_TIME_MS) مدیریت می‌کند.
  */
-export async function getOwnerLabelOverview(ownerUserId: string): Promise<OwnerLabelOverview> {
-  const [labels, counts] = await Promise.all([
+export async function getOwnerLabelOverview(
+  ownerUserId: string,
+): Promise<OwnerLabelOverview> {
+  const [labels, eligible] = await Promise.all([
     fetchOwnerAssignableLabels(),
-    fetchOwnerProductCounts(ownerUserId),
+    fetchOwnerEligibleProductIds(ownerUserId),
   ]);
 
   const labelIds = labels.map((l) => l.id);
-  const taggedSet = await fetchOwnerTaggedProductIds(counts.eligibleProductIds, labelIds);
+  const taggedProductIds = await fetchOwnerTaggedProductIds(
+    eligible.eligibleProductIds,
+    labelIds,
+  );
 
   const summary = buildOwnerLabelSummary({
-    eligibleCount: counts.eligibleProductIds.length,
-    taggedCount: taggedSet.size,
+    eligibleCount: eligible.eligibleProductIds.length,
+    taggedCount: taggedProductIds.length,
     ratio: OWNER_LABEL_QUOTA_RATIO,
     rounding: OWNER_LABEL_QUOTA_ROUNDING,
     minQuota: OWNER_LABEL_MIN_QUOTA,
@@ -169,8 +217,10 @@ export async function getOwnerLabelOverview(ownerUserId: string): Promise<OwnerL
 
   return {
     labels,
-    eligibleProductIds: counts.eligibleProductIds,
-    taggedProductIds: Array.from(taggedSet),
+    eligibleProductIds: eligible.eligibleProductIds,
+    sharedProductIds: eligible.sharedProductIds,
+    excludedSharedCount: eligible.excludedSharedCount,
+    taggedProductIds,
     summary,
   };
 }
