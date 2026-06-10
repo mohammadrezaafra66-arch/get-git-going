@@ -1,46 +1,55 @@
-## مشکل و ریشه
-
-از کنسول preview مشخص است که حین جابه‌جایی بین ماژول‌ها (به‌ویژه «کارگاه قیمت من») سه اتفاق پشت‌سرهم رخ می‌دهد:
-
-1. اتصال vite/HMR قطع و وصل می‌شود (`[vite] server connection lost. Polling for restart...`) — این اتفاق هم در پیش‌نمایش و هم گاهی روی سایت منتشرشده باعث ری‌مونت iframe می‌شود.
-2. در هر ری‌مونت، supabase دوباره `SIGNED_IN` با `previousUserId: null` ارسال می‌کند → snapshot از صفر بارگذاری می‌شود → `loading=true`.
-3. `AppLayout` در `src/routes/_app.tsx` به‌محض true شدن هر یک از `loading | profileLoading | rolesLoading` تمام درخت اپ را با `AuthLoadingScreen` («در حال بررسی جلسه کاربری…») جایگزین می‌کند → کاربر احساس می‌کند «پرت شده».
-
-از نظر امنیت کاربر همچنان لاگین است (session در localStorage برمی‌گردد) و خودش هم به صفحه برمی‌گردد، فقط تجربهٔ کاربری بد است.
-
 ## هدف
 
-پرش به صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» حذف شود، در عوض وقتی session از قبل موجود است محتوای صفحه باقی بماند و فقط یک نوار بارگذاری کوچک نمایش داده شود.
+سرعت دو نقطه‌ای که کند است را بدون تغییر backend/DB بالا ببریم:
+1. **جابجایی بین ماژول‌ها** در ساید‌بار (الان روی هر کلیک، چانک مقصد تازه دانلود می‌شود).
+2. **کارگاه قیمت من** که چند کوئری متوالی دارد و هر بار از صفر اجرا می‌شود.
 
-## تغییرات (فقط فرانت‌اند، ریسک LOW)
+تغییرات صرفاً frontend است؛ هیچ migration/RLS/سرور تغییر نمی‌کند.
 
-### ۱) `src/routes/_app.tsx`
-- منطق نمایش `AuthLoadingScreen` تغییر کند:
-  - فقط در حالتی صفحهٔ تمام‌صفحه نمایش داده شود که هنوز هیچ کاربری در snapshot نیست **و** session قبلی هم در localStorage پیدا نشد (یعنی واقعاً ورود اول).
-  - اگر کاربر در snapshot هست (یا توکن در localStorage هست) و فقط `profileLoading`/`rolesLoading` فعال است، `<Outlet />` داخل `AppShell` رندر شود و یک نوار باریک بالای صفحه (مثلاً پروگرس بار شاد cn یا یک Banner کوتاه) با متن «به‌روزرسانی جلسه…» نمایش داده شود.
-  - منطق «خطای واقعی» (`authError`) و دکمهٔ «تلاش دوباره» همان‌طور حفظ می‌شود.
-- اضافه شدن یک helper کوچک برای تشخیص وجود session ذخیره‌شده (با خواندن کلید `sb-<ref>-auth-token` از localStorage یا با بررسی `getAuthSnapshot().user`/`session`).
+## تغییرات
 
-### ۲) `src/lib/auth/session.ts`
-- در `applySession`، وقتی رویداد `SIGNED_IN` با `previousUserId === null` می‌رسد ولی `lastLoadedUserId` همان کاربر است (یعنی فقط ری‌مونت بعد از HMR/قطعی)، `loading` global را true نکند و identity را مجدداً fetch نکند مگر اینکه profile/roles واقعاً خالی باشند.
-- بدون تغییر در منطق امنیت/توکن؛ فقط جلوگیری از flash بارگذاری.
+### ۱) Router: preload روی hover/intent
+فایل: `src/router.tsx`
+- افزودن `defaultPreload: "intent"` تا با hover روی Link چانک مقصد از قبل دانلود شود.
+- افزایش `defaultPreloadStaleTime` به مثلاً `30_000` تا بعد از preload دوباره fetch نشود (طبق گاید TanStack Query وقتی Query استفاده می‌شود این مقدار می‌تواند >0 باشد چون کش روتر فقط برای loaderهاست و کوئری‌های ما همگی از TanStack Query هستند).
+- نگه‌داشتن `scrollRestoration` و `defaultErrorComponent`.
 
-### ۳) (اختیاری) `src/components/layout/AppShell.tsx`
-- اگر prop `sessionRefreshing` از `_app.tsx` پاس داده شد، یک نوار باریک (`h-1`) بالای shell با کلاس‌های موجود `bg-primary/20` نمایش داده شود — راست‌چین و سازگار با theme فعلی.
+اثر: کلیک روی آیکن ماژول تقریباً آنی می‌شود چون JS مقصد قبل از کلیک آماده است.
 
-## خارج از محدوده
+### ۲) Sidebar: prefetch ماژول‌ها هنگام hover روی ریل
+فایل: `src/components/layout/AppSidebar.tsx`
+- روی دکمه هر ماژول در ریل، `onMouseEnter` / `onFocus` فراخوانی `router.preloadRoute({ to: m.defaultTo })` (یا معادل از `useRouter`) اضافه کنیم. این مکمل گام ۱ است برای دکمه‌های `<button>` که Link نیستند.
 
-- بازطراحی AuthProvider یا route guardها انجام نمی‌شود.
-- منطق redirect به /login، RBAC، RLS، migration، یا API هیچ تغییری ندارد.
-- مشکل اصلی قطعی HMR در preview Lovable در حوزهٔ زیرساخت Lovable است و این تغییر فقط اثر بصری آن را خنثی می‌کند.
+### ۳) Lookupها: افزایش staleTime
+فایل: `src/routes/_app.pricing.my-workbench.tsx`
+- `brands-lite` / `categories-lite` / `labels-lite` / `product-owners-lite`: staleTime از `60_000` به `5 * 60_000` و `gcTime: 30 * 60_000`. این داده‌ها تقریباً ثابت‌اند.
+- staleTime کوئری اصلی `workbench-rows-v2` از `15_000` به `30_000` تا تب‌برگشت/refocus refetch نکند.
 
-## آزمون دستی
+### ۴) `fetchWorkbenchRowsV2`: موازی کردن pre-filterها
+فایل: `src/lib/pricing/workbench-queries.ts`
+- در حال حاضر pre-filterها (owner, label, sale price, category) به‌صورت متوالی `await` می‌شوند. آن‌ها مستقل‌اند → جمع‌آوری در یک `Promise.all` و سپس ترکیب نتایج. (منطق early-return در صورت خالی بودن restrict حفظ می‌شود ولی بعد از resolve).
+- این کار latency اولیه را تا حدود ۲۰۰–۵۰۰ms کم می‌کند.
 
-1. ورود به اپ → باز کردن «کارگاه قیمت من» → جابه‌جایی به ماژول دیگر → نباید صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» ظاهر شود.
-2. خروج کامل (sign out) و ورود مجدد → صفحهٔ تمام‌صفحه فقط یک بار در ابتدا دیده شود.
-3. حالت خطای واقعی شبکه (مثلاً قطع کامل اینترنت) → پیام خطا و دکمهٔ «تلاش دوباره» مثل قبل کار کند.
-4. RTL و راست‌چینی نوار جدید بررسی شود.
+### ۵) Memoize ردیف‌های جدول
+فایل: `src/routes/_app.pricing.my-workbench.tsx`
+- پیچیدن `DesktopRow` و `MobileCard` در `React.memo` با مقایسه سطحی روی `row.id`, `dirty`, `saving`, `publishError`, `stepPct`. اگر کاربر تنها یک ردیف را ویرایش کند، بقیه ۲۴ ردیف re-render نمی‌شوند.
+
+### ۶) جلوگیری از invalidate اضافه پس از save
+فایل: `src/routes/_app.pricing.my-workbench.tsx`
+- بعد از ذخیره، `invalidateQueries` با key `["workbench-rows"]` و `["workbench-rows-v2"]` هر دو فراخوانی می‌شوند و سپس `refetchQueries` هم. کلید قدیمی `workbench-rows` بلا‌استفاده است → حذف. `refetchQueries` کافی است و invalidate جدا‌گانه حذف شود (یک round-trip به DB کمتر).
 
 ## ریسک
 
-LOW — فقط لایهٔ UI و یک شاخهٔ کوچک در `applySession`. بدون تغییر دیتابیس، RLS، RBAC، یا audit log.
+- LOW. فقط UI/data-fetching layer. هیچ تغییر schema/RLS/API.
+- preload با hover ممکن است مصرف داده را کمی بالا ببرد؛ ولی فقط چانک‌های کوچک JS مسیرهای ماژول است (نه داده DB).
+
+## بررسی self-host
+
+- بدون CDN جدید، بدون secret، بدون dependency جدید.
+- اپ همچنان روی Linux+Docker+Supabase self-host بدون تغییر کار می‌کند.
+
+## تأیید پس از اجرا
+
+- `npm run build` و `npm run lint`.
+- مسیر دستی: ورود → ساید‌بار → hover روی ماژول‌های مختلف → کلیک. باید تقریباً بدون تأخیر باز شوند.
+- «کارگاه قیمت من»: بارگذاری اولیه باید نسبت به قبل سریع‌تر باشد؛ ویرایش یک ردیف نباید بقیه را re-render کند (DevTools Profiler).
