@@ -49,15 +49,23 @@ async function fetchOwnersFor(productIds: string[]): Promise<Map<string, OwnerLi
   if (productIds.length === 0) return map;
   const { data } = await supabase
     .from("product_owner_assignments")
-    .select("product_id, user_id, profiles:profiles!product_owner_assignments_user_id_fkey(full_name)")
+    .select("product_id, user_id")
     .in("product_id", productIds);
-  for (const row of (data ?? []) as Array<{
-    product_id: string;
-    user_id: string;
-    profiles: { full_name: string | null } | null;
-  }>) {
+  const rows = (data ?? []) as Array<{ product_id: string; user_id: string }>;
+  const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+  const nameMap = new Map<string, string | null>();
+  if (userIds.length > 0) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+    for (const p of (profs ?? []) as Array<{ id: string; full_name: string | null }>) {
+      nameMap.set(p.id, p.full_name);
+    }
+  }
+  for (const row of rows) {
     const arr = map.get(row.product_id) ?? [];
-    arr.push({ user_id: row.user_id, full_name: row.profiles?.full_name ?? null });
+    arr.push({ user_id: row.user_id, full_name: nameMap.get(row.user_id) ?? null });
     map.set(row.product_id, arr);
   }
   return map;
@@ -128,7 +136,7 @@ export async function fetchStalePurchasePrices(opts?: {
   const { data: prices, error } = await supabase
     .from("v_latest_active_purchase_prices")
     .select("product_id, purchase_price, currency, effective_at")
-    .eq("currency", "IRT")
+    .eq("currency", "toman")
     .limit(FETCH_LIMIT);
   if (error) throw error;
   const list = (prices ?? []) as Array<{
