@@ -134,7 +134,7 @@ function RegisterPage() {
   };
 
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
@@ -202,6 +202,6 @@ function RegisterPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
