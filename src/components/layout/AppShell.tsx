@@ -5,11 +5,13 @@ import { AppHeader } from "./AppHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { PopupCenterProvider } from "@/lib/popups/PopupCenterProvider";
 import { PriceChangePopupListener } from "@/shared/components/PriceChangePopupListener";
+import { OwnerRemindersListener } from "@/shared/components/OwnerRemindersListener";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <PopupCenterProvider>
       <PriceChangePopupListener />
+      <OwnerRemindersListener />
       <SidebarProvider>
         <div dir="rtl" className="flex min-h-screen w-full bg-background">
           <AppSidebar />

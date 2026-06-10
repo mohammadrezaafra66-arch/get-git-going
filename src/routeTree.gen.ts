@@ -81,6 +81,7 @@ import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrenciesRouteImport } from './routes/_app.pricing.currencies'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.attention'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
@@ -526,6 +527,11 @@ const AppPricingChangeReasonsRoute = AppPricingChangeReasonsRouteImport.update({
 const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   id: '/pricing/calculator',
   path: '/pricing/calculator',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPricingAttentionRoute = AppPricingAttentionRouteImport.update({
+  id: '/pricing/attention',
+  path: '/pricing/attention',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPricingAminHozoorBoardRoute =
@@ -1029,6 +1035,7 @@ export interface FileRoutesByFullPath {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1178,6 +1185,7 @@ export interface FileRoutesByTo {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1330,6 +1338,7 @@ export interface FileRoutesById {
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/_app/pricing/attention': typeof AppPricingAttentionRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1483,6 +1492,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
+    | '/pricing/attention'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1632,6 +1642,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
+    | '/pricing/attention'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1783,6 +1794,7 @@ export interface FileRouteTypes {
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
     | '/_app/pricing/amin-hozoor-board'
+    | '/_app/pricing/attention'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currencies'
@@ -2391,6 +2403,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/calculator'
       fullPath: '/pricing/calculator'
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/attention': {
+      id: '/_app/pricing/attention'
+      path: '/pricing/attention'
+      fullPath: '/pricing/attention'
+      preLoaderRoute: typeof AppPricingAttentionRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/amin-hozoor-board': {
@@ -3186,6 +3205,7 @@ interface AppRouteChildren {
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
+  AppPricingAttentionRoute: typeof AppPricingAttentionRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrenciesRoute: typeof AppPricingCurrenciesRoute
@@ -3289,6 +3309,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
+  AppPricingAttentionRoute: AppPricingAttentionRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrenciesRoute: AppPricingCurrenciesRoute,
@@ -3391,13 +3412,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

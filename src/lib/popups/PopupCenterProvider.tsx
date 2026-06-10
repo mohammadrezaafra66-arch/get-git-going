@@ -9,10 +9,11 @@ import {
 } from "react";
 
 /**
- * مدت زمان نگه‌داری پاپ‌آپ در مرکز اعلان‌ها (پیش‌فرض ۲۴ ساعت).
- * در آینده می‌توان این مقدار را از تنظیمات سرور خواند.
+ * مدت زمان نگه‌داری پاپ‌آپ در مرکز اعلان‌ها — از پیکربندی متمرکز خوانده می‌شود.
+ * در آینده می‌توان مقدار را از تنظیمات سرور override کرد.
  */
-export const POPUP_TTL_MS = 24 * 60 * 60 * 1000;
+export { POPUP_TTL_MS } from "./config";
+import { POPUP_TTL_MS } from "./config";
 
 const STORAGE_KEY = "afrakala.popup-center.v1";
 

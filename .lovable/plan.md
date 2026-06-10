@@ -1,34 +1,62 @@
-## مشکل
-- `QuickAddCustomerDialog` خطاهای سرور را به فارسی map می‌کند (دیدن خطی ۱۱۸-۱۵۶)، اما صفحه‌ی «مشتری جدید» (`/sales/customers/create`) از `CustomerForm` استفاده می‌کند که در `onError` فقط پیام خام را با پیشوند «عملیات ناموفق بود:» نشان می‌دهد (خط ۱۶۴-۱۶۷ از `CustomerForm.tsx`). به همین دلیل کاربر پیام مبهم «ناموفق» می‌بیند.
-- در حالت موفقیت هم فقط `["customers"]` invalidate می‌شود؛ برای پایداری بهتر است کلیدهای مرتبط جستجو/persons هم invalidate شوند و در حالت «ایجاد» فرم reset شود.
+# پلن: مدیریت یادآوری‌ها و رسیدگی به موجودی/قیمت
 
-## محدوده تغییر
-فقط UI، بدون تغییر در سرور/DB/RLS. تنها فایل اصلاحی:
-- `src/shared/components/CustomerForm.tsx`
+تمام تغییرات فقط UI روی frontend است؛ هیچ migration/RLS/endpoint جدیدی ساخته نمی‌شود. از hookها و queryهای موجود (`product_owner_assignments`, `products`, `purchase_prices`, `currency_rates`) از طریق client Supabase استفاده می‌کنیم. ریسک: **LOW**.
 
-`QuickAddCustomerDialog.tsx` از قبل صحیح است و تغییر نمی‌کند. فایل‌های مسیر (`_app.sales_.customers_.create.tsx` و `_app.sales_.customers_.$customerId.edit.tsx`) تغییر نمی‌کنند چون فقط `CustomerForm` را mount می‌کنند.
+## ۱) ثابت‌های قابل پیکربندی
 
-## تغییرات در `CustomerForm.tsx`
+فایل جدید `src/lib/popups/config.ts`:
 
-1. **map کردن خطاهای سرور در `onError`** — همان منطق `QuickAddCustomerDialog`:
-   - خطای شبکه/`TypeError`/`failed to fetch` → «ارتباط با سرور برقرار نشد…»
-   - شامل `کد حسابداری تکراری` یا `accounting_code` → `form.setError("accounting_code", …)` + toast «کد حسابداری تکراری است…»
-   - شامل `unauthorized`/`401`/`نشست کاربری` → «نشست منقضی شده…»
-   - شامل `forbidden`/`403`/`rls`/`دسترسی` → «دسترسی لازم را ندارید.»
-   - شامل `phone` یا `موبایل نامعتبر` → `form.setError("phone", …)` + toast
-   - در غیر این صورت پیام خام فارسی serverFn نمایش داده شود؛ اگر خالی بود پیام عمومی «ثبت ناموفق بود…»
+- `STOCK_STALE_DAYS = 3`
+- `PURCHASE_PRICE_STALE_DAYS = 2`
+- `USD_DRIFT_THRESHOLD_PCT = 3`
+- `POPUP_TTL_MS` را از `PopupCenterProvider` به این فایل منتقل/بازصدور می‌کنیم تا تمام زمان‌ها متمرکز و تغییرپذیر باشند (پیش‌فرض ۲۴ ساعت).
 
-2. **به‌روزرسانی `onSuccess`**:
-   - `queryClient.invalidateQueries({ queryKey: ["customers"] })` نگه‌داری می‌شود.
-   - اضافه: invalidate برای `["customers", "search"]` و `["persons"]` (اگر key وجود نداشته باشد، invalidate بی‌اثر است و امن).
-   - در حالت «ایجاد جدید» (نه ویرایش)، قبل از `navigate` فرم `reset` شود تا اگر کاربر برگردد، state تمیز باشد.
-   - رفتار navigate به `/sales/customers` بدون تغییر.
+## ۲) صفحهٔ «رسیدگی محصولات» (نام دکمه: «فرصت جبران»)
 
-3. **حفظ RTL**: کل فرم در حال حاضر `dir="rtl"` دارد؛ تغییری لازم نیست.
+- مسیر جدید: `src/routes/_app.pricing.attention.tsx` با کامپوننت `AttentionPage`.
+- دکمه‌ای در نوار بالای `src/routes/_app.pricing.my-workbench.tsx` (کنار filters) با متن «فرصت جبران» و آیکن `LifeBuoy` که به این مسیر `<Link>` می‌زند.
+- محتوای صفحه دو تب:
+  - **ناموجودهای بیش از ۳ روز**: query از `products` با `stock_status='unavailable'` و `updated_at < now() - 3d` (در صورت نبود فیلد lastChange، روی `product_sale_price_history` یا `purchase_prices.updated_at` fallback می‌کنیم — در پیاده‌سازی با read query بررسی می‌شود)، join با `product_owner_assignments` + `profiles` برای نمایش نام مسئول.
+  - **قیمت خرید تومانی کهنه (>۲ روز بدون به‌روزرسانی)** و **اختلاف معادل دلاری >۳٪** نسبت به آخرین نرخ `currency_rates` (USD): محاسبه در client با گرفتن آخرین `purchase_prices` تومانی + آخرین نرخ دلار.
+- هر سطر: نام محصول، SKU، مسئول(ها)، تاریخ آخرین تغییر، badge وضعیت، لینک به صفحه محصول.
+- pagination ساده + debounce search، RTL.
+
+## ۳) پاپ‌آپ یادآوری در صفحه اصلی مسئول
+
+- کامپوننت جدید `src/shared/components/OwnerRemindersListener.tsx` (mount در `AppShell` کنار `PriceChangePopupListener`).
+- در mount، اگر کاربر لاگین است: یک‌بار query می‌زند برای محصولاتی که `user.id` مالک آن‌هاست و یکی از سه شرط برقرار است:
+  1. `stock_status='unavailable'` بیش از ۳ روز
+  2. آخرین `purchase_prices` تومانی > ۲ روز قدیمی
+  3. drift معادل دلاری > ۳٪
+- برای هر مورد یک `toast` با action «متوجه شدم» نمایش می‌دهد؛ در `onAutoClose/onDismiss` بدون ack، آیتم با `usePopupCenter().add(...)` به مرکز پاپ‌آپ‌ها منتقل می‌شود (الگوی موجود در `PriceChangePopupListener`). throttle مشابه برای جلوگیری از سیل toast.
+- استفاده از `id` پایدار `reminder-<productId>-<type>-<dayBucket>` تا در همان روز تکراری ساخته نشود (dedupe via `add` که id تکراری را رد می‌کند).
+
+## ۴) مرکز پاپ‌آپ‌ها
+
+بدون تغییر در ساختار `PopupCenterProvider`/`_app.popup-center.tsx`. فقط `POPUP_TTL_MS` از `config.ts` خوانده می‌شود تا تنظیم متمرکز باشد.
+
+## ۵) Nav
+
+افزودن آیتم «فرصت جبران» به گروه «کارگاه قیمت» در `src/components/layout/nav-items.ts` با مسیر `/pricing/attention`.
+
+## فایل‌های تغییر یافته/جدید
+
+- جدید: `src/lib/popups/config.ts`
+- جدید: `src/routes/_app.pricing.attention.tsx`
+- جدید: `src/shared/components/OwnerRemindersListener.tsx`
+- جدید: `src/lib/pricing/attention-queries.ts` (queryهای ناموجود کهنه / قیمت کهنه / drift دلار)
+- ویرایش: `src/lib/popups/PopupCenterProvider.tsx` (خواندن TTL از config)
+- ویرایش: `src/components/layout/AppShell.tsx` (mount listener جدید)
+- ویرایش: `src/components/layout/nav-items.ts`
+- ویرایش: `src/routes/_app.pricing.my-workbench.tsx` (دکمه «فرصت جبران»)
 
 ## ریسک
-LOW — فقط UI و error-mapping. هیچ تغییری در serverFn `createCustomer/updateCustomer`، schema، RLS، migration یا route گزارش نمی‌شود.
 
-## خروجی نهایی
-- فایل تغییر یافته: `src/shared/components/CustomerForm.tsx`
-- ریسک: LOW
+LOW — بدون تغییر سرور/DB/RLS؛ فقط جداول موجود readonly خوانده می‌شوند.
+
+&nbsp;
+
+- هنگام پیاده‌سازی کوئری‌های «ناموجود بیش از ۳ روز» و «قیمت خرید کهنه»، دقیقاً مشخص کنید که تاریخ مرجع چیست و از فیلدهای مناسب (مثل `purchase_prices.updated_at` یا `product_sale_price_history.updated_at`) استفاده کنید تا نتایج اشتباه نباشد.
+- برای محاسبهٔ اختلاف معادل دلاری بیش از ۳٪، مطمئن شوید نرخ دلار به‌صورت مطمئن و متمرکز در اختیار است تا محاسبات یکسان شود.
+- ماژول `OwnerRemindersListener` را طوری طراحی کنید که به‌طور دوره‌ای (مثلاً هر ساعت) داده‌ها را تازه کند یا با subscribe مناسب، تا از تکرار یا ازدست رفتن یادآوری‌ها جلوگیری شود.
+- مطمئن شوید که پیکربندی TTL و سایر ثابت‌ها از طریق environment یا فایل config به‌راحتی قابل تغییر است، تا تغییر آینده ساده باشد.
