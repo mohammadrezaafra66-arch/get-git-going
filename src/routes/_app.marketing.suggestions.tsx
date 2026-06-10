@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -35,6 +35,9 @@ type Suggestion = {
   recency_factor: number;
   score: number;
   qty_90d: number;
+  daily_quota: number | null;
+  used_today: number;
+  remaining_today: number | null;
 };
 
 type Channel = { id: string; name: string };
@@ -52,8 +55,12 @@ function fmt(n: number, digits = 2) {
 }
 
 function PromotionSuggestionsPage() {
-  const { user, roles } = useAuth();
+  const { user, roles, initialized, loading, profile, profileLoading, rolesLoading, authError } = useAuth();
+  const authPending = !initialized || loading || profileLoading || rolesLoading || (!!user && !profile && !authError);
+  const authReady = initialized && !loading && !profileLoading && !rolesLoading && !!user;
   const allowed = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const canQuery = authReady && allowed;
+  const queryClient = useQueryClient();
 
   const [channelId, setChannelId] = useState<string>("__all__");
   const [minScoreInput, setMinScoreInput] = useState<string>("0");
@@ -63,7 +70,7 @@ function PromotionSuggestionsPage() {
 
   const channelsQuery = useQuery({
     queryKey: ["marketing-channels", "active"],
-    enabled: allowed,
+    enabled: canQuery,
     staleTime: 60_000,
     queryFn: async (): Promise<Channel[]> => {
       const { data, error } = await supabase
@@ -84,7 +91,7 @@ function PromotionSuggestionsPage() {
 
   const suggestionsQuery = useQuery({
     queryKey: ["promotion-suggestions", channelId, minScore],
-    enabled: allowed,
+    enabled: canQuery,
     staleTime: 30_000,
     queryFn: async (): Promise<Suggestion[]> => {
       const args: { _channel_id?: string; _min_score?: number; _limit?: number } = {
@@ -101,6 +108,17 @@ function PromotionSuggestionsPage() {
   useEffect(() => {
     setUsedKeys({});
   }, [channelId, minScore]);
+
+  if (authPending) {
+    return (
+      <div dir="rtl" className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          در حال آماده‌سازی دسترسی‌ها...
+        </span>
+      </div>
+    );
+  }
 
   if (!allowed) return <Navigate to="/unauthorized" />;
 
@@ -136,6 +154,7 @@ function PromotionSuggestionsPage() {
     }
     setUsedKeys((m) => ({ ...m, [key]: true }));
     toast.success("به‌عنوان استفاده‌شده ثبت شد");
+    void queryClient.invalidateQueries({ queryKey: ["promotion-suggestions"] });
   };
 
   const rows = suggestionsQuery.data ?? [];
@@ -196,25 +215,26 @@ function PromotionSuggestionsPage() {
               <TableHead className="text-right">موجودی</TableHead>
               <TableHead className="text-right">فروش ۹۰ روز</TableHead>
               <TableHead className="text-right">امتیاز</TableHead>
+              <TableHead className="text-right">سهمیه امروز</TableHead>
               <TableHead className="text-right">عمل</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {suggestionsQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </TableCell>
               </TableRow>
             ) : suggestionsQuery.isError ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-destructive">
+                <TableCell colSpan={9} className="py-10 text-center text-destructive">
                   خطا در بارگذاری پیشنهادها
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   پیشنهادی یافت نشد. مطمئن شوید برچسب‌ها وزن‌دار و کانال‌ها فعال هستند.
                 </TableCell>
               </TableRow>
@@ -223,6 +243,9 @@ function PromotionSuggestionsPage() {
                 const key = `${s.product_id}:${s.channel_id}`;
                 const used = !!usedKeys[key];
                 const stock = STOCK_BADGE[String(s.stock_status ?? "unknown")] ?? STOCK_BADGE.unknown;
+                const unlimited = s.daily_quota === null || Number(s.daily_quota) === 0;
+                const remaining = unlimited ? null : Number(s.remaining_today ?? 0);
+                const exhausted = !unlimited && remaining !== null && remaining <= 0;
                 return (
                   <TableRow key={key}>
                     <TableCell>
@@ -240,10 +263,20 @@ function PromotionSuggestionsPage() {
                     <TableCell>{fmt(s.qty_90d, 0)}</TableCell>
                     <TableCell className="font-bold">{fmt(s.score, 2)}</TableCell>
                     <TableCell>
+                      {unlimited ? (
+                        <Badge variant="outline">نامحدود</Badge>
+                      ) : (
+                        <Badge variant={exhausted ? "destructive" : "secondary"}>
+                          {fmt(Number(s.used_today ?? 0), 0)} / {fmt(Number(s.daily_quota ?? 0), 0)}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Button
                         size="sm"
                         variant={used ? "secondary" : "outline"}
-                        disabled={used || busyKey === key}
+                        disabled={used || busyKey === key || exhausted}
+                        title={exhausted ? "سهمیه روزانه این کانال تمام شده است" : undefined}
                         onClick={() => markAsUsed(s)}
                       >
                         {busyKey === key ? (

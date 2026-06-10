@@ -3627,6 +3627,7 @@ export type Database = {
       marketing_channels: {
         Row: {
           created_at: string
+          daily_quota: number | null
           id: string
           is_active: boolean
           name: string
@@ -3636,6 +3637,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_quota?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -3645,6 +3647,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_quota?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -7405,6 +7408,64 @@ export type Database = {
         }
         Relationships: []
       }
+      product_computed_prices_public: {
+        Row: {
+          computed_at: string | null
+          computed_by: string | null
+          final_sale_price: number | null
+          id: string | null
+          pricing_rule_id: string | null
+          product_id: string | null
+          rounded_sale_price: number | null
+          sale_price_type_id: string | null
+          source: string | null
+        }
+        Insert: {
+          computed_at?: string | null
+          computed_by?: string | null
+          final_sale_price?: number | null
+          id?: string | null
+          pricing_rule_id?: string | null
+          product_id?: string | null
+          rounded_sale_price?: number | null
+          sale_price_type_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          computed_at?: string | null
+          computed_by?: string | null
+          final_sale_price?: number | null
+          id?: string | null
+          pricing_rule_id?: string | null
+          product_id?: string | null
+          rounded_sale_price?: number | null
+          sale_price_type_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       publish_recipients_view: {
         Row: {
           full_name: string | null
@@ -7488,15 +7549,18 @@ export type Database = {
           channel_id: string | null
           channel_name: string | null
           channel_weight: number | null
+          daily_quota: number | null
           label_weight_sum: number | null
           product_id: string | null
           product_name: string | null
           qty_90d: number | null
           recency_factor: number | null
+          remaining_today: number | null
           score: number | null
           sku: string | null
           stock_factor: number | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
+          used_today: number | null
         }
         Relationships: []
       }
@@ -7977,15 +8041,18 @@ export type Database = {
           channel_id: string | null
           channel_name: string | null
           channel_weight: number | null
+          daily_quota: number | null
           label_weight_sum: number | null
           product_id: string | null
           product_name: string | null
           qty_90d: number | null
           recency_factor: number | null
+          remaining_today: number | null
           score: number | null
           sku: string | null
           stock_factor: number | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
+          used_today: number | null
         }[]
         SetofOptions: {
           from: "*"
@@ -9439,7 +9506,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
       base_currency: "toman" | "usd" | "aed"
-      currency_code: "toman" | "usd" | "aed"
+      currency_code: "toman" | "usd" | "aed" | "usd_us"
       dynamic_column_data_type:
         | "text"
         | "number"
@@ -9627,7 +9694,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "manager", "sales", "accountant", "viewer"],
       base_currency: ["toman", "usd", "aed"],
-      currency_code: ["toman", "usd", "aed"],
+      currency_code: ["toman", "usd", "aed", "usd_us"],
       dynamic_column_data_type: [
         "text",
         "number",

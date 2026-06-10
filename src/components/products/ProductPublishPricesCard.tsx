@@ -25,8 +25,8 @@ export function ProductPublishPricesCard({ productId }: Props) {
   const { data: prices, isLoading, refetch } = useQuery({
     queryKey: ["product-computed-prices", productId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_computed_prices")
+      const { data, error } = await (supabase as any)
+        .from("product_computed_prices_public")
         .select("rounded_sale_price, computed_at, source, sale_price_type:sale_price_types(id, title, sort_order)")
         .eq("product_id", productId);
       if (error) throw error;

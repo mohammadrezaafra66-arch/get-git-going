@@ -25,6 +25,32 @@ export const Route = createFileRoute("/register")({
     }
   },
   component: RegisterPage,
+  head: () => ({
+    meta: [
+      { title: "ثبت‌نام در افراکالا" },
+      {
+        name: "description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:title", content: "ثبت‌نام در افراکالا" },
+      {
+        property: "og:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/register" },
+      { name: "twitter:title", content: "ثبت‌نام در افراکالا" },
+      {
+        name: "twitter:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+    ],
+    links: [
+      { rel: "canonical", href: "https://get-git-going.lovable.app/register" },
+    ],
+  }),
 });
 
 const schema = z.object({
@@ -108,7 +134,7 @@ function RegisterPage() {
   };
 
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
@@ -176,6 +202,6 @@ function RegisterPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

@@ -373,11 +373,55 @@ function ProductTab(props: {
     staleTime: 30_000,
   });
 
+  // Fetch all sale prices (per price type) for products currently in the search result list,
+  // so the user can see every price (نقدی، اعتباری، اقساطی، …) alongside each product and
+  // pick one directly from the list — not just the cash price.
+  const productIds = useMemo(
+    () => (productsQuery.data ?? []).map((p: { id: string }) => p.id),
+    [productsQuery.data],
+  );
+  const pricesByProductQuery = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["quote-product-search-prices", productIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_computed_prices_public")
+        .select("product_id, sale_price_type_id, final_sale_price, rounded_sale_price, computed_at")
+        .in("product_id", productIds);
+      if (error) throw error;
+      const map = new Map<string, Array<{ sale_price_type_id: string; price: number }>>();
+      for (const row of (data ?? []) as Array<{
+        product_id: string | null;
+        sale_price_type_id: string | null;
+        final_sale_price: number | null;
+        rounded_sale_price: number | null;
+      }>) {
+        if (!row.product_id || !row.sale_price_type_id) continue;
+        const price = Number(row.rounded_sale_price ?? row.final_sale_price ?? 0);
+        if (!(price > 0)) continue;
+        const list = map.get(row.product_id) ?? [];
+        list.push({ sale_price_type_id: row.sale_price_type_id, price });
+        map.set(row.product_id, list);
+      }
+      return map;
+    },
+    staleTime: 30_000,
+  });
+
   // load latest sale price when product + price type are selected
   useEffect(() => {
     let cancelled = false;
     setPriceMissing(null);
     if (!selected || !salePriceTypeId) return;
+    // If the price is already known from the search list, skip the extra query.
+    const cached = pricesByProductQuery.data?.get(selected.id)?.find(
+      (p) => p.sale_price_type_id === salePriceTypeId,
+    );
+    if (cached) {
+      setUnitPrice(cached.price);
+      setPriceMissing(null);
+      return;
+    }
     (async () => {
       const { data, error } = await supabase
         .from("product_sale_price_history")
@@ -400,9 +444,11 @@ function ProductTab(props: {
       }
     })();
     return () => { cancelled = true; };
-  }, [selected, salePriceTypeId]);
+  }, [selected, salePriceTypeId, pricesByProductQuery.data]);
 
   const canSubmit = !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0;
+  const priceTypeTitle = (id: string) =>
+    props.priceTypes.find((t) => t.id === id)?.title ?? "—";
 
   return (
     <div className="space-y-3">
@@ -423,20 +469,51 @@ function ProductTab(props: {
             ) : (productsQuery.data ?? []).length === 0 ? (
               <div className="text-xs text-muted-foreground">محصولی پیدا نشد.</div>
             ) : (
-              <div className="max-h-64 overflow-y-auto rounded-md border border-border divide-y divide-border">
-                {(productsQuery.data ?? []).map((p: { id: string; name: string; sku: string | null }) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
-                    className="flex w-full items-center justify-between gap-2 p-2 text-right hover:bg-muted/40"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground font-mono">{p.sku ?? "—"}</div>
+              <div className="max-h-80 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {(productsQuery.data ?? []).map((p: { id: string; name: string; sku: string | null }) => {
+                  const prices = pricesByProductQuery.data?.get(p.id) ?? [];
+                  return (
+                    <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
+                        className="flex w-full items-center justify-between gap-2 text-right"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{p.name}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{p.sku ?? "—"}</div>
+                        </div>
+                      </button>
+                      {prices.length === 0 ? (
+                        <div className="text-[11px] text-muted-foreground">
+                          {pricesByProductQuery.isLoading ? "در حال دریافت قیمت‌ها..." : "قیمت فروش ثبت‌شده‌ای ندارد."}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {prices.map((pr) => (
+                            <button
+                              key={`${p.id}:${pr.sale_price_type_id}`}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelected({ id: p.id, name: p.name, sku: p.sku });
+                                setSalePriceTypeId(pr.sale_price_type_id);
+                                setUnitPrice(pr.price);
+                                setPriceMissing(null);
+                              }}
+                              className="rounded-md border border-border bg-card px-2 py-1 text-[11px] hover:border-primary hover:bg-primary/10"
+                              title="انتخاب این نوع قیمت"
+                            >
+                              <span className="text-muted-foreground">{priceTypeTitle(pr.sale_price_type_id)}: </span>
+                              <span className="font-medium">{formatNumber(pr.price)}</span>
+                              <span className="mr-1 text-[10px] text-muted-foreground">تومان</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )
           )}
@@ -453,6 +530,37 @@ function ProductTab(props: {
                 تغییر محصول
               </Button>
             </div>
+            {(() => {
+              const prices = pricesByProductQuery.data?.get(selected.id) ?? [];
+              if (prices.length === 0) return null;
+              return (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {prices.map((pr) => {
+                    const active = pr.sale_price_type_id === salePriceTypeId;
+                    return (
+                      <button
+                        key={pr.sale_price_type_id}
+                        type="button"
+                        onClick={() => {
+                          setSalePriceTypeId(pr.sale_price_type_id);
+                          setUnitPrice(pr.price);
+                          setPriceMissing(null);
+                        }}
+                        className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card hover:border-primary hover:bg-primary/10"
+                        }`}
+                      >
+                        <span className="text-muted-foreground">{priceTypeTitle(pr.sale_price_type_id)}: </span>
+                        <span className="font-medium">{formatNumber(pr.price)}</span>
+                        <span className="mr-1 text-[10px] text-muted-foreground">تومان</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

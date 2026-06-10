@@ -6,6 +6,7 @@ import {
   Megaphone, Edit3, Monitor, TrendingUp, Trophy, Wallet, Coins,
   Plus, Tag, Layers, Bookmark, Bell, Calculator, Sparkles, Banknote,
   AlertTriangle, Send, Share2, Receipt, CreditCard, BadgeCheck,
+  LifeBuoy,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -48,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   // ۱) داشبورد
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
+  { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   { to: "/products", label: "محصولات", icon: Package, module: "products", group: "products-pricing", subgroup: "pp-catalog" },
@@ -62,6 +64,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/pricing/quick-price", label: "قیمت سریع", icon: Sparkles, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
   { to: "/pricing/calculator", label: "ماشین‌حساب قیمت", icon: Calculator, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
   { to: "/pricing/my-workbench", label: "کارگاه قیمت من", icon: Edit3, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
+  { to: "/pricing/attention", label: "فرصت جبران", icon: LifeBuoy, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
   { to: "/pricing/price-alerts", label: "هشدارهای قیمت", icon: AlertTriangle, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
   { to: "/pricing/market-intelligence", label: "هوشمند بازار", icon: TrendingUp, module: "pricing", group: "products-pricing", subgroup: "pp-pricing" },
   { to: "/pricing/product-recommendations", label: "پیشنهاد محصولات", icon: Sparkles, module: "products", group: "products-pricing", subgroup: "pp-pricing", adminOnly: true },

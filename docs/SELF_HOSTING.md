@@ -205,6 +205,8 @@ docker compose ps
 
 مرجع کامل: `deploy/app/README.md`.
 
+> **تفاوت build target:** `vite.config.ts` دیگر گزینهٔ `cloudflare` ندارد. کنترل Node SSR در self-host فقط از طریق متغیر `SELF_HOST_NODE=1` در Dockerfile انجام می‌شود. build دستی self-host خارج از Docker: `SELF_HOST_NODE=1 bun run build`.
+
 > قبل از production مقادیر `.env.production` باید توسط مسئول فنی تکمیل شوند (Supabase URL داخلی، anon key، service role key فقط server-side، API timeout ≥ ۱۵ ثانیه).
 
 ---
