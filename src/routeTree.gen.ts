@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
@@ -164,6 +165,11 @@ import { Route as ApiPublicBotDynamicTablesTableIdRowsRowIdRouteImport } from '.
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
   id: '/unauthorized',
   path: '/unauthorized',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -974,6 +980,7 @@ export interface FileRoutesByFullPath {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
@@ -1126,6 +1133,7 @@ export interface FileRoutesByTo {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
@@ -1277,6 +1285,7 @@ export interface FileRoutesById {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/academy': typeof AppAcademyRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
@@ -1431,6 +1440,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
     | '/audit-logs'
@@ -1583,6 +1593,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
     | '/audit-logs'
@@ -1733,6 +1744,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/_app/academy'
     | '/_app/audit-logs'
@@ -1887,6 +1899,7 @@ export interface RootRouteChildren {
   PendingApprovalRoute: typeof PendingApprovalRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
@@ -1906,6 +1919,13 @@ declare module '@tanstack/react-router' {
       path: '/unauthorized'
       fullPath: '/unauthorized'
       preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -3394,6 +3414,7 @@ const rootRouteChildren: RootRouteChildren = {
   PendingApprovalRoute: PendingApprovalRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
