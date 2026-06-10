@@ -25,6 +25,32 @@ export const Route = createFileRoute("/register")({
     }
   },
   component: RegisterPage,
+  head: () => ({
+    meta: [
+      { title: "ثبت‌نام در افراکالا" },
+      {
+        name: "description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:title", content: "ثبت‌نام در افراکالا" },
+      {
+        property: "og:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/register" },
+      { name: "twitter:title", content: "ثبت‌نام در افراکالا" },
+      {
+        name: "twitter:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+    ],
+    links: [
+      { rel: "canonical", href: "https://get-git-going.lovable.app/register" },
+    ],
+  }),
 });
 
 const schema = z.object({
