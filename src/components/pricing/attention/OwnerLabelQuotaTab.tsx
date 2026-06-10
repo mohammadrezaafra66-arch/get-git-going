@@ -187,7 +187,6 @@ export function OwnerLabelQuotaTab() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const summary = overviewQ.data?.summary;
   const remaining = summary?.remaining ?? 0;
-  const exhausted = summary?.isMet ?? false;
 
   function resetPage() {
     setPage(1);
