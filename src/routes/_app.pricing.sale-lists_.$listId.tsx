@@ -970,7 +970,7 @@ function ZeroPriceWarning({
         }
       }
       const computed = new Map<string, number>();
-      for (const r of computedRes.data ?? []) {
+      for (const r of ((computedRes.data ?? []) as Array<{ product_id: string; rounded_sale_price: number | string | null }>)) {
         computed.set(r.product_id, Number(r.rounded_sale_price ?? 0) || 0);
       }
       return { latestHistory, computed };
