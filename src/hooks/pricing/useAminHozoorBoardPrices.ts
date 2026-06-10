@@ -95,7 +95,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     queryKey: ["amin-board-computed", productIds, opts.salePriceTypeId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("product_computed_prices")
+        .from("product_computed_prices_public" as never)
         .select("product_id, sale_price_type_id, rounded_sale_price, final_sale_price, computed_at")
         .in("product_id", productIds)
         .eq("sale_price_type_id", opts.salePriceTypeId!);

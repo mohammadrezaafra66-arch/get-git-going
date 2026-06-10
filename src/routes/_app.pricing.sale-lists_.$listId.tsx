@@ -565,7 +565,7 @@ function SaleListDetailPage() {
         if (productIds.length > 0 && list.sale_price_type_id) {
           // Canonical source: product_computed_prices (same as sales search & workshop).
           const { data: priceRows } = await supabase
-            .from("product_computed_prices")
+            .from("product_computed_prices_public" as never)
             .select("product_id, rounded_sale_price, computed_at")
             .eq("sale_price_type_id", list.sale_price_type_id)
             .in("product_id", productIds)
@@ -958,7 +958,7 @@ function ZeroPriceWarning({
           .in("product_id", productIds)
           .order("created_at", { ascending: false }),
         supabase
-          .from("product_computed_prices")
+          .from("product_computed_prices_public" as never)
           .select("product_id, rounded_sale_price")
           .eq("sale_price_type_id", salePriceTypeId)
           .in("product_id", productIds),

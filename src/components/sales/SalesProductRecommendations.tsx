@@ -36,7 +36,7 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
     queryKey: ["sales-recs-prices", ids],
     queryFn: async (): Promise<Record<string, PriceRow[]>> => {
       const { data, error } = await supabase
-        .from("product_computed_prices")
+        .from("product_computed_prices_public" as never)
         .select("product_id, rounded_sale_price, sale_price_type_id, sale_price_types!inner(title)")
         .in("product_id", ids);
       if (error) throw error;
