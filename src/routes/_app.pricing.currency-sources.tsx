@@ -18,13 +18,15 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { useServerFn } from "@tanstack/react-start";
+import { autoFetchCurrencyRate } from "@/lib/currency-sources.functions";
 
 export const Route = createFileRoute("/_app/pricing/currency-sources")({
   beforeLoad: async () => { await requirePermission("pricing", "view"); },
   component: CurrencySourcesPage,
 });
 
-type SourceRow = { id: string; name: string; url: string | null; api_key: string | null; is_active: boolean; created_at: string };
+type SourceRow = { id: string; name: string; url: string | null; has_api_key: boolean; is_active: boolean; created_at: string };
 
 function CurrencySourcesPage() {
   const { roles } = useAuth();
@@ -42,7 +44,15 @@ function CurrencySourcesPage() {
         .select("id, name, url, api_key, is_active, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SourceRow[];
+      // Strip api_key from the client-side row shape; only expose a boolean.
+      return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+        id: r.id as string,
+        name: r.name as string,
+        url: (r.url as string | null) ?? null,
+        has_api_key: Boolean(r.api_key),
+        is_active: Boolean(r.is_active),
+        created_at: r.created_at as string,
+      })) as SourceRow[];
     },
     staleTime: 60_000,
   });
