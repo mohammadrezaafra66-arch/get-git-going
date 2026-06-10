@@ -526,6 +526,9 @@ function DesktopRow({
 
   return (
     <TableRow className={isDirty ? "bg-amber-50 dark:bg-amber-950/20" : undefined}>
+      <TableCell className="text-center text-sm text-muted-foreground">
+        {formatNumber(rowIndex)}
+      </TableCell>
       <TableCell className="font-medium">
         <div>{row.name}</div>
         <div className="text-xs text-muted-foreground" dir="ltr">{row.sku ?? "—"}</div>
@@ -741,7 +744,10 @@ function MobileCard({
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{row.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">#{formatNumber(rowIndex)}</span>
+              <span className="truncate font-medium">{row.name}</span>
+            </div>
             <div className="truncate text-xs text-muted-foreground" dir="ltr">
               {row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}
             </div>
