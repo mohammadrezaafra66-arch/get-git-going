@@ -48,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   // ۱) داشبورد
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
+  { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   { to: "/products", label: "محصولات", icon: Package, module: "products", group: "products-pricing", subgroup: "pp-catalog" },
