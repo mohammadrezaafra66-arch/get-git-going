@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -174,6 +174,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     staleTime: 5 * 60_000,
   });
+
+  // Default to the first active price type if the user hasn't picked one yet.
+  useEffect(() => {
+    const cur = form.getValues("sale_price_type_id");
+    if (!cur && priceTypes.length > 0) {
+      form.setValue("sale_price_type_id", priceTypes[0].id, { shouldValidate: false });
+    }
+  }, [priceTypes, form]);
 
   // Settlement types (active only, sorted)
   const { data: settlementTypes = [] } = useQuery({
@@ -657,6 +665,10 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                 form={form}
                 remove={remove}
                 salePriceTypeId={salePriceTypeId}
+                priceTypes={priceTypes}
+                onChangeSalePriceType={(id) =>
+                  form.setValue("sale_price_type_id", id, { shouldValidate: true })
+                }
               />
             ))}
           </div>
@@ -701,9 +713,11 @@ interface ItemRowProps {
   form: ReturnType<typeof useForm<FormValues>>;
   remove: (i: number) => void;
   salePriceTypeId: string;
+  priceTypes: Array<{ id: string; title: string; code: string | null }>;
+  onChangeSalePriceType: (id: string) => void;
 }
 
-function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
+function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSalePriceType }: ItemRowProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search, 350);
@@ -791,6 +805,28 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
 
   const errors = form.formState.errors.items?.[index];
 
+  // همه قیمت‌های فعال محصول (برای نمایش و انتخاب نوع قیمت)
+  const { data: productPrices = [] } = useQuery({
+    queryKey: ["invoice-form-item-prices", productId],
+    enabled: !!productId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("product_computed_prices_public")
+        .select("sale_price_type_id, rounded_sale_price")
+        .eq("product_id", productId);
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const r of (data ?? []) as Array<{ sale_price_type_id: string; rounded_sale_price: number | string }>) {
+        const n = Number(r.rounded_sale_price);
+        if (Number.isFinite(n) && n > 0) map.set(r.sale_price_type_id, n);
+      }
+      return priceTypes
+        .filter((t) => map.has(t.id))
+        .map((t) => ({ id: t.id, title: t.title, price: map.get(t.id)! }));
+    },
+  });
+
   return (
     <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
       <div className="flex items-start justify-between gap-2">
@@ -852,6 +888,37 @@ function ItemRow({ index, form, remove, salePriceTypeId }: ItemRowProps) {
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
+
+      {productId && productPrices.length > 0 && (
+        <div className="space-y-1">
+          <Label className="text-xs">انواع قیمت این محصول</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {productPrices.map((p) => {
+              const active = p.id === salePriceTypeId;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    onChangeSalePriceType(p.id);
+                    form.setValue(`items.${index}.unit_price`, p.price, { shouldValidate: true });
+                  }}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-xs transition",
+                    active
+                      ? "border-primary bg-primary/10 text-primary font-semibold"
+                      : "border-border bg-background hover:bg-accent",
+                  )}
+                >
+                  <span>{p.title}</span>
+                  <span className="mx-1 text-muted-foreground">·</span>
+                  <span className="tabular-nums">{formatNumber(p.price)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="space-y-1">
