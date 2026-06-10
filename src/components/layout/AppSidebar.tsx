@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,7 @@ export function AppSidebar() {
   const { roles, user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const router = useRouter();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeModule, setActiveModule] = useState<PrimaryModuleKey>(
@@ -271,6 +272,16 @@ export function AppSidebar() {
                     aria-label={m.label}
                     aria-current={isActive ? "page" : undefined}
                     disabled={disabled}
+                    onMouseEnter={() => {
+                      if (!disabled && m.defaultTo) {
+                        router.preloadRoute({ to: m.defaultTo }).catch(() => {});
+                      }
+                    }}
+                    onFocus={() => {
+                      if (!disabled && m.defaultTo) {
+                        router.preloadRoute({ to: m.defaultTo }).catch(() => {});
+                      }
+                    }}
                     onClick={() => {
                       setActiveModule(m.key);
                       if (m.defaultTo && visible.some((i) => i.to === m.defaultTo)) {

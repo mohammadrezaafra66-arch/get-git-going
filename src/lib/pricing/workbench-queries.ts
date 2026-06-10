@@ -152,48 +152,82 @@ export async function fetchWorkbenchRowsV2(opts: {
 }): Promise<{ rows: WorkbenchRowV2[]; total: number }> {
   const { filters, page, pageSize, ownedOnly } = opts;
 
-  // 1) ساخت مجموعه‌های pre-filter productIds
+  // 1) ساخت مجموعه‌های pre-filter productIds — همه pre-filterها مستقل‌اند
+  // و به‌صورت موازی fetch می‌شوند تا latency اولیه کم شود.
+  const ownedOnlyP = ownedOnly
+    ? fetchProductIdsByOwner({ ownerId: ownedOnly.userId })
+    : Promise.resolve(null as Set<string> | null);
+
+  const ownerRestrictP: Promise<Set<string> | null> =
+    filters.ownerId !== "all" && filters.ownerId !== "none"
+      ? fetchProductIdsByOwner({ ownerId: filters.ownerId })
+      : Promise.resolve(null);
+
+  const ownerNegP: Promise<Set<string> | null> =
+    filters.ownerId === "none"
+      ? fetchAllOwnedProductIds()
+      : Promise.resolve(null);
+
+  const labelRestrictP: Promise<Set<string> | null> =
+    filters.labelId === "any"
+      ? fetchAllLabeledProductIds()
+      : filters.labelId !== "all" && filters.labelId !== "none"
+        ? fetchProductIdsByLabel(filters.labelId)
+        : Promise.resolve(null);
+
+  const labelNegP: Promise<Set<string> | null> =
+    filters.labelId === "none"
+      ? fetchAllLabeledProductIds()
+      : Promise.resolve(null);
+
+  const salePriceHasP: Promise<Set<string> | null> =
+    filters.salePrice === "has" || filters.salePrice === "missing"
+      ? fetchProductIdsBySalePrice("has")
+      : Promise.resolve(null);
+
+  const catIdsP = resolveCategoryIds(filters);
+
+  const [
+    ownedOnlySet,
+    ownerRestrict,
+    ownerNeg,
+    labelRestrict,
+    labelNeg,
+    saleHas,
+    catIds,
+  ] = await Promise.all([
+    ownedOnlyP,
+    ownerRestrictP,
+    ownerNegP,
+    labelRestrictP,
+    labelNegP,
+    salePriceHasP,
+    catIdsP,
+  ]);
+
   let restrict: Set<string> | null = null;
   const addRestrict = (s: Set<string>) => {
     restrict = restrict === null ? s : intersect(restrict, s);
   };
-
-  if (ownedOnly) {
-    addRestrict(await fetchProductIdsByOwner({ ownerId: ownedOnly.userId }));
+  if (ownedOnlySet) {
+    addRestrict(ownedOnlySet);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // owner filter
-  if (filters.ownerId === "none") {
-    const all = await fetchAllOwnedProductIds();
-    // negative set -> apply after main query
-    (opts as any).__notOwners = all;
-  } else if (filters.ownerId !== "all") {
-    addRestrict(await fetchProductIdsByOwner({ ownerId: filters.ownerId }));
+  if (ownerRestrict) {
+    addRestrict(ownerRestrict);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // label filter
-  if (filters.labelId === "none") {
-    (opts as any).__notLabels = await fetchAllLabeledProductIds();
-  } else if (filters.labelId === "any") {
-    addRestrict(await fetchAllLabeledProductIds());
-    if (restrict!.size === 0) return { rows: [], total: 0 };
-  } else if (filters.labelId !== "all") {
-    addRestrict(await fetchProductIdsByLabel(filters.labelId));
+  if (labelRestrict) {
+    addRestrict(labelRestrict);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // sale price filter
-  if (filters.salePrice === "has") {
-    addRestrict(await fetchProductIdsBySalePrice("has"));
+  if (filters.salePrice === "has" && saleHas) {
+    addRestrict(saleHas);
     if (restrict!.size === 0) return { rows: [], total: 0 };
-  } else if (filters.salePrice === "missing") {
-    (opts as any).__notPriced = await fetchProductIdsBySalePrice("has");
   }
-
-  // category
-  const catIds = await resolveCategoryIds(filters);
+  if (ownerNeg) (opts as any).__notOwners = ownerNeg;
+  if (labelNeg) (opts as any).__notLabels = labelNeg;
+  if (filters.salePrice === "missing" && saleHas) (opts as any).__notPriced = saleHas;
 
   // 2) base products query
   let qb: any = supabase
