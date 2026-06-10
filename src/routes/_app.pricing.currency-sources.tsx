@@ -204,7 +204,7 @@ function SourceDialog({ open, onOpenChange, editing, onSaved }: { open: boolean;
                 }
                 const op = editing
                   ? supabase.from("currency_sources").update(payload as never).eq("id", editing.id)
-                  : supabase.from("currency_sources").insert({ name: String(payload.name), ...(payload as never) } as never);
+                  : supabase.from("currency_sources").insert(payload as never);
                 const { error } = await op;
                 if (error) throw error;
                 const { data: u } = await supabase.auth.getUser();
