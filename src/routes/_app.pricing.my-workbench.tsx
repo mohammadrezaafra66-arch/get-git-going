@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import {
   Check,
   CircleDot,
   Tag,
+  LifeBuoy,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -29,20 +30,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -100,47 +90,34 @@ function WorkbenchPage() {
   const [filters, setFilters] = useState<WorkbenchFilters>(DEFAULT_WORKBENCH_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(0);
+  const [showAllInOnePage, setShowAllInOnePage] = useState(false);
   const [stepPct, setStepPct] = useState<number>(1);
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState<Record<string, number>>({});
   const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
 
-  const brandsQ = useQuery({
-    queryKey: ["brands-lite"],
-    queryFn: fetchBrandsLite,
-    staleTime: 60_000,
-  });
-  const catsQ = useQuery({
-    queryKey: ["categories-lite"],
-    queryFn: fetchCategoriesLite,
-    staleTime: 60_000,
-  });
-  const labelsQ = useQuery({
-    queryKey: ["labels-lite"],
-    queryFn: fetchLabelsLite,
-    staleTime: 60_000,
-  });
-  const ownersQ = useQuery({
-    queryKey: ["product-owners-lite"],
-    queryFn: fetchAllProductOwners,
-    staleTime: 60_000,
-  });
+  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
+  const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
+  const labelsQ = useQuery({ queryKey: ["labels-lite"], queryFn: fetchLabelsLite, staleTime: 60_000 });
+  const ownersQ = useQuery({ queryKey: ["product-owners-lite"], queryFn: fetchAllProductOwners, staleTime: 60_000 });
 
   const filtersWithSearch: WorkbenchFilters = useMemo(
     () => ({ ...filters, search: dSearch }),
     [filters, dSearch],
   );
 
+  const effectivePageSize = showAllInOnePage ? 10_000 : PAGE_SIZE;
+
   const listQ = useQuery({
-    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page],
+    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page, effectivePageSize],
     enabled: !!user?.id,
     queryFn: () =>
       fetchWorkbenchRowsV2({
         filters: filtersWithSearch,
         ownedOnly: showAll && isPrivileged ? null : { userId: user!.id },
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: effectivePageSize,
       }),
     staleTime: 15_000,
   });
@@ -148,16 +125,14 @@ function WorkbenchPage() {
   // reset dirty وقتی فیلتر/صفحه عوض میشه
   useEffect(() => {
     setDirty({});
-  }, [filtersWithSearch, showAll, page]);
+  }, [filtersWithSearch, showAll, page, showAllInOnePage]);
 
   // reset page وقتی فیلتر تغییر کند
-  useEffect(() => {
-    setPage(0);
-  }, [filtersWithSearch, showAll]);
+  useEffect(() => { setPage(0); }, [filtersWithSearch, showAll, showAllInOnePage]);
 
   const rows: WorkbenchRowV2[] = listQ.data?.rows ?? [];
   const total = listQ.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
   // Map English engine errors → Persian row-level messages.
@@ -177,7 +152,10 @@ function WorkbenchPage() {
   }
 
   // Scope chips: derived from existing showAll + filters.ownerId, no new state.
-  const scope: WorkbenchScope = !showAll ? "mine" : filters.ownerId === "none" ? "no-owner" : "all";
+  const scope: WorkbenchScope =
+    !showAll ? "mine"
+    : filters.ownerId === "none" ? "no-owner"
+    : "all";
 
   function handleScopeChange(next: WorkbenchScope) {
     if (next === "mine") {
@@ -322,6 +300,12 @@ function WorkbenchPage() {
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
       <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm" className="me-2">
+          <Link to="/pricing/attention">
+            <LifeBuoy className="ms-1 h-4 w-4" />
+            فرصت جبران
+          </Link>
+        </Button>
         <QuickAddCustomerDialog />
       </div>
 
@@ -336,19 +320,13 @@ function WorkbenchPage() {
         <TabsContent value="workbench" className="space-y-4">
           <WorkbenchFiltersBar
             filters={filters}
-            onChange={(f) => {
-              setFilters(f);
-              setPage(0);
-            }}
+            onChange={(f) => { setFilters(f); setPage(0); }}
             brands={brandsQ.data ?? []}
             categories={catsQ.data ?? []}
             labels={labelsQ.data ?? []}
             owners={ownersQ.data ?? []}
             search={search}
-            onSearchChange={(v) => {
-              setSearch(v);
-              setPage(0);
-            }}
+            onSearchChange={(v) => { setSearch(v); setPage(0); }}
             scope={scope}
             onScopeChange={handleScopeChange}
             canShowAll={isPrivileged}
@@ -359,9 +337,7 @@ function WorkbenchPage() {
               <div className="min-w-[160px]">
                 <Label className="mb-1 block text-xs">گام تغییر قیمت</Label>
                 <Select value={String(stepPct)} onValueChange={(v) => setStepPct(Number(v))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0.5">۰٫۵٪</SelectItem>
                     <SelectItem value="1">۱٪</SelectItem>
@@ -375,10 +351,7 @@ function WorkbenchPage() {
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={showAll}
-                    onCheckedChange={(v) => {
-                      setShowAll(v);
-                      setPage(0);
-                    }}
+                    onCheckedChange={(v) => { setShowAll(v); setPage(0); }}
                     id="show-all"
                   />
                   <Label htmlFor="show-all" className="text-sm">
@@ -386,114 +359,116 @@ function WorkbenchPage() {
                   </Label>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={showAllInOnePage}
+                  onCheckedChange={(v) => { setShowAllInOnePage(v); setPage(0); }}
+                  id="show-all-one-page"
+                />
+                <Label htmlFor="show-all-one-page" className="text-sm">
+                  نمایش همه در یک صفحه
+                </Label>
+              </div>
             </CardContent>
           </Card>
 
           {listQ.isLoading ? (
-            <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-              <Loader2 className="ms-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
-            </div>
-          ) : rows.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center text-sm text-muted-foreground">
-                محصولی با این فیلترها پیدا نشد.
-                <br />
-                {!showAll && "اگر مسئول هیچ محصولی نیستید، با مدیر تماس بگیرید."}
-              </CardContent>
-            </Card>
-          ) : isMobile ? (
-            <div className="space-y-3">
-              {rows.map((row) => (
-                <MobileCard
-                  key={row.id}
-                  row={row}
-                  dirty={dirty[row.id]}
-                  stepPct={stepPct}
-                  saving={saving === row.id}
-                  justSaved={!!savedFlash[row.id]}
-                  canLabel={canLabel}
-                  publishError={publishErrors[row.id]}
-                  onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
-                  onPrice={(v) => setRowPrice(row, v)}
-                  onBump={(p) => bumpPrice(row, p)}
-                  onStock={(s) => setRowStock(row, s)}
-                  onClear={() => clearRow(row.id)}
-                  onSave={() => saveRow(row)}
-                />
-              ))}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">محصول</TableHead>
-                      <TableHead className="text-right">برند</TableHead>
-                      <TableHead className="text-right">دسته</TableHead>
-                      <TableHead className="text-right">قیمت خرید</TableHead>
-                      <TableHead className="text-right">ارز</TableHead>
-                      <TableHead className="text-right">قیمت فروش</TableHead>
-                      <TableHead className="text-right">موجودی</TableHead>
-                      <TableHead className="text-right">وضعیت</TableHead>
-                      <TableHead className="text-right">مسئول / برچسب</TableHead>
-                      <TableHead className="text-right">عملیات</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <DesktopRow
-                        key={row.id}
-                        row={row}
-                        dirty={dirty[row.id]}
-                        stepPct={stepPct}
-                        saving={saving === row.id}
-                        canLabel={canLabel}
-                        publishError={publishErrors[row.id]}
-                        onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
-                        onPrice={(v) => setRowPrice(row, v)}
-                        onBump={(p) => bumpPrice(row, p)}
-                        onStock={(s) => setRowStock(row, s)}
-                        onClear={() => clearRow(row.id)}
-                        onSave={() => saveRow(row)}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+        <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
+          <Loader2 className="ms-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
+        </div>
+      ) : rows.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center text-sm text-muted-foreground">
+            محصولی با این فیلترها پیدا نشد.
+            <br />
+            {!showAll && "اگر مسئول هیچ محصولی نیستید، با مدیر تماس بگیرید."}
+          </CardContent>
+        </Card>
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {rows.map((row, index) => (
+            <MobileCard
+              key={row.id}
+              rowIndex={(page * effectivePageSize) + index + 1}
+              row={row}
+              dirty={dirty[row.id]}
+              stepPct={stepPct}
+              saving={saving === row.id}
+              justSaved={!!savedFlash[row.id]}
+              canLabel={canLabel}
+              publishError={publishErrors[row.id]}
+              onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
+              onPrice={(v) => setRowPrice(row, v)}
+              onBump={(p) => bumpPrice(row, p)}
+              onStock={(s) => setRowStock(row, s)}
+              onClear={() => clearRow(row.id)}
+              onSave={() => saveRow(row)}
+            />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right w-12">ردیف</TableHead>
+                  <TableHead className="text-right">محصول</TableHead>
+                  <TableHead className="text-right">برند</TableHead>
+                  <TableHead className="text-right">دسته</TableHead>
+                  <TableHead className="text-right">قیمت خرید</TableHead>
+                  <TableHead className="text-right">ارز</TableHead>
+                  <TableHead className="text-right">قیمت فروش</TableHead>
+                  <TableHead className="text-right">موجودی</TableHead>
+                  <TableHead className="text-right">وضعیت</TableHead>
+                  <TableHead className="text-right">مسئول / برچسب</TableHead>
+                  <TableHead className="text-right">عملیات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, index) => (
+                  <DesktopRow
+                    key={row.id}
+                    rowIndex={(page * effectivePageSize) + index + 1}
+                    row={row}
+                    dirty={dirty[row.id]}
+                    stepPct={stepPct}
+                    saving={saving === row.id}
+                    canLabel={canLabel}
+                    publishError={publishErrors[row.id]}
+                    onLabel={() => setLabelTarget({ id: row.id, name: row.name })}
+                    onPrice={(v) => setRowPrice(row, v)}
+                    onBump={(p) => bumpPrice(row, p)}
+                    onStock={(s) => setRowStock(row, s)}
+                    onClear={() => clearRow(row.id)}
+                    onSave={() => saveRow(row)}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
-          {/* صفحه‌بندی */}
-          {total > PAGE_SIZE && (
-            <div className="flex items-center justify-between text-sm">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                <ChevronRight className="ms-1 h-4 w-4" /> قبلی
-              </Button>
-              <div className="text-muted-foreground">
-                صفحه {formatNumber(page + 1)} از {formatNumber(totalPages)} — مجموع{" "}
-                {formatNumber(total)} محصول
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                بعدی <ChevronLeft className="me-1 h-4 w-4" />
-              </Button>
-            </div>
-          )}
+      {/* صفحه‌بندی */}
+      {total > effectivePageSize && (
+        <div className="flex items-center justify-between text-sm">
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            <ChevronRight className="ms-1 h-4 w-4" /> قبلی
+          </Button>
+          <div className="text-muted-foreground">
+            صفحه {formatNumber(page + 1)} از {formatNumber(totalPages)} — مجموع {formatNumber(total)} محصول
+          </div>
+          <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            بعدی <ChevronLeft className="me-1 h-4 w-4" />
+          </Button>
+        </div>
+      )}
         </TabsContent>
 
         <TabsContent value="health">
           <HealthReportTab
-            ownedOnly={showAll && isPrivileged ? null : user?.id ? { userId: user.id } : null}
+            ownedOnly={showAll && isPrivileged ? null : (user?.id ? { userId: user.id } : null)}
           />
         </TabsContent>
       </Tabs>
@@ -521,9 +496,7 @@ function WorkbenchPage() {
         productId={labelTarget?.id ?? null}
         productName={labelTarget?.name ?? ""}
         open={!!labelTarget}
-        onOpenChange={(o) => {
-          if (!o) setLabelTarget(null);
-        }}
+        onOpenChange={(o) => { if (!o) setLabelTarget(null); }}
       />
     </div>
   );
@@ -533,20 +506,10 @@ function WorkbenchPage() {
 /*                       Desktop Row                              */
 /* ============================================================ */
 function DesktopRow({
-  row,
-  dirty,
-  stepPct,
-  saving,
-  canLabel,
-  publishError,
-  onLabel,
-  onPrice,
-  onBump,
-  onStock,
-  onClear,
-  onSave,
+  row, rowIndex, dirty, stepPct, saving, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -571,17 +534,15 @@ function DesktopRow({
 
   return (
     <TableRow className={isDirty ? "bg-amber-50 dark:bg-amber-950/20" : undefined}>
+      <TableCell className="text-center text-sm text-muted-foreground">
+        {formatNumber(rowIndex)}
+      </TableCell>
       <TableCell className="font-medium">
         <div>{row.name}</div>
-        <div className="text-xs text-muted-foreground" dir="ltr">
-          {row.sku ?? "—"}
-        </div>
+        <div className="text-xs text-muted-foreground" dir="ltr">{row.sku ?? "—"}</div>
       </TableCell>
       <TableCell className="text-sm">{row.brand_name ?? "—"}</TableCell>
-      <TableCell
-        className="text-xs text-muted-foreground max-w-[160px] truncate"
-        title={categoryLabel}
-      >
+      <TableCell className="text-xs text-muted-foreground max-w-[160px] truncate" title={categoryLabel}>
         {categoryLabel}
       </TableCell>
       <TableCell>
@@ -600,9 +561,7 @@ function DesktopRow({
             min={0}
             value={currentPrice || ""}
             onChange={(e) => onPrice(Number(e.target.value) || 0)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSave();
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") onSave(); }}
             className="h-8 w-32 text-center"
             dir="ltr"
           />
@@ -616,25 +575,13 @@ function DesktopRow({
             <Plus className="h-3 w-3" />
           </Button>
         </div>
-        {noSupplier && (
-          <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>
-        )}
+        {noSupplier && <div className="mt-1 text-[10px] text-muted-foreground">بدون تأمین‌کننده ثبت‌شده</div>}
       </TableCell>
+      <TableCell className="text-xs">{(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)}</TableCell>
       <TableCell className="text-xs">
-        {(CURRENCY_LABELS as Record<string, string>)[
-          (row.current_currency ?? row.base_currency) as string
-        ] ??
-          row.current_currency ??
-          row.base_currency}
-      </TableCell>
-      <TableCell className="text-xs">
-        {hasValidSalePrice(row.sale_price) ? (
-          formatNumber(row.sale_price as number)
-        ) : (
-          <Badge variant="destructive" className="text-[10px]">
-            بدون قیمت فروش
-          </Badge>
-        )}
+        {hasValidSalePrice(row.sale_price)
+          ? formatNumber(row.sale_price as number)
+          : <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>}
         {publishError && (
           <div className="mt-1">
             <Badge variant="destructive" className="text-[10px]" title={publishError}>
@@ -660,44 +607,27 @@ function DesktopRow({
       </TableCell>
       <TableCell className="text-xs">
         {row.status === "active" ? (
-          <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">
-            {PRODUCT_STATUS_LABEL.active}
-          </Badge>
+          <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
         ) : (
-          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">
-            {PRODUCT_STATUS_LABEL[row.status]}
-          </Badge>
+          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
         )}
       </TableCell>
       <TableCell className="text-xs max-w-[180px]">
         <div className="space-y-1">
           {noOwner ? (
-            <Badge variant="destructive" className="text-[10px]">
-              بدون مسئول
-            </Badge>
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
           ) : (
-            <div
-              className="truncate text-muted-foreground"
-              title={row.owners.map((o) => o.full_name ?? o.user_id).join("، ")}
-            >
+            <div className="truncate text-muted-foreground" title={row.owners.map((o) => o.full_name ?? o.user_id).join("، ")}>
               {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
             </div>
           )}
           {row.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {row.tags.slice(0, 3).map((t) => (
-                <Badge
-                  key={t.id}
-                  style={{ backgroundColor: t.color, color: "white" }}
-                  className="text-[10px]"
-                >
-                  {t.title}
-                </Badge>
+                <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
               ))}
               {row.tags.length > 3 && (
-                <Badge variant="secondary" className="text-[10px]">
-                  +{row.tags.length - 3}
-                </Badge>
+                <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 3}</Badge>
               )}
             </div>
           )}
@@ -705,13 +635,7 @@ function DesktopRow({
       </TableCell>
       <TableCell>
         <div className="flex gap-1">
-          <Button
-            size="sm"
-            variant="default"
-            className="h-7"
-            disabled={!isDirty || saving}
-            onClick={onSave}
-          >
+          <Button size="sm" variant="default" className="h-7" disabled={!isDirty || saving} onClick={onSave}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           </Button>
           {canLabel && (
@@ -734,21 +658,10 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row,
-  dirty,
-  stepPct,
-  saving,
-  justSaved,
-  canLabel,
-  publishError,
-  onLabel,
-  onPrice,
-  onBump,
-  onStock,
-  onClear,
-  onSave,
+  row, rowIndex, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -768,13 +681,9 @@ function MobileCard({
   const noSupplier = !row.current_supplier_id;
 
   const stockIcon =
-    currentStock === "available" ? (
-      <PackageCheck className="h-4 w-4 text-emerald-600" />
-    ) : currentStock === "unavailable" ? (
-      <PackageX className="h-4 w-4 text-destructive" />
-    ) : (
-      <Package className="h-4 w-4 text-amber-600" />
-    );
+    currentStock === "available" ? <PackageCheck className="h-4 w-4 text-emerald-600" />
+    : currentStock === "unavailable" ? <PackageX className="h-4 w-4 text-destructive" />
+    : <Package className="h-4 w-4 text-amber-600" />;
 
   // -------- Swipe gesture for ± price --------
   const touchStartX = useRef<number | null>(null);
@@ -837,14 +746,17 @@ function MobileCard({
         justSaved
           ? "border-emerald-500 transition-colors"
           : isDirty
-            ? "border-amber-400 transition-colors"
-            : "transition-colors"
+          ? "border-amber-400 transition-colors"
+          : "transition-colors"
       }
     >
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{row.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">#{formatNumber(rowIndex)}</span>
+              <span className="truncate font-medium">{row.name}</span>
+            </div>
             <div className="truncate text-xs text-muted-foreground" dir="ltr">
               {row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}
             </div>
@@ -855,45 +767,29 @@ function MobileCard({
         {/* Meta: status + sale price + owner + tags */}
         <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
           {row.status === "active" ? (
-            <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">
-              {PRODUCT_STATUS_LABEL.active}
-            </Badge>
+            <Badge variant="outline" className="border-emerald-500 text-emerald-700 text-[10px]">{PRODUCT_STATUS_LABEL.active}</Badge>
           ) : (
-            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">
-              {PRODUCT_STATUS_LABEL[row.status]}
-            </Badge>
+            <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">{PRODUCT_STATUS_LABEL[row.status]}</Badge>
           )}
           {hasValidSalePrice(row.sale_price) ? (
             <Badge variant="secondary" className="text-[10px]">
               فروش: {formatNumber(row.sale_price as number)}
             </Badge>
           ) : (
-            <Badge variant="destructive" className="text-[10px]">
-              بدون قیمت فروش
-            </Badge>
+            <Badge variant="destructive" className="text-[10px]">بدون قیمت فروش</Badge>
           )}
           {row.owners.length === 0 ? (
-            <Badge variant="destructive" className="text-[10px]">
-              بدون مسئول
-            </Badge>
+            <Badge variant="destructive" className="text-[10px]">بدون مسئول</Badge>
           ) : (
             <Badge variant="outline" className="text-[10px]">
               مسئول: {row.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
             </Badge>
           )}
           {row.tags.slice(0, 4).map((t) => (
-            <Badge
-              key={t.id}
-              style={{ backgroundColor: t.color, color: "white" }}
-              className="text-[10px]"
-            >
-              {t.title}
-            </Badge>
+            <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }} className="text-[10px]">{t.title}</Badge>
           ))}
           {row.tags.length > 4 && (
-            <Badge variant="secondary" className="text-[10px]">
-              +{row.tags.length - 4}
-            </Badge>
+            <Badge variant="secondary" className="text-[10px]">+{row.tags.length - 4}</Badge>
           )}
         </div>
         {publishError && (
@@ -904,15 +800,7 @@ function MobileCard({
 
         <div>
           <Label className="mb-1 flex items-center justify-between text-xs">
-            <span>
-              قیمت خرید (
-              {(CURRENCY_LABELS as Record<string, string>)[
-                (row.current_currency ?? row.base_currency) as string
-              ] ??
-                row.current_currency ??
-                row.base_currency}
-              )
-            </span>
+            <span>قیمت خرید ({(CURRENCY_LABELS as Record<string, string>)[(row.current_currency ?? row.base_currency) as string] ?? (row.current_currency ?? row.base_currency)})</span>
             {priceDelta !== 0 && (
               <span
                 className={
@@ -921,13 +809,8 @@ function MobileCard({
                     : "flex items-center gap-1 text-destructive"
                 }
               >
-                {priceDelta > 0 ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
-                  <TrendingDown className="h-3 w-3" />
-                )}
-                {priceDelta > 0 ? "+" : ""}
-                {priceDelta.toFixed(1)}٪
+                {priceDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {priceDelta > 0 ? "+" : ""}{priceDelta.toFixed(1)}٪
               </span>
             )}
           </Label>
@@ -938,10 +821,7 @@ function MobileCard({
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
             className="relative select-none touch-pan-y"
-            style={{
-              transform: `translateX(${swipeDelta * 0.3}px)`,
-              transition: swipeDelta === 0 ? "transform 0.2s" : "none",
-            }}
+            style={{ transform: `translateX(${swipeDelta * 0.3}px)`, transition: swipeDelta === 0 ? "transform 0.2s" : "none" }}
           >
             <Input
               type="number"
@@ -971,30 +851,16 @@ function MobileCard({
 
           <div className="mt-2 grid grid-cols-4 gap-2">
             <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-10)}>
-              <TrendingDown className="h-3 w-3" />
-              ۱۰٪
+              <TrendingDown className="h-3 w-3" />۱۰٪
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-11 gap-1"
-              onClick={() => onBump(-stepPct)}
-            >
-              <Minus className="h-3 w-3" />
-              {stepPct}٪
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(-stepPct)}>
+              <Minus className="h-3 w-3" />{stepPct}٪
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-11 gap-1"
-              onClick={() => onBump(stepPct)}
-            >
-              <Plus className="h-3 w-3" />
-              {stepPct}٪
+            <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(stepPct)}>
+              <Plus className="h-3 w-3" />{stepPct}٪
             </Button>
             <Button variant="outline" size="sm" className="h-11 gap-1" onClick={() => onBump(10)}>
-              <TrendingUp className="h-3 w-3" />
-              ۱۰٪
+              <TrendingUp className="h-3 w-3" />۱۰٪
             </Button>
           </div>
         </div>
@@ -1030,11 +896,7 @@ function MobileCard({
             </Button>
             <Button
               type="button"
-              variant={
-                currentStock !== "available" && currentStock !== "unavailable"
-                  ? "default"
-                  : "outline"
-              }
+              variant={currentStock !== "available" && currentStock !== "unavailable" ? "default" : "outline"}
               className={
                 currentStock !== "available" && currentStock !== "unavailable"
                   ? "h-12 gap-1 bg-amber-600 hover:bg-amber-700"

@@ -17,13 +17,8 @@ interface Props {
 }
 
 export function StockAlertButton({
-  productId,
-  productName,
-  productSku,
-  stockStatus,
-  size = "sm",
-  variant = "outline",
-  className,
+  productId, productName, productSku, stockStatus,
+  size = "sm", variant = "outline", className,
 }: Props) {
   const { roles } = useAuth();
   const [open, setOpen] = useState(false);
@@ -38,11 +33,7 @@ export function StockAlertButton({
         size={size}
         variant={variant}
         className={className}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setOpen(true);
-        }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
       >
         <BellPlus className="ml-1 h-3.5 w-3.5" />
         موجود شد خبرم کن

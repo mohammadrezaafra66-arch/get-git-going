@@ -3,23 +3,9 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Package,
-  FileText,
-  Users,
-  DollarSign,
-  Factory,
-  GraduationCap,
-  Cake,
-  Loader2,
-  Home,
-  ChevronLeft,
-  TrendingUp,
-  ShoppingCart,
-  Wallet,
-  Activity,
-  ListTodo,
-  BarChart3,
-  Bell,
+  Package, FileText, Users, DollarSign, Factory, GraduationCap, Cake, Loader2,
+  Home, ChevronLeft, TrendingUp, ShoppingCart, Wallet, Activity, ListTodo,
+  BarChart3, Bell,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/rbac/roles";
@@ -29,46 +15,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
-  beforeLoad: async () => {
-    await requirePermission("dashboard", "view");
-  },
+  beforeLoad: async () => { await requirePermission("dashboard", "view"); },
   component: DashboardPage,
 });
 
 // KPIها فعلاً placeholder هستند تا اتصال به backend واقعی در فاز بعد. هیچ داده جعلی نمایش داده نمی‌شود.
 const KPIS = [
-  {
-    icon: TrendingUp,
-    label: "فروش امروز",
-    value: "—",
-    unit: "تومان",
-    accent: "text-emerald-600",
-    bg: "bg-emerald-50",
-  },
-  {
-    icon: ShoppingCart,
-    label: "سفارش‌های جدید",
-    value: "—",
-    unit: "",
-    accent: "text-blue-600",
-    bg: "bg-blue-50",
-  },
-  {
-    icon: Users,
-    label: "مشتریان جدید",
-    value: "—",
-    unit: "",
-    accent: "text-violet-600",
-    bg: "bg-violet-50",
-  },
-  {
-    icon: Wallet,
-    label: "سود خالص امروز",
-    value: "—",
-    unit: "تومان",
-    accent: "text-amber-600",
-    bg: "bg-amber-50",
-  },
+  { icon: TrendingUp, label: "فروش امروز", value: "—", unit: "تومان", accent: "text-emerald-600", bg: "bg-emerald-50" },
+  { icon: ShoppingCart, label: "سفارش‌های جدید", value: "—", unit: "", accent: "text-blue-600", bg: "bg-blue-50" },
+  { icon: Users, label: "مشتریان جدید", value: "—", unit: "", accent: "text-violet-600", bg: "bg-violet-50" },
+  { icon: Wallet, label: "سود خالص امروز", value: "—", unit: "تومان", accent: "text-amber-600", bg: "bg-amber-50" },
 ];
 
 const SECONDARY_STATS = [
@@ -95,9 +51,7 @@ function DashboardPage() {
       toast.error("خطا در بررسی تولدها");
       return;
     }
-    const created = Array.isArray(data)
-      ? Number((data[0] as { created_count?: number })?.created_count ?? 0)
-      : 0;
+    const created = Array.isArray(data) ? Number((data[0] as { created_count?: number })?.created_count ?? 0) : 0;
     if (created > 0) toast.success(`${created.toLocaleString("fa-IR")} نوتیفیکیشن تولد ایجاد شد`);
     else toast.success("امروز تولدی وجود ندارد یا قبلاً ثبت شده است");
   };
@@ -112,7 +66,10 @@ function DashboardPage() {
         <span className="font-medium text-foreground">داشبورد</span>
       </nav>
 
-      <PageHeader title="داشبورد" description={`نقش شما: ${roleText}`} />
+      <PageHeader
+        title="داشبورد"
+        description={`نقش شما: ${roleText}`}
+      />
 
       {canRunBirthdays && (
         <div className="flex justify-end">
@@ -124,11 +81,7 @@ function DashboardPage() {
             disabled={bdayLoading}
             className="gap-2"
           >
-            {bdayLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Cake className="h-4 w-4" />
-            )}
+            {bdayLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cake className="h-4 w-4" />}
             بررسی تولدهای امروز
           </Button>
         </div>
@@ -137,15 +90,10 @@ function DashboardPage() {
       {/* Primary KPIs */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {KPIS.map((k) => (
-          <Card
-            key={k.label}
-            className="overflow-hidden border-border/70 transition-shadow hover:shadow-md"
-          >
+          <Card key={k.label} className="overflow-hidden border-border/70 transition-shadow hover:shadow-md">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-2">
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${k.bg} ${k.accent}`}
-                >
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${k.bg} ${k.accent}`}>
                   <k.icon className="h-[18px] w-[18px]" />
                 </div>
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
@@ -276,17 +224,15 @@ function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm leading-7 text-muted-foreground">
           <p>
-            <strong className="text-foreground">دستیار هوشمند افراکالا</strong> هسته عملیاتی شرکت
-            برای مدیریت محصولات، قیمت‌گذاری، خرید و فروش، فاکتور، کاربران، گزارش‌ها و دانش سازمانی
-            است.
+            <strong className="text-foreground">دستیار هوشمند افراکالا</strong> هسته عملیاتی شرکت برای مدیریت
+            محصولات، قیمت‌گذاری، خرید و فروش، فاکتور، کاربران، گزارش‌ها و دانش سازمانی است.
           </p>
           <p>
-            این نسخه (فاز ۱) شامل اسکلت معماری، احراز هویت، کنترل دسترسی نقش‌محور و route همه
-            ماژول‌ها است. منطق هر ماژول در فازهای بعدی به‌تدریج تکمیل می‌شود.
+            این نسخه (فاز ۱) شامل اسکلت معماری، احراز هویت، کنترل دسترسی نقش‌محور و route همه ماژول‌ها است.
+            منطق هر ماژول در فازهای بعدی به‌تدریج تکمیل می‌شود.
           </p>
           <p className="text-xs">
-            ✓ کاملاً فارسی و RTL &nbsp; · &nbsp; ✓ آماده self-host &nbsp; · &nbsp; ✓ بدون وابستگی
-            CDN خارجی
+            ✓ کاملاً فارسی و RTL &nbsp; · &nbsp; ✓ آماده self-host &nbsp; · &nbsp; ✓ بدون وابستگی CDN خارجی
           </p>
         </CardContent>
       </Card>

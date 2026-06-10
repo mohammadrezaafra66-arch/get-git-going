@@ -3,9 +3,7 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,9 +110,7 @@ export function NotificationBell() {
         </div>
         <div className="max-h-80 overflow-y-auto">
           {items.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-              نوتیفیکیشنی وجود ندارد
-            </div>
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">نوتیفیکیشنی وجود ندارد</div>
           ) : (
             items.map((n) => (
               <button
@@ -127,16 +123,11 @@ export function NotificationBell() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-foreground">
-                    {n.type === "birthday" ? "🎂 " : ""}
-                    {n.title}
+                    {n.type === "birthday" ? "🎂 " : ""}{n.title}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {relativeFa(n.created_at)}
-                  </span>
+                  <span className="text-[10px] text-muted-foreground">{relativeFa(n.created_at)}</span>
                 </div>
-                <p className="mt-1 line-clamp-2 whitespace-pre-line text-muted-foreground">
-                  {n.body}
-                </p>
+                <p className="mt-1 line-clamp-2 whitespace-pre-line text-muted-foreground">{n.body}</p>
               </button>
             ))
           )}

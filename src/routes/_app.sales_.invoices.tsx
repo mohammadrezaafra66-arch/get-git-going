@@ -10,20 +10,11 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toFaDigits, formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/invoices")({
-  beforeLoad: async () => {
-    await requirePermission("invoices", "view");
-  },
+  beforeLoad: async () => { await requirePermission("invoices", "view"); },
   component: InvoicesListPage,
 });
 
@@ -39,10 +30,7 @@ function InvoicesListPage() {
     queryFn: async () => {
       let q = supabase
         .from("invoices")
-        .select(
-          "id, total_amount, status, created_at, created_by, customer:customers(name), price_type:sale_price_types(title)",
-          { count: "exact" },
-        )
+        .select("id, total_amount, status, created_at, created_by, customer:customers(name), price_type:sale_price_types(title)", { count: "exact" })
         .eq("type", "pre_invoice")
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -107,9 +95,7 @@ function InvoicesListPage() {
                   };
                   return (
                     <TableRow key={row.id}>
-                      <TableCell className="font-mono text-xs">
-                        {toFaDigits(row.id.slice(0, 8))}
-                      </TableCell>
+                      <TableCell className="font-mono text-xs">{toFaDigits(row.id.slice(0, 8))}</TableCell>
                       <TableCell>{row.customer?.name ?? "—"}</TableCell>
                       <TableCell>{row.price_type?.title ?? "—"}</TableCell>
                       <TableCell>{formatNumber(Number(row.total_amount))}</TableCell>
@@ -143,23 +129,13 @@ function InvoicesListPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>مجموع: {toFaDigits(total)}</span>
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
-              >
+              <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
                 قبلی
               </Button>
               <span className="self-center">
                 صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
               </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
+              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
                 بعدی
               </Button>
             </div>

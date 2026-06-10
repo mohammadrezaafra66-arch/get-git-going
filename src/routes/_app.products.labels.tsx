@@ -12,22 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -35,20 +23,13 @@ import { hasPermission } from "@/lib/rbac/roles";
 import { labelSchema, type LabelFormValues } from "@/lib/products/schemas";
 
 export const Route = createFileRoute("/_app/products/labels")({
-  beforeLoad: async () => {
-    await requirePermission("products", "view");
-  },
+  beforeLoad: async () => { await requirePermission("products", "view"); },
   component: LabelsPage,
 });
 
 interface Lbl {
-  id: string;
-  title: string;
-  color: string;
-  description: string | null;
-  is_active: boolean;
-  weight: number;
-  visibility: "public" | "internal";
+  id: string; title: string; color: string; description: string | null;
+  is_active: boolean; weight: number; visibility: "public" | "internal";
 }
 
 const VISIBILITY_LABEL: Record<Lbl["visibility"], string> = { public: "عمومی", internal: "داخلی" };
@@ -63,8 +44,7 @@ function LabelsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["labels-full"],
     queryFn: async (): Promise<Lbl[]> => {
-      const { data, error } = await supabase
-        .from("product_labels")
+      const { data, error } = await supabase.from("product_labels")
         .select("id, title, color, description, is_active, weight, visibility")
         .order("title", { ascending: true });
       if (error) throw error;
@@ -81,10 +61,7 @@ function LabelsPage() {
     if (!confirm(`حذف برچسب "${l.title}"؟`)) return;
     const { error } = await supabase.from("product_labels").delete().eq("id", l.id);
     if (error) toast.error(error.message);
-    else {
-      toast.success("برچسب حذف شد");
-      onSaved();
-    }
+    else { toast.success("برچسب حذف شد"); onSaved(); }
   };
 
   return (
@@ -95,21 +72,11 @@ function LabelsPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/products">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setOpen(true);
-                }}
-              >
-                <Plus className="ms-1 h-4 w-4" />
-                برچسب جدید
+              <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus className="ms-1 h-4 w-4" />برچسب جدید
               </Button>
             )}
           </>
@@ -127,10 +94,7 @@ function LabelsPage() {
               {(data ?? []).map((l) => (
                 <li key={l.id} className="flex items-center justify-between gap-2 p-3">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span
-                      className="inline-block h-5 w-5 shrink-0 rounded-full border border-border"
-                      style={{ backgroundColor: l.color }}
-                    />
+                    <span className="inline-block h-5 w-5 shrink-0 rounded-full border border-border" style={{ backgroundColor: l.color }} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{l.title}</span>
@@ -146,9 +110,7 @@ function LabelsPage() {
                         </Badge>
                         {!l.is_active && <Badge variant="outline">غیرفعال</Badge>}
                       </div>
-                      {l.description && (
-                        <div className="text-xs text-muted-foreground">{l.description}</div>
-                      )}
+                      {l.description && <div className="text-xs text-muted-foreground">{l.description}</div>}
                       <div className="mt-1.5 flex items-center gap-2">
                         <div className="h-1.5 w-32 overflow-hidden rounded-full bg-muted">
                           <div
@@ -156,22 +118,13 @@ function LabelsPage() {
                             style={{ width: `${Math.max(0, Math.min(100, l.weight))}%` }}
                           />
                         </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          وزن: {l.weight}
-                        </span>
+                        <span className="text-xs tabular-nums text-muted-foreground">وزن: {l.weight}</span>
                       </div>
                     </div>
                   </div>
                   {canWrite && (
                     <div className="flex shrink-0 gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditing(l);
-                          setOpen(true);
-                        }}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => { setEditing(l); setOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => remove(l)}>
@@ -191,85 +144,53 @@ function LabelsPage() {
   );
 }
 
-function LabelDialog({
-  open,
-  onOpenChange,
-  editing,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  editing: Lbl | null;
-  onSaved: () => void;
+function LabelDialog({ open, onOpenChange, editing, onSaved }: {
+  open: boolean; onOpenChange: (v: boolean) => void; editing: Lbl | null; onSaved: () => void;
 }) {
   const { user } = useAuth();
-  const defaults: LabelFormValues = {
-    title: "",
-    color: "#0ea5e9",
-    description: "",
-    is_active: true,
-    weight: 0,
-    visibility: "public",
-  };
+  const defaults: LabelFormValues = { title: "", color: "#0ea5e9", description: "", is_active: true, weight: 0, visibility: "public" };
   const [values, setValues] = useState<LabelFormValues>(defaults);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const reset = () => {
-    setValues(
-      editing
-        ? {
-            title: editing.title,
-            color: editing.color,
-            description: editing.description ?? "",
-            is_active: editing.is_active,
-            weight: editing.weight ?? 0,
-            visibility: editing.visibility ?? "public",
-          }
-        : defaults,
-    );
+    setValues(editing
+      ? {
+          title: editing.title, color: editing.color,
+          description: editing.description ?? "", is_active: editing.is_active,
+          weight: editing.weight ?? 0, visibility: editing.visibility ?? "public",
+        }
+      : defaults);
     setErrors({});
   };
 
-  const handleOpenChange = (v: boolean) => {
-    if (v) reset();
-    onOpenChange(v);
-  };
+  const handleOpenChange = (v: boolean) => { if (v) reset(); onOpenChange(v); };
 
   const persist = async () => {
     const parsed = labelSchema.safeParse(values);
     if (!parsed.success) {
       const flat: Record<string, string> = {};
       for (const i of parsed.error.issues) flat[i.path.join(".")] = i.message;
-      setErrors(flat);
-      return;
+      setErrors(flat); return;
     }
-    setErrors({});
-    setLoading(true);
+    setErrors({}); setLoading(true);
     try {
       if (editing) {
-        const { error } = await supabase
-          .from("product_labels")
-          .update(parsed.data)
-          .eq("id", editing.id);
+        const { error } = await supabase.from("product_labels").update(parsed.data).eq("id", editing.id);
         if (error) throw error;
         // audit log برای تغییر وزن/نوع
         if (user?.id) {
           if (editing.weight !== parsed.data.weight) {
             await supabase.from("audit_logs").insert({
-              actor_id: user.id,
-              entity_type: "product_label",
-              entity_id: editing.id,
+              actor_id: user.id, entity_type: "product_label", entity_id: editing.id,
               action: "product_label_weight_changed",
               diff: { old_weight: editing.weight, new_weight: parsed.data.weight },
             });
           }
           if (editing.visibility !== parsed.data.visibility) {
             await supabase.from("audit_logs").insert({
-              actor_id: user.id,
-              entity_type: "product_label",
-              entity_id: editing.id,
+              actor_id: user.id, entity_type: "product_label", entity_id: editing.id,
               action: "product_label_visibility_changed",
               diff: { old: editing.visibility, new: parsed.data.visibility },
             });
@@ -281,14 +202,9 @@ function LabelDialog({
         if (error) throw error;
         toast.success("برچسب ایجاد شد");
       }
-      onSaved();
-      onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "خطا");
-    } finally {
-      setLoading(false);
-      setConfirmOpen(false);
-    }
+      onSaved(); onOpenChange(false);
+    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
+    finally { setLoading(false); setConfirmOpen(false); }
   };
 
   const submit = () => {
@@ -304,16 +220,11 @@ function LabelDialog({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? "ویرایش برچسب" : "برچسب جدید"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "ویرایش برچسب" : "برچسب جدید"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>عنوان *</Label>
-              <Input
-                value={values.title}
-                onChange={(e) => setValues((s) => ({ ...s, title: e.target.value }))}
-              />
+              <Input value={values.title} onChange={(e) => setValues((s) => ({ ...s, title: e.target.value }))} />
               {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
             </div>
             <div>
@@ -325,22 +236,13 @@ function LabelDialog({
                   onChange={(e) => setValues((s) => ({ ...s, color: e.target.value }))}
                   className="h-10 w-16 p-1"
                 />
-                <Input
-                  dir="ltr"
-                  value={values.color}
-                  onChange={(e) => setValues((s) => ({ ...s, color: e.target.value }))}
-                  className="flex-1"
-                />
+                <Input dir="ltr" value={values.color} onChange={(e) => setValues((s) => ({ ...s, color: e.target.value }))} className="flex-1" />
               </div>
               {errors.color && <p className="mt-1 text-xs text-destructive">{errors.color}</p>}
             </div>
             <div>
               <Label>توضیحات</Label>
-              <Textarea
-                value={values.description ?? ""}
-                onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))}
-                rows={2}
-              />
+              <Textarea value={values.description ?? ""} onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))} rows={2} />
             </div>
             <div>
               <div className="flex items-center justify-between">
@@ -349,26 +251,15 @@ function LabelDialog({
               </div>
               <div className="flex items-center gap-2">
                 <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
+                  type="range" min={0} max={100} step={1}
                   value={values.weight}
                   onChange={(e) => setValues((s) => ({ ...s, weight: Number(e.target.value) }))}
                   className="flex-1 accent-primary"
                 />
                 <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  dir="ltr"
+                  type="number" min={0} max={100} dir="ltr"
                   value={values.weight}
-                  onChange={(e) =>
-                    setValues((s) => ({
-                      ...s,
-                      weight: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                    }))
-                  }
+                  onChange={(e) => setValues((s) => ({ ...s, weight: Math.max(0, Math.min(100, Number(e.target.value) || 0)) }))}
                   className="w-20"
                 />
               </div>
@@ -391,17 +282,12 @@ function LabelDialog({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Switch
-                checked={values.is_active}
-                onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))}
-              />
+              <Switch checked={values.is_active} onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))} />
               <Label>فعال</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              انصراف
-            </Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
             <Button onClick={submit} disabled={loading}>
               {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
             </Button>
@@ -414,8 +300,7 @@ function LabelDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>تأیید تغییر</AlertDialogTitle>
             <AlertDialogDescription>
-              تغییر وزن یا نوع نمایش برچسب می‌تواند روی امتیازدهی محصولات و دسترسی فروشندگان اثر
-              بگذارد. ادامه می‌دهید؟
+              تغییر وزن یا نوع نمایش برچسب می‌تواند روی امتیازدهی محصولات و دسترسی فروشندگان اثر بگذارد. ادامه می‌دهید؟
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

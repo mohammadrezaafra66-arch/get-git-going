@@ -49,8 +49,7 @@ export function usePricingBoardAccess(boardKey: string) {
   if (!user?.id) effectiveStatus = "unauthenticated";
   else if (accessQuery.isLoading) effectiveStatus = "loading";
   else if (isManager) effectiveStatus = "approved";
-  else if (!accessQuery.data)
-    effectiveStatus = "pending"; // در حال ساخت/در انتظار
+  else if (!accessQuery.data) effectiveStatus = "pending"; // در حال ساخت/در انتظار
   else effectiveStatus = (accessQuery.data as BoardAccessRequest).status as any;
 
   const canManage = hasPermissionEx(roles ?? [], "pricing", "update");

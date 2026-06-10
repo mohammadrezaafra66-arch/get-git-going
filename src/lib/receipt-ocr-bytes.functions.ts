@@ -13,7 +13,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type OcrBytesMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
+export type OcrBytesMethod =
+  | "text"
+  | "image_ocr"
+  | "pdf_text"
+  | "unsupported";
 
 export interface OcrBytesResult {
   raw_text: string;
@@ -30,7 +34,8 @@ const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 
 /** SH-RA.2B: read at runtime so each request reflects live env. */
 function isExternalOcrEnabled(): boolean {
-  const raw = process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
+  const raw =
+    process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
   return String(raw).toLowerCase() === "true";
 }
 function externalApiTimeoutMs(): number {
@@ -113,7 +118,10 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
           return {
             raw_text: raw,
             method: "pdf_text" as const,
-            warnings: result.totalPages > 2 ? [`PDF شامل ${result.totalPages} صفحه است.`] : [],
+            warnings:
+              result.totalPages > 2
+                ? [`PDF شامل ${result.totalPages} صفحه است.`]
+                : [],
           } satisfies OcrBytesResult;
         }
         return {
@@ -190,7 +198,8 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
           signal: ctrl.signal,
         });
       } catch (err) {
-        const isAbort = (err as { name?: string } | null)?.name === "AbortError";
+        const isAbort =
+          (err as { name?: string } | null)?.name === "AbortError";
         if (isAbort) {
           return {
             raw_text: "",

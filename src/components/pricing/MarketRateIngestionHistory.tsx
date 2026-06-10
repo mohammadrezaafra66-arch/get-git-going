@@ -6,13 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
@@ -78,8 +72,7 @@ export function MarketRateIngestionHistory() {
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
 
@@ -103,11 +96,7 @@ export function MarketRateIngestionHistory() {
     return (q.data ?? []).filter((r) => {
       if (sourceFilter === "navasan" && r.source_code !== "NAVASAN_API") return false;
       if (sourceFilter === "tgju" && r.source_code !== "TGJU_API") return false;
-      if (
-        sourceFilter === "other" &&
-        (r.source_code === "NAVASAN_API" || r.source_code === "TGJU_API")
-      )
-        return false;
+      if (sourceFilter === "other" && (r.source_code === "NAVASAN_API" || r.source_code === "TGJU_API")) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       return true;
     });
@@ -133,13 +122,8 @@ export function MarketRateIngestionHistory() {
         <CollapsibleContent>
           <CardContent>
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
-              <Select
-                value={sourceFilter}
-                onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="منبع" />
-                </SelectTrigger>
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="منبع" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه منابع</SelectItem>
                   <SelectItem value="navasan">نوسان</SelectItem>
@@ -147,13 +131,8 @@ export function MarketRateIngestionHistory() {
                   <SelectItem value="other">سایر</SelectItem>
                 </SelectContent>
               </Select>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="وضعیت" />
-                </SelectTrigger>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="وضعیت" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه وضعیت‌ها</SelectItem>
                   <SelectItem value="completed">موفق</SelectItem>
@@ -174,10 +153,7 @@ export function MarketRateIngestionHistory() {
                   variant="ghost"
                   className="h-7 px-2 text-[10px]"
                   disabled={sourceFilter === "all" && statusFilter === "all"}
-                  onClick={() => {
-                    setSourceFilter("all");
-                    setStatusFilter("all");
-                  }}
+                  onClick={() => { setSourceFilter("all"); setStatusFilter("all"); }}
                 >
                   پاک‌سازی فیلترها
                 </Button>
@@ -214,116 +190,77 @@ export function MarketRateIngestionHistory() {
                     {filtered.map((r) => {
                       const isOpen = expanded.has(r.id);
                       return (
-                        <Fragment key={r.id}>
-                          <tr className="border-t">
-                            <td className="px-2 py-2">
-                              {SOURCE_LABEL[r.source_code] ?? r.source_code}
-                            </td>
-                            <td className="px-2 py-2">
-                              <Badge
-                                variant={STATUS_VARIANT[r.status] ?? "secondary"}
-                                className="text-[10px]"
-                              >
-                                {STATUS_LABEL[r.status] ?? r.status}
-                              </Badge>
-                            </td>
-                            <td className="px-2 py-2">{r.fetched_count}</td>
-                            <td className="px-2 py-2">{r.inserted_count}</td>
-                            <td className="px-2 py-2">{r.suspect_count}</td>
-                            <td className="px-2 py-2 text-muted-foreground">
-                              {formatDateFa(r.started_at)}
-                            </td>
-                            <td className="px-2 py-2 text-muted-foreground">
-                              {r.finished_at ? formatDateFa(r.finished_at) : "—"}
-                            </td>
-                            <td
-                              className="px-2 py-2 max-w-[220px] truncate text-muted-foreground"
-                              title={r.error_message ?? ""}
-                            >
-                              {r.error_message ?? "—"}
-                            </td>
-                            <td className="px-2 py-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-[10px]"
-                                onClick={() => toggle(r.id)}
-                                aria-label={isOpen ? "بستن جزئیات" : "نمایش جزئیات"}
-                                aria-expanded={isOpen}
-                              >
-                                {isOpen ? (
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                ) : (
-                                  <ChevronLeft className="h-3.5 w-3.5" />
-                                )}
-                                <span className="mr-1">جزئیات</span>
-                              </Button>
-                            </td>
-                          </tr>
-                          {isOpen && (
-                            <tr className="border-t bg-muted/20">
-                              <td colSpan={9} className="px-3 py-3">
-                                <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 md:grid-cols-3">
-                                  <div>
-                                    <dt className="text-muted-foreground">منبع</dt>
-                                    <dd>{SOURCE_LABEL[r.source_code] ?? r.source_code}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">وضعیت</dt>
-                                    <dd>{STATUS_LABEL[r.status] ?? r.status}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">مدت اجرا</dt>
-                                    <dd>{formatDuration(r.started_at, r.finished_at)}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">دریافت‌شده</dt>
-                                    <dd>{r.fetched_count}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">ثبت‌شده</dt>
-                                    <dd>{r.inserted_count}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">مشکوک</dt>
-                                    <dd>{r.suspect_count}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">شروع</dt>
-                                    <dd>{formatDateFa(r.started_at)}</dd>
-                                  </div>
-                                  <div>
-                                    <dt className="text-muted-foreground">پایان</dt>
-                                    <dd>
-                                      {r.finished_at ? formatDateFa(r.finished_at) : "نامشخص"}
-                                    </dd>
-                                  </div>
-                                  <div className="sm:col-span-2 md:col-span-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <dt className="text-muted-foreground">پیام خطا</dt>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-[10px]"
-                                        disabled={!r.error_message}
-                                        onClick={() =>
-                                          r.error_message && copyErrorMessage(r.error_message)
-                                        }
-                                        aria-label="کپی پیام خطا"
-                                      >
-                                        <Copy className="ml-1 h-3 w-3" />
-                                        کپی خطا
-                                      </Button>
-                                    </div>
-                                    <dd className="mt-1 whitespace-pre-wrap break-words rounded-md border bg-background p-2 text-[11px]">
-                                      {r.error_message ?? "خطایی ثبت نشده است."}
-                                    </dd>
-                                  </div>
-                                </dl>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
+                      <Fragment key={r.id}>
+                      <tr className="border-t">
+                        <td className="px-2 py-2">{SOURCE_LABEL[r.source_code] ?? r.source_code}</td>
+                        <td className="px-2 py-2">
+                          <Badge variant={STATUS_VARIANT[r.status] ?? "secondary"} className="text-[10px]">
+                            {STATUS_LABEL[r.status] ?? r.status}
+                          </Badge>
+                        </td>
+                        <td className="px-2 py-2">{r.fetched_count}</td>
+                        <td className="px-2 py-2">{r.inserted_count}</td>
+                        <td className="px-2 py-2">{r.suspect_count}</td>
+                        <td className="px-2 py-2 text-muted-foreground">{formatDateFa(r.started_at)}</td>
+                        <td className="px-2 py-2 text-muted-foreground">
+                          {r.finished_at ? formatDateFa(r.finished_at) : "—"}
+                        </td>
+                        <td
+                          className="px-2 py-2 max-w-[220px] truncate text-muted-foreground"
+                          title={r.error_message ?? ""}
+                        >
+                          {r.error_message ?? "—"}
+                        </td>
+                        <td className="px-2 py-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-[10px]"
+                            onClick={() => toggle(r.id)}
+                            aria-label={isOpen ? "بستن جزئیات" : "نمایش جزئیات"}
+                            aria-expanded={isOpen}
+                          >
+                            {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+                            <span className="mr-1">جزئیات</span>
+                          </Button>
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="border-t bg-muted/20">
+                          <td colSpan={9} className="px-3 py-3">
+                            <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 md:grid-cols-3">
+                              <div><dt className="text-muted-foreground">منبع</dt><dd>{SOURCE_LABEL[r.source_code] ?? r.source_code}</dd></div>
+                              <div><dt className="text-muted-foreground">وضعیت</dt><dd>{STATUS_LABEL[r.status] ?? r.status}</dd></div>
+                              <div><dt className="text-muted-foreground">مدت اجرا</dt><dd>{formatDuration(r.started_at, r.finished_at)}</dd></div>
+                              <div><dt className="text-muted-foreground">دریافت‌شده</dt><dd>{r.fetched_count}</dd></div>
+                              <div><dt className="text-muted-foreground">ثبت‌شده</dt><dd>{r.inserted_count}</dd></div>
+                              <div><dt className="text-muted-foreground">مشکوک</dt><dd>{r.suspect_count}</dd></div>
+                              <div><dt className="text-muted-foreground">شروع</dt><dd>{formatDateFa(r.started_at)}</dd></div>
+                              <div><dt className="text-muted-foreground">پایان</dt><dd>{r.finished_at ? formatDateFa(r.finished_at) : "نامشخص"}</dd></div>
+                              <div className="sm:col-span-2 md:col-span-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <dt className="text-muted-foreground">پیام خطا</dt>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px]"
+                                    disabled={!r.error_message}
+                                    onClick={() => r.error_message && copyErrorMessage(r.error_message)}
+                                    aria-label="کپی پیام خطا"
+                                  >
+                                    <Copy className="ml-1 h-3 w-3" />
+                                    کپی خطا
+                                  </Button>
+                                </div>
+                                <dd className="mt-1 whitespace-pre-wrap break-words rounded-md border bg-background p-2 text-[11px]">
+                                  {r.error_message ?? "خطایی ثبت نشده است."}
+                                </dd>
+                              </div>
+                            </dl>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                       );
                     })}
                   </tbody>

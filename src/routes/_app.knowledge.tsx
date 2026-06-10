@@ -10,18 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
+  Pagination, PaginationContent, PaginationItem,
+  PaginationPrevious, PaginationNext,
 } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -30,19 +23,14 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
-  KNOWLEDGE_CATEGORIES,
-  KNOWLEDGE_CATEGORY_LABELS,
-  KNOWLEDGE_ACCESS_LABELS,
-  type KnowledgeCategory,
-  type KnowledgeAccessLevel,
+  KNOWLEDGE_CATEGORIES, KNOWLEDGE_CATEGORY_LABELS, KNOWLEDGE_ACCESS_LABELS,
+  type KnowledgeCategory, type KnowledgeAccessLevel,
 } from "@/lib/knowledge/constants";
 
 const PAGE_SIZE = 20;
 
 export const Route = createFileRoute("/_app/knowledge")({
-  beforeLoad: async () => {
-    await requirePermission("knowledge", "view");
-  },
+  beforeLoad: async () => { await requirePermission("knowledge", "view"); },
   component: KnowledgeListPage,
 });
 
@@ -69,9 +57,7 @@ function KnowledgeListPage() {
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("knowledge_documents")
-        .select("id, title, category, access_level, version, is_published, updated_at", {
-          count: "exact",
-        })
+        .select("id, title, category, access_level, version, is_published, updated_at", { count: "exact" })
         .eq("is_published", true)
         .order("updated_at", { ascending: false })
         .range(from, to);
@@ -93,10 +79,7 @@ function KnowledgeListPage() {
         actions={
           canManage ? (
             <Button asChild size="sm">
-              <Link to="/knowledge/manage">
-                <Settings2 className="ms-1 h-4 w-4" />
-                مدیریت اسناد
-              </Link>
+              <Link to="/knowledge/manage"><Settings2 className="ms-1 h-4 w-4" />مدیریت اسناد</Link>
             </Button>
           ) : null
         }
@@ -107,30 +90,17 @@ function KnowledgeListPage() {
           <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="جستجوی عنوان..."
             className="pe-9"
           />
         </div>
-        <Select
-          value={category}
-          onValueChange={(v) => {
-            setCategory(v as KnowledgeCategory | "all");
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="sm:w-56">
-            <SelectValue placeholder="دسته‌بندی" />
-          </SelectTrigger>
+        <Select value={category} onValueChange={(v) => { setCategory(v as KnowledgeCategory | "all"); setPage(1); }}>
+          <SelectTrigger className="sm:w-56"><SelectValue placeholder="دسته‌بندی" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه دسته‌ها</SelectItem>
             {KNOWLEDGE_CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -147,18 +117,11 @@ function KnowledgeListPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.rows.map((d) => (
-            <Link
-              key={d.id}
-              to="/knowledge/$documentId"
-              params={{ documentId: d.id }}
-              className="block"
-            >
+            <Link key={d.id} to="/knowledge/$documentId" params={{ documentId: d.id }} className="block">
               <Card className="h-full transition hover:border-primary hover:shadow-sm">
                 <CardHeader className="space-y-2 pb-2">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline">
-                      {KNOWLEDGE_CATEGORY_LABELS[d.category as KnowledgeCategory]}
-                    </Badge>
+                    <Badge variant="outline">{KNOWLEDGE_CATEGORY_LABELS[d.category as KnowledgeCategory]}</Badge>
                     <Badge variant="secondary" className="text-[10px]">
                       {KNOWLEDGE_ACCESS_LABELS[d.access_level as KnowledgeAccessLevel]}
                     </Badge>
@@ -180,29 +143,19 @@ function KnowledgeListPage() {
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPage((p) => Math.max(1, p - 1));
-                }}
+                onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
                 aria-disabled={page === 1}
                 className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
             <PaginationItem>
-              <span className="px-3 text-sm">
-                صفحه {page} از {totalPages}
-              </span>
+              <span className="px-3 text-sm">صفحه {page} از {totalPages}</span>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  setPage((p) => Math.min(totalPages, p + 1));
-                }}
+                onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }}
                 aria-disabled={page === totalPages}
-                className={
-                  page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
-                }
+                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
           </PaginationContent>

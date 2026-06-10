@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -22,9 +16,7 @@ import { Link } from "@tanstack/react-router";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
 import { productSchema, type ProductFormValues } from "@/lib/products/schemas";
 import {
-  PRODUCT_TYPE_LABELS,
-  STOCK_STATUS_LABELS,
-  PRODUCT_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
 } from "@/lib/products/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { composeProductName } from "@/lib/products/name-template";
@@ -75,18 +67,7 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
-export function ProductForm({
-  initial,
-  existingSku,
-  submitLabel = "ذخیره",
-  loading,
-  isEdit,
-  productId,
-  initialDynamicValues,
-  initialCategoryId,
-  onSubmit,
-  onCancel,
-}: Props) {
+export function ProductForm({ initial, existingSku, submitLabel = "ذخیره", loading, isEdit, productId, initialDynamicValues, initialCategoryId, onSubmit, onCancel }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
@@ -242,8 +223,7 @@ export function ProductForm({
     return (catsQ.data ?? []).find((c) => c.id === values.category_id) ?? null;
   }, [catsQ.data, values.category_id]);
 
-  const primarySpecLabel = ((selectedCategory as any)?.primary_spec_label?.toString().trim() ??
-    "") as string;
+  const primarySpecLabel = ((selectedCategory as any)?.primary_spec_label?.toString().trim() ?? "") as string;
   const namingTemplate = ((selectedCategory as any)?.naming_template?.toString() ?? "") as string;
   // اگر برچسب «مشخصه اصلی» با یکی از فیلدهای استاندارد یکی باشد،
   // فیلد متنی مشخصه اصلی حذف می‌شود و مقدار همان فیلد استاندارد جایگزین آن می‌گردد.
@@ -343,9 +323,7 @@ export function ProductForm({
   const toggleLabel = (id: string) => {
     setValues((s) => ({
       ...s,
-      label_ids: s.label_ids.includes(id)
-        ? s.label_ids.filter((x) => x !== id)
-        : [...s.label_ids, id],
+      label_ids: s.label_ids.includes(id) ? s.label_ids.filter((x) => x !== id) : [...s.label_ids, id],
     }));
   };
 
@@ -394,17 +372,13 @@ export function ProductForm({
           <AlertTitle>محصول تکراری شناسایی شد</AlertTitle>
           <AlertDescription className="space-y-2">
             <p>
-              محصولی با ترکیب «برند + دسته + مدل + رنگ + ظرفیت» مشابه قبلاً ثبت شده است. ثبت محصول
-              جدید مجاز نیست.
+              محصولی با ترکیب «برند + دسته + مدل + رنگ + ظرفیت» مشابه قبلاً
+              ثبت شده است. ثبت محصول جدید مجاز نیست.
             </p>
             <div className="rounded-md bg-background/50 p-2 text-sm">
-              <div>
-                <span className="font-medium">نام:</span> {duplicate.name}
-              </div>
+              <div><span className="font-medium">نام:</span> {duplicate.name}</div>
               {duplicate.sku && (
-                <div dir="ltr" className="text-start">
-                  <span className="font-medium">SKU:</span> {duplicate.sku}
-                </div>
+                <div dir="ltr" className="text-start"><span className="font-medium">SKU:</span> {duplicate.sku}</div>
               )}
             </div>
             <Button type="button" variant="outline" size="sm" asChild>
@@ -428,20 +402,12 @@ export function ProductForm({
                 placeholder="مثلاً: موتور القایی ۳ کیلووات"
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={regenerateName}
-                title="ساخت نام خودکار"
-              >
-                <Wand2 className="ms-1 h-4 w-4" />
-                ساخت نام خودکار
+              <Button type="button" variant="outline" size="sm" onClick={regenerateName} title="ساخت نام خودکار">
+                <Wand2 className="ms-1 h-4 w-4" />ساخت نام خودکار
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              نام محصول بر اساس الگوی استاندارد دسته‌بندی ساخته می‌شود و برای جستجوی سریع قیمت
-              استفاده خواهد شد.
+              نام محصول بر اساس الگوی استاندارد دسته‌بندی ساخته می‌شود و برای جستجوی سریع قیمت استفاده خواهد شد.
             </p>
           </Field>
           <Field label="کد محصول (SKU)">
@@ -453,9 +419,7 @@ export function ProductForm({
               placeholder="کد محصول بعد از ذخیره به‌صورت خودکار ساخته می‌شود"
             />
             {!existingSku && (
-              <p className="text-xs text-muted-foreground">
-                کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.
-              </p>
+              <p className="text-xs text-muted-foreground">کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.</p>
             )}
           </Field>
 
@@ -488,18 +452,11 @@ export function ProductForm({
           </Field>
 
           <Field label="نوع محصول">
-            <Select
-              value={values.product_type}
-              onValueChange={(v) => set("product_type", v as ProductFormValues["product_type"])}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={values.product_type} onValueChange={(v) => set("product_type", v as ProductFormValues["product_type"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -512,15 +469,11 @@ export function ProductForm({
               disabled={currenciesQ.isLoading}
             >
               <SelectTrigger>
-                <SelectValue
-                  placeholder={currenciesQ.isLoading ? "در حال بارگذاری..." : "انتخاب ارز"}
-                />
+                <SelectValue placeholder={currenciesQ.isLoading ? "در حال بارگذاری..." : "انتخاب ارز"} />
               </SelectTrigger>
               <SelectContent>
                 {(currenciesQ.data ?? []).length === 0 && !currenciesQ.isLoading ? (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    هیچ ارز فعالی تعریف نشده است.
-                  </div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">هیچ ارز فعالی تعریف نشده است.</div>
                 ) : (
                   (currenciesQ.data ?? []).map((c) => (
                     <SelectItem key={c.code} value={c.code}>
@@ -533,82 +486,50 @@ export function ProductForm({
           </Field>
 
           <Field label="وضعیت موجودی">
-            <Select
-              value={values.stock_status}
-              onValueChange={(v) => set("stock_status", v as ProductFormValues["stock_status"])}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={values.stock_status} onValueChange={(v) => set("stock_status", v as ProductFormValues["stock_status"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(STOCK_STATUS_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
           <Field label="وضعیت محصول">
-            <Select
-              value={values.status}
-              onValueChange={(v) => set("status", v as ProductFormValues["status"])}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={values.status} onValueChange={(v) => set("status", v as ProductFormValues["status"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(PRODUCT_STATUS_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
           <Field label="واحد">
-            <Input
-              value={values.unit ?? ""}
-              onChange={(e) => set("unit", e.target.value)}
-              placeholder="مثلاً: عدد، متر، کیلوگرم"
-            />
+            <Input value={values.unit ?? ""} onChange={(e) => set("unit", e.target.value)} placeholder="مثلاً: عدد، متر، کیلوگرم" />
           </Field>
 
           <Field label="رنگ">
-            <Select
-              value={values.color || "__none"}
-              onValueChange={(v) => set("color", v === "__none" ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="انتخاب رنگ" />
-              </SelectTrigger>
+            <Select value={values.color || "__none"} onValueChange={(v) => set("color", v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب رنگ" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— بدون رنگ —</SelectItem>
                 {attrsByType("color").map((a) => (
-                  <SelectItem key={a.id} value={a.name}>
-                    {a.name}
-                  </SelectItem>
+                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Field>
 
           <Field label="ظرفیت">
-            <Select
-              value={values.capacity || "__none"}
-              onValueChange={(v) => set("capacity", v === "__none" ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="انتخاب ظرفیت" />
-              </SelectTrigger>
+            <Select value={values.capacity || "__none"} onValueChange={(v) => set("capacity", v === "__none" ? "" : v)}>
+              <SelectTrigger><SelectValue placeholder="انتخاب ظرفیت" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— بدون ظرفیت —</SelectItem>
                 {attrsByType("capacity").map((a) => (
-                  <SelectItem key={a.id} value={a.name}>
-                    {a.name}
-                  </SelectItem>
+                  <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -624,45 +545,31 @@ export function ProductForm({
               emptyText="مدلی یافت نشد"
               noneLabel="— بدون مدل —"
               disabled={!values.category_id || createModelMut.isPending}
-              onCreate={
-                values.category_id
-                  ? async (q) => {
-                      await createModelMut.mutateAsync(q);
-                    }
-                  : undefined
-              }
+              onCreate={values.category_id ? async (q) => { await createModelMut.mutateAsync(q); } : undefined}
               createLabel={(q) => `افزودن مدل جدید: «${q}»`}
             />
             {!values.category_id ? (
-              <p className="text-xs text-muted-foreground">
-                برای دیدن یا ساختن مدل، ابتدا دسته‌بندی را انتخاب کنید.
-              </p>
+              <p className="text-xs text-muted-foreground">برای دیدن یا ساختن مدل، ابتدا دسته‌بندی را انتخاب کنید.</p>
             ) : (
-              <p className="text-xs text-muted-foreground">
-                فقط مدل‌های مرتبط با این دسته نمایش داده می‌شود. تکراری ساخته نخواهد شد.
-              </p>
+              <p className="text-xs text-muted-foreground">فقط مدل‌های مرتبط با این دسته نمایش داده می‌شود. تکراری ساخته نخواهد شد.</p>
             )}
           </Field>
 
-          {!primarySpecHidden && (
-            <Field
-              label={primarySpecLabel || "مشخصه اصلی"}
-              required={primarySpecRequired}
-              error={errors.primary_spec}
-            >
-              <Input
-                value={values.primary_spec ?? ""}
-                onChange={(e) => set("primary_spec", e.target.value)}
-                maxLength={100}
-                placeholder={
-                  primarySpecLabel ? `مثلاً مقدار ${primarySpecLabel}` : "مشخصه اصلی محصول"
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                این مقدار در نام استاندارد محصول استفاده می‌شود.
-              </p>
-            </Field>
-          )}
+          {!primarySpecHidden && <Field
+            label={primarySpecLabel || "مشخصه اصلی"}
+            required={primarySpecRequired}
+            error={errors.primary_spec}
+          >
+            <Input
+              value={values.primary_spec ?? ""}
+              onChange={(e) => set("primary_spec", e.target.value)}
+              maxLength={100}
+              placeholder={primarySpecLabel ? `مثلاً مقدار ${primarySpecLabel}` : "مشخصه اصلی محصول"}
+            />
+            <p className="text-xs text-muted-foreground">
+              این مقدار در نام استاندارد محصول استفاده می‌شود.
+            </p>
+          </Field>}
         </CardContent>
       </Card>
 
@@ -677,15 +584,11 @@ export function ProductForm({
             </div>
           )}
           {!values.category_id ? (
-            <p className="text-xs text-muted-foreground">
-              برای نمایش ویژگی‌های اختصاصی، ابتدا دسته‌بندی را انتخاب کنید.
-            </p>
+            <p className="text-xs text-muted-foreground">برای نمایش ویژگی‌های اختصاصی، ابتدا دسته‌بندی را انتخاب کنید.</p>
           ) : dynDefsQ.isLoading ? (
             <p className="text-xs text-muted-foreground">در حال بارگذاری ویژگی‌ها...</p>
           ) : dynDefs.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              برای این دسته‌بندی ویژگی اختصاصی تعریف نشده است.
-            </p>
+            <p className="text-xs text-muted-foreground">برای این دسته‌بندی ویژگی اختصاصی تعریف نشده است.</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {dynDefs.map((d) => (
@@ -705,18 +608,10 @@ export function ProductForm({
       <Card>
         <CardContent className="space-y-4 p-4">
           <Field label="توضیحات">
-            <Textarea
-              value={values.description ?? ""}
-              onChange={(e) => set("description", e.target.value)}
-              rows={3}
-            />
+            <Textarea value={values.description ?? ""} onChange={(e) => set("description", e.target.value)} rows={3} />
           </Field>
           <Field label="یادداشت فنی">
-            <Textarea
-              value={values.technical_notes ?? ""}
-              onChange={(e) => set("technical_notes", e.target.value)}
-              rows={3}
-            />
+            <Textarea value={values.technical_notes ?? ""} onChange={(e) => set("technical_notes", e.target.value)} rows={3} />
           </Field>
 
           <div>
@@ -728,18 +623,12 @@ export function ProductForm({
             ) : (
               <div className="flex flex-wrap gap-3">
                 {(labelsQ.data ?? []).map((l) => (
-                  <label
-                    key={l.id}
-                    className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  >
+                  <label key={l.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
                     <Checkbox
                       checked={values.label_ids.includes(l.id)}
                       onCheckedChange={() => toggleLabel(l.id)}
                     />
-                    <span
-                      className="inline-block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: l.color }}
-                    />
+                    <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: l.color }} />
                     <span>{l.title}</span>
                   </label>
                 ))}
@@ -752,16 +641,11 @@ export function ProductForm({
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
-            <X className="ms-1 h-4 w-4" />
-            انصراف
+            <X className="ms-1 h-4 w-4" />انصراف
           </Button>
         )}
         <Button type="submit" disabled={loading || !!duplicate || dupChecking}>
-          {loading ? (
-            <Loader2 className="ms-1 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="ms-1 h-4 w-4" />
-          )}
+          {loading ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Save className="ms-1 h-4 w-4" />}
           {duplicate ? "ثبت غیرممکن (تکراری)" : submitLabel}
         </Button>
       </div>
@@ -769,17 +653,7 @@ export function ProductForm({
   );
 }
 
-function Field({
-  label,
-  required,
-  error,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <Label className="flex items-center gap-1">
@@ -793,10 +667,7 @@ function Field({
 }
 
 function DynamicAttrField({
-  def,
-  value,
-  error,
-  onChange,
+  def, value, error, onChange,
 }: {
   def: CategoryAttributeDef;
   value: string;
@@ -819,15 +690,11 @@ function DynamicAttrField({
     case "select":
       control = (
         <Select value={value || "__none"} onValueChange={(v) => onChange(v === "__none" ? "" : v)}>
-          <SelectTrigger>
-            <SelectValue placeholder="انتخاب کنید..." />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__none">— انتخاب نشده —</SelectItem>
             {def.options.map((opt) => (
-              <SelectItem key={opt} value={opt}>
-                {opt}
-              </SelectItem>
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -845,11 +712,23 @@ function DynamicAttrField({
       );
       break;
     case "date":
-      control = <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />;
+      control = (
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
       break;
     case "text":
     default:
-      control = <Input value={value} onChange={(e) => onChange(e.target.value)} maxLength={500} />;
+      control = (
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={500}
+        />
+      );
       break;
   }
   return (

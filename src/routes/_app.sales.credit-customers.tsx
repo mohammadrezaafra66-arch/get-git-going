@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Filter, X, Check, ChevronsUpDown, ShieldCheck, Search } from "lucide-react";
+import {
+  Loader2, Filter, X, Check, ChevronsUpDown, ShieldCheck, Search,
+} from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,24 +20,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_app/sales/credit-customers")({
   beforeLoad: async () => {
@@ -114,15 +112,8 @@ function CreditCustomersPage() {
   const hasRangeError = Object.values(rangeErrors).some(Boolean);
 
   const queryKey = [
-    "credit-customers",
-    page,
-    dName,
-    dPhone,
-    responsible?.id ?? null,
-    dPurchases,
-    dCredit,
-    dDebt,
-    dScore,
+    "credit-customers", page, dName, dPhone, responsible?.id ?? null,
+    dPurchases, dCredit, dDebt, dScore,
   ];
 
   const { data, isFetching, error } = useQuery({
@@ -147,7 +138,9 @@ function CreditCustomersPage() {
       if (phoneTerm) q = q.ilike("phone", `%${phoneTerm}%`);
       if (responsible?.id) q = q.eq("responsible_id", responsible.id);
 
-      const numFilter = (col: string, r: NumRange) => {
+      const numFilter = (
+        col: string, r: NumRange,
+      ) => {
         if (r.from !== "") q = q.gte(`customer_credit_profile.${col}`, Number(r.from));
         if (r.to !== "") q = q.lte(`customer_credit_profile.${col}`, Number(r.to));
       };
@@ -167,52 +160,20 @@ function CreditCustomersPage() {
 
   function clearAll() {
     setPage(0);
-    setName("");
-    setPhone("");
-    setResponsible(null);
-    setPurchases(EMPTY_RANGE);
-    setCredit(EMPTY_RANGE);
-    setDebt(EMPTY_RANGE);
-    setScore(EMPTY_RANGE);
+    setName(""); setPhone(""); setResponsible(null);
+    setPurchases(EMPTY_RANGE); setCredit(EMPTY_RANGE);
+    setDebt(EMPTY_RANGE); setScore(EMPTY_RANGE);
   }
 
   const filtersPanel = (
     <FiltersForm
-      name={name}
-      setName={(v) => {
-        setPage(0);
-        setName(v);
-      }}
-      phone={phone}
-      setPhone={(v) => {
-        setPage(0);
-        setPhone(v);
-      }}
-      responsible={responsible}
-      setResponsible={(v) => {
-        setPage(0);
-        setResponsible(v);
-      }}
-      purchases={purchases}
-      setPurchases={(v) => {
-        setPage(0);
-        setPurchases(v);
-      }}
-      credit={credit}
-      setCredit={(v) => {
-        setPage(0);
-        setCredit(v);
-      }}
-      debt={debt}
-      setDebt={(v) => {
-        setPage(0);
-        setDebt(v);
-      }}
-      score={score}
-      setScore={(v) => {
-        setPage(0);
-        setScore(v);
-      }}
+      name={name} setName={(v) => { setPage(0); setName(v); }}
+      phone={phone} setPhone={(v) => { setPage(0); setPhone(v); }}
+      responsible={responsible} setResponsible={(v) => { setPage(0); setResponsible(v); }}
+      purchases={purchases} setPurchases={(v) => { setPage(0); setPurchases(v); }}
+      credit={credit} setCredit={(v) => { setPage(0); setCredit(v); }}
+      debt={debt} setDebt={(v) => { setPage(0); setDebt(v); }}
+      score={score} setScore={(v) => { setPage(0); setScore(v); }}
       errors={rangeErrors}
     />
   );
@@ -294,7 +255,9 @@ function CreditCustomersPage() {
       <Card>
         <CardContent className="p-4 space-y-4">
           {error && (
-            <p className="text-sm text-destructive">خطا در بارگذاری: {(error as Error).message}</p>
+            <p className="text-sm text-destructive">
+              خطا در بارگذاری: {(error as Error).message}
+            </p>
           )}
           {isFetching && (
             <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
@@ -341,7 +304,9 @@ function CreditCustomersPage() {
                       <TableCell>{ccp ? formatNumber(ccp.total_purchases) : "—"}</TableCell>
                       <TableCell>{ccp ? formatNumber(ccp.credit_limit) : "—"}</TableCell>
                       <TableCell>{ccp ? formatNumber(ccp.outstanding_balance) : "—"}</TableCell>
-                      <TableCell>{ccp ? <ScoreBadge score={ccp.credit_score} /> : "—"}</TableCell>
+                      <TableCell>
+                        {ccp ? <ScoreBadge score={ccp.credit_score} /> : "—"}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -359,23 +324,15 @@ function CreditCustomersPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>مجموع: {toFaDigits(total)}</span>
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
+              <Button size="sm" variant="outline" disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}>
                 قبلی
               </Button>
               <span className="self-center">
                 صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
               </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
+              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}>
                 بعدی
               </Button>
             </div>
@@ -389,12 +346,11 @@ function CreditCustomersPage() {
 /* ---------------- Score badge ---------------- */
 
 function ScoreBadge({ score }: { score: number }) {
-  const cls =
-    score <= 30
-      ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-      : score <= 60
-        ? "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
-        : "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300";
+  const cls = score <= 30
+    ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+    : score <= 60
+      ? "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"
+      : "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300";
   return (
     <Badge variant="outline" className={cn("font-semibold", cls)}>
       {toFaDigits(score)}
@@ -405,26 +361,15 @@ function ScoreBadge({ score }: { score: number }) {
 /* ---------------- Filters form ---------------- */
 
 interface FiltersFormProps {
-  name: string;
-  setName: (v: string) => void;
-  phone: string;
-  setPhone: (v: string) => void;
+  name: string; setName: (v: string) => void;
+  phone: string; setPhone: (v: string) => void;
   responsible: { id: string; label: string } | null;
   setResponsible: (v: { id: string; label: string } | null) => void;
-  purchases: NumRange;
-  setPurchases: (v: NumRange) => void;
-  credit: NumRange;
-  setCredit: (v: NumRange) => void;
-  debt: NumRange;
-  setDebt: (v: NumRange) => void;
-  score: NumRange;
-  setScore: (v: NumRange) => void;
-  errors: {
-    purchases: string | null;
-    credit: string | null;
-    debt: string | null;
-    score: string | null;
-  };
+  purchases: NumRange; setPurchases: (v: NumRange) => void;
+  credit: NumRange; setCredit: (v: NumRange) => void;
+  debt: NumRange; setDebt: (v: NumRange) => void;
+  score: NumRange; setScore: (v: NumRange) => void;
+  errors: { purchases: string | null; credit: string | null; debt: string | null; score: string | null };
 }
 
 function FiltersForm(p: FiltersFormProps) {
@@ -493,11 +438,7 @@ function FiltersForm(p: FiltersFormProps) {
 }
 
 function NumberRange({
-  label,
-  range,
-  onChange,
-  error,
-  hint,
+  label, range, onChange, error, hint,
 }: {
   label: string;
   range: NumRange;
@@ -513,18 +454,12 @@ function NumberRange({
       </Label>
       <div className="grid grid-cols-2 gap-2">
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="از"
+          type="number" min="0" inputMode="numeric" placeholder="از"
           value={range.from}
           onChange={(e) => onChange({ ...range, from: e.target.value })}
         />
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="تا"
+          type="number" min="0" inputMode="numeric" placeholder="تا"
           value={range.to}
           onChange={(e) => onChange({ ...range, to: e.target.value })}
         />
@@ -537,8 +472,7 @@ function NumberRange({
 /* ---------------- Responsible autocomplete ---------------- */
 
 function ResponsiblePicker({
-  value,
-  onChange,
+  value, onChange,
 }: {
   value: { id: string; label: string } | null;
   onChange: (v: { id: string; label: string } | null) => void;
@@ -571,13 +505,9 @@ function ResponsiblePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            className={cn(
-              "flex-1 justify-between font-normal h-9",
-              !value && "text-muted-foreground",
-            )}
+            type="button" variant="outline" role="combobox"
+            className={cn("flex-1 justify-between font-normal h-9",
+              !value && "text-muted-foreground")}
           >
             {value ? value.label || "کاربر" : "همه"}
             <ChevronsUpDown className="h-4 w-4 opacity-50" />
@@ -598,12 +528,8 @@ function ResponsiblePicker({
                       setOpen(false);
                     }}
                   >
-                    <Check
-                      className={cn(
-                        "ml-2 h-4 w-4",
-                        pr.id === value?.id ? "opacity-100" : "opacity-0",
-                      )}
-                    />
+                    <Check className={cn("ml-2 h-4 w-4",
+                      pr.id === value?.id ? "opacity-100" : "opacity-0")} />
                     <span>{pr.full_name || "بدون نام"}</span>
                   </CommandItem>
                 ))}
@@ -613,13 +539,8 @@ function ResponsiblePicker({
         </PopoverContent>
       </Popover>
       {value && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onChange(null)}
-          aria-label="پاک کردن"
-        >
+        <Button type="button" variant="ghost" size="icon" onClick={() => onChange(null)}
+          aria-label="پاک کردن">
           <X className="h-4 w-4" />
         </Button>
       )}

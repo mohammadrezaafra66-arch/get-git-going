@@ -63,16 +63,16 @@ async function resolveCategoryIds(filters: WorkbenchFilters): Promise<string[] |
     .from("categories")
     .select("id")
     .eq("parent_id", filters.categoryId);
-  return [filters.categoryId, ...(kids ?? []).map((k) => k.id)];
+  return [filters.categoryId, ...((kids ?? []).map((k) => k.id))];
 }
 
 async function fetchProductIdsBySalePrice(want: "has" | "missing"): Promise<Set<string>> {
-  const { data } = await supabase
-    .from("product_computed_prices")
+  const { data } = await (supabase as any)
+    .from("product_computed_prices_public")
     .select("product_id, rounded_sale_price")
     .gt("rounded_sale_price", 0)
     .limit(PRE_FILTER_LIMIT);
-  const has = new Set<string>((data ?? []).map((r) => r.product_id as string));
+  const has = new Set<string>(((data ?? []) as Array<{ product_id: string }>).map((r) => r.product_id));
   return want === "has" ? has : has; // caller uses positive set then inverts
 }
 
@@ -130,7 +130,9 @@ function applyBaseFilters(qb: any, filters: WorkbenchFilters) {
   }
   if (filters.search.trim()) {
     const safe = filters.search.trim().replace(/[%_]/g, "");
-    qb = qb.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,model.ilike.%${safe}%`);
+    qb = qb.or(
+      `name.ilike.%${safe}%,sku.ilike.%${safe}%,model.ilike.%${safe}%`,
+    );
   }
   return qb;
 }
@@ -216,7 +218,7 @@ export async function fetchWorkbenchRowsV2(opts: {
   // برای exclusionهای کوچک، .not("id","in",...) — اما برای مجموعه‌های بزرگ
   // post-filter سمت client روی نتیجه صفحه (با pageSize زیاد) مطمئن‌تر است.
   // اینجا اگر set کوچک باشد به DB می‌فرستیم.
-  const sendExcl = (s?: Set<string>) => (s && s.size > 0 && s.size <= 1000 ? Array.from(s) : null);
+  const sendExcl = (s?: Set<string>) => s && s.size > 0 && s.size <= 1000 ? Array.from(s) : null;
   const exclOwners = sendExcl(notOwners);
   const exclLabels = sendExcl(notLabels);
   const exclPriced = sendExcl(notPriced);
@@ -225,11 +227,7 @@ export async function fetchWorkbenchRowsV2(opts: {
   if (exclPriced) qb = qb.not("id", "in", `(${exclPriced.join(",")})`);
 
   // اگر set بزرگ هست، fetch بیشتر و post-filter
-  const needPostFilter = !!(
-    (!exclOwners && notOwners) ||
-    (!exclLabels && notLabels) ||
-    (!exclPriced && notPriced)
-  );
+  const needPostFilter = !!((!exclOwners && notOwners) || (!exclLabels && notLabels) || (!exclPriced && notPriced));
   const rangeSize = needPostFilter ? Math.min(2000, pageSize * 50) : pageSize;
   const start = needPostFilter ? 0 : page * pageSize;
   qb = qb.range(start, start + rangeSize - 1);
@@ -265,29 +263,25 @@ export async function fetchWorkbenchRowsV2(opts: {
       .eq("is_active", true)
       .lte("effective_at", nowIso)
       .order("effective_at", { ascending: false }),
-    supabase
-      .from("product_computed_prices")
+    (supabase as any)
+      .from("product_computed_prices_public")
       .select("product_id, rounded_sale_price, computed_at")
       .in("product_id", productIds)
       .order("computed_at", { ascending: false }),
     supabase
       .from("product_owner_assignments")
-      .select(
-        "product_id, user_id, profile:profiles!product_owner_assignments_user_id_fkey(full_name)",
-      )
+      .select("product_id, user_id, profile:profiles!product_owner_assignments_user_id_fkey(full_name)")
       .in("product_id", productIds),
     supabase
       .from("product_label_links")
       .select("product_id, label_id, label:product_labels(id, title, color)")
       .in("product_id", productIds),
     (async () => {
-      const parentIds = Array.from(
-        new Set(
-          pageSlice
-            .map((r: any) => r.category?.parent_id)
-            .filter((x: string | null | undefined): x is string => !!x),
-        ),
-      );
+      const parentIds = Array.from(new Set(
+        pageSlice
+          .map((r: any) => r.category?.parent_id)
+          .filter((x: string | null | undefined): x is string => !!x),
+      ));
       if (parentIds.length === 0) return { data: [] as CategoryRow[] };
       const { data } = await supabase
         .from("categories")
@@ -388,21 +382,11 @@ export async function fetchWorkbenchHealthReport(opts: {
   ownedOnly: { userId: string } | null;
 }): Promise<WorkbenchRowV2[]> {
   const { rows } = await fetchWorkbenchRowsV2({
-    filters: {
-      ...{
-        search: "",
-        brandId: "all",
-        categoryId: "all",
-        subcategoryId: "all",
-        currencyType: "all",
-        currency: "all",
-        inventory: "all",
-        productStatus: "all",
-        salePrice: "all",
-        ownerId: "all",
-        labelId: "all",
-      },
-    },
+    filters: { ...{
+      search: "", brandId: "all", categoryId: "all", subcategoryId: "all",
+      currencyType: "all", currency: "all", inventory: "all", productStatus: "all",
+      salePrice: "all", ownerId: "all", labelId: "all",
+    } },
     page: 0,
     pageSize: 2000,
     ownedOnly: opts.ownedOnly,
@@ -411,15 +395,16 @@ export async function fetchWorkbenchHealthReport(opts: {
 }
 
 /** لیست مسئولین یکتا (برای فیلتر). */
-export async function fetchAllProductOwners(): Promise<
-  { user_id: string; full_name: string | null }[]
-> {
+export async function fetchAllProductOwners(): Promise<{ user_id: string; full_name: string | null }[]> {
   const { data: assigns } = await supabase
     .from("product_owner_assignments")
     .select("user_id")
     .limit(PRE_FILTER_LIMIT);
   const ids = Array.from(new Set((assigns ?? []).map((a) => a.user_id as string)));
   if (ids.length === 0) return [];
-  const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", ids);
   return (profs ?? []).map((p) => ({ user_id: p.id, full_name: p.full_name }));
 }

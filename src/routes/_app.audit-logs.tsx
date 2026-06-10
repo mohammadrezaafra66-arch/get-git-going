@@ -9,9 +9,7 @@ import { requireAdmin } from "@/lib/rbac/route-guards";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/audit-logs")({
-  beforeLoad: async () => {
-    await requireAdmin();
-  },
+  beforeLoad: async () => { await requireAdmin(); },
   component: AuditLogsPage,
 });
 
@@ -49,15 +47,11 @@ function AuditLogsPage() {
         .limit(200);
       if (error) throw error;
 
-      const ids = Array.from(
-        new Set((logs ?? []).map((l) => l.actor_id).filter(Boolean) as string[]),
-      );
+      const ids = Array.from(new Set((logs ?? []).map((l) => l.actor_id).filter(Boolean) as string[]));
       const namesMap = new Map<string, string>();
       if (ids.length) {
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", ids);
+          .from("profiles").select("id, full_name").in("id", ids);
         for (const p of profiles ?? []) namesMap.set(p.id, p.full_name ?? p.id.slice(0, 8));
       }
       return { logs: (logs ?? []) as LogRow[], names: namesMap };
@@ -73,9 +67,7 @@ function AuditLogsPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !data || data.logs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
               <ScrollText className="h-8 w-8 opacity-50" />
@@ -100,9 +92,7 @@ function AuditLogsPage() {
                       <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
                         {formatDateFa(l.created_at)}
                       </td>
-                      <td className="p-3">
-                        <ActorCell actorId={l.actor_id} names={data.names} />
-                      </td>
+                      <td className="p-3"><ActorCell actorId={l.actor_id} names={data.names} /></td>
                       <td className="p-3">
                         <Badge variant="secondary">{ACTION_LABELS[l.action] ?? l.action}</Badge>
                       </td>
@@ -112,15 +102,10 @@ function AuditLogsPage() {
                       </td>
                       <td className="p-3 text-xs">
                         {l.diff ? (
-                          <code
-                            dir="ltr"
-                            className="block max-w-xs truncate rounded bg-muted px-2 py-1"
-                          >
+                          <code dir="ltr" className="block max-w-xs truncate rounded bg-muted px-2 py-1">
                             {JSON.stringify(l.diff)}
                           </code>
-                        ) : (
-                          "—"
-                        )}
+                        ) : "—"}
                       </td>
                     </tr>
                   ))}

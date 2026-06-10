@@ -2,14 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Save,
-  X,
-  AlertTriangle,
-  CheckCircle2,
-  Coins,
+  ChevronDown, ChevronUp, Loader2, Save, X, AlertTriangle, CheckCircle2, Coins,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -175,11 +168,7 @@ export function EffectiveCurrenciesPanel() {
                         disabled={saving}
                         className="h-8"
                       >
-                        {saving ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Save className="h-3 w-3" />
-                        )}
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                         <span className="mr-1">ثبت</span>
                       </Button>
                       <Button
@@ -242,14 +231,10 @@ export function EffectiveCurrenciesPanel() {
                       <span className="text-destructive">{r.error}</span>
                     ) : (
                       <span className="font-mono">
-                        {r.old_price ? formatNumber(r.old_price) : "—"} →{" "}
-                        {formatNumber(r.new_price)}
+                        {r.old_price ? formatNumber(r.old_price) : "—"} → {formatNumber(r.new_price)}
                         {r.change_pct !== null && (
-                          <span
-                            className={`mr-1 ${r.change_pct > 0 ? "text-green-600" : r.change_pct < 0 ? "text-destructive" : ""}`}
-                          >
-                            ({r.change_pct > 0 ? "+" : ""}
-                            {r.change_pct}%)
+                          <span className={`mr-1 ${r.change_pct > 0 ? "text-green-600" : r.change_pct < 0 ? "text-destructive" : ""}`}>
+                            ({r.change_pct > 0 ? "+" : ""}{r.change_pct}%)
                           </span>
                         )}
                       </span>

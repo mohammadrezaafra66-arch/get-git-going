@@ -25,7 +25,12 @@ export function BoardOnlineUsersCard() {
           کاربران آنلاین تابلوی امین حضور
           <Badge variant="secondary">{items.length}</Badge>
         </CardTitle>
-        <Button variant="ghost" size="sm" onClick={() => q.refetch()} disabled={q.isFetching}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => q.refetch()}
+          disabled={q.isFetching}
+        >
           <RefreshCw className={`h-4 w-4 ${q.isFetching ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
@@ -35,7 +40,9 @@ export function BoardOnlineUsersCard() {
             <Loader2 className="h-4 w-4 animate-spin" /> در حال بارگذاری...
           </div>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">در حال حاضر کاربری در تابلو آنلاین نیست.</p>
+          <p className="text-sm text-muted-foreground">
+            در حال حاضر کاربری در تابلو آنلاین نیست.
+          </p>
         ) : (
           items.map((s) => (
             <div

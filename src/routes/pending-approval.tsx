@@ -46,13 +46,8 @@ function PendingApprovalPage() {
           <CardTitle>در انتظار تأیید مدیر</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-center text-sm text-muted-foreground">
-          <p>
-            حساب شما با موفقیت ساخته شده ولی هنوز توسط مدیر تأیید نشده است. پس از تأیید می‌توانید
-            وارد سامانه شوید.
-          </p>
-          <Button variant="outline" onClick={onLogout} className="w-full">
-            خروج
-          </Button>
+          <p>حساب شما با موفقیت ساخته شده ولی هنوز توسط مدیر تأیید نشده است. پس از تأیید می‌توانید وارد سامانه شوید.</p>
+          <Button variant="outline" onClick={onLogout} className="w-full">خروج</Button>
         </CardContent>
       </Card>
     </div>

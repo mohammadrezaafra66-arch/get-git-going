@@ -71,10 +71,7 @@ export function LevelUpOverlay({ level, duration = 3000, onDone }: LevelUpOverla
       </div>
 
       {/* center burst */}
-      <div
-        className="relative flex flex-col items-center gap-3 text-center"
-        style={{ animation: "lu-pop 700ms cubic-bezier(0.22,1.61,0.36,1) both" }}
-      >
+      <div className="relative flex flex-col items-center gap-3 text-center" style={{ animation: "lu-pop 700ms cubic-bezier(0.22,1.61,0.36,1) both" }}>
         <div className="relative">
           <div className="absolute inset-0 -m-8 rounded-full bg-yellow-400/30 blur-3xl animate-pulse" />
           <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 shadow-[0_0_60px_rgba(250,204,21,0.8)]">

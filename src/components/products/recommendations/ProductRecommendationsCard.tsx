@@ -84,8 +84,8 @@ export function ProductRecommendationsCard({ productId, onSelect, compact = fals
                       rec.stock_status === "in_stock"
                         ? "h-4 border-emerald-500/40 px-1.5 text-[10px] text-emerald-600"
                         : rec.stock_status === "out_of_stock"
-                          ? "h-4 border-destructive/40 px-1.5 text-[10px] text-destructive"
-                          : "h-4 px-1.5 text-[10px]"
+                        ? "h-4 border-destructive/40 px-1.5 text-[10px] text-destructive"
+                        : "h-4 px-1.5 text-[10px]"
                     }
                   >
                     {STOCK_LABEL_FA[rec.stock_status] ?? rec.stock_status}
@@ -102,7 +102,12 @@ export function ProductRecommendationsCard({ productId, onSelect, compact = fals
                     : "—"}
                 </span>
                 {onSelect && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => onSelect(rec)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onSelect(rec)}
+                  >
                     مشاهده
                   </Button>
                 )}

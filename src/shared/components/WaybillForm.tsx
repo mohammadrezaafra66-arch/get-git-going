@@ -29,15 +29,9 @@ export const waybillSchema = z.object({
 export type WaybillFormValues = z.infer<typeof waybillSchema>;
 
 const empty: WaybillFormValues = {
-  sender_name: "",
-  sender_phone: "",
-  receiver_name: "",
-  receiver_phone: "",
-  shipping_company: "",
-  destination_city: "",
-  customer_accounting_code: "",
-  destination_address: "",
-  shipping_notes: "",
+  sender_name: "", sender_phone: "", receiver_name: "", receiver_phone: "",
+  shipping_company: "", destination_city: "",
+  customer_accounting_code: "", destination_address: "", shipping_notes: "",
 };
 
 export function WaybillForm({
@@ -49,11 +43,7 @@ export function WaybillForm({
 }: {
   initial?: Partial<WaybillFormValues>;
   submitting: boolean;
-  onSubmit: (
-    values: WaybillFormValues,
-    register: boolean,
-    customData: CustomData,
-  ) => Promise<void> | void;
+  onSubmit: (values: WaybillFormValues, register: boolean, customData: CustomData) => Promise<void> | void;
   customFields?: CustomFieldDef[];
   initialCustomData?: CustomData;
 }) {
@@ -62,10 +52,8 @@ export function WaybillForm({
   const [customData, setCustomData] = useState<CustomData>(initialCustomData);
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
 
-  const set =
-    (k: keyof WaybillFormValues) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setV((p) => ({ ...p, [k]: e.target.value }));
+  const set = (k: keyof WaybillFormValues) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setV((p) => ({ ...p, [k]: e.target.value }));
 
   const submit = async (register: boolean) => {
     const r = waybillSchema.safeParse(v);
@@ -73,9 +61,7 @@ export function WaybillForm({
     setCustomErrors(cErrs);
     if (!r.success) {
       const errs: Record<string, string> = {};
-      r.error.issues.forEach((i) => {
-        errs[i.path.join(".")] = i.message;
-      });
+      r.error.issues.forEach((i) => { errs[i.path.join(".")] = i.message; });
       setErrors(errs);
       return;
     }
@@ -87,8 +73,7 @@ export function WaybillForm({
     await onSubmit(r.data, register, customData);
   };
 
-  const Err = ({ k }: { k: string }) =>
-    errors[k] ? <p className="text-xs text-destructive">{errors[k]}</p> : null;
+  const Err = ({ k }: { k: string }) => errors[k] ? <p className="text-xs text-destructive">{errors[k]}</p> : null;
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -110,21 +95,12 @@ export function WaybillForm({
         </div>
         <div className="space-y-1">
           <Label>موبایل گیرنده *</Label>
-          <Input
-            value={v.receiver_phone}
-            onChange={set("receiver_phone")}
-            maxLength={40}
-            dir="ltr"
-          />
+          <Input value={v.receiver_phone} onChange={set("receiver_phone")} maxLength={40} dir="ltr" />
           <Err k="receiver_phone" />
         </div>
         <div className="space-y-1">
           <Label>کد حسابداری مشتری</Label>
-          <Input
-            value={v.customer_accounting_code ?? ""}
-            onChange={set("customer_accounting_code")}
-            maxLength={30}
-          />
+          <Input value={v.customer_accounting_code ?? ""} onChange={set("customer_accounting_code")} maxLength={30} />
         </div>
         <div className="space-y-1">
           <Label>باربری / روش ارسال *</Label>
@@ -138,21 +114,11 @@ export function WaybillForm({
         </div>
         <div className="space-y-1 sm:col-span-2">
           <Label>آدرس مقصد</Label>
-          <Textarea
-            value={v.destination_address ?? ""}
-            onChange={set("destination_address")}
-            maxLength={500}
-            rows={2}
-          />
+          <Textarea value={v.destination_address ?? ""} onChange={set("destination_address")} maxLength={500} rows={2} />
         </div>
         <div className="space-y-1 sm:col-span-2">
           <Label>توضیحات ارسال</Label>
-          <Textarea
-            value={v.shipping_notes ?? ""}
-            onChange={set("shipping_notes")}
-            maxLength={500}
-            rows={2}
-          />
+          <Textarea value={v.shipping_notes ?? ""} onChange={set("shipping_notes")} maxLength={500} rows={2} />
         </div>
       </div>
 

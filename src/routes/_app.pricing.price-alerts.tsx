@@ -13,15 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PriceAlertDialog } from "@/components/pricing/price-alerts/PriceAlertDialog";
 import {
-  fetchMyAlerts,
-  fetchMyNotifications,
-  toggleAlertRule,
-  deleteAlertRule,
-  markNotificationRead,
-  markAllNotificationsRead,
-  OPERATOR_LABELS,
-  type PriceAlertRule,
-  type PriceAlertNotification,
+  fetchMyAlerts, fetchMyNotifications, toggleAlertRule, deleteAlertRule,
+  markNotificationRead, markAllNotificationsRead,
+  OPERATOR_LABELS, type PriceAlertRule, type PriceAlertNotification,
 } from "@/lib/pricing/price-alerts";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 
@@ -54,22 +48,14 @@ function PriceAlertsPage() {
     staleTime: 10_000,
   });
 
-  function openCreate() {
-    setEditing(null);
-    setDialogOpen(true);
-  }
-  function openEdit(r: PriceAlertRule) {
-    setEditing(r);
-    setDialogOpen(true);
-  }
+  function openCreate() { setEditing(null); setDialogOpen(true); }
+  function openEdit(r: PriceAlertRule) { setEditing(r); setDialogOpen(true); }
 
   async function onToggle(r: PriceAlertRule, v: boolean) {
     try {
       await toggleAlertRule(r.id, v);
       qc.invalidateQueries({ queryKey: ["my-price-alerts"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "خطا");
-    }
+    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
   }
 
   async function onDelete(r: PriceAlertRule) {
@@ -78,27 +64,21 @@ function PriceAlertsPage() {
       await deleteAlertRule(r.id);
       toast.success("هشدار حذف شد.");
       qc.invalidateQueries({ queryKey: ["my-price-alerts"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "خطا");
-    }
+    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
   }
 
   async function onMarkRead(n: PriceAlertNotification) {
     try {
       await markNotificationRead(n.id, true);
       qc.invalidateQueries({ queryKey: ["my-price-alert-notifications"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "خطا");
-    }
+    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
   }
 
   async function onMarkAllRead() {
     try {
       await markAllNotificationsRead();
       qc.invalidateQueries({ queryKey: ["my-price-alert-notifications"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "خطا");
-    }
+    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
   }
 
   return (
@@ -121,9 +101,7 @@ function PriceAlertsPage() {
 
         <TabsContent value="rules" className="mt-4">
           {rulesQuery.isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (rulesQuery.data?.rows.length ?? 0) === 0 ? (
             <EmptyState
               icon={Bell}
@@ -137,9 +115,7 @@ function PriceAlertsPage() {
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-foreground">
-                          {r.product?.name ?? "—"}
-                        </span>
+                        <span className="font-semibold text-foreground">{r.product?.name ?? "—"}</span>
                         {r.sale_price_type?.title && (
                           <Badge variant="secondary">{r.sale_price_type.title}</Badge>
                         )}
@@ -148,21 +124,11 @@ function PriceAlertsPage() {
                       <div className="text-sm text-muted-foreground">
                         {OPERATOR_LABELS[r.operator]}
                         {r.target_value !== null && (
-                          <span className="mx-1">
-                            — مقدار: {formatNumber(Number(r.target_value))}{" "}
-                            {r.target_currency === "usd"
-                              ? "دلار"
-                              : r.operator.endsWith("_percent")
-                                ? "٪"
-                                : "تومان"}
-                          </span>
+                          <span className="mx-1">— مقدار: {formatNumber(Number(r.target_value))} {r.target_currency === "usd" ? "دلار" : r.operator.endsWith("_percent") ? "٪" : "تومان"}</span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        فعال‌شدن: {r.triggered_count}×{" "}
-                        {r.last_triggered_at && (
-                          <>· آخرین: {formatDateTimeFa(r.last_triggered_at)}</>
-                        )}
+                        فعال‌شدن: {r.triggered_count}× {r.last_triggered_at && <>· آخرین: {formatDateTimeFa(r.last_triggered_at)}</>}
                       </div>
                       {r.note && <p className="text-xs text-muted-foreground">یادداشت: {r.note}</p>}
                     </div>
@@ -171,20 +137,10 @@ function PriceAlertsPage() {
                         <Switch checked={r.is_active} onCheckedChange={(v) => onToggle(r, v)} />
                         <span>{r.is_active ? "فعال" : "غیرفعال"}</span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(r)}
-                        aria-label="ویرایش"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(r)} aria-label="ویرایش">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(r)}
-                        aria-label="حذف"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => onDelete(r)} aria-label="حذف">
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
@@ -204,13 +160,7 @@ function PriceAlertsPage() {
         <TabsContent value="notifications" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs">
-              <Switch
-                checked={unreadOnly}
-                onCheckedChange={(v) => {
-                  setUnreadOnly(v);
-                  setNotifPage(1);
-                }}
-              />
+              <Switch checked={unreadOnly} onCheckedChange={(v) => { setUnreadOnly(v); setNotifPage(1); }} />
               <span>فقط خوانده‌نشده</span>
             </div>
             <Button variant="outline" size="sm" onClick={onMarkAllRead}>
@@ -219,15 +169,9 @@ function PriceAlertsPage() {
           </div>
 
           {notifQuery.isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (notifQuery.data?.rows.length ?? 0) === 0 ? (
-            <EmptyState
-              icon={BellOff}
-              title="اعلانی وجود ندارد"
-              description="هنوز هیچ هشداری برای شما فعال نشده است."
-            />
+            <EmptyState icon={BellOff} title="اعلانی وجود ندارد" description="هنوز هیچ هشداری برای شما فعال نشده است." />
           ) : (
             <div className="space-y-2">
               {notifQuery.data!.rows.map((n) => (
@@ -238,21 +182,13 @@ function PriceAlertsPage() {
                       <div className="text-sm text-muted-foreground">{n.message}</div>
                       <div className="text-xs text-muted-foreground">
                         {formatDateTimeFa(n.created_at)}
-                        {n.current_price !== null && (
-                          <> · فعلی: {formatNumber(Number(n.current_price))}</>
-                        )}
-                        {n.previous_price !== null && (
-                          <> · قبلی: {formatNumber(Number(n.previous_price))}</>
-                        )}
-                        {n.change_percent !== null && (
-                          <> · تغییر: {formatNumber(Number(n.change_percent))}%</>
-                        )}
+                        {n.current_price !== null && <> · فعلی: {formatNumber(Number(n.current_price))}</>}
+                        {n.previous_price !== null && <> · قبلی: {formatNumber(Number(n.previous_price))}</>}
+                        {n.change_percent !== null && <> · تغییر: {formatNumber(Number(n.change_percent))}%</>}
                       </div>
                     </div>
                     {!n.is_read && (
-                      <Button variant="ghost" size="sm" onClick={() => onMarkRead(n)}>
-                        خواندم
-                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => onMarkRead(n)}>خواندم</Button>
                     )}
                   </CardContent>
                 </Card>
@@ -273,36 +209,15 @@ function PriceAlertsPage() {
   );
 }
 
-function Pagination({
-  page,
-  total,
-  pageSize,
-  onChange,
-}: {
-  page: number;
-  total: number;
-  pageSize: number;
-  onChange: (p: number) => void;
-}) {
+function Pagination({ page, total, pageSize, onChange }: { page: number; total: number; pageSize: number; onChange: (p: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;
   return (
     <div className="flex items-center justify-between text-xs text-muted-foreground">
-      <span>
-        صفحه {page} از {pages} — مجموع {total}
-      </span>
+      <span>صفحه {page} از {pages} — مجموع {total}</span>
       <div className="flex gap-1">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-          قبلی
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page >= pages}
-          onClick={() => onChange(page + 1)}
-        >
-          بعدی
-        </Button>
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>قبلی</Button>
+        <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>بعدی</Button>
       </div>
     </div>
   );

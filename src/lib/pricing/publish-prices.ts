@@ -30,15 +30,12 @@ export interface PublishProductResult {
  *  - درج snapshot در price_calculation_snapshots
  *  - درج تغییر در product_sale_price_history (فقط در صورت تغییر یا اولین بار)
  */
-export async function publishProductPrices(
-  opts: {
-    productId: string;
-    source?: string;
-    /** Optional override for SECURITY DEFINER / service-role server runs */
-    actingUserId?: string | null;
-  },
-  db: SbClient = supabase,
-): Promise<PublishProductResult> {
+export async function publishProductPrices(opts: {
+  productId: string;
+  source?: string;
+  /** Optional override for SECURITY DEFINER / service-role server runs */
+  actingUserId?: string | null;
+}, db: SbClient = supabase): Promise<PublishProductResult> {
   const { productId, source = "manual_publish" } = opts;
   if (!productId) throw new Error("شناسه محصول الزامی است.");
 
@@ -86,8 +83,7 @@ export async function publishProductPrices(
           old_price: null,
           new_price: null,
           changed: false,
-          error:
-            "برای این محصول قیمت خرید معتبر ثبت نشده است. ابتدا قیمت خرید را با تاریخ مؤثر امروز یا قبل‌تر و تاریخ انقضای آینده ثبت کنید.",
+          error: "برای این محصول قیمت خرید معتبر ثبت نشده است. ابتدا قیمت خرید را با تاریخ مؤثر امروز یا قبل‌تر و تاریخ انقضای آینده ثبت کنید.",
         },
       ],
     };
@@ -96,39 +92,38 @@ export async function publishProductPrices(
   for (const spt of list) {
     try {
       // محاسبه + ساخت snapshot/history (force_snapshot=true تاریخچه را هم پر می‌کند)
-      const res = await calculateSalePrice(
-        {
-          product_id: productId,
-          sale_price_type_id: spt.id,
-          force_snapshot: true,
-          acting_user_id: uid,
-        },
-        db,
-      );
+      const res = await calculateSalePrice({
+        product_id: productId,
+        sale_price_type_id: spt.id,
+        force_snapshot: true,
+        acting_user_id: uid,
+      }, db);
 
       const b = res.breakdown;
 
       // upsert در product_computed_prices تا /sales/search ببیند
-      const { error: upErr } = await db.from("product_computed_prices").upsert(
-        {
-          product_id: productId,
-          sale_price_type_id: spt.id,
-          purchase_price_id: b.purchase_price_id,
-          pricing_rule_id: b.pricing_rule_id,
-          input_purchase_price: b.input_purchase_price,
-          input_currency: b.input_currency,
-          currency_rate: b.currency_rate,
-          purchase_price_toman: b.purchase_price_toman,
-          shipping_cost: b.shipping_cost,
-          margin_amount: b.margin_amount,
-          final_sale_price: b.final_sale_price,
-          rounded_sale_price: b.rounded_sale_price,
-          computed_at: new Date().toISOString(),
-          computed_by: uid,
-          source,
-        },
-        { onConflict: "product_id,sale_price_type_id" },
-      );
+      const { error: upErr } = await db
+        .from("product_computed_prices")
+        .upsert(
+          {
+            product_id: productId,
+            sale_price_type_id: spt.id,
+            purchase_price_id: b.purchase_price_id,
+            pricing_rule_id: b.pricing_rule_id,
+            input_purchase_price: b.input_purchase_price,
+            input_currency: b.input_currency,
+            currency_rate: b.currency_rate,
+            purchase_price_toman: b.purchase_price_toman,
+            shipping_cost: b.shipping_cost,
+            margin_amount: b.margin_amount,
+            final_sale_price: b.final_sale_price,
+            rounded_sale_price: b.rounded_sale_price,
+            computed_at: new Date().toISOString(),
+            computed_by: uid,
+            source,
+          },
+          { onConflict: "product_id,sale_price_type_id" },
+        );
       if (upErr) throw upErr;
 
       results.push({
@@ -141,8 +136,7 @@ export async function publishProductPrices(
         error: null,
       });
     } catch (e) {
-      const msg =
-        e instanceof PricingError ? e.message : ((e as Error)?.message ?? "خطای ناشناخته");
+      const msg = e instanceof PricingError ? e.message : (e as Error)?.message ?? "خطای ناشناخته";
       results.push({
         sale_price_type_id: spt.id,
         sale_price_type_title: spt.title,

@@ -2,9 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/sales/quotes")({
-  beforeLoad: async () => {
-    await requirePermission("sales", "view");
-  },
+  beforeLoad: async () => { await requirePermission("sales", "view"); },
   component: QuotesLayout,
 });
 

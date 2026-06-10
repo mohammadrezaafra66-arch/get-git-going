@@ -12,19 +12,20 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tabs, TabsList, TabsTrigger, TabsContent,
+} from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
-import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
+import {
+  computeTotals, lineTotal, validateQuote,
+  type DraftQuoteItem,
+} from "@/lib/sales/quotes";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -78,12 +79,7 @@ function NewQuotePage() {
     mutationFn: async () => {
       if (!user) throw new Error("کاربر معتبر نیست.");
       const errs = validateQuote(
-        {
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_note: customerNote,
-          expires_at: expiresAt || null,
-        },
+        { customer_name: customerName, customer_phone: customerPhone, customer_note: customerNote, expires_at: expiresAt || null },
         items,
       );
       if (errs.length > 0) {
@@ -104,21 +100,22 @@ function NewQuotePage() {
       }));
 
       // Atomic RPC: creates quote + items + audit in a single DB transaction.
-      const { data, error } = await (
-        supabase.rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: unknown; error: { message: string } | null }>
-      )("create_sales_quote_with_items", {
-        p_customer_name: customerName.trim(),
-        p_customer_phone: customerPhone.trim(),
-        p_customer_note: customerNote.trim() || null,
-        p_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-        p_subtotal_amount: totals.subtotal_amount,
-        p_discount_amount: totals.discount_amount,
-        p_final_amount: totals.final_amount,
-        p_items: itemsPayload,
-      });
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "create_sales_quote_with_items",
+        {
+          p_customer_name: customerName.trim(),
+          p_customer_phone: customerPhone.trim(),
+          p_customer_note: customerNote.trim() || null,
+          p_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+          p_subtotal_amount: totals.subtotal_amount,
+          p_discount_amount: totals.discount_amount,
+          p_final_amount: totals.final_amount,
+          p_items: itemsPayload,
+        },
+      );
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
       if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
@@ -154,41 +151,19 @@ function NewQuotePage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="customer_name">نام مشتری *</Label>
-              <Input
-                id="customer_name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                maxLength={200}
-              />
+              <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="customer_phone">شماره تماس *</Label>
-              <Input
-                id="customer_phone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                dir="ltr"
-                placeholder="09xxxxxxxxx"
-              />
+              <Input id="customer_phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} dir="ltr" placeholder="09xxxxxxxxx" />
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
-              <Input
-                id="expires_at"
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
+              <Input id="expires_at" type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="customer_note">توضیحات مشتری</Label>
-              <Textarea
-                id="customer_note"
-                value={customerNote}
-                onChange={(e) => setCustomerNote(e.target.value)}
-                maxLength={500}
-                rows={2}
-              />
+              <Textarea id="customer_note" value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} maxLength={500} rows={2} />
             </div>
           </div>
         </CardContent>
@@ -228,55 +203,36 @@ function NewQuotePage() {
                       <td className="p-2 align-top">
                         <div className="font-medium">{it.title_snapshot}</div>
                         {it.sku_snapshot && (
-                          <div className="text-[11px] text-muted-foreground font-mono">
-                            {it.sku_snapshot}
-                          </div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{it.sku_snapshot}</div>
                         )}
                       </td>
                       <td className="p-2 align-top text-[11px] text-muted-foreground">
-                        {it.source === "product_price"
-                          ? "از قیمت محصول"
-                          : it.source === "quick_price"
-                            ? "محاسبه سریع"
-                            : "آیتم آزاد"}
+                        {it.source === "product_price" ? "از قیمت محصول" : it.source === "quick_price" ? "محاسبه سریع" : "آیتم آزاد"}
                       </td>
                       <td className="p-2 align-top">
                         <Input
-                          type="number"
-                          min={0}
-                          className="w-24"
+                          type="number" min={0} className="w-24"
                           value={it.quantity}
-                          onChange={(e) =>
-                            updateItem(it.key, { quantity: Number(e.target.value) || 0 })
-                          }
+                          onChange={(e) => updateItem(it.key, { quantity: Number(e.target.value) || 0 })}
                         />
                       </td>
                       <td className="p-2 align-top">
                         <Input
-                          type="number"
-                          min={0}
-                          className="w-32"
+                          type="number" min={0} className="w-32"
                           value={it.unit_price}
                           disabled={it.source === "product_price" && !canEditPriceFreely}
-                          onChange={(e) =>
-                            updateItem(it.key, { unit_price: Number(e.target.value) || 0 })
-                          }
+                          onChange={(e) => updateItem(it.key, { unit_price: Number(e.target.value) || 0 })}
                         />
                       </td>
                       <td className="p-2 align-top">
                         <Input
-                          type="number"
-                          min={0}
-                          className="w-28"
+                          type="number" min={0} className="w-28"
                           value={it.discount_amount}
-                          onChange={(e) =>
-                            updateItem(it.key, { discount_amount: Number(e.target.value) || 0 })
-                          }
+                          onChange={(e) => updateItem(it.key, { discount_amount: Number(e.target.value) || 0 })}
                         />
                       </td>
                       <td className="p-2 align-top font-medium">
-                        {formatNumber(lineTotal(it))}{" "}
-                        <span className="text-[11px] text-muted-foreground">تومان</span>
+                        {formatNumber(lineTotal(it))} <span className="text-[11px] text-muted-foreground">تومان</span>
                       </td>
                       <td className="p-2 align-top">
                         <Button size="sm" variant="ghost" onClick={() => removeItem(it.key)}>
@@ -311,18 +267,9 @@ function NewQuotePage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate({ to: "/sales/quotes" })}>
-                انصراف
-              </Button>
-              <Button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || items.length === 0}
-              >
-                {saveMutation.isPending ? (
-                  <Loader2 className="ml-1 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="ml-1 h-4 w-4" />
-                )}
+              <Button variant="outline" onClick={() => navigate({ to: "/sales/quotes" })}>انصراف</Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || items.length === 0}>
+                {saveMutation.isPending ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}
                 ذخیره پیش‌نویس
               </Button>
             </div>
@@ -335,10 +282,7 @@ function NewQuotePage() {
           priceTypes={priceTypes as Array<{ id: string; code: string; title: string }>}
           canEditPriceFreely={canEditPriceFreely}
           onClose={() => setPickerOpen(false)}
-          onAdd={(it) => {
-            addItem(it);
-            setPickerOpen(false);
-          }}
+          onAdd={(it) => { addItem(it); setPickerOpen(false); }}
         />
       )}
     </div>
@@ -360,21 +304,13 @@ function AddItemPanel(props: {
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold">افزودن آیتم به پیش‌فاکتور</h3>
-            <Button variant="ghost" size="sm" onClick={props.onClose}>
-              بستن
-            </Button>
+            <Button variant="ghost" size="sm" onClick={props.onClose}>بستن</Button>
           </div>
           <Tabs defaultValue="product">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="product">
-                <Package className="ml-1 h-4 w-4" /> از محصول ثبت‌شده
-              </TabsTrigger>
-              <TabsTrigger value="manual">
-                <FileText className="ml-1 h-4 w-4" /> آیتم آزاد
-              </TabsTrigger>
-              <TabsTrigger value="quick">
-                <Sparkles className="ml-1 h-4 w-4" /> از محاسبه سریع
-              </TabsTrigger>
+              <TabsTrigger value="product"><Package className="ml-1 h-4 w-4" /> از محصول ثبت‌شده</TabsTrigger>
+              <TabsTrigger value="manual"><FileText className="ml-1 h-4 w-4" /> آیتم آزاد</TabsTrigger>
+              <TabsTrigger value="quick"><Sparkles className="ml-1 h-4 w-4" /> از محاسبه سریع</TabsTrigger>
             </TabsList>
 
             <TabsContent value="product" className="pt-3">
@@ -384,11 +320,8 @@ function AddItemPanel(props: {
               <FreeItemTab source="manual" onAdd={props.onAdd} />
             </TabsContent>
             <TabsContent value="quick" className="pt-3">
-              <FreeItemTab
-                source="quick_price"
-                onAdd={props.onAdd}
-                hint="نتیجه ابزار «محاسبه سریع قیمت» را به‌عنوان آیتم آزاد وارد کنید."
-              />
+              <FreeItemTab source="quick_price" onAdd={props.onAdd}
+                hint="نتیجه ابزار «محاسبه سریع قیمت» را به‌عنوان آیتم آزاد وارد کنید." />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -404,9 +337,7 @@ function ProductTab(props: {
 }) {
   const [search, setSearch] = useState("");
   const dSearch = useDebounce(search, 350);
-  const [selected, setSelected] = useState<{ id: string; name: string; sku: string | null } | null>(
-    null,
-  );
+  const [selected, setSelected] = useState<{ id: string; name: string; sku: string | null } | null>(null);
   const [salePriceTypeId, setSalePriceTypeId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
@@ -423,7 +354,11 @@ function ProductTab(props: {
         p_term: safe,
         p_limit: 100,
       });
-      let q = supabase.from("products").select("id, name, sku").eq("is_active", true).limit(20);
+      let q = supabase
+        .from("products")
+        .select("id, name, sku")
+        .eq("is_active", true)
+        .limit(20);
       if (idsErr) {
         q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
       } else {
@@ -438,11 +373,55 @@ function ProductTab(props: {
     staleTime: 30_000,
   });
 
+  // Fetch all sale prices (per price type) for products currently in the search result list,
+  // so the user can see every price (نقدی، اعتباری، اقساطی، …) alongside each product and
+  // pick one directly from the list — not just the cash price.
+  const productIds = useMemo(
+    () => (productsQuery.data ?? []).map((p: { id: string }) => p.id),
+    [productsQuery.data],
+  );
+  const pricesByProductQuery = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["quote-product-search-prices", productIds],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_computed_prices_public")
+        .select("product_id, sale_price_type_id, final_sale_price, rounded_sale_price, computed_at")
+        .in("product_id", productIds);
+      if (error) throw error;
+      const map = new Map<string, Array<{ sale_price_type_id: string; price: number }>>();
+      for (const row of (data ?? []) as Array<{
+        product_id: string | null;
+        sale_price_type_id: string | null;
+        final_sale_price: number | null;
+        rounded_sale_price: number | null;
+      }>) {
+        if (!row.product_id || !row.sale_price_type_id) continue;
+        const price = Number(row.rounded_sale_price ?? row.final_sale_price ?? 0);
+        if (!(price > 0)) continue;
+        const list = map.get(row.product_id) ?? [];
+        list.push({ sale_price_type_id: row.sale_price_type_id, price });
+        map.set(row.product_id, list);
+      }
+      return map;
+    },
+    staleTime: 30_000,
+  });
+
   // load latest sale price when product + price type are selected
   useEffect(() => {
     let cancelled = false;
     setPriceMissing(null);
     if (!selected || !salePriceTypeId) return;
+    // If the price is already known from the search list, skip the extra query.
+    const cached = pricesByProductQuery.data?.get(selected.id)?.find(
+      (p) => p.sale_price_type_id === salePriceTypeId,
+    );
+    if (cached) {
+      setUnitPrice(cached.price);
+      setPriceMissing(null);
+      return;
+    }
     (async () => {
       const { data, error } = await supabase
         .from("product_sale_price_history")
@@ -464,12 +443,12 @@ function ProductTab(props: {
         setPriceMissing(null);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, salePriceTypeId]);
+    return () => { cancelled = true; };
+  }, [selected, salePriceTypeId, pricesByProductQuery.data]);
 
   const canSubmit = !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0;
+  const priceTypeTitle = (id: string) =>
+    props.priceTypes.find((t) => t.id === id)?.title ?? "—";
 
   return (
     <div className="space-y-3">
@@ -484,32 +463,60 @@ function ProductTab(props: {
               className="pr-9"
             />
           </div>
-          {term.length >= 2 &&
-            (productsQuery.isLoading ? (
+          {term.length >= 2 && (
+            productsQuery.isLoading ? (
               <div className="text-xs text-muted-foreground">در حال جستجو...</div>
             ) : (productsQuery.data ?? []).length === 0 ? (
               <div className="text-xs text-muted-foreground">محصولی پیدا نشد.</div>
             ) : (
-              <div className="max-h-64 overflow-y-auto rounded-md border border-border divide-y divide-border">
-                {(productsQuery.data ?? []).map(
-                  (p: { id: string; name: string; sku: string | null }) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
-                      className="flex w-full items-center justify-between gap-2 p-2 text-right hover:bg-muted/40"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{p.name}</div>
-                        <div className="text-[11px] text-muted-foreground font-mono">
-                          {p.sku ?? "—"}
+              <div className="max-h-80 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {(productsQuery.data ?? []).map((p: { id: string; name: string; sku: string | null }) => {
+                  const prices = pricesByProductQuery.data?.get(p.id) ?? [];
+                  return (
+                    <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
+                        className="flex w-full items-center justify-between gap-2 text-right"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{p.name}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{p.sku ?? "—"}</div>
                         </div>
-                      </div>
-                    </button>
-                  ),
-                )}
+                      </button>
+                      {prices.length === 0 ? (
+                        <div className="text-[11px] text-muted-foreground">
+                          {pricesByProductQuery.isLoading ? "در حال دریافت قیمت‌ها..." : "قیمت فروش ثبت‌شده‌ای ندارد."}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {prices.map((pr) => (
+                            <button
+                              key={`${p.id}:${pr.sale_price_type_id}`}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelected({ id: p.id, name: p.name, sku: p.sku });
+                                setSalePriceTypeId(pr.sale_price_type_id);
+                                setUnitPrice(pr.price);
+                                setPriceMissing(null);
+                              }}
+                              className="rounded-md border border-border bg-card px-2 py-1 text-[11px] hover:border-primary hover:bg-primary/10"
+                              title="انتخاب این نوع قیمت"
+                            >
+                              <span className="text-muted-foreground">{priceTypeTitle(pr.sale_price_type_id)}: </span>
+                              <span className="font-medium">{formatNumber(pr.price)}</span>
+                              <span className="mr-1 text-[10px] text-muted-foreground">تومان</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )
+          )}
         </>
       ) : (
         <>
@@ -517,66 +524,67 @@ function ProductTab(props: {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="font-medium truncate">{selected.name}</div>
-                <div className="text-[11px] text-muted-foreground font-mono">
-                  {selected.sku ?? "—"}
-                </div>
+                <div className="text-[11px] text-muted-foreground font-mono">{selected.sku ?? "—"}</div>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setSelected(null);
-                  setSalePriceTypeId("");
-                  setUnitPrice(0);
-                  setPriceMissing(null);
-                }}
-              >
+              <Button size="sm" variant="ghost" onClick={() => { setSelected(null); setSalePriceTypeId(""); setUnitPrice(0); setPriceMissing(null); }}>
                 تغییر محصول
               </Button>
             </div>
+            {(() => {
+              const prices = pricesByProductQuery.data?.get(selected.id) ?? [];
+              if (prices.length === 0) return null;
+              return (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {prices.map((pr) => {
+                    const active = pr.sale_price_type_id === salePriceTypeId;
+                    return (
+                      <button
+                        key={pr.sale_price_type_id}
+                        type="button"
+                        onClick={() => {
+                          setSalePriceTypeId(pr.sale_price_type_id);
+                          setUnitPrice(pr.price);
+                          setPriceMissing(null);
+                        }}
+                        className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card hover:border-primary hover:bg-primary/10"
+                        }`}
+                      >
+                        <span className="text-muted-foreground">{priceTypeTitle(pr.sale_price_type_id)}: </span>
+                        <span className="font-medium">{formatNumber(pr.price)}</span>
+                        <span className="mr-1 text-[10px] text-muted-foreground">تومان</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>نوع قیمت فروش</Label>
               <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="انتخاب نوع قیمت" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="انتخاب نوع قیمت" /></SelectTrigger>
                 <SelectContent>
                   {props.priceTypes.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title}
-                    </SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>تعداد</Label>
-              <Input
-                type="number"
-                min={0}
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value) || 0)}
-              />
+              <Input type="number" min={0} value={quantity} onChange={(e) => setQuantity(Number(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
               <Label>قیمت واحد (تومان)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
-              />
+              <Input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(Number(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
               <Label>تخفیف خط (تومان)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={discount}
-                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-              />
+              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
             </div>
           </div>
           {priceMissing && (
@@ -602,9 +610,7 @@ function ProductTab(props: {
                   discount_amount: discount,
                 });
               }}
-            >
-              افزودن به پیش‌فاکتور
-            </Button>
+            >افزودن به پیش‌فاکتور</Button>
           </div>
         </>
       )}
@@ -627,9 +633,7 @@ function FreeItemTab(props: {
   return (
     <div className="space-y-3">
       {props.hint && (
-        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-          {props.hint}
-        </div>
+        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">{props.hint}</div>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
@@ -638,30 +642,15 @@ function FreeItemTab(props: {
         </div>
         <div className="space-y-1.5">
           <Label>تعداد</Label>
-          <Input
-            type="number"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value) || 0)}
-          />
+          <Input type="number" min={0} value={quantity} onChange={(e) => setQuantity(Number(e.target.value) || 0)} />
         </div>
         <div className="space-y-1.5">
           <Label>قیمت واحد (تومان)</Label>
-          <Input
-            type="number"
-            min={0}
-            value={unitPrice}
-            onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
-          />
+          <Input type="number" min={0} value={unitPrice} onChange={(e) => setUnitPrice(Number(e.target.value) || 0)} />
         </div>
         <div className="space-y-1.5">
           <Label>تخفیف خط (تومان)</Label>
-          <Input
-            type="number"
-            min={0}
-            value={discount}
-            onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-          />
+          <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
         </div>
       </div>
       <div className="flex justify-end">
@@ -681,9 +670,7 @@ function FreeItemTab(props: {
               discount_amount: discount,
             });
           }}
-        >
-          افزودن به پیش‌فاکتور
-        </Button>
+        >افزودن به پیش‌فاکتور</Button>
       </div>
     </div>
   );

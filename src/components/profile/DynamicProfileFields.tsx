@@ -4,13 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { type ProfileFieldDefinition, WEEK_DAYS } from "@/lib/profile-fields/types";
+import {
+  type ProfileFieldDefinition,
+  WEEK_DAYS,
+} from "@/lib/profile-fields/types";
 
 export type DynamicValues = Record<string, unknown>;
 
@@ -53,12 +52,7 @@ export function DynamicProfileFields({
               {f.label}
               {f.is_required && <span className="text-destructive"> *</span>}
             </Label>
-            <FieldInput
-              field={f}
-              value={v}
-              onChange={(nv) => onChange(f.name, nv)}
-              disabled={disabled}
-            />
+            <FieldInput field={f} value={v} onChange={(nv) => onChange(f.name, nv)} disabled={disabled} />
             {f.help_text && <p className="text-xs text-muted-foreground">{f.help_text}</p>}
             {err && <p className="text-xs text-destructive">{err}</p>}
           </div>
@@ -130,14 +124,10 @@ function FieldInput({
     case "select":
       return (
         <Select value={(value as string) ?? ""} onValueChange={onChange} disabled={disabled}>
-          <SelectTrigger>
-            <SelectValue placeholder="انتخاب کنید..." />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger>
           <SelectContent>
             {field.options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -154,7 +144,9 @@ function FieldInput({
                   checked={checked}
                   disabled={disabled}
                   onCheckedChange={(v) => {
-                    const next = v ? [...arr, o.value] : arr.filter((x) => x !== o.value);
+                    const next = v
+                      ? [...arr, o.value]
+                      : arr.filter((x) => x !== o.value);
                     onChange(next);
                   }}
                 />
@@ -177,7 +169,9 @@ function FieldInput({
                   checked={checked}
                   disabled={disabled}
                   onCheckedChange={(v) => {
-                    const next = v ? [...arr, d.value] : arr.filter((x) => x !== d.value);
+                    const next = v
+                      ? [...arr, d.value]
+                      : arr.filter((x) => x !== d.value);
                     onChange(next);
                   }}
                 />

@@ -33,13 +33,14 @@ export const PUBLIC_PAGE_SIZE = 50;
  * Fetches a published sale list for public/anonymous viewing.
  * Returns null when the list does not exist or is not published (treat as 404).
  */
-export async function getPublicSaleList(listId: string, page = 1): Promise<PublicSaleList | null> {
+export async function getPublicSaleList(
+  listId: string,
+  page = 1,
+): Promise<PublicSaleList | null> {
   // 1) Fetch list (must be published)
   const { data: list, error: listErr } = await supabase
     .from("sale_lists")
-    .select(
-      "id, name, description, terms_text, version_number, published_at, status, sale_price_type_id",
-    )
+    .select("id, name, description, terms_text, version_number, published_at, status, sale_price_type_id")
     .eq("id", listId)
     .eq("status", "published")
     .maybeSingle();
@@ -72,9 +73,7 @@ export async function getPublicSaleList(listId: string, page = 1): Promise<Publi
 
   const { data: items, error: itemsErr } = await supabase
     .from("sale_list_items")
-    .select(
-      "id, product_id, current_price, previous_price, change_amount, change_percent, stock_status, sort_order",
-    )
+    .select("id, product_id, current_price, previous_price, change_amount, change_percent, stock_status, sort_order")
     .eq("sale_list_id", listId)
     .order("sort_order", { ascending: true })
     .range(from, to);
@@ -82,16 +81,7 @@ export async function getPublicSaleList(listId: string, page = 1): Promise<Publi
   if (itemsErr) return null;
 
   const productIds = Array.from(new Set((items ?? []).map((i) => i.product_id))).filter(Boolean);
-  let productsById = new Map<
-    string,
-    {
-      id: string;
-      name: string;
-      description: string | null;
-      brand_id: string | null;
-      category_id: string | null;
-    }
-  >();
+  let productsById = new Map<string, { id: string; name: string; description: string | null; brand_id: string | null; category_id: string | null }>();
   let brandsById = new Map<string, string>();
   let categoriesById = new Map<string, string>();
 
@@ -102,22 +92,15 @@ export async function getPublicSaleList(listId: string, page = 1): Promise<Publi
       .in("id", productIds);
     productsById = new Map((products ?? []).map((p: any) => [p.id, p]));
 
-    const brandIds = Array.from(
-      new Set((products ?? []).map((p: any) => p.brand_id).filter(Boolean)),
-    );
-    const categoryIds = Array.from(
-      new Set((products ?? []).map((p: any) => p.category_id).filter(Boolean)),
-    );
+    const brandIds = Array.from(new Set((products ?? []).map((p: any) => p.brand_id).filter(Boolean)));
+    const categoryIds = Array.from(new Set((products ?? []).map((p: any) => p.category_id).filter(Boolean)));
 
     if (brandIds.length > 0) {
       const { data: brands } = await supabase.from("brands").select("id, name").in("id", brandIds);
       brandsById = new Map((brands ?? []).map((b: any) => [b.id, b.name]));
     }
     if (categoryIds.length > 0) {
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("id, name")
-        .in("id", categoryIds);
+      const { data: cats } = await supabase.from("categories").select("id, name").in("id", categoryIds);
       categoriesById = new Map((cats ?? []).map((c: any) => [c.id, c.name]));
     }
   }
@@ -128,21 +111,12 @@ export async function getPublicSaleList(listId: string, page = 1): Promise<Publi
       id: it.id,
       product_id: it.product_id,
       product_name: p?.name ?? "—",
-      brand_name: p?.brand_id ? (brandsById.get(p.brand_id) ?? null) : null,
-      category_name: p?.category_id ? (categoriesById.get(p.category_id) ?? null) : null,
+      brand_name: p?.brand_id ? brandsById.get(p.brand_id) ?? null : null,
+      category_name: p?.category_id ? categoriesById.get(p.category_id) ?? null : null,
       current_price: Number(it.current_price ?? 0),
-      previous_price:
-        it.previous_price !== null && it.previous_price !== undefined
-          ? Number(it.previous_price)
-          : null,
-      change_amount:
-        it.change_amount !== null && it.change_amount !== undefined
-          ? Number(it.change_amount)
-          : null,
-      change_percent:
-        it.change_percent !== null && it.change_percent !== undefined
-          ? Number(it.change_percent)
-          : null,
+      previous_price: it.previous_price !== null && it.previous_price !== undefined ? Number(it.previous_price) : null,
+      change_amount: it.change_amount !== null && it.change_amount !== undefined ? Number(it.change_amount) : null,
+      change_percent: it.change_percent !== null && it.change_percent !== undefined ? Number(it.change_percent) : null,
       stock_status: it.stock_status ?? null,
       description: p?.description ?? null,
       sort_order: it.sort_order ?? 0,

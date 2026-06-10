@@ -1,14 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProfileFieldDefinition, ProfileFieldOption } from "./types";
 
-export async function fetchActiveProfileFields(opts?: {
-  registerOnly?: boolean;
-}): Promise<ProfileFieldDefinition[]> {
+export async function fetchActiveProfileFields(opts?: { registerOnly?: boolean }): Promise<ProfileFieldDefinition[]> {
   let q = supabase
     .from("profile_field_definitions")
-    .select(
-      "id,name,label,field_type,options,is_required,is_active,show_on_register,sort_order,help_text",
-    )
+    .select("id,name,label,field_type,options,is_required,is_active,show_on_register,sort_order,help_text")
     .eq("is_active", true)
     .order("sort_order");
   if (opts?.registerOnly) q = q.eq("show_on_register", true);

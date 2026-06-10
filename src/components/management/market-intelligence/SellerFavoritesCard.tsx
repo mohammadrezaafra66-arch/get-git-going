@@ -6,10 +6,7 @@ import { fetchSellerTopProducts, type RangeDays } from "@/lib/management/market-
 import { formatNumber } from "@/lib/i18n/formatters";
 
 const STOCK_LABEL: Record<string, string> = {
-  available: "موجود",
-  limited: "محدود",
-  unavailable: "ناموجود",
-  unknown: "نامشخص",
+  available: "موجود", limited: "محدود", unavailable: "ناموجود", unknown: "نامشخص",
 };
 
 function timeAgoFa(iso: string): string {
@@ -49,10 +46,7 @@ export function SellerFavoritesCard({ days }: { days: RangeDays }) {
       ) : (
         <ul className="space-y-1.5">
           {q.data.map((p) => (
-            <li
-              key={p.product_id}
-              className="flex items-center gap-3 rounded-md border p-2 text-sm"
-            >
+            <li key={p.product_id} className="flex items-center gap-3 rounded-md border p-2 text-sm">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{p.name}</div>
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">

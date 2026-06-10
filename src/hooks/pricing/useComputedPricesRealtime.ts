@@ -74,7 +74,8 @@ export function useComputedPricesRealtime(opts: {
             (payload.old as Record<string, unknown> | null) ??
             null;
           const productId = (row?.product_id as string | undefined) ?? null;
-          const salePriceTypeId = (row?.sale_price_type_id as string | undefined) ?? null;
+          const salePriceTypeId =
+            (row?.sale_price_type_id as string | undefined) ?? null;
           setLastChangeAt(Date.now());
           onChangeRef.current?.({
             eventType: payload.eventType as "INSERT" | "UPDATE" | "DELETE",

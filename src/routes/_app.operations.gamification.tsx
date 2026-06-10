@@ -13,9 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { listKpis, updateKpi, type GamificationKpi } from "@/lib/operations/gamification";
 
 export const Route = createFileRoute("/_app/operations/gamification")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
   component: GamificationAdminPage,
 });
 
@@ -43,13 +41,9 @@ function GamificationAdminPage() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !kpis?.length ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              پارامتری ثبت نشده است.
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">پارامتری ثبت نشده است.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -65,11 +59,7 @@ function GamificationAdminPage() {
                 </thead>
                 <tbody>
                   {kpis.map((k) => (
-                    <KpiRow
-                      key={k.id}
-                      kpi={k}
-                      onSaved={() => qc.invalidateQueries({ queryKey: ["gamification-kpis"] })}
-                    />
+                    <KpiRow key={k.id} kpi={k} onSaved={() => qc.invalidateQueries({ queryKey: ["gamification-kpis"] })} />
                   ))}
                 </tbody>
               </table>
@@ -86,12 +76,11 @@ function KpiRow({ kpi, onSaved }: { kpi: GamificationKpi; onSaved: () => void })
   const [enabled, setEnabled] = useState<boolean>(kpi.enabled);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      updateKpi({
-        id: kpi.id,
-        weight: Number(weight),
-        enabled,
-      }),
+    mutationFn: () => updateKpi({
+      id: kpi.id,
+      weight: Number(weight),
+      enabled,
+    }),
     onSuccess: () => {
       toast.success("پارامتر به‌روزرسانی شد.");
       onSaved();

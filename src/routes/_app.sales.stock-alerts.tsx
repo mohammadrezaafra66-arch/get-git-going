@@ -3,15 +3,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search,
-  Filter,
-  Loader2,
-  BellRing,
-  ChevronRight,
-  ChevronLeft,
-  PhoneCall,
-  CheckCircle2,
-  XCircle,
+  Search, Filter, Loader2, BellRing, ChevronRight, ChevronLeft,
+  PhoneCall, CheckCircle2, XCircle,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -20,40 +13,26 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import {
-  StockAlertStatusBadge,
-  StockAlertPriorityBadge,
+  StockAlertStatusBadge, StockAlertPriorityBadge,
 } from "@/components/sales/StockAlertStatusBadge";
 import {
   updateStockAlertStatus,
-  type StockAlertStatus,
-  type StockAlertPriority,
+  type StockAlertStatus, type StockAlertPriority,
 } from "@/lib/sales/stock-alerts";
 
 export const Route = createFileRoute("/_app/sales/stock-alerts")({
-  beforeLoad: async () => {
-    await requirePermission("sales", "view");
-  },
+  beforeLoad: async () => { await requirePermission("sales", "view"); },
   component: StockAlertsPage,
 });
 
@@ -77,8 +56,7 @@ interface AlertRow {
 
 function StockAlertsPage() {
   const { user, roles } = useAuth();
-  const isPrivileged =
-    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
 
   const [search, setSearch] = useState("");
@@ -91,9 +69,7 @@ function StockAlertsPage() {
   const [page, setPage] = useState(1);
 
   // reset page on filter changes
-  useMemo(() => {
-    setPage(1);
-  }, [dSearch, status, priority, salespersonId, dateFrom, dateTo]);
+  useMemo(() => { setPage(1); }, [dSearch, status, priority, salespersonId, dateFrom, dateTo]);
 
   // salesperson list (privileged only — sales user can't filter by others)
   const { data: salespeople = [] } = useQuery({
@@ -143,19 +119,9 @@ function StockAlertsPage() {
 
   const listQuery = useQuery({
     queryKey: [
-      "stock-alerts",
-      {
-        term,
-        status,
-        priority,
-        salespersonId,
-        dateFrom,
-        dateTo,
-        page,
+      "stock-alerts", { term, status, priority, salespersonId, dateFrom, dateTo, page,
         matchedProductIds: productSearchEnabled ? matchedProductIds : null,
-        userId: user?.id,
-        isSalesOnly,
-      },
+        userId: user?.id, isSalesOnly },
     ],
     enabled: !!user && (!productSearchEnabled || !productIdsQuery.isLoading),
     queryFn: async () => {
@@ -175,8 +141,7 @@ function StockAlertsPage() {
       if (isPrivileged && salespersonId !== "__all") q = q.eq("salesperson_id", salespersonId);
       if (dateFrom) q = q.gte("requested_at", new Date(dateFrom).toISOString());
       if (dateTo) {
-        const d = new Date(dateTo);
-        d.setHours(23, 59, 59, 999);
+        const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
         q = q.lte("requested_at", d.toISOString());
       }
       // text search
@@ -199,32 +164,20 @@ function StockAlertsPage() {
       if (pIds.length > 0) {
         const pr = await supabase.from("products").select("id, name, sku").in("id", pIds);
         if (!pr.error) {
-          pMap = new Map(
-            (pr.data ?? []).map((p) => [
-              p.id as string,
-              { id: p.id as string, name: p.name as string, sku: (p.sku as string | null) ?? null },
-            ]),
-          );
+          pMap = new Map((pr.data ?? []).map((p) => [p.id as string, { id: p.id as string, name: p.name as string, sku: (p.sku as string | null) ?? null }]));
         }
       }
       // hydrate salespeople
-      const sIds = Array.from(
-        new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)),
-      );
+      const sIds = Array.from(new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)));
       let sMap = new Map<string, string | null>();
       if (sIds.length > 0) {
         const sr = await supabase.from("profiles").select("id, full_name").in("id", sIds);
-        if (!sr.error)
-          sMap = new Map(
-            (sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]),
-          );
+        if (!sr.error) sMap = new Map((sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]));
       }
       const rows: AlertRow[] = baseRows.map((r) => ({
         ...r,
         product: pMap.get(r.product_id) ?? null,
-        salesperson: r.salesperson_id
-          ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null }
-          : null,
+        salesperson: r.salesperson_id ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null } : null,
       }));
       return { rows, total: count ?? 0 };
     },
@@ -259,9 +212,7 @@ function StockAlertsPage() {
               />
             </div>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="وضعیت" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="وضعیت" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه وضعیت‌ها</SelectItem>
                 <SelectItem value="open">باز</SelectItem>
@@ -271,9 +222,7 @@ function StockAlertsPage() {
               </SelectContent>
             </Select>
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger>
-                <SelectValue placeholder="اولویت" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="اولویت" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه اولویت‌ها</SelectItem>
                 <SelectItem value="high">بالا</SelectItem>
@@ -283,31 +232,17 @@ function StockAlertsPage() {
             </Select>
             {isPrivileged && (
               <Select value={salespersonId} onValueChange={setSalespersonId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="فروشنده" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="فروشنده" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه فروشنده‌ها</SelectItem>
                   {salespeople.map((p: { id: string; full_name: string | null }) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name ?? "—"}
-                    </SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.full_name ?? "—"}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              placeholder="از تاریخ"
-            />
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              placeholder="تا تاریخ"
-            />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} placeholder="از تاریخ" />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} placeholder="تا تاریخ" />
           </div>
         </CardContent>
       </Card>
@@ -345,8 +280,7 @@ function StockAlertsPage() {
                     <tbody className="divide-y divide-border">
                       {rows.map((r) => (
                         <AlertRowDesktop
-                          key={r.id}
-                          row={r}
+                          key={r.id} row={r}
                           isPrivileged={isPrivileged}
                           isOwner={r.salesperson_id === user?.id}
                         />
@@ -361,8 +295,7 @@ function StockAlertsPage() {
           <div className="space-y-3 md:hidden">
             {rows.map((r) => (
               <AlertCardMobile
-                key={r.id}
-                row={r}
+                key={r.id} row={r}
                 isPrivileged={isPrivileged}
                 isOwner={r.salesperson_id === user?.id}
               />
@@ -372,24 +305,13 @@ function StockAlertsPage() {
           {/* pagination */}
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)}{" "}
-              درخواست
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} درخواست
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -419,8 +341,7 @@ function useStatusActions(row: AlertRow, isPrivileged: boolean, isOwner: boolean
 
   const canContact = (isPrivileged || isOwner) && row.status === "open";
   const canClose = isPrivileged && (row.status === "open" || row.status === "contacted");
-  const canCancel =
-    (isPrivileged || isOwner) && (row.status === "open" || row.status === "contacted");
+  const canCancel = (isPrivileged || isOwner) && (row.status === "open" || row.status === "contacted");
 
   return { mutation, canContact, canClose, canCancel };
 }
@@ -434,28 +355,18 @@ function AlertRowDesktop({ row, isPrivileged, isOwner }: RowProps) {
       </td>
       <td className="p-3 align-top">
         <div className="font-medium">{row.customer_name}</div>
-        <div className="text-xs text-muted-foreground" dir="ltr">
-          {row.customer_phone}
-        </div>
+        <div className="text-xs text-muted-foreground" dir="ltr">{row.customer_phone}</div>
         {row.note && <div className="mt-1 text-[11px] text-muted-foreground">{row.note}</div>}
       </td>
-      <td className="p-3 align-top text-xs text-muted-foreground">
-        {row.salesperson?.full_name ?? "—"}
-      </td>
-      <td className="p-3 align-top">
-        <StockAlertPriorityBadge priority={row.priority} />
-      </td>
+      <td className="p-3 align-top text-xs text-muted-foreground">{row.salesperson?.full_name ?? "—"}</td>
+      <td className="p-3 align-top"><StockAlertPriorityBadge priority={row.priority} /></td>
       <td className="p-3 align-top">
         <StockAlertStatusBadge status={row.status} />
         {row.resolved_at && (
-          <div className="mt-1 text-[10px] text-muted-foreground">
-            {formatDateTimeFa(row.resolved_at)}
-          </div>
+          <div className="mt-1 text-[10px] text-muted-foreground">{formatDateTimeFa(row.resolved_at)}</div>
         )}
       </td>
-      <td className="p-3 align-top text-[11px] text-muted-foreground">
-        {formatDateTimeFa(row.requested_at)}
-      </td>
+      <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(row.requested_at)}</td>
       <td className="p-3 align-top">
         <RowActions row={row} isPrivileged={isPrivileged} isOwner={isOwner} />
       </td>
@@ -470,9 +381,7 @@ function AlertCardMobile({ row, isPrivileged, isOwner }: RowProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="font-medium truncate">{row.product?.name ?? "—"}</div>
-            <div className="text-[11px] text-muted-foreground font-mono">
-              {row.product?.sku ?? "—"}
-            </div>
+            <div className="text-[11px] text-muted-foreground font-mono">{row.product?.sku ?? "—"}</div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <StockAlertStatusBadge status={row.status} />
@@ -481,9 +390,7 @@ function AlertCardMobile({ row, isPrivileged, isOwner }: RowProps) {
         </div>
         <div className="rounded-md border border-border p-2 text-xs">
           <div className="font-medium">{row.customer_name}</div>
-          <div className="text-muted-foreground" dir="ltr">
-            {row.customer_phone}
-          </div>
+          <div className="text-muted-foreground" dir="ltr">{row.customer_phone}</div>
           {row.note && <div className="mt-1 text-muted-foreground">{row.note}</div>}
         </div>
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
@@ -497,11 +404,7 @@ function AlertCardMobile({ row, isPrivileged, isOwner }: RowProps) {
 }
 
 function RowActions({ row, isPrivileged, isOwner }: RowProps) {
-  const { mutation, canContact, canClose, canCancel } = useStatusActions(
-    row,
-    isPrivileged,
-    isOwner,
-  );
+  const { mutation, canContact, canClose, canCancel } = useStatusActions(row, isPrivileged, isOwner);
   const [confirm, setConfirm] = useState<null | { next: StockAlertStatus; label: string }>(null);
 
   if (!canContact && !canClose && !canCancel) {
@@ -511,41 +414,24 @@ function RowActions({ row, isPrivileged, isOwner }: RowProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {canContact && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={mutation.isPending}
-          onClick={() => setConfirm({ next: "contacted", label: "تماس گرفته شد" })}
-        >
+        <Button size="sm" variant="outline" disabled={mutation.isPending}
+          onClick={() => setConfirm({ next: "contacted", label: "تماس گرفته شد" })}>
           <PhoneCall className="ml-1 h-3.5 w-3.5" /> تماس گرفته شد
         </Button>
       )}
       {canClose && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={mutation.isPending}
-          onClick={() => setConfirm({ next: "closed", label: "بسته شد" })}
-        >
+        <Button size="sm" variant="outline" disabled={mutation.isPending}
+          onClick={() => setConfirm({ next: "closed", label: "بسته شد" })}>
           <CheckCircle2 className="ml-1 h-3.5 w-3.5" /> بسته شد
         </Button>
       )}
       {canCancel && (
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={mutation.isPending}
-          onClick={() => setConfirm({ next: "canceled", label: "لغو شد" })}
-        >
+        <Button size="sm" variant="ghost" disabled={mutation.isPending}
+          onClick={() => setConfirm({ next: "canceled", label: "لغو شد" })}>
           <XCircle className="ml-1 h-3.5 w-3.5" /> لغو
         </Button>
       )}
-      <AlertDialog
-        open={!!confirm}
-        onOpenChange={(v) => {
-          if (!v) setConfirm(null);
-        }}
-      >
+      <AlertDialog open={!!confirm} onOpenChange={(v) => { if (!v) setConfirm(null); }}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>تغییر وضعیت درخواست</AlertDialogTitle>
@@ -556,15 +442,8 @@ function RowActions({ row, isPrivileged, isOwner }: RowProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (confirm) {
-                  mutation.mutate(confirm.next);
-                  setConfirm(null);
-                }
-              }}
-            >
-              تأیید
-            </AlertDialogAction>
+              onClick={() => { if (confirm) { mutation.mutate(confirm.next); setConfirm(null); } }}
+            >تأیید</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

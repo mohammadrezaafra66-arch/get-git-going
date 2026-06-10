@@ -3,28 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite, fetchAttributesLite } from "@/lib/products/queries";
 import {
-  fetchBrandsLite,
-  fetchCategoriesLite,
-  fetchLabelsLite,
-  fetchAttributesLite,
-} from "@/lib/products/queries";
-import {
-  PRODUCT_TYPE_LABELS,
-  STOCK_STATUS_LABELS,
-  PRODUCT_STATUS_LABELS,
-  type ProductType,
-  type BaseCurrency,
-  type StockStatus,
-  type ProductStatus,
+  PRODUCT_TYPE_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS,
+  type ProductType, type BaseCurrency, type StockStatus, type ProductStatus,
 } from "@/lib/products/constants";
 
 export interface ProductFilterState {
@@ -42,17 +26,9 @@ export interface ProductFilterState {
 }
 
 export const EMPTY_FILTERS: ProductFilterState = {
-  q: "",
-  brand_id: null,
-  category_id: null,
-  product_type: null,
-  base_currency: null,
-  stock_status: null,
-  status: null,
-  label_ids: [],
-  color: null,
-  capacity: null,
-  model: null,
+  q: "", brand_id: null, category_id: null, product_type: null,
+  base_currency: null, stock_status: null, status: null, label_ids: [],
+  color: null, capacity: null, model: null,
 };
 
 interface Props {
@@ -80,25 +56,15 @@ export function ProductFilters({ value, onChange }: Props) {
   });
 
   const activeAttrs = (attrsQ.data ?? []).filter((a) => a.is_active);
-  const colorOpts = activeAttrs
-    .filter((a) => a.type === "color")
-    .map((a) => ({ value: a.name, label: a.name }));
-  const capacityOpts = activeAttrs
-    .filter((a) => a.type === "capacity")
-    .map((a) => ({ value: a.name, label: a.name }));
-  const modelOpts = activeAttrs
-    .filter((a) => a.type === "model")
-    .map((a) => ({ value: a.name, label: a.name }));
+  const colorOpts = activeAttrs.filter((a) => a.type === "color").map((a) => ({ value: a.name, label: a.name }));
+  const capacityOpts = activeAttrs.filter((a) => a.type === "capacity").map((a) => ({ value: a.name, label: a.name }));
+  const modelOpts = activeAttrs.filter((a) => a.type === "model").map((a) => ({ value: a.name, label: a.name }));
 
-  const set = <K extends keyof ProductFilterState>(k: K, v: ProductFilterState[K]) =>
-    onChange({ ...value, [k]: v });
+  const set = <K extends keyof ProductFilterState>(k: K, v: ProductFilterState[K]) => onChange({ ...value, [k]: v });
 
   const toggleLabel = (id: string) => {
     const exists = value.label_ids.includes(id);
-    onChange({
-      ...value,
-      label_ids: exists ? value.label_ids.filter((x) => x !== id) : [...value.label_ids, id],
-    });
+    onChange({ ...value, label_ids: exists ? value.label_ids.filter((x) => x !== id) : [...value.label_ids, id] });
   };
 
   const reset = () => onChange(EMPTY_FILTERS);
@@ -116,8 +82,7 @@ export function ProductFilters({ value, onChange }: Props) {
           />
         </div>
         <Button type="button" variant="outline" size="sm" onClick={reset}>
-          <X className="ms-1 h-4 w-4" />
-          پاک کردن
+          <X className="ms-1 h-4 w-4" />پاک کردن
         </Button>
       </div>
 
@@ -126,17 +91,13 @@ export function ProductFilters({ value, onChange }: Props) {
           label="برند"
           value={value.brand_id}
           onChange={(v) => set("brand_id", v)}
-          options={(brandsQ.data ?? [])
-            .filter((b) => b.is_active)
-            .map((b) => ({ value: b.id, label: b.name }))}
+          options={(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => ({ value: b.id, label: b.name }))}
         />
         <FilterSelect
           label="دسته"
           value={value.category_id}
           onChange={(v) => set("category_id", v)}
-          options={(catsQ.data ?? [])
-            .filter((c) => c.is_active)
-            .map((c) => ({ value: c.id, label: c.name }))}
+          options={(catsQ.data ?? []).filter((c) => c.is_active).map((c) => ({ value: c.id, label: c.name }))}
         />
         <FilterSelect
           label="نوع"
@@ -148,10 +109,7 @@ export function ProductFilters({ value, onChange }: Props) {
           label="ارز"
           value={value.base_currency}
           onChange={(v) => set("base_currency", v)}
-          options={(currenciesQ.data ?? []).map((c) => ({
-            value: c.code,
-            label: `${c.title} (${c.code.toUpperCase()})`,
-          }))}
+          options={(currenciesQ.data ?? []).map((c) => ({ value: c.code, label: `${c.title} (${c.code.toUpperCase()})` }))}
         />
         <FilterSelect
           label="موجودی"
@@ -196,15 +154,10 @@ export function ProductFilters({ value, onChange }: Props) {
                 type="button"
                 onClick={() => toggleLabel(l.id)}
                 className={`rounded-full border px-3 py-1 text-xs transition ${
-                  active
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                  active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:bg-muted"
                 }`}
               >
-                <span
-                  className="me-1 inline-block h-2 w-2 rounded-full align-middle"
-                  style={{ backgroundColor: l.color }}
-                />
+                <span className="me-1 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: l.color }} />
                 {l.title}
               </button>
             );
@@ -216,10 +169,7 @@ export function ProductFilters({ value, onChange }: Props) {
 }
 
 function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
+  label, value, onChange, options,
 }: {
   label: string;
   value: string | null;
@@ -230,15 +180,11 @@ function FilterSelect({
     <div className="space-y-1">
       <label className="text-xs text-muted-foreground">{label}</label>
       <Select value={value ?? "__all"} onValueChange={(v) => onChange(v === "__all" ? null : v)}>
-        <SelectTrigger className="h-9">
-          <SelectValue placeholder="همه" />
-        </SelectTrigger>
+        <SelectTrigger className="h-9"><SelectValue placeholder="همه" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="__all">همه</SelectItem>
           {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>

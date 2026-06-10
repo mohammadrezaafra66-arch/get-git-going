@@ -60,7 +60,9 @@ async function fetchWithTimeout(url: string, ms: number, init?: RequestInit): Pr
  * We map by `symbol` (e.g. "USD", "EUR", "IR_GOLD_18K", "IR_COIN_EMAMI").
  */
 export async function fetchBrsApi(): Promise<ProviderResult> {
-  const url = process.env.BRSAPI_PUBLIC_URL ?? "https://brsapi.ir/Api/Market/Gold_Currency.php";
+  const url =
+    process.env.BRSAPI_PUBLIC_URL ??
+    "https://brsapi.ir/Api/Market/Gold_Currency.php";
   try {
     const res = await fetchWithTimeout(url, safeTimeoutMs());
     if (!res.ok) return { ok: false, reason: `brsapi_http_${res.status}` };
@@ -114,7 +116,8 @@ export async function fetchTgjuPublic(): Promise<ProviderResult> {
       const o = node as Record<string, unknown>;
       const price = toNumber(o.p ?? o.price);
       if (price == null || price <= 0) continue;
-      const reportedAt = typeof o.t === "string" ? o.t : typeof o.time === "string" ? o.time : null;
+      const reportedAt =
+        typeof o.t === "string" ? o.t : typeof o.time === "string" ? o.time : null;
       ticks[sym] = { value: price, reportedAt, raw: o };
       count += 1;
     }

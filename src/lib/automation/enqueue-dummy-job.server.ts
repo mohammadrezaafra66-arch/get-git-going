@@ -30,22 +30,13 @@ export type EnqueueDummyJobResult = {
 type AutomationAdminClient = {
   from: (table: string) => {
     select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => {
-        maybeSingle: () => Promise<{
-          data: Record<string, unknown> | null;
-          error: { message: string } | null;
-        }>;
+      eq: (col: string, val: string) => {
+        maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
       };
     };
     insert: (row: Record<string, unknown>) => {
       select: (cols: string) => {
-        single: () => Promise<{
-          data: Record<string, unknown> | null;
-          error: { message: string } | null;
-        }>;
+        single: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
       };
     };
   };
@@ -64,7 +55,9 @@ async function getDummyModuleId(): Promise<string> {
 
   if (error) throw new Error(`بارگذاری ماژول dummy_worker ناموفق بود: ${error.message}`);
   if (!data) {
-    throw new Error("ماژول dummy_worker یافت نشد. migration فاز صفر را اعمال کنید.");
+    throw new Error(
+      "ماژول dummy_worker یافت نشد. migration فاز صفر را اعمال کنید.",
+    );
   }
   if (data.status !== "enabled") {
     throw new Error(`ماژول dummy_worker فعال نیست (وضعیت: ${String(data.status)})`);
@@ -72,9 +65,7 @@ async function getDummyModuleId(): Promise<string> {
   return String(data.id);
 }
 
-export async function enqueueDummyAutomationJob(
-  actingUserId: string,
-): Promise<EnqueueDummyJobResult> {
+export async function enqueueDummyAutomationJob(actingUserId: string): Promise<EnqueueDummyJobResult> {
   const moduleId = await getDummyModuleId();
   const idempotencyKey = `phase0-ui-${randomUUID()}`;
 

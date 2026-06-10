@@ -8,21 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -65,22 +55,15 @@ function WorkflowStagesPage() {
     if (debounced.trim()) q = q.ilike("title", `%${debounced.trim()}%`);
     const { data, error } = await q;
     setLoading(false);
-    if (error) {
-      toast.error("خطا در بارگذاری");
-      return;
-    }
+    if (error) { toast.error("خطا در بارگذاری"); return; }
     setStages((data ?? []) as Stage[]);
   };
 
-  useEffect(() => {
-    load(); /* eslint-disable-next-line */
-  }, [debounced]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [debounced]);
 
   if (!allowed) {
     return (
-      <div className="p-6 text-sm text-muted-foreground" dir="rtl">
-        دسترسی غیرمجاز
-      </div>
+      <div className="p-6 text-sm text-muted-foreground" dir="rtl">دسترسی غیرمجاز</div>
     );
   }
 
@@ -97,20 +80,13 @@ function WorkflowStagesPage() {
   };
 
   const save = async () => {
-    if (!form.title.trim()) {
-      toast.error("عنوان الزامی است");
-      return;
-    }
+    if (!form.title.trim()) { toast.error("عنوان الزامی است"); return; }
     setSaving(true);
     try {
       if (editing) {
         const { error } = await supabase
           .from("invoice_workflow_stages")
-          .update({
-            title: form.title.trim(),
-            order_index: form.order_index,
-            updated_at: new Date().toISOString(),
-          })
+          .update({ title: form.title.trim(), order_index: form.order_index, updated_at: new Date().toISOString() })
           .eq("id", editing.id);
         if (error) throw error;
         await supabase.from("audit_logs").insert({
@@ -151,10 +127,7 @@ function WorkflowStagesPage() {
       .from("invoice_workflow_stages")
       .update({ is_active: !s.is_active, updated_at: new Date().toISOString() })
       .eq("id", s.id);
-    if (error) {
-      toast.error("خطا");
-      return;
-    }
+    if (error) { toast.error("خطا"); return; }
     toast.success("به‌روزرسانی شد");
     load();
   };
@@ -167,9 +140,7 @@ function WorkflowStagesPage() {
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNew}>
-                <Plus className="ml-2 h-4 w-4" /> افزودن مرحله
-              </Button>
+              <Button onClick={openNew}><Plus className="ml-2 h-4 w-4" /> افزودن مرحله</Button>
             </DialogTrigger>
             <DialogContent dir="rtl">
               <DialogHeader>
@@ -179,26 +150,19 @@ function WorkflowStagesPage() {
               <div className="space-y-3">
                 <div className="space-y-1">
                   <Label>عنوان</Label>
-                  <Input
-                    value={form.title}
-                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  />
+                  <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
                   <Label>ترتیب</Label>
                   <Input
                     type="number"
                     value={form.order_index}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, order_index: Number(e.target.value) || 0 }))
-                    }
+                    onChange={(e) => setForm((f) => ({ ...f, order_index: Number(e.target.value) || 0 }))}
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  انصراف
-                </Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>انصراف</Button>
                 <Button onClick={save} disabled={saving}>
                   {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   ذخیره
@@ -209,12 +173,7 @@ function WorkflowStagesPage() {
         }
       />
 
-      <Input
-        placeholder="جستجوی نام مرحله..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-sm"
-      />
+      <Input placeholder="جستجوی نام مرحله..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
 
       <div className="rounded-lg border">
         <Table>
@@ -228,38 +187,26 @@ function WorkflowStagesPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                  در حال بارگذاری...
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">در حال بارگذاری...</TableCell></TableRow>
             ) : stages.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                  مرحله‌ای یافت نشد
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">مرحله‌ای یافت نشد</TableCell></TableRow>
+            ) : stages.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>{s.title}</TableCell>
+                <TableCell>{s.order_index}</TableCell>
+                <TableCell>
+                  <Badge variant={s.is_active ? "secondary" : "outline"}>
+                    {s.is_active ? "فعال" : "غیرفعال"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="space-x-2 space-x-reverse">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(s)}>ویرایش</Button>
+                  <Button variant="ghost" size="sm" onClick={() => toggleActive(s)}>
+                    {s.is_active ? "غیرفعال" : "فعال"}
+                  </Button>
                 </TableCell>
               </TableRow>
-            ) : (
-              stages.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.title}</TableCell>
-                  <TableCell>{s.order_index}</TableCell>
-                  <TableCell>
-                    <Badge variant={s.is_active ? "secondary" : "outline"}>
-                      {s.is_active ? "فعال" : "غیرفعال"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="space-x-2 space-x-reverse">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
-                      ویرایش
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toggleActive(s)}>
-                      {s.is_active ? "غیرفعال" : "فعال"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>

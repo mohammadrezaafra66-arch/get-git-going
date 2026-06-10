@@ -5,13 +5,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,18 +25,12 @@ type Task = {
 
 function statusLabel(s: string) {
   switch (s) {
-    case "pending":
-      return "در انتظار";
-    case "in_progress":
-      return "در حال انجام";
-    case "done":
-      return "انجام‌شده";
-    case "blocked":
-      return "متوقف";
-    case "canceled":
-      return "لغو";
-    default:
-      return s;
+    case "pending": return "در انتظار";
+    case "in_progress": return "در حال انجام";
+    case "done": return "انجام‌شده";
+    case "blocked": return "متوقف";
+    case "canceled": return "لغو";
+    default: return s;
   }
 }
 
@@ -60,26 +48,18 @@ function TasksBoardPage() {
     setLoading(true);
     let q = supabase
       .from("tasks")
-      .select(
-        "id,title,description,status,priority,reference_type,reference_id,created_at,completed_at",
-        { count: "exact" },
-      )
+      .select("id,title,description,status,priority,reference_type,reference_id,created_at,completed_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (filterStatus !== "all") q = q.eq("status", filterStatus);
     const { data, error, count: c } = await q;
     setLoading(false);
-    if (error) {
-      toast.error("خطا در بارگذاری");
-      return;
-    }
+    if (error) { toast.error("خطا در بارگذاری"); return; }
     setItems((data ?? []) as Task[]);
     setCount(c ?? 0);
   };
 
-  useEffect(() => {
-    load(); /* eslint-disable-next-line */
-  }, [page, filterStatus]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, filterStatus]);
 
   const startTask = async (id: string) => {
     setActing(id);
@@ -88,10 +68,7 @@ function TasksBoardPage() {
       .update({ status: "in_progress", updated_at: new Date().toISOString() })
       .eq("id", id);
     setActing(null);
-    if (error) {
-      toast.error("خطا");
-      return;
-    }
+    if (error) { toast.error("خطا"); return; }
     toast.success("شروع شد");
     load();
   };
@@ -104,18 +81,11 @@ function TasksBoardPage() {
     } else {
       ({ error } = await supabase
         .from("tasks")
-        .update({
-          status: "done",
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update({ status: "done", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("id", t.id));
     }
     setActing(null);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success("وظیفه تکمیل شد");
     load();
   };
@@ -127,16 +97,8 @@ function TasksBoardPage() {
       <PageHeader title="برد وظایف" description="وظایف اختصاص‌یافته (شامل بررسی پیش‌فاکتورها)" />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Select
-          value={filterStatus}
-          onValueChange={(v) => {
-            setFilterStatus(v);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
+        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setPage(0); }}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه</SelectItem>
             <SelectItem value="pending">در انتظار</SelectItem>
@@ -159,15 +121,9 @@ function TasksBoardPage() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm">{t.title}</span>
-                    <Badge variant={t.status === "done" ? "secondary" : "outline"}>
-                      {statusLabel(t.status)}
-                    </Badge>
+                    <Badge variant={t.status === "done" ? "secondary" : "outline"}>{statusLabel(t.status)}</Badge>
                   </div>
-                  {t.description && (
-                    <p className="text-xs text-muted-foreground whitespace-pre-line">
-                      {t.description}
-                    </p>
-                  )}
+                  {t.description && <p className="text-xs text-muted-foreground whitespace-pre-line">{t.description}</p>}
                   {t.reference_type === "invoice" && t.reference_id && (
                     <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
                       <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: t.reference_id }}>
@@ -179,21 +135,12 @@ function TasksBoardPage() {
                 {canTick && t.status !== "done" && t.status !== "canceled" && (
                   <div className="flex flex-col gap-2">
                     {t.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startTask(t.id)}
-                        disabled={acting === t.id}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => startTask(t.id)} disabled={acting === t.id}>
                         شروع
                       </Button>
                     )}
                     <Button size="sm" onClick={() => completeTask(t)} disabled={acting === t.id}>
-                      {acting === t.id ? (
-                        <Loader2 className="ml-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="ml-1 h-3 w-3" />
-                      )}
+                      {acting === t.id ? <Loader2 className="ml-1 h-3 w-3 animate-spin" /> : <CheckCircle2 className="ml-1 h-3 w-3" />}
                       تکمیل
                     </Button>
                   </div>
@@ -206,25 +153,9 @@ function TasksBoardPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            قبلی
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            صفحه {page + 1} از {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            بعدی
-          </Button>
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>قبلی</Button>
+          <span className="text-xs text-muted-foreground">صفحه {page + 1} از {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
         </div>
       )}
     </div>

@@ -19,32 +19,17 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_app/accounting/receivables")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager", "accountant"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
   component: ReceivablesPage,
 });
 
@@ -111,32 +96,16 @@ function fmtNum(n: number | null | undefined) {
 }
 function fmtDate(s: string | null | undefined) {
   if (!s) return NA;
-  try {
-    return formatDateFa(s);
-  } catch {
-    return s;
-  }
+  try { return formatDateFa(s); } catch { return s; }
 }
 
-function SummaryCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "danger" | "warn" | "info" | "muted";
-}) {
+function SummaryCard({ label, value, tone }: { label: string; value: string; tone?: "danger" | "warn" | "info" | "muted" }) {
   const toneCls =
-    tone === "danger"
-      ? "text-destructive"
-      : tone === "warn"
-        ? "text-amber-600 dark:text-amber-400"
-        : tone === "info"
-          ? "text-primary"
-          : tone === "muted"
-            ? "text-muted-foreground"
-            : "";
+    tone === "danger" ? "text-destructive"
+    : tone === "warn" ? "text-amber-600 dark:text-amber-400"
+    : tone === "info" ? "text-primary"
+    : tone === "muted" ? "text-muted-foreground"
+    : "";
   return (
     <Card>
       <CardContent className="p-4 space-y-1">
@@ -227,38 +196,17 @@ function ReceivablesPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <SummaryCard
-          label="کل مطالبات"
-          value={summaryQ.isLoading ? "…" : fmtMoney(summary?.total_outstanding ?? 0)}
-          tone="info"
-        />
-        <SummaryCard
-          label="معوق"
-          value={summaryQ.isLoading ? "…" : fmtMoney(summary?.overdue_outstanding ?? 0)}
-          tone="danger"
-        />
-        <SummaryCard
-          label="سررسید امروز"
-          value={summaryQ.isLoading ? "…" : fmtMoney(summary?.due_today ?? 0)}
-          tone="warn"
-        />
-        <SummaryCard
-          label="سررسید فردا"
-          value={summaryQ.isLoading ? "…" : fmtMoney(summary?.due_tomorrow ?? 0)}
-          tone="warn"
-        />
-        <SummaryCard
-          label="آینده"
-          value={summaryQ.isLoading ? "…" : fmtMoney(summary?.future_outstanding ?? 0)}
-          tone="muted"
-        />
-        <SummaryCard
-          label="تعداد آیتم‌ها"
-          value={summaryQ.isLoading ? "…" : fmtNum(summary?.items_count ?? 0)}
-        />
+        <SummaryCard label="کل مطالبات" value={summaryQ.isLoading ? "…" : fmtMoney(summary?.total_outstanding ?? 0)} tone="info" />
+        <SummaryCard label="معوق" value={summaryQ.isLoading ? "…" : fmtMoney(summary?.overdue_outstanding ?? 0)} tone="danger" />
+        <SummaryCard label="سررسید امروز" value={summaryQ.isLoading ? "…" : fmtMoney(summary?.due_today ?? 0)} tone="warn" />
+        <SummaryCard label="سررسید فردا" value={summaryQ.isLoading ? "…" : fmtMoney(summary?.due_tomorrow ?? 0)} tone="warn" />
+        <SummaryCard label="آینده" value={summaryQ.isLoading ? "…" : fmtMoney(summary?.future_outstanding ?? 0)} tone="muted" />
+        <SummaryCard label="تعداد آیتم‌ها" value={summaryQ.isLoading ? "…" : fmtNum(summary?.items_count ?? 0)} />
       </div>
 
-      {summaryQ.isError && <div className="text-sm text-destructive">{errMsg(summaryQ.error)}</div>}
+      {summaryQ.isError && (
+        <div className="text-sm text-destructive">{errMsg(summaryQ.error)}</div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -270,24 +218,11 @@ function ReceivablesPage() {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start font-normal">
                     <CalendarIcon className="ml-2 h-4 w-4" />
-                    {fromDate ? (
-                      toFaDigits(format(fromDate, "yyyy/MM/dd"))
-                    ) : (
-                      <span className="text-muted-foreground">انتخاب</span>
-                    )}
+                    {fromDate ? toFaDigits(format(fromDate, "yyyy/MM/dd")) : <span className="text-muted-foreground">انتخاب</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={fromDate}
-                    onSelect={(d) => {
-                      setFromDate(d ?? undefined);
-                      setPage(0);
-                    }}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
+                  <Calendar mode="single" selected={fromDate} onSelect={(d) => { setFromDate(d ?? undefined); setPage(0); }} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
@@ -297,39 +232,18 @@ function ReceivablesPage() {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start font-normal">
                     <CalendarIcon className="ml-2 h-4 w-4" />
-                    {toDate ? (
-                      toFaDigits(format(toDate, "yyyy/MM/dd"))
-                    ) : (
-                      <span className="text-muted-foreground">انتخاب</span>
-                    )}
+                    {toDate ? toFaDigits(format(toDate, "yyyy/MM/dd")) : <span className="text-muted-foreground">انتخاب</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={toDate}
-                    onSelect={(d) => {
-                      setToDate(d ?? undefined);
-                      setPage(0);
-                    }}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
+                  <Calendar mode="single" selected={toDate} onSelect={(d) => { setToDate(d ?? undefined); setPage(0); }} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
             <div className="space-y-1">
               <Label>وضعیت سررسید</Label>
-              <Select
-                value={dueFilter}
-                onValueChange={(v) => {
-                  setDueFilter(v as DueFilter);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={dueFilter} onValueChange={(v) => { setDueFilter(v as DueFilter); setPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه</SelectItem>
                   <SelectItem value="overdue">معوق</SelectItem>
@@ -347,25 +261,14 @@ function ReceivablesPage() {
                   className="pr-8"
                   placeholder="نام مشتری یا شماره فاکتور"
                   value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(0);
-                  }}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                 />
               </div>
             </div>
             <div className="space-y-1">
               <Label>تعداد در صفحه</Label>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(v) => {
-                  setPageSize(Number(v));
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="25">{toFaDigits("25")}</SelectItem>
                   <SelectItem value="50">{toFaDigits("50")}</SelectItem>
@@ -377,17 +280,7 @@ function ReceivablesPage() {
 
           {(fromDate || toDate || search || dueFilter !== "all") && (
             <div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setFromDate(undefined);
-                  setToDate(undefined);
-                  setSearch("");
-                  setDueFilter("all");
-                  setPage(0);
-                }}
-              >
+              <Button variant="ghost" size="sm" onClick={() => { setFromDate(undefined); setToDate(undefined); setSearch(""); setDueFilter("all"); setPage(0); }}>
                 <X className="ml-1 h-4 w-4" /> پاک کردن فیلترها
               </Button>
             </div>
@@ -405,9 +298,7 @@ function ReceivablesPage() {
           ) : listQ.isError ? (
             <div className="p-6 text-sm text-destructive">{errMsg(listQ.error)}</div>
           ) : (listQ.data?.length ?? 0) === 0 ? (
-            <div className="p-10 text-center text-muted-foreground">
-              مطالبه‌ای برای نمایش وجود ندارد.
-            </div>
+            <div className="p-10 text-center text-muted-foreground">مطالبه‌ای برای نمایش وجود ندارد.</div>
           ) : (
             <>
               {/* Desktop table */}
@@ -430,41 +321,28 @@ function ReceivablesPage() {
                     {listQ.data!.map((r) => (
                       <TableRow key={r.invoice_id}>
                         <TableCell>{r.customer_name || NA}</TableCell>
-                        <TableCell>
-                          {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
-                        </TableCell>
+                        <TableCell>{r.invoice_number ? toFaDigits(r.invoice_number) : NA}</TableCell>
                         <TableCell>{fmtDate(r.due_date)}</TableCell>
                         <TableCell>{fmtMoney(r.total_amount)}</TableCell>
                         <TableCell>{fmtMoney(r.deposit_amount)}</TableCell>
                         <TableCell>{fmtMoney(r.confirmed_paid_amount)}</TableCell>
-                        <TableCell className="font-semibold">
-                          {fmtMoney(r.outstanding_amount)}
-                        </TableCell>
+                        <TableCell className="font-semibold">{fmtMoney(r.outstanding_amount)}</TableCell>
                         <TableCell>
                           {r.is_overdue ? (
                             <Badge variant="destructive">معوق</Badge>
                           ) : r.due_date ? (
-                            <Badge variant="secondary">
-                              {toFaDigits(String(r.days_until_due ?? 0))} روز
-                            </Badge>
+                            <Badge variant="secondary">{toFaDigits(String(r.days_until_due ?? 0))} روز</Badge>
                           ) : (
                             <Badge variant="outline">{NA}</Badge>
                           )}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDetailInvoiceId(r.invoice_id)}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => setDetailInvoiceId(r.invoice_id)}>
                               <Eye className="h-4 w-4 ml-1" /> جزئیات
                             </Button>
                             <Button asChild size="sm" variant="ghost">
-                              <Link
-                                to="/sales/invoices/$invoiceId"
-                                params={{ invoiceId: r.invoice_id }}
-                              >
+                              <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: r.invoice_id }}>
                                 <FileText className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -487,39 +365,18 @@ function ReceivablesPage() {
                           فاکتور {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
                         </div>
                       </div>
-                      {r.is_overdue ? (
-                        <Badge variant="destructive">معوق</Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          {toFaDigits(String(r.days_until_due ?? 0))} روز
-                        </Badge>
-                      )}
+                      {r.is_overdue
+                        ? <Badge variant="destructive">معوق</Badge>
+                        : <Badge variant="secondary">{toFaDigits(String(r.days_until_due ?? 0))} روز</Badge>}
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">سررسید: </span>
-                        {fmtDate(r.due_date)}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">مانده: </span>
-                        <span className="font-semibold">{fmtMoney(r.outstanding_amount)}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">کل: </span>
-                        {fmtMoney(r.total_amount)}
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">پرداخت‌شده: </span>
-                        {fmtMoney(r.confirmed_paid_amount)}
-                      </div>
+                      <div><span className="text-muted-foreground">سررسید: </span>{fmtDate(r.due_date)}</div>
+                      <div><span className="text-muted-foreground">مانده: </span><span className="font-semibold">{fmtMoney(r.outstanding_amount)}</span></div>
+                      <div><span className="text-muted-foreground">کل: </span>{fmtMoney(r.total_amount)}</div>
+                      <div><span className="text-muted-foreground">پرداخت‌شده: </span>{fmtMoney(r.confirmed_paid_amount)}</div>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => setDetailInvoiceId(r.invoice_id)}
-                      >
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => setDetailInvoiceId(r.invoice_id)}>
                         <Eye className="h-4 w-4 ml-1" /> جزئیات
                       </Button>
                       <Button asChild size="sm" variant="ghost">
@@ -538,22 +395,8 @@ function ReceivablesPage() {
                   صفحه {toFaDigits(String(page + 1))}
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={page === 0}
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  >
-                    قبلی
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={(listQ.data?.length ?? 0) < pageSize}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    بعدی
-                  </Button>
+                  <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
+                  <Button size="sm" variant="outline" disabled={(listQ.data?.length ?? 0) < pageSize} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
                 </div>
               </div>
             </>
@@ -562,12 +405,7 @@ function ReceivablesPage() {
       </Card>
 
       {/* Detail Sheet */}
-      <Sheet
-        open={!!detailInvoiceId}
-        onOpenChange={(o) => {
-          if (!o) setDetailInvoiceId(null);
-        }}
-      >
+      <Sheet open={!!detailInvoiceId} onOpenChange={(o) => { if (!o) setDetailInvoiceId(null); }}>
         <SheetContent side="left" className="w-full sm:max-w-lg overflow-y-auto" dir="rtl">
           <SheetHeader>
             <SheetTitle>جزئیات مطالبه</SheetTitle>
@@ -582,103 +420,51 @@ function ReceivablesPage() {
               <div className="text-sm text-destructive">{errMsg(detailQ.error)}</div>
             ) : (detailQ.data?.length ?? 0) === 0 ? (
               <div className="text-sm text-muted-foreground">اطلاعاتی یافت نشد.</div>
-            ) : (
-              (() => {
-                const rows = detailQ.data!;
-                const head = rows[0];
-                const payments = rows.filter((r) => r.receipt_id);
-                return (
-                  <>
-                    <Card>
-                      <CardContent className="p-3 space-y-1 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">مشتری: </span>
-                          {head.customer_name || NA}
-                        </div>
-                        {head.customer_phone && (
-                          <div>
-                            <span className="text-muted-foreground">تلفن: </span>
-                            {toFaDigits(head.customer_phone)}
-                          </div>
-                        )}
-                        <div>
-                          <span className="text-muted-foreground">شماره فاکتور: </span>
-                          {head.invoice_number ? toFaDigits(head.invoice_number) : NA}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">تاریخ صدور: </span>
-                          {fmtDate(head.issue_date)}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">سررسید: </span>
-                          {fmtDate(head.due_date)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-3 space-y-1 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">مبلغ کل: </span>
-                          {fmtMoney(head.total_amount)}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">پیش‌پرداخت: </span>
-                          {fmtMoney(head.deposit_amount)}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">پرداخت تأییدشده: </span>
-                          {fmtMoney(head.confirmed_paid_amount)}
-                        </div>
-                        <div className="font-semibold text-base">
-                          <span className="text-muted-foreground font-normal">مانده: </span>
-                          {fmtMoney(head.outstanding_amount)}
-                        </div>
-                        {head.is_overdue && <Badge variant="destructive">معوق</Badge>}
-                      </CardContent>
-                    </Card>
-                    <div>
-                      <div className="text-sm font-medium mb-2">پرداخت‌های لینک‌شده</div>
-                      {payments.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">
-                          پرداختی برای این فاکتور ثبت نشده است.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {payments.map((p) => (
-                            <Card key={p.receipt_id}>
-                              <CardContent className="p-3 space-y-1 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="font-semibold">
-                                    {fmtMoney(p.receipt_amount)}
-                                  </span>
-                                  <Badge variant="outline">{p.receipt_status || NA}</Badge>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">تاریخ: </span>
-                                  {fmtDate(p.receipt_payment_date)}
-                                </div>
-                                {p.receipt_tracking_number && (
-                                  <div>
-                                    <span className="text-muted-foreground">پیگیری: </span>
-                                    {toFaDigits(p.receipt_tracking_number)}
-                                  </div>
-                                )}
-                                {p.receipt_bank_name && (
-                                  <div>
-                                    <span className="text-muted-foreground">بانک: </span>
-                                    {p.receipt_bank_name}
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                );
-              })()
-            )}
+            ) : (() => {
+              const rows = detailQ.data!;
+              const head = rows[0];
+              const payments = rows.filter((r) => r.receipt_id);
+              return (
+                <>
+                  <Card><CardContent className="p-3 space-y-1 text-sm">
+                    <div><span className="text-muted-foreground">مشتری: </span>{head.customer_name || NA}</div>
+                    {head.customer_phone && <div><span className="text-muted-foreground">تلفن: </span>{toFaDigits(head.customer_phone)}</div>}
+                    <div><span className="text-muted-foreground">شماره فاکتور: </span>{head.invoice_number ? toFaDigits(head.invoice_number) : NA}</div>
+                    <div><span className="text-muted-foreground">تاریخ صدور: </span>{fmtDate(head.issue_date)}</div>
+                    <div><span className="text-muted-foreground">سررسید: </span>{fmtDate(head.due_date)}</div>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 space-y-1 text-sm">
+                    <div><span className="text-muted-foreground">مبلغ کل: </span>{fmtMoney(head.total_amount)}</div>
+                    <div><span className="text-muted-foreground">پیش‌پرداخت: </span>{fmtMoney(head.deposit_amount)}</div>
+                    <div><span className="text-muted-foreground">پرداخت تأییدشده: </span>{fmtMoney(head.confirmed_paid_amount)}</div>
+                    <div className="font-semibold text-base"><span className="text-muted-foreground font-normal">مانده: </span>{fmtMoney(head.outstanding_amount)}</div>
+                    {head.is_overdue && <Badge variant="destructive">معوق</Badge>}
+                  </CardContent></Card>
+                  <div>
+                    <div className="text-sm font-medium mb-2">پرداخت‌های لینک‌شده</div>
+                    {payments.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">پرداختی برای این فاکتور ثبت نشده است.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {payments.map((p) => (
+                          <Card key={p.receipt_id}>
+                            <CardContent className="p-3 space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="font-semibold">{fmtMoney(p.receipt_amount)}</span>
+                                <Badge variant="outline">{p.receipt_status || NA}</Badge>
+                              </div>
+                              <div><span className="text-muted-foreground">تاریخ: </span>{fmtDate(p.receipt_payment_date)}</div>
+                              {p.receipt_tracking_number && <div><span className="text-muted-foreground">پیگیری: </span>{toFaDigits(p.receipt_tracking_number)}</div>}
+                              {p.receipt_bank_name && <div><span className="text-muted-foreground">بانک: </span>{p.receipt_bank_name}</div>}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </SheetContent>
       </Sheet>

@@ -3,7 +3,10 @@ import { BUILD_TAG } from "./build-info";
 const STORAGE_KEY = "afrakala:build-tag";
 const RELOAD_FLAG = "afrakala:cache-buster:reloading";
 const RELOAD_COUNT_KEY = "afrakala:cache-buster:count";
+const DEV_IMPORT_ERROR_COUNT_KEY = "afrakala:cache-buster:dev-import-count";
+const DEV_IMPORT_NOTICE_ID = "afrakala-dev-import-recovery";
 const MAX_RELOADS = 2;
+const MAX_DEV_IMPORT_ERRORS = 2;
 
 /**
  * Pattern for chunk/module loading errors that indicate the user has stale
@@ -22,8 +25,46 @@ const STALE_CHUNK_PATTERNS = [
   /MIME type \("text\/html"\)/i,
 ];
 
+/**
+ * Patterns that indicate the failing module URL belongs to the Vite dev
+ * server itself (virtual modules, /@id/, /@vite/, /@fs/, optimized deps).
+ * When the dev server restarts (HMR, .env change, sandbox restart), these
+ * URLs temporarily 404 and the browser reports a dynamic-import failure —
+ * but this is NOT a stale production chunk and MUST NOT trigger a hard
+ * reload loop, because the dev server reconnects automatically and a
+ * full page reload re-mounts the React tree (resetting auth/session
+ * state to the "checking session…" screen indefinitely).
+ */
+const DEV_URL_PATTERNS = [
+  /\/@id\//,
+  /\/@vite\//,
+  /\/@fs\//,
+  /virtual:/,
+  /node_modules\/\.vite\//,
+];
+
+function isDevModuleUrl(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return DEV_URL_PATTERNS.some((rx) => rx.test(message));
+}
+
+function isDevMode(): boolean {
+  try {
+    return Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+  } catch {
+    return false;
+  }
+}
+
+function isDevImportError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return isDevModuleUrl(message) && STALE_CHUNK_PATTERNS.some((rx) => rx.test(message));
+}
+
 function isStaleChunkError(message: string | undefined | null): boolean {
   if (!message) return false;
+  // Dev-server transient failures are not stale chunks.
+  if (isDevModuleUrl(message)) return false;
   return STALE_CHUNK_PATTERNS.some((rx) => rx.test(message));
 }
 
@@ -49,22 +90,84 @@ async function clearAllCaches() {
 }
 
 function bumpReloadCounter(): number {
+  return bumpSessionCounter(RELOAD_COUNT_KEY);
+}
+
+function bumpSessionCounter(key: string): number {
   try {
-    const cur = Number(sessionStorage.getItem(RELOAD_COUNT_KEY) ?? "0") || 0;
+    const cur = Number(sessionStorage.getItem(key) ?? "0") || 0;
     const next = cur + 1;
-    sessionStorage.setItem(RELOAD_COUNT_KEY, String(next));
+    sessionStorage.setItem(key, String(next));
     return next;
   } catch {
     return 0;
   }
 }
 
-function resetReloadCounter() {
+function resetTransientErrorCounters() {
   try {
     sessionStorage.removeItem(RELOAD_COUNT_KEY);
     sessionStorage.removeItem(RELOAD_FLAG);
+    sessionStorage.removeItem(DEV_IMPORT_ERROR_COUNT_KEY);
   } catch {
     /* noop */
+  }
+}
+
+function showDevImportRecoveryNotice(reason: string) {
+  if (typeof document === "undefined" || document.getElementById(DEV_IMPORT_NOTICE_ID)) return;
+
+  const notice = document.createElement("div");
+  notice.id = DEV_IMPORT_NOTICE_ID;
+  notice.dir = "rtl";
+  notice.setAttribute("role", "alert");
+  notice.style.cssText = [
+    "position:fixed",
+    "inset-inline:16px",
+    "bottom:16px",
+    "z-index:2147483647",
+    "max-width:520px",
+    "margin-inline:auto",
+    "border:1px solid var(--border, #e2e8f0)",
+    "border-radius:8px",
+    "background:var(--background, #ffffff)",
+    "color:var(--foreground, #0f172a)",
+    "box-shadow:0 16px 40px rgba(15,23,42,.18)",
+    "padding:16px",
+    "font:14px/1.8 system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  ].join(";");
+
+  const title = document.createElement("div");
+  title.textContent = "بارگذاری پیش‌نمایش کامل نشد";
+  title.style.cssText = "font-weight:700;margin-bottom:6px";
+
+  const body = document.createElement("div");
+  body.textContent =
+    "ماژول داخلی محیط توسعه موقتاً در دسترس نیست. چند ثانیه صبر کنید؛ اگر صفحه برنگشت، یک‌بار تازه‌سازی کنید.";
+  body.style.cssText = "color:var(--muted-foreground, #64748b);margin-bottom:12px";
+
+  const detail = document.createElement("pre");
+  detail.textContent = reason;
+  detail.dir = "ltr";
+  detail.style.cssText =
+    "max-height:80px;overflow:auto;white-space:pre-wrap;text-align:left;background:var(--muted, #f1f5f9);padding:8px;border-radius:6px;font-size:11px;margin:0 0 12px";
+
+  const refresh = document.createElement("button");
+  refresh.type = "button";
+  refresh.textContent = "تازه‌سازی صفحه";
+  refresh.style.cssText =
+    "border:0;border-radius:6px;background:var(--primary, #0f172a);color:var(--primary-foreground, #f8fafc);padding:8px 12px;cursor:pointer";
+  refresh.addEventListener("click", () => window.location.reload());
+
+  notice.append(title, body, detail, refresh);
+  document.body.appendChild(notice);
+}
+
+function handleDevImportError(reason: string) {
+  const count = bumpSessionCounter(DEV_IMPORT_ERROR_COUNT_KEY);
+  console.warn(`[cache-buster] Dev/preview import failed (attempt ${count}): ${reason}`);
+  if (count >= MAX_DEV_IMPORT_ERRORS) {
+    showDevImportRecoveryNotice(reason);
   }
 }
 
@@ -77,6 +180,15 @@ let triggered = false;
 export async function forceHardReload(reason: string) {
   if (triggered) return;
   triggered = true;
+
+  // In dev, never auto-reload on chunk/import errors — the Vite dev server
+  // restart cycle would loop the page and wipe in-memory auth/session
+  // state, leaving the user stuck on the loading screen.
+  if (isDevMode()) {
+    console.warn(`[cache-buster] DEV mode — skipping hard reload: ${reason}`);
+    triggered = false;
+    return;
+  }
 
   const count = bumpReloadCounter();
   if (count > MAX_RELOADS) {
@@ -122,7 +234,7 @@ export function initCacheBuster() {
     if (prev !== BUILD_TAG) {
       localStorage.setItem(STORAGE_KEY, BUILD_TAG);
       // New build successfully loaded → reset any prior failure counter
-      resetReloadCounter();
+      resetTransientErrorCounters();
       if (prev) {
         // Async cache clear; ok to fire-and-forget
         void clearAllCaches();
@@ -131,7 +243,7 @@ export function initCacheBuster() {
     } else {
       // Same build loaded successfully → clear stale reload flag
       if (sessionStorage.getItem(RELOAD_FLAG) === "1") {
-        resetReloadCounter();
+        resetTransientErrorCounters();
       }
     }
   } catch {
@@ -141,13 +253,26 @@ export function initCacheBuster() {
   // 2) Listen for stale-chunk errors
   const onError = (event: ErrorEvent) => {
     const msg = event?.message ?? event?.error?.message;
+    if (isDevImportError(msg)) {
+      event.preventDefault();
+      handleDevImportError(`window.error: ${msg}`);
+      return;
+    }
     if (isStaleChunkError(msg)) {
       void forceHardReload(`window.error: ${msg}`);
     }
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const reason = event?.reason;
-    const msg = typeof reason === "string" ? reason : (reason?.message ?? String(reason ?? ""));
+    const msg =
+      typeof reason === "string"
+        ? reason
+        : reason?.message ?? String(reason ?? "");
+    if (isDevImportError(msg)) {
+      event.preventDefault();
+      handleDevImportError(`unhandledrejection: ${msg}`);
+      return;
+    }
     if (isStaleChunkError(msg)) {
       void forceHardReload(`unhandledrejection: ${msg}`);
     }

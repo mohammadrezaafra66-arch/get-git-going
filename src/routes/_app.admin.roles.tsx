@@ -12,29 +12,14 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { invalidateRolePermissionsCache } from "@/lib/rbac/dynamic-permissions";
@@ -43,52 +28,23 @@ import { toast } from "sonner";
 import { Loader2, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/roles")({
-  beforeLoad: async () => {
-    await requireAdmin();
-  },
+  beforeLoad: async () => { await requireAdmin(); },
   component: AdminRolesPage,
 });
 
 const MODULES = [
-  "dashboard",
-  "products",
-  "pricing",
-  "purchases",
-  "sales",
-  "invoices",
-  "price-lists",
-  "users",
-  "roles",
-  "reports",
-  "knowledge",
-  "feedback",
-  "messages",
-  "audit-logs",
-  "data-tables",
-  "bot-api-keys",
-  "suppliers",
-  "academy",
+  "dashboard","products","pricing","purchases","sales","invoices",
+  "price-lists","users","roles","reports","knowledge","feedback",
+  "messages","audit-logs","data-tables","bot-api-keys","suppliers","academy",
 ] as const;
 
 const MODULE_LABELS: Record<string, string> = {
-  dashboard: "داشبورد",
-  products: "محصولات",
-  pricing: "قیمت‌گذاری",
-  purchases: "خرید",
-  sales: "فروش",
-  invoices: "فاکتورها",
-  "price-lists": "لیست قیمت",
-  users: "کاربران",
-  roles: "نقش‌ها",
-  reports: "گزارش‌ها",
-  knowledge: "دانش",
-  feedback: "بازخورد",
-  messages: "پیام‌ها",
-  "audit-logs": "حسابرسی",
-  "data-tables": "جداول پویا",
-  "bot-api-keys": "کلیدهای ربات",
-  suppliers: "تأمین‌کنندگان",
-  academy: "آکادمی",
+  dashboard: "داشبورد", products: "محصولات", pricing: "قیمت‌گذاری",
+  purchases: "خرید", sales: "فروش", invoices: "فاکتورها",
+  "price-lists": "لیست قیمت", users: "کاربران", roles: "نقش‌ها",
+  reports: "گزارش‌ها", knowledge: "دانش", feedback: "بازخورد",
+  messages: "پیام‌ها", "audit-logs": "حسابرسی", "data-tables": "جداول پویا",
+  "bot-api-keys": "کلیدهای ربات", suppliers: "تأمین‌کنندگان", academy: "آکادمی",
 };
 
 const ACTIONS = [
@@ -101,7 +57,7 @@ const ACTIONS = [
   { key: "can_view_sensitive", label: "اطلاعات حساس" },
 ] as const;
 
-type ActionKey = (typeof ACTIONS)[number]["key"];
+type ActionKey = typeof ACTIONS[number]["key"];
 
 interface CustomRole {
   id: string;
@@ -158,11 +114,7 @@ function RolesSection() {
   const { data: roles, isLoading } = useQuery({
     queryKey: ["custom-roles", debounced],
     queryFn: async () => {
-      let q = supabase
-        .from("custom_roles" as never)
-        .select("*")
-        .order("is_system", { ascending: false })
-        .order("name");
+      let q = supabase.from("custom_roles" as never).select("*").order("is_system", { ascending: false }).order("name");
       if (debounced) q = q.ilike("name", `%${debounced}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -183,13 +135,9 @@ function RolesSection() {
 
   const toggleStatus = useMutation({
     mutationFn: async (v: { id: string; next: boolean }) => {
-      const { error } = await supabase.rpc(
-        "toggle_custom_role_status" as never,
-        {
-          _role_id: v.id,
-          _is_active: v.next,
-        } as never,
-      );
+      const { error } = await supabase.rpc("toggle_custom_role_status" as never, {
+        _role_id: v.id, _is_active: v.next,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -216,9 +164,7 @@ function RolesSection() {
           </div>
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="ml-1 h-4 w-4" /> افزودن نقش
-              </Button>
+              <Button size="sm"><Plus className="ml-1 h-4 w-4" /> افزودن نقش</Button>
             </DialogTrigger>
             <CreateRoleDialog onClose={() => setOpenCreate(false)} />
           </Dialog>
@@ -226,9 +172,7 @@ function RolesSection() {
       </CardHeader>
       <CardContent className="p-0">
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
+          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : !roles || roles.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">نقشی یافت نشد.</div>
         ) : (
@@ -251,11 +195,7 @@ function RolesSection() {
                       <td className="p-3 font-mono text-xs">{r.name}</td>
                       <td className="p-3">{r.display_name ?? "—"}</td>
                       <td className="p-3">
-                        {r.is_system ? (
-                          <Badge variant="secondary">سیستمی</Badge>
-                        ) : (
-                          <Badge>سفارشی</Badge>
-                        )}
+                        {r.is_system ? <Badge variant="secondary">سیستمی</Badge> : <Badge>سفارشی</Badge>}
                       </td>
                       <td className="p-3 text-center">{userCount}</td>
                       <td className="p-3 text-center">
@@ -289,8 +229,7 @@ function RolesSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>غیرفعال‌سازی نقش</AlertDialogTitle>
             <AlertDialogDescription>
-              این نقش به کاربرانی متصل است. غیرفعال‌سازی باعث می‌شود دسترسی این کاربران از طریق این
-              نقش قطع شود. ادامه می‌دهید؟
+              این نقش به کاربرانی متصل است. غیرفعال‌سازی باعث می‌شود دسترسی این کاربران از طریق این نقش قطع شود. ادامه می‌دهید؟
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -300,9 +239,7 @@ function RolesSection() {
                 if (confirm) toggleStatus.mutate({ id: confirm.id, next: confirm.next });
                 setConfirm(null);
               }}
-            >
-              تأیید
-            </AlertDialogAction>
+            >تأیید</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -318,17 +255,13 @@ function CreateRoleDialog({ onClose }: { onClose: () => void }) {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!/^[a-z_][a-z0-9_]*$/.test(name))
-        throw new Error("نام فقط حروف انگلیسی کوچک، عدد و زیرخط");
+      if (!/^[a-z_][a-z0-9_]*$/.test(name)) throw new Error("نام فقط حروف انگلیسی کوچک، عدد و زیرخط");
       if (name.length < 2 || name.length > 50) throw new Error("طول نام بین ۲ تا ۵۰ کاراکتر");
-      const { error } = await supabase.rpc(
-        "create_custom_role" as never,
-        {
-          _name: name,
-          _display_name: displayName || null,
-          _description: description || null,
-        } as never,
-      );
+      const { error } = await supabase.rpc("create_custom_role" as never, {
+        _name: name,
+        _display_name: displayName || null,
+        _description: description || null,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -342,26 +275,15 @@ function CreateRoleDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <DialogContent dir="rtl">
-      <DialogHeader>
-        <DialogTitle>افزودن نقش جدید</DialogTitle>
-      </DialogHeader>
+      <DialogHeader><DialogTitle>افزودن نقش جدید</DialogTitle></DialogHeader>
       <div className="space-y-3">
         <div>
           <Label>نام (انگلیسی، unique)</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="مثلاً: sales_manager"
-            dir="ltr"
-          />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: sales_manager" dir="ltr" />
         </div>
         <div>
           <Label>برچسب نمایشی (فارسی)</Label>
-          <Input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="مثلاً: مدیر فروش"
-          />
+          <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="مثلاً: مدیر فروش" />
         </div>
         <div>
           <Label>توضیح</Label>
@@ -369,9 +291,7 @@ function CreateRoleDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
-          انصراف
-        </Button>
+        <Button variant="outline" onClick={onClose}>انصراف</Button>
         <Button onClick={() => create.mutate()} disabled={create.isPending || !name}>
           {create.isPending && <Loader2 className="ml-1 h-4 w-4 animate-spin" />}
           ایجاد
@@ -396,11 +316,7 @@ function PermissionsMatrixSection() {
         .order("is_system", { ascending: false })
         .order("name");
       if (error) throw error;
-      return (data ?? []) as unknown as {
-        name: string;
-        display_name: string | null;
-        is_active: boolean;
-      }[];
+      return (data ?? []) as unknown as { name: string; display_name: string | null; is_active: boolean }[];
     },
   });
 
@@ -439,7 +355,7 @@ function PermissionsMatrixSection() {
   const setCell = (module: string, action: ActionKey, value: boolean) => {
     setEdits((prev) => {
       const next = new Map(prev);
-      const current = next.get(module) ?? ({} as Record<ActionKey, boolean>);
+      const current = next.get(module) ?? {} as Record<ActionKey, boolean>;
       next.set(module, { ...current, [action]: value });
       return next;
     });
@@ -447,14 +363,11 @@ function PermissionsMatrixSection() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = MODULES.map((m) => ({ module: m, ...merged.get(m)! }));
-      const { error } = await supabase.rpc(
-        "update_role_permissions" as never,
-        {
-          _role_name: selectedRole,
-          _permissions: payload,
-        } as never,
-      );
+      const payload = MODULES.map((m) => ({ module: m, ...(merged.get(m)!) }));
+      const { error } = await supabase.rpc("update_role_permissions" as never, {
+        _role_name: selectedRole,
+        _permissions: payload,
+      } as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -473,32 +386,18 @@ function PermissionsMatrixSection() {
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Label className="shrink-0">نقش:</Label>
-          <Select
-            value={selectedRole}
-            onValueChange={(v) => {
-              setSelectedRole(v);
-              setEdits(new Map());
-            }}
-          >
-            <SelectTrigger className="w-56">
-              <SelectValue />
-            </SelectTrigger>
+          <Select value={selectedRole} onValueChange={(v) => { setSelectedRole(v); setEdits(new Map()); }}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
               {(roles ?? []).map((r) => (
                 <SelectItem key={r.name} value={r.name}>
-                  {r.display_name || r.name}{" "}
-                  <span className="mr-2 text-xs text-muted-foreground" dir="ltr">
-                    ({r.name})
-                  </span>
+                  {r.display_name || r.name} <span className="mr-2 text-xs text-muted-foreground" dir="ltr">({r.name})</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={() => save.mutate()}
-          disabled={save.isPending || edits.size === 0 || isAdminRole}
-        >
+        <Button onClick={() => save.mutate()} disabled={save.isPending || edits.size === 0 || isAdminRole}>
           {save.isPending && <Loader2 className="ml-1 h-4 w-4 animate-spin" />}
           ذخیره تغییرات {edits.size > 0 && `(${edits.size})`}
         </Button>
@@ -510,9 +409,7 @@ function PermissionsMatrixSection() {
           </div>
         )}
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
+          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : (
           <>
             {/* Desktop table */}
@@ -522,9 +419,7 @@ function PermissionsMatrixSection() {
                   <tr>
                     <th className="p-3 font-medium">ماژول</th>
                     {ACTIONS.map((a) => (
-                      <th key={a.key} className="p-3 text-center font-medium">
-                        {a.label}
-                      </th>
+                      <th key={a.key} className="p-3 text-center font-medium">{a.label}</th>
                     ))}
                   </tr>
                 </thead>
@@ -555,9 +450,7 @@ function PermissionsMatrixSection() {
                 const row = merged.get(m)!;
                 return (
                   <details key={m} className="rounded-md border">
-                    <summary className="cursor-pointer p-3 text-sm font-medium">
-                      {MODULE_LABELS[m] ?? m}
-                    </summary>
+                    <summary className="cursor-pointer p-3 text-sm font-medium">{MODULE_LABELS[m] ?? m}</summary>
                     <div className="grid grid-cols-2 gap-2 border-t p-3">
                       {ACTIONS.map((a) => (
                         <label key={a.key} className="flex items-center gap-2 text-xs">

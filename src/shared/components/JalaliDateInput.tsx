@@ -66,8 +66,8 @@ export function JalaliDateInput({
       locale={persian_fa}
       calendarPosition="bottom-right"
       format="YYYY/MM/DD"
-      maxDate={max ? (isoToDateObject(max) ?? undefined) : undefined}
-      minDate={min ? (isoToDateObject(min) ?? undefined) : undefined}
+      maxDate={max ? isoToDateObject(max) ?? undefined : undefined}
+      minDate={min ? isoToDateObject(min) ?? undefined : undefined}
       disabled={disabled}
       readOnly={readOnly}
       placeholder={placeholder}

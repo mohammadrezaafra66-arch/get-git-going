@@ -17,7 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/accounting/bank-accounts")({
   beforeLoad: async () => {
@@ -63,9 +65,7 @@ function BankAccountsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bank_accounts")
-        .select(
-          "id, title, bank_name, iban, account_no, card_no, currency, opening_balance, is_active, notes",
-        )
+        .select("id, title, bank_name, iban, account_no, card_no, currency, opening_balance, is_active, notes")
         .order("is_active", { ascending: false })
         .order("title", { ascending: true });
       if (error) throw error;
@@ -90,10 +90,7 @@ function BankAccountsPage() {
         diff: { title: r.title },
       } as never);
     },
-    onSuccess: () => {
-      toast.success("به‌روزرسانی شد");
-      refresh();
-    },
+    onSuccess: () => { toast.success("به‌روزرسانی شد"); refresh(); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -102,30 +99,19 @@ function BankAccountsPage() {
       <PageHeader
         title="حساب‌های بانکی"
         description="مدیریت حساب‌های بانکی برای استفاده در فیش‌های واریزی."
-        actions={
-          canWrite ? (
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setOpen(true);
-              }}
-            >
-              <Plus className="ml-1 h-4 w-4" /> افزودن حساب
-            </Button>
-          ) : null
-        }
+        actions={canWrite ? (
+          <Button onClick={() => { setEditing(null); setOpen(true); }}>
+            <Plus className="ml-1 h-4 w-4" /> افزودن حساب
+          </Button>
+        ) : null}
       />
 
       <Card>
         <CardContent className="p-0">
           {listQ.isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : (listQ.data ?? []).length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              حسابی ثبت نشده است.
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">حسابی ثبت نشده است.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -146,15 +132,9 @@ function BankAccountsPage() {
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-medium">{r.title}</td>
                       <td className="p-3">{r.bank_name}</td>
-                      <td className="p-3" dir="ltr">
-                        {r.account_no ?? "—"}
-                      </td>
-                      <td className="p-3" dir="ltr">
-                        {r.card_no ?? "—"}
-                      </td>
-                      <td className="p-3" dir="ltr">
-                        {r.iban ?? "—"}
-                      </td>
+                      <td className="p-3" dir="ltr">{r.account_no ?? "—"}</td>
+                      <td className="p-3" dir="ltr">{r.card_no ?? "—"}</td>
+                      <td className="p-3" dir="ltr">{r.iban ?? "—"}</td>
                       <td className="p-3">{r.currency}</td>
                       <td className="p-3">
                         <Badge variant={r.is_active ? "default" : "secondary"}>
@@ -164,22 +144,13 @@ function BankAccountsPage() {
                       {canWrite && (
                         <td className="p-3">
                           <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setEditing(r);
-                                setOpen(true);
-                              }}
-                            >
+                            <Button size="icon" variant="ghost"
+                              onClick={() => { setEditing(r); setOpen(true); }}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
+                            <Button size="icon" variant="ghost"
                               onClick={() => toggleActive.mutate(r)}
-                              disabled={toggleActive.isPending}
-                            >
+                              disabled={toggleActive.isPending}>
                               <Power className="h-4 w-4" />
                             </Button>
                           </div>
@@ -201,11 +172,7 @@ function BankAccountsPage() {
           </DialogHeader>
           <BankAccountForm
             initial={editing}
-            onDone={() => {
-              setOpen(false);
-              setEditing(null);
-              refresh();
-            }}
+            onDone={() => { setOpen(false); setEditing(null); refresh(); }}
             actorId={user?.id ?? null}
           />
         </DialogContent>
@@ -215,14 +182,8 @@ function BankAccountsPage() {
 }
 
 function BankAccountForm({
-  initial,
-  onDone,
-  actorId,
-}: {
-  initial: BankAccount | null;
-  onDone: () => void;
-  actorId: string | null;
-}) {
+  initial, onDone, actorId,
+}: { initial: BankAccount | null; onDone: () => void; actorId: string | null }) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -250,35 +211,25 @@ function BankAccountForm({
         notes: v.notes || null,
       };
       if (initial) {
-        const { error } = await supabase.from("bank_accounts").update(payload).eq("id", initial.id);
+        const { error } = await supabase
+          .from("bank_accounts").update(payload).eq("id", initial.id);
         if (error) throw error;
         await supabase.from("audit_logs").insert({
-          actor_id: actorId,
-          entity_type: "bank_account",
-          entity_id: initial.id,
-          action: "bank_account_updated",
-          diff: payload,
+          actor_id: actorId, entity_type: "bank_account", entity_id: initial.id,
+          action: "bank_account_updated", diff: payload,
         } as never);
       } else {
         const { data, error } = await supabase
-          .from("bank_accounts")
-          .insert(payload as never)
-          .select("id")
-          .single();
+          .from("bank_accounts").insert(payload as never).select("id").single();
         if (error) throw error;
         await supabase.from("audit_logs").insert({
-          actor_id: actorId,
-          entity_type: "bank_account",
+          actor_id: actorId, entity_type: "bank_account",
           entity_id: (data as { id: string }).id,
-          action: "bank_account_created",
-          diff: payload,
+          action: "bank_account_created", diff: payload,
         } as never);
       }
     },
-    onSuccess: () => {
-      toast.success("ذخیره شد");
-      onDone();
-    },
+    onSuccess: () => { toast.success("ذخیره شد"); onDone(); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -286,18 +237,14 @@ function BankAccountForm({
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>
-            عنوان <span className="text-destructive">*</span>
-          </Label>
+          <Label>عنوان <span className="text-destructive">*</span></Label>
           <Input {...form.register("title")} />
           {form.formState.errors.title && (
             <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
           )}
         </div>
         <div className="space-y-1">
-          <Label>
-            نام بانک <span className="text-destructive">*</span>
-          </Label>
+          <Label>نام بانک <span className="text-destructive">*</span></Label>
           <Input {...form.register("bank_name")} />
           {form.formState.errors.bank_name && (
             <p className="text-xs text-destructive">{form.formState.errors.bank_name.message}</p>

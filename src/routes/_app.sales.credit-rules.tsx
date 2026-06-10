@@ -17,18 +17,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/sales/credit-rules")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "accountant"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "accountant"]); },
   component: CreditRulesPage,
 });
 
@@ -60,15 +53,7 @@ function CreditRulesPage() {
   const [draft, setDraft] = useState<Record<string, { weight: number; is_active: boolean }>>({});
 
   const update = useMutation({
-    mutationFn: async ({
-      id,
-      weight,
-      is_active,
-    }: {
-      id: string;
-      weight: number;
-      is_active: boolean;
-    }) => {
+    mutationFn: async ({ id, weight, is_active }: { id: string; weight: number; is_active: boolean }) => {
       const { error } = await supabase
         .from("credit_scoring_rules")
         .update({ weight, is_active } as never)
@@ -100,8 +85,7 @@ function CreditRulesPage() {
     },
     onSuccess: () => {
       toast.success("پارامتر جدید اضافه شد");
-      setNewName("");
-      setNewWeight(0.1);
+      setNewName(""); setNewWeight(0.1);
       queryClient.invalidateQueries({ queryKey: ["credit-rules"] });
     },
     onError: (e: unknown) => {
@@ -110,7 +94,7 @@ function CreditRulesPage() {
   });
 
   const totalWeight = rules
-    .map((r) => ((draft[r.id]?.is_active ?? r.is_active) ? (draft[r.id]?.weight ?? r.weight) : 0))
+    .map((r) => (draft[r.id]?.is_active ?? r.is_active) ? (draft[r.id]?.weight ?? r.weight) : 0)
     .reduce((s, w) => s + Number(w), 0);
 
   return (
@@ -133,9 +117,7 @@ function CreditRulesPage() {
 
       {!canEdit && (
         <Alert>
-          <AlertDescription>
-            شما فقط دسترسی مشاهده دارید. ویرایش فقط برای مدیر و حسابدار مجاز است.
-          </AlertDescription>
+          <AlertDescription>شما فقط دسترسی مشاهده دارید. ویرایش فقط برای مدیر و حسابدار مجاز است.</AlertDescription>
         </Alert>
       )}
 
@@ -167,27 +149,19 @@ function CreditRulesPage() {
                   <TableHead className="text-right w-32">
                     <span className="inline-flex items-center gap-1">
                       وزن (۰-۱)
-                      <HelpHint
-                        text={"سهم این پارامتر در امتیاز نهایی.\nمجموع وزن‌های فعال باید ۱.۰۰ شود."}
-                      />
+                      <HelpHint text={"سهم این پارامتر در امتیاز نهایی.\nمجموع وزن‌های فعال باید ۱.۰۰ شود."} />
                     </span>
                   </TableHead>
                   <TableHead className="text-right w-24">
                     <span className="inline-flex items-center gap-1">
                       فعال
-                      <HelpHint
-                        text={"اگر خاموش باشد این پارامتر در محاسبهٔ امتیاز در نظر گرفته نمی‌شود."}
-                      />
+                      <HelpHint text={"اگر خاموش باشد این پارامتر در محاسبهٔ امتیاز در نظر گرفته نمی‌شود."} />
                     </span>
                   </TableHead>
                   <TableHead className="text-right">
                     <span className="inline-flex items-center gap-1">
                       فرمول
-                      <HelpHint
-                        text={
-                          "فرمول داخلی محاسبهٔ این پارامتر (فقط نمایشی).\nبرای تغییر منطق با مدیر سیستم هماهنگ کنید."
-                        }
-                      />
+                      <HelpHint text={"فرمول داخلی محاسبهٔ این پارامتر (فقط نمایشی).\nبرای تغییر منطق با مدیر سیستم هماهنگ کنید."} />
                     </span>
                   </TableHead>
                   <TableHead className="text-right w-24">عملیات</TableHead>
@@ -197,26 +171,18 @@ function CreditRulesPage() {
                 {rules.map((r) => {
                   const w = draft[r.id]?.weight ?? r.weight;
                   const a = draft[r.id]?.is_active ?? r.is_active;
-                  const dirty =
-                    (draft[r.id]?.weight !== undefined && draft[r.id].weight !== r.weight) ||
-                    (draft[r.id]?.is_active !== undefined && draft[r.id].is_active !== r.is_active);
+                  const dirty = (draft[r.id]?.weight !== undefined && draft[r.id].weight !== r.weight)
+                    || (draft[r.id]?.is_active !== undefined && draft[r.id].is_active !== r.is_active);
                   return (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.parameter_name}</TableCell>
                       <TableCell>
                         <Input
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          dir="ltr"
+                          type="number" min="0" max="1" step="0.05" dir="ltr"
                           disabled={!canEdit}
                           value={w}
                           onChange={(e) =>
-                            setDraft((d) => ({
-                              ...d,
-                              [r.id]: { weight: Number(e.target.value), is_active: a },
-                            }))
+                            setDraft((d) => ({ ...d, [r.id]: { weight: Number(e.target.value), is_active: a } }))
                           }
                         />
                       </TableCell>
@@ -229,9 +195,7 @@ function CreditRulesPage() {
                           }
                         />
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {r.score_formula ?? "—"}
-                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.score_formula ?? "—"}</TableCell>
                       <TableCell>
                         {canEdit && dirty && (
                           <Button
@@ -269,17 +233,9 @@ function CreditRulesPage() {
               <div className="space-y-1">
                 <Label className="inline-flex items-center gap-1">
                   نام پارامتر
-                  <HelpHint
-                    text={
-                      "شناسهٔ انگلیسی پارامتر؛ بدون فاصله، با حروف کوچک و _ مثلاً total_purchases."
-                    }
-                  />
+                  <HelpHint text={"شناسهٔ انگلیسی پارامتر؛ بدون فاصله، با حروف کوچک و _ مثلاً total_purchases."} />
                 </Label>
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="مثلاً profitability"
-                />
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثلاً profitability" />
               </div>
               <div className="space-y-1">
                 <Label className="inline-flex items-center gap-1">
@@ -287,21 +243,13 @@ function CreditRulesPage() {
                   <HelpHint text={"سهم این پارامتر در امتیاز نهایی. مثلاً ۰.۲ یعنی ۲۰٪."} />
                 </Label>
                 <Input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  dir="ltr"
+                  type="number" min="0" max="1" step="0.05" dir="ltr"
                   value={newWeight}
                   onChange={(e) => setNewWeight(Number(e.target.value))}
                 />
               </div>
               <div className="flex items-end">
-                <Button
-                  onClick={() => create.mutate()}
-                  disabled={create.isPending}
-                  className="w-full"
-                >
+                <Button onClick={() => create.mutate()} disabled={create.isPending} className="w-full">
                   <Plus className="ml-1 h-4 w-4" /> افزودن
                 </Button>
               </div>

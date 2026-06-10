@@ -92,7 +92,9 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchProfileAndRoles(user: User): Promise<{
+async function fetchProfileAndRoles(
+  user: User,
+): Promise<{
   profile: AuthProfile | null;
   roles: Array<{ role: string }>;
   profileError: string | null;
@@ -246,9 +248,22 @@ async function applySession(session: Session | null, force = false) {
   // Token refresh / same-user re-emit: just update tokens silently.
   // Do NOT toggle global loading or re-fetch profile/roles, otherwise the
   // entire app tree unmounts and component state (forms, search inputs)
-  // is lost when the user switches tabs and comes back.
-  if (!force && snapshot.initialized && snapshot.lastLoadedUserId === session.user.id) {
-    setSnapshot({ session, user: session.user });
+  // is lost when the user switches tabs and comes back. Supabase can emit
+  // SIGNED_IN and INITIAL_SESSION back-to-back for the same restored user;
+  // while the first identity request is still running, the second event must
+  // not start another profile/roles load or keep the global auth screen alive.
+  const sameInitializedUser = snapshot.initialized && snapshot.user?.id === session.user.id;
+  const identityAlreadyLoaded =
+    snapshot.lastLoadedUserId === session.user.id ||
+    (snapshot.profile?.id === session.user.id && !snapshot.profileLoading && !snapshot.rolesLoading);
+  const identityLoadInProgress = snapshot.profileLoading || snapshot.rolesLoading;
+  if (!force && sameInitializedUser && (identityAlreadyLoaded || identityLoadInProgress)) {
+    setSnapshot({
+      session,
+      user: session.user,
+      loading: identityLoadInProgress ? snapshot.loading : false,
+      authError: identityAlreadyLoaded ? null : snapshot.authError,
+    });
     return snapshot;
   }
 
@@ -310,7 +325,7 @@ export async function ensureAuthReady(force = false) {
     !snapshot.profileLoading &&
     !snapshot.rolesLoading &&
     !snapshot.authError &&
-    (!snapshot.user || snapshot.profile)
+    (!snapshot.user || snapshot.profile || snapshot.lastLoadedUserId === snapshot.user.id)
   ) {
     return snapshot;
   }
@@ -325,14 +340,14 @@ export async function ensureAuthReady(force = false) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);
         logAuthDiagnostic("session.getSession.throw", message, error);
-        setSnapshot({ initialized: true, loading: false, authError: message });
+        setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : message });
         return snapshot;
       }
       const { data, error } = result;
       if (error) {
         console.error("[auth] getSession failed", error);
         logAuthDiagnostic("session.getSession.error", error.message, error);
-        setSnapshot({ initialized: true, loading: false, authError: error.message });
+        setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : error.message });
         return snapshot;
       }
       return applySession(data.session, force);

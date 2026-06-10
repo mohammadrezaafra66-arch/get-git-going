@@ -8,25 +8,22 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
-  KNOWLEDGE_CATEGORY_LABELS,
-  KNOWLEDGE_ACCESS_LABELS,
-  type KnowledgeCategory,
-  type KnowledgeAccessLevel,
+  KNOWLEDGE_CATEGORY_LABELS, KNOWLEDGE_ACCESS_LABELS,
+  type KnowledgeCategory, type KnowledgeAccessLevel,
 } from "@/lib/knowledge/constants";
 import {
-  KnowledgeDocumentForm,
-  type KnowledgeFormValues,
+  KnowledgeDocumentForm, type KnowledgeFormValues,
 } from "@/shared/components/KnowledgeDocumentForm";
 
 export const Route = createFileRoute("/_app/knowledge_/manage")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
   component: KnowledgeManagePage,
 });
 
@@ -74,10 +71,8 @@ function KnowledgeManagePage() {
         entity_id: data.id,
         actor_id: user.id,
         diff: {
-          title: values.title,
-          category: values.category,
-          access_level: values.access_level,
-          is_published: values.is_published,
+          title: values.title, category: values.category,
+          access_level: values.access_level, is_published: values.is_published,
         },
       });
       if (aErr) console.warn("audit insert failed:", aErr);
@@ -92,17 +87,12 @@ function KnowledgeManagePage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({
-      id,
-      values,
-      original,
-    }: {
-      id: string;
-      values: KnowledgeFormValues;
-      original: DocRow;
-    }) => {
+    mutationFn: async ({ id, values, original }: { id: string; values: KnowledgeFormValues; original: DocRow }) => {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
-      const { error } = await supabase.from("knowledge_documents").update(values).eq("id", id);
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update(values)
+        .eq("id", id);
       if (error) throw error;
 
       const diff: Record<string, { from: unknown; to: unknown }> = {};
@@ -112,9 +102,7 @@ function KnowledgeManagePage() {
       const publishToggled = original.is_published !== values.is_published;
 
       const action = publishToggled
-        ? values.is_published
-          ? "knowledge_document_published"
-          : "knowledge_document_updated"
+        ? (values.is_published ? "knowledge_document_published" : "knowledge_document_updated")
         : "knowledge_document_updated";
       const { error: aErr } = await supabase.from("audit_logs").insert({
         action,
@@ -143,14 +131,10 @@ function KnowledgeManagePage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/knowledge">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/knowledge"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus className="ms-1 h-4 w-4" />
-              سند جدید
+              <Plus className="ms-1 h-4 w-4" />سند جدید
             </Button>
           </>
         }
@@ -159,13 +143,9 @@ function KnowledgeManagePage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !rows || rows.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              هنوز سندی ثبت نشده است.
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">هنوز سندی ثبت نشده است.</div>
           ) : (
             <>
               {/* Desktop */}
@@ -192,19 +172,15 @@ function KnowledgeManagePage() {
                         <td className="py-2">
                           {r.is_published ? (
                             <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                              <Eye className="ms-1 h-3 w-3" />
-                              منتشرشده
+                              <Eye className="ms-1 h-3 w-3" />منتشرشده
                             </Badge>
                           ) : (
                             <Badge variant="secondary">
-                              <EyeOff className="ms-1 h-3 w-3" />
-                              پیش‌نویس
+                              <EyeOff className="ms-1 h-3 w-3" />پیش‌نویس
                             </Badge>
                           )}
                         </td>
-                        <td className="py-2 text-xs text-muted-foreground">
-                          {formatDateFa(r.updated_at)}
-                        </td>
+                        <td className="py-2 text-xs text-muted-foreground">{formatDateFa(r.updated_at)}</td>
                         <td className="py-2 pe-3 text-end">
                           <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>
                             <Pencil className="h-4 w-4" />
@@ -225,13 +201,9 @@ function KnowledgeManagePage() {
                         <div className="font-medium">{r.title}</div>
                         <div className="flex flex-wrap gap-1.5 text-xs">
                           <Badge variant="outline">{KNOWLEDGE_CATEGORY_LABELS[r.category]}</Badge>
-                          <Badge variant="secondary">
-                            {KNOWLEDGE_ACCESS_LABELS[r.access_level]}
-                          </Badge>
+                          <Badge variant="secondary">{KNOWLEDGE_ACCESS_LABELS[r.access_level]}</Badge>
                           {r.is_published ? (
-                            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                              منتشرشده
-                            </Badge>
+                            <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">منتشرشده</Badge>
                           ) : (
                             <Badge>پیش‌نویس</Badge>
                           )}
@@ -255,16 +227,12 @@ function KnowledgeManagePage() {
       {/* Create dialog */}
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent className="max-w-2xl" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>سند جدید</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>سند جدید</DialogTitle></DialogHeader>
           <KnowledgeDocumentForm
             submitting={createMutation.isPending}
             submitLabel="ایجاد"
             onCancel={() => setCreating(false)}
-            onSubmit={async (values) => {
-              await createMutation.mutateAsync(values);
-            }}
+            onSubmit={async (values) => { await createMutation.mutateAsync(values); }}
           />
         </DialogContent>
       </Dialog>
@@ -272,9 +240,7 @@ function KnowledgeManagePage() {
       {/* Edit dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-2xl" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>ویرایش سند</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>ویرایش سند</DialogTitle></DialogHeader>
           {editing && (
             <KnowledgeDocumentForm
               defaultValues={editing}

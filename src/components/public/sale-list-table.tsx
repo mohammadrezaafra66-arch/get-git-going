@@ -1,19 +1,8 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber, formatCurrency } from "@/lib/i18n/formatters";
-import {
-  STOCK_STATUS_LABELS,
-  STOCK_STATUS_VARIANTS,
-  type StockStatus,
-} from "@/lib/products/constants";
+import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS, type StockStatus } from "@/lib/products/constants";
 import type { PublicSaleListItem } from "@/lib/public/get-public-sale-list";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
@@ -23,8 +12,7 @@ interface Props {
 }
 
 function ChangeCell({ amount, percent }: { amount: number | null; percent: number | null }) {
-  if (amount === null || amount === undefined)
-    return <span className="text-muted-foreground">—</span>;
+  if (amount === null || amount === undefined) return <span className="text-muted-foreground">—</span>;
   if (amount === 0) {
     return (
       <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -40,9 +28,7 @@ function ChangeCell({ amount, percent }: { amount: number | null; percent: numbe
       <Icon className="h-3 w-3" />
       {positive ? "+" : ""}
       {formatNumber(amount)} ت
-      {percent !== null && percent !== undefined ? (
-        <span className="text-[10px] opacity-80">({formatNumber(percent)}٪)</span>
-      ) : null}
+      {percent !== null && percent !== undefined ? <span className="text-[10px] opacity-80">({formatNumber(percent)}٪)</span> : null}
     </span>
   );
 }
@@ -71,29 +57,20 @@ export function SaleListTable({ items }: Props) {
                 </div>
               </div>
               {it.stock_status ? (
-                <Badge
-                  variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}
-                  className="shrink-0 text-[10px]"
-                >
+                <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"} className="shrink-0 text-[10px]">
                   {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
                 </Badge>
               ) : null}
             </div>
-            <div className="mt-2">
-              <RecentPurchaseBadge productId={it.product_id} />
-            </div>
+            <div className="mt-2"><RecentPurchaseBadge productId={it.product_id} /></div>
             <div className="mt-3 flex items-end justify-between border-t border-border pt-2">
               <div>
                 <div className="text-[10px] text-muted-foreground">قیمت فروش</div>
-                <div className="text-base font-bold text-foreground">
-                  {formatCurrency(it.current_price, "تومان")}
-                </div>
+                <div className="text-base font-bold text-foreground">{formatCurrency(it.current_price, "تومان")}</div>
               </div>
               <div className="text-left">
                 {it.previous_price !== null ? (
-                  <div className="text-[10px] text-muted-foreground line-through">
-                    {formatCurrency(it.previous_price, "تومان")}
-                  </div>
+                  <div className="text-[10px] text-muted-foreground line-through">{formatCurrency(it.previous_price, "تومان")}</div>
                 ) : null}
                 <div className="text-[11px]">
                   <ChangeCell amount={it.change_amount} percent={it.change_percent} />
@@ -124,29 +101,20 @@ export function SaleListTable({ items }: Props) {
                 <TableCell className="font-medium">{it.product_name}</TableCell>
                 <TableCell className="text-muted-foreground">{it.brand_name ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{it.category_name ?? "—"}</TableCell>
-                <TableCell className="font-semibold">
-                  {formatCurrency(it.current_price, "تومان")}
-                </TableCell>
+                <TableCell className="font-semibold">{formatCurrency(it.current_price, "تومان")}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {it.previous_price !== null ? formatCurrency(it.previous_price, "تومان") : "—"}
                 </TableCell>
-                <TableCell>
-                  <ChangeCell amount={it.change_amount} percent={it.change_percent} />
-                </TableCell>
+                <TableCell><ChangeCell amount={it.change_amount} percent={it.change_percent} /></TableCell>
                 <TableCell>
                   {it.stock_status ? (
-                    <Badge
-                      variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}
-                      className="text-[10px]"
-                    >
+                    <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"} className="text-[10px]">
                       {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
                     </Badge>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
-                  <div className="mt-1">
-                    <RecentPurchaseBadge productId={it.product_id} />
-                  </div>
+                  <div className="mt-1"><RecentPurchaseBadge productId={it.product_id} /></div>
                 </TableCell>
               </TableRow>
             ))}

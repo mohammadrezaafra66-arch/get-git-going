@@ -13,11 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -27,9 +23,7 @@ import { salePriceTypeSchema, type SalePriceTypeFormValues } from "@/lib/pricing
 import { formatNumber } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/sale-price-types")({
-  beforeLoad: async () => {
-    await requirePermission("pricing", "view");
-  },
+  beforeLoad: async () => { await requirePermission("pricing", "view"); },
   component: SalePriceTypesPage,
 });
 
@@ -69,10 +63,7 @@ function SalePriceTypesPage() {
       .from("sale_price_types")
       .update({ is_active: !r.is_active })
       .eq("id", r.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success(r.is_active ? "غیرفعال شد" : "فعال شد");
     refresh();
   };
@@ -85,21 +76,11 @@ function SalePriceTypesPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/pricing">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setOpen(true);
-                }}
-              >
-                <Plus className="ms-1 h-4 w-4" />
-                نوع جدید
+              <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus className="ms-1 h-4 w-4" />نوع جدید
               </Button>
             )}
           </>
@@ -121,40 +102,20 @@ function SalePriceTypesPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{r.title}</div>
-                        <div className="text-[11px] text-muted-foreground" dir="ltr">
-                          {r.code}
-                        </div>
+                        <div className="text-[11px] text-muted-foreground" dir="ltr">{r.code}</div>
                       </div>
                       {r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
                     </div>
-                    {r.description && (
-                      <p className="text-xs text-muted-foreground">{r.description}</p>
-                    )}
-                    <div className="text-[11px] text-muted-foreground">
-                      ترتیب: {formatNumber(r.sort_order)}
-                    </div>
+                    {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                    <div className="text-[11px] text-muted-foreground">ترتیب: {formatNumber(r.sort_order)}</div>
                     {canWrite && (
                       <div className="flex gap-1 pt-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            setEditing(r);
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="ms-1 h-3 w-3" />
-                          ویرایش
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                          onClick={() => { setEditing(r); setOpen(true); }}>
+                          <Pencil className="ms-1 h-3 w-3" />ویرایش
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => toggle(r)}
-                        >
-                          <Power className="ms-1 h-3 w-3" />
-                          {r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => toggle(r)}>
+                          <Power className="ms-1 h-3 w-3" />{r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
                         </Button>
                       </div>
                     )}
@@ -179,43 +140,21 @@ function SalePriceTypesPage() {
                     {rows.map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
                         <td className="p-3 font-medium">{r.title}</td>
-                        <td className="p-3 text-xs text-muted-foreground" dir="ltr">
-                          {r.code}
-                        </td>
-                        <td className="p-3 text-xs text-muted-foreground">
-                          {r.description ?? "—"}
-                        </td>
+                        <td className="p-3 text-xs text-muted-foreground" dir="ltr">{r.code}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{r.description ?? "—"}</td>
                         <td className="p-3 text-xs">{formatNumber(r.sort_order)}</td>
                         <td className="p-3">
-                          {r.is_active ? (
-                            <Badge>فعال</Badge>
-                          ) : (
-                            <Badge variant="outline">غیرفعال</Badge>
-                          )}
+                          {r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
                         </td>
                         <td className="p-3">
                           {canWrite && (
                             <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  setEditing(r);
-                                  setOpen(true);
-                                }}
-                              >
+                              <Button variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => { setEditing(r); setOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => toggle(r)}
-                              >
-                                <Power
-                                  className={`h-4 w-4 ${r.is_active ? "text-destructive" : ""}`}
-                                />
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggle(r)}>
+                                <Power className={`h-4 w-4 ${r.is_active ? "text-destructive" : ""}`} />
                               </Button>
                             </div>
                           )}
@@ -230,16 +169,18 @@ function SalePriceTypesPage() {
         </CardContent>
       </Card>
 
-      <SaleTypeDialog open={open} onOpenChange={setOpen} editing={editing} onSaved={refresh} />
+      <SaleTypeDialog
+        open={open}
+        onOpenChange={setOpen}
+        editing={editing}
+        onSaved={refresh}
+      />
     </div>
   );
 }
 
 function SaleTypeDialog({
-  open,
-  onOpenChange,
-  editing,
-  onSaved,
+  open, onOpenChange, editing, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -247,11 +188,7 @@ function SaleTypeDialog({
   onSaved: () => void;
 }) {
   const empty: SalePriceTypeFormValues = {
-    code: "",
-    title: "",
-    description: "",
-    sort_order: 100,
-    is_active: true,
+    code: "", title: "", description: "", sort_order: 100, is_active: true,
   };
   const [values, setValues] = useState<SalePriceTypeFormValues>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -265,17 +202,13 @@ function SaleTypeDialog({
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
-      setValues(
-        editing
-          ? {
-              code: editing.code,
-              title: editing.title,
-              description: editing.description ?? "",
-              sort_order: editing.sort_order,
-              is_active: editing.is_active,
-            }
-          : empty,
-      );
+      setValues(editing ? {
+        code: editing.code,
+        title: editing.title,
+        description: editing.description ?? "",
+        sort_order: editing.sort_order,
+        is_active: editing.is_active,
+      } : empty);
       setErrors({});
       setPreviewCode("");
       if (!editing) void fetchPreviewCode();
@@ -340,10 +273,8 @@ function SaleTypeDialog({
         <div className="grid gap-3">
           <div>
             <Label>عنوان *</Label>
-            <Input
-              value={values.title}
-              onChange={(e) => setValues((s) => ({ ...s, title: e.target.value }))}
-            />
+            <Input value={values.title}
+              onChange={(e) => setValues((s) => ({ ...s, title: e.target.value }))} />
             {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
           </div>
           <div>
@@ -352,7 +283,7 @@ function SaleTypeDialog({
               <Input
                 value={values.code ?? ""}
                 dir="ltr"
-                placeholder={editing ? "" : previewCode || "به‌صورت خودکار تولید می‌شود"}
+                placeholder={editing ? "" : (previewCode || "به‌صورت خودکار تولید می‌شود")}
                 onChange={(e) => setValues((s) => ({ ...s, code: e.target.value }))}
               />
               {!editing && (
@@ -378,34 +309,23 @@ function SaleTypeDialog({
           </div>
           <div>
             <Label>توضیحات</Label>
-            <Textarea
-              rows={2}
-              value={values.description ?? ""}
-              onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))}
-            />
+            <Textarea rows={2} value={values.description ?? ""}
+              onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))} />
           </div>
           <div>
             <Label>ترتیب نمایش</Label>
-            <Input
-              type="number"
-              dir="ltr"
-              value={values.sort_order}
-              onChange={(e) => setValues((s) => ({ ...s, sort_order: Number(e.target.value) }))}
-            />
+            <Input type="number" dir="ltr" value={values.sort_order}
+              onChange={(e) => setValues((s) => ({ ...s, sort_order: Number(e.target.value) }))} />
             <p className="mt-1 text-[11px] text-muted-foreground">عدد کوچکتر = بالاتر</p>
           </div>
           <div className="flex items-center gap-2">
-            <Switch
-              checked={values.is_active}
-              onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))}
-            />
+            <Switch checked={values.is_active}
+              onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))} />
             <Label>فعال</Label>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button onClick={submit} disabled={loading}>
             {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
           </Button>

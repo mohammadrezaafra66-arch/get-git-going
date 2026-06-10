@@ -11,9 +11,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { QuizTaker, type TakerQuestion } from "@/shared/components/QuizTaker";
 
 export const Route = createFileRoute("/_app/academy_/$courseId_/$lessonId_/quiz")({
-  beforeLoad: async () => {
-    await requirePermission("academy", "view");
-  },
+  beforeLoad: async () => { await requirePermission("academy", "view"); },
   component: QuizPage,
 });
 
@@ -38,14 +36,7 @@ function QuizPage() {
         .select("id, question_text, options, order_index")
         .eq("quiz_id", quiz.id)
         .order("order_index", { ascending: true });
-      return {
-        quiz,
-        questions: (questions ?? []) as Array<{
-          id: string;
-          question_text: string;
-          options: unknown;
-        }>,
-      };
+      return { quiz, questions: (questions ?? []) as Array<{ id: string; question_text: string; options: unknown }> };
     },
   });
 
@@ -67,20 +58,14 @@ function QuizPage() {
     onError: (e: any) => toast.error(e?.message ?? "خطا در ثبت آزمون"),
   });
 
-  if (isLoading)
-    return (
-      <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
-    );
+  if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
   if (!data || !data.quiz) {
     return (
       <div className="space-y-4 py-10 text-center">
         <FileQuestion className="mx-auto h-10 w-10 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">آزمونی برای این درس وجود ندارد.</p>
         <Button asChild variant="outline" size="sm">
-          <Link to="/academy/$courseId/$lessonId" params={{ courseId, lessonId }}>
-            <ArrowRight className="ms-1 h-4 w-4" />
-            بازگشت
-          </Link>
+          <Link to="/academy/$courseId/$lessonId" params={{ courseId, lessonId }}><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
         </Button>
       </div>
     );
@@ -99,18 +84,13 @@ function QuizPage() {
         description={`نمره قبولی: ${data.quiz.passing_score}٪`}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/academy/$courseId/$lessonId" params={{ courseId, lessonId }}>
-              <ArrowRight className="ms-1 h-4 w-4" />
-              بازگشت به درس
-            </Link>
+            <Link to="/academy/$courseId/$lessonId" params={{ courseId, lessonId }}><ArrowRight className="ms-1 h-4 w-4" />بازگشت به درس</Link>
           </Button>
         }
       />
 
       {takerQuestions.length === 0 ? (
-        <p className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-          سؤالی برای این آزمون ثبت نشده است.
-        </p>
+        <p className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">سؤالی برای این آزمون ثبت نشده است.</p>
       ) : (
         <QuizTaker
           key={attemptKey}
@@ -118,13 +98,8 @@ function QuizPage() {
           passingScore={data.quiz.passing_score}
           submitting={submitMutation.isPending}
           result={result}
-          onRetry={() => {
-            setResult(null);
-            setAttemptKey((k) => k + 1);
-          }}
-          onSubmit={async (p) => {
-            await submitMutation.mutateAsync(p);
-          }}
+          onRetry={() => { setResult(null); setAttemptKey((k) => k + 1); }}
+          onSubmit={async (p) => { await submitMutation.mutateAsync(p); }}
         />
       )}
     </div>

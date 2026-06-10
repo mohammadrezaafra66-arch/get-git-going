@@ -25,13 +25,7 @@ interface Props {
   onCancel?: () => void;
 }
 
-export function CourseForm({
-  defaultValues,
-  onSubmit,
-  submitting,
-  submitLabel = "ذخیره",
-  onCancel,
-}: Props) {
+export function CourseForm({ defaultValues, onSubmit, submitting, submitLabel = "ذخیره", onCancel }: Props) {
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -53,31 +47,15 @@ export function CourseForm({
   }, [defaultValues?.title, defaultValues?.description, defaultValues?.is_published]);
 
   return (
-    <form
-      dir="rtl"
-      className="space-y-4"
-      onSubmit={form.handleSubmit(async (v) => {
-        await onSubmit(v);
-      })}
-    >
+    <form dir="rtl" className="space-y-4" onSubmit={form.handleSubmit(async (v) => { await onSubmit(v); })}>
       <div className="space-y-1.5">
         <Label>عنوان دوره</Label>
-        <Input
-          {...form.register("title")}
-          maxLength={150}
-          placeholder="مثلاً: آموزش فروش حرفه‌ای"
-        />
-        {form.formState.errors.title && (
-          <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
-        )}
+        <Input {...form.register("title")} maxLength={150} placeholder="مثلاً: آموزش فروش حرفه‌ای" />
+        {form.formState.errors.title && <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>}
       </div>
       <div className="space-y-1.5">
         <Label>توضیحات</Label>
-        <Textarea
-          {...form.register("description")}
-          rows={4}
-          placeholder="توضیح کوتاه درباره دوره"
-        />
+        <Textarea {...form.register("description")} rows={4} placeholder="توضیح کوتاه درباره دوره" />
       </div>
       <div className="flex items-center gap-2">
         <Checkbox
@@ -85,16 +63,10 @@ export function CourseForm({
           checked={form.watch("is_published")}
           onCheckedChange={(v) => form.setValue("is_published", v === true, { shouldDirty: true })}
         />
-        <Label htmlFor="course_is_published" className="cursor-pointer">
-          منتشر شود
-        </Label>
+        <Label htmlFor="course_is_published" className="cursor-pointer">منتشر شود</Label>
       </div>
       <div className="flex flex-wrap justify-end gap-2 pt-2">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            انصراف
-          </Button>
-        )}
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel}>انصراف</Button>}
         <Button type="submit" disabled={submitting}>
           {submitting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
           {submitLabel}

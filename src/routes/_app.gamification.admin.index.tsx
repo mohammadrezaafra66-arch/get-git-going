@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, Target, Coins, Flag, Award, Gift, Crown, Info, ChevronLeft } from "lucide-react";
+import {
+  Activity, Target, Coins, Flag, Award, Gift, Crown, Info, ChevronLeft,
+} from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/gamification/admin/")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
   component: GamificationAdminHub,
 });
 
@@ -76,8 +76,9 @@ function GamificationAdminHub() {
       <Alert>
         <Info className="h-4 w-4" />
         <AlertDescription>
-          طلای زمان خرید تنظیمات فرمول و پارامترهای خرید است؛ قوانین KPI مقدار XP رویدادهای عمومی
-          سیستم را مدیریت می‌کند. این دو در یک پنل دیده می‌شوند اما مدل داده و منطق جدا دارند.
+          طلای زمان خرید تنظیمات فرمول و پارامترهای خرید است؛ قوانین KPI مقدار XP رویدادهای
+          عمومی سیستم را مدیریت می‌کند. این دو در یک پنل دیده می‌شوند اما مدل داده و منطق
+          جدا دارند.
         </AlertDescription>
       </Alert>
 

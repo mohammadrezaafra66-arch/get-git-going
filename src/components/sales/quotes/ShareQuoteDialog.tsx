@@ -3,31 +3,20 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
-  QUOTE_SHARE_CHANNELS,
-  QUOTE_SHARE_CHANNEL_LABELS,
-  defaultShareMessage,
+  QUOTE_SHARE_CHANNELS, QUOTE_SHARE_CHANNEL_LABELS, defaultShareMessage,
   type QuoteShareChannel,
 } from "@/lib/sales/quote-share";
 
@@ -40,11 +29,7 @@ export interface ShareQuoteDialogProps {
 }
 
 export function ShareQuoteDialog({
-  open,
-  onOpenChange,
-  quoteId,
-  quoteNumber,
-  defaultRecipient,
+  open, onOpenChange, quoteId, quoteNumber, defaultRecipient,
 }: ShareQuoteDialogProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -99,14 +84,10 @@ export function ShareQuoteDialog({
           <div className="space-y-1.5">
             <Label className="text-xs">کانال ارسال</Label>
             <Select value={channel} onValueChange={(v) => setChannel(v as QuoteShareChannel)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {QUOTE_SHARE_CHANNELS.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {QUOTE_SHARE_CHANNEL_LABELS[c]}
-                  </SelectItem>
+                  <SelectItem key={c} value={c}>{QUOTE_SHARE_CHANNEL_LABELS[c]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -122,19 +103,22 @@ export function ShareQuoteDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">پیش‌نمایش پیام</Label>
-            <Textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} />
+            <Textarea
+              rows={4}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={pdfAttached} onCheckedChange={(v) => setPdfAttached(Boolean(v))} />
+            <Checkbox
+              checked={pdfAttached}
+              onCheckedChange={(v) => setPdfAttached(Boolean(v))}
+            />
             <span>پیوست فایل PDF پیش‌فاکتور</span>
           </label>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={mutation.isPending}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
             انصراف
           </Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>

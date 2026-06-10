@@ -3,20 +3,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search,
-  Filter,
-  Loader2,
-  FileText,
-  ChevronRight,
-  ChevronLeft,
-  Plus,
-  Send,
-  CheckCircle2,
-  XCircle,
-  Ban,
-  Eye,
-  FileDown,
-  MessageCircle,
+  Search, Filter, Loader2, FileText, ChevronRight, ChevronLeft, Plus,
+  Send, CheckCircle2, XCircle, Ban, Eye, FileDown, MessageCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -24,34 +12,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateTimeFa, formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
 import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
-import { SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus } from "@/lib/sales/quotes";
+import {
+  SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus,
+} from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 
@@ -82,8 +59,7 @@ interface QuoteRow {
 
 function QuotesListPage() {
   const { user, roles } = useAuth();
-  const isPrivileged =
-    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
   const isManagerial = roles.includes("admin") || roles.includes("manager");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
   const canCreate = roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
@@ -96,9 +72,7 @@ function QuotesListPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
 
-  useMemo(() => {
-    setPage(1);
-  }, [dSearch, status, salespersonId, dateFrom, dateTo]);
+  useMemo(() => { setPage(1); }, [dSearch, status, salespersonId, dateFrom, dateTo]);
 
   const { data: salespeople = [] } = useQuery({
     enabled: isPrivileged,
@@ -116,10 +90,7 @@ function QuotesListPage() {
   });
 
   const listQuery = useQuery({
-    queryKey: [
-      "sales-quotes",
-      { dSearch, status, salespersonId, dateFrom, dateTo, page, userId: user?.id, isSalesOnly },
-    ],
+    queryKey: ["sales-quotes", { dSearch, status, salespersonId, dateFrom, dateTo, page, userId: user?.id, isSalesOnly }],
     enabled: !!user,
     queryFn: async () => {
       const from = (page - 1) * SALES_QUOTES_PAGE_SIZE;
@@ -137,36 +108,26 @@ function QuotesListPage() {
       if (isPrivileged && salespersonId !== "__all") q = q.eq("salesperson_id", salespersonId);
       if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
-        const d = new Date(dateTo);
-        d.setHours(23, 59, 59, 999);
+        const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
         q = q.lte("created_at", d.toISOString());
       }
       const term = dSearch.trim();
       if (term.length >= 2) {
         const safe = term.replace(/[%_]/g, "");
-        q = q.or(
-          `quote_number.ilike.%${safe}%,customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%`,
-        );
+        q = q.or(`quote_number.ilike.%${safe}%,customer_name.ilike.%${safe}%,customer_phone.ilike.%${safe}%`);
       }
       const { data, error, count } = await q;
       if (error) throw error;
       const baseRows = (data ?? []) as Array<Omit<QuoteRow, "salesperson">>;
-      const sIds = Array.from(
-        new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)),
-      );
+      const sIds = Array.from(new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)));
       let sMap = new Map<string, string | null>();
       if (sIds.length > 0) {
         const sr = await supabase.from("profiles").select("id, full_name").in("id", sIds);
-        if (!sr.error)
-          sMap = new Map(
-            (sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]),
-          );
+        if (!sr.error) sMap = new Map((sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]));
       }
       const rows: QuoteRow[] = baseRows.map((r) => ({
         ...r,
-        salesperson: r.salesperson_id
-          ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null }
-          : null,
+        salesperson: r.salesperson_id ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null } : null,
       }));
       return { rows, total: count ?? 0 };
     },
@@ -209,9 +170,7 @@ function QuotesListPage() {
               />
             </div>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="وضعیت" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="وضعیت" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه وضعیت‌ها</SelectItem>
                 <SelectItem value="draft">پیش‌نویس</SelectItem>
@@ -223,15 +182,11 @@ function QuotesListPage() {
             </Select>
             {isPrivileged && (
               <Select value={salespersonId} onValueChange={setSalespersonId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="فروشنده" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="فروشنده" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه فروشنده‌ها</SelectItem>
                   {salespeople.map((p: { id: string; full_name: string | null }) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.full_name ?? "—"}
-                    </SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.full_name ?? "—"}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -250,11 +205,7 @@ function QuotesListPage() {
         <EmptyState
           icon={FileText}
           title="پیش‌فاکتوری ثبت نشده است."
-          description={
-            canCreate
-              ? "برای ثبت اولین پیش‌فاکتور، روی دکمه «پیش‌فاکتور جدید» کلیک کنید."
-              : undefined
-          }
+          description={canCreate ? "برای ثبت اولین پیش‌فاکتور، روی دکمه «پیش‌فاکتور جدید» کلیک کنید." : undefined}
         />
       ) : (
         <>
@@ -303,24 +254,13 @@ function QuotesListPage() {
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)}{" "}
-              پیش‌فاکتور
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} پیش‌فاکتور
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -341,13 +281,15 @@ function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean
   const qc = useQueryClient();
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
-      const { error } =
-        payload.next === "canceled"
-          ? await supabase
-              .from("sales_quotes")
-              .update({ status: payload.next, cancel_reason: payload.reason ?? null })
-              .eq("id", row.id)
-          : await supabase.from("sales_quotes").update({ status: payload.next }).eq("id", row.id);
+      const { error } = payload.next === "canceled"
+        ? await supabase
+            .from("sales_quotes")
+            .update({ status: payload.next, cancel_reason: payload.reason ?? null })
+            .eq("id", row.id)
+        : await supabase
+            .from("sales_quotes")
+            .update({ status: payload.next })
+            .eq("id", row.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -366,72 +308,40 @@ function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean
 }
 
 function RowActions({ row, isManagerial, isOwner }: RowProps) {
-  const { mutation, canSend, canAccept, canReject, canCancel } = useStatusActions(
-    row,
-    isManagerial,
-    isOwner,
-  );
-  const [confirm, setConfirm] = useState<null | {
-    next: SalesQuoteStatus;
-    label: string;
-    needsReason?: boolean;
-  }>(null);
+  const { mutation, canSend, canAccept, canReject, canCancel } = useStatusActions(row, isManagerial, isOwner);
+  const [confirm, setConfirm] = useState<null | { next: SalesQuoteStatus; label: string; needsReason?: boolean }>(null);
   const [reason, setReason] = useState("");
 
   return (
     <>
       <div className="flex flex-wrap gap-1">
         {canSend && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={mutation.isPending}
-            onClick={() => setConfirm({ next: "sent", label: "ارسال پیش‌فاکتور" })}
-          >
+          <Button size="sm" variant="outline" disabled={mutation.isPending}
+            onClick={() => setConfirm({ next: "sent", label: "ارسال پیش‌فاکتور" })}>
             <Send className="ml-1 h-3.5 w-3.5" /> ارسال
           </Button>
         )}
         {canAccept && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={mutation.isPending}
-            onClick={() => setConfirm({ next: "accepted", label: "پذیرش پیش‌فاکتور" })}
-          >
+          <Button size="sm" variant="outline" disabled={mutation.isPending}
+            onClick={() => setConfirm({ next: "accepted", label: "پذیرش پیش‌فاکتور" })}>
             <CheckCircle2 className="ml-1 h-3.5 w-3.5" /> پذیرش
           </Button>
         )}
         {canReject && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={mutation.isPending}
-            onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}
-          >
+          <Button size="sm" variant="outline" disabled={mutation.isPending}
+            onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}>
             <XCircle className="ml-1 h-3.5 w-3.5" /> رد
           </Button>
         )}
         {canCancel && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={mutation.isPending}
-            onClick={() => {
-              setReason("");
-              setConfirm({ next: "canceled", label: "لغو پیش‌فاکتور", needsReason: true });
-            }}
-          >
+          <Button size="sm" variant="outline" disabled={mutation.isPending}
+            onClick={() => { setReason(""); setConfirm({ next: "canceled", label: "لغو پیش‌فاکتور", needsReason: true }); }}>
             <Ban className="ml-1 h-3.5 w-3.5" /> لغو
           </Button>
         )}
         <ShareQuoteMenu row={row} />
       </div>
-      <AlertDialog
-        open={!!confirm}
-        onOpenChange={(o) => {
-          if (!o) setConfirm(null);
-        }}
-      >
+      <AlertDialog open={!!confirm} onOpenChange={(o) => { if (!o) setConfirm(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirm?.label}</AlertDialogTitle>
@@ -442,11 +352,7 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
           {confirm?.needsReason && (
             <div className="space-y-2 py-2">
               <label className="text-xs text-muted-foreground">دلیل لغو (اختیاری)</label>
-              <Input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="دلیل لغو"
-              />
+              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="دلیل لغو" />
             </div>
           )}
           <AlertDialogFooter>
@@ -454,15 +360,10 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
             <AlertDialogAction
               onClick={() => {
                 if (!confirm) return;
-                mutation.mutate({
-                  next: confirm.next,
-                  reason: confirm.needsReason ? reason.trim() || undefined : undefined,
-                });
+                mutation.mutate({ next: confirm.next, reason: confirm.needsReason ? reason.trim() || undefined : undefined });
                 setConfirm(null);
               }}
-            >
-              تایید
-            </AlertDialogAction>
+            >تایید</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -476,26 +377,13 @@ function QuoteRowDesktop({ row, isManagerial, isOwner }: RowProps) {
       <td className="p-3 align-top font-mono text-xs">{row.quote_number}</td>
       <td className="p-3 align-top">
         <div className="font-medium">{row.customer_name}</div>
-        <div className="text-xs text-muted-foreground" dir="ltr">
-          {row.customer_phone}
-        </div>
+        <div className="text-xs text-muted-foreground" dir="ltr">{row.customer_phone}</div>
       </td>
-      <td className="p-3 align-top text-xs text-muted-foreground">
-        {row.salesperson?.full_name ?? "—"}
-      </td>
-      <td className="p-3 align-top">
-        <QuoteStatusBadge status={row.status} />
-      </td>
-      <td className="p-3 align-top font-medium">
-        {formatNumber(row.final_amount)}{" "}
-        <span className="text-xs text-muted-foreground">تومان</span>
-      </td>
-      <td className="p-3 align-top text-[11px] text-muted-foreground">
-        {formatDateTimeFa(row.created_at)}
-      </td>
-      <td className="p-3 align-top text-[11px] text-muted-foreground">
-        {row.expires_at ? formatDateFa(row.expires_at) : "—"}
-      </td>
+      <td className="p-3 align-top text-xs text-muted-foreground">{row.salesperson?.full_name ?? "—"}</td>
+      <td className="p-3 align-top"><QuoteStatusBadge status={row.status} /></td>
+      <td className="p-3 align-top font-medium">{formatNumber(row.final_amount)} <span className="text-xs text-muted-foreground">تومان</span></td>
+      <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(row.created_at)}</td>
+      <td className="p-3 align-top text-[11px] text-muted-foreground">{row.expires_at ? formatDateFa(row.expires_at) : "—"}</td>
       <td className="p-3 align-top">
         <RowActions row={row} isManagerial={isManagerial} isOwner={isOwner} />
       </td>
@@ -511,9 +399,7 @@ function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
           <div className="min-w-0">
             <div className="font-mono text-xs text-muted-foreground">{row.quote_number}</div>
             <div className="font-medium truncate">{row.customer_name}</div>
-            <div className="text-[11px] text-muted-foreground" dir="ltr">
-              {row.customer_phone}
-            </div>
+            <div className="text-[11px] text-muted-foreground" dir="ltr">{row.customer_phone}</div>
           </div>
           <QuoteStatusBadge status={row.status} />
         </div>
@@ -561,9 +447,7 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
 
       const { data: itemRows, error: iErr } = await supabase
         .from("sales_quote_items")
-        .select(
-          "title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
-        )
+        .select("title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at")
         .eq("quote_id", row.id)
         .order("created_at", { ascending: true });
       if (iErr) throw iErr;
@@ -584,8 +468,7 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
         salesperson_name: salespersonName,
         created_at: quote.created_at as string,
         expires_at: (quote.expires_at as string | null) ?? null,
-        status_label:
-          STATUS_LABELS_FA[quote.status as SalesQuoteStatus] ?? (quote.status as string),
+        status_label: STATUS_LABELS_FA[quote.status as SalesQuoteStatus] ?? (quote.status as string),
         customer_note: (quote.customer_note as string | null) ?? null,
         items,
         subtotal_amount: Number(quote.subtotal_amount ?? 0),
@@ -601,59 +484,51 @@ function ShareQuoteMenu({ row }: { row: QuoteRow }) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={pdfLoading}>
-            {pdfLoading ? (
-              <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Send className="ml-1 h-3.5 w-3.5" />
-            )}
-            ارسال پیش‌فاکتور
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[200px]">
-          <DropdownMenuItem asChild>
-            <Link to="/sales/quotes/$quoteId" params={{ quoteId: row.id }}>
-              <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={pdfLoading}
-            onSelect={(e) => {
-              e.preventDefault();
-              void handleDownloadPdf();
-            }}
-          >
-            {pdfLoading ? (
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-            ) : (
-              <FileDown className="ml-2 h-4 w-4" />
-            )}
-            <span className="flex-1">دانلود PDF</span>
-            {pdfLoading && (
-              <span className="text-[10px] text-muted-foreground">در حال آماده‌سازی…</span>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setShareOpen(true);
-            }}
-          >
-            <MessageCircle className="ml-2 h-4 w-4" />
-            <span className="flex-1">ارسال در پیام‌رسان</span>
-            <span className="text-[10px] text-muted-foreground">پیش‌نویس</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <ShareQuoteDialog
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        quoteId={row.id}
-        quoteNumber={row.quote_number}
-        defaultRecipient={row.customer_phone}
-      />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="outline" disabled={pdfLoading}>
+          {pdfLoading ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="ml-1 h-3.5 w-3.5" />
+          )}
+          ارسال پیش‌فاکتور
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px]">
+        <DropdownMenuItem asChild>
+          <Link to="/sales/quotes/$quoteId" params={{ quoteId: row.id }}>
+            <Eye className="ml-2 h-4 w-4" /> مشاهده پیش‌فاکتور
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={pdfLoading}
+          onSelect={(e) => { e.preventDefault(); void handleDownloadPdf(); }}
+        >
+          {pdfLoading ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="ml-2 h-4 w-4" />
+          )}
+          <span className="flex-1">دانلود PDF</span>
+          {pdfLoading && (
+            <span className="text-[10px] text-muted-foreground">در حال آماده‌سازی…</span>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setShareOpen(true); }}>
+          <MessageCircle className="ml-2 h-4 w-4" />
+          <span className="flex-1">ارسال در پیام‌رسان</span>
+          <span className="text-[10px] text-muted-foreground">پیش‌نویس</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <ShareQuoteDialog
+      open={shareOpen}
+      onOpenChange={setShareOpen}
+      quoteId={row.id}
+      quoteNumber={row.quote_number}
+      defaultRecipient={row.customer_phone}
+    />
     </>
   );
 }

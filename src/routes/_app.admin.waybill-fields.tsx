@@ -12,27 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Loader2, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -42,17 +28,11 @@ export const Route = createFileRoute("/_app/admin/waybill-fields")({
 });
 
 const TYPE_LABEL: Record<string, string> = {
-  text: "متن",
-  number: "عدد",
-  date: "تاریخ",
-  select: "انتخابی",
+  text: "متن", number: "عدد", date: "تاریخ", select: "انتخابی",
 };
 
 const fieldSchema = z.object({
-  field_key: z
-    .string()
-    .trim()
-    .regex(/^[a-z][a-z0-9_]{0,29}$/, "کلید نامعتبر (فقط حروف کوچک انگلیسی، عدد و _ ، حداکثر ۳۰)"),
+  field_key: z.string().trim().regex(/^[a-z][a-z0-9_]{0,29}$/, "کلید نامعتبر (فقط حروف کوچک انگلیسی، عدد و _ ، حداکثر ۳۰)"),
   field_label: z.string().trim().min(1, "الزامی").max(100),
   field_type: z.enum(["text", "number", "date", "select"]),
   is_required: z.boolean(),
@@ -110,13 +90,8 @@ function WaybillCustomFieldsAdminPage() {
   const openNew = () => {
     setEditing(null);
     setForm({
-      field_key: "",
-      field_label: "",
-      field_type: "text",
-      is_required: false,
-      is_active: true,
-      sort_order: 0,
-      options_text: "",
+      field_key: "", field_label: "", field_type: "text",
+      is_required: false, is_active: true, sort_order: 0, options_text: "",
     });
     setOpen(true);
   };
@@ -124,9 +99,9 @@ function WaybillCustomFieldsAdminPage() {
   const openEdit = (row: FieldRow) => {
     setEditing(row);
     const opts = Array.isArray(row.field_options) ? row.field_options : [];
-    const optsText = (opts as unknown[])
-      .map((o) => (typeof o === "string" ? o : (o as { value: string }).value))
-      .join("\n");
+    const optsText = (opts as unknown[]).map((o) =>
+      typeof o === "string" ? o : (o as { value: string }).value
+    ).join("\n");
     setForm({
       field_key: row.field_key,
       field_label: row.field_label,
@@ -148,9 +123,7 @@ function WaybillCustomFieldsAdminPage() {
     let options: { value: string; label: string }[] | null = null;
     if (form.field_type === "select") {
       options = form.options_text
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean)
+        .split("\n").map((s) => s.trim()).filter(Boolean)
         .map((s) => ({ value: s, label: s }));
       if (options.length === 0) {
         toast.error("برای فیلد انتخابی حداقل یک گزینه وارد کنید");
@@ -170,25 +143,17 @@ function WaybillCustomFieldsAdminPage() {
     let err: { message: string } | null = null;
     let savedId: string | null = editing?.id ?? null;
     if (editing) {
-      const { error } = await supabase
-        .from("waybill_custom_fields")
-        .update(payload)
-        .eq("id", editing.id);
+      const { error } = await supabase.from("waybill_custom_fields")
+        .update(payload).eq("id", editing.id);
       err = error;
     } else {
-      const { data, error } = await supabase
-        .from("waybill_custom_fields")
-        .insert(payload)
-        .select("id")
-        .maybeSingle();
+      const { data, error } = await supabase.from("waybill_custom_fields")
+        .insert(payload).select("id").maybeSingle();
       err = error;
       savedId = data?.id ?? null;
     }
     setSubmitting(false);
-    if (err) {
-      toast.error(err.message);
-      return;
-    }
+    if (err) { toast.error(err.message); return; }
     if (user?.id && savedId) {
       await supabase.from("audit_logs").insert({
         actor_id: user.id,
@@ -205,14 +170,9 @@ function WaybillCustomFieldsAdminPage() {
 
   const toggleActive = async (row: FieldRow) => {
     const next = !row.is_active;
-    const { error } = await supabase
-      .from("waybill_custom_fields")
-      .update({ is_active: next })
-      .eq("id", row.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("waybill_custom_fields")
+      .update({ is_active: next }).eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
     if (user?.id) {
       await supabase.from("audit_logs").insert({
         actor_id: user.id,
@@ -233,9 +193,7 @@ function WaybillCustomFieldsAdminPage() {
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNew}>
-                <Plus className="ms-1 h-4 w-4" /> افزودن فیلد جدید
-              </Button>
+              <Button onClick={openNew}><Plus className="ms-1 h-4 w-4" /> افزودن فیلد جدید</Button>
             </DialogTrigger>
             <DialogContent dir="rtl" className="max-w-lg">
               <DialogHeader>
@@ -268,13 +226,9 @@ function WaybillCustomFieldsAdminPage() {
                     <Label>نوع</Label>
                     <Select
                       value={form.field_type}
-                      onValueChange={(v) =>
-                        setForm({ ...form, field_type: v as typeof form.field_type })
-                      }
+                      onValueChange={(v) => setForm({ ...form, field_type: v as typeof form.field_type })}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="text">متن</SelectItem>
                         <SelectItem value="number">عدد</SelectItem>
@@ -286,12 +240,9 @@ function WaybillCustomFieldsAdminPage() {
                   <div className="space-y-1">
                     <Label>ترتیب</Label>
                     <Input
-                      type="number"
-                      min={0}
+                      type="number" min={0}
                       value={form.sort_order}
-                      onChange={(e) =>
-                        setForm({ ...form, sort_order: Number(e.target.value) || 0 })
-                      }
+                      onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) || 0 })}
                     />
                   </div>
                 </div>
@@ -324,9 +275,7 @@ function WaybillCustomFieldsAdminPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  انصراف
-                </Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>انصراف</Button>
                 <Button onClick={save} disabled={submitting}>
                   {submitting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
                   ذخیره
@@ -352,45 +301,33 @@ function WaybillCustomFieldsAdminPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={7} className="py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></TableCell></TableRow>
             ) : (rows ?? []).length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  فیلدی تعریف نشده است
+              <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">فیلدی تعریف نشده است</TableCell></TableRow>
+            ) : (rows ?? []).map((r) => (
+              <TableRow key={r.id}>
+                <TableCell className="font-medium">{r.field_label}</TableCell>
+                <TableCell dir="ltr" className="text-xs text-muted-foreground">{r.field_key}</TableCell>
+                <TableCell>{TYPE_LABEL[r.field_type]}</TableCell>
+                <TableCell>{r.is_required ? "بله" : "خیر"}</TableCell>
+                <TableCell>{r.sort_order}</TableCell>
+                <TableCell>
+                  <Badge variant={r.is_active ? "default" : "secondary"}>
+                    {r.is_active ? "فعال" : "غیرفعال"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => toggleActive(r)}>
+                      {r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : (
-              (rows ?? []).map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.field_label}</TableCell>
-                  <TableCell dir="ltr" className="text-xs text-muted-foreground">
-                    {r.field_key}
-                  </TableCell>
-                  <TableCell>{TYPE_LABEL[r.field_type]}</TableCell>
-                  <TableCell>{r.is_required ? "بله" : "خیر"}</TableCell>
-                  <TableCell>{r.sort_order}</TableCell>
-                  <TableCell>
-                    <Badge variant={r.is_active ? "default" : "secondary"}>
-                      {r.is_active ? "فعال" : "غیرفعال"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => toggleActive(r)}>
-                        {r.is_active ? "غیرفعال‌سازی" : "فعال‌سازی"}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>

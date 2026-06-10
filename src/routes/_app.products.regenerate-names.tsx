@@ -14,9 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { regenerateProductNames, type RegenerateNameResult } from "@/lib/products/regenerate-names";
 
 export const Route = createFileRoute("/_app/products/regenerate-names")({
-  beforeLoad: async () => {
-    await requirePermission("products", "update");
-  },
+  beforeLoad: async () => { await requirePermission("products", "update"); },
   component: RegenerateNamesPage,
 });
 
@@ -26,19 +24,12 @@ function RegenerateNamesPage() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [results, setResults] = useState<RegenerateNameResult[]>([]);
-  const [summary, setSummary] = useState<{
-    updated: number;
-    skipped: number;
-    failed: number;
-  } | null>(null);
+  const [summary, setSummary] = useState<{ updated: number; skipped: number; failed: number } | null>(null);
 
   const { data: cats } = useQuery({
     queryKey: ["cats-for-rename"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("id, name, naming_template")
-        .order("name");
+      const { data } = await supabase.from("categories").select("id, name, naming_template").order("name");
       return data ?? [];
     },
   });
@@ -66,7 +57,7 @@ function RegenerateNamesPage() {
       toast.success(
         dryRun
           ? `پیش‌نمایش: ${res.updated} نام قابل به‌روزرسانی`
-          : `${res.updated} نام به‌روزرسانی شد` + (res.failed ? ` — ${res.failed} خطا` : ""),
+          : `${res.updated} نام به‌روزرسانی شد` + (res.failed ? ` — ${res.failed} خطا` : "")
       );
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در اجرا");
@@ -84,10 +75,7 @@ function RegenerateNamesPage() {
         description="بازسازی نام محصولات قدیمی بر اساس الگوی نام‌گذاری دسته و ویژگی‌های پویا"
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/products">
-              <ArrowRight className="ms-1 h-4 w-4" />
-              بازگشت
-            </Link>
+            <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
           </Button>
         }
       />
@@ -112,25 +100,14 @@ function RegenerateNamesPage() {
               </select>
             </div>
             <div className="flex items-end gap-2">
-              <Checkbox
-                id="dry"
-                checked={dryRun}
-                onCheckedChange={(v) => setDryRun(!!v)}
-                disabled={running}
-              />
-              <Label htmlFor="dry" className="cursor-pointer">
-                حالت پیش‌نمایش (بدون ذخیره)
-              </Label>
+              <Checkbox id="dry" checked={dryRun} onCheckedChange={(v) => setDryRun(!!v)} disabled={running} />
+              <Label htmlFor="dry" className="cursor-pointer">حالت پیش‌نمایش (بدون ذخیره)</Label>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button onClick={run} disabled={running}>
-              {running ? (
-                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="ms-1 h-4 w-4" />
-              )}
+              {running ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Sparkles className="ms-1 h-4 w-4" />}
               {dryRun ? "اجرای پیش‌نمایش" : "ساخت و ذخیرهٔ نام‌ها"}
             </Button>
             {progress.total > 0 && (
@@ -154,9 +131,7 @@ function RegenerateNamesPage() {
               </div>
               <div className="rounded border border-border p-2 text-center">
                 <div className="text-xs text-muted-foreground">خطا</div>
-                <div className="font-bold text-destructive">
-                  {summary.failed.toLocaleString("fa-IR")}
-                </div>
+                <div className="font-bold text-destructive">{summary.failed.toLocaleString("fa-IR")}</div>
               </div>
             </div>
           )}

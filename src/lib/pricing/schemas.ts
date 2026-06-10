@@ -20,7 +20,7 @@ export const purchasePriceSchema = z.object({
   product_id: z.string().uuid("محصول الزامی است"),
   supplier_id: z.string().uuid().nullable().optional(),
   purchase_price: z.coerce.number().nonnegative("قیمت نمی‌تواند منفی باشد"),
-  currency: z.enum(["toman", "usd", "aed"]),
+  currency: z.enum(["toman", "usd", "aed", "usd_us"]),
   reason_id: z.string().uuid().nullable().optional(),
   private_note: z.string().trim().max(1000).optional().or(z.literal("")),
   effective_at: z.string().optional(),
@@ -48,7 +48,7 @@ export const pricingRuleSchema = z
       v.min_purchase_price_toman == null ||
       v.max_purchase_price_toman == null ||
       Number(v.max_purchase_price_toman) >= Number(v.min_purchase_price_toman),
-    { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price_toman"] },
+    { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price_toman"] }
   );
 export type PricingRuleFormValues = z.infer<typeof pricingRuleSchema>;
 
@@ -89,25 +89,24 @@ export const shippingRuleSchema = z
       v.min_purchase_price == null ||
       v.max_purchase_price == null ||
       Number(v.max_purchase_price) >= Number(v.min_purchase_price),
-    { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price"] },
+    { message: "بازه قیمت نامعتبر است", path: ["max_purchase_price"] }
   )
-  .refine((v) => v.scope_mode !== "product" || Boolean(v.product_id), {
-    message: "انتخاب محصول الزامی است",
-    path: ["product_id"],
-  })
-  .refine((v) => v.scope_mode !== "category" || Boolean(v.category_id), {
-    message: "انتخاب دسته الزامی است",
-    path: ["category_id"],
-  })
+  .refine(
+    (v) => v.scope_mode !== "product" || Boolean(v.product_id),
+    { message: "انتخاب محصول الزامی است", path: ["product_id"] }
+  )
+  .refine(
+    (v) => v.scope_mode !== "category" || Boolean(v.category_id),
+    { message: "انتخاب دسته الزامی است", path: ["category_id"] }
+  )
   .refine(
     (v) =>
       v.scope_mode !== "price_range" ||
-      v.min_purchase_price != null ||
-      v.max_purchase_price != null,
-    { message: "حداقل یکی از کف یا سقف بازه را وارد کنید", path: ["min_purchase_price"] },
+      (v.min_purchase_price != null || v.max_purchase_price != null),
+    { message: "حداقل یکی از کف یا سقف بازه را وارد کنید", path: ["min_purchase_price"] }
   )
   .refine(
     (v) => v.cost_type !== "currency" || Boolean(v.cost_currency && v.cost_currency.length > 0),
-    { message: "نوع ارز را انتخاب کنید", path: ["cost_currency"] },
+    { message: "نوع ارز را انتخاب کنید", path: ["cost_currency"] }
   );
 export type ShippingRuleFormValues = z.infer<typeof shippingRuleSchema>;

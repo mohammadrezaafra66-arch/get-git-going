@@ -31,7 +31,9 @@ export const Route = createFileRoute("/login")({
       const auth = await ensureAuthReady();
       if (auth.user) {
         const target =
-          search.redirect && !search.redirect.startsWith("/login") ? search.redirect : "/dashboard";
+          search.redirect && !search.redirect.startsWith("/login")
+            ? search.redirect
+            : "/dashboard";
         throw redirect({ to: target });
       }
     } catch (err) {
@@ -42,6 +44,32 @@ export const Route = createFileRoute("/login")({
     }
   },
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "ورود به افراکالا" },
+      {
+        name: "description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:title", content: "ورود به افراکالا" },
+      {
+        property: "og:description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/login" },
+      { name: "twitter:title", content: "ورود به افراکالا" },
+      {
+        name: "twitter:description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+    ],
+    links: [
+      { rel: "canonical", href: "https://get-git-going.lovable.app/login" },
+    ],
+  }),
 });
 
 function LoginPage() {
@@ -71,11 +99,7 @@ function LoginPage() {
     if (hasUnsafeAuthParams) {
       url.searchParams.delete("email");
       url.searchParams.delete("password");
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     }
     setHydrated(true);
     setInitStatus("ready");
@@ -88,7 +112,10 @@ function LoginPage() {
     const id = window.setTimeout(() => {
       setInitStatus((s) => {
         if (s === "pending") {
-          logAuthDiagnostic("login.hydration.failed", "useEffect did not run within 3s");
+          logAuthDiagnostic(
+            "login.hydration.failed",
+            "useEffect did not run within 3s",
+          );
           return "failed";
         }
         return s;
@@ -243,19 +270,14 @@ function LoginPage() {
         return;
       }
       setResetSent(true);
-      toast.success("لینک بازیابی ارسال شد", {
-        description: "ایمیل خود و پوشه Spam را بررسی کنید.",
-      });
+      toast.success("لینک بازیابی ارسال شد", { description: "ایمیل خود و پوشه Spam را بررسی کنید." });
     } finally {
       resetInFlight.current = false;
     }
   };
 
   return (
-    <div
-      dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8"
-    >
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
@@ -284,7 +306,11 @@ function LoginPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button type="button" size="sm" onClick={() => window.location.reload()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => window.location.reload()}
+                  >
                     تلاش مجدد
                   </Button>
                   <Button
@@ -306,138 +332,62 @@ function LoginPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form
-                  method="post"
-                  action="/login"
-                  onSubmit={handleLogin}
-                  className="space-y-4"
-                  noValidate
-                >
+                <form method="post" action="/login" onSubmit={handleLogin} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="login-email">ایمیل</Label>
-                    <Input
-                      id="login-email"
-                      name="email"
-                      type="email"
-                      required
-                      dir="ltr"
+                    <Input id="login-email" name="email" type="email" required dir="ltr"
                       autoComplete="email"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                    />
+                      value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">رمز عبور</Label>
-                    <Input
-                      id="login-password"
-                      name="password"
-                      type="password"
-                      required
-                      dir="ltr"
+                    <Input id="login-password" name="password" type="password" required dir="ltr"
                       autoComplete="current-password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                    />
+                      value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
                   </div>
                   {loginError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {loginError}
-                    </p>
+                    <p className="text-sm text-destructive" role="alert">{loginError}</p>
                   )}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loginSubmitting || !hydrated}
-                    aria-busy={loginSubmitting || !hydrated}
-                  >
-                    {!hydrated
-                      ? "در حال آماده‌سازی..."
-                      : loginSubmitting
-                        ? "در حال ورود..."
-                        : "ورود"}
+                  <Button type="submit" className="w-full" disabled={loginSubmitting || !hydrated} aria-busy={loginSubmitting || !hydrated}>
+                    {!hydrated ? "در حال آماده‌سازی..." : loginSubmitting ? "در حال ورود..." : "ورود"}
                   </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="signup">
-                <form
-                  method="post"
-                  action="/login"
-                  onSubmit={handleSignup}
-                  className="space-y-4"
-                  noValidate
-                >
+                <form method="post" action="/login" onSubmit={handleSignup} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">نام و نام خانوادگی</Label>
-                    <Input
-                      id="signup-name"
-                      name="full_name"
-                      required
-                      maxLength={100}
+                    <Input id="signup-name" name="full_name" required maxLength={100}
                       autoComplete="name"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                    />
+                      value={signupName} onChange={(e) => setSignupName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">ایمیل</Label>
-                    <Input
-                      id="signup-email"
-                      name="email"
-                      type="email"
-                      required
-                      dir="ltr"
+                    <Input id="signup-email" name="email" type="email" required dir="ltr"
                       autoComplete="email"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                    />
+                      value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">رمز عبور (حداقل ۶ کاراکتر)</Label>
-                    <Input
-                      id="signup-password"
-                      name="password"
-                      type="password"
-                      required
-                      minLength={6}
-                      dir="ltr"
+                    <Input id="signup-password" name="password" type="password" required minLength={6} dir="ltr"
                       autoComplete="new-password"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                    />
+                      value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
                   </div>
                   {signupError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {signupError}
-                    </p>
+                    <p className="text-sm text-destructive" role="alert">{signupError}</p>
                   )}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={signupSubmitting || !hydrated}
-                    aria-busy={signupSubmitting || !hydrated}
-                  >
-                    {!hydrated
-                      ? "در حال آماده‌سازی..."
-                      : signupSubmitting
-                        ? "در حال ثبت‌نام..."
-                        : "ایجاد حساب"}
+                  <Button type="submit" className="w-full" disabled={signupSubmitting || !hydrated} aria-busy={signupSubmitting || !hydrated}>
+                    {!hydrated ? "در حال آماده‌سازی..." : signupSubmitting ? "در حال ثبت‌نام..." : "ایجاد حساب"}
                   </Button>
                   <p className="text-center text-xs text-muted-foreground">
-                    کاربران جدید با نقش «بیننده» ثبت می‌شوند. مدیر می‌تواند بعداً نقش‌ها را تغییر
-                    دهد.
+                    کاربران جدید با نقش «بیننده» ثبت می‌شوند. مدیر می‌تواند بعداً نقش‌ها را تغییر دهد.
                   </p>
                 </form>
               </TabsContent>
 
               <TabsContent value="reset">
-                <form
-                  method="post"
-                  action="/login"
-                  onSubmit={handlePasswordReset}
-                  className="space-y-4"
-                  noValidate
-                >
+                <form method="post" action="/login" onSubmit={handlePasswordReset} className="space-y-4" noValidate>
                   <div className="space-y-2">
                     <Label htmlFor="reset-email">ایمیل حساب مدیر</Label>
                     <Input
@@ -452,22 +402,14 @@ function LoginPage() {
                     />
                   </div>
                   {resetError && (
-                    <p className="text-sm text-destructive" role="alert">
-                      {resetError}
-                    </p>
+                    <p className="text-sm text-destructive" role="alert">{resetError}</p>
                   )}
                   {resetSent && (
                     <p className="text-sm text-muted-foreground" role="status">
-                      لینک تنظیم رمز جدید ارسال شد. بعد از باز کردن لینک، رمز جدید را در صفحه بعد
-                      وارد کنید.
+                      لینک تنظیم رمز جدید ارسال شد. بعد از باز کردن لینک، رمز جدید را در صفحه بعد وارد کنید.
                     </p>
                   )}
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={!hydrated}
-                    aria-busy={!hydrated || resetInFlight.current}
-                  >
+                  <Button type="submit" className="w-full" disabled={!hydrated} aria-busy={!hydrated || resetInFlight.current}>
                     {resetInFlight.current ? "در حال ارسال..." : "ارسال لینک تنظیم رمز"}
                   </Button>
                 </form>
@@ -477,16 +419,11 @@ function LoginPage() {
         </Card>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          حساب ندارید؟{" "}
-          <Link to="/register" className="text-primary hover:underline">
-            ثبت‌نام کنید
-          </Link>{" "}
-          |{" "}
-          <Link to="/" className="hover:text-primary">
-            بازگشت به خانه
-          </Link>
+          حساب ندارید؟ <Link to="/register" className="text-primary hover:underline">ثبت‌نام کنید</Link>
+          {" "}|{" "}
+          <Link to="/" className="hover:text-primary">بازگشت به خانه</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

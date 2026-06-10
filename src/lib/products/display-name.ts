@@ -17,9 +17,7 @@ export function formatProductDisplayName(p: ProductLikeForName | null | undefine
   return (p.name ?? "").trim() || "—";
 }
 
-export function formatProductDisplayNameWithFallback(
-  p: ProductLikeForName | null | undefined,
-): string {
+export function formatProductDisplayNameWithFallback(p: ProductLikeForName | null | undefined): string {
   if (!p) return "—";
   return (p.name ?? "").trim() || "—";
 }

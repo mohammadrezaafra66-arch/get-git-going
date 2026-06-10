@@ -6,16 +6,10 @@ import { fetchTrendingProducts, type RangeDays } from "@/lib/management/market-i
 import { formatNumber } from "@/lib/i18n/formatters";
 
 const STOCK_LABEL: Record<string, string> = {
-  available: "موجود",
-  unavailable: "ناموجود",
-  limited: "محدود",
-  unknown: "نامشخص",
+  available: "موجود", unavailable: "ناموجود", limited: "محدود", unknown: "نامشخص",
 };
 const STOCK_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  available: "default",
-  limited: "secondary",
-  unavailable: "destructive",
-  unknown: "outline",
+  available: "default", limited: "secondary", unavailable: "destructive", unknown: "outline",
 };
 
 export function TrendingProductsCard({ days }: { days: RangeDays }) {
@@ -39,18 +33,13 @@ export function TrendingProductsCard({ days }: { days: RangeDays }) {
       ) : q.isError ? (
         <p className="py-6 text-center text-sm text-destructive">خطا در بارگذاری</p>
       ) : !q.data || q.data.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          داده کافی برای این بازه وجود ندارد.
-        </p>
+        <p className="py-6 text-center text-sm text-muted-foreground">داده کافی برای این بازه وجود ندارد.</p>
       ) : (
         <ol className="space-y-1.5">
           {q.data.map((p, idx) => {
             const stock = p.stock_status ?? "unknown";
             return (
-              <li
-                key={p.product_id}
-                className="flex items-center gap-3 rounded-md border p-2 text-sm"
-              >
+              <li key={p.product_id} className="flex items-center gap-3 rounded-md border p-2 text-sm">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold tabular-nums">
                   {formatNumber(idx + 1)}
                 </div>
@@ -66,9 +55,7 @@ export function TrendingProductsCard({ days }: { days: RangeDays }) {
                   <Badge variant={STOCK_VARIANT[stock] ?? "outline"} className="text-[10px]">
                     {STOCK_LABEL[stock] ?? stock}
                   </Badge>
-                  <span className="text-xs font-bold tabular-nums">
-                    {formatNumber(p.trend_score)}
-                  </span>
+                  <span className="text-xs font-bold tabular-nums">{formatNumber(p.trend_score)}</span>
                 </div>
               </li>
             );

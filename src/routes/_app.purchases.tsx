@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 
 export const Route = createFileRoute("/_app/purchases")({
-  beforeLoad: async () => {
-    await requirePermission("purchases", "view");
-  },
+  beforeLoad: async () => { await requirePermission("purchases", "view"); },
   component: () => (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">

@@ -1,60 +1,37 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type MoodKey =
-  | "great"
-  | "good"
-  | "ok"
-  | "tired"
-  | "sad"
-  | "angry"
-  | "low_energy"
-  | "hopeful"
-  | "anxious"
-  | "upset";
+  | "great" | "good" | "ok" | "tired" | "sad"
+  | "angry" | "low_energy" | "hopeful" | "anxious" | "upset";
 
 export const MOODS: Array<{ key: MoodKey; label: string; emoji: string; score: number }> = [
-  { key: "great", label: "خیلی خوب", emoji: "😄", score: 5 },
-  { key: "good", label: "خوب", emoji: "🙂", score: 4 },
-  { key: "hopeful", label: "امیدوار", emoji: "🌱", score: 4 },
-  { key: "ok", label: "معمولی", emoji: "😐", score: 3 },
-  { key: "tired", label: "خسته", emoji: "😴", score: 2 },
-  { key: "low_energy", label: "بی‌انرژی", emoji: "🥱", score: 2 },
-  { key: "anxious", label: "مضطرب", emoji: "😰", score: 2 },
-  { key: "sad", label: "ناراحت", emoji: "😢", score: 1 },
-  { key: "upset", label: "دلخور", emoji: "😞", score: 1 },
-  { key: "angry", label: "عصبی", emoji: "😠", score: 1 },
+  { key: "great",      label: "خیلی خوب",   emoji: "😄", score: 5 },
+  { key: "good",       label: "خوب",        emoji: "🙂", score: 4 },
+  { key: "hopeful",    label: "امیدوار",    emoji: "🌱", score: 4 },
+  { key: "ok",         label: "معمولی",     emoji: "😐", score: 3 },
+  { key: "tired",      label: "خسته",       emoji: "😴", score: 2 },
+  { key: "low_energy", label: "بی‌انرژی",   emoji: "🥱", score: 2 },
+  { key: "anxious",    label: "مضطرب",      emoji: "😰", score: 2 },
+  { key: "sad",        label: "ناراحت",     emoji: "😢", score: 1 },
+  { key: "upset",      label: "دلخور",      emoji: "😞", score: 1 },
+  { key: "angry",      label: "عصبی",       emoji: "😠", score: 1 },
 ];
 
 export const REASONS: string[] = [
-  "کار زیاد",
-  "برخورد با مشتری",
-  "همکاری تیمی",
-  "فشار مالی",
-  "مشکل خانوادگی",
-  "موفقیت کاری",
-  "یادگیری چیز جدید",
-  "خستگی جسمی",
-  "ابهام در کار",
-  "اتفاق خوب",
-  "اتفاق ناراحت‌کننده",
-  "ترجیح می‌دهم نگویم",
+  "کار زیاد", "برخورد با مشتری", "همکاری تیمی", "فشار مالی",
+  "مشکل خانوادگی", "موفقیت کاری", "یادگیری چیز جدید", "خستگی جسمی",
+  "ابهام در کار", "اتفاق خوب", "اتفاق ناراحت‌کننده", "ترجیح می‌دهم نگویم",
 ];
 
 export type FollowUp = "no" | "later" | "seen" | "important";
 export const FOLLOW_UP_OPTIONS: Array<{ value: FollowUp; label: string }> = [
-  { value: "no", label: "نه، فقط ثبت شود" },
-  { value: "later", label: "بله، بهتر است بعداً صحبت کنیم" },
-  { value: "seen", label: "فوری نیست، ولی دوست دارم دیده شود" },
+  { value: "no",        label: "نه، فقط ثبت شود" },
+  { value: "later",     label: "بله، بهتر است بعداً صحبت کنیم" },
+  { value: "seen",      label: "فوری نیست، ولی دوست دارم دیده شود" },
   { value: "important", label: "موضوع مهم است و نیاز به بررسی دارد" },
 ];
 
-export type EntryStatus =
-  | "new"
-  | "seen"
-  | "follow_up_needed"
-  | "in_review"
-  | "resolved"
-  | "archived";
+export type EntryStatus = "new" | "seen" | "follow_up_needed" | "in_review" | "resolved" | "archived";
 export const STATUS_LABELS: Record<EntryStatus, string> = {
   new: "جدید",
   seen: "دیده‌شد",
@@ -237,11 +214,7 @@ export async function updateManagerNote(id: string, note: string, reviewerId: st
   const trimmed = note.slice(0, 2000);
   const { error } = await supabase
     .from("daily_mood_entries")
-    .update({
-      manager_note: trimmed,
-      reviewed_by: reviewerId,
-      reviewed_at: new Date().toISOString(),
-    })
+    .update({ manager_note: trimmed, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 }

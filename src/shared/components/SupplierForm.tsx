@@ -14,11 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 const phoneRegex = /^0\d{2,10}$/;
@@ -62,16 +58,18 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
       city: defaultValues?.city ?? "",
       notes: defaultValues?.notes ?? "",
       trust_level: (defaultValues?.trust_level as "low" | "medium" | "high") ?? "medium",
-      status:
-        (defaultValues?.status as "pending" | "active" | "rejected") ??
-        (canSetActive ? "active" : "pending"),
+      status: (defaultValues?.status as "pending" | "active" | "rejected") ?? (canSetActive ? "active" : "pending"),
     },
     mode: "onBlur",
   });
 
   const mutation = useMutation({
     mutationFn: async (values: SupplierFormValues) => {
-      const finalStatus = supplierId ? values.status : canSetActive ? values.status : "pending";
+      const finalStatus = supplierId
+        ? values.status
+        : canSetActive
+          ? values.status
+          : "pending";
       const payload = {
         name: values.name.trim(),
         contact_name: values.contact_name?.trim() || null,
@@ -120,15 +118,8 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">
-            نام تأمین‌کننده <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="name"
-            disabled={disabled}
-            {...form.register("name")}
-            placeholder="نام شرکت یا فروشگاه"
-          />
+          <Label htmlFor="name">نام تأمین‌کننده <span className="text-destructive">*</span></Label>
+          <Input id="name" disabled={disabled} {...form.register("name")} placeholder="نام شرکت یا فروشگاه" />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-2">
@@ -138,36 +129,23 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
         <div className="space-y-2">
           <Label htmlFor="phone">تلفن</Label>
           <Input
-            id="phone"
-            disabled={disabled}
-            dir="ltr"
-            inputMode="numeric"
-            placeholder="0xxxxxxxxxx"
-            {...form.register("phone")}
+            id="phone" disabled={disabled} dir="ltr" inputMode="numeric"
+            placeholder="0xxxxxxxxxx" {...form.register("phone")}
           />
           {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="city">شهر</Label>
-          <Input
-            id="city"
-            disabled={disabled}
-            {...form.register("city")}
-            placeholder="مثلاً تهران"
-          />
+          <Input id="city" disabled={disabled} {...form.register("city")} placeholder="مثلاً تهران" />
         </div>
         <div className="space-y-2">
           <Label>سطح اعتماد</Label>
           <Select
             value={form.watch("trust_level")}
-            onValueChange={(v) =>
-              form.setValue("trust_level", v as "low" | "medium" | "high", { shouldDirty: true })
-            }
+            onValueChange={(v) => form.setValue("trust_level", v as "low" | "medium" | "high", { shouldDirty: true })}
             disabled={disabled}
           >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="low">پایین</SelectItem>
               <SelectItem value="medium">متوسط</SelectItem>
@@ -180,16 +158,10 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
             <Label>وضعیت اولیه</Label>
             <Select
               value={form.watch("status")}
-              onValueChange={(v) =>
-                form.setValue("status", v as "pending" | "active" | "rejected", {
-                  shouldDirty: true,
-                })
-              }
+              onValueChange={(v) => form.setValue("status", v as "pending" | "active" | "rejected", { shouldDirty: true })}
               disabled={disabled}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">فعال</SelectItem>
                 <SelectItem value="pending">در انتظار تأیید</SelectItem>
@@ -201,13 +173,7 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="notes">یادداشت</Label>
-        <Textarea
-          id="notes"
-          rows={3}
-          maxLength={500}
-          disabled={disabled}
-          {...form.register("notes")}
-        />
+        <Textarea id="notes" rows={3} maxLength={500} disabled={disabled} {...form.register("notes")} />
         {errors.notes && <p className="text-xs text-destructive">{errors.notes.message}</p>}
       </div>
 

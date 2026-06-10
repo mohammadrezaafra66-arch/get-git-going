@@ -13,19 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   fetchValidationRules,
@@ -35,9 +26,7 @@ import {
 } from "@/lib/validation/rules";
 
 export const Route = createFileRoute("/_app/admin/validation-rules")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin"]); },
   component: ValidationRulesPage,
 });
 
@@ -84,14 +73,10 @@ function ValidationRulesPage() {
           <div className="flex items-center gap-3">
             <Label>نوع سند:</Label>
             <Select value={scope} onValueChange={(v) => setScope(v as ValidationScope)}>
-              <SelectTrigger className="w-60">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-60"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {SCOPES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -102,9 +87,7 @@ function ValidationRulesPage() {
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           ) : rules.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground">
-              قانونی برای این نوع سند تعریف نشده است.
-            </div>
+            <div className="p-6 text-center text-muted-foreground">قانونی برای این نوع سند تعریف نشده است.</div>
           ) : (
             <Table>
               <TableHeader>
@@ -119,12 +102,7 @@ function ValidationRulesPage() {
               </TableHeader>
               <TableBody>
                 {rules.map((r) => (
-                  <RuleRow
-                    key={r.id}
-                    rule={r}
-                    onSave={(patch) => updateMut.mutate({ id: r.id, ...patch })}
-                    saving={updateMut.isPending}
-                  />
+                  <RuleRow key={r.id} rule={r} onSave={(patch) => updateMut.mutate({ id: r.id, ...patch })} saving={updateMut.isPending} />
                 ))}
               </TableBody>
             </Table>
@@ -135,11 +113,7 @@ function ValidationRulesPage() {
   );
 }
 
-function RuleRow({
-  rule,
-  onSave,
-  saving,
-}: {
+function RuleRow({ rule, onSave, saving }: {
   rule: ValidationRule;
   onSave: (patch: Partial<ValidationRule>) => void;
   saving: boolean;
@@ -151,20 +125,14 @@ function RuleRow({
 
   return (
     <TableRow>
-      <TableCell className="font-mono text-xs" dir="ltr">
-        {rule.field_key}
-      </TableCell>
+      <TableCell className="font-mono text-xs" dir="ltr">{rule.field_key}</TableCell>
       <TableCell className="text-xs">
         {rule.rule_type === "required" ? "اجباری" : "کد آسان معتبر"}
       </TableCell>
-      <TableCell>
-        <Switch checked={enabled} onCheckedChange={setEnabled} />
-      </TableCell>
+      <TableCell><Switch checked={enabled} onCheckedChange={setEnabled} /></TableCell>
       <TableCell>
         <Select value={severity} onValueChange={(v) => setSeverity(v as ValidationSeverity)}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="warning">هشدار (قابل عبور)</SelectItem>
             <SelectItem value="blocking">مسدودکننده</SelectItem>

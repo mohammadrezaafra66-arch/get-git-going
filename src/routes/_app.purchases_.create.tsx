@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_app/purchases_/create")({
-  beforeLoad: async () => {
-    await requirePermission("purchases", "create");
-  },
+  beforeLoad: async () => { await requirePermission("purchases", "create"); },
   component: PurchaseCreatePage,
 });
 

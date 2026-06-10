@@ -37,9 +37,7 @@ export async function requirePermission(module: ModuleKey, action: ExtendedActio
   await loadRolePermissions();
 
   if (!hasPermissionEx(roles, module, action)) {
-    logAuthDiagnostic("redirect.unauthorized", `requirePermission(${module},${action}) denied`, {
-      roles,
-    });
+    logAuthDiagnostic("redirect.unauthorized", `requirePermission(${module},${action}) denied`, { roles });
     throw redirect({ to: "/unauthorized" });
   }
   return { user, roles };

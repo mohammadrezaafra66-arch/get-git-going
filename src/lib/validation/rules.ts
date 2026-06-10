@@ -24,7 +24,7 @@ export async function fetchValidationRules(scope: ValidationScope): Promise<Vali
     .select("id, scope, field_key, rule_type, enabled, severity, message")
     .eq("scope", scope as never);
   if (error) throw error;
-  return (data ?? []) as unknown as ValidationRule[];
+  return ((data ?? []) as unknown) as ValidationRule[];
 }
 
 /**

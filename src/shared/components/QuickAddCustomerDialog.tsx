@@ -118,21 +118,48 @@ export function QuickAddCustomerDialog({
     onError: (err: unknown) => {
       // createCustomer serverFn already maps duplicate accounting_code and
       // RLS errors to Persian messages via mapPgError/toServerError.
-      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
-      toast.error(`ثبت ناموفق بود: ${msg}`);
+      const raw = err instanceof Error ? err.message : "";
+      const lower = raw.toLowerCase();
+
+      // Network / fetch failures (offline, server unreachable)
+      if (
+        err instanceof TypeError ||
+        lower.includes("failed to fetch") ||
+        lower.includes("networkerror") ||
+        lower.includes("load failed")
+      ) {
+        toast.error("ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.");
+        return;
+      }
+
+      // Duplicate accounting code → highlight the field too
+      if (raw.includes("کد حسابداری تکراری") || lower.includes("accounting_code")) {
+        form.setError("accounting_code", { message: "کد آسان تکراری است" });
+        toast.error("کد آسان تکراری است؛ یک کد یکتای دیگر انتخاب کنید.");
+        return;
+      }
+
+      // Session expired
+      if (raw.includes("نشست کاربری") || lower.includes("unauthorized") || lower.includes("401")) {
+        toast.error("نشست شما منقضی شده است. لطفاً دوباره وارد شوید.");
+        return;
+      }
+
+      // RLS / permission
+      if (raw.includes("دسترسی") || lower.includes("forbidden") || lower.includes("403") || lower.includes("rls")) {
+        toast.error("دسترسی لازم برای ثبت شخص جدید را ندارید.");
+        return;
+      }
+
+      // Validation (zod-style) — surface the message itself
+      toast.error(raw ? `ثبت ناموفق بود: ${raw}` : "ثبت ناموفق بود. لطفاً دوباره تلاش کنید.");
     },
   });
 
   const errors = form.formState.errors;
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (!o) form.reset();
-      }}
-    >
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) form.reset(); }}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button type="button" size={buttonSize} variant={buttonVariant}>
@@ -149,19 +176,18 @@ export function QuickAddCustomerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-3">
+        <form
+          onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
+          className="space-y-3"
+        >
           <div className="space-y-1.5">
-            <Label htmlFor="qa-name">
-              نام شخص <span className="text-destructive">*</span>
-            </Label>
+            <Label htmlFor="qa-name">نام شخص <span className="text-destructive">*</span></Label>
             <Input id="qa-name" {...form.register("name")} placeholder="نام و نام خانوادگی" />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="qa-phone">
-              شماره موبایل <span className="text-destructive">*</span>
-            </Label>
+            <Label htmlFor="qa-phone">شماره موبایل <span className="text-destructive">*</span></Label>
             <Input
               id="qa-phone"
               dir="ltr"
@@ -174,9 +200,7 @@ export function QuickAddCustomerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="qa-code">
-              کد آسان <span className="text-destructive">*</span>
-            </Label>
+            <Label htmlFor="qa-code">کد آسان <span className="text-destructive">*</span></Label>
             <Input
               id="qa-code"
               dir="ltr"
