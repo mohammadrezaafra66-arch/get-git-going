@@ -15,6 +15,47 @@ const InputSchema = z.object({
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
 const FETCH_TIMEOUT_MS = 15_000;
 
+/**
+ * Block private, loopback, link-local, and reserved IP ranges to prevent SSRF
+ * against internal infrastructure (cloud metadata, DB ports, etc.).
+ */
+function isBlockedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) return true;
+  // IPv6 loopback / unspecified / link-local / unique-local
+  if (h === "::1" || h === "::" || h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) return true;
+  // IPv4 literal?
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a >= 224) return true; // multicast / reserved
+  }
+  return false;
+}
+
+function assertSafeUrl(raw: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("URL منبع نامعتبر است");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("فقط آدرس‌های http/https مجاز هستند");
+  }
+  if (isBlockedHost(parsed.hostname)) {
+    throw new Error("آدرس داخلی/خصوصی مجاز نیست");
+  }
+  return parsed;
+}
+
 export interface AutoFetchRateResult {
   rate: number;
 }
@@ -46,6 +87,9 @@ export const autoFetchCurrencyRate = createServerFn({ method: "POST" })
     if (!src) throw new Error("منبع یافت نشد");
     if (!src.is_active) throw new Error("منبع غیرفعال است");
     if (!src.url) throw new Error("URL منبع تعریف نشده است");
+
+    // SSRF guard — reject internal/private targets before fetching.
+    assertSafeUrl(src.url);
 
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
