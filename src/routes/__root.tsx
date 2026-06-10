@@ -248,9 +248,7 @@ function EnvironmentSafetyBanner() {
 
   const bannerText = suspiciousProductionRuntime
     ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
-    : configuredBannerText || (isStaging
-      ? "محیط تست افراکالا - اطلاعات این بخش واقعی نیست"
-      : `محیط غیرعملیاتی افراکالا${appEnv ? ` - ${appEnv}` : ""}`);
+    : configuredBannerText || "«محیط تست افراکالا — اطلاعات این بخش واقعی نیست»";
 
   const className = suspiciousProductionRuntime
     ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"
