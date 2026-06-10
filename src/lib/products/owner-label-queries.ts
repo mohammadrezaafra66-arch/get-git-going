@@ -114,25 +114,8 @@ export async function fetchOwnerEligibleProductIds(
     return { eligibleProductIds: [], sharedProductIds: [], excludedSharedCount: 0 };
   }
 
-  // 3) تشخیص محصولات مشترک (>1 owner) — chunked
-  const ownerCount = new Map<string, number>();
+  // 3) شمارش owners متمایز برای هر محصول — chunked
   const activeIdList = Array.from(activeIds);
-  for (const ids of chunk(activeIdList, OWNER_LABEL_IN_CHUNK_SIZE)) {
-    if (ids.length === 0) continue;
-    const { data, error } = await supabase
-      .from("product_owner_assignments")
-      .select("product_id, user_id")
-      .in("product_id", ids);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      const pid = row.product_id as string;
-      const uniqUsers = ownerCount.get(pid) ?? 0;
-      // می‌توانیم چندین ردیف از همان user_id داشته باشیم؛
-      // برای shared بودن نیاز است user_idهای متمایز شمرده شوند.
-      ownerCount.set(pid, uniqUsers + 1);
-    }
-  }
-  // باز-شمارش با distinct user_id برای دقت بیشتر
   const distinctOwners = new Map<string, Set<string>>();
   for (const ids of chunk(activeIdList, OWNER_LABEL_IN_CHUNK_SIZE)) {
     if (ids.length === 0) continue;
