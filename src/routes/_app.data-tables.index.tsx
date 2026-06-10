@@ -40,7 +40,7 @@ function DataTablesHub() {
         .limit(200);
       if (error) throw error;
       const ids = (data ?? []).map((t) => t.id as string);
-      let counts: Record<string, number> = {};
+      const counts: Record<string, number> = {};
       if (ids.length) {
         const cr = await supabase
           .from("dynamic_table_columns")

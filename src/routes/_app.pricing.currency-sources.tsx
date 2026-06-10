@@ -219,7 +219,7 @@ function SourceDialog({
   // Sync editing
   const isOpen = open;
   useState(() => undefined);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   if (isOpen) {
     // initialize once when dialog opens
   }
