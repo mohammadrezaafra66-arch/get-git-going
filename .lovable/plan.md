@@ -1,62 +1,46 @@
-# پلن: مدیریت یادآوری‌ها و رسیدگی به موجودی/قیمت
+## مشکل و ریشه
 
-تمام تغییرات فقط UI روی frontend است؛ هیچ migration/RLS/endpoint جدیدی ساخته نمی‌شود. از hookها و queryهای موجود (`product_owner_assignments`, `products`, `purchase_prices`, `currency_rates`) از طریق client Supabase استفاده می‌کنیم. ریسک: **LOW**.
+از کنسول preview مشخص است که حین جابه‌جایی بین ماژول‌ها (به‌ویژه «کارگاه قیمت من») سه اتفاق پشت‌سرهم رخ می‌دهد:
 
-## ۱) ثابت‌های قابل پیکربندی
+1. اتصال vite/HMR قطع و وصل می‌شود (`[vite] server connection lost. Polling for restart...`) — این اتفاق هم در پیش‌نمایش و هم گاهی روی سایت منتشرشده باعث ری‌مونت iframe می‌شود.
+2. در هر ری‌مونت، supabase دوباره `SIGNED_IN` با `previousUserId: null` ارسال می‌کند → snapshot از صفر بارگذاری می‌شود → `loading=true`.
+3. `AppLayout` در `src/routes/_app.tsx` به‌محض true شدن هر یک از `loading | profileLoading | rolesLoading` تمام درخت اپ را با `AuthLoadingScreen` («در حال بررسی جلسه کاربری…») جایگزین می‌کند → کاربر احساس می‌کند «پرت شده».
 
-فایل جدید `src/lib/popups/config.ts`:
+از نظر امنیت کاربر همچنان لاگین است (session در localStorage برمی‌گردد) و خودش هم به صفحه برمی‌گردد، فقط تجربهٔ کاربری بد است.
 
-- `STOCK_STALE_DAYS = 3`
-- `PURCHASE_PRICE_STALE_DAYS = 2`
-- `USD_DRIFT_THRESHOLD_PCT = 3`
-- `POPUP_TTL_MS` را از `PopupCenterProvider` به این فایل منتقل/بازصدور می‌کنیم تا تمام زمان‌ها متمرکز و تغییرپذیر باشند (پیش‌فرض ۲۴ ساعت).
+## هدف
 
-## ۲) صفحهٔ «رسیدگی محصولات» (نام دکمه: «فرصت جبران»)
+پرش به صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» حذف شود، در عوض وقتی session از قبل موجود است محتوای صفحه باقی بماند و فقط یک نوار بارگذاری کوچک نمایش داده شود.
 
-- مسیر جدید: `src/routes/_app.pricing.attention.tsx` با کامپوننت `AttentionPage`.
-- دکمه‌ای در نوار بالای `src/routes/_app.pricing.my-workbench.tsx` (کنار filters) با متن «فرصت جبران» و آیکن `LifeBuoy` که به این مسیر `<Link>` می‌زند.
-- محتوای صفحه دو تب:
-  - **ناموجودهای بیش از ۳ روز**: query از `products` با `stock_status='unavailable'` و `updated_at < now() - 3d` (در صورت نبود فیلد lastChange، روی `product_sale_price_history` یا `purchase_prices.updated_at` fallback می‌کنیم — در پیاده‌سازی با read query بررسی می‌شود)، join با `product_owner_assignments` + `profiles` برای نمایش نام مسئول.
-  - **قیمت خرید تومانی کهنه (>۲ روز بدون به‌روزرسانی)** و **اختلاف معادل دلاری >۳٪** نسبت به آخرین نرخ `currency_rates` (USD): محاسبه در client با گرفتن آخرین `purchase_prices` تومانی + آخرین نرخ دلار.
-- هر سطر: نام محصول، SKU، مسئول(ها)، تاریخ آخرین تغییر، badge وضعیت، لینک به صفحه محصول.
-- pagination ساده + debounce search، RTL.
+## تغییرات (فقط فرانت‌اند، ریسک LOW)
 
-## ۳) پاپ‌آپ یادآوری در صفحه اصلی مسئول
+### ۱) `src/routes/_app.tsx`
+- منطق نمایش `AuthLoadingScreen` تغییر کند:
+  - فقط در حالتی صفحهٔ تمام‌صفحه نمایش داده شود که هنوز هیچ کاربری در snapshot نیست **و** session قبلی هم در localStorage پیدا نشد (یعنی واقعاً ورود اول).
+  - اگر کاربر در snapshot هست (یا توکن در localStorage هست) و فقط `profileLoading`/`rolesLoading` فعال است، `<Outlet />` داخل `AppShell` رندر شود و یک نوار باریک بالای صفحه (مثلاً پروگرس بار شاد cn یا یک Banner کوتاه) با متن «به‌روزرسانی جلسه…» نمایش داده شود.
+  - منطق «خطای واقعی» (`authError`) و دکمهٔ «تلاش دوباره» همان‌طور حفظ می‌شود.
+- اضافه شدن یک helper کوچک برای تشخیص وجود session ذخیره‌شده (با خواندن کلید `sb-<ref>-auth-token` از localStorage یا با بررسی `getAuthSnapshot().user`/`session`).
 
-- کامپوننت جدید `src/shared/components/OwnerRemindersListener.tsx` (mount در `AppShell` کنار `PriceChangePopupListener`).
-- در mount، اگر کاربر لاگین است: یک‌بار query می‌زند برای محصولاتی که `user.id` مالک آن‌هاست و یکی از سه شرط برقرار است:
-  1. `stock_status='unavailable'` بیش از ۳ روز
-  2. آخرین `purchase_prices` تومانی > ۲ روز قدیمی
-  3. drift معادل دلاری > ۳٪
-- برای هر مورد یک `toast` با action «متوجه شدم» نمایش می‌دهد؛ در `onAutoClose/onDismiss` بدون ack، آیتم با `usePopupCenter().add(...)` به مرکز پاپ‌آپ‌ها منتقل می‌شود (الگوی موجود در `PriceChangePopupListener`). throttle مشابه برای جلوگیری از سیل toast.
-- استفاده از `id` پایدار `reminder-<productId>-<type>-<dayBucket>` تا در همان روز تکراری ساخته نشود (dedupe via `add` که id تکراری را رد می‌کند).
+### ۲) `src/lib/auth/session.ts`
+- در `applySession`، وقتی رویداد `SIGNED_IN` با `previousUserId === null` می‌رسد ولی `lastLoadedUserId` همان کاربر است (یعنی فقط ری‌مونت بعد از HMR/قطعی)، `loading` global را true نکند و identity را مجدداً fetch نکند مگر اینکه profile/roles واقعاً خالی باشند.
+- بدون تغییر در منطق امنیت/توکن؛ فقط جلوگیری از flash بارگذاری.
 
-## ۴) مرکز پاپ‌آپ‌ها
+### ۳) (اختیاری) `src/components/layout/AppShell.tsx`
+- اگر prop `sessionRefreshing` از `_app.tsx` پاس داده شد، یک نوار باریک (`h-1`) بالای shell با کلاس‌های موجود `bg-primary/20` نمایش داده شود — راست‌چین و سازگار با theme فعلی.
 
-بدون تغییر در ساختار `PopupCenterProvider`/`_app.popup-center.tsx`. فقط `POPUP_TTL_MS` از `config.ts` خوانده می‌شود تا تنظیم متمرکز باشد.
+## خارج از محدوده
 
-## ۵) Nav
+- بازطراحی AuthProvider یا route guardها انجام نمی‌شود.
+- منطق redirect به /login، RBAC، RLS، migration، یا API هیچ تغییری ندارد.
+- مشکل اصلی قطعی HMR در preview Lovable در حوزهٔ زیرساخت Lovable است و این تغییر فقط اثر بصری آن را خنثی می‌کند.
 
-افزودن آیتم «فرصت جبران» به گروه «کارگاه قیمت» در `src/components/layout/nav-items.ts` با مسیر `/pricing/attention`.
+## آزمون دستی
 
-## فایل‌های تغییر یافته/جدید
-
-- جدید: `src/lib/popups/config.ts`
-- جدید: `src/routes/_app.pricing.attention.tsx`
-- جدید: `src/shared/components/OwnerRemindersListener.tsx`
-- جدید: `src/lib/pricing/attention-queries.ts` (queryهای ناموجود کهنه / قیمت کهنه / drift دلار)
-- ویرایش: `src/lib/popups/PopupCenterProvider.tsx` (خواندن TTL از config)
-- ویرایش: `src/components/layout/AppShell.tsx` (mount listener جدید)
-- ویرایش: `src/components/layout/nav-items.ts`
-- ویرایش: `src/routes/_app.pricing.my-workbench.tsx` (دکمه «فرصت جبران»)
+1. ورود به اپ → باز کردن «کارگاه قیمت من» → جابه‌جایی به ماژول دیگر → نباید صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» ظاهر شود.
+2. خروج کامل (sign out) و ورود مجدد → صفحهٔ تمام‌صفحه فقط یک بار در ابتدا دیده شود.
+3. حالت خطای واقعی شبکه (مثلاً قطع کامل اینترنت) → پیام خطا و دکمهٔ «تلاش دوباره» مثل قبل کار کند.
+4. RTL و راست‌چینی نوار جدید بررسی شود.
 
 ## ریسک
 
-LOW — بدون تغییر سرور/DB/RLS؛ فقط جداول موجود readonly خوانده می‌شوند.
-
-&nbsp;
-
-- هنگام پیاده‌سازی کوئری‌های «ناموجود بیش از ۳ روز» و «قیمت خرید کهنه»، دقیقاً مشخص کنید که تاریخ مرجع چیست و از فیلدهای مناسب (مثل `purchase_prices.updated_at` یا `product_sale_price_history.updated_at`) استفاده کنید تا نتایج اشتباه نباشد.
-- برای محاسبهٔ اختلاف معادل دلاری بیش از ۳٪، مطمئن شوید نرخ دلار به‌صورت مطمئن و متمرکز در اختیار است تا محاسبات یکسان شود.
-- ماژول `OwnerRemindersListener` را طوری طراحی کنید که به‌طور دوره‌ای (مثلاً هر ساعت) داده‌ها را تازه کند یا با subscribe مناسب، تا از تکرار یا ازدست رفتن یادآوری‌ها جلوگیری شود.
-- مطمئن شوید که پیکربندی TTL و سایر ثابت‌ها از طریق environment یا فایل config به‌راحتی قابل تغییر است، تا تغییر آینده ساده باشد.
+LOW — فقط لایهٔ UI و یک شاخهٔ کوچک در `applySession`. بدون تغییر دیتابیس، RLS، RBAC، یا audit log.

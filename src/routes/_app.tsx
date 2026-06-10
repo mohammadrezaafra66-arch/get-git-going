@@ -82,6 +82,8 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const {
+    user,
+    initialized,
     loading,
     profileLoading,
     rolesLoading,
@@ -93,14 +95,16 @@ function AppLayout() {
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
 
+  const isRefreshing = loading || profileLoading || rolesLoading;
+
   useEffect(() => {
-    if (!(loading || profileLoading || rolesLoading)) {
+    if (!isRefreshing) {
       setStuckLoading(false);
       return;
     }
     const id = window.setTimeout(() => setStuckLoading(true), 6_000);
     return () => window.clearTimeout(id);
-  }, [loading, profileLoading, rolesLoading]);
+  }, [isRefreshing]);
 
   const copyDiagnostics = async () => {
     const diag = getAuthDiagnostics();
@@ -113,7 +117,13 @@ function AppLayout() {
     }
   };
 
-  if (loading || profileLoading || rolesLoading) {
+  // Only block the entire app with the full-screen loading state when we truly
+  // have no user yet (initial bootstrap). For subsequent refreshes (HMR
+  // re-mount, token refresh, re-fetch of profile/roles) the cached user is
+  // already in the snapshot, so we keep the page mounted and show a thin
+  // top progress bar instead — otherwise the user perceives every module
+  // switch as being kicked out to «در حال بررسی جلسه کاربری…».
+  if (!user && (isRefreshing || !initialized)) {
     if (stuckLoading) {
       return (
         <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -130,7 +140,7 @@ function AppLayout() {
     return <AuthLoadingScreen />;
   }
 
-  if (authError) {
+  if (!user && authError) {
     const diag = getAuthDiagnostics();
     return (
       <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -176,6 +186,15 @@ function AppLayout() {
 
   return (
     <AppShell>
+      {user && isRefreshing && (
+        <div
+          dir="rtl"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-primary/15"
+        >
+          <div className="h-full w-1/3 animate-pulse bg-primary/60" />
+        </div>
+      )}
       <Outlet />
     </AppShell>
   );
