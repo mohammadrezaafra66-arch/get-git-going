@@ -81,6 +81,22 @@ export function OwnerScopedLabelsDialog({
   }, [open]);
 
   const prevSelected = linksQ.data ?? [];
+  const wasTaggedAtOpen = (linksQ.data ?? []).length > 0;
+  const willBeTagged = selected.size > 0;
+  const quotaFull = summary.remaining <= 0;
+  const blockedByQuota = canWrite && !wasTaggedAtOpen && quotaFull;
+
+  // تشخیص تغییر واقعی بین selected و prevSelected
+  const prevSet = new Set(prevSelected);
+  let hasChanges = prevSet.size !== selected.size;
+  if (!hasChanges) {
+    for (const id of selected) {
+      if (!prevSet.has(id)) {
+        hasChanges = true;
+        break;
+      }
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -88,9 +104,7 @@ export function OwnerScopedLabelsDialog({
       if (!canWrite) {
         throw new Error("برای نقش شما امکان ثبت برچسب فعال نیست.");
       }
-      const wasTagged = prevSelected.length > 0;
-      const willBeTagged = selected.size > 0;
-      const becomingNewlyTagged = !wasTagged && willBeTagged;
+      const becomingNewlyTagged = !wasTaggedAtOpen && selected.size > 0;
       assertQuotaAllowsAdd({
         taggedCount: summary.taggedCount,
         quota: summary.quota,
@@ -122,7 +136,14 @@ export function OwnerScopedLabelsDialog({
       toast.error(msg);
     },
     onSuccess: () => {
-      toast.success("برچسب‌های داخلی محصول ذخیره شد.");
+      const isTaggedNow = selected.size > 0;
+      if (!wasTaggedAtOpen && isTaggedNow) {
+        toast.success("محصول به سبد تمرکز شما اضافه شد.");
+      } else if (wasTaggedAtOpen && !isTaggedNow) {
+        toast.success("محصول از سبد تمرکز خارج شد.");
+      } else {
+        toast.success("برچسب‌های داخلی محصول ذخیره شد.");
+      }
       queryClient.invalidateQueries({ queryKey: ["owner-label-summary"] });
       queryClient.invalidateQueries({ queryKey: ["owner-label-products"] });
       queryClient.invalidateQueries({
@@ -137,6 +158,7 @@ export function OwnerScopedLabelsDialog({
 
   function toggle(id: string) {
     if (!canWrite) return;
+    if (blockedByQuota) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -147,6 +169,20 @@ export function OwnerScopedLabelsDialog({
 
   const loading = labelsQ.isLoading || (!!productId && linksQ.isLoading);
   const labels = labelsQ.data ?? [];
+  const checkboxesDisabled = !canWrite || mutation.isPending || blockedByQuota;
+
+  let saveTitle = "ذخیره برچسب‌های داخلی";
+  if (!canWrite) saveTitle = "برای نقش شما امکان ثبت برچسب فعال نیست";
+  else if (blockedByQuota) saveTitle = "سهمیه شما پر است";
+  else if (!hasChanges) saveTitle = "تغییری برای ذخیره وجود ندارد";
+
+  const saveDisabled =
+    !canWrite ||
+    mutation.isPending ||
+    loading ||
+    !productId ||
+    blockedByQuota ||
+    !hasChanges;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +201,26 @@ export function OwnerScopedLabelsDialog({
 
         {!canWrite && (
           <div className="rounded-md border border-amber-400/60 bg-amber-50 p-3 text-xs leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-            ثبت نهایی برچسب برای نقش شما هنوز در سمت سرور مجاز نشده است. در این نسخه فقط مشاهده می‌کنید.
+            برای نقش شما ثبت نهایی برچسب‌ها هنوز فعال نشده است. در این نسخه می‌توانید برچسب‌های داخلی محصول را مشاهده کنید، اما امکان ذخیره ندارید.
+          </div>
+        )}
+
+        {canWrite && productId && !labelsQ.isLoading && !linksQ.isLoading && (
+          <div
+            className={
+              "rounded-md border p-3 text-xs leading-6 " +
+              (wasTaggedAtOpen
+                ? "border-emerald-500/40 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+                : blockedByQuota
+                  ? "border-amber-500/60 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                  : "border-sky-500/40 bg-sky-50 text-sky-900 dark:bg-sky-950/30 dark:text-sky-200")
+            }
+          >
+            {wasTaggedAtOpen
+              ? "این محصول در حال حاضر داخل سبد تمرکز شماست. ویرایش یا حذف برچسب‌های داخلی آن مجاز است."
+              : blockedByQuota
+                ? "سهمیه شما پر است. برای افزودن این محصول، ابتدا باید یکی از محصولات قبلی را از سبد تمرکز خارج کنید."
+                : "با انتخاب برچسب برای این محصول، یکی از جای خالی‌های سبد تمرکز شما استفاده می‌شود."}
           </div>
         )}
 
@@ -203,14 +258,14 @@ export function OwnerScopedLabelsDialog({
                     <label
                       className={
                         "flex items-center gap-2 rounded-md px-2 py-1.5 " +
-                        (canWrite
+                        (canWrite && !blockedByQuota
                           ? "cursor-pointer hover:bg-muted"
                           : "cursor-not-allowed opacity-80")
                       }
                     >
                       <Checkbox
                         checked={checked}
-                        disabled={!canWrite || mutation.isPending}
+                        disabled={checkboxesDisabled}
                         onCheckedChange={() => toggle(l.id)}
                       />
                       <span
@@ -237,12 +292,8 @@ export function OwnerScopedLabelsDialog({
           </Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={!canWrite || mutation.isPending || loading || !productId}
-            title={
-              canWrite
-                ? "ذخیره برچسب‌های داخلی"
-                : "برای نقش شما امکان ثبت برچسب فعال نیست"
-            }
+            disabled={saveDisabled}
+            title={saveTitle}
           >
             {mutation.isPending
               ? "در حال ذخیره..."
