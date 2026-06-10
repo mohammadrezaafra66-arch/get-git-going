@@ -651,9 +651,10 @@ function DesktopRow({
 /*                       Mobile Card                              */
 /* ============================================================ */
 function MobileCard({
-  row, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
+  row, rowIndex, dirty, stepPct, saving, justSaved, canLabel, publishError, onLabel, onPrice, onBump, onStock, onClear, onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
