@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Loader2, Search, Tag } from "lucide-react";
-import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -13,6 +12,8 @@ import {
   OWNER_LABEL_STALE_TIME_MS,
 } from "@/lib/products/owner-label-config";
 import { getOwnerLabelOverview } from "@/lib/products/owner-label-queries";
+import { canPersistOwnerLabels } from "@/lib/products/owner-label-mutations";
+import { OwnerScopedLabelsDialog } from "@/components/products/OwnerScopedLabelsDialog";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -131,12 +132,16 @@ async function fetchOwnerProductsPage(params: {
 }
 
 export function OwnerLabelQuotaTab() {
-  const { user, initialized } = useAuth();
+  const { user, initialized, roles } = useAuth();
+  const canWrite = canPersistOwnerLabels(roles ?? []);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
   const [taggedState, setTaggedState] = useState<TaggedState>("all");
   const [page, setPage] = useState(1);
   const pageSize = OWNER_LABEL_PAGE_SIZE;
+  const [dialogProductId, setDialogProductId] = useState<string | null>(null);
+  const [dialogProductName, setDialogProductName] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const overviewQ = useQuery({
     queryKey: ["owner-label-summary", user?.id ?? null],
@@ -181,8 +186,10 @@ export function OwnerLabelQuotaTab() {
     setPage(1);
   }
 
-  function handleManageLabels() {
-    toast("مدیریت برچسب‌ها در گام بعد فعال می‌شود.");
+  function handleManageLabels(row: OwnerLabelProductRow) {
+    setDialogProductId(row.id);
+    setDialogProductName(row.name);
+    setDialogOpen(true);
   }
 
   // --- Loading / auth states ---
@@ -380,10 +387,14 @@ export function OwnerLabelQuotaTab() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={handleManageLabels}
-                      title="مدیریت برچسب‌ها در گام بعد فعال می‌شود"
+                      onClick={() => handleManageLabels(r)}
+                      title={
+                        canWrite
+                          ? "مدیریت برچسب‌های داخلی"
+                          : "مشاهده برچسب‌های داخلی"
+                      }
                     >
-                      مدیریت برچسب
+                      {canWrite ? "مدیریت برچسب" : "مشاهده برچسب"}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -415,6 +426,21 @@ export function OwnerLabelQuotaTab() {
             بعدی
           </Button>
         </div>
+      )}
+
+      {summary && (
+        <OwnerScopedLabelsDialog
+          productId={dialogProductId}
+          productName={dialogProductName}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          summary={{
+            taggedCount: summary.taggedCount,
+            quota: summary.quota,
+            remaining: summary.remaining,
+            isMet: summary.isMet,
+          }}
+        />
       )}
     </div>
   );
