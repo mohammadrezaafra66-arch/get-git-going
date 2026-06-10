@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, X, Sparkles, Wand2 } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Trash2,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink,
+  X,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,11 +23,22 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   parseReceiptText,
@@ -39,22 +60,51 @@ export const RECEIPT_DOCS_BUCKET = "payment-receipt-documents";
  */
 export const ALLOWED_DOC_EXTENSIONS = [
   // images
-  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tif", "tiff", "heic", "heif", "svg",
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "bmp",
+  "tif",
+  "tiff",
+  "heic",
+  "heif",
+  "svg",
   // documents
-  "pdf", "txt", "rtf", "csv",
-  "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "pdf",
+  "txt",
+  "rtf",
+  "csv",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
   // archives (in case customer sends multiple receipts together)
-  "zip", "rar", "7z",
+  "zip",
+  "rar",
+  "7z",
 ] as const;
 
 export const ALLOWED_DOC_ACCEPT = [
   "image/*",
   "application/pdf",
   "text/*",
-  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-  ".rtf", ".csv",
-  ".heic", ".heif",
-  ".zip", ".rar", ".7z",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".ppt",
+  ".pptx",
+  ".rtf",
+  ".csv",
+  ".heic",
+  ".heif",
+  ".zip",
+  ".rar",
+  ".7z",
 ].join(",");
 
 export const MAX_DOC_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
@@ -141,7 +191,7 @@ const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
 
 function normalizeGregorianDate(s: string): string | null {
   // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
-  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
+  const m = /^((?:19|20)\d{2})[/.-](\d{1,2})[/.-](\d{1,2})$/.exec(s.trim());
   if (!m) return null;
   const yyyy = m[1];
   const mm = m[2].padStart(2, "0");
@@ -226,11 +276,7 @@ export function validateReceiptFile(file: File): string | null {
   const mime = (file.type || "").toLowerCase();
   // Accept any image/*, text/*, application/pdf, audio/* even if the
   // browser reports an unusual MIME (common on mobile screenshots).
-  if (
-    mime.startsWith("image/") ||
-    mime.startsWith("text/") ||
-    mime === "application/pdf"
-  ) {
+  if (mime.startsWith("image/") || mime.startsWith("text/") || mime === "application/pdf") {
     return null;
   }
   // Fallback: check extension for documents/archives or empty MIME
@@ -247,7 +293,10 @@ export function validateReceiptFile(file: File): string | null {
 
 function safeFileName(name: string) {
   // Keep extension; strip path separators and weird chars
-  return name.replace(/[\\/]+/g, "_").replace(/[^\p{L}\p{N}._-]+/gu, "_").slice(0, 120);
+  return name
+    .replace(/[\\/]+/g, "_")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "_")
+    .slice(0, 120);
 }
 
 /**
@@ -264,12 +313,10 @@ export async function uploadReceiptDocuments(
   for (const file of files) {
     try {
       const path = `${receiptId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-      const { error: upErr } = await supabase.storage
-        .from(RECEIPT_DOCS_BUCKET)
-        .upload(path, file, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        });
+      const { error: upErr } = await supabase.storage.from(RECEIPT_DOCS_BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
       if (upErr) throw upErr;
 
       const { data: row, error: insErr } = await supabase
@@ -382,7 +429,8 @@ export function ReceiptDocumentPicker({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        تصویر، اسکرین‌شات، PDF، Word، Excel، متن یا فایل فشرده. حداکثر ۲۰ مگابایت برای هر فایل، تا {toFaDigits(String(MAX_DOC_COUNT))} فایل.
+        تصویر، اسکرین‌شات، PDF، Word، Excel، متن یا فایل فشرده. حداکثر ۲۰ مگابایت برای هر فایل، تا{" "}
+        {toFaDigits(String(MAX_DOC_COUNT))} فایل.
       </p>
       {files.length === 0 ? (
         <p className="text-xs text-muted-foreground">هیچ مستندی انتخاب نشده است.</p>
@@ -470,7 +518,9 @@ export function ReceiptDocumentsList({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_receipt_documents")
-        .select("id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at, extraction_status, extracted_data, extraction_confidence, extraction_notes")
+        .select(
+          "id, receipt_id, storage_path, file_name, file_type, file_size, uploaded_by, created_at, extraction_status, extracted_data, extraction_confidence, extraction_notes",
+        )
         .eq("receipt_id", receiptId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -634,7 +684,11 @@ export function ReceiptDocumentsList({
         // Mismatches with manually-entered values are reported back so the
         // UI can warn the accountant.
         // ---------------------------------------------------------------
-        const autoMismatches: Array<{ field: "amount" | "tracking_number"; before: string | number | null; after: string | number }> = [];
+        const autoMismatches: Array<{
+          field: "amount" | "tracking_number";
+          before: string | number | null;
+          after: string | number;
+        }> = [];
         const autoApplied: Array<"amount" | "tracking_number"> = [];
         try {
           const { data: rcpt } = await supabase
@@ -642,7 +696,11 @@ export function ReceiptDocumentsList({
             .select("id, posting_status, amount, tracking_number")
             .eq("id", doc.receipt_id)
             .maybeSingle();
-          const row = rcpt as { posting_status?: string | null; amount?: number | null; tracking_number?: string | null } | null;
+          const row = rcpt as {
+            posting_status?: string | null;
+            amount?: number | null;
+            tracking_number?: string | null;
+          } | null;
           if (row && (row.posting_status ?? "unposted") !== "posted") {
             const update: Record<string, unknown> = {};
             const exAmount = effectiveExtractedValue("amount", parsed);
@@ -821,7 +879,9 @@ export function ReceiptDocumentsList({
       // Re-check posting status to avoid races.
       const { data: receiptRow, error: rErr } = await supabase
         .from("payment_receipts")
-        .select("id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, security_warnings")
+        .select(
+          "id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, security_warnings",
+        )
         .eq("id", doc.receipt_id)
         .single();
       if (rErr || !receiptRow) throw rErr ?? new Error("فیش پیدا نشد");
@@ -895,7 +955,9 @@ export function ReceiptDocumentsList({
     onSuccess: (r) => {
       toast.success("اطلاعات استخراج‌شده روی فیش اعمال شد.");
       if (r.skipped.length > 0) {
-        toast.info(`برخی فیلدها قابل اعمال نبودند: ${r.skipped.map((k) => APPLY_FIELD_LABELS[k]).join("، ")}`);
+        toast.info(
+          `برخی فیلدها قابل اعمال نبودند: ${r.skipped.map((k) => APPLY_FIELD_LABELS[k]).join("، ")}`,
+        );
       }
       setApplyDoc(null);
       queryClient.invalidateQueries({ queryKey: ["payment-receipt-meta", receiptId] });
@@ -939,118 +1001,147 @@ export function ReceiptDocumentsList({
         <ul className="space-y-2">
           {docs.map((doc) => {
             const isImage = doc.file_type.startsWith("image/");
-            const extracting = extractMutation.isPending && extractMutation.variables?.id === doc.id;
+            const extracting =
+              extractMutation.isPending && extractMutation.variables?.id === doc.id;
             const extracted = (doc.extracted_data ?? null) as ReceiptExtractionResult | null;
             return (
-              <li
-                key={doc.id}
-                className={cn(
-                  "rounded-md border bg-background p-2 text-sm",
-                )}
-              >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  {isImage ? (
-                    <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{doc.file_name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatBytes(doc.file_size)} • {doc.file_type}
-                    </div>
-                    <div className="mt-1 text-xs">
-                      <span className={cn("rounded px-1.5 py-0.5", EXTRACTION_STATUS_CLASSES[doc.extraction_status])}>
-                        {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
-                      </span>
-                      {doc.extraction_confidence != null && doc.extraction_status === "extracted" && (
-                        <span className="ms-2 text-muted-foreground">
-                          اطمینان: {toFaDigits(String(Math.round((doc.extraction_confidence ?? 0) * 100)))}٪
+              <li key={doc.id} className={cn("rounded-md border bg-background p-2 text-sm")}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {isImage ? (
+                      <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{doc.file_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatBytes(doc.file_size)} • {doc.file_type}
+                      </div>
+                      <div className="mt-1 text-xs">
+                        <span
+                          className={cn(
+                            "rounded px-1.5 py-0.5",
+                            EXTRACTION_STATUS_CLASSES[doc.extraction_status],
+                          )}
+                        >
+                          {EXTRACTION_STATUS_LABELS[doc.extraction_status]}
                         </span>
-                      )}
+                        {doc.extraction_confidence != null &&
+                          doc.extraction_status === "extracted" && (
+                            <span className="ms-2 text-muted-foreground">
+                              اطمینان:{" "}
+                              {toFaDigits(
+                                String(Math.round((doc.extraction_confidence ?? 0) * 100)),
+                              )}
+                              ٪
+                            </span>
+                          )}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {canManage && (
+                  <div className="flex items-center gap-2">
+                    {canManage && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => extractMutation.mutate(doc)}
+                        disabled={extracting}
+                      >
+                        {extracting ? (
+                          <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="ml-1 h-4 w-4" />
+                        )}
+                        استخراج اطلاعات از فیش
+                      </Button>
+                    )}
+                    {canManage &&
+                      !isPosted &&
+                      (doc.extraction_status === "extracted" ||
+                        doc.extraction_status === "needs_review") &&
+                      doc.extracted_data != null && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openApplyDialog(doc)}
+                        >
+                          <Wand2 className="ml-1 h-4 w-4" />
+                          اعمال اطلاعات استخراج‌شده روی فیش
+                        </Button>
+                      )}
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => extractMutation.mutate(doc)}
-                      disabled={extracting}
+                      onClick={() => openDoc(doc)}
+                      disabled={openingId === doc.id}
                     >
-                      {extracting ? (
+                      {openingId === doc.id ? (
                         <Loader2 className="ml-1 h-4 w-4 animate-spin" />
                       ) : (
-                        <Sparkles className="ml-1 h-4 w-4" />
+                        <ExternalLink className="ml-1 h-4 w-4" />
                       )}
-                      استخراج اطلاعات از فیش
+                      مشاهده مستندات
                     </Button>
-                  )}
-                  {canManage
-                    && !isPosted
-                    && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review")
-                    && doc.extracted_data != null && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openApplyDialog(doc)}
-                    >
-                      <Wand2 className="ml-1 h-4 w-4" />
-                      اعمال اطلاعات استخراج‌شده روی فیش
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openDoc(doc)}
-                    disabled={openingId === doc.id}
-                  >
-                    {openingId === doc.id ? (
-                      <Loader2 className="ml-1 h-4 w-4 animate-spin" />
-                    ) : (
-                      <ExternalLink className="ml-1 h-4 w-4" />
+                    {canManage && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPendingDelete(doc)}
+                        aria-label="حذف مستند"
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     )}
-                    مشاهده مستندات
-                  </Button>
-                  {canManage && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setPendingDelete(doc)}
-                      aria-label="حذف مستند"
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
-              {extracted && (doc.extraction_status === "extracted" || doc.extraction_status === "needs_review") && (
-                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-muted/40 p-2 text-xs sm:grid-cols-3">
-                  <ExtractionField label="شماره پیگیری" value={extracted.tracking_number} />
-                  <ExtractionField label="مبلغ" value={extracted.amount != null ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال` : null} />
-                  <ExtractionField label="تاریخ" value={extracted.receipt_date ? toFaDigits(extracted.receipt_date) : null} />
-                  <ExtractionField label="ساعت" value={extracted.receipt_time ? toFaDigits(extracted.receipt_time) : null} />
-                  <ExtractionField label="بانک مبدا" value={extracted.source_bank} />
-                  <ExtractionField label="بانک مقصد" value={extracted.destination_bank} />
-                  <ExtractionField label="کانال انتقال" value={CHANNEL_LABELS[extracted.document_channel]} />
-                  <ExtractionField
-                    label="درصد اطمینان"
-                    value={doc.extraction_confidence != null ? `${toFaDigits(String(Math.round(doc.extraction_confidence * 100)))}٪` : null}
-                  />
-                  {doc.extraction_notes && (
-                    <div className="col-span-2 sm:col-span-3 mt-1 text-[11px] text-muted-foreground">
-                      یادداشت: {doc.extraction_notes}
+                {extracted &&
+                  (doc.extraction_status === "extracted" ||
+                    doc.extraction_status === "needs_review") && (
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-md bg-muted/40 p-2 text-xs sm:grid-cols-3">
+                      <ExtractionField label="شماره پیگیری" value={extracted.tracking_number} />
+                      <ExtractionField
+                        label="مبلغ"
+                        value={
+                          extracted.amount != null
+                            ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال`
+                            : null
+                        }
+                      />
+                      <ExtractionField
+                        label="تاریخ"
+                        value={extracted.receipt_date ? toFaDigits(extracted.receipt_date) : null}
+                      />
+                      <ExtractionField
+                        label="ساعت"
+                        value={extracted.receipt_time ? toFaDigits(extracted.receipt_time) : null}
+                      />
+                      <ExtractionField label="بانک مبدا" value={extracted.source_bank} />
+                      <ExtractionField label="بانک مقصد" value={extracted.destination_bank} />
+                      <ExtractionField
+                        label="کانال انتقال"
+                        value={CHANNEL_LABELS[extracted.document_channel]}
+                      />
+                      <ExtractionField
+                        label="درصد اطمینان"
+                        value={
+                          doc.extraction_confidence != null
+                            ? `${toFaDigits(String(Math.round(doc.extraction_confidence * 100)))}٪`
+                            : null
+                        }
+                      />
+                      {doc.extraction_notes && (
+                        <div className="col-span-2 sm:col-span-3 mt-1 text-[11px] text-muted-foreground">
+                          یادداشت: {doc.extraction_notes}
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
               </li>
             );
           })}
@@ -1086,7 +1177,12 @@ export function ReceiptDocumentsList({
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={applyDoc !== null} onOpenChange={(open) => { if (!open) setApplyDoc(null); }}>
+      <Dialog
+        open={applyDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setApplyDoc(null);
+        }}
+      >
         <DialogContent dir="rtl" className="max-w-lg">
           <DialogHeader>
             <DialogTitle>اعمال اطلاعات استخراج‌شده</DialogTitle>
@@ -1094,46 +1190,50 @@ export function ReceiptDocumentsList({
               این اطلاعات از روی مستندات استخراج شده و باید توسط حسابدار بررسی شود.
             </DialogDescription>
           </DialogHeader>
-          {applyDoc && (() => {
-            const ex = (applyDoc.extracted_data ?? null) as ReceiptExtractionResult | null;
-            if (!ex) return <p className="text-sm text-muted-foreground">داده‌ای برای اعمال وجود ندارد.</p>;
-            const keys = Object.keys(APPLY_FIELD_LABELS) as ApplyFieldKey[];
-            return (
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                {keys.map((key) => {
-                  const v = effectiveExtractedValue(key, ex);
-                  const disabled = v === undefined;
-                  const checked = applySelections[key];
-                  return (
-                    <label
-                      key={key}
-                      className={cn(
-                        "flex items-start gap-2 rounded-md border p-2 text-sm",
-                        disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
-                      )}
-                    >
-                      <Checkbox
-                        checked={checked}
-                        disabled={disabled}
-                        onCheckedChange={(c) =>
-                          setApplySelections((prev) => ({ ...prev, [key]: c === true }))
-                        }
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium">{APPLY_FIELD_LABELS[key]}</div>
-                        <div className="text-xs text-muted-foreground" dir="auto">
-                          {disabled
-                            ? "مقداری استخراج نشده یا قابل اعمال نیست"
-                            : displayValue(key, v)}
+          {applyDoc &&
+            (() => {
+              const ex = (applyDoc.extracted_data ?? null) as ReceiptExtractionResult | null;
+              if (!ex)
+                return (
+                  <p className="text-sm text-muted-foreground">داده‌ای برای اعمال وجود ندارد.</p>
+                );
+              const keys = Object.keys(APPLY_FIELD_LABELS) as ApplyFieldKey[];
+              return (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {keys.map((key) => {
+                    const v = effectiveExtractedValue(key, ex);
+                    const disabled = v === undefined;
+                    const checked = applySelections[key];
+                    return (
+                      <label
+                        key={key}
+                        className={cn(
+                          "flex items-start gap-2 rounded-md border p-2 text-sm",
+                          disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/40",
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          disabled={disabled}
+                          onCheckedChange={(c) =>
+                            setApplySelections((prev) => ({ ...prev, [key]: c === true }))
+                          }
+                          className="mt-0.5"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium">{APPLY_FIELD_LABELS[key]}</div>
+                          <div className="text-xs text-muted-foreground" dir="auto">
+                            {disabled
+                              ? "مقداری استخراج نشده یا قابل اعمال نیست"
+                              : displayValue(key, v)}
+                          </div>
                         </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           <DialogFooter className="gap-2">
             <Button
               type="button"

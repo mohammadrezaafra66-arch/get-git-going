@@ -30,7 +30,9 @@ import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesReal
 import { triggerPricingRecomputeQueue } from "@/lib/pricing/process-queue.functions";
 
 export const Route = createFileRoute("/_app/pricing/recompute-prices")({
-  beforeLoad: async () => { await requirePermission("pricing", "update"); },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "update");
+  },
   component: RecomputePricesPage,
 });
 
@@ -46,7 +48,7 @@ function RecomputePricesPage() {
   const { data: counts } = useQuery({
     queryKey: ["recompute-eligible-count", onlyAvailable],
     queryFn: async () => {
-      let qAll = supabase.from("products").select("id", { count: "exact", head: true });
+      const qAll = supabase.from("products").select("id", { count: "exact", head: true });
       let qElig = supabase.from("products").select("id", { count: "exact", head: true });
       if (onlyAvailable) {
         qElig = qElig.eq("status", "active").in("stock_status", ["available", "limited"]);
@@ -63,7 +65,9 @@ function RecomputePricesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_pricing_recompute_queue_summary")
-        .select("pending_count, processing_count, failed_count, done_count, oldest_pending_at, latest_error")
+        .select(
+          "pending_count, processing_count, failed_count, done_count, oldest_pending_at, latest_error",
+        )
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -119,7 +123,10 @@ function RecomputePricesPage() {
         },
       });
       setSummary({ written: res.total_prices_written, failed: res.total_failed });
-      toast.success(`${res.total_prices_written} قیمت ذخیره شد` + (res.total_failed ? ` — ${res.total_failed} خطا` : ""));
+      toast.success(
+        `${res.total_prices_written} قیمت ذخیره شد` +
+          (res.total_failed ? ` — ${res.total_failed} خطا` : ""),
+      );
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در اجرا");
     } finally {
@@ -146,7 +153,10 @@ function RecomputePricesPage() {
               </div>
               <div className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
-                آخرین بررسی: {queueLastFetchedAt ? new Date(queueLastFetchedAt).toLocaleTimeString("fa-IR") : "—"}
+                آخرین بررسی:{" "}
+                {queueLastFetchedAt
+                  ? new Date(queueLastFetchedAt).toLocaleTimeString("fa-IR")
+                  : "—"}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -155,7 +165,9 @@ function RecomputePricesPage() {
                   disabled={queueHealthQuery.isFetching}
                   aria-label="بروزرسانی وضعیت صف"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${queueHealthQuery.isFetching ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${queueHealthQuery.isFetching ? "animate-spin" : ""}`}
+                  />
                 </Button>
                 <Button
                   size="sm"
@@ -177,21 +189,31 @@ function RecomputePricesPage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <div className="rounded-md border bg-muted/40 p-2">
                 <div className="text-xs text-muted-foreground">در انتظار</div>
-                <div className="text-lg font-semibold">{formatNumber(Number(queueHealth.pending_count ?? 0))}</div>
+                <div className="text-lg font-semibold">
+                  {formatNumber(Number(queueHealth.pending_count ?? 0))}
+                </div>
               </div>
               <div className="rounded-md border bg-muted/40 p-2">
                 <div className="text-xs text-muted-foreground">در حال پردازش</div>
-                <div className="text-lg font-semibold">{formatNumber(Number(queueHealth.processing_count ?? 0))}</div>
+                <div className="text-lg font-semibold">
+                  {formatNumber(Number(queueHealth.processing_count ?? 0))}
+                </div>
               </div>
-              <div className={`rounded-md border p-2 ${Number(queueHealth.failed_count ?? 0) > 0 ? "border-destructive/40 bg-destructive/10" : "bg-muted/40"}`}>
+              <div
+                className={`rounded-md border p-2 ${Number(queueHealth.failed_count ?? 0) > 0 ? "border-destructive/40 bg-destructive/10" : "bg-muted/40"}`}
+              >
                 <div className="text-xs text-muted-foreground">ناموفق</div>
-                <div className={`text-lg font-semibold ${Number(queueHealth.failed_count ?? 0) > 0 ? "text-destructive" : ""}`}>
+                <div
+                  className={`text-lg font-semibold ${Number(queueHealth.failed_count ?? 0) > 0 ? "text-destructive" : ""}`}
+                >
                   {formatNumber(Number(queueHealth.failed_count ?? 0))}
                 </div>
               </div>
               <div className="rounded-md border bg-muted/40 p-2">
                 <div className="text-xs text-muted-foreground">انجام‌شده</div>
-                <div className="text-lg font-semibold text-emerald-600">{formatNumber(Number(queueHealth.done_count ?? 0))}</div>
+                <div className="text-lg font-semibold text-emerald-600">
+                  {formatNumber(Number(queueHealth.done_count ?? 0))}
+                </div>
               </div>
             </div>
             <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
@@ -211,7 +233,8 @@ function RecomputePricesPage() {
               ) : null}
             </div>
             <p className="text-xs text-muted-foreground">
-              قیمت‌ها پس از پردازش worker به‌صورت خودکار در صفحات مربوطه به‌روزرسانی می‌شوند. این کارت برای پایش سلامت صف است و دکمه‌های دستی محاسبه را جایگزین نمی‌کند.
+              قیمت‌ها پس از پردازش worker به‌صورت خودکار در صفحات مربوطه به‌روزرسانی می‌شوند. این
+              کارت برای پایش سلامت صف است و دکمه‌های دستی محاسبه را جایگزین نمی‌کند.
             </p>
           </CardContent>
         </Card>
@@ -233,13 +256,17 @@ function RecomputePricesPage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ListChecks className="h-4 w-4" />
-              واجد شرایط: <strong className="text-foreground">{formatNumber(counts?.eligible ?? 0)}</strong>
-              {" "}از کل{" "}
-              <strong className="text-foreground">{formatNumber(counts?.all ?? 0)}</strong>
+              واجد شرایط:{" "}
+              <strong className="text-foreground">{formatNumber(counts?.eligible ?? 0)}</strong> از
+              کل <strong className="text-foreground">{formatNumber(counts?.all ?? 0)}</strong>
             </div>
             <div className="ms-auto flex items-center gap-1">
               <Button onClick={handleRun} disabled={running}>
-                {running ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Sparkles className="ms-1 h-4 w-4" />}
+                {running ? (
+                  <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="ms-1 h-4 w-4" />
+                )}
                 شروع محاسبه و انتشار
               </Button>
               <Popover>
@@ -265,8 +292,14 @@ function RecomputePricesPage() {
                       <ul className="list-disc ps-5 space-y-1 text-muted-foreground">
                         <li>نرخ ارز تغییر کرده و باید قیمت چندین محصول به‌روزرسانی شود.</li>
                         <li>قوانین قیمت‌گذاری یا نوع قیمت‌های فروش تغییر کرده‌اند.</li>
-                        <li>بعد از import یا اصلاح گسترده محصولات/قیمت‌ها می‌خواهی قیمت‌ها دوباره منتشر شوند.</li>
-                        <li>بعد از migration یا راه‌اندازی اولیه لازم است قیمت‌ها برای فروش قابل مشاهده شوند.</li>
+                        <li>
+                          بعد از import یا اصلاح گسترده محصولات/قیمت‌ها می‌خواهی قیمت‌ها دوباره
+                          منتشر شوند.
+                        </li>
+                        <li>
+                          بعد از migration یا راه‌اندازی اولیه لازم است قیمت‌ها برای فروش قابل
+                          مشاهده شوند.
+                        </li>
                       </ul>
                     </div>
                     <div>
@@ -277,7 +310,8 @@ function RecomputePricesPage() {
                       </ul>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      برای تغییر قیمت خرید یک محصول، باید فقط همان محصول دوباره محاسبه شود؛ اجرای دسته‌ای ممکن است قیمت چندین محصول را هم‌زمان بازنویسی کند.
+                      برای تغییر قیمت خرید یک محصول، باید فقط همان محصول دوباره محاسبه شود؛ اجرای
+                      دسته‌ای ممکن است قیمت چندین محصول را هم‌زمان بازنویسی کند.
                     </p>
                   </div>
                 </PopoverContent>
@@ -327,12 +361,16 @@ function RecomputePricesPage() {
                         <td className="p-2 text-center text-emerald-600">{r.succeeded}</td>
                         <td className="p-2 text-center text-destructive">{r.failed}</td>
                         <td className="p-2 text-xs text-muted-foreground">
-                          {errs.length === 0 ? "—" : (
+                          {errs.length === 0 ? (
+                            "—"
+                          ) : (
                             <ul className="space-y-0.5">
                               {errs.map((e, j) => (
                                 <li key={j} className="flex items-start gap-1">
                                   <AlertCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-destructive" />
-                                  <span>{e.sale_price_type_title || "—"}: {e.error}</span>
+                                  <span>
+                                    {e.sale_price_type_title || "—"}: {e.error}
+                                  </span>
                                 </li>
                               ))}
                             </ul>

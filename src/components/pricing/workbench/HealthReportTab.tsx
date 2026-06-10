@@ -4,7 +4,14 @@ import { Loader2, Download, AlertTriangle, AlertCircle, AlertOctagon, Info } fro
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { fetchWorkbenchHealthReport, type WorkbenchRowV2 } from "@/lib/pricing/workbench-queries";
 import {
   isIncompleteProduct,
@@ -47,31 +54,42 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
   }, [rows]);
 
   const stats = useMemo(() => {
-    let noPrice = 0, inactive = 0, noOwner = 0, urgent = 0;
+    let noPrice = 0,
+      inactive = 0,
+      noOwner = 0,
+      urgent = 0;
     for (const r of rows) {
       const inp = toIssueInput(r);
       if (!hasValidSalePrice(r.sale_price)) noPrice++;
       if (r.status !== "active") inactive++;
       if (r.owners.length === 0) noOwner++;
-      if (
-        r.tags.length > 0 &&
-        getTaggedProductRiskPriority(inp) === "urgent"
-      ) urgent++;
+      if (r.tags.length > 0 && getTaggedProductRiskPriority(inp) === "urgent") urgent++;
     }
     return {
       totalIncomplete: incomplete.length,
-      noPrice, inactive, noOwner,
+      noPrice,
+      inactive,
+      noOwner,
       totalTaggedRisk: taggedRisk.length,
       urgent,
     };
   }, [rows, incomplete.length, taggedRisk.length]);
 
   const ownerBreakdown = useMemo(() => {
-    const map = new Map<string, {
-      ownerId: string; ownerName: string;
-      total: number; noPrice: number; inactive: number;
-      unavailable: number; noOwner: number; tagged: number; urgent: number;
-    }>();
+    const map = new Map<
+      string,
+      {
+        ownerId: string;
+        ownerName: string;
+        total: number;
+        noPrice: number;
+        inactive: number;
+        unavailable: number;
+        noOwner: number;
+        tagged: number;
+        urgent: number;
+      }
+    >();
     for (const r of rows) {
       const inp = toIssueInput(r);
       if (!isIncompleteProduct(inp) && !isTaggedRiskProduct(inp)) continue;
@@ -79,9 +97,15 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
       const key = owner?.user_id ?? "__none__";
       const name = owner?.full_name ?? (owner ? owner.user_id.slice(0, 8) : "بدون مسئول");
       const cur = map.get(key) ?? {
-        ownerId: key, ownerName: name,
-        total: 0, noPrice: 0, inactive: 0,
-        unavailable: 0, noOwner: 0, tagged: 0, urgent: 0,
+        ownerId: key,
+        ownerName: name,
+        total: 0,
+        noPrice: 0,
+        inactive: 0,
+        unavailable: 0,
+        noOwner: 0,
+        tagged: 0,
+        urgent: 0,
       };
       cur.total += 1;
       if (!hasValidSalePrice(r.sale_price)) cur.noPrice++;
@@ -118,7 +142,8 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
       {rows.length >= 2000 && (
         <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           <Info className="h-4 w-4" />
-          گزارش به ۲۰۰۰ محصول محدود شده است. برای dataset بزرگ‌تر، فیلتر یا view اختصاصی پیشنهاد می‌شود.
+          گزارش به ۲۰۰۰ محصول محدود شده است. برای dataset بزرگ‌تر، فیلتر یا view اختصاصی پیشنهاد
+          می‌شود.
         </div>
       )}
 
@@ -126,76 +151,103 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">محصولات ناقص / غیرقابل فروش</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => exportIncompleteCsv(incomplete)} disabled={incomplete.length === 0}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportIncompleteCsv(incomplete)}
+            disabled={incomplete.length === 0}
+          >
             <Download className="ms-1 h-3.5 w-3.5" /> خروجی CSV
           </Button>
         </CardHeader>
         <CardContent className="p-0">
           {incomplete.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">مورد مشکل‌داری پیدا نشد.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              مورد مشکل‌داری پیدا نشد.
+            </div>
           ) : (
             <>
-            {incomplete.length > 500 && (
-              <div className="px-4 pt-3 text-[11px] text-muted-foreground">
-                ۵۰۰ مورد اول از {formatNumber(incomplete.length)} مورد نمایش داده شده است. خروجی CSV شامل همه موارد است.
-              </div>
-            )}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-right">محصول</TableHead>
-                  <TableHead className="text-right">برند</TableHead>
-                  <TableHead className="text-right">دسته</TableHead>
-                  <TableHead className="text-right">نوع</TableHead>
-                  <TableHead className="text-right">موجودی</TableHead>
-                  <TableHead className="text-right">وضعیت</TableHead>
-                  <TableHead className="text-right">قیمت فروش</TableHead>
-                  <TableHead className="text-right">مسئول</TableHead>
-                  <TableHead className="text-right">علت مشکل</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {incomplete.slice(0, 500).map((r) => {
-                  const issues = getProductPricingIssues(toIssueInput(r));
-                  return (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">
-                        <div className="truncate">{r.name}</div>
-                        <div className="text-[10px] text-muted-foreground" dir="ltr">{r.sku ?? "—"}</div>
-                      </TableCell>
-                      <TableCell className="text-xs">{r.brand_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.parent_category_name ? `${r.parent_category_name} / ${r.category_name}` : (r.category_name ?? "—")}
-                      </TableCell>
-                      <TableCell className="text-xs">{r.product_type === "foreign" ? `ارزی (${r.base_currency})` : "تومانی"}</TableCell>
-                      <TableCell className="text-xs">{STOCK_LABEL[r.stock_status]}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.status === "active" ? (
-                          <Badge variant="outline" className="border-emerald-500 text-emerald-700">{PRODUCT_STATUS_LABEL.active}</Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-amber-500 text-amber-700">{PRODUCT_STATUS_LABEL[r.status]}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {hasValidSalePrice(r.sale_price) ? formatNumber(r.sale_price!) : (
-                          <Badge variant="destructive">بدون قیمت</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {r.owners.length === 0 ? (
-                          <Badge variant="destructive">بدون مسئول</Badge>
-                        ) : r.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {issues.map((c) => (
-                          <Badge key={c} variant="secondary" className="me-1">{ISSUE_LABEL[c]}</Badge>
-                        ))}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+              {incomplete.length > 500 && (
+                <div className="px-4 pt-3 text-[11px] text-muted-foreground">
+                  ۵۰۰ مورد اول از {formatNumber(incomplete.length)} مورد نمایش داده شده است. خروجی
+                  CSV شامل همه موارد است.
+                </div>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">محصول</TableHead>
+                    <TableHead className="text-right">برند</TableHead>
+                    <TableHead className="text-right">دسته</TableHead>
+                    <TableHead className="text-right">نوع</TableHead>
+                    <TableHead className="text-right">موجودی</TableHead>
+                    <TableHead className="text-right">وضعیت</TableHead>
+                    <TableHead className="text-right">قیمت فروش</TableHead>
+                    <TableHead className="text-right">مسئول</TableHead>
+                    <TableHead className="text-right">علت مشکل</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {incomplete.slice(0, 500).map((r) => {
+                    const issues = getProductPricingIssues(toIssueInput(r));
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">
+                          <div className="truncate">{r.name}</div>
+                          <div className="text-[10px] text-muted-foreground" dir="ltr">
+                            {r.sku ?? "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">{r.brand_name ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.parent_category_name
+                            ? `${r.parent_category_name} / ${r.category_name}`
+                            : (r.category_name ?? "—")}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.product_type === "foreign" ? `ارزی (${r.base_currency})` : "تومانی"}
+                        </TableCell>
+                        <TableCell className="text-xs">{STOCK_LABEL[r.stock_status]}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.status === "active" ? (
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-500 text-emerald-700"
+                            >
+                              {PRODUCT_STATUS_LABEL.active}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-amber-500 text-amber-700">
+                              {PRODUCT_STATUS_LABEL[r.status]}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {hasValidSalePrice(r.sale_price) ? (
+                            formatNumber(r.sale_price!)
+                          ) : (
+                            <Badge variant="destructive">بدون قیمت</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.owners.length === 0 ? (
+                            <Badge variant="destructive">بدون مسئول</Badge>
+                          ) : (
+                            r.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {issues.map((c) => (
+                            <Badge key={c} variant="secondary" className="me-1">
+                              {ISSUE_LABEL[c]}
+                            </Badge>
+                          ))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </>
           )}
         </CardContent>
@@ -205,78 +257,103 @@ export function HealthReportTab({ ownedOnly }: { ownedOnly: { userId: string } |
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">محصولات برچسب‌دار مشکل‌دار</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => exportTaggedRiskCsv(taggedRisk)} disabled={taggedRisk.length === 0}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportTaggedRiskCsv(taggedRisk)}
+            disabled={taggedRisk.length === 0}
+          >
             <Download className="ms-1 h-3.5 w-3.5" /> خروجی CSV
           </Button>
         </CardHeader>
         <CardContent className="p-0">
           {taggedRisk.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">مورد مشکل‌داری پیدا نشد.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              مورد مشکل‌داری پیدا نشد.
+            </div>
           ) : (
             <>
-            {taggedRisk.length > 500 && (
-              <div className="px-4 pt-3 text-[11px] text-muted-foreground">
-                ۵۰۰ مورد اول از {formatNumber(taggedRisk.length)} مورد نمایش داده شده است. خروجی CSV شامل همه موارد است.
-              </div>
-            )}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-right">اولویت</TableHead>
-                  <TableHead className="text-right">محصول</TableHead>
-                  <TableHead className="text-right">برند</TableHead>
-                  <TableHead className="text-right">دسته</TableHead>
-                  <TableHead className="text-right">برچسب‌ها</TableHead>
-                  <TableHead className="text-right">موجودی</TableHead>
-                  <TableHead className="text-right">قیمت فروش</TableHead>
-                  <TableHead className="text-right">مسئول</TableHead>
-                  <TableHead className="text-right">علت</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {taggedRisk.slice(0, 500).map((r) => {
-                  const inp = toIssueInput(r);
-                  const issues = getProductPricingIssues(inp);
-                  const priority = getTaggedProductRiskPriority(inp);
-                  return (
-                    <TableRow key={r.id}>
-                      <TableCell><PriorityBadge p={priority} /></TableCell>
-                      <TableCell className="font-medium">
-                        <div className="truncate">{r.name}</div>
-                        <div className="text-[10px] text-muted-foreground" dir="ltr">{r.sku ?? "—"}</div>
-                      </TableCell>
-                      <TableCell className="text-xs">{r.brand_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.parent_category_name ? `${r.parent_category_name} / ${r.category_name}` : (r.category_name ?? "—")}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <div className="flex flex-wrap gap-1">
-                          {r.tags.map((t) => (
-                            <Badge key={t.id} style={{ backgroundColor: t.color, color: "white" }}>{t.title}</Badge>
+              {taggedRisk.length > 500 && (
+                <div className="px-4 pt-3 text-[11px] text-muted-foreground">
+                  ۵۰۰ مورد اول از {formatNumber(taggedRisk.length)} مورد نمایش داده شده است. خروجی
+                  CSV شامل همه موارد است.
+                </div>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">اولویت</TableHead>
+                    <TableHead className="text-right">محصول</TableHead>
+                    <TableHead className="text-right">برند</TableHead>
+                    <TableHead className="text-right">دسته</TableHead>
+                    <TableHead className="text-right">برچسب‌ها</TableHead>
+                    <TableHead className="text-right">موجودی</TableHead>
+                    <TableHead className="text-right">قیمت فروش</TableHead>
+                    <TableHead className="text-right">مسئول</TableHead>
+                    <TableHead className="text-right">علت</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taggedRisk.slice(0, 500).map((r) => {
+                    const inp = toIssueInput(r);
+                    const issues = getProductPricingIssues(inp);
+                    const priority = getTaggedProductRiskPriority(inp);
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell>
+                          <PriorityBadge p={priority} />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div className="truncate">{r.name}</div>
+                          <div className="text-[10px] text-muted-foreground" dir="ltr">
+                            {r.sku ?? "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">{r.brand_name ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {r.parent_category_name
+                            ? `${r.parent_category_name} / ${r.category_name}`
+                            : (r.category_name ?? "—")}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {r.tags.map((t) => (
+                              <Badge
+                                key={t.id}
+                                style={{ backgroundColor: t.color, color: "white" }}
+                              >
+                                {t.title}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">{STOCK_LABEL[r.stock_status]}</TableCell>
+                        <TableCell className="text-xs">
+                          {hasValidSalePrice(r.sale_price) ? (
+                            formatNumber(r.sale_price!)
+                          ) : (
+                            <Badge variant="destructive">بدون قیمت</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.owners.length === 0 ? (
+                            <Badge variant="destructive">بدون مسئول</Badge>
+                          ) : (
+                            r.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {issues.map((c) => (
+                            <Badge key={c} variant="secondary" className="me-1">
+                              {ISSUE_LABEL[c]}
+                            </Badge>
                           ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs">{STOCK_LABEL[r.stock_status]}</TableCell>
-                      <TableCell className="text-xs">
-                        {hasValidSalePrice(r.sale_price) ? formatNumber(r.sale_price!) : (
-                          <Badge variant="destructive">بدون قیمت</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {r.owners.length === 0 ? (
-                          <Badge variant="destructive">بدون مسئول</Badge>
-                        ) : r.owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {issues.map((c) => (
-                          <Badge key={c} variant="secondary" className="me-1">{ISSUE_LABEL[c]}</Badge>
-                        ))}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </>
           )}
         </CardContent>
@@ -332,11 +409,21 @@ function toIssueInput(r: WorkbenchRowV2) {
   };
 }
 
-function StatCard({ label, value, tone }: { label: string; value: number; tone: "warn" | "danger" | "muted" }) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "warn" | "danger" | "muted";
+}) {
   const cls =
-    tone === "danger" ? "border-destructive/40 bg-destructive/5" :
-    tone === "warn" ? "border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/20" :
-    "border-border";
+    tone === "danger"
+      ? "border-destructive/40 bg-destructive/5"
+      : tone === "warn"
+        ? "border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/20"
+        : "border-border";
   return (
     <Card className={cls}>
       <CardContent className="p-3">
@@ -348,8 +435,31 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone: 
 }
 
 function PriorityBadge({ p }: { p: RiskPriority }) {
-  if (p === "urgent") return <Badge className="gap-1 bg-destructive text-destructive-foreground"><AlertOctagon className="h-3 w-3" />{PRIORITY_LABEL.urgent}</Badge>;
-  if (p === "high") return <Badge className="gap-1 bg-amber-600 text-white"><AlertTriangle className="h-3 w-3" />{PRIORITY_LABEL.high}</Badge>;
-  if (p === "medium") return <Badge variant="secondary" className="gap-1"><AlertCircle className="h-3 w-3" />{PRIORITY_LABEL.medium}</Badge>;
-  return <Badge variant="outline" className="gap-1"><Info className="h-3 w-3" />{PRIORITY_LABEL.low}</Badge>;
+  if (p === "urgent")
+    return (
+      <Badge className="gap-1 bg-destructive text-destructive-foreground">
+        <AlertOctagon className="h-3 w-3" />
+        {PRIORITY_LABEL.urgent}
+      </Badge>
+    );
+  if (p === "high")
+    return (
+      <Badge className="gap-1 bg-amber-600 text-white">
+        <AlertTriangle className="h-3 w-3" />
+        {PRIORITY_LABEL.high}
+      </Badge>
+    );
+  if (p === "medium")
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <AlertCircle className="h-3 w-3" />
+        {PRIORITY_LABEL.medium}
+      </Badge>
+    );
+  return (
+    <Badge variant="outline" className="gap-1">
+      <Info className="h-3 w-3" />
+      {PRIORITY_LABEL.low}
+    </Badge>
+  );
 }

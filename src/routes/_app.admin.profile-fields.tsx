@@ -11,18 +11,33 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Pencil } from "lucide-react";
-import type { ProfileFieldDefinition, ProfileFieldType, ProfileFieldOption } from "@/lib/profile-fields/types";
+import type {
+  ProfileFieldDefinition,
+  ProfileFieldType,
+  ProfileFieldOption,
+} from "@/lib/profile-fields/types";
 
 export const Route = createFileRoute("/_app/admin/profile-fields")({
-  beforeLoad: async () => { await requireAdmin(); },
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
   component: ProfileFieldsAdminPage,
 });
 
@@ -135,7 +150,9 @@ function ProfileFieldsAdminPage() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
           ) : fields.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">فیلدی تعریف نشده.</div>
           ) : (
@@ -156,8 +173,12 @@ function ProfileFieldsAdminPage() {
                   {fields.map((f) => (
                     <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-medium">{f.label}</td>
-                      <td className="p-3 font-mono text-xs" dir="ltr">{f.name}</td>
-                      <td className="p-3"><Badge variant="outline">{TYPE_LABELS[f.field_type]}</Badge></td>
+                      <td className="p-3 font-mono text-xs" dir="ltr">
+                        {f.name}
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="outline">{TYPE_LABELS[f.field_type]}</Badge>
+                      </td>
                       <td className="p-3 text-center">{f.is_required ? "بله" : "—"}</td>
                       <td className="p-3 text-center">
                         <Switch
@@ -173,7 +194,14 @@ function ProfileFieldsAdminPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => { setEditing(f); setOpenForm(true); }}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditing(f);
+                              setOpenForm(true);
+                            }}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button
@@ -238,9 +266,10 @@ function FieldFormDialog({
           .filter(Boolean)
           .map((line) => {
             const [value, ...rest] = line.split("|");
-            return { value: value.trim(), label: (rest.join("|").trim() || value.trim()) };
+            return { value: value.trim(), label: rest.join("|").trim() || value.trim() };
           });
-        if (parsedOptions.length === 0) throw new Error("برای نوع انتخابی، حداقل یک گزینه لازم است");
+        if (parsedOptions.length === 0)
+          throw new Error("برای نوع انتخابی، حداقل یک گزینه لازم است");
       }
 
       const payload = {
@@ -261,9 +290,7 @@ function FieldFormDialog({
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("profile_field_definitions")
-          .insert(payload as never);
+        const { error } = await supabase.from("profile_field_definitions").insert(payload as never);
         if (error) throw error;
       }
     },
@@ -297,7 +324,9 @@ function FieldFormDialog({
             />
           </div>
           <div>
-            <Label>برچسب فارسی <span className="text-destructive">*</span></Label>
+            <Label>
+              برچسب فارسی <span className="text-destructive">*</span>
+            </Label>
             <Input
               value={form.label}
               onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
@@ -312,10 +341,14 @@ function FieldFormDialog({
               value={form.field_type}
               onValueChange={(v) => setForm((s) => ({ ...s, field_type: v as ProfileFieldType }))}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {Object.entries(TYPE_LABELS).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
+                  <SelectItem key={v} value={v}>
+                    {l}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -332,7 +365,9 @@ function FieldFormDialog({
         </div>
         {showOptions && (
           <div>
-            <Label>گزینه‌ها (هر خط: <code dir="ltr">value|label</code>)</Label>
+            <Label>
+              گزینه‌ها (هر خط: <code dir="ltr">value|label</code>)
+            </Label>
             <Textarea
               dir="ltr"
               rows={5}
@@ -367,7 +402,9 @@ function FieldFormDialog({
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>انصراف</Button>
+        <Button variant="outline" onClick={onClose}>
+          انصراف
+        </Button>
         <Button onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending && <Loader2 className="ml-1 h-4 w-4 animate-spin" />}
           {editing ? "ذخیره" : "افزودن"}

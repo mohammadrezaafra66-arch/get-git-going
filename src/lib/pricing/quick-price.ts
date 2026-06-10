@@ -44,7 +44,9 @@ const fmt = (n: number) => n.toLocaleString("en-US");
  * محاسبه قیمت سریع برای کالای خارج از لیست.
  * هیچ snapshot، history یا product رسمی ساخته نمی‌شود.
  */
-export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<QuickPriceBreakdown> {
+export async function calculateQuickSalePrice(
+  input: QuickPriceInput,
+): Promise<QuickPriceBreakdown> {
   if (!input.purchase_price || input.purchase_price <= 0) {
     throw new PricingError("INVALID_PURCHASE_PRICE", "قیمت خرید باید عددی بزرگ‌تر از صفر باشد.");
   }
@@ -62,7 +64,8 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
   let currency_rate = 1;
   if (input.currency !== "toman") {
     const rate = await fetchLatestCurrencyRate(input.currency);
-    if (!rate) throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
+    if (!rate)
+      throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
     currency_rate = Number(rate.rate_to_toman);
   }
   const input_purchase_price = Number(input.purchase_price);
@@ -71,7 +74,9 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
   // 2) pricing rule
   const { data: rules, error: rulesErr } = await supabase
     .from("pricing_rules")
-    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active")
+    .select(
+      "id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active",
+    )
     .eq("is_active", true)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: false })
@@ -90,13 +95,22 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
       if (r.category_id !== input.category_id) return false;
     }
     // brand_id در ابزار محاسبه سریع نادیده گرفته می‌شود
-    if (r.min_purchase_price_toman != null && purchase_price_toman < Number(r.min_purchase_price_toman)) return false;
-    if (r.max_purchase_price_toman != null && purchase_price_toman > Number(r.max_purchase_price_toman)) return false;
+    if (
+      r.min_purchase_price_toman != null &&
+      purchase_price_toman < Number(r.min_purchase_price_toman)
+    )
+      return false;
+    if (
+      r.max_purchase_price_toman != null &&
+      purchase_price_toman > Number(r.max_purchase_price_toman)
+    )
+      return false;
     if (!r.margin_type || r.margin_value == null) return false;
     return true;
   });
 
-  if (!matchedRule) throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این ورودی پیدا نشد.");
+  if (!matchedRule)
+    throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این ورودی پیدا نشد.");
   const m = matchedRule as any;
 
   // 3) shipping
@@ -111,7 +125,9 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
     // اولویت تطبیق: محصول > دسته > برند > نوع کالا
     const { data: shippingRows, error: shippingErr } = await supabase
       .from("shipping_cost_rules")
-      .select("id, title, cost_type, cost_value, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
+      .select(
+        "id, title, cost_type, cost_value, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority",
+      )
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("priority", { ascending: true })
@@ -127,8 +143,10 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
       // quick-price ورودی برند ندارد؛ قوانین مخصوص یک برند خاص نادیده گرفته می‌شوند
       if (s.brand_id) return false;
       if (s.product_type && s.product_type !== input.product_type) return false;
-      if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
-      if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price)) return false;
+      if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
+        return false;
+      if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
+        return false;
       return true;
     });
     const specificity = (s: any): number =>
@@ -138,7 +156,7 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
     if (sRule) {
       shipping_rule_used = { id: sRule.id, title: sRule.title };
       if (sRule.cost_type === "percent") {
-        shipping_cost = Math.round(purchase_price_toman * Number(sRule.cost_value) / 100);
+        shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
       } else if (sRule.cost_type === "currency") {
         // قوانین ارزی نیازمند نرخ ارز هستند و در quick-price (بدون product) صرفاً نادیده می‌گیریم
         shipping_cost = 0;
@@ -158,7 +176,9 @@ export async function calculateQuickSalePrice(input: QuickPriceInput): Promise<Q
   } else if (m.margin_type === "percent") {
     margin_amount = Math.round((purchase_price_toman * margin_value) / 100);
   } else {
-    margin_amount = Math.round((purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0));
+    margin_amount = Math.round(
+      (purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0),
+    );
   }
 
   // 5) final + round

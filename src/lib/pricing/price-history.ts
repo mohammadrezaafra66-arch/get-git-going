@@ -38,7 +38,10 @@ export const RANGE_LABEL: Record<PriceRangeKey, string> = {
  * محاسبه درصد تغییر بین قیمت فعلی و قبلی.
  * - اگر previous نباشد یا صفر باشد، null برمی‌گرداند.
  */
-export function computeChangePercent(current: number | null, previous: number | null): number | null {
+export function computeChangePercent(
+  current: number | null,
+  previous: number | null,
+): number | null {
   if (current === null || previous === null) return null;
   if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
   if (previous === 0) return null;
@@ -176,7 +179,14 @@ export async function fetchLatestPriceChange(opts: {
 }): Promise<PriceChangeInfo> {
   const { productId, salePriceTypeId } = opts;
   if (!productId || !salePriceTypeId) {
-    return { current_price: null, previous_price: null, change_amount: null, change_percent: null, direction: "none", last_updated_at: null };
+    return {
+      current_price: null,
+      previous_price: null,
+      change_amount: null,
+      change_percent: null,
+      direction: "none",
+      last_updated_at: null,
+    };
   }
   const { data, error } = await supabase
     .from("product_sale_price_history")
@@ -189,17 +199,34 @@ export async function fetchLatestPriceChange(opts: {
 
   const rows = data ?? [];
   if (rows.length === 0) {
-    return { current_price: null, previous_price: null, change_amount: null, change_percent: null, direction: "none", last_updated_at: null };
+    return {
+      current_price: null,
+      previous_price: null,
+      change_amount: null,
+      change_percent: null,
+      direction: "none",
+      last_updated_at: null,
+    };
   }
   const latest = rows[0];
   const prev = rows[1] ?? null;
 
   const current = Number(latest.new_sale_price);
-  const previous = prev ? Number(prev.new_sale_price) : (latest.old_sale_price !== null ? Number(latest.old_sale_price) : null);
-  const change_amount = previous !== null ? current - previous : (latest.change_amount !== null ? Number(latest.change_amount) : null);
-  const change_percent = latest.change_percent !== null
-    ? Number(latest.change_percent)
-    : computeChangePercent(current, previous);
+  const previous = prev
+    ? Number(prev.new_sale_price)
+    : latest.old_sale_price !== null
+      ? Number(latest.old_sale_price)
+      : null;
+  const change_amount =
+    previous !== null
+      ? current - previous
+      : latest.change_amount !== null
+        ? Number(latest.change_amount)
+        : null;
+  const change_percent =
+    latest.change_percent !== null
+      ? Number(latest.change_percent)
+      : computeChangePercent(current, previous);
 
   return {
     current_price: current,

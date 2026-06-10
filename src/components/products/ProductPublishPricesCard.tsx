@@ -17,21 +17,30 @@ interface Props {
 
 export function ProductPublishPricesCard({ productId }: Props) {
   const { roles } = useAuth();
-  const canPrice = hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
+  const canPrice =
+    hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
   const queryClient = useQueryClient();
   const [running, setRunning] = useState(false);
   const [lastResult, setLastResult] = useState<PublishProductResult | null>(null);
 
-  const { data: prices, isLoading, refetch } = useQuery({
+  const {
+    data: prices,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["product-computed-prices", productId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_computed_prices")
-        .select("rounded_sale_price, computed_at, source, sale_price_type:sale_price_types(id, title, sort_order)")
+        .select(
+          "rounded_sale_price, computed_at, source, sale_price_type:sale_price_types(id, title, sort_order)",
+        )
         .eq("product_id", productId);
       if (error) throw error;
       const rows = (data ?? []) as any[];
-      rows.sort((a, b) => (a.sale_price_type?.sort_order ?? 0) - (b.sale_price_type?.sort_order ?? 0));
+      rows.sort(
+        (a, b) => (a.sale_price_type?.sort_order ?? 0) - (b.sale_price_type?.sort_order ?? 0),
+      );
       return rows;
     },
   });
@@ -43,7 +52,9 @@ export function ProductPublishPricesCard({ productId }: Props) {
       const r = await publishProductPrices({ productId });
       setLastResult(r);
       if (r.succeeded > 0) {
-        toast.success(`${r.succeeded} قیمت فروش محاسبه و ذخیره شد` + (r.failed > 0 ? ` — ${r.failed} خطا` : ""));
+        toast.success(
+          `${r.succeeded} قیمت فروش محاسبه و ذخیره شد` + (r.failed > 0 ? ` — ${r.failed} خطا` : ""),
+        );
       } else {
         toast.error(`هیچ قیمتی محاسبه نشد — ${r.failed} خطا`);
       }
@@ -72,7 +83,11 @@ export function ProductPublishPricesCard({ productId }: Props) {
           </div>
           {canPrice && (
             <Button size="sm" onClick={handleRun} disabled={running}>
-              {running ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Sparkles className="ms-1 h-4 w-4" />}
+              {running ? (
+                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="ms-1 h-4 w-4" />
+              )}
               محاسبه و انتشار قیمت‌ها
             </Button>
           )}
@@ -87,14 +102,20 @@ export function ProductPublishPricesCard({ productId }: Props) {
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             {(prices ?? []).map((row: any) => (
-              <div key={row.sale_price_type?.id} className="flex items-center justify-between rounded-md border border-border bg-background p-2 text-sm">
+              <div
+                key={row.sale_price_type?.id}
+                className="flex items-center justify-between rounded-md border border-border bg-background p-2 text-sm"
+              >
                 <div className="min-w-0">
                   <div className="truncate font-medium">{row.sale_price_type?.title ?? "—"}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {formatDateTimeFa(row.computed_at)}{row.source ? ` · ${row.source}` : ""}
+                    {formatDateTimeFa(row.computed_at)}
+                    {row.source ? ` · ${row.source}` : ""}
                   </div>
                 </div>
-                <div className="font-bold tabular-nums">{formatNumber(Number(row.rounded_sale_price))} ت</div>
+                <div className="font-bold tabular-nums">
+                  {formatNumber(Number(row.rounded_sale_price))} ت
+                </div>
               </div>
             ))}
           </div>
@@ -104,7 +125,8 @@ export function ProductPublishPricesCard({ productId }: Props) {
           <div className="space-y-1 rounded-md border border-border p-2 text-xs">
             <div className="flex items-center gap-2 font-medium">
               <RefreshCw className="h-3.5 w-3.5" />
-              نتیجه آخرین اجرا: {lastResult.succeeded} موفق / {lastResult.failed} خطا از {lastResult.total_types}
+              نتیجه آخرین اجرا: {lastResult.succeeded} موفق / {lastResult.failed} خطا از{" "}
+              {lastResult.total_types}
             </div>
             <ul className="space-y-1">
               {lastResult.results.map((r) => (
@@ -120,9 +142,13 @@ export function ProductPublishPricesCard({ productId }: Props) {
                       <>
                         {formatNumber(Number(r.new_price ?? 0))} ت{" "}
                         {r.changed ? (
-                          <Badge variant="secondary" className="ms-1 text-[10px]">به‌روزرسانی شد</Badge>
+                          <Badge variant="secondary" className="ms-1 text-[10px]">
+                            به‌روزرسانی شد
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="ms-1 text-[10px]">بدون تغییر</Badge>
+                          <Badge variant="outline" className="ms-1 text-[10px]">
+                            بدون تغییر
+                          </Badge>
                         )}
                       </>
                     ) : (

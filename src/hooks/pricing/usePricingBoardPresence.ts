@@ -1,10 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import {
-  startOrUpdateSession,
-  heartbeatSession,
-  endSession,
-} from "@/lib/pricing/board-presence";
+import { startOrUpdateSession, heartbeatSession, endSession } from "@/lib/pricing/board-presence";
 
 const HEARTBEAT_MS = 30_000;
 

@@ -9,7 +9,9 @@ import type { ProductFormValues } from "@/lib/products/schemas";
 import { saveProductDynamicValues } from "@/lib/products/category-attrs";
 
 export const Route = createFileRoute("/_app/products/new")({
-  beforeLoad: async () => { await requirePermission("products", "create"); },
+  beforeLoad: async () => {
+    await requirePermission("products", "create");
+  },
   component: NewProductPage,
 });
 

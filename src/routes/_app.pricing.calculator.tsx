@@ -1,14 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calculator, Save, Search, Loader2, AlertCircle, CheckCircle2, PackageX } from "lucide-react";
+import {
+  Calculator,
+  Save,
+  Search,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  PackageX,
+} from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +33,9 @@ import { CURRENCY_LABELS, MARGIN_TYPE_LABELS } from "@/lib/pricing/constants";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/calculator")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
   component: CalculatorPage,
 });
 
@@ -62,10 +78,7 @@ function CalculatorPage() {
       const list = await searchProducts(debouncedQuery, 10);
       if (!list.length) return list;
       const ids = list.map((p: any) => p.id);
-      const { data } = await supabase
-        .from("products")
-        .select("id, stock_status")
-        .in("id", ids);
+      const { data } = await supabase.from("products").select("id, stock_status").in("id", ids);
       const map = new Map((data ?? []).map((r: any) => [r.id, r.stock_status]));
       return list.map((p: any) => ({ ...p, stock_status: map.get(p.id) ?? null }));
     },
@@ -144,7 +157,7 @@ function CalculatorPage() {
         toast.success(
           result.history_id
             ? "نتیجه محاسبه و تغییر قیمت ثبت شد."
-            : "نتیجه محاسبه ثبت شد (قیمت تغییری نداشت)."
+            : "نتیجه محاسبه ثبت شد (قیمت تغییری نداشت).",
         );
       } else {
         toast.success("محاسبه با موفقیت انجام شد.");
@@ -234,7 +247,10 @@ function CalculatorPage() {
                   {selectedProduct.stock_status === "unavailable" && (
                     <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
                       <PackageX className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                      <span>این محصول ناموجود است و قیمت محاسبه‌شده قابل فروش نیست (فقط برای بررسی داخلی).</span>
+                      <span>
+                        این محصول ناموجود است و قیمت محاسبه‌شده قابل فروش نیست (فقط برای بررسی
+                        داخلی).
+                      </span>
                     </div>
                   )}
                 </div>
@@ -245,10 +261,14 @@ function CalculatorPage() {
               <div className="space-y-2">
                 <Label>نوع قیمت فروش</Label>
                 <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
-                  <SelectTrigger><SelectValue placeholder="انتخاب کنید" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
                   <SelectContent>
                     {salePriceTypes.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -257,11 +277,15 @@ function CalculatorPage() {
               <div className="space-y-2">
                 <Label>نوع تسویه (اختیاری)</Label>
                 <Select value={settlementTypeId} onValueChange={setSettlementTypeId}>
-                  <SelectTrigger><SelectValue placeholder="بدون تسویه" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="بدون تسویه" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">بدون تسویه (فقط قوانین عمومی)</SelectItem>
                     {settlementTypes.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -275,12 +299,16 @@ function CalculatorPage() {
                 onValueChange={setPurchasePriceId}
                 disabled={!selectedProduct}
               >
-                <SelectTrigger><SelectValue placeholder="آخرین قیمت خرید فعال" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="آخرین قیمت خرید فعال" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__latest__">آخرین قیمت خرید فعال (پیش‌فرض)</SelectItem>
                   {productPurchases.map((p: any) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {formatNumber(Number(p.purchase_price))} {CURRENCY_LABELS[p.currency as keyof typeof CURRENCY_LABELS]} — {formatDateTimeFa(p.effective_at)}
+                      {formatNumber(Number(p.purchase_price))}{" "}
+                      {CURRENCY_LABELS[p.currency as keyof typeof CURRENCY_LABELS]} —{" "}
+                      {formatDateTimeFa(p.effective_at)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -293,7 +321,11 @@ function CalculatorPage() {
                 disabled={calculating || saving || !selectedProduct}
                 className="flex-1"
               >
-                {calculating ? <Loader2 className="ms-2 h-4 w-4 animate-spin" /> : <Calculator className="ms-2 h-4 w-4" />}
+                {calculating ? (
+                  <Loader2 className="ms-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Calculator className="ms-2 h-4 w-4" />
+                )}
                 محاسبه قیمت
               </Button>
               <Button
@@ -302,7 +334,11 @@ function CalculatorPage() {
                 variant="secondary"
                 className="flex-1"
               >
-                {saving ? <Loader2 className="ms-2 h-4 w-4 animate-spin" /> : <Save className="ms-2 h-4 w-4" />}
+                {saving ? (
+                  <Loader2 className="ms-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="ms-2 h-4 w-4" />
+                )}
                 ثبت نتیجه محاسبه
               </Button>
             </div>
@@ -328,20 +364,29 @@ function CalculatorPage() {
             {!breakdown ? (
               <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                 <Calculator className="h-10 w-10 opacity-50" />
-                <p className="text-sm">پس از انتخاب محصول و کلیک روی «محاسبه قیمت»، تفکیک محاسبه اینجا نمایش داده می‌شود.</p>
+                <p className="text-sm">
+                  پس از انتخاب محصول و کلیک روی «محاسبه قیمت»، تفکیک محاسبه اینجا نمایش داده می‌شود.
+                </p>
               </div>
             ) : (
-              <div className={`space-y-4 ${selectedProduct?.stock_status === "unavailable" ? "opacity-90" : ""}`}>
+              <div
+                className={`space-y-4 ${selectedProduct?.stock_status === "unavailable" ? "opacity-90" : ""}`}
+              >
                 {selectedProduct?.stock_status === "unavailable" && (
                   <div className="flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-400">
                     <PackageX className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                    <span>این محصول ناموجود است و قیمت نمایش‌داده‌شده قابل فروش نیست — صرفاً برای تحلیل داخلی.</span>
+                    <span>
+                      این محصول ناموجود است و قیمت نمایش‌داده‌شده قابل فروش نیست — صرفاً برای تحلیل
+                      داخلی.
+                    </span>
                   </div>
                 )}
                 <div>
                   <div className="text-xs text-muted-foreground">محصول</div>
                   <div className="font-semibold text-foreground">{breakdown.product_name}</div>
-                  <div className="text-xs text-muted-foreground">SKU: {breakdown.product_sku ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    SKU: {breakdown.product_sku ?? "—"}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -353,26 +398,49 @@ function CalculatorPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3 text-sm">
-                  <Row label="قیمت خرید" value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`} />
+                  <Row
+                    label="قیمت خرید"
+                    value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`}
+                  />
                   <Row label="نرخ ارز" value={formatNumber(breakdown.currency_rate)} />
-                  <Row label="قیمت خرید (تومان)" value={`${formatNumber(breakdown.purchase_price_toman)} ت`} />
-                  <Row label="هزینه حمل" value={breakdown.shipping_rule ? `${formatNumber(breakdown.shipping_cost)} ت (${breakdown.shipping_rule.title})` : `${formatNumber(breakdown.shipping_cost)} ت`} />
-                  <Row label="سود محاسبه‌شده" value={`${formatNumber(breakdown.margin_amount)} ت`} />
-                  <Row label="قیمت قبل از گرد کردن" value={`${formatNumber(breakdown.final_sale_price)} ت`} />
+                  <Row
+                    label="قیمت خرید (تومان)"
+                    value={`${formatNumber(breakdown.purchase_price_toman)} ت`}
+                  />
+                  <Row
+                    label="هزینه حمل"
+                    value={
+                      breakdown.shipping_rule
+                        ? `${formatNumber(breakdown.shipping_cost)} ت (${breakdown.shipping_rule.title})`
+                        : `${formatNumber(breakdown.shipping_cost)} ت`
+                    }
+                  />
+                  <Row
+                    label="سود محاسبه‌شده"
+                    value={`${formatNumber(breakdown.margin_amount)} ت`}
+                  />
+                  <Row
+                    label="قیمت قبل از گرد کردن"
+                    value={`${formatNumber(breakdown.final_sale_price)} ت`}
+                  />
                 </div>
 
                 {selectedProduct?.stock_status === "unavailable" ? (
                   <div className="rounded-md border-2 border-dashed border-amber-500/60 bg-amber-500/5 p-3 text-center">
-                    <div className="text-xs text-amber-700 dark:text-amber-400">قیمت محاسبه‌شده (داخلی — غیرقابل فروش)</div>
+                    <div className="text-xs text-amber-700 dark:text-amber-400">
+                      قیمت محاسبه‌شده (داخلی — غیرقابل فروش)
+                    </div>
                     <div className="mt-1 text-2xl font-bold text-amber-700 line-through decoration-amber-500/70 dark:text-amber-400">
-                      {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                      {formatNumber(breakdown.rounded_sale_price)}{" "}
+                      <span className="text-base font-medium">تومان</span>
                     </div>
                   </div>
                 ) : (
                   <div className="rounded-md border-2 border-primary bg-primary/5 p-3 text-center">
                     <div className="text-xs text-muted-foreground">قیمت نهایی فروش (گرد شده)</div>
                     <div className="mt-1 text-2xl font-bold text-primary">
-                      {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                      {formatNumber(breakdown.rounded_sale_price)}{" "}
+                      <span className="text-base font-medium">تومان</span>
                     </div>
                   </div>
                 )}
@@ -402,8 +470,26 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function StockBadge({ status }: { status: ProductLite["stock_status"] }) {
   if (!status) return null;
-  if (status === "available") return <Badge variant="outline" className="border-emerald-500/50 text-emerald-700 dark:text-emerald-400">موجود</Badge>;
-  if (status === "limited") return <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">موجودی محدود</Badge>;
-  if (status === "unavailable") return <Badge variant="outline" className="border-destructive/60 text-destructive">ناموجود</Badge>;
+  if (status === "available")
+    return (
+      <Badge
+        variant="outline"
+        className="border-emerald-500/50 text-emerald-700 dark:text-emerald-400"
+      >
+        موجود
+      </Badge>
+    );
+  if (status === "limited")
+    return (
+      <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">
+        موجودی محدود
+      </Badge>
+    );
+  if (status === "unavailable")
+    return (
+      <Badge variant="outline" className="border-destructive/60 text-destructive">
+        ناموجود
+      </Badge>
+    );
   return <Badge variant="outline">نامشخص</Badge>;
 }

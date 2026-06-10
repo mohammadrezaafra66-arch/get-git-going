@@ -18,10 +18,7 @@ import {
   tomanToUsd,
   type PriceRangeKey,
 } from "@/lib/pricing/price-history";
-import {
-  useLatestUsdRate,
-  useProductPriceHistory,
-} from "@/hooks/pricing/useProductPriceHistory";
+import { useLatestUsdRate, useProductPriceHistory } from "@/hooks/pricing/useProductPriceHistory";
 import { useProductPriceHistoryRealtime } from "@/hooks/pricing/useProductPriceHistoryRealtime";
 
 const ProductPriceChart = lazy(() => import("./ProductPriceChart"));
@@ -84,7 +81,8 @@ export function ProductPriceHistoryDrawer({
 
   const usdRate = usdRateQuery.data?.rate ?? null;
   const usdMissing = mode === "usd" && !usdRateQuery.isLoading && !usdRate;
-  const currentUsd = mode === "usd" && summary?.current ? tomanToUsd(summary.current, usdRate) : null;
+  const currentUsd =
+    mode === "usd" && summary?.current ? tomanToUsd(summary.current, usdRate) : null;
 
   const isLoading = historyQuery.isLoading || (mode === "usd" && usdRateQuery.isLoading);
 
@@ -106,7 +104,8 @@ export function ProductPriceHistoryDrawer({
             )}
           </SheetTitle>
           <SheetDescription>
-            بر اساس نوع قیمت: <span className="font-medium text-foreground">{salePriceTypeTitle ?? "—"}</span>
+            بر اساس نوع قیمت:{" "}
+            <span className="font-medium text-foreground">{salePriceTypeTitle ?? "—"}</span>
           </SheetDescription>
         </SheetHeader>
 
@@ -235,24 +234,29 @@ export function ProductPriceHistoryDrawer({
                   آخرین تغییرات ({formatNumber(Math.min(data.length, 8))} ردیف)
                 </div>
                 <ul className="divide-y divide-border text-sm">
-                  {[...data].reverse().slice(0, 8).map((d) => {
-                    const dir = computeDirection(d.change_amount);
-                    return (
-                      <li key={d.id} className="flex items-center justify-between py-1.5">
-                        <div>
-                          <div className="font-medium">{formatNumber(d.new_sale_price)} ت</div>
-                          <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(d.created_at)}</div>
-                        </div>
-                        <PriceChangeBadge
-                          info={{
-                            change_amount: d.change_amount,
-                            change_percent: d.change_percent,
-                            direction: dir,
-                          }}
-                        />
-                      </li>
-                    );
-                  })}
+                  {[...data]
+                    .reverse()
+                    .slice(0, 8)
+                    .map((d) => {
+                      const dir = computeDirection(d.change_amount);
+                      return (
+                        <li key={d.id} className="flex items-center justify-between py-1.5">
+                          <div>
+                            <div className="font-medium">{formatNumber(d.new_sale_price)} ت</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {formatDateTimeFa(d.created_at)}
+                            </div>
+                          </div>
+                          <PriceChangeBadge
+                            info={{
+                              change_amount: d.change_amount,
+                              change_percent: d.change_percent,
+                              direction: dir,
+                            }}
+                          />
+                        </li>
+                      );
+                    })}
                 </ul>
               </div>
             )}

@@ -1,5 +1,11 @@
 import {
-  LayoutDashboard, Sparkles, Package, ShoppingCart, Wallet, BarChart3, Settings,
+  LayoutDashboard,
+  Sparkles,
+  Package,
+  ShoppingCart,
+  Wallet,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import type { NavItem } from "./nav-items";
 
@@ -182,10 +188,7 @@ export function resolveActiveModule(pathname: string): PrimaryModuleKey {
  * Filter NAV_ITEMS to those belonging to a given primary module, preserving
  * the order declared in PRIMARY_MODULES.paths.
  */
-export function itemsForModule(
-  moduleKey: PrimaryModuleKey,
-  visibleItems: NavItem[],
-): NavItem[] {
+export function itemsForModule(moduleKey: PrimaryModuleKey, visibleItems: NavItem[]): NavItem[] {
   const m = PRIMARY_MODULES.find((x) => x.key === moduleKey);
   if (!m) return [];
   const byPath = new Map(visibleItems.map((i) => [i.to, i] as const));

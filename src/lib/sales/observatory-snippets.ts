@@ -37,10 +37,9 @@ export async function fetchObservatorySnippetsForProducts(
   const unique = Array.from(new Set(productIds.filter(Boolean)));
   if (unique.length === 0) return {};
 
-  const { data, error } = await supabase.rpc(
-    "get_observatory_snippets_for_products",
-    { p_product_ids: unique },
-  );
+  const { data, error } = await supabase.rpc("get_observatory_snippets_for_products", {
+    p_product_ids: unique,
+  });
   if (error) throw error;
 
   const map: ObservatorySnippetMap = {};
@@ -48,18 +47,14 @@ export async function fetchObservatorySnippetsForProducts(
     const pid = typeof row.product_id === "string" ? row.product_id : null;
     if (!pid) continue;
     const scoreRaw = row.sales_opportunity_score;
-    const score =
-      scoreRaw == null || scoreRaw === ""
-        ? null
-        : Number(scoreRaw);
+    const score = scoreRaw == null || scoreRaw === "" ? null : Number(scoreRaw);
     map[pid] = {
       product_id: pid,
       competitive_price_status:
         typeof row.competitive_price_status === "string" && row.competitive_price_status.length > 0
           ? row.competitive_price_status
           : null,
-      sales_opportunity_score:
-        score != null && Number.isFinite(score) ? score : null,
+      sales_opportunity_score: score != null && Number.isFinite(score) ? score : null,
       suggested_sales_message:
         typeof row.suggested_sales_message === "string" && row.suggested_sales_message.length > 0
           ? row.suggested_sales_message
@@ -93,10 +88,9 @@ export async function fetchObservatoryPdfHintsForProducts(
   const unique = Array.from(new Set(productIds.filter(Boolean)));
   if (unique.length === 0) return {};
 
-  const { data, error } = await supabase.rpc(
-    "get_observatory_pdf_hints_for_products",
-    { p_product_ids: unique },
-  );
+  const { data, error } = await supabase.rpc("get_observatory_pdf_hints_for_products", {
+    p_product_ids: unique,
+  });
   if (error) throw error;
 
   const map: ObservatoryPdfHintMap = {};

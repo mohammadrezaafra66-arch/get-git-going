@@ -92,9 +92,7 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchProfileAndRoles(
-  user: User,
-): Promise<{
+async function fetchProfileAndRoles(user: User): Promise<{
   profile: AuthProfile | null;
   roles: Array<{ role: string }>;
   profileError: string | null;

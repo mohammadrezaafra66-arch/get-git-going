@@ -13,7 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
 const phoneRegex = /^0\d{2,10}$/;
@@ -102,7 +107,8 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
                 <Sparkles className="h-4 w-4 text-primary/70" />
               </DialogTitle>
               <DialogDescription className="text-xs leading-6">
-                با معرفی تأمین‌کننده‌های جدید به گسترش شبکه‌ی خرید کمک می‌کنید. اطلاعات اولیه را وارد کنید؛ پس از تأیید مدیر، فعال می‌شود.
+                با معرفی تأمین‌کننده‌های جدید به گسترش شبکه‌ی خرید کمک می‌کنید. اطلاعات اولیه را
+                وارد کنید؛ پس از تأیید مدیر، فعال می‌شود.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -117,7 +123,12 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
               <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
               نام تأمین‌کننده <span className="text-destructive">*</span>
             </Label>
-            <Input id="sr-name" {...form.register("name")} placeholder="نام شرکت یا فروشگاه" className="h-10" />
+            <Input
+              id="sr-name"
+              {...form.register("name")}
+              placeholder="نام شرکت یا فروشگاه"
+              className="h-10"
+            />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
@@ -143,7 +154,12 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
                 <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                 شهر
               </Label>
-              <Input id="sr-city" {...form.register("city")} placeholder="مثلاً تهران" className="h-10" />
+              <Input
+                id="sr-city"
+                {...form.register("city")}
+                placeholder="مثلاً تهران"
+                className="h-10"
+              />
               {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
             </div>
           </div>
@@ -165,7 +181,8 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
           </div>
 
           <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
-            تأمین‌کننده‌های معرفی‌شده توسط شما برای کل تیم قابل مشاهده خواهد بود و پس از تأیید نهایی برای ثبت قیمت خرید فعال می‌شود.
+            تأمین‌کننده‌های معرفی‌شده توسط شما برای کل تیم قابل مشاهده خواهد بود و پس از تأیید نهایی
+            برای ثبت قیمت خرید فعال می‌شود.
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2 pt-1">

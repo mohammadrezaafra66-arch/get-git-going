@@ -22,7 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 
 export const Route = createFileRoute("/_app/accounting/daily-capital")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: DailyCapitalPage,
 });
 
@@ -70,14 +72,23 @@ function SummaryCard({
   label,
   value,
   tone,
-}: { label: string; value: string; tone?: "primary" | "danger" | "warn" | "info" | "muted" }) {
+}: {
+  label: string;
+  value: string;
+  tone?: "primary" | "danger" | "warn" | "info" | "muted";
+}) {
   const toneCls =
-    tone === "primary" ? "text-primary"
-    : tone === "danger" ? "text-destructive"
-    : tone === "warn" ? "text-amber-600 dark:text-amber-400"
-    : tone === "info" ? "text-foreground"
-    : tone === "muted" ? "text-muted-foreground"
-    : "";
+    tone === "primary"
+      ? "text-primary"
+      : tone === "danger"
+        ? "text-destructive"
+        : tone === "warn"
+          ? "text-amber-600 dark:text-amber-400"
+          : tone === "info"
+            ? "text-foreground"
+            : tone === "muted"
+              ? "text-muted-foreground"
+              : "";
   return (
     <Card>
       <CardContent className="p-4 space-y-1">
@@ -104,10 +115,18 @@ type InputForm = {
 };
 
 const EMPTY_FORM: InputForm = {
-  bank_balance: "0", cash_balance: "0", incoming_checks: "0", outgoing_checks: "0",
-  external_receivables: "0", external_payables: "0", near_term_expenses: "0",
-  risk_reserve: "0", blocked_funds: "0", inventory_liquidity_value: "0",
-  manual_adjustment: "0", notes: "",
+  bank_balance: "0",
+  cash_balance: "0",
+  incoming_checks: "0",
+  outgoing_checks: "0",
+  external_receivables: "0",
+  external_payables: "0",
+  near_term_expenses: "0",
+  risk_reserve: "0",
+  blocked_funds: "0",
+  inventory_liquidity_value: "0",
+  manual_adjustment: "0",
+  notes: "",
 };
 
 function rowToForm(row: ComputeRow | null | undefined): InputForm {
@@ -129,14 +148,21 @@ function rowToForm(row: ComputeRow | null | undefined): InputForm {
 }
 
 function toNum(s: string): number {
-  const n = Number(String(s).replace(/[^\d.\-]/g, ""));
+  const n = Number(String(s).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 
 const NON_NEGATIVE_FIELDS: (keyof InputForm)[] = [
-  "bank_balance","cash_balance","incoming_checks","outgoing_checks",
-  "external_receivables","external_payables","near_term_expenses",
-  "risk_reserve","blocked_funds","inventory_liquidity_value",
+  "bank_balance",
+  "cash_balance",
+  "incoming_checks",
+  "outgoing_checks",
+  "external_receivables",
+  "external_payables",
+  "near_term_expenses",
+  "risk_reserve",
+  "blocked_funds",
+  "inventory_liquidity_value",
 ];
 
 function DailyCapitalPage() {
@@ -147,7 +173,9 @@ function DailyCapitalPage() {
   const computeQ = useQuery({
     queryKey: ["daily-capital-compute", dateIso],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("compute_daily_capital", { p_capital_date: dateIso });
+      const { data, error } = await supabase.rpc("compute_daily_capital", {
+        p_capital_date: dateIso,
+      });
       if (error) throw error;
       const rows = (data as ComputeRow[] | null) ?? [];
       return rows[0] ?? null;
@@ -231,7 +259,7 @@ function DailyCapitalPage() {
   const c = computeQ.data;
   const suggestedRounded = useMemo(
     () => (c ? Math.round(Number(c.system_suggested_capital ?? 0)) : 0),
-    [c]
+    [c],
   );
   const isOverride = c ? Math.round(toNum(finalCapital)) !== suggestedRounded : false;
 
@@ -290,22 +318,51 @@ function DailyCapitalPage() {
 
       {/* Loading / error */}
       {computeQ.isLoading ? (
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> در حال محاسبه…</div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> در حال محاسبه…
+        </div>
       ) : computeQ.isError ? (
-        <Card><CardContent className="p-4 text-destructive">{errMsg(computeQ.error, "دریافت محاسبه سرمایه روز با خطا مواجه شد.")}</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-destructive">
+            {errMsg(computeQ.error, "دریافت محاسبه سرمایه روز با خطا مواجه شد.")}
+          </CardContent>
+        </Card>
       ) : (
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryCard label="سرمایه پیشنهادی سیستم" value={fmtMoney(c?.system_suggested_capital)} tone="primary" />
-            <SummaryCard label="مطالبات سررسید این روز" value={fmtMoney(c?.due_today_receivables)} tone="info" />
-            <SummaryCard label="بدهی‌های سررسید این روز" value={fmtMoney(c?.due_today_payables)} tone="warn" />
-            <SummaryCard label="مطالبات معوق" value={fmtMoney(c?.overdue_receivables)} tone="danger" />
-            <SummaryCard label="بدهی‌های معوق" value={fmtMoney(c?.overdue_payables)} tone="danger" />
+            <SummaryCard
+              label="سرمایه پیشنهادی سیستم"
+              value={fmtMoney(c?.system_suggested_capital)}
+              tone="primary"
+            />
+            <SummaryCard
+              label="مطالبات سررسید این روز"
+              value={fmtMoney(c?.due_today_receivables)}
+              tone="info"
+            />
+            <SummaryCard
+              label="بدهی‌های سررسید این روز"
+              value={fmtMoney(c?.due_today_payables)}
+              tone="warn"
+            />
+            <SummaryCard
+              label="مطالبات معوق"
+              value={fmtMoney(c?.overdue_receivables)}
+              tone="danger"
+            />
+            <SummaryCard
+              label="بدهی‌های معوق"
+              value={fmtMoney(c?.overdue_payables)}
+              tone="danger"
+            />
             <SummaryCard label="کل مطالبات" value={fmtMoney(c?.total_receivables)} tone="muted" />
             <SummaryCard label="کل بدهی‌ها" value={fmtMoney(c?.total_payables)} tone="muted" />
-            <SummaryCard label="مطالبات / بدهی آینده"
-              value={`${fmtMoney(c?.future_receivables)} / ${fmtMoney(c?.future_payables)}`} tone="muted" />
+            <SummaryCard
+              label="مطالبات / بدهی آینده"
+              value={`${fmtMoney(c?.future_receivables)} / ${fmtMoney(c?.future_payables)}`}
+              tone="muted"
+            />
           </div>
 
           {/* Inputs form */}
@@ -313,20 +370,80 @@ function DailyCapitalPage() {
             <CardContent className="p-4 space-y-4">
               <div className="text-sm font-semibold inline-flex items-center gap-1">
                 ورودی‌های دستی این روز
-                <HelpHint text={"اعدادی که سیستم خودکار از حساب‌ها استخراج نمی‌کند را اینجا وارد کنید.\nهمه فیلدها به جز «تعدیل دستی» باید نامنفی باشند.\nبعد از هر تغییر، «ذخیره ورودی‌ها» را بزنید تا در محاسبه سرمایه پیشنهادی اعمال شود."} />
+                <HelpHint
+                  text={
+                    "اعدادی که سیستم خودکار از حساب‌ها استخراج نمی‌کند را اینجا وارد کنید.\nهمه فیلدها به جز «تعدیل دستی» باید نامنفی باشند.\nبعد از هر تغییر، «ذخیره ورودی‌ها» را بزنید تا در محاسبه سرمایه پیشنهادی اعمال شود."
+                  }
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <NumField label="موجودی بانک‌ها" hint="مجموع موجودی قابل برداشت همه حساب‌های بانکی شرکت در پایان امروز." value={form.bank_balance} onChange={(v) => setForm({ ...form, bank_balance: v })} />
-                <NumField label="موجودی صندوق" hint="پول نقد موجود در صندوق‌های شرکت." value={form.cash_balance} onChange={(v) => setForm({ ...form, cash_balance: v })} />
-                <NumField label="چک‌های دریافتی در راه وصول" hint="مبلغ چک‌هایی که از مشتریان گرفته‌اید و هنوز به حساب نشسته اما تا چند روز آینده وصول می‌شوند." value={form.incoming_checks} onChange={(v) => setForm({ ...form, incoming_checks: v })} />
-                <NumField label="چک‌های پرداختی" hint="مبلغ چک‌هایی که شما داده‌اید و هنوز پاس نشده‌اند؛ از سرمایه قابل استفاده کم می‌شود." value={form.outgoing_checks} onChange={(v) => setForm({ ...form, outgoing_checks: v })} />
-                <NumField label="مطالبات خارج از سیستم" hint="پول‌هایی که باید به شما برسد ولی در این نرم‌افزار ثبت نشده‌اند (مثلاً بدهی شخصی یا قرارداد خارج از سیستم)." value={form.external_receivables} onChange={(v) => setForm({ ...form, external_receivables: v })} />
-                <NumField label="بدهی‌های خارج از سیستم" hint="بدهی‌هایی که باید پرداخت کنید ولی در نرم‌افزار ثبت نشده‌اند." value={form.external_payables} onChange={(v) => setForm({ ...form, external_payables: v })} />
-                <NumField label="هزینه‌های نزدیک" hint="هزینه‌های قطعی روزهای نزدیک (حقوق، اجاره، عوارض و …) که باید از سرمایه کنار گذاشته شود." value={form.near_term_expenses} onChange={(v) => setForm({ ...form, near_term_expenses: v })} />
-                <NumField label="ذخیره ریسک" hint="مبلغی که محتاطانه برای اتفاقات پیش‌بینی‌نشده کنار می‌گذارید." value={form.risk_reserve} onChange={(v) => setForm({ ...form, risk_reserve: v })} />
-                <NumField label="وجوه بلوکه‌شده" hint="مبالغی که فعلاً قابل استفاده نیستند (تضامین، ضمانت‌نامه، وثیقه و …)." value={form.blocked_funds} onChange={(v) => setForm({ ...form, blocked_funds: v })} />
-                <NumField label="ارزش نقدشوندگی موجودی انبار" hint="آن بخش از موجودی انبار که در صورت لزوم سریع نقد می‌شود — معمولاً درصدی از کل ارزش انبار." value={form.inventory_liquidity_value} onChange={(v) => setForm({ ...form, inventory_liquidity_value: v })} />
-                <NumField label="تعدیل دستی (می‌تواند منفی باشد)" hint="اصلاح دستی نهایی برای بالا یا پایین بردن سرمایه پیشنهادی. مقدار منفی مجاز است." value={form.manual_adjustment} allowNegative onChange={(v) => setForm({ ...form, manual_adjustment: v })} />
+                <NumField
+                  label="موجودی بانک‌ها"
+                  hint="مجموع موجودی قابل برداشت همه حساب‌های بانکی شرکت در پایان امروز."
+                  value={form.bank_balance}
+                  onChange={(v) => setForm({ ...form, bank_balance: v })}
+                />
+                <NumField
+                  label="موجودی صندوق"
+                  hint="پول نقد موجود در صندوق‌های شرکت."
+                  value={form.cash_balance}
+                  onChange={(v) => setForm({ ...form, cash_balance: v })}
+                />
+                <NumField
+                  label="چک‌های دریافتی در راه وصول"
+                  hint="مبلغ چک‌هایی که از مشتریان گرفته‌اید و هنوز به حساب نشسته اما تا چند روز آینده وصول می‌شوند."
+                  value={form.incoming_checks}
+                  onChange={(v) => setForm({ ...form, incoming_checks: v })}
+                />
+                <NumField
+                  label="چک‌های پرداختی"
+                  hint="مبلغ چک‌هایی که شما داده‌اید و هنوز پاس نشده‌اند؛ از سرمایه قابل استفاده کم می‌شود."
+                  value={form.outgoing_checks}
+                  onChange={(v) => setForm({ ...form, outgoing_checks: v })}
+                />
+                <NumField
+                  label="مطالبات خارج از سیستم"
+                  hint="پول‌هایی که باید به شما برسد ولی در این نرم‌افزار ثبت نشده‌اند (مثلاً بدهی شخصی یا قرارداد خارج از سیستم)."
+                  value={form.external_receivables}
+                  onChange={(v) => setForm({ ...form, external_receivables: v })}
+                />
+                <NumField
+                  label="بدهی‌های خارج از سیستم"
+                  hint="بدهی‌هایی که باید پرداخت کنید ولی در نرم‌افزار ثبت نشده‌اند."
+                  value={form.external_payables}
+                  onChange={(v) => setForm({ ...form, external_payables: v })}
+                />
+                <NumField
+                  label="هزینه‌های نزدیک"
+                  hint="هزینه‌های قطعی روزهای نزدیک (حقوق، اجاره، عوارض و …) که باید از سرمایه کنار گذاشته شود."
+                  value={form.near_term_expenses}
+                  onChange={(v) => setForm({ ...form, near_term_expenses: v })}
+                />
+                <NumField
+                  label="ذخیره ریسک"
+                  hint="مبلغی که محتاطانه برای اتفاقات پیش‌بینی‌نشده کنار می‌گذارید."
+                  value={form.risk_reserve}
+                  onChange={(v) => setForm({ ...form, risk_reserve: v })}
+                />
+                <NumField
+                  label="وجوه بلوکه‌شده"
+                  hint="مبالغی که فعلاً قابل استفاده نیستند (تضامین، ضمانت‌نامه، وثیقه و …)."
+                  value={form.blocked_funds}
+                  onChange={(v) => setForm({ ...form, blocked_funds: v })}
+                />
+                <NumField
+                  label="ارزش نقدشوندگی موجودی انبار"
+                  hint="آن بخش از موجودی انبار که در صورت لزوم سریع نقد می‌شود — معمولاً درصدی از کل ارزش انبار."
+                  value={form.inventory_liquidity_value}
+                  onChange={(v) => setForm({ ...form, inventory_liquidity_value: v })}
+                />
+                <NumField
+                  label="تعدیل دستی (می‌تواند منفی باشد)"
+                  hint="اصلاح دستی نهایی برای بالا یا پایین بردن سرمایه پیشنهادی. مقدار منفی مجاز است."
+                  value={form.manual_adjustment}
+                  allowNegative
+                  onChange={(v) => setForm({ ...form, manual_adjustment: v })}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">توضیحات</Label>
@@ -338,8 +455,16 @@ function DailyCapitalPage() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button onClick={() => upsertM.mutate()} disabled={upsertM.isPending} className="gap-2">
-                  {upsertM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <Button
+                  onClick={() => upsertM.mutate()}
+                  disabled={upsertM.isPending}
+                  className="gap-2"
+                >
+                  {upsertM.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   ذخیره ورودی‌ها
                 </Button>
               </div>
@@ -350,8 +475,11 @@ function DailyCapitalPage() {
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="text-sm font-semibold">فرمول نسخه ۱</div>
-              <pre className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground" dir="rtl">
-{`سرمایه پیشنهادی = موجودی بانک + صندوق + چک‌های دریافتی
+              <pre
+                className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground"
+                dir="rtl"
+              >
+                {`سرمایه پیشنهادی = موجودی بانک + صندوق + چک‌های دریافتی
   + مطالبات سررسید این روز + مطالبات خارج از سیستم
   + ارزش نقدشوندگی انبار + تعدیل دستی
   − بدهی‌های سررسید این روز − چک‌های پرداختی
@@ -370,7 +498,11 @@ function DailyCapitalPage() {
               <div className="text-sm font-semibold flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 ثبت سرمایه نهایی روز
-                <HelpHint text={"این مرحله سرمایه نهایی روز را قفل می‌کند.\nاگر عدد «سرمایه نهایی تأییدشده» با «سرمایه پیشنهادی سیستم» فرق داشته باشد، باید دلیل تغییر را بنویسید.\nبعد از ثبت اسنپ‌شات، می‌توان آن را بین فروشندگان تخصیص داد."} />
+                <HelpHint
+                  text={
+                    "این مرحله سرمایه نهایی روز را قفل می‌کند.\nاگر عدد «سرمایه نهایی تأییدشده» با «سرمایه پیشنهادی سیستم» فرق داشته باشد، باید دلیل تغییر را بنویسید.\nبعد از ثبت اسنپ‌شات، می‌توان آن را بین فروشندگان تخصیص داد."
+                  }
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -410,7 +542,11 @@ function DailyCapitalPage() {
                   className="gap-2"
                   variant={isOverride ? "secondary" : "default"}
                 >
-                  {saveSnapshotM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saveSnapshotM.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   {isOverride ? "ثبت با override" : "ثبت اسنپ‌شات"}
                 </Button>
               </div>
@@ -423,8 +559,18 @@ function DailyCapitalPage() {
 }
 
 function NumField({
-  label, value, onChange, allowNegative, hint,
-}: { label: string; value: string; onChange: (v: string) => void; allowNegative?: boolean; hint?: string }) {
+  label,
+  value,
+  onChange,
+  allowNegative,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  allowNegative?: boolean;
+  hint?: string;
+}) {
   return (
     <div className="space-y-1">
       <Label className="text-xs inline-flex items-center gap-1">

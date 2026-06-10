@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  fetchMyTodayEntry, fetchScenarios, fetchQuestions, fetchRandomHafez,
-  type MoodEntry, type Scenario, type Question, type HafezPoem, todayISO,
+  fetchMyTodayEntry,
+  fetchScenarios,
+  fetchQuestions,
+  fetchRandomHafez,
+  type MoodEntry,
+  type Scenario,
+  type Question,
+  type HafezPoem,
+  todayISO,
 } from "@/lib/operations/daily-mood";
 
 export function useDailyMood(userId: string | undefined) {
@@ -21,7 +28,9 @@ export function useDailyMood(userId: string | undefined) {
     }
   }, [userId]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   return { entry, setEntry, scenarios, loading, reload, today: todayISO() };
 }
@@ -30,13 +39,22 @@ export function useScenarioQuestions(scenarioKey: string | null) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
-    if (!scenarioKey) { setQuestions([]); return; }
+    if (!scenarioKey) {
+      setQuestions([]);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     fetchQuestions(scenarioKey)
-      .then((q) => { if (!cancelled) setQuestions(q); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .then((q) => {
+        if (!cancelled) setQuestions(q);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [scenarioKey]);
   return { questions, loading };
 }
@@ -46,7 +64,11 @@ export function useHafez() {
   const [loading, setLoading] = useState(false);
   const draw = useCallback(async () => {
     setLoading(true);
-    try { setPoem(await fetchRandomHafez()); } finally { setLoading(false); }
+    try {
+      setPoem(await fetchRandomHafez());
+    } finally {
+      setLoading(false);
+    }
   }, []);
   return { poem, loading, draw, reset: () => setPoem(null) };
 }

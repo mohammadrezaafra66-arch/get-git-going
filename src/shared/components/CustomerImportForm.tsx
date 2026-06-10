@@ -12,10 +12,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { toFaDigits } from "@/lib/i18n/formatters";
 
@@ -58,7 +67,11 @@ export function CustomerImportForm() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<FieldKey, string>>({
-    name: NONE, phone: NONE, city: NONE, accounting_code: NONE, notes: NONE,
+    name: NONE,
+    phone: NONE,
+    city: NONE,
+    accounting_code: NONE,
+    notes: NONE,
   });
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -80,23 +93,36 @@ export function CustomerImportForm() {
       const sheetName = wb.SheetNames[0];
       if (!sheetName) throw new Error("فایل اکسل خالی است");
       const sheet = wb.Sheets[sheetName];
-      const arr = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false, defval: "" });
+      const arr = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        blankrows: false,
+        defval: "",
+      });
       if (arr.length < 2) throw new Error("فایل باید حداقل ۱ ردیف داده داشته باشد");
       const hdr = (arr[0] as unknown[]).map((c, i) => normalizeCell(c) || `ستون ${i + 1}`);
       const dataRows = arr.slice(1).map((r) => (r as unknown[]).map(normalizeCell));
       if (dataRows.length > MAX_ROWS) {
-        throw new Error(`حداکثر ${toFaDigits(MAX_ROWS)} ردیف مجاز است (${toFaDigits(dataRows.length)} ردیف یافت شد)`);
+        throw new Error(
+          `حداکثر ${toFaDigits(MAX_ROWS)} ردیف مجاز است (${toFaDigits(dataRows.length)} ردیف یافت شد)`,
+        );
       }
       setHeaders(hdr);
       setRows(dataRows);
       // auto-guess mapping by header name
-      const guess: Record<FieldKey, string> = { name: NONE, phone: NONE, city: NONE, accounting_code: NONE, notes: NONE };
+      const guess: Record<FieldKey, string> = {
+        name: NONE,
+        phone: NONE,
+        city: NONE,
+        accounting_code: NONE,
+        notes: NONE,
+      };
       hdr.forEach((h) => {
         const lc = h.toLowerCase();
         if (guess.name === NONE && /(name|نام)/i.test(lc)) guess.name = h;
         if (guess.phone === NONE && /(phone|mobile|tel|تلفن|موبایل)/i.test(lc)) guess.phone = h;
         if (guess.city === NONE && /(city|شهر)/i.test(lc)) guess.city = h;
-        if (guess.accounting_code === NONE && /(account|code|کد)/i.test(lc)) guess.accounting_code = h;
+        if (guess.accounting_code === NONE && /(account|code|کد)/i.test(lc))
+          guess.accounting_code = h;
         if (guess.notes === NONE && /(note|desc|توضیح)/i.test(lc)) guess.notes = h;
       });
       setMapping(guess);
@@ -115,11 +141,15 @@ export function CustomerImportForm() {
     setMapping((m) => ({ ...m, [field]: header }));
   }
 
-  function buildPayload(row: string[], headerIndex: Record<string, number>): { payload?: Record<string, string | null>; error?: string } {
+  function buildPayload(
+    row: string[],
+    headerIndex: Record<string, number>,
+  ): { payload?: Record<string, string | null>; error?: string } {
     const get = (h: string) => (h === NONE ? "" : (row[headerIndex[h]] ?? "").trim());
     const name = get(mapping.name);
     if (!name) return { error: "نام مشتری خالی است" };
-    if (name.length < 2 || name.length > 100) return { error: "طول نام باید بین ۲ تا ۱۰۰ کاراکتر باشد" };
+    if (name.length < 2 || name.length > 100)
+      return { error: "طول نام باید بین ۲ تا ۱۰۰ کاراکتر باشد" };
     const phoneRaw = get(mapping.phone);
     const phone = phoneRaw ? phoneRaw.replace(/[^\d]/g, "") : "";
     if (phone && !PHONE_REGEX.test(phone)) return { error: `شماره تماس نامعتبر: ${phoneRaw}` };
@@ -156,7 +186,9 @@ export function CustomerImportForm() {
     let failed = 0;
 
     const headerIndex: Record<string, number> = {};
-    headers.forEach((h, i) => { headerIndex[h] = i; });
+    headers.forEach((h, i) => {
+      headerIndex[h] = i;
+    });
 
     try {
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
@@ -212,7 +244,9 @@ export function CustomerImportForm() {
             مرحله ۱: انتخاب فایل اکسل
           </div>
           <div className="space-y-1">
-            <Label htmlFor="excel-file" className="text-xs">فایل xlsx یا xls (حداکثر {toFaDigits(MAX_ROWS)} ردیف)</Label>
+            <Label htmlFor="excel-file" className="text-xs">
+              فایل xlsx یا xls (حداکثر {toFaDigits(MAX_ROWS)} ردیف)
+            </Label>
             <Input
               id="excel-file"
               type="file"
@@ -253,7 +287,9 @@ export function CustomerImportForm() {
                     <SelectContent>
                       <SelectItem value={NONE}>— هیچ —</SelectItem>
                       {headers.map((h) => (
-                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                        <SelectItem key={h} value={h}>
+                          {h}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -268,7 +304,9 @@ export function CustomerImportForm() {
                   <TableHeader>
                     <TableRow>
                       {headers.map((h) => (
-                        <TableHead key={h} className="whitespace-nowrap">{h}</TableHead>
+                        <TableHead key={h} className="whitespace-nowrap">
+                          {h}
+                        </TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -276,7 +314,9 @@ export function CustomerImportForm() {
                     {previewRows.map((r, i) => (
                       <TableRow key={i}>
                         {headers.map((_, j) => (
-                          <TableCell key={j} className="whitespace-nowrap text-xs">{r[j] ?? ""}</TableCell>
+                          <TableCell key={j} className="whitespace-nowrap text-xs">
+                            {r[j] ?? ""}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}

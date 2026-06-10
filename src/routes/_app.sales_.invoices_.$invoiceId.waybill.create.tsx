@@ -10,20 +10,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { ArrowRight, Loader2, ChevronRight, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
-  WaybillForm, type WaybillFormValues, waybillSchema,
+  WaybillForm,
+  type WaybillFormValues,
+  waybillSchema,
 } from "@/shared/components/WaybillForm";
 import {
-  type CustomFieldDef, type CustomData, validateCustomData,
+  type CustomFieldDef,
+  type CustomData,
+  validateCustomData,
 } from "@/shared/components/WaybillCustomFieldsInput";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/invoices_/$invoiceId/waybill/create")({
-  beforeLoad: async () => { await requirePermission("invoices", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("invoices", "view");
+  },
   component: CreateWaybillPage,
 });
 
@@ -59,8 +70,11 @@ function CreateWaybillPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, number, status, total_amount, customer:customers(id,name,phone,accounting_code)")
-        .eq("id", invoiceId).maybeSingle();
+        .select(
+          "id, number, status, total_amount, customer:customers(id,name,phone,accounting_code)",
+        )
+        .eq("id", invoiceId)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -83,8 +97,10 @@ function CreateWaybillPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("waybills")
-        .select("id, status").eq("invoice_id", invoiceId)
-        .neq("status", "canceled").maybeSingle();
+        .select("id, status")
+        .eq("invoice_id", invoiceId)
+        .neq("status", "canceled")
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -96,14 +112,19 @@ function CreateWaybillPage() {
     queryFn: async (): Promise<CustomFieldDef[]> => {
       const { data, error } = await supabase
         .from("waybill_custom_fields")
-        .select("*").eq("is_active", true)
+        .select("*")
+        .eq("is_active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as CustomFieldDef[];
     },
   });
 
-  const customer = invoice?.customer as { name?: string; phone?: string; accounting_code?: string } | null;
+  const customer = invoice?.customer as {
+    name?: string;
+    phone?: string;
+    accounting_code?: string;
+  } | null;
   const baseInitial: Partial<WaybillFormValues> = {
     receiver_name: customer?.name ?? "",
     receiver_phone: customer?.phone ?? "",
@@ -140,14 +161,19 @@ function CreateWaybillPage() {
 
   const goToStep2 = () => {
     setAllocation(initAllocation());
-    setForms(new Array(effectiveCount).fill(0).map(() => ({
-      sender_name: "", sender_phone: "",
-      receiver_name: customer?.name ?? "",
-      receiver_phone: customer?.phone ?? "",
-      shipping_company: "", destination_city: "",
-      customer_accounting_code: customer?.accounting_code ?? "",
-      destination_address: "", shipping_notes: "",
-    })));
+    setForms(
+      new Array(effectiveCount).fill(0).map(() => ({
+        sender_name: "",
+        sender_phone: "",
+        receiver_name: customer?.name ?? "",
+        receiver_phone: customer?.phone ?? "",
+        shipping_company: "",
+        destination_city: "",
+        customer_accounting_code: customer?.accounting_code ?? "",
+        destination_address: "",
+        shipping_notes: "",
+      })),
+    );
     setCustomDataList(new Array(effectiveCount).fill(0).map(() => ({})));
     if (mode === "single" || mode === "per_item") {
       setStep(3);
@@ -192,30 +218,35 @@ function CreateWaybillPage() {
       }
     }
     const allocErr = validateAllocation();
-    if (allocErr) { toast.error(allocErr); return; }
+    if (allocErr) {
+      toast.error(allocErr);
+      return;
+    }
 
-    const payload = forms.map((f, i) => {
-      const wbItems = items
-        .map((it) => ({
-          invoice_item_id: it.id,
-          product_id: it.product_id,
-          quantity: Number(allocation[it.id]?.[i] ?? 0),
-        }))
-        .filter((x) => x.quantity > 0);
-      return {
-        sender_name: f.sender_name,
-        sender_phone: f.sender_phone,
-        receiver_name: f.receiver_name,
-        receiver_phone: f.receiver_phone,
-        shipping_company: f.shipping_company,
-        destination_city: f.destination_city,
-        customer_accounting_code: f.customer_accounting_code ?? "",
-        destination_address: f.destination_address ?? "",
-        shipping_notes: f.shipping_notes ?? "",
-        custom_data: customDataList[i] ?? {},
-        items: wbItems,
-      };
-    }).filter((w) => w.items.length > 0);
+    const payload = forms
+      .map((f, i) => {
+        const wbItems = items
+          .map((it) => ({
+            invoice_item_id: it.id,
+            product_id: it.product_id,
+            quantity: Number(allocation[it.id]?.[i] ?? 0),
+          }))
+          .filter((x) => x.quantity > 0);
+        return {
+          sender_name: f.sender_name,
+          sender_phone: f.sender_phone,
+          receiver_name: f.receiver_name,
+          receiver_phone: f.receiver_phone,
+          shipping_company: f.shipping_company,
+          destination_city: f.destination_city,
+          customer_accounting_code: f.customer_accounting_code ?? "",
+          destination_address: f.destination_address ?? "",
+          shipping_notes: f.shipping_notes ?? "",
+          custom_data: customDataList[i] ?? {},
+          items: wbItems,
+        };
+      })
+      .filter((w) => w.items.length > 0);
 
     if (payload.length === 0) {
       toast.error("هیچ بیجکی با آیتم وجود ندارد");
@@ -243,8 +274,11 @@ function CreateWaybillPage() {
         if (error) throw error;
         // attach custom_data after insert
         if (Object.keys(f.custom_data ?? {}).length > 0) {
-          await supabase.from("waybills").update({ custom_data: f.custom_data })
-            .eq("invoice_id", invoiceId).neq("status", "canceled");
+          await supabase
+            .from("waybills")
+            .update({ custom_data: f.custom_data })
+            .eq("invoice_id", invoiceId)
+            .neq("status", "canceled");
         }
       } else {
         const { error } = await supabase.rpc("create_waybills_batch", {
@@ -267,7 +301,11 @@ function CreateWaybillPage() {
     return (
       <div className="space-y-4" dir="rtl">
         <PageHeader title="بیجک قبلاً صادر شده" description="" />
-        <Button asChild><Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId }}>مشاهده بیجک</Link></Button>
+        <Button asChild>
+          <Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId }}>
+            مشاهده بیجک
+          </Link>
+        </Button>
       </div>
     );
   }
@@ -276,7 +314,9 @@ function CreateWaybillPage() {
     <div className="space-y-6" dir="rtl">
       <PageHeader
         title="صدور بیجک"
-        description={invoice ? `پیش‌فاکتور ${toFaDigits(invoice.number ?? invoice.id.slice(0, 8))}` : ""}
+        description={
+          invoice ? `پیش‌فاکتور ${toFaDigits(invoice.number ?? invoice.id.slice(0, 8))}` : ""
+        }
         actions={
           <Button asChild variant="outline">
             <Link to="/sales/invoices/$invoiceId" params={{ invoiceId }}>
@@ -293,8 +333,13 @@ function CreateWaybillPage() {
           const skipped = (mode === "single" || mode === "per_item") && n === 2;
           const active = step === n;
           return (
-            <div key={n} className={`flex items-center gap-1 ${active ? "text-foreground font-semibold" : ""} ${skipped ? "opacity-40" : ""}`}>
-              <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${active ? "border-foreground" : ""}`}>
+            <div
+              key={n}
+              className={`flex items-center gap-1 ${active ? "text-foreground font-semibold" : ""} ${skipped ? "opacity-40" : ""}`}
+            >
+              <span
+                className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${active ? "border-foreground" : ""}`}
+              >
                 {toFaDigits(n)}
               </span>
               <span className="hidden sm:inline">{label}</span>
@@ -305,20 +350,26 @@ function CreateWaybillPage() {
       </div>
 
       {!canCreate ? (
-        <Card><CardContent className="p-6 text-sm text-muted-foreground">دسترسی غیرمجاز</CardContent></Card>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">دسترسی غیرمجاز</CardContent>
+        </Card>
       ) : step === 1 ? (
         <Card>
           <CardContent className="p-4 space-y-4">
             <div className="text-sm font-semibold">روش توزیع آیتم‌ها بین بیجک‌ها</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {([
-                { v: "single", t: "همه در یک بیجک", d: "یک بیجک واحد برای همه آیتم‌ها" },
-                { v: "per_item", t: "هر آیتم جداگانه", d: "برای هر قلم یک بیجک ساخته می‌شود" },
-                { v: "manual", t: "تقسیم دستی", d: "تعداد هر آیتم بین چند بیجک" },
-              ] as const).map((o) => (
-                <button key={o.v}
+              {(
+                [
+                  { v: "single", t: "همه در یک بیجک", d: "یک بیجک واحد برای همه آیتم‌ها" },
+                  { v: "per_item", t: "هر آیتم جداگانه", d: "برای هر قلم یک بیجک ساخته می‌شود" },
+                  { v: "manual", t: "تقسیم دستی", d: "تعداد هر آیتم بین چند بیجک" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.v}
                   className={`text-right rounded-md border p-3 hover:bg-accent ${mode === o.v ? "border-primary bg-accent" : ""}`}
-                  onClick={() => setMode(o.v)}>
+                  onClick={() => setMode(o.v)}
+                >
                   <div className="font-medium text-sm">{o.t}</div>
                   <div className="text-xs text-muted-foreground mt-1">{o.d}</div>
                 </button>
@@ -327,8 +378,15 @@ function CreateWaybillPage() {
             {mode === "manual" && (
               <div className="space-y-1 max-w-xs">
                 <Label>تعداد بیجک‌ها</Label>
-                <Input type="number" min={2} max={20} value={waybillCount}
-                  onChange={(e) => setWaybillCount(Math.max(2, Math.min(20, Number(e.target.value) || 2)))} />
+                <Input
+                  type="number"
+                  min={2}
+                  max={20}
+                  value={waybillCount}
+                  onChange={(e) =>
+                    setWaybillCount(Math.max(2, Math.min(20, Number(e.target.value) || 2)))
+                  }
+                />
               </div>
             )}
             <div className="flex justify-end">
@@ -341,7 +399,9 @@ function CreateWaybillPage() {
       ) : step === 2 ? (
         <Card>
           <CardContent className="p-4 space-y-4">
-            <div className="text-sm font-semibold">تقسیم تعداد هر آیتم بین {toFaDigits(effectiveCount)} بیجک</div>
+            <div className="text-sm font-semibold">
+              تقسیم تعداد هر آیتم بین {toFaDigits(effectiveCount)} بیجک
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -349,7 +409,9 @@ function CreateWaybillPage() {
                     <TableHead className="text-right">محصول</TableHead>
                     <TableHead className="text-right">کل</TableHead>
                     {Array.from({ length: effectiveCount }).map((_, i) => (
-                      <TableHead key={i} className="text-right">بیجک {toFaDigits(i + 1)}</TableHead>
+                      <TableHead key={i} className="text-right">
+                        بیجک {toFaDigits(i + 1)}
+                      </TableHead>
                     ))}
                     <TableHead className="text-right">جمع</TableHead>
                   </TableRow>
@@ -365,12 +427,18 @@ function CreateWaybillPage() {
                         <TableCell>{toFaDigits(it.quantity)}</TableCell>
                         {Array.from({ length: effectiveCount }).map((_, i) => (
                           <TableCell key={i}>
-                            <Input type="number" min={0} className="w-20"
+                            <Input
+                              type="number"
+                              min={0}
+                              className="w-20"
                               value={arr[i] ?? 0}
-                              onChange={(e) => updateAlloc(it.id, i, Number(e.target.value) || 0)} />
+                              onChange={(e) => updateAlloc(it.id, i, Number(e.target.value) || 0)}
+                            />
                           </TableCell>
                         ))}
-                        <TableCell className={ok ? "text-foreground" : "text-destructive font-bold"}>
+                        <TableCell
+                          className={ok ? "text-foreground" : "text-destructive font-bold"}
+                        >
                           {toFaDigits(sum)}
                         </TableCell>
                       </TableRow>
@@ -380,12 +448,19 @@ function CreateWaybillPage() {
               </Table>
             </div>
             <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setStep(1)}>بازگشت</Button>
-              <Button onClick={() => {
-                const e = validateAllocation();
-                if (e) { toast.error(e); return; }
-                setStep(3);
-              }}>
+              <Button variant="outline" onClick={() => setStep(1)}>
+                بازگشت
+              </Button>
+              <Button
+                onClick={() => {
+                  const e = validateAllocation();
+                  if (e) {
+                    toast.error(e);
+                    return;
+                  }
+                  setStep(3);
+                }}
+              >
                 ادامه <ChevronRight className="me-1 h-4 w-4" />
               </Button>
             </div>
@@ -396,15 +471,17 @@ function CreateWaybillPage() {
           {forms.map((f, idx) => (
             <Card key={idx}>
               <CardContent className="p-4 space-y-3">
-                <div className="text-sm font-semibold">بیجک {toFaDigits(idx + 1)} از {toFaDigits(forms.length)}</div>
+                <div className="text-sm font-semibold">
+                  بیجک {toFaDigits(idx + 1)} از {toFaDigits(forms.length)}
+                </div>
                 <WaybillForm
                   initial={effectiveCount === 1 ? baseInitial : f}
                   submitting={false}
                   customFields={customFields ?? []}
                   initialCustomData={customDataList[idx] ?? {}}
                   onSubmit={(values, _register, customData) => {
-                    setForms((prev) => prev.map((p, i) => i === idx ? values : p));
-                    setCustomDataList((prev) => prev.map((p, i) => i === idx ? customData : p));
+                    setForms((prev) => prev.map((p, i) => (i === idx ? values : p)));
+                    setCustomDataList((prev) => prev.map((p, i) => (i === idx ? customData : p)));
                     toast.success(`اطلاعات بیجک ${toFaDigits(idx + 1)} ذخیره شد`);
                   }}
                 />
@@ -412,7 +489,9 @@ function CreateWaybillPage() {
             </Card>
           ))}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep(mode === "manual" ? 2 : 1)}>بازگشت</Button>
+            <Button variant="outline" onClick={() => setStep(mode === "manual" ? 2 : 1)}>
+              بازگشت
+            </Button>
             <Button onClick={() => setStep(4)}>
               مرحله بعد <ChevronRight className="me-1 h-4 w-4" />
             </Button>
@@ -422,7 +501,9 @@ function CreateWaybillPage() {
         <Card>
           <CardContent className="p-4 space-y-4">
             <div className="text-sm font-semibold">پیش‌نمایش و تأیید نهایی</div>
-            <div className="text-xs text-muted-foreground">{toFaDigits(forms.length)} بیجک ساخته خواهد شد.</div>
+            <div className="text-xs text-muted-foreground">
+              {toFaDigits(forms.length)} بیجک ساخته خواهد شد.
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -435,7 +516,9 @@ function CreateWaybillPage() {
               </TableHeader>
               <TableBody>
                 {forms.map((f, i) => {
-                  const itemCount = (items ?? []).filter((it) => (allocation[it.id]?.[i] ?? 0) > 0).length;
+                  const itemCount = (items ?? []).filter(
+                    (it) => (allocation[it.id]?.[i] ?? 0) > 0,
+                  ).length;
                   return (
                     <TableRow key={i}>
                       <TableCell>{toFaDigits(i + 1)}</TableCell>
@@ -449,7 +532,9 @@ function CreateWaybillPage() {
               </TableBody>
             </Table>
             <div className="flex flex-col sm:flex-row justify-between gap-2">
-              <Button variant="outline" onClick={() => setStep(3)}>بازگشت</Button>
+              <Button variant="outline" onClick={() => setStep(3)}>
+                بازگشت
+              </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => submitBatch(false)} disabled={submitting}>
                   {submitting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}

@@ -28,10 +28,7 @@ export function RecentPurchaseGroup({
   children: ReactNode;
 }) {
   // dedupe + stable key
-  const ids = useMemo(
-    () => Array.from(new Set(productIds.filter(Boolean))).sort(),
-    [productIds],
-  );
+  const ids = useMemo(() => Array.from(new Set(productIds.filter(Boolean))).sort(), [productIds]);
 
   const q = useQuery({
     queryKey: ["recent-purchase-labels-batch", ids],

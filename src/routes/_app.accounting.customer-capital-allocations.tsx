@@ -16,10 +16,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/accounting/customer-capital-allocations")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: CustomerCapitalAllocationsPage,
 });
 
@@ -61,7 +70,7 @@ function errMsg(e: unknown, fallback: string) {
   return isForbidden(e) ? "شما دسترسی این عملیات را ندارید." : fallback;
 }
 function toNum(s: string): number {
-  const n = Number(String(s).replace(/[^\d.\-]/g, ""));
+  const n = Number(String(s).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 function shortId(id: string) {
@@ -108,19 +117,25 @@ function CustomerCapitalAllocationsPage() {
       salesperson_final_amount: Number(first.salesperson_final_amount ?? 0),
       total_customer_score: Number(first.total_customer_score ?? 0),
     });
-    setRows(data.map((r) => ({
-      customer_id: r.customer_id,
-      customer_score: Number(r.customer_score ?? 0),
-      system_suggested_amount: Math.round(Number(r.system_suggested_amount ?? 0)),
-      final_amount: String(Math.round(Number(r.system_suggested_amount ?? 0))),
-      override_reason: "",
-    })));
+    setRows(
+      data.map((r) => ({
+        customer_id: r.customer_id,
+        customer_score: Number(r.customer_score ?? 0),
+        system_suggested_amount: Math.round(Number(r.system_suggested_amount ?? 0)),
+        final_amount: String(Math.round(Number(r.system_suggested_amount ?? 0))),
+        override_reason: "",
+      })),
+    );
   }, [computeQ.data]);
 
   const saveM = useMutation({
     mutationFn: async () => {
       if (!activeAllocId) throw new Error("ابتدا شناسه تخصیص فروشنده را انتخاب کنید.");
-      const payload: Array<{ customer_id: string; final_amount: number; override_reason?: string }> = [];
+      const payload: Array<{
+        customer_id: string;
+        final_amount: number;
+        override_reason?: string;
+      }> = [];
       for (const r of rows) {
         const final = toNum(r.final_amount);
         if (final < 0) {
@@ -182,10 +197,15 @@ function CustomerCapitalAllocationsPage() {
         <CardContent className="p-4 space-y-3">
           <div className="text-sm font-semibold inline-flex items-center gap-1">
             انتخاب تخصیص فروشنده
-            <HelpHint text={"شناسه (UUID) همان رکوردی است که در صفحه «تخصیص سرمایه فروشندگان» برای این فروشنده ذخیره کرده‌اید."} />
+            <HelpHint
+              text={
+                "شناسه (UUID) همان رکوردی است که در صفحه «تخصیص سرمایه فروشندگان» برای این فروشنده ذخیره کرده‌اید."
+              }
+            />
           </div>
           <div className="text-xs text-muted-foreground">
-            شناسه تخصیص فروشنده (salesperson_allocation_id) را از صفحه «تخصیص سرمایه فروشندگان» یا گزارش backend وارد کنید.
+            شناسه تخصیص فروشنده (salesperson_allocation_id) را از صفحه «تخصیص سرمایه فروشندگان» یا
+            گزارش backend وارد کنید.
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex-1 min-w-[260px] space-y-1">
@@ -227,34 +247,58 @@ function CustomerCapitalAllocationsPage() {
       </Card>
 
       {!activeAllocId ? (
-        <Card><CardContent className="p-4 text-sm text-muted-foreground">برای مشاهده تخصیص، یک شناسه تخصیص فروشنده معتبر وارد کنید.</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            برای مشاهده تخصیص، یک شناسه تخصیص فروشنده معتبر وارد کنید.
+          </CardContent>
+        </Card>
       ) : computeQ.isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> در حال محاسبه…
         </div>
       ) : computeQ.isError ? (
-        <Card><CardContent className="p-4 text-destructive">{errMsg(computeQ.error, "دریافت محاسبه سهم مشتریان با خطا مواجه شد.")}</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-destructive">
+            {errMsg(computeQ.error, "دریافت محاسبه سهم مشتریان با خطا مواجه شد.")}
+          </CardContent>
+        </Card>
       ) : rows.length === 0 ? (
-        <Card><CardContent className="p-4 text-sm text-muted-foreground">برای این فروشنده، مشتری فعالی یافت نشد.</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            برای این فروشنده، مشتری فعالی یافت نشد.
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">تاریخ سرمایه</div>
-              <div className="text-base font-semibold">{toFaDigits(meta?.capital_date ?? NA)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">سهم نهایی فروشنده</div>
-              <div className="text-base font-semibold text-primary">{fmtMoney(meta?.salesperson_final_amount)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">مجموع امتیاز مشتریان</div>
-              <div className="text-base font-semibold">{fmtNum(meta?.total_customer_score)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">جمع سهم نهایی مشتریان</div>
-              <div className="text-base font-semibold">{fmtMoney(totalFinal)}</div>
-            </CardContent></Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">تاریخ سرمایه</div>
+                <div className="text-base font-semibold">
+                  {toFaDigits(meta?.capital_date ?? NA)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">سهم نهایی فروشنده</div>
+                <div className="text-base font-semibold text-primary">
+                  {fmtMoney(meta?.salesperson_final_amount)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">مجموع امتیاز مشتریان</div>
+                <div className="text-base font-semibold">{fmtNum(meta?.total_customer_score)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">جمع سهم نهایی مشتریان</div>
+                <div className="text-base font-semibold">{fmtMoney(totalFinal)}</div>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
@@ -266,35 +310,54 @@ function CustomerCapitalAllocationsPage() {
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         امتیاز اعتباری
-                        <HelpHint text={"امتیاز اعتباری مشتری که از قوانین اعتبار محاسبه می‌شود (بین ۰ تا ۱۰۰).\nمشتری بدون پروفایل اعتباری یا با امتیاز صفر، سهمی نمی‌گیرد."} />
+                        <HelpHint
+                          text={
+                            "امتیاز اعتباری مشتری که از قوانین اعتبار محاسبه می‌شود (بین ۰ تا ۱۰۰).\nمشتری بدون پروفایل اعتباری یا با امتیاز صفر، سهمی نمی‌گیرد."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         سهم پیشنهادی سیستم
-                        <HelpHint text={"سهم پیشنهادی مشتری = سهم نهایی فروشنده × (امتیاز مشتری ÷ مجموع امتیاز مشتریان این فروشنده)."} />
+                        <HelpHint
+                          text={
+                            "سهم پیشنهادی مشتری = سهم نهایی فروشنده × (امتیاز مشتری ÷ مجموع امتیاز مشتریان این فروشنده)."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         سهم نهایی
-                        <HelpHint text={"سقف اعتباری که این مشتری امروز از این فروشنده می‌تواند استفاده کند.\nدر صورت تغییر نسبت به پیشنهاد سیستم، نوشتن دلیل اجباری است."} />
+                        <HelpHint
+                          text={
+                            "سقف اعتباری که این مشتری امروز از این فروشنده می‌تواند استفاده کند.\nدر صورت تغییر نسبت به پیشنهاد سیستم، نوشتن دلیل اجباری است."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         دلیل تغییر (در صورت override)
-                        <HelpHint text={"وقتی «سهم نهایی» با «سهم پیشنهادی» متفاوت باشد، نوشتن دلیل اجباری است و برای حسابرسی ذخیره می‌شود."} />
+                        <HelpHint
+                          text={
+                            "وقتی «سهم نهایی» با «سهم پیشنهادی» متفاوت باشد، نوشتن دلیل اجباری است و برای حسابرسی ذخیره می‌شود."
+                          }
+                        />
                       </span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r, idx) => {
-                    const isOverride = Math.round(toNum(r.final_amount)) !== Math.round(r.system_suggested_amount);
+                    const isOverride =
+                      Math.round(toNum(r.final_amount)) !== Math.round(r.system_suggested_amount);
                     return (
                       <TableRow key={r.customer_id}>
-                        <TableCell className="font-mono text-xs" dir="ltr">{shortId(r.customer_id)}…</TableCell>
+                        <TableCell className="font-mono text-xs" dir="ltr">
+                          {shortId(r.customer_id)}…
+                        </TableCell>
                         <TableCell>{fmtNum(r.customer_score)}</TableCell>
                         <TableCell>{fmtMoney(r.system_suggested_amount)}</TableCell>
                         <TableCell className="min-w-[160px]">
@@ -344,7 +407,11 @@ function CustomerCapitalAllocationsPage() {
               disabled={saveM.isPending || rows.length === 0}
               className="gap-2"
             >
-              {saveM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saveM.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
               ذخیره تخصیص مشتریان
             </Button>
           </div>
@@ -352,13 +419,17 @@ function CustomerCapitalAllocationsPage() {
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="text-sm font-semibold">فرمول سهم پیشنهادی</div>
-              <pre className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground" dir="rtl">
-{`سهم پیشنهادی مشتری = ROUND( سهم نهایی فروشنده × ( امتیاز اعتباری مشتری ÷ مجموع امتیاز مشتریان ) )
+              <pre
+                className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground"
+                dir="rtl"
+              >
+                {`سهم پیشنهادی مشتری = ROUND( سهم نهایی فروشنده × ( امتیاز اعتباری مشتری ÷ مجموع امتیاز مشتریان ) )
 مشتریان بدون پروفایل اعتباری یا با امتیاز صفر، سهم پیشنهادی صفر دارند.
 اگر سهم نهایی با سهم پیشنهادی متفاوت باشد، ثبت دلیل override اجباری است.`}
               </pre>
               <div className="text-xs text-muted-foreground">
-                نمایش نام مشتری در این فاز پشتیبانی نمی‌شود؛ به دلیل عدم وجود فیلد امن نام در RPC، فقط شناسه مشتری نمایش داده می‌شود.
+                نمایش نام مشتری در این فاز پشتیبانی نمی‌شود؛ به دلیل عدم وجود فیلد امن نام در RPC،
+                فقط شناسه مشتری نمایش داده می‌شود.
               </div>
             </CardContent>
           </Card>

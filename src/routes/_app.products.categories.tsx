@@ -12,11 +12,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -25,11 +43,20 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { categorySchema, type CategoryFormValues } from "@/lib/products/schemas";
 
 export const Route = createFileRoute("/_app/products/categories")({
-  beforeLoad: async () => { await requirePermission("products", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("products", "view");
+  },
   component: CategoriesPage,
 });
 
-interface Cat { id: string; name: string; slug: string; parent_id: string | null; description: string | null; is_active: boolean; }
+interface Cat {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  description: string | null;
+  is_active: boolean;
+}
 
 function CategoriesPage() {
   const { roles } = useAuth();
@@ -44,7 +71,8 @@ function CategoriesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["categories-full"],
     queryFn: async (): Promise<Cat[]> => {
-      const { data, error } = await supabase.from("categories")
+      const { data, error } = await supabase
+        .from("categories")
         .select("id, name, slug, parent_id, description, is_active")
         .order("name", { ascending: true });
       if (error) throw error;
@@ -62,7 +90,10 @@ function CategoriesPage() {
     const include = new Set<string>(matched);
     for (const id of matched) {
       let p = byId.get(id)?.parent_id ?? null;
-      while (p && !include.has(p)) { include.add(p); p = byId.get(p)?.parent_id ?? null; }
+      while (p && !include.has(p)) {
+        include.add(p);
+        p = byId.get(p)?.parent_id ?? null;
+      }
     }
     return list.filter((c) => include.has(c.id));
   }, [data, dSearch]);
@@ -73,7 +104,8 @@ function CategoriesPage() {
     const byParent = new Map<string | null, Cat[]>();
     for (const c of list) {
       const arr = byParent.get(c.parent_id) ?? [];
-      arr.push(c); byParent.set(c.parent_id, arr);
+      arr.push(c);
+      byParent.set(c.parent_id, arr);
     }
     return byParent;
   }, [filtered]);
@@ -84,9 +116,15 @@ function CategoriesPage() {
   };
 
   const toggleStatus = async (c: Cat) => {
-    const { error } = await supabase.from("categories").update({ is_active: !c.is_active }).eq("id", c.id);
+    const { error } = await supabase
+      .from("categories")
+      .update({ is_active: !c.is_active })
+      .eq("id", c.id);
     if (error) toast.error(error.message);
-    else { toast.success(c.is_active ? "دسته غیرفعال شد" : "دسته فعال شد"); onSaved(); }
+    else {
+      toast.success(c.is_active ? "دسته غیرفعال شد" : "دسته فعال شد");
+      onSaved();
+    }
     setToggleTarget(null);
   };
 
@@ -94,23 +132,44 @@ function CategoriesPage() {
     const children = tree.get(c.id) ?? [];
     return (
       <div key={c.id}>
-        <div className="flex items-center justify-between gap-2 border-b border-border p-3" style={{ paddingInlineStart: 12 + depth * 20 }}>
+        <div
+          className="flex items-center justify-between gap-2 border-b border-border p-3"
+          style={{ paddingInlineStart: 12 + depth * 20 }}
+        >
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{c.name}</span>
-              {c.is_active
-                ? <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">فعال</Badge>
-                : <Badge variant="destructive">غیرفعال</Badge>}
+              {c.is_active ? (
+                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">فعال</Badge>
+              ) : (
+                <Badge variant="destructive">غیرفعال</Badge>
+              )}
             </div>
-            <div className="text-xs text-muted-foreground" dir="ltr">{c.slug}</div>
+            <div className="text-xs text-muted-foreground" dir="ltr">
+              {c.slug}
+            </div>
           </div>
           {canWrite && (
             <div className="flex shrink-0 gap-1">
-              <Button variant="ghost" size="icon" onClick={() => { setEditing(c); setOpen(true); }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setEditing(c);
+                  setOpen(true);
+                }}
+              >
                 <Pencil className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setToggleTarget(c)} title={c.is_active ? "غیرفعال" : "فعال"}>
-                <Power className={`h-4 w-4 ${c.is_active ? "text-destructive" : "text-emerald-600"}`} />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setToggleTarget(c)}
+                title={c.is_active ? "غیرفعال" : "فعال"}
+              >
+                <Power
+                  className={`h-4 w-4 ${c.is_active ? "text-destructive" : "text-emerald-600"}`}
+                />
               </Button>
             </div>
           )}
@@ -130,11 +189,21 @@ function CategoriesPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
+              <Link to="/products">
+                <ArrowRight className="ms-1 h-4 w-4" />
+                بازگشت
+              </Link>
             </Button>
             {canWrite && (
-              <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
-                <Plus className="ms-1 h-4 w-4" />دسته جدید
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setOpen(true);
+                }}
+              >
+                <Plus className="ms-1 h-4 w-4" />
+                دسته جدید
               </Button>
             )}
           </>
@@ -178,7 +247,9 @@ function CategoriesPage() {
       <AlertDialog open={!!toggleTarget} onOpenChange={(v) => !v && setToggleTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{toggleTarget?.is_active ? "غیرفعال‌سازی دسته" : "فعال‌سازی دسته"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {toggleTarget?.is_active ? "غیرفعال‌سازی دسته" : "فعال‌سازی دسته"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {toggleTarget?.is_active
                 ? `آیا از غیرفعال‌کردن «${toggleTarget?.name}» اطمینان دارید؟ این دسته در فرم‌های جدید نمایش داده نخواهد شد.`
@@ -197,30 +268,56 @@ function CategoriesPage() {
   );
 }
 
-function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
-  open: boolean; onOpenChange: (v: boolean) => void; editing: Cat | null; all: Cat[]; onSaved: () => void;
+function CategoryDialog({
+  open,
+  onOpenChange,
+  editing,
+  all,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  editing: Cat | null;
+  all: Cat[];
+  onSaved: () => void;
 }) {
   const [values, setValues] = useState<CategoryFormValues>({
-    name: "", slug: "", parent_id: null, description: "", is_active: true,
+    name: "",
+    slug: "",
+    parent_id: null,
+    description: "",
+    is_active: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const reset = () => {
-    setValues(editing
-      ? { name: editing.name, slug: editing.slug, parent_id: editing.parent_id, description: editing.description ?? "", is_active: editing.is_active }
-      : { name: "", slug: "", parent_id: null, description: "", is_active: true });
+    setValues(
+      editing
+        ? {
+            name: editing.name,
+            slug: editing.slug,
+            parent_id: editing.parent_id,
+            description: editing.description ?? "",
+            is_active: editing.is_active,
+          }
+        : { name: "", slug: "", parent_id: null, description: "", is_active: true },
+    );
     setErrors({});
   };
 
-  const handleOpenChange = (v: boolean) => { if (v) reset(); onOpenChange(v); };
+  const handleOpenChange = (v: boolean) => {
+    if (v) reset();
+    onOpenChange(v);
+  };
 
   const submit = async () => {
     const parsed = categorySchema.safeParse(values);
     if (!parsed.success) {
       const flat: Record<string, string> = {};
       for (const i of parsed.error.issues) flat[i.path.join(".")] = i.message;
-      setErrors(flat); return;
+      setErrors(flat);
+      return;
     }
     if (editing && parsed.data.parent_id) {
       // Prevent parent loops: parent cannot be self or any descendant
@@ -229,15 +326,21 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
         const stack = [id];
         while (stack.length) {
           const cur = stack.pop()!;
-          for (const c of all) if (c.parent_id === cur) { out.add(c.id); stack.push(c.id); }
+          for (const c of all)
+            if (c.parent_id === cur) {
+              out.add(c.id);
+              stack.push(c.id);
+            }
         }
         return out;
       };
       if (childrenOf(editing.id).has(parsed.data.parent_id)) {
-        toast.error("دسته نمی‌تواند والد خود یا یکی از زیردسته‌هایش باشد"); return;
+        toast.error("دسته نمی‌تواند والد خود یا یکی از زیردسته‌هایش باشد");
+        return;
       }
     }
-    setErrors({}); setLoading(true);
+    setErrors({});
+    setLoading(true);
     try {
       const payload = { ...parsed.data, parent_id: parsed.data.parent_id || null };
       if (editing) {
@@ -249,9 +352,13 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
         if (error) throw error;
         toast.success("دسته ایجاد شد");
       }
-      onSaved(); onOpenChange(false);
-    } catch (e: any) { toast.error(e?.message ?? "خطا"); }
-    finally { setLoading(false); }
+      onSaved();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "خطا");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Hide self + descendants and inactive entries from the parent picker
@@ -261,7 +368,11 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
     const stack = [editing.id];
     while (stack.length) {
       const cur = stack.pop()!;
-      for (const c of all) if (c.parent_id === cur && !exclude.has(c.id)) { exclude.add(c.id); stack.push(c.id); }
+      for (const c of all)
+        if (c.parent_id === cur && !exclude.has(c.id)) {
+          exclude.add(c.id);
+          stack.push(c.id);
+        }
     }
     return all.filter((c) => !exclude.has(c.id) && c.is_active);
   })();
@@ -269,39 +380,68 @@ function CategoryDialog({ open, onOpenChange, editing, all, onSaved }: {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{editing ? "ویرایش دسته" : "دسته جدید"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{editing ? "ویرایش دسته" : "دسته جدید"}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label>نام *</Label>
-            <Input value={values.name} onChange={(e) => setValues((s) => ({ ...s, name: e.target.value }))} />
+            <Input
+              value={values.name}
+              onChange={(e) => setValues((s) => ({ ...s, name: e.target.value }))}
+            />
             {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
           </div>
           <div>
             <Label>اسلاگ *</Label>
-            <Input dir="ltr" value={values.slug} onChange={(e) => setValues((s) => ({ ...s, slug: e.target.value }))} />
+            <Input
+              dir="ltr"
+              value={values.slug}
+              onChange={(e) => setValues((s) => ({ ...s, slug: e.target.value }))}
+            />
             {errors.slug && <p className="mt-1 text-xs text-destructive">{errors.slug}</p>}
           </div>
           <div>
             <Label>دسته والد</Label>
-            <Select value={values.parent_id ?? "__none"} onValueChange={(v) => setValues((s) => ({ ...s, parent_id: v === "__none" ? null : v }))}>
-              <SelectTrigger><SelectValue placeholder="بدون والد" /></SelectTrigger>
+            <Select
+              value={values.parent_id ?? "__none"}
+              onValueChange={(v) =>
+                setValues((s) => ({ ...s, parent_id: v === "__none" ? null : v }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="بدون والد" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— بدون والد —</SelectItem>
-                {parents.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                {parents.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>توضیحات</Label>
-            <Textarea value={values.description ?? ""} onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))} rows={3} />
+            <Textarea
+              value={values.description ?? ""}
+              onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))}
+              rows={3}
+            />
           </div>
           <div className="flex items-center gap-2">
-            <Switch checked={values.is_active} onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))} />
+            <Switch
+              checked={values.is_active}
+              onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))}
+            />
             <Label>فعال</Label>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            انصراف
+          </Button>
           <Button onClick={submit} disabled={loading}>
             {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
           </Button>

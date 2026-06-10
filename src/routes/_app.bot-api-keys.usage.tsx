@@ -2,7 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, Loader2, ChevronLeft, ChevronRight, AlertTriangle, ArrowLeft,
+  Activity,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  ArrowLeft,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -12,7 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -21,14 +30,23 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/bot-api-keys/usage")({
-  beforeLoad: async () => { await requirePermission("bot-api-keys", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("bot-api-keys", "view");
+  },
   component: BotApiUsagePage,
 });
 
 const PAGE_SIZE = 50;
 
-interface KeyOpt { id: string; name: string; key_prefix: string | null }
-interface TableOpt { id: string; name: string }
+interface KeyOpt {
+  id: string;
+  name: string;
+  key_prefix: string | null;
+}
+interface TableOpt {
+  id: string;
+  name: string;
+}
 
 interface UsageLog {
   id: number;
@@ -103,8 +121,10 @@ function BotApiUsagePage() {
     queryFn: async () => {
       let q = supabase
         .from("bot_api_usage_logs")
-        .select("id, api_key_id, table_id, endpoint, method, status_code, error_code, ip, request_size, response_count, created_at",
-          { count: "exact" })
+        .select(
+          "id, api_key_id, table_id, endpoint, method, status_code, error_code, ip, request_size, response_count, created_at",
+          { count: "exact" },
+        )
         .order("created_at", { ascending: false })
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
@@ -112,7 +132,8 @@ function BotApiUsagePage() {
       if (tableId !== "__all") q = q.eq("table_id", tableId);
       if (method !== "__all") q = q.eq("method", method);
       if (statusFilter === "success") q = q.lt("status_code", 400);
-      else if (statusFilter === "client_error") q = q.gte("status_code", 400).lt("status_code", 500);
+      else if (statusFilter === "client_error")
+        q = q.gte("status_code", 400).lt("status_code", 500);
       else if (statusFilter === "server_error") q = q.gte("status_code", 500);
       if (debErr) q = q.eq("error_code", debErr);
       if (from) q = q.gte("created_at", new Date(from).toISOString());
@@ -133,7 +154,10 @@ function BotApiUsagePage() {
       const { data, error } = await supabase.rpc("bot_suspicious_ips", { p_limit: 10 });
       if (error) throw error;
       return (data ?? []) as Array<{
-        ip: string; failed_count: number; last_attempt_at: string; distinct_endpoints: number;
+        ip: string;
+        failed_count: number;
+        last_attempt_at: string;
+        distinct_endpoints: number;
       }>;
     },
   });
@@ -145,7 +169,9 @@ function BotApiUsagePage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("bot_key_stats_today");
       if (error) throw error;
-      return ((data ?? []) as Array<{ api_key_id: string; requests_today: number; errors_today: number }>)
+      return (
+        (data ?? []) as Array<{ api_key_id: string; requests_today: number; errors_today: number }>
+      )
         .filter((r) => Number(r.errors_today) > 0)
         .sort((a, b) => Number(b.errors_today) - Number(a.errors_today))
         .slice(0, 10);
@@ -165,15 +191,18 @@ function BotApiUsagePage() {
         description="مشاهده و فیلتر درخواست‌های API ربات‌ها، خطاها و IPهای مشکوک"
         actions={
           <Button asChild variant="outline">
-            <Link to="/bot-api-keys"><ArrowLeft className="ml-2 h-4 w-4" />بازگشت به کلیدها</Link>
+            <Link to="/bot-api-keys">
+              <ArrowLeft className="ml-2 h-4 w-4" />
+              بازگشت به کلیدها
+            </Link>
           </Button>
         }
       />
 
       <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-6">
-        در این صفحه تمام درخواست‌های Bot API ثبت می‌شود؛ شامل درخواست‌های موفق، خطاها، کد خطا،
-        کلید مصرف‌کننده، جدول هدف و IP درخواست‌دهنده. می‌توانید با فیلترها به‌سرعت درخواست‌های
-        مشکوک یا پرتکرار را پیدا کنید.
+        در این صفحه تمام درخواست‌های Bot API ثبت می‌شود؛ شامل درخواست‌های موفق، خطاها، کد خطا، کلید
+        مصرف‌کننده، جدول هدف و IP درخواست‌دهنده. می‌توانید با فیلترها به‌سرعت درخواست‌های مشکوک یا
+        پرتکرار را پیدا کنید.
       </div>
 
       {/* Suspicious IPs and error keys */}
@@ -193,10 +222,14 @@ function BotApiUsagePage() {
             ) : (
               (suspiciousQuery.data ?? []).map((r) => (
                 <div key={r.ip} className="flex items-center justify-between text-sm">
-                  <span className="font-mono" dir="ltr">{r.ip}</span>
+                  <span className="font-mono" dir="ltr">
+                    {r.ip}
+                  </span>
                   <div className="flex items-center gap-2">
                     <Badge variant="destructive">{r.failed_count} خطا</Badge>
-                    <span className="text-xs text-muted-foreground">{formatDateTimeFa(r.last_attempt_at)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTimeFa(r.last_attempt_at)}
+                    </span>
                   </div>
                 </div>
               ))
@@ -240,32 +273,60 @@ function BotApiUsagePage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
               <Label className="text-xs">کلید</Label>
-              <Select value={keyId} onValueChange={(v) => { setKeyId(v); resetPage(); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={keyId}
+                onValueChange={(v) => {
+                  setKeyId(v);
+                  resetPage();
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه کلیدها</SelectItem>
                   {(keysQuery.data ?? []).map((k) => (
-                    <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
+                    <SelectItem key={k.id} value={k.id}>
+                      {k.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">جدول</Label>
-              <Select value={tableId} onValueChange={(v) => { setTableId(v); resetPage(); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={tableId}
+                onValueChange={(v) => {
+                  setTableId(v);
+                  resetPage();
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه جداول</SelectItem>
                   {(tablesQuery.data ?? []).map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">متد</Label>
-              <Select value={method} onValueChange={(v) => { setMethod(v); resetPage(); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={method}
+                onValueChange={(v) => {
+                  setMethod(v);
+                  resetPage();
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه</SelectItem>
                   <SelectItem value="GET">GET</SelectItem>
@@ -275,8 +336,16 @@ function BotApiUsagePage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">وضعیت</Label>
-              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); resetPage(); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v);
+                  resetPage();
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه</SelectItem>
                   <SelectItem value="success">موفق (۲xx/۳xx)</SelectItem>
@@ -290,27 +359,49 @@ function BotApiUsagePage() {
               <Input
                 placeholder="مثلاً invalid_key"
                 value={errorCode}
-                onChange={(e) => { setErrorCode(e.target.value); resetPage(); }}
+                onChange={(e) => {
+                  setErrorCode(e.target.value);
+                  resetPage();
+                }}
                 dir="ltr"
               />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">از تاریخ</Label>
-              <Input type="datetime-local" dir="ltr" value={from}
-                onChange={(e) => { setFrom(e.target.value); resetPage(); }} />
+              <Input
+                type="datetime-local"
+                dir="ltr"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  resetPage();
+                }}
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">تا تاریخ</Label>
-              <Input type="datetime-local" dir="ltr" value={to}
-                onChange={(e) => { setTo(e.target.value); resetPage(); }} />
+              <Input
+                type="datetime-local"
+                dir="ltr"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  resetPage();
+                }}
+              />
             </div>
             <div className="flex items-end">
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => {
-                  setKeyId("__all"); setTableId("__all"); setMethod("__all");
-                  setStatusFilter("__all"); setErrorCode(""); setFrom(""); setTo("");
+                  setKeyId("__all");
+                  setTableId("__all");
+                  setMethod("__all");
+                  setStatusFilter("__all");
+                  setErrorCode("");
+                  setFrom("");
+                  setTo("");
                   resetPage();
                 }}
               >
@@ -330,8 +421,11 @@ function BotApiUsagePage() {
             </div>
           ) : (logsQuery.data?.rows ?? []).length === 0 ? (
             <div className="py-10">
-              <EmptyState icon={Activity} title="گزارشی یافت نشد"
-                description="با تغییر فیلترها مجدداً جستجو کنید." />
+              <EmptyState
+                icon={Activity}
+                title="گزارشی یافت نشد"
+                description="با تغییر فیلترها مجدداً جستجو کنید."
+              />
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -343,7 +437,11 @@ function BotApiUsagePage() {
                   <div key={r.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
                     <Badge variant={isErr ? "destructive" : "secondary"}>{r.status_code}</Badge>
                     <Badge variant="outline">{r.method}</Badge>
-                    <span className="font-mono text-xs truncate max-w-[280px]" dir="ltr" title={r.endpoint}>
+                    <span
+                      className="font-mono text-xs truncate max-w-[280px]"
+                      dir="ltr"
+                      title={r.endpoint}
+                    >
                       {r.endpoint}
                     </span>
                     {r.error_code && (
@@ -355,7 +453,11 @@ function BotApiUsagePage() {
                       کلید: {k?.name ?? (r.api_key_id ? "—" : "بدون کلید")}
                     </span>
                     {t && <span className="text-xs text-muted-foreground">جدول: {t.name}</span>}
-                    {r.ip && <span className="text-xs font-mono text-muted-foreground" dir="ltr">{r.ip}</span>}
+                    {r.ip && (
+                      <span className="text-xs font-mono text-muted-foreground" dir="ltr">
+                        {r.ip}
+                      </span>
+                    )}
                     <span className="ms-auto text-xs text-muted-foreground">
                       {formatDateTimeFa(r.created_at)}
                     </span>
@@ -368,15 +470,24 @@ function BotApiUsagePage() {
           {/* Pagination */}
           <div className="flex items-center justify-between border-t border-border p-3">
             <span className="text-xs text-muted-foreground">
-              مجموع: {total.toLocaleString("fa-IR")} — صفحه {(page + 1).toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")}
+              مجموع: {total.toLocaleString("fa-IR")} — صفحه {(page + 1).toLocaleString("fa-IR")} از{" "}
+              {totalPages.toLocaleString("fa-IR")}
             </span>
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>

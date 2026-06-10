@@ -225,12 +225,16 @@ async function fetchNavasan(): Promise<ProviderResult> {
   const apiKey = (process.env.NAVASAN_API_KEY ?? "").trim();
   if (!apiKey) return { ok: false, reason: "navasan_api_key_missing" };
   try {
-    const baseUrl = (process.env.NAVASAN_BASE_URL ?? "https://www.navasan.tech/api").replace(/\/$/, "");
+    const baseUrl = (process.env.NAVASAN_BASE_URL ?? "https://www.navasan.tech/api").replace(
+      /\/$/,
+      "",
+    );
     const url = `${baseUrl}/latest/?api_key=${encodeURIComponent(apiKey)}`;
     const res = await fetchWithTimeout(url, safeTimeoutMs());
     if (!res.ok) return { ok: false, reason: `navasan_http_${res.status}` };
     const payload = (await res.json()) as Record<string, unknown>;
-    if (!payload || typeof payload !== "object") return { ok: false, reason: "navasan_invalid_payload" };
+    if (!payload || typeof payload !== "object")
+      return { ok: false, reason: "navasan_invalid_payload" };
     const out: Record<string, { value: number; reportedAt: string | null; raw: unknown }> = {};
     let count = 0;
     for (const [sym, node] of Object.entries(payload)) {
@@ -271,9 +275,7 @@ async function handle(request: Request): Promise<Response> {
   const expected = (process.env.MARKET_RATES_CRON_SECRET ?? "").trim();
   if (expected) {
     const authHeader = request.headers.get("authorization") ?? "";
-    const token = authHeader.toLowerCase().startsWith("bearer ")
-      ? authHeader.slice(7).trim()
-      : "";
+    const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
     if (!token || token !== expected) {
       return makeResponse(baseEmpty("unauthorized", "invalid_or_missing_bearer_token"), 401);
     }

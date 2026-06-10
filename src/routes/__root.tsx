@@ -1,4 +1,11 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useRouter,
+} from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
@@ -42,18 +49,26 @@ function RootErrorComponent({ error, reset }: { error: Error; reset: () => void 
         </p>
         <div className="flex items-center justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             تلاش دوباره
           </button>
           <button
-            onClick={() => { void forceHardReload("manual: RootError"); }}
+            onClick={() => {
+              void forceHardReload("manual: RootError");
+            }}
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             رفرش کامل و پاک‌سازی کش
           </button>
-          <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+          <Link
+            to="/login"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
             ورود
           </Link>
         </div>
@@ -91,18 +106,25 @@ class AuthErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
             <p className="text-sm text-muted-foreground">{this.state.error.message}</p>
             <div className="flex items-center justify-center gap-2">
               <button
-                onClick={() => { this.setState({ error: null }); }}
+                onClick={() => {
+                  this.setState({ error: null });
+                }}
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
               >
                 تلاش دوباره
               </button>
               <button
-                onClick={() => { void forceHardReload("manual: AuthBoundary"); }}
+                onClick={() => {
+                  void forceHardReload("manual: AuthBoundary");
+                }}
                 className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground"
               >
                 رفرش کامل و پاک‌سازی کش
               </button>
-              <Link to="/login" className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground">
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground"
+              >
                 ورود
               </Link>
             </div>
@@ -120,14 +142,31 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "دستیار هوشمند افراکالا" },
-      { name: "description", content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا." },
+      {
+        name: "description",
+        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+      },
       { property: "og:title", content: "دستیار هوشمند افراکالا" },
-      { property: "og:description", content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا." },
+      {
+        property: "og:description",
+        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:title", content: "دستیار هوشمند افراکالا" },
-      { name: "twitter:description", content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png" },
+      {
+        name: "twitter:description",
+        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -179,7 +218,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function normalizeEnvironmentName(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function isLocalOrTestHost(hostname: string) {
@@ -199,7 +240,8 @@ function EnvironmentSafetyBanner() {
   const appEnv = normalizeEnvironmentName(
     import.meta.env.VITE_APP_ENV ?? import.meta.env.VITE_ENVIRONMENT_NAME ?? import.meta.env.MODE,
   );
-  const bannerEnabled = normalizeEnvironmentName(import.meta.env.VITE_SHOW_ENVIRONMENT_BANNER) === "true";
+  const bannerEnabled =
+    normalizeEnvironmentName(import.meta.env.VITE_SHOW_ENVIRONMENT_BANNER) === "true";
   const configuredBannerText = String(import.meta.env.VITE_ENVIRONMENT_BANNER_TEXT ?? "").trim();
   const [hostname, setHostname] = useState("");
 
@@ -212,7 +254,8 @@ function EnvironmentSafetyBanner() {
   const isProduction = appEnv === "production";
   const isStaging = appEnv === "staging";
   const shouldShowNonProductionBanner = bannerEnabled || (appEnv !== "" && !isProduction);
-  const suspiciousProductionRuntime = isProduction && hostname !== "" && isLocalOrTestHost(hostname);
+  const suspiciousProductionRuntime =
+    isProduction && hostname !== "" && isLocalOrTestHost(hostname);
 
   if (!shouldShowNonProductionBanner && !suspiciousProductionRuntime) {
     return null;
@@ -220,9 +263,10 @@ function EnvironmentSafetyBanner() {
 
   const bannerText = suspiciousProductionRuntime
     ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
-    : configuredBannerText || (isStaging
-      ? "محیط تست افراکالا - اطلاعات این بخش واقعی نیست"
-      : `محیط غیرعملیاتی افراکالا${appEnv ? ` - ${appEnv}` : ""}`);
+    : configuredBannerText ||
+      (isStaging
+        ? "محیط تست افراکالا - اطلاعات این بخش واقعی نیست"
+        : `محیط غیرعملیاتی افراکالا${appEnv ? ` - ${appEnv}` : ""}`);
 
   const className = suspiciousProductionRuntime
     ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"
@@ -237,7 +281,10 @@ function EnvironmentSafetyBanner() {
 
 function RootComponent() {
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } } })
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
+      }),
   );
   useEffect(() => {
     initCacheBuster();

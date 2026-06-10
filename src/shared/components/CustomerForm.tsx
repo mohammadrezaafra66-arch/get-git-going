@@ -18,11 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 
 const phoneRegex = /^09\d{9}$/;
@@ -50,18 +53,15 @@ const schema = z.object({
     .string()
     .trim()
     .optional()
-    .refine(
-      (v) => {
-        if (!v) return true;
-        try {
-          const u = new URL(v);
-          return u.protocol === "http:" || u.protocol === "https:";
-        } catch {
-          return false;
-        }
-      },
-      "لینک نامعتبر است (باید با http یا https شروع شود)",
-    ),
+    .refine((v) => {
+      if (!v) return true;
+      try {
+        const u = new URL(v);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "لینک نامعتبر است (باید با http یا https شروع شود)"),
   birth_date: z
     .string()
     .trim()
@@ -95,9 +95,7 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
   const isSales = roles.includes("sales");
   const canSetResponsible = isAdminOrManager || isSales;
 
-  const [respLabel, setRespLabel] = useState<string>(
-    defaultValues?.responsible?.full_name ?? "",
-  );
+  const [respLabel, setRespLabel] = useState<string>(defaultValues?.responsible?.full_name ?? "");
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(schema),
@@ -177,7 +175,9 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       dir="rtl"
     >
       <div className="space-y-2">
-        <Label htmlFor="name">نام مشتری <span className="text-destructive">*</span></Label>
+        <Label htmlFor="name">
+          نام مشتری <span className="text-destructive">*</span>
+        </Label>
         <Input id="name" {...form.register("name")} placeholder="نام و نام خانوادگی" />
         {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
       </div>
@@ -222,7 +222,9 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         {errors.accounting_code && (
           <p className="text-xs text-destructive">{errors.accounting_code.message}</p>
         )}
-        <p className="text-[11px] text-muted-foreground">اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-</p>
+        <p className="text-[11px] text-muted-foreground">
+          اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -289,9 +291,7 @@ function BirthDatePicker({
 }) {
   const [open, setOpen] = useState(false);
   const dateValue = value ? new Date(value) : undefined;
-  const display = dateValue
-    ? dateValue.toLocaleDateString("fa-IR")
-    : "انتخاب تاریخ تولد";
+  const display = dateValue ? dateValue.toLocaleDateString("fa-IR") : "انتخاب تاریخ تولد";
   return (
     <div className="flex gap-2">
       <Popover open={open} onOpenChange={setOpen}>
@@ -299,10 +299,7 @@ function BirthDatePicker({
           <Button
             type="button"
             variant="outline"
-            className={cn(
-              "flex-1 justify-start font-normal",
-              !value && "text-muted-foreground",
-            )}
+            className={cn("flex-1 justify-start font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="ml-2 h-4 w-4 opacity-60" />
             {display}
@@ -354,7 +351,11 @@ interface ResponsiblePickerProps {
 }
 
 function ResponsiblePicker({
-  value, label, onChange, restrictedToSelf, currentUserId,
+  value,
+  label,
+  onChange,
+  restrictedToSelf,
+  currentUserId,
 }: ResponsiblePickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -395,17 +396,13 @@ function ResponsiblePicker({
                 !value && "text-muted-foreground",
               )}
             >
-              {value ? (label || "کاربر انتخاب شده") : "انتخاب مسئول (اختیاری)..."}
+              {value ? label || "کاربر انتخاب شده" : "انتخاب مسئول (اختیاری)..."}
               <ChevronsUpDown className="h-4 w-4 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <Command shouldFilter={false}>
-              <CommandInput
-                placeholder="نام کاربر..."
-                value={search}
-                onValueChange={setSearch}
-              />
+              <CommandInput placeholder="نام کاربر..." value={search} onValueChange={setSearch} />
               <CommandList>
                 <CommandEmpty>کاربری یافت نشد</CommandEmpty>
                 <CommandGroup>
@@ -419,10 +416,7 @@ function ResponsiblePicker({
                       }}
                     >
                       <Check
-                        className={cn(
-                          "ml-2 h-4 w-4",
-                          p.id === value ? "opacity-100" : "opacity-0",
-                        )}
+                        className={cn("ml-2 h-4 w-4", p.id === value ? "opacity-100" : "opacity-0")}
                       />
                       <span>{p.full_name || "بدون نام"}</span>
                     </CommandItem>

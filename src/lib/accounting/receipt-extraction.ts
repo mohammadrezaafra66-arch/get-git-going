@@ -153,9 +153,9 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
 
   // Tracking number
   const trackingPatterns = [
-    /(?:شماره\s*پیگیری|کد\s*پیگیری|کد\s*رهگیری|شماره\s*رهگیری|شناسه\s*پیگیری|پیگیری)\s*[:#\-]?\s*([0-9]{4,30})/i,
-    /\bref(?:erence)?\s*[:#\-]?\s*([0-9A-Za-z]{4,30})/i,
-    /\btracking\s*[:#\-]?\s*([0-9A-Za-z]{4,30})/i,
+    /(?:شماره\s*پیگیری|کد\s*پیگیری|کد\s*رهگیری|شماره\s*رهگیری|شناسه\s*پیگیری|پیگیری)\s*[:#-]?\s*([0-9]{4,30})/i,
+    /\bref(?:erence)?\s*[:#-]?\s*([0-9A-Za-z]{4,30})/i,
+    /\btracking\s*[:#-]?\s*([0-9A-Za-z]{4,30})/i,
   ];
   for (const p of trackingPatterns) {
     const v = findFirst(p, text);
@@ -169,10 +169,11 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   // Amount: فقط با لیبل صریح «مبلغ/amount» یا واحد صریح «ریال/تومان» قبول می‌شود.
   // عدد تنها بدون قرینه قبول نمی‌شود (جلوگیری از خواندن شماره کارت/حساب به‌عنوان مبلغ).
   // برای جلوگیری از تداخل، خطوطی که شامل کلیدواژه‌های زیر هستند نادیده گرفته می‌شوند.
-  const NON_AMOUNT_HINT = /(شماره\s*کارت|شماره\s*حساب|شبا|iban|sheba|card|شناسه\s*پرداخت|کد\s*پیگیری|شماره\s*پیگیری|reference|tracking)/i;
+  const NON_AMOUNT_HINT =
+    /(شماره\s*کارت|شماره\s*حساب|شبا|iban|sheba|card|شناسه\s*پرداخت|کد\s*پیگیری|شماره\s*پیگیری|reference|tracking)/i;
 
   const amountLabeled = findFirst(
-    /(?:مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|مبلغ|amount)\s*[:#\-]?\s*([0-9][0-9,،\s]{2,20})\s*(?:ریال|تومان|rial|toman)?/i,
+    /(?:مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|مبلغ|amount)\s*[:#-]?\s*([0-9][0-9,،\s]{2,20})\s*(?:ریال|تومان|rial|toman)?/i,
     text,
   );
   if (amountLabeled) {
@@ -205,14 +206,12 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   }
 
   // Date — Jalali (1300–1499) or Gregorian (19xx–20xx) with /, -, .
-  const dateJalali = findFirst(
-    /(?:تاریخ|تاريخ|date)\s*[:#\-]?\s*(1[3-4][0-9]{2}[\/\-.][0-1]?[0-9][\/\-.][0-3]?[0-9])/i,
-    text,
-  ) || findFirst(/\b(1[3-4][0-9]{2}[\/\-.][0-1]?[0-9][\/\-.][0-3]?[0-9])\b/, text);
-  const dateGreg = findFirst(
-    /\b((?:19|20)[0-9]{2}[\/\-.][0-1]?[0-9][\/\-.][0-3]?[0-9])\b/,
-    text,
-  );
+  const dateJalali =
+    findFirst(
+      /(?:تاریخ|تاريخ|date)\s*[:#-]?\s*(1[3-4][0-9]{2}[/.-][0-1]?[0-9][/.-][0-3]?[0-9])/i,
+      text,
+    ) || findFirst(/\b(1[3-4][0-9]{2}[/.-][0-1]?[0-9][/.-][0-3]?[0-9])\b/, text);
+  const dateGreg = findFirst(/\b((?:19|20)[0-9]{2}[/.-][0-1]?[0-9][/.-][0-3]?[0-9])\b/, text);
   if (dateJalali) {
     result.receipt_date = dateJalali;
     detected.add("date");
@@ -222,10 +221,9 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   }
 
   // Time
-  const time = findFirst(
-    /(?:ساعت|زمان|time)\s*[:#\-]?\s*([0-2]?[0-9]:[0-5][0-9](?::[0-5][0-9])?)/i,
-    text,
-  ) || findFirst(/\b([0-2]?[0-9]:[0-5][0-9](?::[0-5][0-9])?)\b/, text);
+  const time =
+    findFirst(/(?:ساعت|زمان|time)\s*[:#-]?\s*([0-2]?[0-9]:[0-5][0-9](?::[0-5][0-9])?)/i, text) ||
+    findFirst(/\b([0-2]?[0-9]:[0-5][0-9](?::[0-5][0-9])?)\b/, text);
   if (time) {
     result.receipt_time = time;
     detected.add("time");
@@ -241,8 +239,11 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   }
 
   // Banks — try labeled "از/مبدا" and "به/مقصد" lines first
-  const sourceLine = findFirst(/(?:بانک\s*مبدا|مبدا|از\s*بانک|از)\s*[:\-]?\s*([^\n,،]{2,60})/i, text);
-  const destLine = findFirst(/(?:بانک\s*مقصد|مقصد|به\s*بانک|به)\s*[:\-]?\s*([^\n,،]{2,60})/i, text);
+  const sourceLine = findFirst(
+    /(?:بانک\s*مبدا|مبدا|از\s*بانک|از)\s*[:-]?\s*([^\n,،]{2,60})/i,
+    text,
+  );
+  const destLine = findFirst(/(?:بانک\s*مقصد|مقصد|به\s*بانک|به)\s*[:-]?\s*([^\n,،]{2,60})/i, text);
   for (const bk of BANK_KEYWORDS) {
     for (const k of bk.keys) {
       if (sourceLine && sourceLine.includes(k) && !result.source_bank) {
@@ -269,12 +270,18 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   }
 
   // Names — labeled only (avoid noisy guesses)
-  const payer = findFirst(/(?:نام\s*پرداخت\s*کننده|پرداخت\s*کننده|واریز\s*کننده|فرستنده)\s*[:\-]?\s*([^\n,،]{2,60})/i, text);
+  const payer = findFirst(
+    /(?:نام\s*پرداخت\s*کننده|پرداخت\s*کننده|واریز\s*کننده|فرستنده)\s*[:-]?\s*([^\n,،]{2,60})/i,
+    text,
+  );
   if (payer) {
     result.payer_name_on_receipt = payer;
     detected.add("payer_name");
   }
-  const receiver = findFirst(/(?:نام\s*گیرنده|گیرنده|دریافت\s*کننده|واریز\s*به)\s*[:\-]?\s*([^\n,،]{2,60})/i, text);
+  const receiver = findFirst(
+    /(?:نام\s*گیرنده|گیرنده|دریافت\s*کننده|واریز\s*به)\s*[:-]?\s*([^\n,،]{2,60})/i,
+    text,
+  );
   if (receiver) {
     result.receiver_name_on_receipt = receiver;
     detected.add("receiver_name");
