@@ -44,6 +44,32 @@ export const Route = createFileRoute("/login")({
     }
   },
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "ورود به افراکالا" },
+      {
+        name: "description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:title", content: "ورود به افراکالا" },
+      {
+        property: "og:description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/login" },
+      { name: "twitter:title", content: "ورود به افراکالا" },
+      {
+        name: "twitter:description",
+        content:
+          "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+    ],
+    links: [
+      { rel: "canonical", href: "https://get-git-going.lovable.app/login" },
+    ],
+  }),
 });
 
 function LoginPage() {
@@ -251,7 +277,7 @@ function LoginPage() {
   };
 
   return (
-    <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
