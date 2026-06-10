@@ -7408,6 +7408,64 @@ export type Database = {
         }
         Relationships: []
       }
+      product_computed_prices_public: {
+        Row: {
+          computed_at: string | null
+          computed_by: string | null
+          final_sale_price: number | null
+          id: string | null
+          pricing_rule_id: string | null
+          product_id: string | null
+          rounded_sale_price: number | null
+          sale_price_type_id: string | null
+          source: string | null
+        }
+        Insert: {
+          computed_at?: string | null
+          computed_by?: string | null
+          final_sale_price?: number | null
+          id?: string | null
+          pricing_rule_id?: string | null
+          product_id?: string | null
+          rounded_sale_price?: number | null
+          sale_price_type_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          computed_at?: string | null
+          computed_by?: string | null
+          final_sale_price?: number | null
+          id?: string | null
+          pricing_rule_id?: string | null
+          product_id?: string | null
+          rounded_sale_price?: number | null
+          sale_price_type_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "product_computed_prices_sale_price_type_id_fkey"
+            columns: ["sale_price_type_id"]
+            isOneToOne: false
+            referencedRelation: "sale_price_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       publish_recipients_view: {
         Row: {
           full_name: string | null
