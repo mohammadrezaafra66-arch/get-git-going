@@ -86,7 +86,7 @@ function AttentionPage() {
       <Tabs
         value={activeTab}
         onValueChange={(v) =>
-          navigate({ search: (prev) => ({ ...prev, tab: v as AttentionTab }) })
+          navigate({ search: (prev: { tab?: AttentionTab }) => ({ ...prev, tab: v as AttentionTab }) })
         }
         dir="rtl"
       >
