@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Tag } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -36,7 +40,8 @@ export function BoardSettingsSelector({ onChange }: Props) {
     staleTime: 5 * 60_000,
   });
 
-  const currentTitle = sptQuery.data?.find((t: any) => t.id === settingQuery.data?.sale_price_type_id)?.title ?? "—";
+  const currentTitle =
+    sptQuery.data?.find((t: any) => t.id === settingQuery.data?.sale_price_type_id)?.title ?? "—";
 
   const [pending, setPending] = useState<string | null>(null);
   const mutation = useMutation({
@@ -84,7 +89,9 @@ export function BoardSettingsSelector({ onChange }: Props) {
       <div className="flex items-center gap-2">
         <Tag className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm text-muted-foreground">نوع قیمت نمایش‌داده‌شده:</span>
-        <Badge variant="secondary" className="text-sm">{currentTitle}</Badge>
+        <Badge variant="secondary" className="text-sm">
+          {currentTitle}
+        </Badge>
       </div>
     );
   }
@@ -104,7 +111,9 @@ export function BoardSettingsSelector({ onChange }: Props) {
           </SelectTrigger>
           <SelectContent>
             {(sptQuery.data ?? []).map((t: any) => (
-              <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+              <SelectItem key={t.id} value={t.id}>
+                {t.title}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

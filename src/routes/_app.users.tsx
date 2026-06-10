@@ -9,14 +9,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { ROLE_LABELS, ALL_ROLES, type AppRole } from "@/lib/rbac/roles";
@@ -33,9 +48,14 @@ const VALID_STATUS: Status[] = ["all", "pending", "active", "inactive", "rejecte
 export const Route = createFileRoute("/_app/users")({
   validateSearch: (s: Record<string, unknown>): { status?: Status } => {
     const v = s.status;
-    return { status: typeof v === "string" && (VALID_STATUS as string[]).includes(v) ? (v as Status) : undefined };
+    return {
+      status:
+        typeof v === "string" && (VALID_STATUS as string[]).includes(v) ? (v as Status) : undefined,
+    };
   },
-  beforeLoad: async () => { await requireAdmin(); },
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
   component: UsersManagementPage,
 });
 
@@ -91,10 +111,15 @@ function UsersManagementPage() {
         qc.invalidateQueries({ queryKey: ["pending-users-count"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [qc]);
 
-  const queryKey = useMemo(() => ["users-management", status, debounced, page] as const, [status, debounced, page]);
+  const queryKey = useMemo(
+    () => ["users-management", status, debounced, page] as const,
+    [status, debounced, page],
+  );
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -115,13 +140,17 @@ function UsersManagementPage() {
   const approveMut = useMutation({
     mutationFn: async (args: { userId: string; role: AppRole; position: string }) => {
       const { error } = await supabase.rpc("approve_pending_user", {
-        _user_id: args.userId, _role: args.role, _position: args.position || undefined,
+        _user_id: args.userId,
+        _role: args.role,
+        _position: args.position || undefined,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("کاربر تأیید و فعال شد.");
-      setApproveTarget(null); setSelRole("viewer"); setSelPosition("");
+      setApproveTarget(null);
+      setSelRole("viewer");
+      setSelPosition("");
       qc.invalidateQueries({ queryKey: ["users-management"] });
       qc.invalidateQueries({ queryKey: ["pending-users-count"] });
     },
@@ -131,13 +160,15 @@ function UsersManagementPage() {
   const rejectMut = useMutation({
     mutationFn: async (args: { userId: string; notes: string }) => {
       const { error } = await supabase.rpc("reject_pending_user", {
-        _user_id: args.userId, _notes: args.notes || undefined,
+        _user_id: args.userId,
+        _notes: args.notes || undefined,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("کاربر رد شد.");
-      setRejectTarget(null); setRejectNotes("");
+      setRejectTarget(null);
+      setRejectNotes("");
       qc.invalidateQueries({ queryKey: ["users-management"] });
       qc.invalidateQueries({ queryKey: ["pending-users-count"] });
     },
@@ -159,9 +190,13 @@ function UsersManagementPage() {
 
   const quickApproveMut = useMutation({
     mutationFn: async (args: { userId: string; role: AppRole }) => {
-      const { error } = await supabase.rpc("quick_approve_user" as never, {
-        _user_id: args.userId, _role: args.role,
-      } as never);
+      const { error } = await supabase.rpc(
+        "quick_approve_user" as never,
+        {
+          _user_id: args.userId,
+          _role: args.role,
+        } as never,
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -174,7 +209,10 @@ function UsersManagementPage() {
 
   const reactivateMut = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase.rpc("reactivate_user" as never, { _user_id: userId } as never);
+      const { error } = await supabase.rpc(
+        "reactivate_user" as never,
+        { _user_id: userId } as never,
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -202,15 +240,26 @@ function UsersManagementPage() {
                 <Label className="text-xs">جستجوی نام</Label>
                 <Input
                   value={searchText}
-                  onChange={(e) => { setSearchText(e.target.value); setPage(0); }}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    setPage(0);
+                  }}
                   placeholder="نام کاربر..."
                   className="h-9 w-full sm:w-56"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">وضعیت</Label>
-                <Select value={status} onValueChange={(v) => { setStatus(v as Status); setPage(0); }}>
-                  <SelectTrigger className="h-9 w-full sm:w-40"><SelectValue /></SelectTrigger>
+                <Select
+                  value={status}
+                  onValueChange={(v) => {
+                    setStatus(v as Status);
+                    setPage(0);
+                  }}
+                >
+                  <SelectTrigger className="h-9 w-full sm:w-40">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">همه</SelectItem>
                     <SelectItem value="pending">در انتظار تأیید</SelectItem>
@@ -221,13 +270,13 @@ function UsersManagementPage() {
                 </Select>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              {data ? `${data.count} کاربر` : ""}
-            </div>
+            <div className="text-xs text-muted-foreground">{data ? `${data.count} کاربر` : ""}</div>
           </div>
 
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              در حال بارگذاری...
+            </div>
           ) : !data || data.rows.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">موردی یافت نشد.</div>
           ) : (
@@ -249,10 +298,16 @@ function UsersManagementPage() {
                     return (
                       <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
                         <td className="p-3 font-medium">{u.full_name ?? "—"}</td>
-                        <td className="p-3 text-muted-foreground" dir="ltr">{u.phone ?? "—"}</td>
+                        <td className="p-3 text-muted-foreground" dir="ltr">
+                          {u.phone ?? "—"}
+                        </td>
                         <td className="p-3 text-muted-foreground">{u.position ?? "—"}</td>
-                        <td className="p-3"><Badge className={b.className}>{b.label}</Badge></td>
-                        <td className="p-3 text-xs text-muted-foreground">{formatDateFa(u.registered_at)}</td>
+                        <td className="p-3">
+                          <Badge className={b.className}>{b.label}</Badge>
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">
+                          {formatDateFa(u.registered_at)}
+                        </td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setDetailsTarget(u)}>
@@ -263,27 +318,47 @@ function UsersManagementPage() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  onClick={() => quickApproveMut.mutate({ userId: u.id, role: "sales" })}
+                                  onClick={() =>
+                                    quickApproveMut.mutate({ userId: u.id, role: "sales" })
+                                  }
                                   disabled={quickApproveMut.isPending}
                                 >
                                   <Zap className="ml-1 h-3.5 w-3.5" />
                                   تأیید سریع
                                 </Button>
-                                <Button size="sm" onClick={() => { setApproveTarget(u); setSelPosition(u.position ?? ""); }}>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setApproveTarget(u);
+                                    setSelPosition(u.position ?? "");
+                                  }}
+                                >
                                   تأیید
                                 </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setRejectTarget(u)}>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setRejectTarget(u)}
+                                >
                                   رد
                                 </Button>
                               </>
                             )}
                             {u.status === "active" && (
-                              <Button size="sm" variant="outline" onClick={() => setDeactivateTarget(u)}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setDeactivateTarget(u)}
+                              >
                                 غیرفعال‌سازی
                               </Button>
                             )}
                             {(u.status === "inactive" || u.status === "rejected") && (
-                              <Button size="sm" variant="outline" onClick={() => setReactivateTarget(u)}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setReactivateTarget(u)}
+                              >
                                 فعال‌سازی
                               </Button>
                             )}
@@ -299,9 +374,25 @@ function UsersManagementPage() {
 
           {data && data.count > PAGE && (
             <div className="flex items-center justify-between pt-2 text-xs">
-              <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
-              <span className="text-muted-foreground">صفحه {page + 1} از {totalPages}</span>
-              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                قبلی
+              </Button>
+              <span className="text-muted-foreground">
+                صفحه {page + 1} از {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                بعدی
+              </Button>
             </div>
           )}
         </CardContent>
@@ -318,26 +409,45 @@ function UsersManagementPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>نقش <span className="text-destructive">*</span></Label>
+              <Label>
+                نقش <span className="text-destructive">*</span>
+              </Label>
               <Select value={selRole} onValueChange={(v) => setSelRole(v as AppRole)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {ALL_ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                    <SelectItem key={r} value={r}>
+                      {ROLE_LABELS[r]}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>سمت سازمانی</Label>
-              <Input value={selPosition} onChange={(e) => setSelPosition(e.target.value)} placeholder="مثال: کارشناس فروش" />
+              <Input
+                value={selPosition}
+                onChange={(e) => setSelPosition(e.target.value)}
+                placeholder="مثال: کارشناس فروش"
+              />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setApproveTarget(null)}>انصراف</Button>
+            <Button variant="outline" onClick={() => setApproveTarget(null)}>
+              انصراف
+            </Button>
             <Button
               disabled={!selRole || approveMut.isPending}
-              onClick={() => approveTarget && approveMut.mutate({ userId: approveTarget.id, role: selRole, position: selPosition })}
+              onClick={() =>
+                approveTarget &&
+                approveMut.mutate({
+                  userId: approveTarget.id,
+                  role: selRole,
+                  position: selPosition,
+                })
+              }
             >
               {approveMut.isPending ? "در حال تأیید..." : "تأیید و فعال‌سازی"}
             </Button>
@@ -356,12 +466,18 @@ function UsersManagementPage() {
           </AlertDialogHeader>
           <div className="space-y-2">
             <Label className="text-xs">توضیح (اختیاری)</Label>
-            <Input value={rejectNotes} onChange={(e) => setRejectNotes(e.target.value)} placeholder="دلیل رد..." />
+            <Input
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="دلیل رد..."
+            />
           </div>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => rejectTarget && rejectMut.mutate({ userId: rejectTarget.id, notes: rejectNotes })}
+              onClick={() =>
+                rejectTarget && rejectMut.mutate({ userId: rejectTarget.id, notes: rejectNotes })
+              }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               رد کاربر
@@ -396,7 +512,8 @@ function UsersManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>فعال‌سازی مجدد کاربر</AlertDialogTitle>
             <AlertDialogDescription>
-              «{reactivateTarget?.full_name}» می‌تواند دوباره وارد سامانه شود (نقش‌های قبلی حفظ می‌شوند).
+              «{reactivateTarget?.full_name}» می‌تواند دوباره وارد سامانه شود (نقش‌های قبلی حفظ
+              می‌شوند).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
@@ -446,9 +563,18 @@ function UserDetailsDialog({ target, onClose }: { target: Row | null; onClose: (
           <DialogDescription>{target.full_name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 text-sm">
-          <div><span className="text-muted-foreground">تلفن: </span><span dir="ltr">{target.phone ?? "—"}</span></div>
-          <div><span className="text-muted-foreground">سمت: </span>{target.position ?? "—"}</div>
-          <div><span className="text-muted-foreground">وضعیت: </span>{target.status}</div>
+          <div>
+            <span className="text-muted-foreground">تلفن: </span>
+            <span dir="ltr">{target.phone ?? "—"}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">سمت: </span>
+            {target.position ?? "—"}
+          </div>
+          <div>
+            <span className="text-muted-foreground">وضعیت: </span>
+            {target.status}
+          </div>
           <div className="border-t pt-2">
             <p className="mb-2 font-medium">اطلاعات تکمیلی</p>
             {fields.length === 0 ? (
@@ -456,9 +582,18 @@ function UserDetailsDialog({ target, onClose }: { target: Row | null; onClose: (
             ) : (
               <dl className="space-y-1.5">
                 {fields.map((f) => (
-                  <div key={f.id} className="flex justify-between gap-2 border-b border-dashed pb-1.5 last:border-0">
+                  <div
+                    key={f.id}
+                    className="flex justify-between gap-2 border-b border-dashed pb-1.5 last:border-0"
+                  >
                     <dt className="text-muted-foreground">{f.label}</dt>
-                    <dd className="font-medium">{renderValue(f.name, f.field_type, (values as Record<string, unknown>)[f.name])}</dd>
+                    <dd className="font-medium">
+                      {renderValue(
+                        f.name,
+                        f.field_type,
+                        (values as Record<string, unknown>)[f.name],
+                      )}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -466,7 +601,9 @@ function UserDetailsDialog({ target, onClose }: { target: Row | null; onClose: (
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>بستن</Button>
+          <Button variant="outline" onClick={onClose}>
+            بستن
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

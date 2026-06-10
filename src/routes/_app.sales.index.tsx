@@ -5,7 +5,9 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_app/sales/")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("sales", "view");
+  },
   component: SalesHub,
 });
 
@@ -34,9 +36,7 @@ function SalesHub() {
                 <FilePlus2 className="h-5 w-5" />
               </div>
               <h3 className="font-semibold text-foreground">پیش‌فاکتورها</h3>
-              <p className="text-sm text-muted-foreground">
-                ثبت و مشاهده پیش‌فاکتورهای فروش
-              </p>
+              <p className="text-sm text-muted-foreground">ثبت و مشاهده پیش‌فاکتورهای فروش</p>
             </CardContent>
           </Card>
         </Link>
@@ -73,9 +73,7 @@ function SalesHub() {
                 <FileText className="h-5 w-5" />
               </div>
               <h3 className="font-semibold text-foreground">پیش‌فاکتورها</h3>
-              <p className="text-sm text-muted-foreground">
-                ثبت و پیگیری پیش‌فاکتورهای فروش
-              </p>
+              <p className="text-sm text-muted-foreground">ثبت و پیگیری پیش‌فاکتورهای فروش</p>
             </CardContent>
           </Card>
         </Link>

@@ -3,8 +3,19 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft,
-  Ban, CheckCircle2, AlertTriangle, Play, Unlock, RotateCcw, ExternalLink,
+  Search,
+  Filter,
+  Loader2,
+  Inbox,
+  ChevronRight,
+  ChevronLeft,
+  Ban,
+  CheckCircle2,
+  AlertTriangle,
+  Play,
+  Unlock,
+  RotateCcw,
+  ExternalLink,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -12,7 +23,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -21,16 +36,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import {
-  QUOTE_SHARE_CHANNELS, QUOTE_SHARE_CHANNEL_LABELS, type QuoteShareChannel,
+  QUOTE_SHARE_CHANNELS,
+  QUOTE_SHARE_CHANNEL_LABELS,
+  type QuoteShareChannel,
 } from "@/lib/sales/quote-share";
 import {
-  QUOTE_SEND_QUEUE_STATUSES, QUOTE_SEND_QUEUE_STATUS_LABELS,
-  QUOTE_SEND_QUEUE_PAGE_SIZE, SIMULATED_ERROR_MESSAGE,
+  QUOTE_SEND_QUEUE_STATUSES,
+  QUOTE_SEND_QUEUE_STATUS_LABELS,
+  QUOTE_SEND_QUEUE_PAGE_SIZE,
+  SIMULATED_ERROR_MESSAGE,
   type QuoteSendQueueStatus,
 } from "@/lib/sales/quote-send-queue";
 
 export const Route = createFileRoute("/_app/sales/send-queue")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("sales", "view");
+  },
   component: SendQueuePage,
 });
 
@@ -77,11 +98,16 @@ function SendQueuePage() {
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("none");
   const [page, setPage] = useState(1);
 
-  useMemo(() => { setPage(1); }, [dSearch, channel, status, dateFrom, dateTo, quickFilter]);
+  useMemo(() => {
+    setPage(1);
+  }, [dSearch, channel, status, dateFrom, dateTo, quickFilter]);
 
   const listQuery = useQuery({
     enabled: !!user,
-    queryKey: ["sales-quote-send-queue", { dSearch, channel, status, dateFrom, dateTo, quickFilter, page }],
+    queryKey: [
+      "sales-quote-send-queue",
+      { dSearch, channel, status, dateFrom, dateTo, quickFilter, page },
+    ],
     staleTime: 30_000,
     queryFn: async () => {
       const from = (page - 1) * QUOTE_SEND_QUEUE_PAGE_SIZE;
@@ -124,7 +150,8 @@ function SendQueuePage() {
 
       if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
-        const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
+        const d = new Date(dateTo);
+        d.setHours(23, 59, 59, 999);
         q = q.lte("created_at", d.toISOString());
       }
       if (term.length >= 2) {
@@ -143,7 +170,10 @@ function SendQueuePage() {
       const quoteIds = Array.from(new Set(baseRows.map((r) => r.quote_id).filter(Boolean)));
       const quoteMap = new Map<string, string | null>();
       if (quoteIds.length > 0) {
-        const qr = await supabase.from("sales_quotes").select("id, quote_number").in("id", quoteIds);
+        const qr = await supabase
+          .from("sales_quotes")
+          .select("id, quote_number")
+          .in("id", quoteIds);
         if (!qr.error) {
           for (const r of qr.data ?? []) {
             quoteMap.set(r.id as string, (r.quote_number as string | null) ?? null);
@@ -193,20 +223,28 @@ function SendQueuePage() {
               />
             </div>
             <Select value={channel} onValueChange={setChannel}>
-              <SelectTrigger><SelectValue placeholder="کانال" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="کانال" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه کانال‌ها</SelectItem>
                 {QUOTE_SHARE_CHANNELS.map((c) => (
-                  <SelectItem key={c} value={c}>{QUOTE_SHARE_CHANNEL_LABELS[c]}</SelectItem>
+                  <SelectItem key={c} value={c}>
+                    {QUOTE_SHARE_CHANNEL_LABELS[c]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue placeholder="وضعیت" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="وضعیت" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه وضعیت‌ها</SelectItem>
                 {QUOTE_SEND_QUEUE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{QUOTE_SEND_QUEUE_STATUS_LABELS[s]}</SelectItem>
+                  <SelectItem key={s} value={s}>
+                    {QUOTE_SEND_QUEUE_STATUS_LABELS[s]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -250,11 +288,16 @@ function SendQueuePage() {
                     <tbody className="divide-y divide-border">
                       {rows.map((r) => (
                         <tr key={r.id} className="hover:bg-muted/30">
-                          <td className="p-3 align-top font-mono text-xs">{r.quote_number ?? "—"}</td>
-                          <td className="p-3 align-top">
-                            {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}
+                          <td className="p-3 align-top font-mono text-xs">
+                            {r.quote_number ?? "—"}
                           </td>
-                          <td className="p-3 align-top" dir="ltr">{r.recipient}</td>
+                          <td className="p-3 align-top">
+                            {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ??
+                              r.channel}
+                          </td>
+                          <td className="p-3 align-top" dir="ltr">
+                            {r.recipient}
+                          </td>
                           <td className="p-3 align-top">
                             <StatusBadges row={r} />
                           </td>
@@ -270,7 +313,10 @@ function SendQueuePage() {
                           <td className="p-3 align-top text-[11px] text-muted-foreground">
                             {r.processed_at ? formatDateTimeFa(r.processed_at) : "—"}
                           </td>
-                          <td className="p-3 align-top text-[11px] text-destructive max-w-[180px] truncate" title={r.last_error ?? ""}>
+                          <td
+                            className="p-3 align-top text-[11px] text-destructive max-w-[180px] truncate"
+                            title={r.last_error ?? ""}
+                          >
                             {r.last_error ?? "—"}
                           </td>
                           <td className="p-3 align-top">
@@ -294,12 +340,16 @@ function SendQueuePage() {
               <Card key={r.id}>
                 <CardContent className="p-3 space-y-1.5 text-sm">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-mono text-xs text-muted-foreground">{r.quote_number ?? "—"}</div>
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {r.quote_number ?? "—"}
+                    </div>
                     <StatusBadges row={r} />
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">کانال</span>
-                    <span>{QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}</span>
+                    <span>
+                      {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">گیرنده</span>
@@ -307,7 +357,9 @@ function SendQueuePage() {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">تلاش‌ها</span>
-                    <span>{toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}</span>
+                    <span>
+                      {toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>{formatDateTimeFa(r.scheduled_at)}</span>
@@ -329,13 +381,24 @@ function SendQueuePage() {
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} رکورد
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)}{" "}
+              رکورد
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -347,8 +410,14 @@ function SendQueuePage() {
 }
 
 function QueueRowActions({
-  row, isManagerial, isOwner,
-}: { row: QueueRow; isManagerial: boolean; isOwner: boolean }) {
+  row,
+  isManagerial,
+  isOwner,
+}: {
+  row: QueueRow;
+  isManagerial: boolean;
+  isOwner: boolean;
+}) {
   const qc = useQueryClient();
 
   const cancelMut = useMutation({
@@ -410,7 +479,9 @@ function QueueRowActions({
 
   const requeueMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc("requeue_failed_quote_send_item", { p_queue_id: row.id });
+      const { error } = await supabase.rpc("requeue_failed_quote_send_item", {
+        p_queue_id: row.id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -424,7 +495,8 @@ function QueueRowActions({
     return <span className="text-[11px] text-muted-foreground">—</span>;
   }
 
-  const busy = cancelMut.isPending || successMut.isPending || failureMut.isPending || requeueMut.isPending;
+  const busy =
+    cancelMut.isPending || successMut.isPending || failureMut.isPending || requeueMut.isPending;
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -453,7 +525,11 @@ function QueueRowActions({
 }
 
 const SUMMARY_STATUSES: QuoteSendQueueStatus[] = [
-  "pending", "processing", "sent", "failed", "canceled",
+  "pending",
+  "processing",
+  "sent",
+  "failed",
+  "canceled",
 ];
 
 function StatusSummaryCard() {
@@ -462,16 +538,22 @@ function StatusSummaryCard() {
     staleTime: 30_000,
     queryFn: async () => {
       const out: Record<QuoteSendQueueStatus, number> = {
-        pending: 0, processing: 0, sent: 0, failed: 0, canceled: 0,
+        pending: 0,
+        processing: 0,
+        sent: 0,
+        failed: 0,
+        canceled: 0,
       };
-      await Promise.all(SUMMARY_STATUSES.map(async (s) => {
-        const { count, error } = await supabase
-          .from("sales_quote_send_queue")
-          .select("id", { count: "exact", head: true })
-          .eq("status", s);
-        if (error) throw error;
-        out[s] = count ?? 0;
-      }));
+      await Promise.all(
+        SUMMARY_STATUSES.map(async (s) => {
+          const { count, error } = await supabase
+            .from("sales_quote_send_queue")
+            .select("id", { count: "exact", head: true })
+            .eq("status", s);
+          if (error) throw error;
+          out[s] = count ?? 0;
+        }),
+      );
       return out;
     },
   });
@@ -486,9 +568,7 @@ function StatusSummaryCard() {
               <div className="text-[11px] text-muted-foreground">
                 {QUOTE_SEND_QUEUE_STATUS_LABELS[s]}
               </div>
-              <div className="mt-1 text-lg font-semibold">
-                {data ? toFaDigits(data[s]) : "…"}
-              </div>
+              <div className="mt-1 text-lg font-semibold">{data ? toFaDigits(data[s]) : "…"}</div>
             </div>
           ))}
         </div>
@@ -509,7 +589,9 @@ function WorkerControlsCard() {
       const { data, error } = await supabase.rpc("claim_next_quote_send_queue_item");
       if (error) throw error;
       const claimed = (data ?? null) as null | {
-        id: string; attempts: number; max_attempts: number;
+        id: string;
+        attempts: number;
+        max_attempts: number;
       };
       if (!claimed || !claimed.id) {
         return { kind: "none" as const };
@@ -609,9 +691,21 @@ function StatusBadges({ row }: { row: QueueRow }) {
       <Badge variant={row.status === "processing" ? "default" : "outline"}>
         {QUOTE_SEND_QUEUE_STATUS_LABELS[row.status] ?? row.status}
       </Badge>
-      {isStaleLock && <Badge variant="destructive" className="text-[10px]">قفل قدیمی</Badge>}
-      {isMaxAttempts && <Badge variant="destructive" className="text-[10px]">سقف تلاش</Badge>}
-      {isRetryPending && <Badge variant="secondary" className="text-[10px]">در انتظار تلاش مجدد</Badge>}
+      {isStaleLock && (
+        <Badge variant="destructive" className="text-[10px]">
+          قفل قدیمی
+        </Badge>
+      )}
+      {isMaxAttempts && (
+        <Badge variant="destructive" className="text-[10px]">
+          سقف تلاش
+        </Badge>
+      )}
+      {isRetryPending && (
+        <Badge variant="secondary" className="text-[10px]">
+          در انتظار تلاش مجدد
+        </Badge>
+      )}
     </div>
   );
 }
@@ -625,8 +719,12 @@ const QUICK_FILTERS: Array<{ key: QuickFilter; label: string }> = [
 ];
 
 function QuickFilterChips({
-  value, onChange,
-}: { value: QuickFilter; onChange: (v: QuickFilter) => void }) {
+  value,
+  onChange,
+}: {
+  value: QuickFilter;
+  onChange: (v: QuickFilter) => void;
+}) {
   return (
     <div className="flex flex-wrap gap-1.5">
       <Button
@@ -651,7 +749,11 @@ function QuickFilterChips({
 }
 
 function KpiCard({
-  label, value, isLoading, isError, tone,
+  label,
+  value,
+  isLoading,
+  isError,
+  tone,
 }: {
   label: string;
   value: number | undefined;
@@ -660,17 +762,24 @@ function KpiCard({
   tone?: "default" | "warning" | "danger" | "success";
 }) {
   const toneClass =
-    tone === "warning" ? "text-amber-600 dark:text-amber-400"
-    : tone === "danger" ? "text-destructive"
-    : tone === "success" ? "text-emerald-600 dark:text-emerald-400"
-    : "";
+    tone === "warning"
+      ? "text-amber-600 dark:text-amber-400"
+      : tone === "danger"
+        ? "text-destructive"
+        : tone === "success"
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "";
   return (
     <div className="rounded-md border bg-muted/30 p-3">
       <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className={`mt-1 text-lg font-semibold ${toneClass}`}>
-        {isError ? <span className="text-destructive text-xs">خطا</span>
-         : isLoading || value === undefined ? "…"
-         : toFaDigits(value)}
+        {isError ? (
+          <span className="text-destructive text-xs">خطا</span>
+        ) : isLoading || value === undefined ? (
+          "…"
+        ) : (
+          toFaDigits(value)
+        )}
       </div>
     </div>
   );
@@ -769,7 +878,11 @@ function KpiCards() {
     },
   });
 
-  const kpis: Array<{ label: string; q: typeof totalToday; tone?: "default" | "warning" | "danger" | "success" }> = [
+  const kpis: Array<{
+    label: string;
+    q: typeof totalToday;
+    tone?: "default" | "warning" | "danger" | "success";
+  }> = [
     { label: "کل امروز", q: totalToday },
     { label: "pending امروز", q: pendingToday },
     { label: "processing فعلی", q: processingNow },
@@ -808,21 +921,34 @@ function ChannelStatusCard() {
     staleTime: 30_000,
     queryFn: async () => {
       const result: Record<string, { pending: number; sent: number; failed: number }> = {};
-      await Promise.all(QUOTE_SHARE_CHANNELS.map(async (c) => {
-        const [p, s, f] = await Promise.all([
-          supabase.from("sales_quote_send_queue").select("id", { count: "exact", head: true })
-            .eq("channel", c).eq("status", "pending"),
-          supabase.from("sales_quote_send_queue").select("id", { count: "exact", head: true })
-            .eq("channel", c).eq("status", "sent").gte("created_at", todayIso),
-          supabase.from("sales_quote_send_queue").select("id", { count: "exact", head: true })
-            .eq("channel", c).eq("status", "failed").gte("created_at", todayIso),
-        ]);
-        result[c] = {
-          pending: p.count ?? 0,
-          sent: s.count ?? 0,
-          failed: f.count ?? 0,
-        };
-      }));
+      await Promise.all(
+        QUOTE_SHARE_CHANNELS.map(async (c) => {
+          const [p, s, f] = await Promise.all([
+            supabase
+              .from("sales_quote_send_queue")
+              .select("id", { count: "exact", head: true })
+              .eq("channel", c)
+              .eq("status", "pending"),
+            supabase
+              .from("sales_quote_send_queue")
+              .select("id", { count: "exact", head: true })
+              .eq("channel", c)
+              .eq("status", "sent")
+              .gte("created_at", todayIso),
+            supabase
+              .from("sales_quote_send_queue")
+              .select("id", { count: "exact", head: true })
+              .eq("channel", c)
+              .eq("status", "failed")
+              .gte("created_at", todayIso),
+          ]);
+          result[c] = {
+            pending: p.count ?? 0,
+            sent: s.count ?? 0,
+            failed: f.count ?? 0,
+          };
+        }),
+      );
       return result;
     },
   });
@@ -883,7 +1009,9 @@ function RecentErrorsCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales_quote_send_queue")
-        .select("id, quote_id, channel, recipient, status, attempts, max_attempts, last_error, updated_at, created_at")
+        .select(
+          "id, quote_id, channel, recipient, status, attempts, max_attempts, last_error, updated_at, created_at",
+        )
         .or("status.eq.failed,and(status.eq.pending,last_error.not.is.null)")
         .not("last_error", "is", null)
         .order("updated_at", { ascending: false, nullsFirst: false })
@@ -937,7 +1065,9 @@ function RecentErrorsCard() {
                     <td className="p-2">
                       {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}
                     </td>
-                    <td className="p-2" dir="ltr">{r.recipient}</td>
+                    <td className="p-2" dir="ltr">
+                      {r.recipient}
+                    </td>
                     <td className="p-2">
                       {toFaDigits(r.attempts)} / {toFaDigits(r.max_attempts)}
                     </td>

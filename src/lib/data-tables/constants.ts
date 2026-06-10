@@ -1,8 +1,22 @@
 export type DynamicColumnDataType =
-  | "text" | "number" | "boolean" | "date" | "datetime" | "phone" | "tag" | "status";
+  | "text"
+  | "number"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "phone"
+  | "tag"
+  | "status";
 
 export const DYNAMIC_COLUMN_DATA_TYPES: DynamicColumnDataType[] = [
-  "text", "number", "boolean", "date", "datetime", "phone", "tag", "status",
+  "text",
+  "number",
+  "boolean",
+  "date",
+  "datetime",
+  "phone",
+  "tag",
+  "status",
 ];
 
 export const DYNAMIC_COLUMN_DATA_TYPE_LABELS: Record<DynamicColumnDataType, string> = {
@@ -30,7 +44,7 @@ export const ALLOWED_FORMULA_KEYS = [
   "price_gap_percent_to_market_avg",
 ] as const;
 
-export type DynamicFormulaKey = typeof ALLOWED_FORMULA_KEYS[number];
+export type DynamicFormulaKey = (typeof ALLOWED_FORMULA_KEYS)[number];
 
 export const FORMULA_KEY_LABELS: Record<DynamicFormulaKey, string> = {
   latest_purchase_price_toman: "آخرین قیمت خرید (تومان) از داده افراکالا",
@@ -88,24 +102,18 @@ export const OBSERVATORY_READONLY_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /** Persian labels and variants for the observatory competitive_price_status column. */
-export const OBSERVATORY_STATUS_META: Record<
-  string,
-  { label: string; className: string }
-> = {
+export const OBSERVATORY_STATUS_META: Record<string, { label: string; className: string }> = {
   below_market: {
     label: "پایین‌تر از بازار",
-    className:
-      "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+    className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
   },
   near_market: {
     label: "نزدیک به بازار",
-    className:
-      "bg-muted text-foreground/80 border-border",
+    className: "bg-muted text-foreground/80 border-border",
   },
   above_market: {
     label: "بالاتر از بازار",
-    className:
-      "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+    className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
   },
   unknown: {
     label: "نامشخص",
@@ -121,14 +129,12 @@ export function getObservatoryScoreTier(score: number): {
   if (score >= 80)
     return {
       label: "فرصت عالی",
-      className:
-        "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
     };
   if (score >= 60)
     return {
       label: "فرصت خوب",
-      className:
-        "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      className: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
     };
   if (score >= 40)
     return {
@@ -137,8 +143,7 @@ export function getObservatoryScoreTier(score: number): {
     };
   return {
     label: "ضعیف",
-    className:
-      "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
+    className: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
   };
 }
 
@@ -173,11 +178,17 @@ export const DYNAMIC_TABLE_ACCESS_LEVEL_BADGE: Record<
   DynamicTableAccessLevel,
   { className: string }
 > = {
-  all: { className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+  all: {
+    className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+  },
   manager_only: { className: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30" },
-  finance_only: { className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+  finance_only: {
+    className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  },
   admin_only: { className: "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30" },
-  sales_only: { className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30" },
+  sales_only: {
+    className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+  },
   custom: { className: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30" },
 };
 

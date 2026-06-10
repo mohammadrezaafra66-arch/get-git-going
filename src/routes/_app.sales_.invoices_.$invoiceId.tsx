@@ -65,13 +65,17 @@ function InvoiceDetailPage() {
   const canSendToAccountant =
     roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
 
-  const { data: invoice, isFetching, refetch } = useQuery({
+  const {
+    data: invoice,
+    isFetching,
+    refetch,
+  } = useQuery({
     queryKey: ["invoice", invoiceId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
         .select(
-          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, created_at, customer:customers(id, name), price_type:sale_price_types(title)"
+          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
         )
         .eq("id", invoiceId)
         .maybeSingle();
@@ -139,7 +143,9 @@ function InvoiceDetailPage() {
       if (items && items.length > 0) {
         for (const it of items) {
           const name = it.product?.name ?? "—";
-          lines.push(`• ${name} - ${toFaDigits(it.quantity)} عدد - ${formatNumber(Number(it.unit_price))} تومان`);
+          lines.push(
+            `• ${name} - ${toFaDigits(it.quantity)} عدد - ${formatNumber(Number(it.unit_price))} تومان`,
+          );
         }
       } else {
         lines.push("• —");
@@ -203,7 +209,9 @@ function InvoiceDetailPage() {
     if (!invoice) return;
     setSending(true);
     try {
-      const { error } = await supabase.rpc("send_invoice_to_accountant", { p_invoice_id: invoice.id });
+      const { error } = await supabase.rpc("send_invoice_to_accountant", {
+        p_invoice_id: invoice.id,
+      });
       if (error) throw error;
       toast.success("پیش‌فاکتور به میز کار حسابدار ارسال شد.");
       await refetch();
@@ -218,7 +226,10 @@ function InvoiceDetailPage() {
 
   if (isFetching && !invoice) {
     return (
-      <div className="flex items-center justify-center py-10 text-sm text-muted-foreground" dir="rtl">
+      <div
+        className="flex items-center justify-center py-10 text-sm text-muted-foreground"
+        dir="rtl"
+      >
         <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
       </div>
     );
@@ -276,12 +287,15 @@ function InvoiceDetailPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>ارسال به میز کار حسابدار</AlertDialogTitle>
                     <AlertDialogDescription>
-                      پس از ارسال، وضعیت پیش‌فاکتور به «در انتظار حسابدار» تغییر می‌کند و یک وظیفه برای حسابدار ایجاد می‌شود.
+                      پس از ارسال، وضعیت پیش‌فاکتور به «در انتظار حسابدار» تغییر می‌کند و یک وظیفه
+                      برای حسابدار ایجاد می‌شود.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>انصراف</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleSendToAccountant}>تأیید و ارسال</AlertDialogAction>
+                    <AlertDialogAction onClick={handleSendToAccountant}>
+                      تأیید و ارسال
+                    </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -302,7 +316,8 @@ function InvoiceDetailPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>تأیید لغو پیش‌فاکتور</AlertDialogTitle>
                     <AlertDialogDescription>
-                      آیا از لغو این پیش‌فاکتور اطمینان دارید؟ این عملیات قابل بازگشت نیست و اعتبار مشتری آزاد می‌شود.
+                      آیا از لغو این پیش‌فاکتور اطمینان دارید؟ این عملیات قابل بازگشت نیست و اعتبار
+                      مشتری آزاد می‌شود.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -355,20 +370,29 @@ function InvoiceDetailPage() {
                 <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
                   <span>{toFaDigits(waybill.waybill_number)}</span>
                   <WaybillStatusBadge status={waybill.status} />
-                  <span>{waybill.shipping_company} — {waybill.destination_city}</span>
+                  <span>
+                    {waybill.shipping_company} — {waybill.destination_city}
+                  </span>
                 </div>
               ) : (
-                <div className="text-xs text-muted-foreground mt-1">بیجکی برای این پیش‌فاکتور صادر نشده است</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  بیجکی برای این پیش‌فاکتور صادر نشده است
+                </div>
               )}
             </div>
           </div>
           {waybill ? (
             <Button asChild variant="outline">
-              <Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId: invoice.id }}>مشاهده بیجک</Link>
+              <Link to="/sales/invoices/$invoiceId/waybill" params={{ invoiceId: invoice.id }}>
+                مشاهده بیجک
+              </Link>
             </Button>
           ) : (
             <Button asChild>
-              <Link to="/sales/invoices/$invoiceId/waybill/create" params={{ invoiceId: invoice.id }}>
+              <Link
+                to="/sales/invoices/$invoiceId/waybill/create"
+                params={{ invoiceId: invoice.id }}
+              >
                 <Truck className="ml-2 h-4 w-4" /> صدور بیجک
               </Link>
             </Button>

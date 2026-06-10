@@ -19,9 +19,9 @@ export type LabelFilter = "all" | "none" | "any" | string; // labelId
 
 export interface WorkbenchFilters {
   search: string;
-  brandId: string;          // "all" or uuid
-  categoryId: string;       // "all" or uuid (parent category)
-  subcategoryId: string;    // "all" or uuid (child category)
+  brandId: string; // "all" or uuid
+  categoryId: string; // "all" or uuid (parent category)
+  subcategoryId: string; // "all" or uuid (child category)
   currencyType: CurrencyTypeFilter;
   currency: CurrencyFilter;
   inventory: StockFilter;
@@ -78,12 +78,7 @@ export interface PricingIssueInput {
   tags_count: number;
 }
 
-export type IssueCode =
-  | "inactive"
-  | "no_sale_price"
-  | "no_owner"
-  | "unavailable"
-  | "discontinued";
+export type IssueCode = "inactive" | "no_sale_price" | "no_owner" | "unavailable" | "discontinued";
 
 export const ISSUE_LABEL: Record<IssueCode, string> = {
   inactive: "غیرفعال",
@@ -118,7 +113,10 @@ export const PRIORITY_LABEL: Record<RiskPriority, string> = {
 };
 
 export const PRIORITY_WEIGHT: Record<RiskPriority, number> = {
-  urgent: 0, high: 1, medium: 2, low: 3,
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
 };
 
 /** اولویت اصلاح برای محصول برچسب‌دار مشکل‌دار. */

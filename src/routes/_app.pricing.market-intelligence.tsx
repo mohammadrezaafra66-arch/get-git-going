@@ -7,7 +7,11 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { TrendingProductsCard } from "@/components/management/market-intelligence/TrendingProductsCard";
@@ -88,7 +92,9 @@ function MarketIntelligencePage() {
                 <SelectContent>
                   <SelectItem value="__all">همه انواع قیمت</SelectItem>
                   {salePriceTypes.map((t: { id: string; title: string }) => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.title}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -113,8 +119,16 @@ function MarketIntelligencePage() {
 
       {/* Movers */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PriceMoversCard days={days} direction="up" salePriceTypeId={salePriceTypeId === "__all" ? null : salePriceTypeId} />
-        <PriceMoversCard days={days} direction="down" salePriceTypeId={salePriceTypeId === "__all" ? null : salePriceTypeId} />
+        <PriceMoversCard
+          days={days}
+          direction="up"
+          salePriceTypeId={salePriceTypeId === "__all" ? null : salePriceTypeId}
+        />
+        <PriceMoversCard
+          days={days}
+          direction="down"
+          salePriceTypeId={salePriceTypeId === "__all" ? null : salePriceTypeId}
+        />
       </div>
 
       {/* Behavior analysis section */}
@@ -152,7 +166,8 @@ function MarketIntelligencePage() {
       </div>
 
       <p className="pt-2 text-center text-[11px] text-muted-foreground">
-        تمام شاخص‌ها و پیشنهادهای این داشبورد بر پایه قانون‌های ساده داده‌محور هستند و پیش‌بینی قطعی محسوب نمی‌شوند.
+        تمام شاخص‌ها و پیشنهادهای این داشبورد بر پایه قانون‌های ساده داده‌محور هستند و پیش‌بینی قطعی
+        محسوب نمی‌شوند.
       </p>
     </div>
   );

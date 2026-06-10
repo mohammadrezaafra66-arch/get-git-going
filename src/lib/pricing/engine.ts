@@ -1,9 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  fetchLatestCurrencyRate,
-  fetchLatestPurchasePrice,
-  fetchProductLite,
-} from "./queries";
+import { fetchLatestCurrencyRate, fetchLatestPurchasePrice, fetchProductLite } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
 
 type SbClient = typeof supabase;
@@ -75,19 +71,28 @@ export async function calculateSalePrice(
   db: SbClient = supabase,
 ): Promise<PricingEngineResult> {
   if (!input.product_id) throw new PricingError("PRODUCT_REQUIRED", "محصول الزامی است.");
-  if (!input.sale_price_type_id) throw new PricingError("SALE_PRICE_TYPE_REQUIRED", "نوع قیمت فروش الزامی است.");
+  if (!input.sale_price_type_id)
+    throw new PricingError("SALE_PRICE_TYPE_REQUIRED", "نوع قیمت فروش الزامی است.");
 
   // 1) محصول
   const product = await fetchProductLite(input.product_id, db);
   if (!product) throw new PricingError("PRODUCT_NOT_FOUND", "محصول مورد نظر یافت نشد.");
 
   // 2) قیمت خرید
-  type Purchase = { id: string; product_id: string; supplier_id: string | null; purchase_price: number; currency: CurrencyCode };
+  type Purchase = {
+    id: string;
+    product_id: string;
+    supplier_id: string | null;
+    purchase_price: number;
+    currency: CurrencyCode;
+  };
   let purchase: Purchase | null = null;
   if (input.purchase_price_id) {
     const { data, error } = await db
       .from("purchase_prices")
-      .select("id, product_id, supplier_id, purchase_price, currency, is_active, effective_at, expires_at")
+      .select(
+        "id, product_id, supplier_id, purchase_price, currency, is_active, effective_at, expires_at",
+      )
       .eq("id", input.purchase_price_id)
       .maybeSingle();
     if (error) throw error;
@@ -112,14 +117,18 @@ export async function calculateSalePrice(
     }
   }
   if (!purchase) {
-    throw new PricingError("NO_PURCHASE_PRICE", "برای این محصول هنوز قیمت خرید معتبر ثبت نشده است.");
+    throw new PricingError(
+      "NO_PURCHASE_PRICE",
+      "برای این محصول هنوز قیمت خرید معتبر ثبت نشده است.",
+    );
   }
 
   // 3) نرخ ارز
   let currency_rate = 1;
   if (purchase.currency !== "toman") {
     const rate = await fetchLatestCurrencyRate(purchase.currency, db);
-    if (!rate) throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
+    if (!rate)
+      throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
     currency_rate = Number(rate.rate_to_toman);
   }
   const input_purchase_price = Number(purchase.purchase_price);
@@ -128,7 +137,9 @@ export async function calculateSalePrice(
   // 4) قانون قیمت‌گذاری
   const { data: rules, error: rulesErr } = await db
     .from("pricing_rules")
-    .select("id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active")
+    .select(
+      "id, rule_name, name, product_type, category_id, brand_id, min_purchase_price_toman, max_purchase_price_toman, settlement_type_id, sale_price_type_id, margin_type, margin_value, fixed_margin_value, priority, created_at, is_active",
+    )
     .eq("is_active", true)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: false })
@@ -140,20 +151,35 @@ export async function calculateSalePrice(
     // اگر ورودی settlement مشخص کرده، باید با قانون یکسان باشد.
     // اگر ورودی settlement ندارد (مثل «محاسبه و انتشار قیمت‌ها»)، قانون‌هایی که
     // فقط روی sale_price_type کار می‌کنند یا settlement خودشان را دارند نیز پذیرفته می‌شوند.
-    if (input.settlement_type_id && r.settlement_type_id && r.settlement_type_id !== input.settlement_type_id) return false;
+    if (
+      input.settlement_type_id &&
+      r.settlement_type_id &&
+      r.settlement_type_id !== input.settlement_type_id
+    )
+      return false;
     if (r.product_type && r.product_type !== product.product_type) return false;
     if (r.category_id && r.category_id !== product.category_id) return false;
     if (r.brand_id && r.brand_id !== product.brand_id) return false;
-    if (r.min_purchase_price_toman != null && purchase_price_toman < Number(r.min_purchase_price_toman)) return false;
-    if (r.max_purchase_price_toman != null && purchase_price_toman > Number(r.max_purchase_price_toman)) return false;
+    if (
+      r.min_purchase_price_toman != null &&
+      purchase_price_toman < Number(r.min_purchase_price_toman)
+    )
+      return false;
+    if (
+      r.max_purchase_price_toman != null &&
+      purchase_price_toman > Number(r.max_purchase_price_toman)
+    )
+      return false;
     if (!r.margin_type || r.margin_value == null) return false;
     return true;
   });
 
-  if (!matchedRule) throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این محصول پیدا نشد.");
+  if (!matchedRule)
+    throw new PricingError("NO_RULE", "قانون قیمت‌گذاری مناسب برای این محصول پیدا نشد.");
   const m = matchedRule as any;
   // settlement مؤثر = ورودی کاربر یا settlement قانون انتخاب‌شده
-  const effective_settlement_type_id: string | null = input.settlement_type_id ?? m.settlement_type_id ?? null;
+  const effective_settlement_type_id: string | null =
+    input.settlement_type_id ?? m.settlement_type_id ?? null;
 
   // 5) قانون حمل — همیشه از shipping_cost_rules انتخاب می‌شود
   // (اولویت تطبیق: محصول > دسته > برند > نوع کالا)
@@ -161,7 +187,9 @@ export async function calculateSalePrice(
   let shipping_rule_used: { id: string; title: string } | null = null;
   const { data: shippingRows, error: shippingErr } = await db
     .from("shipping_cost_rules")
-    .select("id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority")
+    .select(
+      "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority",
+    )
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("priority", { ascending: true })
@@ -172,23 +200,29 @@ export async function calculateSalePrice(
     if (s.category_id && s.category_id !== product.category_id) return false;
     if (s.brand_id && s.brand_id !== product.brand_id) return false;
     if (s.product_type && s.product_type !== product.product_type) return false;
-    if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
-    if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price)) return false;
+    if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
+      return false;
+    if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
+      return false;
     return true;
   });
   // اولویت‌بندی صریح: محصول > دسته > برند > نوع کالا
   const specificity = (s: any): number =>
-    (s.product_id ? 1000 : 0) + (s.category_id ? 100 : 0) + (s.brand_id ? 10 : 0) + (s.product_type ? 1 : 0);
+    (s.product_id ? 1000 : 0) +
+    (s.category_id ? 100 : 0) +
+    (s.brand_id ? 10 : 0) +
+    (s.product_type ? 1 : 0);
   candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
   const sRule = candidates[0];
   let shipping_currency_rate: number | null = null;
   if (sRule) {
     shipping_rule_used = { id: sRule.id, title: sRule.title };
     if (sRule.cost_type === "percent") {
-      shipping_cost = Math.round(purchase_price_toman * Number(sRule.cost_value) / 100);
+      shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
     } else if (sRule.cost_type === "currency") {
       const code = (sRule.cost_currency ?? "").toString().toLowerCase();
-      if (!code) throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
+      if (!code)
+        throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
       const { data: rateRows, error: rateErr } = await db
         .from("currency_rates")
         .select("rate_to_toman")
@@ -217,7 +251,9 @@ export async function calculateSalePrice(
   } else if (m.margin_type === "percent") {
     margin_amount = Math.round((purchase_price_toman * margin_value) / 100);
   } else {
-    margin_amount = Math.round((purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0));
+    margin_amount = Math.round(
+      (purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0),
+    );
   }
 
   // 7) قیمت نهایی + گرد کردن

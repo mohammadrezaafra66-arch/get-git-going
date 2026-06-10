@@ -13,7 +13,9 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/academy")({
-  beforeLoad: async () => { await requirePermission("academy", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("academy", "view");
+  },
   component: AcademyListPage,
 });
 
@@ -32,7 +34,12 @@ function AcademyListPage() {
         .limit(100);
       if (error) throw error;
       const courseIds = (courses ?? []).map((c) => c.id);
-      if (courseIds.length === 0) return { courses: [], lessonsByCourse: {} as Record<string, number>, progressByCourse: {} as Record<string, number> };
+      if (courseIds.length === 0)
+        return {
+          courses: [],
+          lessonsByCourse: {} as Record<string, number>,
+          progressByCourse: {} as Record<string, number>,
+        };
 
       const { data: lessons } = await supabase
         .from("academy_lessons")
@@ -75,7 +82,10 @@ function AcademyListPage() {
         actions={
           canManage ? (
             <Button asChild size="sm">
-              <Link to="/academy/manage"><Settings2 className="ms-1 h-4 w-4" />مدیریت دوره‌ها</Link>
+              <Link to="/academy/manage">
+                <Settings2 className="ms-1 h-4 w-4" />
+                مدیریت دوره‌ها
+              </Link>
             </Button>
           ) : null
         }
@@ -84,24 +94,42 @@ function AcademyListPage() {
       {isLoading ? (
         <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
       ) : !data || data.courses.length === 0 ? (
-        <EmptyState icon={GraduationCap} title="دوره‌ای یافت نشد" description="هنوز دوره منتشرشده‌ای وجود ندارد." />
+        <EmptyState
+          icon={GraduationCap}
+          title="دوره‌ای یافت نشد"
+          description="هنوز دوره منتشرشده‌ای وجود ندارد."
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.courses.map((c) => {
             const lessonsCount = data.lessonsByCourse[c.id] ?? 0;
             const progress = data.progressByCourse[c.id] ?? 0;
             return (
-              <Link key={c.id} to="/academy/$courseId" params={{ courseId: c.id }} className="block">
+              <Link
+                key={c.id}
+                to="/academy/$courseId"
+                params={{ courseId: c.id }}
+                className="block"
+              >
                 <Card className="h-full transition hover:border-primary hover:shadow-sm">
                   <CardHeader className="space-y-2 pb-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline"><BookOpen className="ms-1 h-3 w-3" />{lessonsCount} درس</Badge>
-                      {progress === 100 && <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">تکمیل شده</Badge>}
+                      <Badge variant="outline">
+                        <BookOpen className="ms-1 h-3 w-3" />
+                        {lessonsCount} درس
+                      </Badge>
+                      {progress === 100 && (
+                        <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">
+                          تکمیل شده
+                        </Badge>
+                      )}
                     </div>
                     <CardTitle className="text-base leading-relaxed">{c.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {c.description && <p className="line-clamp-2 text-xs text-muted-foreground">{c.description}</p>}
+                    {c.description && (
+                      <p className="line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
+                    )}
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                         <span>پیشرفت شما</span>

@@ -17,9 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/accounting/external-parties")({
   beforeLoad: async () => {
@@ -72,7 +70,9 @@ function ExternalPartiesPage() {
   const toggleActive = useMutation({
     mutationFn: async (r: ExternalParty) => {
       const { error } = await supabase
-        .from("external_parties").update({ is_active: !r.is_active }).eq("id", r.id);
+        .from("external_parties")
+        .update({ is_active: !r.is_active })
+        .eq("id", r.id);
       if (error) throw error;
       await supabase.from("audit_logs").insert({
         actor_id: user?.id ?? null,
@@ -82,7 +82,10 @@ function ExternalPartiesPage() {
         diff: { full_name: r.full_name },
       } as never);
     },
-    onSuccess: () => { toast.success("به‌روزرسانی شد"); refresh(); },
+    onSuccess: () => {
+      toast.success("به‌روزرسانی شد");
+      refresh();
+    },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -91,19 +94,30 @@ function ExternalPartiesPage() {
       <PageHeader
         title="طرف‌های حساب / گیرندگان وجه"
         description="مدیریت طرف‌های حساب خارج از مشتریان برای استفاده در فیش‌های واریزی."
-        actions={canWrite ? (
-          <Button onClick={() => { setEditing(null); setOpen(true); }}>
-            <Plus className="ml-1 h-4 w-4" /> افزودن طرف حساب
-          </Button>
-        ) : null}
+        actions={
+          canWrite ? (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <Plus className="ml-1 h-4 w-4" /> افزودن طرف حساب
+            </Button>
+          ) : null
+        }
       />
 
       <Card>
         <CardContent className="p-0">
           {listQ.isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              در حال بارگذاری...
+            </div>
           ) : (listQ.data ?? []).length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">طرف حسابی ثبت نشده است.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              طرف حسابی ثبت نشده است.
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -121,9 +135,15 @@ function ExternalPartiesPage() {
                   {(listQ.data ?? []).map((r) => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-medium">{r.full_name}</td>
-                      <td className="p-3" dir="ltr">{r.national_id ?? "—"}</td>
-                      <td className="p-3" dir="ltr">{r.phone ?? "—"}</td>
-                      <td className="p-3" dir="ltr">{r.accounting_code ?? "—"}</td>
+                      <td className="p-3" dir="ltr">
+                        {r.national_id ?? "—"}
+                      </td>
+                      <td className="p-3" dir="ltr">
+                        {r.phone ?? "—"}
+                      </td>
+                      <td className="p-3" dir="ltr">
+                        {r.accounting_code ?? "—"}
+                      </td>
                       <td className="p-3">
                         <Badge variant={r.is_active ? "default" : "secondary"}>
                           {r.is_active ? "فعال" : "غیرفعال"}
@@ -132,13 +152,22 @@ function ExternalPartiesPage() {
                       {canWrite && (
                         <td className="p-3">
                           <div className="flex gap-1">
-                            <Button size="icon" variant="ghost"
-                              onClick={() => { setEditing(r); setOpen(true); }}>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditing(r);
+                                setOpen(true);
+                              }}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost"
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => toggleActive.mutate(r)}
-                              disabled={toggleActive.isPending}>
+                              disabled={toggleActive.isPending}
+                            >
                               <Power className="h-4 w-4" />
                             </Button>
                           </div>
@@ -160,7 +189,11 @@ function ExternalPartiesPage() {
           </DialogHeader>
           <ExternalPartyForm
             initial={editing}
-            onDone={() => { setOpen(false); setEditing(null); refresh(); }}
+            onDone={() => {
+              setOpen(false);
+              setEditing(null);
+              refresh();
+            }}
             actorId={user?.id ?? null}
           />
         </DialogContent>
@@ -170,8 +203,14 @@ function ExternalPartiesPage() {
 }
 
 function ExternalPartyForm({
-  initial, onDone, actorId,
-}: { initial: ExternalParty | null; onDone: () => void; actorId: string | null }) {
+  initial,
+  onDone,
+  actorId,
+}: {
+  initial: ExternalParty | null;
+  onDone: () => void;
+  actorId: string | null;
+}) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -194,24 +233,37 @@ function ExternalPartyForm({
       };
       if (initial) {
         const { error } = await supabase
-          .from("external_parties").update(payload).eq("id", initial.id);
+          .from("external_parties")
+          .update(payload)
+          .eq("id", initial.id);
         if (error) throw error;
         await supabase.from("audit_logs").insert({
-          actor_id: actorId, entity_type: "external_party", entity_id: initial.id,
-          action: "external_party_updated", diff: payload,
+          actor_id: actorId,
+          entity_type: "external_party",
+          entity_id: initial.id,
+          action: "external_party_updated",
+          diff: payload,
         } as never);
       } else {
         const { data, error } = await supabase
-          .from("external_parties").insert(payload as never).select("id").single();
+          .from("external_parties")
+          .insert(payload as never)
+          .select("id")
+          .single();
         if (error) throw error;
         await supabase.from("audit_logs").insert({
-          actor_id: actorId, entity_type: "external_party",
+          actor_id: actorId,
+          entity_type: "external_party",
           entity_id: (data as { id: string }).id,
-          action: "external_party_created", diff: payload,
+          action: "external_party_created",
+          diff: payload,
         } as never);
       }
     },
-    onSuccess: () => { toast.success("ذخیره شد"); onDone(); },
+    onSuccess: () => {
+      toast.success("ذخیره شد");
+      onDone();
+    },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -219,7 +271,9 @@ function ExternalPartyForm({
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1 col-span-2">
-          <Label>نام و نام‌خانوادگی <span className="text-destructive">*</span></Label>
+          <Label>
+            نام و نام‌خانوادگی <span className="text-destructive">*</span>
+          </Label>
           <Input {...form.register("full_name")} />
           {form.formState.errors.full_name && (
             <p className="text-xs text-destructive">{form.formState.errors.full_name.message}</p>

@@ -14,12 +14,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
-  KNOWLEDGE_CATEGORY_LABELS, KNOWLEDGE_ACCESS_LABELS,
-  type KnowledgeCategory, type KnowledgeAccessLevel,
+  KNOWLEDGE_CATEGORY_LABELS,
+  KNOWLEDGE_ACCESS_LABELS,
+  type KnowledgeCategory,
+  type KnowledgeAccessLevel,
 } from "@/lib/knowledge/constants";
 
 export const Route = createFileRoute("/_app/knowledge_/$documentId")({
-  beforeLoad: async () => { await requirePermission("knowledge", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("knowledge", "view");
+  },
   component: KnowledgeDocumentPage,
 });
 
@@ -30,12 +34,18 @@ function KnowledgeDocumentPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const { data: doc, isLoading, error } = useQuery({
+  const {
+    data: doc,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["knowledge-document", documentId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("knowledge_documents")
-        .select("id, title, content, category, access_level, version, is_published, created_at, updated_at, created_by")
+        .select(
+          "id, title, content, category, access_level, version, is_published, created_at, updated_at, created_by",
+        )
         .eq("id", documentId)
         .maybeSingle();
       if (error) throw error;
@@ -62,7 +72,8 @@ function KnowledgeDocumentPage() {
     mutationFn: async () => {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const { error } = await supabase.from("knowledge_confirmations").insert({
-        document_id: documentId, user_id: user.id,
+        document_id: documentId,
+        user_id: user.id,
       });
       if (error) throw error;
       const { error: aErr } = await supabase.from("audit_logs").insert({
@@ -86,20 +97,28 @@ function KnowledgeDocumentPage() {
     try {
       const raw = marked.parse(doc.content) as string;
       return sanitizeHtml(raw);
+    } catch {
+      return sanitizeHtml(doc.content);
     }
-    catch { return sanitizeHtml(doc.content); }
   }, [doc?.content]);
 
-  if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
-  if (error || !doc) return (
-    <div className="space-y-4 py-10 text-center">
-      <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">سند یافت نشد یا دسترسی ندارید.</p>
-      <Button asChild variant="outline" size="sm">
-        <Link to="/knowledge"><ArrowRight className="ms-1 h-4 w-4" />بازگشت به دانشنامه</Link>
-      </Button>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+    );
+  if (error || !doc)
+    return (
+      <div className="space-y-4 py-10 text-center">
+        <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">سند یافت نشد یا دسترسی ندارید.</p>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/knowledge">
+            <ArrowRight className="ms-1 h-4 w-4" />
+            بازگشت به دانشنامه
+          </Link>
+        </Button>
+      </div>
+    );
 
   return (
     <div className="space-y-5">
@@ -108,15 +127,24 @@ function KnowledgeDocumentPage() {
         description={`نسخه ${doc.version} • آخرین به‌روزرسانی: ${formatDateFa(doc.updated_at)}`}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/knowledge"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
+            <Link to="/knowledge">
+              <ArrowRight className="ms-1 h-4 w-4" />
+              بازگشت
+            </Link>
           </Button>
         }
       />
 
       <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">{KNOWLEDGE_CATEGORY_LABELS[doc.category as KnowledgeCategory]}</Badge>
-        <Badge variant="secondary">{KNOWLEDGE_ACCESS_LABELS[doc.access_level as KnowledgeAccessLevel]}</Badge>
-        {!doc.is_published && <Badge className="bg-amber-500 text-white hover:bg-amber-500">پیش‌نویس</Badge>}
+        <Badge variant="outline">
+          {KNOWLEDGE_CATEGORY_LABELS[doc.category as KnowledgeCategory]}
+        </Badge>
+        <Badge variant="secondary">
+          {KNOWLEDGE_ACCESS_LABELS[doc.access_level as KnowledgeAccessLevel]}
+        </Badge>
+        {!doc.is_published && (
+          <Badge className="bg-amber-500 text-white hover:bg-amber-500">پیش‌نویس</Badge>
+        )}
       </div>
 
       <Card>
@@ -134,7 +162,9 @@ function KnowledgeDocumentPage() {
           {confirmation ? (
             <div className="flex items-center gap-2 text-sm text-emerald-700">
               <CheckCircle2 className="h-5 w-5" />
-              <span>شما این سند را در تاریخ {formatDateFa(confirmation.confirmed_at)} مطالعه کرده‌اید.</span>
+              <span>
+                شما این سند را در تاریخ {formatDateFa(confirmation.confirmed_at)} مطالعه کرده‌اید.
+              </span>
             </div>
           ) : (
             <>

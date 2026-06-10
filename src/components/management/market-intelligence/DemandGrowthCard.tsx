@@ -5,11 +5,11 @@ import { fetchDemandGrowth, type RangeDays } from "@/lib/management/market-intel
 import { formatNumber } from "@/lib/i18n/formatters";
 
 const STATUS: Record<string, { label: string; color: string; Icon: typeof TrendingUp }> = {
-  strong_growth:   { label: "رشد شدید",   color: "text-emerald-600", Icon: Zap },
-  moderate_growth: { label: "رشد متوسط",  color: "text-emerald-600", Icon: TrendingUp },
-  flat:            { label: "ثابت",       color: "text-muted-foreground", Icon: Minus },
-  declining:       { label: "کاهش تقاضا", color: "text-red-600",     Icon: TrendingDown },
-  no_data:         { label: "بدون داده",  color: "text-muted-foreground", Icon: Minus },
+  strong_growth: { label: "رشد شدید", color: "text-emerald-600", Icon: Zap },
+  moderate_growth: { label: "رشد متوسط", color: "text-emerald-600", Icon: TrendingUp },
+  flat: { label: "ثابت", color: "text-muted-foreground", Icon: Minus },
+  declining: { label: "کاهش تقاضا", color: "text-red-600", Icon: TrendingDown },
+  no_data: { label: "بدون داده", color: "text-muted-foreground", Icon: Minus },
 };
 
 export function DemandGrowthCard({ days }: { days: RangeDays }) {
@@ -22,7 +22,8 @@ export function DemandGrowthCard({ days }: { days: RangeDays }) {
   const d = q.data;
   const status = STATUS[d?.status ?? "no_data"];
   const Icon = status.Icon;
-  const compareLabel = days === 1 ? "امروز در برابر دیروز" : `${formatNumber(days)} روز اخیر در برابر بازه قبلی`;
+  const compareLabel =
+    days === 1 ? "امروز در برابر دیروز" : `${formatNumber(days)} روز اخیر در برابر بازه قبلی`;
 
   return (
     <MICardShell
@@ -46,9 +47,14 @@ export function DemandGrowthCard({ days }: { days: RangeDays }) {
           <div className="flex items-end justify-between gap-2 rounded-lg border bg-muted/20 p-4">
             <div>
               <div className="text-xs text-muted-foreground">تغییر امتیاز تقاضا</div>
-              <div className={`flex items-center gap-2 text-3xl font-bold tabular-nums ${status.color}`}>
+              <div
+                className={`flex items-center gap-2 text-3xl font-bold tabular-nums ${status.color}`}
+              >
                 <Icon className="h-6 w-6" />
-                <span>{d.growth_percent > 0 ? "+" : ""}{formatNumber(d.growth_percent)}٪</span>
+                <span>
+                  {d.growth_percent > 0 ? "+" : ""}
+                  {formatNumber(d.growth_percent)}٪
+                </span>
               </div>
             </div>
             <div className={`text-sm font-semibold ${status.color}`}>{status.label}</div>
@@ -61,7 +67,9 @@ export function DemandGrowthCard({ days }: { days: RangeDays }) {
               </div>
             </div>
             <div className="rounded-md border p-2">
-              <div className="text-lg font-bold tabular-nums text-muted-foreground">{formatNumber(d.previous_score)}</div>
+              <div className="text-lg font-bold tabular-nums text-muted-foreground">
+                {formatNumber(d.previous_score)}
+              </div>
               <div className="text-[10px] text-muted-foreground">
                 امتیاز قبلی · {formatNumber(d.previous_event_count)} رویداد
               </div>

@@ -16,15 +16,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toFaDigits } from "@/lib/i18n/formatters";
 
@@ -32,7 +47,9 @@ const PAGE_SIZE = 20;
 type StatusFilter = "all" | "pending" | "active" | "rejected";
 
 export const Route = createFileRoute("/_app/suppliers")({
-  beforeLoad: async () => { await requirePermission("suppliers", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("suppliers", "view");
+  },
   component: SuppliersListPage,
 });
 
@@ -47,14 +64,26 @@ interface SupplierRow {
 }
 
 function trustBadge(level: SupplierRow["trust_level"]) {
-  if (level === "high") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">بالا</Badge>;
-  if (level === "low") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">پایین</Badge>;
+  if (level === "high")
+    return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">بالا</Badge>;
+  if (level === "low")
+    return (
+      <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">
+        پایین
+      </Badge>
+    );
   return <Badge className="bg-amber-500 text-white hover:bg-amber-500">متوسط</Badge>;
 }
 
 function statusBadge(status: SupplierRow["status"]) {
-  if (status === "active") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">فعال</Badge>;
-  if (status === "rejected") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">رد شده</Badge>;
+  if (status === "active")
+    return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">فعال</Badge>;
+  if (status === "rejected")
+    return (
+      <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">
+        رد شده
+      </Badge>
+    );
   return <Badge className="bg-amber-500 text-white hover:bg-amber-500">در انتظار</Badge>;
 }
 
@@ -82,7 +111,9 @@ function SuppliersListPage() {
       if (status !== "all") q = q.eq("status", status);
       if (debounced.trim()) {
         const term = `%${debounced.trim()}%`;
-        q = q.or(`name.ilike.${term},contact_name.ilike.${term},phone.ilike.${term},city.ilike.${term}`);
+        q = q.or(
+          `name.ilike.${term},contact_name.ilike.${term},phone.ilike.${term},city.ilike.${term}`,
+        );
       }
       const { data, error, count } = await q;
       if (error) throw error;
@@ -140,12 +171,23 @@ function SuppliersListPage() {
               <Input
                 placeholder="جستجو در نام، شخص تماس، تلفن یا شهر..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(0);
+                }}
                 className="pr-10"
               />
             </div>
-            <Select value={status} onValueChange={(v) => { setStatus(v as StatusFilter); setPage(0); }}>
-              <SelectTrigger className="sm:w-48"><SelectValue /></SelectTrigger>
+            <Select
+              value={status}
+              onValueChange={(v) => {
+                setStatus(v as StatusFilter);
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه وضعیت‌ها</SelectItem>
                 <SelectItem value="pending">در انتظار تأیید</SelectItem>
@@ -179,8 +221,12 @@ function SuppliersListPage() {
                   {rows.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{r.contact_name ?? "—"}</TableCell>
-                      <TableCell dir="ltr" className="text-muted-foreground">{r.phone ? toFaDigits(r.phone) : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {r.contact_name ?? "—"}
+                      </TableCell>
+                      <TableCell dir="ltr" className="text-muted-foreground">
+                        {r.phone ? toFaDigits(r.phone) : "—"}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{r.city ?? "—"}</TableCell>
                       <TableCell>{trustBadge(r.trust_level)}</TableCell>
                       <TableCell>{statusBadge(r.status)}</TableCell>
@@ -197,7 +243,9 @@ function SuppliersListPage() {
                                 title="تأیید تأمین‌کننده"
                                 description={`آیا از تأیید «${r.name}» اطمینان دارید؟`}
                                 actionLabel="تأیید"
-                                onConfirm={() => setStatusMut.mutate({ id: r.id, newStatus: "active" })}
+                                onConfirm={() =>
+                                  setStatusMut.mutate({ id: r.id, newStatus: "active" })
+                                }
                                 trigger={
                                   <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
                                     <Check className="ml-1 h-3 w-3" /> تأیید
@@ -208,7 +256,9 @@ function SuppliersListPage() {
                                 title="رد تأمین‌کننده"
                                 description={`آیا از رد «${r.name}» اطمینان دارید؟`}
                                 actionLabel="رد"
-                                onConfirm={() => setStatusMut.mutate({ id: r.id, newStatus: "rejected" })}
+                                onConfirm={() =>
+                                  setStatusMut.mutate({ id: r.id, newStatus: "rejected" })
+                                }
                                 trigger={
                                   <Button size="sm" variant="destructive">
                                     <X className="ml-1 h-3 w-3" /> رد
@@ -229,9 +279,25 @@ function SuppliersListPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div>مجموع: {toFaDigits(total)} مورد</div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
-              <span>صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}</span>
-              <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                قبلی
+              </Button>
+              <span>
+                صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                بعدی
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -241,10 +307,17 @@ function SuppliersListPage() {
 }
 
 function ConfirmAction({
-  title, description, actionLabel, onConfirm, trigger,
+  title,
+  description,
+  actionLabel,
+  onConfirm,
+  trigger,
 }: {
-  title: string; description: string; actionLabel: string;
-  onConfirm: () => void; trigger: React.ReactNode;
+  title: string;
+  description: string;
+  actionLabel: string;
+  onConfirm: () => void;
+  trigger: React.ReactNode;
 }) {
   return (
     <AlertDialog>

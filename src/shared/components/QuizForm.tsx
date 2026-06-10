@@ -32,14 +32,26 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
   const [questions, setQuestions] = useState<QuizQuestion[]>(
     defaultValues?.questions && defaultValues.questions.length > 0
       ? defaultValues.questions
-      : [{ question_text: "", options: [{ text: "" }, { text: "" }], correct_value: 0, order_index: 0 }],
+      : [
+          {
+            question_text: "",
+            options: [{ text: "" }, { text: "" }],
+            correct_value: 0,
+            order_index: 0,
+          },
+        ],
   );
   const [error, setError] = useState<string | null>(null);
 
   const addQuestion = () => {
     setQuestions((q) => [
       ...q,
-      { question_text: "", options: [{ text: "" }, { text: "" }], correct_value: 0, order_index: q.length },
+      {
+        question_text: "",
+        options: [{ text: "" }, { text: "" }],
+        correct_value: 0,
+        order_index: q.length,
+      },
     ]);
   };
 
@@ -52,7 +64,9 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
   };
 
   const addOption = (qIdx: number) => {
-    setQuestions((q) => q.map((qq, i) => (i === qIdx ? { ...qq, options: [...qq.options, { text: "" }] } : qq)));
+    setQuestions((q) =>
+      q.map((qq, i) => (i === qIdx ? { ...qq, options: [...qq.options, { text: "" }] } : qq)),
+    );
   };
 
   const removeOption = (qIdx: number, oIdx: number) => {
@@ -78,9 +92,18 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
       return;
     }
     for (const q of questions) {
-      if (!q.question_text.trim()) { setError("متن همه سؤالات الزامی است"); return; }
-      if (q.options.length < 2) { setError("هر سؤال باید حداقل ۲ گزینه داشته باشد"); return; }
-      if (q.options.some((o) => !o.text.trim())) { setError("متن همه گزینه‌ها الزامی است"); return; }
+      if (!q.question_text.trim()) {
+        setError("متن همه سؤالات الزامی است");
+        return;
+      }
+      if (q.options.length < 2) {
+        setError("هر سؤال باید حداقل ۲ گزینه داشته باشد");
+        return;
+      }
+      if (q.options.some((o) => !o.text.trim())) {
+        setError("متن همه گزینه‌ها الزامی است");
+        return;
+      }
     }
     await onSubmit({ title: title.trim(), passing_score: passingScore, questions });
   };
@@ -90,11 +113,22 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5 sm:col-span-2">
           <Label>عنوان آزمون</Label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="عنوان آزمون (اختیاری)" />
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            placeholder="عنوان آزمون (اختیاری)"
+          />
         </div>
         <div className="space-y-1.5">
           <Label>نمره قبولی (٪)</Label>
-          <Input type="number" min={0} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value) || 0)} />
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={passingScore}
+            onChange={(e) => setPassingScore(Number(e.target.value) || 0)}
+          />
         </div>
       </div>
 
@@ -105,7 +139,12 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
               <div className="flex items-center justify-between gap-2">
                 <Label className="text-sm font-bold">سؤال {qIdx + 1}</Label>
                 {questions.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeQuestion(qIdx)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeQuestion(qIdx)}
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 )}
@@ -128,35 +167,48 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
                     <Input
                       value={opt.text}
                       onChange={(e) => {
-                        const newOptions = q.options.map((o, j) => (j === oIdx ? { text: e.target.value } : o));
+                        const newOptions = q.options.map((o, j) =>
+                          j === oIdx ? { text: e.target.value } : o,
+                        );
                         updateQuestion(qIdx, { options: newOptions });
                       }}
                       placeholder={`گزینه ${oIdx + 1}`}
                       className="flex-1"
                     />
                     {q.options.length > 2 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeOption(qIdx, oIdx)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeOption(qIdx, oIdx)}
+                      >
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     )}
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={() => addOption(qIdx)}>
-                  <Plus className="ms-1 h-4 w-4" />افزودن گزینه
+                  <Plus className="ms-1 h-4 w-4" />
+                  افزودن گزینه
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
         <Button type="button" variant="outline" onClick={addQuestion}>
-          <Plus className="ms-1 h-4 w-4" />افزودن سؤال
+          <Plus className="ms-1 h-4 w-4" />
+          افزودن سؤال
         </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex flex-wrap justify-end gap-2 pt-2">
-        {onCancel && <Button type="button" variant="outline" onClick={onCancel}>انصراف</Button>}
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            انصراف
+          </Button>
+        )}
         <Button type="submit" disabled={submitting}>
           {submitting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
           ذخیره آزمون

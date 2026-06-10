@@ -46,7 +46,11 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
     return () => {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current);
       if (recorderRef.current && recorderRef.current.state !== "inactive") {
-        try { recorderRef.current.stop(); } catch { /* noop */ }
+        try {
+          recorderRef.current.stop();
+        } catch {
+          /* noop */
+        }
       }
     };
   }, []);
@@ -69,7 +73,7 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
     try {
       const ext = originalName.includes(".")
         ? originalName.split(".").pop()
-        : mime.split("/")[1] ?? "bin";
+        : (mime.split("/")[1] ?? "bin");
       const safeName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const path = `${userId}/${safeName}`;
 
@@ -78,9 +82,7 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
         .upload(path, file, { contentType: mime, upsert: false });
       if (error) throw error;
 
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(path, 60 * 60);
+      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60);
 
       onChange([
         ...value,
@@ -128,10 +130,15 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
       const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        if (recordTimerRef.current) { clearInterval(recordTimerRef.current); recordTimerRef.current = null; }
+        if (recordTimerRef.current) {
+          clearInterval(recordTimerRef.current);
+          recordTimerRef.current = null;
+        }
         setRecordSeconds(0);
         const blob = new Blob(chunksRef.current, { type: mime || "audio/webm" });
         await uploadFile(blob, `voice_${Date.now()}.webm`, blob.type);
@@ -165,25 +172,35 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
           accept="image/*,video/*"
           multiple
           className="hidden"
-          onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
         />
         <input
           ref={audioInputRef}
           type="file"
           accept="audio/*"
           className="hidden"
-          onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = "";
+          }}
         />
 
         <Button
-          type="button" variant="outline" size="sm"
+          type="button"
+          variant="outline"
+          size="sm"
           disabled={disabled || uploading || recording}
           onClick={() => fileInputRef.current?.click()}
         >
           <ImageIcon className="ms-1 h-4 w-4" /> عکس / ویدیو
         </Button>
         <Button
-          type="button" variant="outline" size="sm"
+          type="button"
+          variant="outline"
+          size="sm"
           disabled={disabled || uploading || recording}
           onClick={() => audioInputRef.current?.click()}
         >
@@ -191,17 +208,16 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
         </Button>
         {!recording ? (
           <Button
-            type="button" variant="outline" size="sm"
+            type="button"
+            variant="outline"
+            size="sm"
             disabled={disabled || uploading}
             onClick={startRecording}
           >
             <Mic className="ms-1 h-4 w-4" /> ضبط ویس
           </Button>
         ) : (
-          <Button
-            type="button" variant="destructive" size="sm"
-            onClick={stopRecording}
-          >
+          <Button type="button" variant="destructive" size="sm" onClick={stopRecording}>
             <Square className="ms-1 h-4 w-4" /> توقف ({recordSeconds}s)
           </Button>
         )}
@@ -217,14 +233,23 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
           {value.map((a, i) => {
             const k = kindOf(a.mime_type);
             return (
-              <li key={a.path} className="flex items-center gap-2 rounded-md border bg-muted/30 p-2">
+              <li
+                key={a.path}
+                className="flex items-center gap-2 rounded-md border bg-muted/30 p-2"
+              >
                 <div className="flex-1 min-w-0 space-y-1">
-                  <div className="truncate text-xs font-medium" title={a.name}>{a.name}</div>
+                  <div className="truncate text-xs font-medium" title={a.name}>
+                    {a.name}
+                  </div>
                   <div className="text-[10px] text-muted-foreground">
                     {(a.size / 1024 / 1024).toFixed(2)} MB · {a.mime_type}
                   </div>
                   {a.previewUrl && k === "image" && (
-                    <img src={a.previewUrl} alt={a.name} className="mt-1 h-20 w-auto rounded object-cover" />
+                    <img
+                      src={a.previewUrl}
+                      alt={a.name}
+                      className="mt-1 h-20 w-auto rounded object-cover"
+                    />
                   )}
                   {a.previewUrl && k === "video" && (
                     <video src={a.previewUrl} controls className="mt-1 h-24 w-full rounded" />
@@ -234,7 +259,9 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
                   )}
                 </div>
                 <Button
-                  type="button" variant="ghost" size="sm"
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => removeAttachment(i)}
                   disabled={disabled}
                 >

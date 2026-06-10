@@ -55,10 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error && data.user) {
       void supabase.rpc("log_event", {
-          _entity_type: "auth",
-          _entity_id: data.user.id,
-          _action: "login_success",
-          _diff: { email },
+        _entity_type: "auth",
+        _entity_id: data.user.id,
+        _action: "login_success",
+        _diff: { email },
       });
     }
     return { error: error?.message ?? null };

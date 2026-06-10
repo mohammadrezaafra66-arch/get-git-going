@@ -5,11 +5,11 @@ import { fetchMarketIndex, type RangeDays } from "@/lib/management/market-intell
 import { formatNumber } from "@/lib/i18n/formatters";
 
 const STATUS_LABEL: Record<string, { label: string; color: string; Icon: typeof ArrowUp }> = {
-  rising:   { label: "صعودی",  color: "text-emerald-600", Icon: ArrowUp },
-  falling:  { label: "نزولی",  color: "text-red-600",     Icon: ArrowDown },
-  flat:     { label: "ثابت",   color: "text-muted-foreground", Icon: Minus },
-  volatile: { label: "نوسانی", color: "text-amber-600",   Icon: Waves },
-  no_data:  { label: "بدون داده", color: "text-muted-foreground", Icon: Minus },
+  rising: { label: "صعودی", color: "text-emerald-600", Icon: ArrowUp },
+  falling: { label: "نزولی", color: "text-red-600", Icon: ArrowDown },
+  flat: { label: "ثابت", color: "text-muted-foreground", Icon: Minus },
+  volatile: { label: "نوسانی", color: "text-amber-600", Icon: Waves },
+  no_data: { label: "بدون داده", color: "text-muted-foreground", Icon: Minus },
 };
 
 export function AfraMarketIndexCard({ days }: { days: RangeDays }) {
@@ -38,18 +38,27 @@ export function AfraMarketIndexCard({ days }: { days: RangeDays }) {
       ) : q.isError ? (
         <p className="py-6 text-center text-sm text-destructive">خطا در بارگذاری</p>
       ) : !idx || idx.product_count === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">داده کافی برای محاسبه شاخص وجود ندارد.</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          داده کافی برای محاسبه شاخص وجود ندارد.
+        </p>
       ) : (
         <div className="space-y-3">
           <div className="flex items-end justify-between gap-2 rounded-lg border bg-muted/20 p-4">
             <div>
               <div className="text-xs text-muted-foreground">تغییر شاخص</div>
-              <div className={`flex items-center gap-2 text-3xl font-bold tabular-nums ${status.color}`}>
+              <div
+                className={`flex items-center gap-2 text-3xl font-bold tabular-nums ${status.color}`}
+              >
                 <Icon className="h-6 w-6" />
                 <span>
                   {pct !== null && pct !== undefined ? (
-                    <>{pct > 0 ? "+" : ""}{formatNumber(pct)}٪</>
-                  ) : "—"}
+                    <>
+                      {pct > 0 ? "+" : ""}
+                      {formatNumber(pct)}٪
+                    </>
+                  ) : (
+                    "—"
+                  )}
                 </span>
               </div>
             </div>

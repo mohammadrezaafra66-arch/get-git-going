@@ -3,16 +3,29 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowRight, Loader2, Send, CheckCircle2, XCircle, Ban,
-  FileDown, MessageCircle, Eye,
+  ArrowRight,
+  Loader2,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  FileDown,
+  MessageCircle,
+  Eye,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -107,7 +120,9 @@ function QuoteDetailPage() {
     queryFn: async (): Promise<QuoteItem[]> => {
       const { data, error } = await supabase
         .from("sales_quote_items")
-        .select("id, source, product_id, free_item_name, sku_snapshot, title_snapshot, quantity, unit_price, discount_amount, line_total")
+        .select(
+          "id, source, product_id, free_item_name, sku_snapshot, title_snapshot, quantity, unit_price, discount_amount, line_total",
+        )
         .eq("quote_id", quoteId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -133,7 +148,9 @@ function QuoteDetailPage() {
             پیش‌فاکتور پیدا نشد یا دسترسی ندارید.
             <div className="mt-4">
               <Button asChild variant="outline" size="sm">
-                <Link to="/sales/quotes"><ArrowRight className="ml-1 h-4 w-4" /> بازگشت به لیست</Link>
+                <Link to="/sales/quotes">
+                  <ArrowRight className="ml-1 h-4 w-4" /> بازگشت به لیست
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -174,7 +191,10 @@ function QuoteDetailPage() {
               <Field label="شماره تماس" value={<span dir="ltr">{quote.customer_phone}</span>} />
               <Field label="فروشنده" value={quote.salesperson_name ?? "—"} />
               <Field label="تاریخ ایجاد" value={formatDateTimeFa(quote.created_at)} />
-              <Field label="اعتبار تا" value={quote.expires_at ? formatDateFa(quote.expires_at) : "—"} />
+              <Field
+                label="اعتبار تا"
+                value={quote.expires_at ? formatDateFa(quote.expires_at) : "—"}
+              />
             </div>
             {quote.customer_note && (
               <div className="rounded-md border bg-muted/30 p-3 text-xs">
@@ -204,7 +224,8 @@ function QuoteDetailPage() {
             <div className="mt-2 flex items-center justify-between border-t pt-2">
               <span className="font-medium">مبلغ نهایی</span>
               <span className="text-lg font-bold text-primary">
-                {formatNumber(quote.final_amount)} <span className="text-xs font-normal text-muted-foreground">تومان</span>
+                {formatNumber(quote.final_amount)}{" "}
+                <span className="text-xs font-normal text-muted-foreground">تومان</span>
               </span>
             </div>
           </CardContent>
@@ -218,7 +239,11 @@ function QuoteDetailPage() {
             <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری آیتم‌ها...
           </div>
         ) : items.length === 0 ? (
-          <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">آیتمی ثبت نشده است.</CardContent></Card>
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              آیتمی ثبت نشده است.
+            </CardContent>
+          </Card>
         ) : (
           <>
             <div className="hidden md:block">
@@ -252,7 +277,9 @@ function QuoteDetailPage() {
                             <td className="p-3 align-top">{formatNumber(it.quantity)}</td>
                             <td className="p-3 align-top">{formatNumber(it.unit_price)}</td>
                             <td className="p-3 align-top">{formatNumber(it.discount_amount)}</td>
-                            <td className="p-3 align-top font-medium">{formatNumber(it.line_total)}</td>
+                            <td className="p-3 align-top font-medium">
+                              {formatNumber(it.line_total)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -267,14 +294,24 @@ function QuoteDetailPage() {
                   <CardContent className="p-3 space-y-1.5 text-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-medium truncate">{it.title_snapshot ?? it.free_item_name ?? "—"}</div>
-                        {it.sku_snapshot && <div className="font-mono text-[11px] text-muted-foreground">{it.sku_snapshot}</div>}
+                        <div className="font-medium truncate">
+                          {it.title_snapshot ?? it.free_item_name ?? "—"}
+                        </div>
+                        {it.sku_snapshot && (
+                          <div className="font-mono text-[11px] text-muted-foreground">
+                            {it.sku_snapshot}
+                          </div>
+                        )}
                       </div>
-                      <span className="text-[11px] text-muted-foreground">{SALES_QUOTE_SOURCE_LABELS[it.source]}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {SALES_QUOTE_SOURCE_LABELS[it.source]}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">تعداد × قیمت واحد</span>
-                      <span>{formatNumber(it.quantity)} × {formatNumber(it.unit_price)}</span>
+                      <span>
+                        {formatNumber(it.quantity)} × {formatNumber(it.unit_price)}
+                      </span>
                     </div>
                     {it.discount_amount > 0 && (
                       <div className="flex items-center justify-between text-xs">
@@ -311,23 +348,33 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function QuoteActionButtons({
-  quote, isManagerial, isOwner,
-}: { quote: QuoteDetail; isManagerial: boolean; isOwner: boolean }) {
+  quote,
+  isManagerial,
+  isOwner,
+}: {
+  quote: QuoteDetail;
+  isManagerial: boolean;
+  isOwner: boolean;
+}) {
   const qc = useQueryClient();
-  const [confirm, setConfirm] = useState<null | { next: SalesQuoteStatus; label: string; needsReason?: boolean }>(null);
+  const [confirm, setConfirm] = useState<null | {
+    next: SalesQuoteStatus;
+    label: string;
+    needsReason?: boolean;
+  }>(null);
   const [reason, setReason] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
-      const { error } = payload.next === "canceled"
-        ? await supabase.from("sales_quotes")
-            .update({ status: payload.next, cancel_reason: payload.reason ?? null })
-            .eq("id", quote.id)
-        : await supabase.from("sales_quotes")
-            .update({ status: payload.next })
-            .eq("id", quote.id);
+      const { error } =
+        payload.next === "canceled"
+          ? await supabase
+              .from("sales_quotes")
+              .update({ status: payload.next, cancel_reason: payload.reason ?? null })
+              .eq("id", quote.id)
+          : await supabase.from("sales_quotes").update({ status: payload.next }).eq("id", quote.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -341,14 +388,17 @@ function QuoteActionButtons({
   const canSend = (isManagerial || isOwner) && quote.status === "draft";
   const canAccept = isManagerial && quote.status === "sent";
   const canReject = (isManagerial || isOwner) && quote.status === "sent";
-  const canCancel = (isManagerial || isOwner) && (quote.status === "draft" || quote.status === "sent");
+  const canCancel =
+    (isManagerial || isOwner) && (quote.status === "draft" || quote.status === "sent");
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     try {
       const { data: itemRows, error } = await supabase
         .from("sales_quote_items")
-        .select("title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at")
+        .select(
+          "title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
+        )
         .eq("quote_id", quote.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -384,27 +434,53 @@ function QuoteActionButtons({
   return (
     <>
       {canSend && (
-        <Button size="sm" onClick={() => setConfirm({ next: "sent", label: "ارسال پیش‌فاکتور" })} disabled={mutation.isPending}>
+        <Button
+          size="sm"
+          onClick={() => setConfirm({ next: "sent", label: "ارسال پیش‌فاکتور" })}
+          disabled={mutation.isPending}
+        >
           <Send className="ml-1 h-3.5 w-3.5" /> ارسال پیش‌فاکتور
         </Button>
       )}
       {canAccept && (
-        <Button size="sm" variant="outline" onClick={() => setConfirm({ next: "accepted", label: "پذیرش پیش‌فاکتور" })} disabled={mutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setConfirm({ next: "accepted", label: "پذیرش پیش‌فاکتور" })}
+          disabled={mutation.isPending}
+        >
           <CheckCircle2 className="ml-1 h-3.5 w-3.5" /> پذیرش
         </Button>
       )}
       {canReject && (
-        <Button size="sm" variant="outline" onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })} disabled={mutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}
+          disabled={mutation.isPending}
+        >
           <XCircle className="ml-1 h-3.5 w-3.5" /> رد
         </Button>
       )}
       {canCancel && (
-        <Button size="sm" variant="outline" onClick={() => { setReason(""); setConfirm({ next: "canceled", label: "لغو پیش‌فاکتور", needsReason: true }); }} disabled={mutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setReason("");
+            setConfirm({ next: "canceled", label: "لغو پیش‌فاکتور", needsReason: true });
+          }}
+          disabled={mutation.isPending}
+        >
           <Ban className="ml-1 h-3.5 w-3.5" /> لغو
         </Button>
       )}
       <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading}>
-        {pdfLoading ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <FileDown className="ml-1 h-3.5 w-3.5" />}
+        {pdfLoading ? (
+          <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <FileDown className="ml-1 h-3.5 w-3.5" />
+        )}
         دانلود PDF
       </Button>
       <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
@@ -418,7 +494,12 @@ function QuoteActionButtons({
         defaultRecipient={quote.customer_phone}
       />
 
-      <AlertDialog open={!!confirm} onOpenChange={(o) => { if (!o) setConfirm(null); }}>
+      <AlertDialog
+        open={!!confirm}
+        onOpenChange={(o) => {
+          if (!o) setConfirm(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirm?.label}</AlertDialogTitle>
@@ -429,7 +510,11 @@ function QuoteActionButtons({
           {confirm?.needsReason && (
             <div className="space-y-2 py-2">
               <label className="text-xs text-muted-foreground">دلیل لغو (اختیاری)</label>
-              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="دلیل لغو" />
+              <Input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="دلیل لغو"
+              />
             </div>
           )}
           <AlertDialogFooter>
@@ -437,10 +522,15 @@ function QuoteActionButtons({
             <AlertDialogAction
               onClick={() => {
                 if (!confirm) return;
-                mutation.mutate({ next: confirm.next, reason: confirm.needsReason ? reason.trim() || undefined : undefined });
+                mutation.mutate({
+                  next: confirm.next,
+                  reason: confirm.needsReason ? reason.trim() || undefined : undefined,
+                });
                 setConfirm(null);
               }}
-            >تایید</AlertDialogAction>
+            >
+              تایید
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

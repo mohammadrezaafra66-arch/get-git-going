@@ -147,10 +147,7 @@ export function initCacheBuster() {
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const reason = event?.reason;
-    const msg =
-      typeof reason === "string"
-        ? reason
-        : reason?.message ?? String(reason ?? "");
+    const msg = typeof reason === "string" ? reason : (reason?.message ?? String(reason ?? ""));
     if (isStaleChunkError(msg)) {
       void forceHardReload(`unhandledrejection: ${msg}`);
     }

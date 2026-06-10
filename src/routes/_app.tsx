@@ -44,11 +44,15 @@ export const Route = createFileRoute("/_app")({
         throw redirect({ to: "/login" });
       }
       if (auth.user && !auth.profile && auth.authError) {
-        logAuthDiagnostic("_app.beforeLoad.profileMissing", "user exists but profile is unavailable", {
-          authError: auth.authError,
-          profileError: auth.profileError,
-          rolesError: auth.rolesError,
-        });
+        logAuthDiagnostic(
+          "_app.beforeLoad.profileMissing",
+          "user exists but profile is unavailable",
+          {
+            authError: auth.authError,
+            profileError: auth.profileError,
+            rolesError: auth.rolesError,
+          },
+        );
       }
       const status = auth.profile?.status;
       if (auth.profile && status && status !== "active") {
@@ -73,15 +77,8 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  const {
-    loading,
-    profileLoading,
-    rolesLoading,
-    authError,
-    profileError,
-    rolesError,
-    retryAuth,
-  } = useAuth();
+  const { loading, profileLoading, rolesLoading, authError, profileError, rolesError, retryAuth } =
+    useAuth();
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
 

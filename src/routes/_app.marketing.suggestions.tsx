@@ -9,10 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,7 +48,10 @@ type Suggestion = {
 
 type Channel = { id: string; name: string };
 
-const STOCK_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STOCK_BADGE: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   available: { label: "موجود", variant: "default" },
   limited: { label: "محدود", variant: "secondary" },
   unknown: { label: "نامشخص", variant: "outline" },
@@ -53,7 +65,8 @@ function fmt(n: number, digits = 2) {
 
 function PromotionSuggestionsPage() {
   const { user, roles } = useAuth();
-  const allowed = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const allowed =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
 
   const [channelId, setChannelId] = useState<string>("__all__");
   const [minScoreInput, setMinScoreInput] = useState<string>("0");
@@ -157,7 +170,9 @@ function PromotionSuggestionsPage() {
             <SelectContent>
               <SelectItem value="__all__">همه کانال‌ها</SelectItem>
               {(channelsQuery.data ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -222,14 +237,13 @@ function PromotionSuggestionsPage() {
               rows.map((s) => {
                 const key = `${s.product_id}:${s.channel_id}`;
                 const used = !!usedKeys[key];
-                const stock = STOCK_BADGE[String(s.stock_status ?? "unknown")] ?? STOCK_BADGE.unknown;
+                const stock =
+                  STOCK_BADGE[String(s.stock_status ?? "unknown")] ?? STOCK_BADGE.unknown;
                 return (
                   <TableRow key={key}>
                     <TableCell>
                       <div className="font-medium">{s.product_name}</div>
-                      {s.sku ? (
-                        <div className="text-xs text-muted-foreground">{s.sku}</div>
-                      ) : null}
+                      {s.sku ? <div className="text-xs text-muted-foreground">{s.sku}</div> : null}
                     </TableCell>
                     <TableCell>{s.channel_name}</TableCell>
                     <TableCell>{fmt(s.label_weight_sum, 0)}</TableCell>

@@ -17,7 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 export const Route = createFileRoute("/_app/gamification/admin/purchase-settings")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: PurchaseGamificationSettingsPage,
 });
 
@@ -86,9 +88,7 @@ function PurchaseGamificationSettingsPage() {
         { key: "purchase_score_grace_days", value: String(graceNum) },
       ];
       for (const r of rows) {
-        const { error } = await supabase
-          .from("shop_settings")
-          .upsert(r, { onConflict: "key" });
+        const { error } = await supabase.from("shop_settings").upsert(r, { onConflict: "key" });
         if (error) throw error;
       }
     },
@@ -119,7 +119,7 @@ function PurchaseGamificationSettingsPage() {
     const amount = term * 1;
     const ref = Number(rate);
     if (!Number.isFinite(ref)) return "—";
-    const implied = ((term - cash) / cash) / days;
+    const implied = (term - cash) / cash / days;
     const raw = (ref - implied) * days * amount;
     const final = Math.max(0, Math.round((raw / 100000) * 100) / 100);
     return toFaDigits(final.toString());
@@ -133,7 +133,9 @@ function PurchaseGamificationSettingsPage() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -143,7 +145,8 @@ function PurchaseGamificationSettingsPage() {
                 نرخ بهره روزانه‌ی مرجع
               </CardTitle>
               <CardDescription>
-                این عدد، «هزینه‌ی منصفانه‌ی نگهداری پول به ازای هر روز» است. خریدی که گرانی روزانه‌ی آن کمتر از این عدد باشد امتیاز مثبت می‌گیرد.
+                این عدد، «هزینه‌ی منصفانه‌ی نگهداری پول به ازای هر روز» است. خریدی که گرانی روزانه‌ی
+                آن کمتر از این عدد باشد امتیاز مثبت می‌گیرد.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -158,8 +161,12 @@ function PurchaseGamificationSettingsPage() {
                 onChange={(e) => setRate(e.target.value)}
               />
               <div className="rounded-md bg-muted/40 p-3 text-xs leading-6">
-                <div>روزانه: <strong>{dailyPct}</strong></div>
-                <div>سالانه (تقریبی): <strong>{annualPct}</strong></div>
+                <div>
+                  روزانه: <strong>{dailyPct}</strong>
+                </div>
+                <div>
+                  سالانه (تقریبی): <strong>{annualPct}</strong>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -167,13 +174,17 @@ function PurchaseGamificationSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>کلیدهای کنترلی</CardTitle>
-              <CardDescription>فعال/خاموش بودن امتیازدهی خرید و روزهای ارفاق دیرکرد حسابدار</CardDescription>
+              <CardDescription>
+                فعال/خاموش بودن امتیازدهی خرید و روزهای ارفاق دیرکرد حسابدار
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
                   <div className="font-medium">امتیازدهی خرید فعال است</div>
-                  <div className="text-xs text-muted-foreground">با خاموش کردن، هیچ امتیازی برای خرید/پرداخت ثبت نمی‌شود</div>
+                  <div className="text-xs text-muted-foreground">
+                    با خاموش کردن، هیچ امتیازی برای خرید/پرداخت ثبت نمی‌شود
+                  </div>
                 </div>
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
               </div>
@@ -204,9 +215,7 @@ function PurchaseGamificationSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-500">
-                {previewScore} امتیاز
-              </div>
+              <div className="text-2xl font-bold text-amber-500">{previewScore} امتیاز</div>
               <Separator className="my-3" />
               <ul className="list-disc space-y-1 pr-5 text-xs text-muted-foreground">
                 <li>هزینه‌ی ضمنی روزانه‌ی این خرید = (۱۲۰٬۰۰۰ − ۱۰۰٬۰۰۰) ÷ ۱۰۰٬۰۰۰ ÷ ۳۰</li>
@@ -218,7 +227,11 @@ function PurchaseGamificationSettingsPage() {
 
           <div className="md:col-span-2 flex justify-end">
             <Button onClick={() => save.mutate()} disabled={save.isPending}>
-              {save.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+              {save.isPending ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="ml-2 h-4 w-4" />
+              )}
               ذخیره تنظیمات
             </Button>
           </div>

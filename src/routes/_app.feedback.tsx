@@ -10,11 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination, PaginationContent, PaginationItem,
-  PaginationPrevious, PaginationNext,
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
 } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -23,15 +30,21 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
-  FEEDBACK_TYPES, FEEDBACK_STATUSES,
-  FEEDBACK_TYPE_LABELS, FEEDBACK_STATUS_LABELS, FEEDBACK_STATUS_COLORS,
-  type FeedbackType, type FeedbackStatus,
+  FEEDBACK_TYPES,
+  FEEDBACK_STATUSES,
+  FEEDBACK_TYPE_LABELS,
+  FEEDBACK_STATUS_LABELS,
+  FEEDBACK_STATUS_COLORS,
+  type FeedbackType,
+  type FeedbackStatus,
 } from "@/lib/feedback/constants";
 
 const PAGE_SIZE = 20;
 
 export const Route = createFileRoute("/_app/feedback")({
-  beforeLoad: async () => { await requirePermission("feedback", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("feedback", "view");
+  },
   component: FeedbackListPage,
 });
 
@@ -80,7 +93,10 @@ function FeedbackListPage() {
         description={canManage ? "همه بازخوردهای ثبت‌شده توسط کارکنان" : "بازخوردهای ثبت‌شده شما"}
         actions={
           <Button asChild size="sm">
-            <Link to="/feedback/create"><Plus className="ms-1 h-4 w-4" />بازخورد جدید</Link>
+            <Link to="/feedback/create">
+              <Plus className="ms-1 h-4 w-4" />
+              بازخورد جدید
+            </Link>
           </Button>
         }
       />
@@ -90,26 +106,49 @@ function FeedbackListPage() {
           <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="جستجوی عنوان..."
             className="pe-9"
           />
         </div>
-        <Select value={type} onValueChange={(v) => { setType(v as FeedbackType | "all"); setPage(1); }}>
-          <SelectTrigger className="sm:w-44"><SelectValue placeholder="نوع" /></SelectTrigger>
+        <Select
+          value={type}
+          onValueChange={(v) => {
+            setType(v as FeedbackType | "all");
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="sm:w-44">
+            <SelectValue placeholder="نوع" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه انواع</SelectItem>
             {FEEDBACK_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              <SelectItem key={t.value} value={t.value}>
+                {t.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v as FeedbackStatus | "all"); setPage(1); }}>
-          <SelectTrigger className="sm:w-44"><SelectValue placeholder="وضعیت" /></SelectTrigger>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v as FeedbackStatus | "all");
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="sm:w-44">
+            <SelectValue placeholder="وضعیت" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه وضعیت‌ها</SelectItem>
             {FEEDBACK_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -126,12 +165,20 @@ function FeedbackListPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {data.rows.map((d) => (
-            <Link key={d.id} to="/feedback/$feedbackId" params={{ feedbackId: d.id }} className="block">
+            <Link
+              key={d.id}
+              to="/feedback/$feedbackId"
+              params={{ feedbackId: d.id }}
+              className="block"
+            >
               <Card className="h-full transition hover:border-primary hover:shadow-sm">
                 <CardHeader className="space-y-2 pb-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="outline">{FEEDBACK_TYPE_LABELS[d.type as FeedbackType]}</Badge>
-                    <Badge variant="outline" className={FEEDBACK_STATUS_COLORS[d.status as FeedbackStatus]}>
+                    <Badge
+                      variant="outline"
+                      className={FEEDBACK_STATUS_COLORS[d.status as FeedbackStatus]}
+                    >
                       {FEEDBACK_STATUS_LABELS[d.status as FeedbackStatus]}
                     </Badge>
                   </div>
@@ -151,19 +198,29 @@ function FeedbackListPage() {
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPage((p) => Math.max(1, p - 1));
+                }}
                 aria-disabled={page === 1}
                 className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
               />
             </PaginationItem>
             <PaginationItem>
-              <span className="px-3 text-sm">صفحه {page} از {totalPages}</span>
+              <span className="px-3 text-sm">
+                صفحه {page} از {totalPages}
+              </span>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
-                onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPage((p) => Math.min(totalPages, p + 1));
+                }}
                 aria-disabled={page === totalPages}
-                className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                className={
+                  page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
+                }
               />
             </PaginationItem>
           </PaginationContent>

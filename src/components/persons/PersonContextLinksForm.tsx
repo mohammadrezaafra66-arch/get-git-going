@@ -128,9 +128,7 @@ export function PersonContextLinksForm({
     queryKey,
     queryFn: async () => {
       const headers = await authHeaders();
-      return toError(
-        listFn({ headers, data: { person_id: personId, include_ended: true } }),
-      );
+      return toError(listFn({ headers, data: { person_id: personId, include_ended: true } }));
     },
   });
 

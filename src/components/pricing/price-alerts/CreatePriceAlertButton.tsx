@@ -13,8 +13,12 @@ interface Props {
 }
 
 export function CreatePriceAlertButton({
-  productId, productName, salePriceTypeId,
-  variant = "ghost", size = "sm", label = "هشدار قیمت",
+  productId,
+  productName,
+  salePriceTypeId,
+  variant = "ghost",
+  size = "sm",
+  label = "هشدار قیمت",
 }: Props) {
   const [open, setOpen] = useState(false);
   return (
@@ -23,7 +27,10 @@ export function CreatePriceAlertButton({
         type="button"
         variant={variant}
         size={size}
-        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
         title="ایجاد هشدار قیمت"
       >
         <BellPlus className="ms-1 h-4 w-4" />

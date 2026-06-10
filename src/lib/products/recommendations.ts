@@ -80,24 +80,32 @@ export interface UpsertOverrideInput {
 }
 
 function validateOverride(input: UpsertOverrideInput): string | null {
-  if (!input.product_id || !input.recommended_product_id) return "محصول مبدأ و محصول پیشنهادی الزامی است.";
-  if (input.product_id === input.recommended_product_id) return "محصول مبدأ و محصول پیشنهادی نمی‌توانند یکسان باشند.";
-  if (input.priority !== undefined && !Number.isFinite(input.priority)) return "اولویت باید عددی باشد.";
-  if (input.priority !== undefined && (input.priority < -1000 || input.priority > 1000)) return "اولویت باید بین -1000 و 1000 باشد.";
+  if (!input.product_id || !input.recommended_product_id)
+    return "محصول مبدأ و محصول پیشنهادی الزامی است.";
+  if (input.product_id === input.recommended_product_id)
+    return "محصول مبدأ و محصول پیشنهادی نمی‌توانند یکسان باشند.";
+  if (input.priority !== undefined && !Number.isFinite(input.priority))
+    return "اولویت باید عددی باشد.";
+  if (input.priority !== undefined && (input.priority < -1000 || input.priority > 1000))
+    return "اولویت باید بین -1000 و 1000 باشد.";
   return null;
 }
 
-export async function fetchOverridesForProduct(productId: string): Promise<RecommendationOverride[]> {
+export async function fetchOverridesForProduct(
+  productId: string,
+): Promise<RecommendationOverride[]> {
   const { data, error } = await supabase
     .from("product_recommendation_overrides")
-    .select(`
+    .select(
+      `
       id, product_id, recommended_product_id, priority, is_pinned, is_disabled, created_at, updated_at,
       recommended_product:products!product_recommendation_overrides_recommended_product_id_fkey(
         id, name, sku, stock_status,
         brand:brands(name),
         category:categories(name)
       )
-    `)
+    `,
+    )
     .eq("product_id", productId)
     .order("is_pinned", { ascending: false })
     .order("priority", { ascending: false })
@@ -136,13 +144,15 @@ export async function createOverride(input: UpsertOverrideInput): Promise<string
     }
     throw error;
   }
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "product_recommendation_override",
-    entity_id: data.id,
-    action: "recommendation_override_created",
-    diff: payload as unknown as Json,
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "product_recommendation_override",
+      entity_id: data.id,
+      action: "recommendation_override_created",
+      diff: payload as unknown as Json,
+    },
+  ]);
   return data.id as string;
 }
 
@@ -159,29 +169,30 @@ export async function updateOverride(
     .update(patch)
     .eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "product_recommendation_override",
-    entity_id: id,
-    action: "recommendation_override_updated",
-    diff: patch as unknown as Json,
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "product_recommendation_override",
+      entity_id: id,
+      action: "recommendation_override_updated",
+      diff: patch as unknown as Json,
+    },
+  ]);
 }
 
 export async function deleteOverride(id: string): Promise<void> {
   const uid = await getUid();
-  const { error } = await supabase
-    .from("product_recommendation_overrides")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("product_recommendation_overrides").delete().eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "product_recommendation_override",
-    entity_id: id,
-    action: "recommendation_override_deleted",
-    diff: {} as Json,
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "product_recommendation_override",
+      entity_id: id,
+      action: "recommendation_override_deleted",
+      diff: {} as Json,
+    },
+  ]);
 }
 
 export interface ProductSearchResult {
@@ -207,7 +218,7 @@ export async function searchProductsLite(term: string, limit = 20): Promise<Prod
     id: r.id as string,
     name: r.name as string,
     sku: (r.sku as string | null) ?? null,
-    brand_name: ((r.brand as { name?: string } | null)?.name) ?? null,
-    category_name: ((r.category as { name?: string } | null)?.name) ?? null,
+    brand_name: (r.brand as { name?: string } | null)?.name ?? null,
+    category_name: (r.category as { name?: string } | null)?.name ?? null,
   }));
 }

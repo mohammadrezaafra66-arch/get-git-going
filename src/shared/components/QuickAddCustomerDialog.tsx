@@ -126,7 +126,13 @@ export function QuickAddCustomerDialog({
   const errors = form.formState.errors;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) form.reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) form.reset();
+      }}
+    >
       <DialogTrigger asChild>
         {trigger ?? (
           <Button type="button" size={buttonSize} variant={buttonVariant}>
@@ -143,18 +149,19 @@ export function QuickAddCustomerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form
-          onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-          className="space-y-3"
-        >
+        <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="qa-name">نام شخص <span className="text-destructive">*</span></Label>
+            <Label htmlFor="qa-name">
+              نام شخص <span className="text-destructive">*</span>
+            </Label>
             <Input id="qa-name" {...form.register("name")} placeholder="نام و نام خانوادگی" />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="qa-phone">شماره موبایل <span className="text-destructive">*</span></Label>
+            <Label htmlFor="qa-phone">
+              شماره موبایل <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="qa-phone"
               dir="ltr"
@@ -167,7 +174,9 @@ export function QuickAddCustomerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="qa-code">کد آسان <span className="text-destructive">*</span></Label>
+            <Label htmlFor="qa-code">
+              کد آسان <span className="text-destructive">*</span>
+            </Label>
             <Input
               id="qa-code"
               dir="ltr"

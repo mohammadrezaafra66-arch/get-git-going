@@ -18,12 +18,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type OcrMethod =
-  | "text"
-  | "image_ocr"
-  | "pdf_text"
-  | "pdf_image_ocr"
-  | "unsupported";
+export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "pdf_image_ocr" | "unsupported";
 
 export interface OcrResult {
   raw_text: string;
@@ -48,8 +43,7 @@ function isExternalOcrEnabled(): boolean {
   // Prefer new EXTERNAL_OCR_ENABLED; fall back to legacy OCR_ENABLED for
   // backward compatibility with deployments that pre-date SH-RA.2B.
   // Default ON only when neither is set (preserves Lovable preview behavior).
-  const raw =
-    process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
+  const raw = process.env.EXTERNAL_OCR_ENABLED ?? process.env.OCR_ENABLED ?? "true";
   return String(raw).toLowerCase() === "true";
 }
 function externalApiTimeoutMs(): number {
@@ -154,9 +148,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
             raw_text: raw,
             method: "pdf_text" as const,
             warnings:
-              totalPages > 2
-                ? [`PDF شامل ${totalPages} صفحه است؛ متن همه صفحات استخراج شد.`]
-                : [],
+              totalPages > 2 ? [`PDF شامل ${totalPages} صفحه است؛ متن همه صفحات استخراج شد.`] : [],
             engine_confidence: null,
           } satisfies OcrResult;
         }
@@ -188,9 +180,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
         return {
           raw_text: "",
           method: "unsupported" as const,
-          warnings: [
-            "OCR در نسخه self-host غیرفعال است. لطفاً اطلاعات رسید را دستی وارد کنید.",
-          ],
+          warnings: ["OCR در نسخه self-host غیرفعال است. لطفاً اطلاعات رسید را دستی وارد کنید."],
           engine_confidence: null,
           ok: false,
           disabled: true,
@@ -203,9 +193,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
         return {
           raw_text: "",
           method: "unsupported" as const,
-          warnings: [
-            "موتور OCR تصویری در این محیط فعال نیست (LOVABLE_API_KEY تنظیم نشده).",
-          ],
+          warnings: ["موتور OCR تصویری در این محیط فعال نیست (LOVABLE_API_KEY تنظیم نشده)."],
           engine_confidence: null,
           ok: false,
           disabled: true,
@@ -253,8 +241,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
           signal: ctrl.signal,
         });
       } catch (err) {
-        const isAbort =
-          (err as { name?: string } | null)?.name === "AbortError";
+        const isAbort = (err as { name?: string } | null)?.name === "AbortError";
         if (isAbort) {
           return {
             raw_text: "",
