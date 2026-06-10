@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Loader2, Search, Tag } from "lucide-react";
 
@@ -14,6 +14,7 @@ import {
 import { getOwnerLabelOverview } from "@/lib/products/owner-label-queries";
 import { canPersistOwnerLabels } from "@/lib/products/owner-label-mutations";
 import { OwnerScopedLabelsDialog } from "@/components/products/OwnerScopedLabelsDialog";
+import { OwnerLabelStrategyCard } from "./OwnerLabelStrategyCard";
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,7 @@ import { OwnerLabelQuotaMeter } from "./OwnerLabelQuotaMeter";
 
 const ID_QUERY_CAP = 1000;
 
-type TaggedState = "all" | "tagged" | "untagged";
+type TaggedState = "all" | "tagged" | "untagged" | "recommended";
 
 interface OwnerLabelProductRow {
   id: string;
@@ -68,7 +69,7 @@ async function fetchOwnerProductsPage(params: {
   let target = eligibleProductIds;
   if (taggedState === "tagged") {
     target = eligibleProductIds.filter((id) => taggedSet.has(id));
-  } else if (taggedState === "untagged") {
+  } else if (taggedState === "untagged" || taggedState === "recommended") {
     target = eligibleProductIds.filter((id) => !taggedSet.has(id));
   }
 
@@ -86,6 +87,10 @@ async function fetchOwnerProductsPage(params: {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // در حالت «پیشنهادی» قدیمی‌ترها اول می‌آیند تا محصولاتی که مدتی است
+  // بدون رسیدگی مانده‌اند زودتر در دسترس مسئول قرار بگیرند.
+  const ascending = taggedState === "recommended";
+
   let q = supabase
     .from("products")
     .select(
@@ -94,7 +99,7 @@ async function fetchOwnerProductsPage(params: {
       { count: "exact" },
     )
     .in("id", targetIds)
-    .order("updated_at", { ascending: false })
+    .order("updated_at", { ascending })
     .range(from, to);
 
   const term = search.trim();
@@ -181,6 +186,8 @@ export function OwnerLabelQuotaTab() {
   const total = productsQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const summary = overviewQ.data?.summary;
+  const remaining = summary?.remaining ?? 0;
+  const exhausted = summary?.isMet ?? false;
 
   function resetPage() {
     setPage(1);
@@ -190,6 +197,11 @@ export function OwnerLabelQuotaTab() {
     setDialogProductId(row.id);
     setDialogProductName(row.name);
     setDialogOpen(true);
+  }
+
+  function goToTagged() {
+    setTaggedState("tagged");
+    setPage(1);
   }
 
   // --- Loading / auth states ---
@@ -267,6 +279,17 @@ export function OwnerLabelQuotaTab() {
         />
       )}
 
+      {summary && (
+        <OwnerLabelStrategyCard
+          eligibleCount={summary.eligibleCount}
+          taggedCount={summary.taggedCount}
+          quota={summary.quota}
+          remaining={summary.remaining}
+          excludedSharedCount={excludedSharedCount}
+          exhausted={summary.isMet}
+        />
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -294,6 +317,7 @@ export function OwnerLabelQuotaTab() {
           <ToggleGroupItem value="all">همه</ToggleGroupItem>
           <ToggleGroupItem value="tagged">برچسب‌خورده</ToggleGroupItem>
           <ToggleGroupItem value="untagged">بدون برچسب</ToggleGroupItem>
+          <ToggleGroupItem value="recommended">پیشنهادی</ToggleGroupItem>
         </ToggleGroup>
       </div>
 
@@ -304,6 +328,17 @@ export function OwnerLabelQuotaTab() {
             ? `${formatNumber(excludedSharedCount)} محصول مشترک در این فاز از سهمیه خارج شده‌اند`
             : "محصولات مشترک در این فاز از سهمیه خارج‌اند"}
         </Badge>
+        {summary && (
+          remaining > 0 ? (
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+              {`${formatNumber(remaining)} جای خالی برای تکمیل سبد تمرکز باقی مانده است`}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+              سبد تمرکز فعلی تکمیل شده است
+            </Badge>
+          )
+        )}
         {productsQ.data?.capped && (
           <Badge variant="destructive">
             تعداد نتایج زیاد است؛ برای نتیجه دقیق‌تر از جستجو استفاده کنید.
@@ -327,7 +362,12 @@ export function OwnerLabelQuotaTab() {
             </Button>
           </div>
         ) : rows.length === 0 ? (
-          <EmptyResults search={debouncedSearch} taggedState={taggedState} />
+          <EmptyResults
+            search={debouncedSearch}
+            taggedState={taggedState}
+            remaining={remaining}
+            onGoToTagged={goToTagged}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -341,7 +381,33 @@ export function OwnerLabelQuotaTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
+              {rows.map((r) => {
+                const statusBadge = r.isTagged ? (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">داخل سبد تمرکز</Badge>
+                ) : remaining > 0 ? (
+                  <Badge variant="outline" className="border-sky-500/40 text-sky-700 dark:text-sky-300">
+                    کاندید برچسب‌گذاری
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+                    نیازمند آزادسازی سهمیه
+                  </Badge>
+                );
+
+                let actionText = "مدیریت برچسب";
+                let actionTitle = "ویرایش برچسب‌های داخلی این محصول";
+                if (!canWrite) {
+                  actionText = "مشاهده برچسب";
+                  actionTitle = "برای نقش شما ثبت نهایی برچسب فعال نیست؛ فقط مشاهده می‌کنید.";
+                } else if (!r.isTagged && remaining > 0) {
+                  actionText = "افزودن به سبد";
+                  actionTitle = "انتخاب برچسب داخلی برای این محصول";
+                } else if (!r.isTagged && remaining === 0) {
+                  actionText = "بررسی";
+                  actionTitle = "سهمیه شما پر است؛ برای افزودن محصول جدید، ابتدا یکی از محصولات قبلی را آزاد کنید.";
+                }
+
+                return (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">
                     <div>{r.name}</div>
@@ -377,28 +443,21 @@ export function OwnerLabelQuotaTab() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {r.isTagged ? (
-                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">در سهمیه</Badge>
-                    ) : (
-                      <Badge variant="outline">بدون برچسب داخلی</Badge>
-                    )}
+                    {statusBadge}
                   </TableCell>
                   <TableCell>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleManageLabels(r)}
-                      title={
-                        canWrite
-                          ? "مدیریت برچسب‌های داخلی"
-                          : "مشاهده برچسب‌های داخلی"
-                      }
+                      title={actionTitle}
                     >
-                      {canWrite ? "مدیریت برچسب" : "مشاهده برچسب"}
+                      {actionText}
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         )}
@@ -446,13 +505,61 @@ export function OwnerLabelQuotaTab() {
   );
 }
 
-function EmptyResults({ search, taggedState }: { search: string; taggedState: TaggedState }) {
-  let msg = "هنوز محصول واجد شرایطی برای برچسب‌گذاری ندارید.";
-  if (search.trim().length > 0) msg = "نتیجه‌ای برای این جستجو پیدا نشد.";
-  else if (taggedState === "tagged") msg = "هنوز محصولی با برچسب داخلی ندارید.";
-  else if (taggedState === "untagged") msg = "همه محصولات واجد شرایط فعلی برچسب داخلی دارند.";
+function EmptyResults({
+  search,
+  taggedState,
+  remaining,
+  onGoToTagged,
+}: {
+  search: string;
+  taggedState: TaggedState;
+  remaining: number;
+  onGoToTagged: () => void;
+}) {
+  if (search.trim().length > 0) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        نتیجه‌ای برای این جستجو پیدا نشد.
+      </div>
+    );
+  }
+  if (taggedState === "recommended") {
+    if (remaining === 0) {
+      return (
+        <div className="space-y-3 p-8 text-center text-sm">
+          <p className="text-amber-700 dark:text-amber-300">
+            سهمیه شما تکمیل شده است. برای اضافه‌کردن محصول جدید، ابتدا از بخش برچسب‌خورده‌ها یکی از محصولات قبلی را آزاد کنید.
+          </p>
+          <Button size="sm" variant="outline" onClick={onGoToTagged}>
+            مشاهده برچسب‌خورده‌ها
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        فعلاً محصول پیشنهادی جدیدی برای تکمیل سهمیه پیدا نشد.
+      </div>
+    );
+  }
+  if (taggedState === "tagged") {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        هنوز محصولی با برچسب داخلی ندارید.
+      </div>
+    );
+  }
+  if (taggedState === "untagged") {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        همه محصولات واجد شرایط فعلی برچسب داخلی دارند.
+      </div>
+    );
+  }
   return (
-    <div className="p-8 text-center text-sm text-muted-foreground">{msg}</div>
+    <div className="p-8 text-center text-sm text-muted-foreground">
+      هنوز محصول واجد شرایطی برای برچسب‌گذاری ندارید.
+    </div>
   );
 }
 
