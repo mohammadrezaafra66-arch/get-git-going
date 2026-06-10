@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, PackageX, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
 
@@ -26,8 +26,16 @@ import {
   USD_DRIFT_THRESHOLD_PCT,
 } from "@/lib/popups/config";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { OwnerLabelQuotaTab } from "@/components/pricing/attention/OwnerLabelQuotaTab";
+
+type AttentionTab = "stock" | "prices" | "owner-labels";
 
 export const Route = createFileRoute("/_app/pricing/attention")({
+  validateSearch: (s: Record<string, unknown>): { tab?: AttentionTab } => {
+    const t = s.tab;
+    if (t === "stock" || t === "prices" || t === "owner-labels") return { tab: t };
+    return {};
+  },
   component: AttentionPage,
 });
 
@@ -53,6 +61,10 @@ function OwnersCell({ owners }: { owners: AttentionProduct["owners"] }) {
 }
 
 function AttentionPage() {
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const activeTab: AttentionTab = tab ?? "stock";
+
   const staleStockQ = useQuery({
     queryKey: ["attention", "stale-stock"],
     queryFn: () => fetchStaleUnavailableProducts(),
@@ -67,11 +79,17 @@ function AttentionPage() {
   return (
     <div className="space-y-6" dir="rtl">
       <PageHeader
-        title="فرصت جبران"
-        description="رسیدگی به محصولات ناموجود طولانی‌مدت و قیمت‌های خرید نیازمند به‌روزرسانی"
+        title="فرصت در غفلت دیگران"
+        description="رسیدگی به فرصت‌های از دست‌رفته و سبد تمرکز محصولات تحت مسئولیت شما"
       />
 
-      <Tabs defaultValue="stock" dir="rtl">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) =>
+          navigate({ search: (prev: { tab?: AttentionTab }) => ({ ...prev, tab: v as AttentionTab }) })
+        }
+        dir="rtl"
+      >
         <TabsList>
           <TabsTrigger value="stock">
             ناموجود بیش از {STOCK_STALE_DAYS} روز
@@ -89,6 +107,7 @@ function AttentionPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="owner-labels">سهمیه برچسب‌های من</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock" className="mt-4">
@@ -96,6 +115,9 @@ function AttentionPage() {
         </TabsContent>
         <TabsContent value="prices" className="mt-4">
           <StalePriceTable q={stalePriceQ} />
+        </TabsContent>
+        <TabsContent value="owner-labels" className="mt-4">
+          <OwnerLabelQuotaTab />
         </TabsContent>
       </Tabs>
     </div>
