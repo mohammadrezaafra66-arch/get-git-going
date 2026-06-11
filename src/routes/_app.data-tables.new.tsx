@@ -11,20 +11,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
-  DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
-  SLUG_REGEX, COLUMN_KEY_REGEX, type DynamicColumnDataType,
-  DYNAMIC_TABLE_ACCESS_LEVELS, DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
-  type DynamicTableAccessLevel, SELECTABLE_ROLES,
+  DYNAMIC_COLUMN_DATA_TYPES,
+  DYNAMIC_COLUMN_DATA_TYPE_LABELS,
+  SLUG_REGEX,
+  COLUMN_KEY_REGEX,
+  type DynamicColumnDataType,
+  DYNAMIC_TABLE_ACCESS_LEVELS,
+  DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
+  type DynamicTableAccessLevel,
+  SELECTABLE_ROLES,
 } from "@/lib/data-tables/constants";
 
 export const Route = createFileRoute("/_app/data-tables/new")({
-  beforeLoad: async () => { await requirePermission("data-tables", "create"); },
+  beforeLoad: async () => {
+    await requirePermission("data-tables", "create");
+  },
   component: NewDataTablePage,
 });
 
@@ -38,7 +49,14 @@ interface ColumnDraft {
 }
 
 function emptyCol(): ColumnDraft {
-  return { label: "", column_key: "", data_type: "text", is_required: false, is_filterable: false, is_editable_by_bot: false };
+  return {
+    label: "",
+    column_key: "",
+    data_type: "text",
+    is_required: false,
+    is_filterable: false,
+    is_editable_by_bot: false,
+  };
 }
 
 function NewDataTablePage() {
@@ -122,7 +140,10 @@ function NewDataTablePage() {
         description="نام، شناسه و ستون‌های اولیه جدول را تعیین کنید."
         actions={
           <Button asChild variant="outline">
-            <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
+            <Link to="/data-tables">
+              <ArrowRight className="ml-2 h-4 w-4" />
+              بازگشت
+            </Link>
           </Button>
         }
       />
@@ -132,7 +153,11 @@ function NewDataTablePage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label>نام جدول *</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً مخاطبان طلای عمومی" />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="مثلاً مخاطبان طلای عمومی"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>شناسه (slug) *</Label>
@@ -148,7 +173,11 @@ function NewDataTablePage() {
           </div>
           <div className="space-y-1.5">
             <Label>توضیح (اختیاری)</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>سطح دسترسی</Label>
@@ -157,10 +186,14 @@ function NewDataTablePage() {
               onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}
               disabled={!isAdmin}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {DYNAMIC_TABLE_ACCESS_LEVELS.map((lvl) => (
-                  <SelectItem key={lvl} value={lvl}>{DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}</SelectItem>
+                  <SelectItem key={lvl} value={lvl}>
+                    {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -179,7 +212,9 @@ function NewDataTablePage() {
                         checked={allowedRoles.includes(r.value)}
                         onCheckedChange={(v) =>
                           setAllowedRoles((prev) =>
-                            v ? Array.from(new Set([...prev, r.value])) : prev.filter((x) => x !== r.value),
+                            v
+                              ? Array.from(new Set([...prev, r.value]))
+                              : prev.filter((x) => x !== r.value),
                           )
                         }
                       />
@@ -200,7 +235,10 @@ function NewDataTablePage() {
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">ستون‌های اولیه</h2>
-            <Button size="sm" variant="outline" onClick={addCol}><Plus className="ml-2 h-4 w-4" />ستون جدید</Button>
+            <Button size="sm" variant="outline" onClick={addCol}>
+              <Plus className="ml-2 h-4 w-4" />
+              ستون جدید
+            </Button>
           </div>
 
           <div className="space-y-3">
@@ -209,7 +247,11 @@ function NewDataTablePage() {
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label>عنوان نمایشی</Label>
-                    <Input value={c.label} onChange={(e) => updateCol(i, { label: e.target.value })} placeholder="نام و نام خانوادگی" />
+                    <Input
+                      value={c.label}
+                      onChange={(e) => updateCol(i, { label: e.target.value })}
+                      placeholder="نام و نام خانوادگی"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>شناسه ستون</Label>
@@ -223,11 +265,18 @@ function NewDataTablePage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>نوع داده</Label>
-                    <Select value={c.data_type} onValueChange={(v) => updateCol(i, { data_type: v as DynamicColumnDataType })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Select
+                      value={c.data_type}
+                      onValueChange={(v) => updateCol(i, { data_type: v as DynamicColumnDataType })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         {DYNAMIC_COLUMN_DATA_TYPES.map((dt) => (
-                          <SelectItem key={dt} value={dt}>{DYNAMIC_COLUMN_DATA_TYPE_LABELS[dt]}</SelectItem>
+                          <SelectItem key={dt} value={dt}>
+                            {DYNAMIC_COLUMN_DATA_TYPE_LABELS[dt]}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -235,15 +284,24 @@ function NewDataTablePage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={c.is_required} onCheckedChange={(v) => updateCol(i, { is_required: !!v })} />
+                    <Checkbox
+                      checked={c.is_required}
+                      onCheckedChange={(v) => updateCol(i, { is_required: !!v })}
+                    />
                     اجباری
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={c.is_filterable} onCheckedChange={(v) => updateCol(i, { is_filterable: !!v })} />
+                    <Checkbox
+                      checked={c.is_filterable}
+                      onCheckedChange={(v) => updateCol(i, { is_filterable: !!v })}
+                    />
                     قابل فیلتر
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={c.is_editable_by_bot} onCheckedChange={(v) => updateCol(i, { is_editable_by_bot: !!v })} />
+                    <Checkbox
+                      checked={c.is_editable_by_bot}
+                      onCheckedChange={(v) => updateCol(i, { is_editable_by_bot: !!v })}
+                    />
                     قابل ویرایش توسط ربات
                   </label>
                   <div className="ms-auto">

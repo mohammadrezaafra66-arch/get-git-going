@@ -140,7 +140,8 @@ function PublicSaleListPage() {
               صفحه قبل
             </Button>
             <span className="text-muted-foreground">
-              صفحه {formatNumber(page)} از {formatNumber(totalPages)} • {formatNumber(data.total_items)} محصول
+              صفحه {formatNumber(page)} از {formatNumber(totalPages)} •{" "}
+              {formatNumber(data.total_items)} محصول
             </span>
             <Button
               variant="outline"

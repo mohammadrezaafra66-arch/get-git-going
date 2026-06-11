@@ -36,7 +36,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -155,17 +161,15 @@ interface SaleListItemRow {
   change_percent: number | null;
   stock_status: string | null;
   sort_order: number;
-  product:
-    | {
-        id: string;
-        name: string;
-        sku: string | null;
-        model: string | null;
-        description: string | null;
-        brand: { name: string } | null;
-        category: { name: string } | null;
-      }
-    | null;
+  product: {
+    id: string;
+    name: string;
+    sku: string | null;
+    model: string | null;
+    description: string | null;
+    brand: { name: string } | null;
+    category: { name: string } | null;
+  } | null;
 }
 
 interface VersionRow {
@@ -236,7 +240,7 @@ function SaleListDetailPage() {
   // Category-specific product attributes for items, used only inside PDF "description" column.
   const productIdsForAttrs = useMemo(() => {
     const ids = new Set<string>();
-    for (const it of (itemsQ.data ?? [])) {
+    for (const it of itemsQ.data ?? []) {
       if (it.product?.id) ids.add(it.product.id);
     }
     return Array.from(ids).sort();
@@ -249,13 +253,20 @@ function SaleListDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_category_attribute_values")
-        .select("product_id, value, def:category_product_attributes(id, label_fa, sort_order, is_active)")
+        .select(
+          "product_id, value, def:category_product_attributes(id, label_fa, sort_order, is_active)",
+        )
         .in("product_id", productIdsForAttrs);
       if (error) throw error;
       type Row = {
         product_id: string;
         value: string | null;
-        def: { id: string; label_fa: string; sort_order: number | null; is_active: boolean | null } | null;
+        def: {
+          id: string;
+          label_fa: string;
+          sort_order: number | null;
+          is_active: boolean | null;
+        } | null;
       };
       const rows = (data ?? []) as unknown as Row[];
       const byProduct = new Map<string, { label: string; value: string; sort: number }[]>();
@@ -272,7 +283,7 @@ function SaleListDetailPage() {
       }
       const formatted: Record<string, string> = {};
       for (const [pid, arr] of byProduct) {
-        arr.sort((a, b) => (a.sort - b.sort) || a.label.localeCompare(b.label, "fa"));
+        arr.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label, "fa"));
         formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
       }
       return formatted;
@@ -296,9 +307,12 @@ function SaleListDetailPage() {
   const distinctBrandKeys = useMemo(() => {
     const seen = new Set<string>();
     const out: string[] = [];
-    for (const it of (itemsQ.data ?? [])) {
+    for (const it of itemsQ.data ?? []) {
       const k = toBrandKey(it.product?.brand?.name);
-      if (!seen.has(k)) { seen.add(k); out.push(k); }
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(k);
+      }
     }
     return out;
   }, [itemsQ.data]);
@@ -306,7 +320,7 @@ function SaleListDetailPage() {
   // Map brand key -> product list (first-appearance order from items).
   const productsByBrandKey = useMemo(() => {
     const m = new Map<string, { id: string; name: string }[]>();
-    for (const it of (itemsQ.data ?? [])) {
+    for (const it of itemsQ.data ?? []) {
       const k = toBrandKey(it.product?.brand?.name);
       const pid = it.product?.id;
       if (!pid) continue;
@@ -324,7 +338,12 @@ function SaleListDetailPage() {
       .channel(`sale-list-${listId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "sale_list_items", filter: `sale_list_id=eq.${listId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "sale_list_items",
+          filter: `sale_list_id=eq.${listId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: ["sale-list-items", listId] });
         },
@@ -376,11 +395,20 @@ function SaleListDetailPage() {
     // `observatory_price_advantage` is intentionally excluded so existing
     // lists never start exposing Observatory hints without an explicit opt-in.
     const cols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [
-      "name", "brand", "category", "sale_price", "previous_price", "change", "stock_status",
+      "name",
+      "brand",
+      "category",
+      "sale_price",
+      "previous_price",
+      "change",
+      "stock_status",
     ];
     const shop = shopSettingsQ.data;
     const attrsMap = productAttrsQ.data ?? {};
-    const combineDescAndAttrs = (desc: string | null | undefined, attrs: string | undefined): string | null => {
+    const combineDescAndAttrs = (
+      desc: string | null | undefined,
+      attrs: string | undefined,
+    ): string | null => {
       const d = (desc ?? "").trim();
       const a = (attrs ?? "").trim();
       if (d && a) return `${d}\nویژگی‌ها: ${a}`;
@@ -416,19 +444,20 @@ function SaleListDetailPage() {
         const snapshotCurrent = Number(it.current_price);
         const live = livePrices?.get(it.product?.id ?? "");
         // Prefer live price when available; fall back to snapshot.
-        const current =
-          live !== undefined && live > 0
-            ? live
-            : snapshotCurrent;
+        const current = live !== undefined && live > 0 ? live : snapshotCurrent;
         const previous = it.previous_price !== null ? Number(it.previous_price) : null;
         const change_amount =
-          previous !== null && current > 0 ? current - previous : it.change_amount !== null ? Number(it.change_amount) : null;
+          previous !== null && current > 0
+            ? current - previous
+            : it.change_amount !== null
+              ? Number(it.change_amount)
+              : null;
         const change_percent =
           previous && previous !== 0 && current > 0
             ? Number((((current - previous) / previous) * 100).toFixed(2))
             : it.change_percent !== null
-            ? Number(it.change_percent)
-            : null;
+              ? Number(it.change_percent)
+              : null;
         return {
           product_id: it.product?.id ?? null,
           product_name: it.product?.name ?? "—",
@@ -484,7 +513,10 @@ function SaleListDetailPage() {
   };
 
   const openPdfOrderDialog = () => {
-    if (items.length === 0) { toast.error("لیست خالی است."); return; }
+    if (items.length === 0) {
+      toast.error("لیست خالی است.");
+      return;
+    }
     const mergedBrands = mergeBrandOrder(list.pdf_brand_order, distinctBrandKeys);
     const mergedProducts = mergeProductOrder(list.pdf_product_order_by_brand, productsByBrandKey);
     setBrandOrder(mergedBrands);
@@ -551,17 +583,24 @@ function SaleListDetailPage() {
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
       const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
-      if (selectedCols.includes("description") && productIdsForAttrs.length > 0 && !productAttrsQ.data) {
-        try { await productAttrsQ.refetch(); } catch (err) {
-          console.warn("fetch product attributes for PDF failed; description will omit attributes", err);
+      if (
+        selectedCols.includes("description") &&
+        productIdsForAttrs.length > 0 &&
+        !productAttrsQ.data
+      ) {
+        try {
+          await productAttrsQ.refetch();
+        } catch (err) {
+          console.warn(
+            "fetch product attributes for PDF failed; description will omit attributes",
+            err,
+          );
         }
       }
       // Fetch latest live sale prices for items that may have stale/zero snapshots
       let livePrices: Map<string, number> | undefined;
       try {
-        const productIds = items
-          .map((it) => it.product?.id)
-          .filter((x): x is string => !!x);
+        const productIds = items.map((it) => it.product?.id).filter((x): x is string => !!x);
         if (productIds.length > 0 && list.sale_price_type_id) {
           // Canonical source: product_computed_prices (same as sales search & workshop).
           const { data: priceRows } = await (supabase as any)
@@ -571,7 +610,10 @@ function SaleListDetailPage() {
             .in("product_id", productIds)
             .order("computed_at", { ascending: false });
           const map = new Map<string, number>();
-          for (const row of ((priceRows ?? []) as Array<{ product_id: string; rounded_sale_price: number | string | null }>)) {
+          for (const row of (priceRows ?? []) as Array<{
+            product_id: string;
+            rounded_sale_price: number | string | null;
+          }>) {
             if (!map.has(row.product_id)) {
               map.set(row.product_id, Number(row.rounded_sale_price ?? 0) || 0);
             }
@@ -587,9 +629,7 @@ function SaleListDetailPage() {
       let observatoryHints: ObservatoryPdfHintMap | undefined;
       if (selectedCols.includes("observatory_price_advantage")) {
         try {
-          const productIds = items
-            .map((it) => it.product?.id)
-            .filter((x): x is string => !!x);
+          const productIds = items.map((it) => it.product?.id).filter((x): x is string => !!x);
           if (productIds.length > 0) {
             observatoryHints = await fetchObservatoryPdfHintsForProducts(productIds);
           }
@@ -716,7 +756,11 @@ function SaleListDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setPdfFontSize(10); setPdfRowPadY(2); setPdfCellPadX(4); }}
+            onClick={() => {
+              setPdfFontSize(10);
+              setPdfRowPadY(2);
+              setPdfCellPadX(4);
+            }}
           >
             بازنشانی
           </Button>
@@ -726,20 +770,18 @@ function SaleListDetailPage() {
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
           <div className="flex min-w-0 items-start gap-2">
-            <Badge variant="secondary" className="shrink-0">ترتیب PDF</Badge>
+            <Badge variant="secondary" className="shrink-0">
+              ترتیب PDF
+            </Badge>
             <div className="space-y-0.5">
               <div className="font-semibold">ترتیب نمایش برندها و محصولات در PDF</div>
               <div className="text-xs text-muted-foreground">
-                می‌توانید ترتیب برندها و ترتیب محصولات داخل هر برند را برای فایل PDF تنظیم کنید. تنظیمات ذخیره و در دفعات بعد استفاده می‌شود.
+                می‌توانید ترتیب برندها و ترتیب محصولات داخل هر برند را برای فایل PDF تنظیم کنید.
+                تنظیمات ذخیره و در دفعات بعد استفاده می‌شود.
               </div>
             </div>
           </div>
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-1"
-            onClick={openPdfOrderDialog}
-          >
+          <Button variant="default" size="sm" className="gap-1" onClick={openPdfOrderDialog}>
             <ArrowUpDown className="h-4 w-4" /> تنظیم ترتیب نمایش در PDF
           </Button>
         </CardContent>
@@ -788,17 +830,25 @@ function SaleListDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={pdfOrderOpen} onOpenChange={(o) => { if (!o && !runningPdf && !savingOrder) setPdfOrderOpen(false); }}>
+      <Dialog
+        open={pdfOrderOpen}
+        onOpenChange={(o) => {
+          if (!o && !runningPdf && !savingOrder) setPdfOrderOpen(false);
+        }}
+      >
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader>
             <DialogTitle>تنظیم ترتیب نمایش در PDF</DialogTitle>
             <DialogDescription>
-              ترتیب برندها و محصولات داخل هر برند را مشخص کنید. تنظیمات شما برای دفعات بعد ذخیره می‌شود. محصولات فقط درون برند خودشان قابل جابجایی هستند.
+              ترتیب برندها و محصولات داخل هر برند را مشخص کنید. تنظیمات شما برای دفعات بعد ذخیره
+              می‌شود. محصولات فقط درون برند خودشان قابل جابجایی هستند.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] space-y-3 overflow-y-auto rounded-md border p-2">
             {brandOrder.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">برندی برای نمایش وجود ندارد.</div>
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                برندی برای نمایش وجود ندارد.
+              </div>
             ) : (
               brandOrder.map((bk, bi) => {
                 const productIds = productOrderByBrand[bk] ?? [];
@@ -841,10 +891,15 @@ function SaleListDetailPage() {
                     </div>
                     <ul className="divide-y">
                       {productIds.length === 0 ? (
-                        <li className="px-3 py-2 text-xs text-muted-foreground">محصولی در این برند نیست.</li>
+                        <li className="px-3 py-2 text-xs text-muted-foreground">
+                          محصولی در این برند نیست.
+                        </li>
                       ) : (
                         productIds.map((pid, pi) => (
-                          <li key={pid} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                          <li
+                            key={pid}
+                            className="flex items-center justify-between gap-2 px-3 py-1.5"
+                          >
                             <div className="flex min-w-0 items-center gap-2 text-sm">
                               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1 text-[10px] tabular-nums">
                                 {formatNumber(pi + 1)}
@@ -897,7 +952,11 @@ function SaleListDetailPage() {
                 disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
                 className="gap-1"
               >
-                {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {savingOrder ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 ذخیره تنظیمات
               </Button>
             )}
@@ -907,7 +966,11 @@ function SaleListDetailPage() {
               disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
               className="gap-1"
             >
-              {runningPdf === "preview" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              {runningPdf === "preview" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
               پیش‌نمایش PDF
             </Button>
             <Button
@@ -915,7 +978,11 @@ function SaleListDetailPage() {
               disabled={savingOrder || runningPdf !== null || brandOrder.length === 0}
               className="gap-1"
             >
-              {runningPdf === "download" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {runningPdf === "download" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
               دانلود PDF
             </Button>
           </div>
@@ -970,7 +1037,10 @@ function ZeroPriceWarning({
         }
       }
       const computed = new Map<string, number>();
-      for (const r of ((computedRes.data ?? []) as Array<{ product_id: string; rounded_sale_price: number | string | null }>)) {
+      for (const r of (computedRes.data ?? []) as Array<{
+        product_id: string;
+        rounded_sale_price: number | string | null;
+      }>) {
         computed.set(r.product_id, Number(r.rounded_sale_price ?? 0) || 0);
       }
       return { latestHistory, computed };
@@ -1007,7 +1077,9 @@ function ZeroPriceWarning({
           {formatNumber(zeroItems.length)} محصول بدون قیمت معتبر در این لیست
         </div>
         <div className="text-xs text-amber-800/80 dark:text-amber-200/80">
-          این محصولات در PDF و صفحه عمومی با قیمت صفر نمایش داده می‌شوند. در صورتی که قیمت محاسبه‌شده موجود است، با دکمه «انتشار» آن را در تاریخچه قیمت ثبت کنید تا لیست خودکار به‌روزرسانی شود.
+          این محصولات در PDF و صفحه عمومی با قیمت صفر نمایش داده می‌شوند. در صورتی که قیمت
+          محاسبه‌شده موجود است، با دکمه «انتشار» آن را در تاریخچه قیمت ثبت کنید تا لیست خودکار
+          به‌روزرسانی شود.
         </div>
         <ul className="divide-y divide-amber-200/60 dark:divide-amber-800/40">
           {zeroItems.map((it) => {
@@ -1021,7 +1093,9 @@ function ZeroPriceWarning({
                   <div className="text-xs text-muted-foreground">
                     {it.product?.sku ?? "—"}
                     {hasComputed && (
-                      <span className="mr-2">• قیمت محاسبه‌شده: {formatCurrency(computed, "تومان")}</span>
+                      <span className="mr-2">
+                        • قیمت محاسبه‌شده: {formatCurrency(computed, "تومان")}
+                      </span>
                     )}
                     {!hasComputed && auditQ.isFetched && (
                       <span className="mr-2 text-rose-600 dark:text-rose-400">
@@ -1059,10 +1133,7 @@ function ZeroPriceWarning({
 function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boolean }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const slice = useMemo(
-    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [items, page],
-  );
+  const slice = useMemo(() => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [items, page]);
 
   if (loading) {
     return (
@@ -1084,9 +1155,7 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
 
   return (
     <div className="space-y-3">
-      <div className="text-sm text-muted-foreground">
-        مجموع: {formatNumber(items.length)} محصول
-      </div>
+      <div className="text-sm text-muted-foreground">مجموع: {formatNumber(items.length)} محصول</div>
 
       {/* Desktop */}
       <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
@@ -1107,7 +1176,9 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
           <TableBody>
             {slice.map((it, idx) => (
               <TableRow key={it.id}>
-                <TableCell className="text-xs">{formatNumber((page - 1) * PAGE_SIZE + idx + 1)}</TableCell>
+                <TableCell className="text-xs">
+                  {formatNumber((page - 1) * PAGE_SIZE + idx + 1)}
+                </TableCell>
                 <TableCell className="font-medium">
                   {it.product ? (
                     <Link
@@ -1121,12 +1192,16 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
                     "—"
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{it.product?.sku ?? "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {it.product?.sku ?? "—"}
+                </TableCell>
                 <TableCell>{it.product?.brand?.name ?? "—"}</TableCell>
                 <TableCell>{it.product?.category?.name ?? "—"}</TableCell>
                 <TableCell>
                   {it.stock_status ? (
-                    <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}>
+                    <Badge
+                      variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}
+                    >
                       {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
                     </Badge>
                   ) : (
@@ -1134,7 +1209,9 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
                   )}
                 </TableCell>
                 <TableCell>
-                  {it.previous_price !== null ? formatCurrency(Number(it.previous_price), "تومان") : "—"}
+                  {it.previous_price !== null
+                    ? formatCurrency(Number(it.previous_price), "تومان")
+                    : "—"}
                 </TableCell>
                 <TableCell className="font-semibold">
                   {formatCurrency(Number(it.current_price), "تومان")}
@@ -1160,7 +1237,11 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
                   </div>
                   <div className="font-semibold">
                     {it.product ? (
-                      <Link to="/products/$id" params={{ id: it.product.id }} className="hover:underline">
+                      <Link
+                        to="/products/$id"
+                        params={{ id: it.product.id }}
+                        className="hover:underline"
+                      >
                         {it.product.name}
                       </Link>
                     ) : (
@@ -1172,15 +1253,24 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
                   </div>
                 </div>
                 {it.stock_status && (
-                  <Badge variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}>
+                  <Badge
+                    variant={STOCK_STATUS_VARIANTS[it.stock_status as StockStatus] ?? "secondary"}
+                  >
                     {STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status}
                   </Badge>
                 )}
               </div>
               <div className="flex items-center justify-between border-t border-border pt-2">
                 <div className="text-xs">
-                  <div>قبلی: {it.previous_price !== null ? formatCurrency(Number(it.previous_price), "تومان") : "—"}</div>
-                  <div className="font-semibold">فعلی: {formatCurrency(Number(it.current_price), "تومان")}</div>
+                  <div>
+                    قبلی:{" "}
+                    {it.previous_price !== null
+                      ? formatCurrency(Number(it.previous_price), "تومان")
+                      : "—"}
+                  </div>
+                  <div className="font-semibold">
+                    فعلی: {formatCurrency(Number(it.current_price), "تومان")}
+                  </div>
                 </div>
                 <ChangeCell amount={it.change_amount} percent={it.change_percent} />
               </div>
@@ -1195,10 +1285,20 @@ function ItemsTab({ items, loading }: { items: SaleListItemRow[]; loading: boole
             صفحه {formatNumber(page)} از {formatNumber(totalPages)}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
               <ChevronRight className="h-4 w-4" /> قبلی
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
               بعدی <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
@@ -1223,8 +1323,7 @@ function ChangeCell({ amount, percent }: { amount: number | null; percent: numbe
   if (n > 0) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
-        <TrendingUp className="h-3 w-3" />
-        +{formatCurrency(n, "تومان")}
+        <TrendingUp className="h-3 w-3" />+{formatCurrency(n, "تومان")}
         {percent !== null && <span>({formatNumber(Number(percent))}٪)</span>}
       </span>
     );
@@ -1288,7 +1387,9 @@ function VersionsTab({
             <div className="space-y-1">
               <Label className="text-xs">نسخه قدیم</Label>
               <Select value={aId} onValueChange={setAId}>
-                <SelectTrigger><SelectValue placeholder="انتخاب نسخه قدیم" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب نسخه قدیم" />
+                </SelectTrigger>
                 <SelectContent>
                   {versions.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
@@ -1301,7 +1402,9 @@ function VersionsTab({
             <div className="space-y-1">
               <Label className="text-xs">نسخه جدید</Label>
               <Select value={bId} onValueChange={setBId}>
-                <SelectTrigger><SelectValue placeholder="انتخاب نسخه جدید" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="انتخاب نسخه جدید" />
+                </SelectTrigger>
                 <SelectContent>
                   {versions.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
@@ -1315,7 +1418,9 @@ function VersionsTab({
           {a && b && a.id !== b.id ? (
             <DiffView a={a} b={b} />
           ) : (
-            <div className="text-xs text-muted-foreground">دو نسخه متفاوت برای مقایسه انتخاب کنید.</div>
+            <div className="text-xs text-muted-foreground">
+              دو نسخه متفاوت برای مقایسه انتخاب کنید.
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1332,19 +1437,28 @@ function VersionsTab({
           </TableHeader>
           <TableBody>
             {versions.map((v) => {
-              const itemsCount = Array.isArray(v.snapshot_data?.items) ? v.snapshot_data.items.length : 0;
+              const itemsCount = Array.isArray(v.snapshot_data?.items)
+                ? v.snapshot_data.items.length
+                : 0;
               return (
                 <TableRow key={v.id}>
                   <TableCell className="font-medium">
                     v{formatNumber(v.version_number)}
                     {v.version_number === currentVersion && (
-                      <Badge variant="outline" className="mr-2 text-[10px]">فعلی</Badge>
+                      <Badge variant="outline" className="mr-2 text-[10px]">
+                        فعلی
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>{formatDateTimeFa(v.created_at)}</TableCell>
                   <TableCell>{formatNumber(itemsCount)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => setViewVersion(v)} className="gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewVersion(v)}
+                      className="gap-1"
+                    >
                       <Eye className="h-4 w-4" /> مشاهده
                     </Button>
                   </TableCell>
@@ -1377,8 +1491,12 @@ function SnapshotPreview({ snapshot }: { snapshot: any }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-        <div><span className="text-muted-foreground">نام:</span> {snapshot?.name ?? "—"}</div>
-        <div><span className="text-muted-foreground">تعداد آیتم:</span> {formatNumber(items.length)}</div>
+        <div>
+          <span className="text-muted-foreground">نام:</span> {snapshot?.name ?? "—"}
+        </div>
+        <div>
+          <span className="text-muted-foreground">تعداد آیتم:</span> {formatNumber(items.length)}
+        </div>
       </div>
       <div className="overflow-x-auto rounded-md border border-border">
         <Table>
@@ -1461,8 +1579,12 @@ function DiffView({ a, b }: { a: VersionRow; b: VersionRow }) {
             return (
               <TableRow key={r.pid}>
                 <TableCell className="font-medium">{r.name}</TableCell>
-                <TableCell>{r.oldPrice !== null ? formatCurrency(r.oldPrice, "تومان") : "—"}</TableCell>
-                <TableCell>{r.newPrice !== null ? formatCurrency(r.newPrice, "تومان") : "—"}</TableCell>
+                <TableCell>
+                  {r.oldPrice !== null ? formatCurrency(r.oldPrice, "تومان") : "—"}
+                </TableCell>
+                <TableCell>
+                  {r.newPrice !== null ? formatCurrency(r.newPrice, "تومان") : "—"}
+                </TableCell>
                 <TableCell className={cls}>{label}</TableCell>
               </TableRow>
             );
@@ -1504,7 +1626,8 @@ function SettingsTab({
     queryFn: fetchShopSettings,
     staleTime: 300_000,
   });
-  const initialColumns = (list.selected_columns as ColumnKey[] | null) ?? COLUMN_OPTIONS.map((c) => c.key);
+  const initialColumns =
+    (list.selected_columns as ColumnKey[] | null) ?? COLUMN_OPTIONS.map((c) => c.key);
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(initialColumns);
   const [productIds, setProductIds] = useState<string[]>(items.map((it) => it.product_id));
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -1520,7 +1643,9 @@ function SettingsTab({
   const toggleColumn = (key: ColumnKey) => {
     const opt = COLUMN_OPTIONS.find((c) => c.key === key);
     if (opt?.locked) return;
-    setSelectedColumns((prev) => (prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key]));
+    setSelectedColumns((prev) =>
+      prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key],
+    );
   };
 
   const hasChanges = useMemo(() => {
@@ -1538,7 +1663,18 @@ function SettingsTab({
     const p2 = [...items.map((it) => it.product_id)].sort().join(",");
     if (p1 !== p2) return true;
     return false;
-  }, [name, description, termsText, sellerInfo, settlementTypeId, selectedColumns, productIds, items, list, initialColumns]);
+  }, [
+    name,
+    description,
+    termsText,
+    sellerInfo,
+    settlementTypeId,
+    selectedColumns,
+    productIds,
+    items,
+    list,
+    initialColumns,
+  ]);
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -1705,15 +1841,30 @@ function SettingsTab({
         <CardContent className="space-y-4 p-4">
           <div className="space-y-1">
             <Label htmlFor="ed-name">نام لیست *</Label>
-            <Input id="ed-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+            <Input
+              id="ed-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={200}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="ed-desc">توضیحات</Label>
-            <Textarea id="ed-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            <Textarea
+              id="ed-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="ed-terms">شرایط فروش</Label>
-            <Textarea id="ed-terms" value={termsText} onChange={(e) => setTermsText(e.target.value)} rows={4} />
+            <Textarea
+              id="ed-terms"
+              value={termsText}
+              onChange={(e) => setTermsText(e.target.value)}
+              rows={4}
+            />
           </div>
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
@@ -1753,12 +1904,15 @@ function SettingsTab({
               <SelectContent>
                 <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
                 {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
-                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <div className="text-[11px] text-muted-foreground">
-              این مقدار فقط در سربرگ PDF لیست فروش نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری ندارد.
+              این مقدار فقط در سربرگ PDF لیست فروش نمایش داده می‌شود و در محاسبه قیمت محصولات تأثیری
+              ندارد.
             </div>
           </div>
         </CardContent>
@@ -1775,9 +1929,15 @@ function SettingsTab({
                   key={opt.key}
                   className={`flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm ${opt.locked ? "opacity-70" : ""}`}
                 >
-                  <Checkbox checked={checked} disabled={opt.locked} onCheckedChange={() => toggleColumn(opt.key)} />
+                  <Checkbox
+                    checked={checked}
+                    disabled={opt.locked}
+                    onCheckedChange={() => toggleColumn(opt.key)}
+                  />
                   <span>{opt.label}</span>
-                  {opt.locked && <span className="mr-auto text-[10px] text-muted-foreground">(الزامی)</span>}
+                  {opt.locked && (
+                    <span className="mr-auto text-[10px] text-muted-foreground">(الزامی)</span>
+                  )}
                 </label>
               );
             })}
@@ -1789,7 +1949,12 @@ function SettingsTab({
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold">محصولات لیست</div>
-            <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)} className="gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPickerOpen(true)}
+              className="gap-1"
+            >
               <Plus className="h-4 w-4" /> ویرایش محصولات
             </Button>
           </div>
@@ -1849,18 +2014,37 @@ function ProductPickerSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
-  const categoriesQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
+  const brandsQ = useQuery({
+    queryKey: ["brands-lite"],
+    queryFn: fetchBrandsLite,
+    staleTime: 60_000,
+  });
+  const categoriesQ = useQuery({
+    queryKey: ["categories-lite"],
+    queryFn: fetchCategoriesLite,
+    staleTime: 60_000,
+  });
 
   const productsQ = useQuery({
-    queryKey: ["sale-list-edit-products", search, brandId, categoryId, stockStatus, productType, page],
+    queryKey: [
+      "sale-list-edit-products",
+      search,
+      brandId,
+      categoryId,
+      stockStatus,
+      productType,
+      page,
+    ],
     enabled: open,
     queryFn: async () => {
       const from = (page - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .select(
+          "id, name, sku, product_type, stock_status, brand:brands(id, name), category:categories(id, name)",
+          { count: "exact" },
+        )
         .eq("status", "active")
         .order("updated_at", { ascending: false })
         .range(from, to);
@@ -1933,53 +2117,107 @@ function ProductPickerSheet({
             <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchInput}
-              onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setPage(1);
+              }}
               placeholder="جستجو نام / SKU"
               className="pr-9"
             />
           </div>
-          <Select value={brandId} onValueChange={(v) => { setBrandId(v); setPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
+          <Select
+            value={brandId}
+            onValueChange={(v) => {
+              setBrandId(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="برند" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">همه برندها</SelectItem>
-              {(brandsQ.data ?? []).filter((b: any) => b.is_active).map((b: any) => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-              ))}
+              {(brandsQ.data ?? [])
+                .filter((b: any) => b.is_active)
+                .map((b: any) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
-          <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); setPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="دسته" /></SelectTrigger>
+          <Select
+            value={categoryId}
+            onValueChange={(v) => {
+              setCategoryId(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="دسته" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">همه دسته‌ها</SelectItem>
-              {(categoriesQ.data ?? []).filter((c: any) => c.is_active).map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
+              {(categoriesQ.data ?? [])
+                .filter((c: any) => c.is_active)
+                .map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
-          <Select value={stockStatus} onValueChange={(v) => { setStockStatus(v); setPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
+          <Select
+            value={stockStatus}
+            onValueChange={(v) => {
+              setStockStatus(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="موجودی" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">همه</SelectItem>
               {Object.entries(STOCK_STATUS_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={productType} onValueChange={(v) => { setProductType(v); setPage(1); }}>
-            <SelectTrigger><SelectValue placeholder="نوع کالا" /></SelectTrigger>
+          <Select
+            value={productType}
+            onValueChange={(v) => {
+              setProductType(v);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="نوع کالا" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all">همه</SelectItem>
               {Object.entries(PRODUCT_TYPE_LABELS).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
+                <SelectItem key={k} value={k}>
+                  {v}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-xs">
-          <span><strong>{formatNumber(selectedIds.length)}</strong> محصول انتخاب‌شده</span>
+          <span>
+            <strong>{formatNumber(selectedIds.length)}</strong> محصول انتخاب‌شده
+          </span>
           {selectedIds.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={removeAll} className="gap-1 text-destructive">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={removeAll}
+              className="gap-1 text-destructive"
+            >
               <Trash2 className="h-3 w-3" /> حذف همه
             </Button>
           )}
@@ -1988,7 +2226,9 @@ function ProductPickerSheet({
         <div className="flex-1 overflow-y-auto rounded-md border border-border">
           {productsQ.isLoading ? (
             <div className="space-y-2 p-3">
-              {Array.from({ length: 5 }).map((_, i) => (<Skeleton key={i} className="h-10 w-full" />))}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
           ) : rows.length === 0 ? (
             <div className="p-6 text-center text-xs text-muted-foreground">محصولی یافت نشد.</div>
@@ -2009,7 +2249,9 @@ function ProductPickerSheet({
                   const price = visiblePricesQ.data?.get(r.id);
                   return (
                     <TableRow key={r.id} className={checked ? "bg-muted/30" : ""}>
-                      <TableCell><Checkbox checked={checked} onCheckedChange={() => toggleOne(r.id)} /></TableCell>
+                      <TableCell>
+                        <Checkbox checked={checked} onCheckedChange={() => toggleOne(r.id)} />
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium">{r.name}</div>
                         <div className="text-[11px] text-muted-foreground">
@@ -2032,17 +2274,29 @@ function ProductPickerSheet({
             صفحه {formatNumber(page)} از {formatNumber(totalPages)}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            انصراف
+          </Button>
           <Button onClick={() => onConfirm(selectedIds)} disabled={selectedIds.length === 0}>
             تأیید انتخاب
           </Button>

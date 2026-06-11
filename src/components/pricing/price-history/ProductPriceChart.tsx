@@ -182,14 +182,7 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
           strokeOpacity={0.4}
           strokeWidth={0.75}
         />
-        <text
-          x={x}
-          y={viewBox.y + dy}
-          textAnchor="end"
-          fill={fill}
-          fontSize={11}
-          fontWeight={700}
-        >
+        <text x={x} y={viewBox.y + dy} textAnchor="end" fill={fill} fontSize={11} fontWeight={700}>
           {text}
         </text>
       </g>
@@ -205,143 +198,146 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
     >
       <div style={{ width: innerWidth, height: "100%", touchAction: "pan-x" }}>
         <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 18, right: 24, left: 12, bottom: 24 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-          {showDaySeparators &&
-            dayBoundaries.map((ts) => (
-              <ReferenceLine
-                key={`day-${ts}`}
-                x={ts}
-                stroke="var(--border)"
-                strokeDasharray="2 4"
-                strokeOpacity={0.5}
-                ifOverflow="hidden"
-              />
-            ))}
-          <XAxis
-            dataKey="ts"
-            type="number"
-            domain={["dataMin", "dataMax"]}
-            tickFormatter={(v) => formatDateTimeFa(new Date(v))}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            minTickGap={40}
-            angle={-20}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis
-            domain={[yMin, yMax]}
-            ticks={yTicks}
-            tickFormatter={fmtY}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            width={90}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "hsl(var(--popover))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: 6,
-              fontSize: 12,
-            }}
-            labelFormatter={(v) => formatDateTimeFa(new Date(Number(v)))}
-            formatter={(v: number) => [`${formatNumber(v)} ${unit}`, isUsd ? "قیمت دلاری" : "قیمت تومانی"]}
-          />
-          {stats && stats.min !== stats.max && (
-            <>
-              {/* Halo (under-stroke) for visibility on any background */}
-              <ReferenceLine
-                y={stats.max}
-                stroke="var(--destructive)"
-                strokeWidth={5}
-                strokeOpacity={0.18}
-                ifOverflow="extendDomain"
-              />
-              <ReferenceLine
-                y={stats.max}
-                stroke="var(--destructive)"
-                strokeWidth={1.75}
-                strokeDasharray="8 4"
-                strokeOpacity={1}
-                ifOverflow="extendDomain"
-                label={(p: any) => (
-                  <RefLabel
-                    viewBox={p.viewBox}
-                    text={`بیشترین: ${fmtY(stats.max)} ${unit}`}
-                    tooltip={`بیشترین قیمت: ${formatNumber(stats.max)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.maxDate))}`}
-                    fill="var(--destructive)"
-                    align="top"
-                  />
-                )}
-              />
-              <ReferenceLine
-                y={stats.avg}
-                stroke="var(--muted-foreground)"
-                strokeWidth={4}
-                strokeOpacity={0.15}
-              />
-              <ReferenceLine
-                y={stats.avg}
-                stroke="var(--muted-foreground)"
-                strokeWidth={1.5}
-                strokeDasharray="4 5"
-                strokeOpacity={0.95}
-                label={(p: any) => (
-                  <RefLabel
-                    viewBox={p.viewBox}
-                    text={`میانگین: ${fmtY(stats.avg)} ${unit}`}
-                    tooltip={`میانگین در بازه: ${formatNumber(stats.avg)} ${unit}\nاز ${formatDateTimeFa(new Date(stats.rangeStart))}\nتا ${formatDateTimeFa(new Date(stats.rangeEnd))}\nتعداد نقاط: ${toFaDigits(chartData.length)}`}
-                    fill="var(--muted-foreground)"
-                  />
-                )}
-              />
-              <ReferenceLine
-                y={stats.min}
-                stroke="var(--success)"
-                strokeWidth={5}
-                strokeOpacity={0.18}
-                ifOverflow="extendDomain"
-              />
-              <ReferenceLine
-                y={stats.min}
-                stroke="var(--success)"
-                strokeWidth={1.75}
-                strokeDasharray="8 4"
-                strokeOpacity={1}
-                ifOverflow="extendDomain"
-                label={(p: any) => (
-                  <RefLabel
-                    viewBox={p.viewBox}
-                    text={`کمترین: ${fmtY(stats.min)} ${unit}`}
-                    tooltip={`کمترین قیمت: ${formatNumber(stats.min)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.minDate))}`}
-                    fill="var(--success)"
-                    align="bottom"
-                  />
-                )}
-              />
-            </>
-          )}
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="var(--primary)"
-            strokeWidth={2.5}
-            connectNulls
-            dot={{
-              r: 3.5,
-              fill: "var(--primary)",
-              stroke: "var(--background)",
-              strokeWidth: 1.5,
-            }}
-            activeDot={{
-              r: 6,
-              fill: "var(--background)",
-              stroke: "var(--primary)",
-              strokeWidth: 2.5,
-            }}
-            isAnimationActive={true}
-            animationDuration={500}
-          />
-        </LineChart>
+          <LineChart data={chartData} margin={{ top: 18, right: 24, left: 12, bottom: 24 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+            {showDaySeparators &&
+              dayBoundaries.map((ts) => (
+                <ReferenceLine
+                  key={`day-${ts}`}
+                  x={ts}
+                  stroke="var(--border)"
+                  strokeDasharray="2 4"
+                  strokeOpacity={0.5}
+                  ifOverflow="hidden"
+                />
+              ))}
+            <XAxis
+              dataKey="ts"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={(v) => formatDateTimeFa(new Date(v))}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              minTickGap={40}
+              angle={-20}
+              textAnchor="end"
+              height={50}
+            />
+            <YAxis
+              domain={[yMin, yMax]}
+              ticks={yTicks}
+              tickFormatter={fmtY}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              width={90}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 6,
+                fontSize: 12,
+              }}
+              labelFormatter={(v) => formatDateTimeFa(new Date(Number(v)))}
+              formatter={(v: number) => [
+                `${formatNumber(v)} ${unit}`,
+                isUsd ? "قیمت دلاری" : "قیمت تومانی",
+              ]}
+            />
+            {stats && stats.min !== stats.max && (
+              <>
+                {/* Halo (under-stroke) for visibility on any background */}
+                <ReferenceLine
+                  y={stats.max}
+                  stroke="var(--destructive)"
+                  strokeWidth={5}
+                  strokeOpacity={0.18}
+                  ifOverflow="extendDomain"
+                />
+                <ReferenceLine
+                  y={stats.max}
+                  stroke="var(--destructive)"
+                  strokeWidth={1.75}
+                  strokeDasharray="8 4"
+                  strokeOpacity={1}
+                  ifOverflow="extendDomain"
+                  label={(p: any) => (
+                    <RefLabel
+                      viewBox={p.viewBox}
+                      text={`بیشترین: ${fmtY(stats.max)} ${unit}`}
+                      tooltip={`بیشترین قیمت: ${formatNumber(stats.max)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.maxDate))}`}
+                      fill="var(--destructive)"
+                      align="top"
+                    />
+                  )}
+                />
+                <ReferenceLine
+                  y={stats.avg}
+                  stroke="var(--muted-foreground)"
+                  strokeWidth={4}
+                  strokeOpacity={0.15}
+                />
+                <ReferenceLine
+                  y={stats.avg}
+                  stroke="var(--muted-foreground)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 5"
+                  strokeOpacity={0.95}
+                  label={(p: any) => (
+                    <RefLabel
+                      viewBox={p.viewBox}
+                      text={`میانگین: ${fmtY(stats.avg)} ${unit}`}
+                      tooltip={`میانگین در بازه: ${formatNumber(stats.avg)} ${unit}\nاز ${formatDateTimeFa(new Date(stats.rangeStart))}\nتا ${formatDateTimeFa(new Date(stats.rangeEnd))}\nتعداد نقاط: ${toFaDigits(chartData.length)}`}
+                      fill="var(--muted-foreground)"
+                    />
+                  )}
+                />
+                <ReferenceLine
+                  y={stats.min}
+                  stroke="var(--success)"
+                  strokeWidth={5}
+                  strokeOpacity={0.18}
+                  ifOverflow="extendDomain"
+                />
+                <ReferenceLine
+                  y={stats.min}
+                  stroke="var(--success)"
+                  strokeWidth={1.75}
+                  strokeDasharray="8 4"
+                  strokeOpacity={1}
+                  ifOverflow="extendDomain"
+                  label={(p: any) => (
+                    <RefLabel
+                      viewBox={p.viewBox}
+                      text={`کمترین: ${fmtY(stats.min)} ${unit}`}
+                      tooltip={`کمترین قیمت: ${formatNumber(stats.min)} ${unit}\nتاریخ: ${formatDateTimeFa(new Date(stats.minDate))}`}
+                      fill="var(--success)"
+                      align="bottom"
+                    />
+                  )}
+                />
+              </>
+            )}
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="var(--primary)"
+              strokeWidth={2.5}
+              connectNulls
+              dot={{
+                r: 3.5,
+                fill: "var(--primary)",
+                stroke: "var(--background)",
+                strokeWidth: 1.5,
+              }}
+              activeDot={{
+                r: 6,
+                fill: "var(--background)",
+                stroke: "var(--primary)",
+                strokeWidth: 2.5,
+              }}
+              isAnimationActive={true}
+              animationDuration={500}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

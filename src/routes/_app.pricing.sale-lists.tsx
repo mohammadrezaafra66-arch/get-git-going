@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
@@ -18,7 +25,9 @@ import { useDebounce } from "@/hooks/use-debounce";
 const PAGE_SIZE = 20;
 
 export const Route = createFileRoute("/_app/pricing/sale-lists")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
   component: SaleListsPage,
 });
 
@@ -46,7 +55,7 @@ function SaleListsPage() {
         .from("sale_lists")
         .select(
           "id, name, status, version_number, created_at, sale_price_type:sale_price_types(title), items_count:sale_list_items(count)",
-          { count: "exact" }
+          { count: "exact" },
         )
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -86,7 +95,10 @@ function SaleListsPage() {
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchInput}
-            onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setPage(1);
+            }}
             placeholder="جستجو در نام لیست..."
             className="pr-9"
           />
@@ -96,7 +108,9 @@ function SaleListsPage() {
 
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-12 w-full" />))}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
       ) : rows.length === 0 ? (
         <EmptyState
@@ -128,10 +142,14 @@ function SaleListsPage() {
                     <TableCell>{formatNumber(r.items_count?.[0]?.count ?? 0)}</TableCell>
                     <TableCell>v{formatNumber(r.version_number)}</TableCell>
                     <TableCell>{formatDateFa(r.created_at)}</TableCell>
-                    <TableCell><StatusBadge status={r.status} /></TableCell>
+                    <TableCell>
+                      <StatusBadge status={r.status} />
+                    </TableCell>
                     <TableCell>
                       <Button asChild variant="ghost" size="sm">
-                        <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>مشاهده</Link>
+                        <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>
+                          مشاهده
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -150,14 +168,27 @@ function SaleListsPage() {
                     <StatusBadge status={r.status} />
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <div><span className="text-foreground">نوع قیمت:</span> {r.sale_price_type?.title ?? "—"}</div>
-                    <div><span className="text-foreground">محصولات:</span> {formatNumber(r.items_count?.[0]?.count ?? 0)}</div>
-                    <div><span className="text-foreground">نسخه:</span> v{formatNumber(r.version_number)}</div>
-                    <div><span className="text-foreground">تاریخ:</span> {formatDateFa(r.created_at)}</div>
+                    <div>
+                      <span className="text-foreground">نوع قیمت:</span>{" "}
+                      {r.sale_price_type?.title ?? "—"}
+                    </div>
+                    <div>
+                      <span className="text-foreground">محصولات:</span>{" "}
+                      {formatNumber(r.items_count?.[0]?.count ?? 0)}
+                    </div>
+                    <div>
+                      <span className="text-foreground">نسخه:</span> v
+                      {formatNumber(r.version_number)}
+                    </div>
+                    <div>
+                      <span className="text-foreground">تاریخ:</span> {formatDateFa(r.created_at)}
+                    </div>
                   </div>
                   <div className="pt-1">
                     <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>مشاهده</Link>
+                      <Link to="/pricing/sale-lists/$listId" params={{ listId: r.id }}>
+                        مشاهده
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>
@@ -168,13 +199,24 @@ function SaleListsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              مجموع: {formatNumber(total)} لیست — صفحه {formatNumber(page)} از {formatNumber(totalPages)}
+              مجموع: {formatNumber(total)} لیست — صفحه {formatNumber(page)} از{" "}
+              {formatNumber(totalPages)}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -187,7 +229,11 @@ function SaleListsPage() {
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "published") {
-    return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">منتشرشده</Badge>;
+    return (
+      <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
+        منتشرشده
+      </Badge>
+    );
   }
   return <Badge variant="secondary">پیش‌نویس</Badge>;
 }

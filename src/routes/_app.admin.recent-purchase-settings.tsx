@@ -13,7 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/admin/recent-purchase-settings")({
-  beforeLoad: async () => { await requireAdmin(); },
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
   component: RecentPurchaseSettingsPage,
 });
 
@@ -101,7 +103,9 @@ function RecentPurchaseSettingsPage() {
                 <p className="text-[11px] text-muted-foreground">پیش‌فرض: ۶ ساعت</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unavail">پس از چند ساعت «ناموجود» شود و برچسب «خرید روز» برداشته شود؟</Label>
+                <Label htmlFor="unavail">
+                  پس از چند ساعت «ناموجود» شود و برچسب «خرید روز» برداشته شود؟
+                </Label>
                 <Input
                   id="unavail"
                   type="number"
@@ -110,10 +114,16 @@ function RecentPurchaseSettingsPage() {
                   value={unavail}
                   onChange={(e) => setUnavail(e.target.value)}
                 />
-                <p className="text-[11px] text-muted-foreground">پیش‌فرض: ۱۲ ساعت — باید بزرگ‌تر از مقدار بالا باشد.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  پیش‌فرض: ۱۲ ساعت — باید بزرگ‌تر از مقدار بالا باشد.
+                </p>
               </div>
               <Button onClick={onSave} disabled={saving}>
-                {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+                {saving ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="ml-2 h-4 w-4" />
+                )}
                 ذخیره تنظیمات
               </Button>
             </>

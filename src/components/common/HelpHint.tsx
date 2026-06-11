@@ -1,15 +1,6 @@
 import { HelpCircle } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface HelpHintProps {
@@ -31,7 +22,9 @@ export function HelpHint({ text, ariaLabel, className, size = 14 }: HelpHintProp
   const content = (
     <div className="space-y-1 text-right leading-6" dir="rtl">
       {lines.map((l, i) => (
-        <p key={i} className="text-xs">{l}</p>
+        <p key={i} className="text-xs">
+          {l}
+        </p>
       ))}
     </div>
   );
@@ -68,7 +61,10 @@ export function HelpHint({ text, ariaLabel, className, size = 14 }: HelpHintProp
                 <HelpCircle style={{ width: size, height: size }} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-[280px] bg-popover text-popover-foreground border">
+            <TooltipContent
+              side="top"
+              className="max-w-[280px] bg-popover text-popover-foreground border"
+            >
               {content}
             </TooltipContent>
           </Tooltip>

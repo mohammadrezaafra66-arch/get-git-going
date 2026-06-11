@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +22,13 @@ interface Props {
   onAssigned: () => void;
 }
 
-export function OwnerAssignDialog({ productId, open, onOpenChange, existingUserIds, onAssigned }: Props) {
+export function OwnerAssignDialog({
+  productId,
+  open,
+  onOpenChange,
+  existingUserIds,
+  onAssigned,
+}: Props) {
   const [q, setQ] = useState("");
   const dq = useDebounce(q, 300);
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -43,7 +55,11 @@ export function OwnerAssignDialog({ productId, open, onOpenChange, existingUserI
       .insert({ product_id: productId, user_id: userId });
     setSubmitting(null);
     if (error) toast.error(error.message);
-    else { toast.success("مسئول اضافه شد"); onAssigned(); onOpenChange(false); }
+    else {
+      toast.success("مسئول اضافه شد");
+      onAssigned();
+      onOpenChange(false);
+    }
   };
 
   return (
@@ -53,7 +69,11 @@ export function OwnerAssignDialog({ productId, open, onOpenChange, existingUserI
           <DialogTitle>انتساب مسئول محصول</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو در نام یا تلفن..." />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="جستجو در نام یا تلفن..."
+          />
           <div className="max-h-72 overflow-y-auto rounded-md border border-border">
             {isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">در حال جستجو...</div>
@@ -62,13 +82,27 @@ export function OwnerAssignDialog({ productId, open, onOpenChange, existingUserI
             ) : (
               <ul>
                 {(data ?? []).map((u) => (
-                  <li key={u.id} className="flex items-center justify-between border-b border-border p-3 last:border-0">
+                  <li
+                    key={u.id}
+                    className="flex items-center justify-between border-b border-border p-3 last:border-0"
+                  >
                     <div>
                       <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground" dir="ltr">{u.phone ?? ""}</div>
+                      <div className="text-xs text-muted-foreground" dir="ltr">
+                        {u.phone ?? ""}
+                      </div>
                     </div>
-                    <Button size="sm" variant="outline" disabled={submitting === u.id} onClick={() => assign(u.id)}>
-                      {submitting === u.id ? <Loader2 className="ms-1 h-3.5 w-3.5 animate-spin" /> : <UserPlus className="ms-1 h-3.5 w-3.5" />}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={submitting === u.id}
+                      onClick={() => assign(u.id)}
+                    >
+                      {submitting === u.id ? (
+                        <Loader2 className="ms-1 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <UserPlus className="ms-1 h-3.5 w-3.5" />
+                      )}
                       افزودن
                     </Button>
                   </li>
@@ -78,7 +112,9 @@ export function OwnerAssignDialog({ productId, open, onOpenChange, existingUserI
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>بستن</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            بستن
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

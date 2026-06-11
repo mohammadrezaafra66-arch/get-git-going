@@ -2,8 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Search, Filter, ArrowUpRight, ArrowDownRight, Tag, LineChart,
-  PackageX, Calculator, Loader2, ChevronRight, ChevronLeft, Sparkles, UserPlus,
+  Search,
+  Filter,
+  ArrowUpRight,
+  ArrowDownRight,
+  Tag,
+  LineChart,
+  PackageX,
+  Calculator,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
+  Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -14,7 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
@@ -32,7 +47,9 @@ import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/Pr
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
-  beforeLoad: async () => { await requirePermission("pricing", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
   component: LivePriceListPage,
 });
 
@@ -80,7 +97,10 @@ function LivePriceListPage() {
 
   // ---------- chart drawer ----------
   const [chartCtx, setChartCtx] = useState<{
-    productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
+    productId: string;
+    productName: string;
+    salePriceTypeId: string;
+    salePriceTypeTitle: string;
   } | null>(null);
 
   // ---------- filters ----------
@@ -111,13 +131,30 @@ function LivePriceListPage() {
   const effectiveSearch = dSearch.trim().length >= 2 ? dSearch.trim() : "";
 
   // reset page when filters change
-  useMemo(() => { setPage(1); }, [effectiveSearch, brandId, categoryId, productType, stockStatus, salePriceTypeId, priceFilter, minPrice, maxPrice]);
+  useMemo(() => {
+    setPage(1);
+  }, [
+    effectiveSearch,
+    brandId,
+    categoryId,
+    productType,
+    stockStatus,
+    salePriceTypeId,
+    priceFilter,
+    minPrice,
+    maxPrice,
+  ]);
 
   // ---------- reference data ----------
   const { data: brands = [] } = useQuery({
     queryKey: ["brands-lite"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("brands").select("id, name").eq("is_active", true).order("name").limit(500);
+      const { data, error } = await supabase
+        .from("brands")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name")
+        .limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -126,7 +163,12 @@ function LivePriceListPage() {
   const { data: categories = [] } = useQuery({
     queryKey: ["categories-lite"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("id, name").eq("is_active", true).order("name").limit(500);
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name")
+        .limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -140,13 +182,19 @@ function LivePriceListPage() {
 
   // ---------- products query (paginated) ----------
   const productsQuery = useQuery({
-    queryKey: ["live-price-products", { effectiveSearch, brandId, categoryId, productType, stockStatus, page }],
+    queryKey: [
+      "live-price-products",
+      { effectiveSearch, brandId, categoryId, productType, stockStatus, page },
+    ],
     queryFn: async () => {
       const from = (page - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       let q = supabase
         .from("products")
-        .select("id, name, sku, product_type, stock_status, status, color, capacity, model, brand:brands(id, name), category:categories(id, name)", { count: "exact" })
+        .select(
+          "id, name, sku, product_type, stock_status, status, color, capacity, model, brand:brands(id, name), category:categories(id, name)",
+          { count: "exact" },
+        )
         .eq("is_active", true)
         .order("name", { ascending: true })
         .range(from, to);
@@ -169,7 +217,11 @@ function LivePriceListPage() {
       if (brandId !== "__all") q = q.eq("brand_id", brandId);
       if (categoryId !== "__all") q = q.eq("category_id", categoryId);
       if (productType !== "__all") q = q.eq("product_type", productType as "iranian" | "foreign");
-      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as "available" | "limited" | "unavailable" | "unknown");
+      if (stockStatus !== "__all")
+        q = q.eq(
+          "stock_status",
+          stockStatus as "available" | "limited" | "unavailable" | "unknown",
+        );
       const { data, error, count } = await q;
       if (error) throw error;
       return { rows: (data ?? []) as ProductRow[], total: count ?? 0 };
@@ -177,7 +229,10 @@ function LivePriceListPage() {
     staleTime: 30_000,
   });
 
-  const productIds = useMemo(() => (productsQuery.data?.rows ?? []).map((p) => p.id), [productsQuery.data]);
+  const productIds = useMemo(
+    () => (productsQuery.data?.rows ?? []).map((p) => p.id),
+    [productsQuery.data],
+  );
 
   // ---------- history (latest per product+sale_price_type) ----------
   const historyQuery = useQuery({
@@ -186,7 +241,9 @@ function LivePriceListPage() {
     queryFn: async () => {
       let q = supabase
         .from("product_sale_price_history")
-        .select("id, product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at, snapshot_id")
+        .select(
+          "id, product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at, snapshot_id",
+        )
         .in("product_id", productIds)
         .order("created_at", { ascending: false })
         .limit(productIds.length * 50);
@@ -209,9 +266,14 @@ function LivePriceListPage() {
 
   // ---------- snapshots (only for privileged users) ----------
   const snapshotIds = useMemo(
-    () => isPrivileged
-      ? Array.from(new Set((historyQuery.data ?? []).map((h) => h.snapshot_id).filter((x): x is string => !!x)))
-      : [],
+    () =>
+      isPrivileged
+        ? Array.from(
+            new Set(
+              (historyQuery.data ?? []).map((h) => h.snapshot_id).filter((x): x is string => !!x),
+            ),
+          )
+        : [],
     [historyQuery.data, isPrivileged],
   );
   const snapshotsQuery = useQuery({
@@ -231,7 +293,9 @@ function LivePriceListPage() {
   // ---------- merge ----------
   type MergedRow = {
     product: ProductRow;
-    histories: Array<HistoryRow & { snapshot?: SnapshotLite | null; sale_price_type_title?: string }>;
+    histories: Array<
+      HistoryRow & { snapshot?: SnapshotLite | null; sale_price_type_title?: string }
+    >;
     hasPrice: boolean;
   };
   const merged: MergedRow[] = useMemo(() => {
@@ -245,7 +309,7 @@ function LivePriceListPage() {
       if (!m) continue;
       m.histories.push({
         ...h,
-        snapshot: h.snapshot_id ? snapMap.get(h.snapshot_id) ?? null : null,
+        snapshot: h.snapshot_id ? (snapMap.get(h.snapshot_id) ?? null) : null,
         sale_price_type_title: h.sale_price_type_id ? typeMap.get(h.sale_price_type_id) : "—",
       });
       m.hasPrice = true;
@@ -267,7 +331,16 @@ function LivePriceListPage() {
       });
     }
     return result;
-  }, [productsQuery.data, historyQuery.data, snapshotsQuery.data, salePriceTypes, priceFilter, minNum, maxNum, priceRangeError]);
+  }, [
+    productsQuery.data,
+    historyQuery.data,
+    snapshotsQuery.data,
+    salePriceTypes,
+    priceFilter,
+    minNum,
+    maxNum,
+    priceRangeError,
+  ]);
 
   const total = productsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -292,7 +365,10 @@ function LivePriceListPage() {
     queryKey: ["live-price-summary"],
     queryFn: async () => {
       const [{ count: totalProducts }, distinctRes] = await Promise.all([
-        supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase
+          .from("products")
+          .select("id", { count: "exact", head: true })
+          .eq("is_active", true),
         supabase.from("product_sale_price_history").select("product_id").limit(5000),
       ]);
       const distinct = new Set((distinctRes.data ?? []).map((r: any) => r.product_id));
@@ -325,9 +401,21 @@ function LivePriceListPage() {
 
       {/* summary */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <SummaryCard label="کل محصولات فعال" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.total ?? 0)} />
-        <SummaryCard label="دارای قیمت فروش" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withPrice ?? 0)} />
-        <SummaryCard label="بدون قیمت فروش" value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withoutPrice ?? 0)} variant={(summaryQuery.data?.withoutPrice ?? 0) > 0 ? "warning" : "default"} />
+        <SummaryCard
+          label="کل محصولات فعال"
+          value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.total ?? 0)}
+        />
+        <SummaryCard
+          label="دارای قیمت فروش"
+          value={summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withPrice ?? 0)}
+        />
+        <SummaryCard
+          label="بدون قیمت فروش"
+          value={
+            summaryQuery.isLoading ? "..." : formatNumber(summaryQuery.data?.withoutPrice ?? 0)
+          }
+          variant={(summaryQuery.data?.withoutPrice ?? 0) > 0 ? "warning" : "default"}
+        />
       </div>
 
       {/* filters */}
@@ -347,21 +435,35 @@ function LivePriceListPage() {
               />
             </div>
             <Select value={brandId} onValueChange={setBrandId}>
-              <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="برند" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه برندها</SelectItem>
-                {brands.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
+                {brands.map((b: any) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger><SelectValue placeholder="دسته‌بندی" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="دسته‌بندی" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه دسته‌ها</SelectItem>
-                {categories.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                {categories.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={productType} onValueChange={setProductType}>
-              <SelectTrigger><SelectValue placeholder="نوع کالا" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="نوع کالا" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه</SelectItem>
                 <SelectItem value="iranian">ایرانی</SelectItem>
@@ -369,7 +471,9 @@ function LivePriceListPage() {
               </SelectContent>
             </Select>
             <Select value={stockStatus} onValueChange={setStockStatus}>
-              <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="موجودی" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه</SelectItem>
                 <SelectItem value="available">موجود</SelectItem>
@@ -379,14 +483,22 @@ function LivePriceListPage() {
               </SelectContent>
             </Select>
             <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
-              <SelectTrigger><SelectValue placeholder="نوع قیمت فروش" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="نوع قیمت فروش" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه انواع</SelectItem>
-                {salePriceTypes.map((t: any) => (<SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>))}
+                {salePriceTypes.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={priceFilter} onValueChange={(v) => setPriceFilter(v as PriceFilter)}>
-              <SelectTrigger><SelectValue placeholder="وضعیت قیمت" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="وضعیت قیمت" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه محصولات</SelectItem>
                 <SelectItem value="with">فقط دارای قیمت</SelectItem>
@@ -406,9 +518,7 @@ function LivePriceListPage() {
               inputMode="numeric"
             />
           </div>
-          {priceRangeError && (
-            <p className="text-xs text-destructive">{priceRangeError}</p>
-          )}
+          {priceRangeError && <p className="text-xs text-destructive">{priceRangeError}</p>}
         </CardContent>
       </Card>
 
@@ -445,19 +555,21 @@ function LivePriceListPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {merged.flatMap((row) => renderProductRows(row, {
-                        isSalesOnly,
-                        isPrivileged,
-                        onOpenChart: (args) => {
-                          trackProductInteraction({
-                            productId: args.productId,
-                            eventType: "chart_opened",
-                            source: "live_price_list",
-                            salePriceTypeId: args.salePriceTypeId,
-                          });
-                          setChartCtx(args);
-                        },
-                      }))}
+                      {merged.flatMap((row) =>
+                        renderProductRows(row, {
+                          isSalesOnly,
+                          isPrivileged,
+                          onOpenChart: (args) => {
+                            trackProductInteraction({
+                              productId: args.productId,
+                              eventType: "chart_opened",
+                              source: "live_price_list",
+                              salePriceTypeId: args.salePriceTypeId,
+                            });
+                            setChartCtx(args);
+                          },
+                        }),
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -489,13 +601,24 @@ function LivePriceListPage() {
           {/* pagination */}
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} محصول
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)}{" "}
+              محصول
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -505,7 +628,9 @@ function LivePriceListPage() {
 
       <ProductPriceHistoryDrawer
         open={!!chartCtx}
-        onOpenChange={(v) => { if (!v) setChartCtx(null); }}
+        onOpenChange={(v) => {
+          if (!v) setChartCtx(null);
+        }}
         productId={chartCtx?.productId ?? null}
         productName={chartCtx?.productName ?? null}
         salePriceTypeId={chartCtx?.salePriceTypeId ?? null}
@@ -520,13 +645,18 @@ function renderProductRows(
   ctx: {
     isSalesOnly: boolean;
     isPrivileged: boolean;
-    onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+    onOpenChart: (args: {
+      productId: string;
+      productName: string;
+      salePriceTypeId: string;
+      salePriceTypeTitle: string;
+    }) => void;
   },
 ) {
   const colSpan = ctx.isSalesOnly ? 8 : 9;
   const isUnavailable = row.product.stock_status === "unavailable";
   if (isUnavailable) {
-    return [(
+    return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
           <ProductCell product={row.product} />
@@ -534,16 +664,27 @@ function renderProductRows(
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
         </td>
-        {!ctx.isSalesOnly && <td className="p-3 align-top"><ProductTypeBadge t={row.product.product_type} /></td>}
-        <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
-        <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
-          <Badge variant="outline" className="border-red-500/30 bg-red-500/5 text-red-600 font-normal">ناموجود — قیمت نمایش داده نمی‌شود</Badge>
+        {!ctx.isSalesOnly && (
+          <td className="p-3 align-top">
+            <ProductTypeBadge t={row.product.product_type} />
+          </td>
+        )}
+        <td className="p-3 align-top">
+          <StockBadge s={row.product.stock_status} />
         </td>
-      </tr>
-    )];
+        <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
+          <Badge
+            variant="outline"
+            className="border-red-500/30 bg-red-500/5 text-red-600 font-normal"
+          >
+            ناموجود — قیمت نمایش داده نمی‌شود
+          </Badge>
+        </td>
+      </tr>,
+    ];
   }
   if (!row.hasPrice) {
-    return [(
+    return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
           <ProductCell product={row.product} />
@@ -551,70 +692,101 @@ function renderProductRows(
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
         </td>
-        {!ctx.isSalesOnly && <td className="p-3 align-top"><ProductTypeBadge t={row.product.product_type} /></td>}
-        <td className="p-3 align-top"><StockBadge s={row.product.stock_status} /></td>
+        {!ctx.isSalesOnly && (
+          <td className="p-3 align-top">
+            <ProductTypeBadge t={row.product.product_type} />
+          </td>
+        )}
+        <td className="p-3 align-top">
+          <StockBadge s={row.product.stock_status} />
+        </td>
         <td className="p-3 align-top text-xs text-muted-foreground" colSpan={colSpan - 4}>
           <div className="flex flex-wrap items-center gap-2">
             <span>قیمت ثبت نشده</span>
             {ctx.isPrivileged && (
-              <Link to="/pricing/calculator" className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-1">
+              <Link
+                to="/pricing/calculator"
+                className="text-primary underline-offset-2 hover:underline inline-flex items-center gap-1"
+              >
                 <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
               </Link>
             )}
           </div>
         </td>
-      </tr>
-    )];
+      </tr>,
+    ];
   }
   return row.histories.map((h, idx) => (
     <tr key={`${row.product.id}-${h.id}`} className="hover:bg-muted/30">
       {idx === 0 ? (
         <>
-          <td className="p-3 align-top" rowSpan={row.histories.length}><ProductCell product={row.product} /></td>
-          <td className="p-3 align-top text-xs text-muted-foreground" rowSpan={row.histories.length}>
+          <td className="p-3 align-top" rowSpan={row.histories.length}>
+            <ProductCell product={row.product} />
+          </td>
+          <td
+            className="p-3 align-top text-xs text-muted-foreground"
+            rowSpan={row.histories.length}
+          >
             {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
           </td>
           {!ctx.isSalesOnly && (
-            <td className="p-3 align-top" rowSpan={row.histories.length}><ProductTypeBadge t={row.product.product_type} /></td>
+            <td className="p-3 align-top" rowSpan={row.histories.length}>
+              <ProductTypeBadge t={row.product.product_type} />
+            </td>
           )}
-          <td className="p-3 align-top" rowSpan={row.histories.length}><StockBadge s={row.product.stock_status} /></td>
+          <td className="p-3 align-top" rowSpan={row.histories.length}>
+            <StockBadge s={row.product.stock_status} />
+          </td>
         </>
       ) : null}
       <td className="p-3 align-top text-xs">
-        <Badge variant="secondary" className="font-normal">{h.sale_price_type_title ?? "—"}</Badge>
+        <Badge variant="secondary" className="font-normal">
+          {h.sale_price_type_title ?? "—"}
+        </Badge>
       </td>
       <td className="p-3 align-top">
-        <div className="text-base font-bold text-foreground">{formatNumber(Number(h.new_sale_price))} <span className="text-xs font-normal text-muted-foreground">ت</span></div>
+        <div className="text-base font-bold text-foreground">
+          {formatNumber(Number(h.new_sale_price))}{" "}
+          <span className="text-xs font-normal text-muted-foreground">ت</span>
+        </div>
         {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-          <div className="text-[11px] text-muted-foreground line-through">{formatNumber(Number(h.old_sale_price))}</div>
+          <div className="text-[11px] text-muted-foreground line-through">
+            {formatNumber(Number(h.old_sale_price))}
+          </div>
         )}
       </td>
-      <td className="p-3 align-top"><ChangeCell h={h} /></td>
-      <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</td>
+      <td className="p-3 align-top">
+        <ChangeCell h={h} />
+      </td>
+      <td className="p-3 align-top text-[11px] text-muted-foreground">
+        {formatDateTimeFa(h.created_at)}
+      </td>
       {idx === 0 && (
         <td className="p-3 align-top" rowSpan={row.histories.length}>
           <div className="flex flex-col items-start gap-1">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={() => ctx.onOpenChart({
-              productId: row.product.id,
-              productName: row.product.name,
-              salePriceTypeId: h.sale_price_type_id ?? "",
-              salePriceTypeTitle: h.sale_price_type_title ?? "—",
-            })}
-            disabled={!h.sale_price_type_id}
-            title="نمودار قیمت"
-          >
-            <LineChart className="h-3.5 w-3.5" /> نمودار
-          </Button>
-          <CreatePriceAlertButton
-            productId={row.product.id}
-            productName={row.product.name}
-            salePriceTypeId={h.sale_price_type_id ?? null}
-          />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() =>
+                ctx.onOpenChart({
+                  productId: row.product.id,
+                  productName: row.product.name,
+                  salePriceTypeId: h.sale_price_type_id ?? "",
+                  salePriceTypeTitle: h.sale_price_type_title ?? "—",
+                })
+              }
+              disabled={!h.sale_price_type_id}
+              title="نمودار قیمت"
+            >
+              <LineChart className="h-3.5 w-3.5" /> نمودار
+            </Button>
+            <CreatePriceAlertButton
+              productId={row.product.id}
+              productName={row.product.name}
+              salePriceTypeId={h.sale_price_type_id ?? null}
+            />
           </div>
         </td>
       )}
@@ -622,11 +794,21 @@ function renderProductRows(
   ));
 }
 
-function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
+function MobileProductCard({
+  row,
+  isSalesOnly,
+  isPrivileged,
+  onOpenChart,
+}: {
   row: { product: ProductRow; histories: any[]; hasPrice: boolean };
   isSalesOnly: boolean;
   isPrivileged: boolean;
-  onOpenChart: (args: { productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string }) => void;
+  onOpenChart: (args: {
+    productId: string;
+    productName: string;
+    salePriceTypeId: string;
+    salePriceTypeTitle: string;
+  }) => void;
 }) {
   const isUnavailable = row.product.stock_status === "unavailable";
   return (
@@ -638,7 +820,12 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
         </div>
         <div className="text-[11px] text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
-          {!isSalesOnly && <> • <ProductTypeBadge t={row.product.product_type} inline /></>}
+          {!isSalesOnly && (
+            <>
+              {" "}
+              • <ProductTypeBadge t={row.product.product_type} inline />
+            </>
+          )}
         </div>
         <div className="flex justify-end">
           <StockAlertButton
@@ -657,7 +844,10 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
             قیمت ثبت نشده
             {isPrivileged && (
               <div className="mt-2">
-                <Link to="/pricing/calculator" className="text-primary inline-flex items-center gap-1">
+                <Link
+                  to="/pricing/calculator"
+                  className="text-primary inline-flex items-center gap-1"
+                >
                   <Calculator className="h-3.5 w-3.5" /> رفتن به محاسبه قیمت
                 </Link>
               </div>
@@ -668,40 +858,51 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
             {row.histories.map((h) => (
               <div key={h.id} className="rounded-md border border-border p-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="secondary" className="text-[10px] font-normal">{h.sale_price_type_title ?? "—"}</Badge>
-                  <span className="text-[10px] text-muted-foreground">{formatDateTimeFa(h.created_at)}</span>
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {h.sale_price_type_title ?? "—"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatDateTimeFa(h.created_at)}
+                  </span>
                 </div>
                 <div className="mt-1 flex items-end justify-between">
                   <div>
-                    <div className="text-base font-bold text-foreground">{formatNumber(Number(h.new_sale_price))} <span className="text-xs font-normal text-muted-foreground">ت</span></div>
+                    <div className="text-base font-bold text-foreground">
+                      {formatNumber(Number(h.new_sale_price))}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">ت</span>
+                    </div>
                     {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-                      <div className="text-[11px] text-muted-foreground line-through">{formatNumber(Number(h.old_sale_price))}</div>
+                      <div className="text-[11px] text-muted-foreground line-through">
+                        {formatNumber(Number(h.old_sale_price))}
+                      </div>
                     )}
                   </div>
                   <ChangeCell h={h} />
                 </div>
                 <div className="mt-2 flex justify-end">
                   <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 px-2 text-xs"
-                    onClick={() => onOpenChart({
-                      productId: row.product.id,
-                      productName: row.product.name,
-                      salePriceTypeId: h.sale_price_type_id ?? "",
-                      salePriceTypeTitle: h.sale_price_type_title ?? "—",
-                    })}
-                    disabled={!h.sale_price_type_id}
-                  >
-                    <LineChart className="h-3.5 w-3.5" /> نمودار قیمت
-                  </Button>
-                  <CreatePriceAlertButton
-                    productId={row.product.id}
-                    productName={row.product.name}
-                    salePriceTypeId={h.sale_price_type_id ?? null}
-                  />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={() =>
+                        onOpenChart({
+                          productId: row.product.id,
+                          productName: row.product.name,
+                          salePriceTypeId: h.sale_price_type_id ?? "",
+                          salePriceTypeTitle: h.sale_price_type_title ?? "—",
+                        })
+                      }
+                      disabled={!h.sale_price_type_id}
+                    >
+                      <LineChart className="h-3.5 w-3.5" /> نمودار قیمت
+                    </Button>
+                    <CreatePriceAlertButton
+                      productId={row.product.id}
+                      productName={row.product.name}
+                      salePriceTypeId={h.sale_price_type_id ?? null}
+                    />
                   </div>
                 </div>
               </div>
@@ -716,7 +917,9 @@ function MobileProductCard({ row, isSalesOnly, isPrivileged, onOpenChart }: {
 function ProductCell({ product }: { product: ProductRow }) {
   return (
     <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-foreground">{formatProductDisplayNameWithFallback(product)}</div>
+      <div className="truncate text-sm font-medium text-foreground">
+        {formatProductDisplayNameWithFallback(product)}
+      </div>
       <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
       <div className="mt-1">
         <StockAlertButton
@@ -733,7 +936,11 @@ function ProductCell({ product }: { product: ProductRow }) {
 function ProductTypeBadge({ t, inline = false }: { t: string; inline?: boolean }) {
   const label = t === "iranian" ? "ایرانی" : t === "foreign" ? "خارجی" : t;
   if (inline) return <span className="text-[11px]">{label}</span>;
-  return <Badge variant="outline" className="font-normal">{label}</Badge>;
+  return (
+    <Badge variant="outline" className="font-normal">
+      {label}
+    </Badge>
+  );
 }
 
 function StockBadge({ s }: { s: string }) {
@@ -744,15 +951,24 @@ function StockBadge({ s }: { s: string }) {
     unknown: { label: "نامشخص", cls: "bg-muted text-muted-foreground border-border" },
   };
   const v = map[s] ?? map.unknown;
-  return <Badge variant="outline" className={`font-normal ${v.cls}`}>{v.label}</Badge>;
+  return (
+    <Badge variant="outline" className={`font-normal ${v.cls}`}>
+      {v.label}
+    </Badge>
+  );
 }
 
 function ChangeCell({ h }: { h: HistoryRow }) {
   if (h.old_sale_price === null || h.old_sale_price === undefined) {
-    return <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary font-normal"><Sparkles className="ml-1 h-3 w-3" /> قیمت اولیه</Badge>;
+    return (
+      <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary font-normal">
+        <Sparkles className="ml-1 h-3 w-3" /> قیمت اولیه
+      </Badge>
+    );
   }
   const amt = Number(h.change_amount ?? 0);
-  const pct = h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
+  const pct =
+    h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
   if (amt === 0) {
     return <span className="text-[11px] text-muted-foreground">بدون تغییر</span>;
   }
@@ -766,12 +982,22 @@ function ChangeCell({ h }: { h: HistoryRow }) {
         <Icon className="h-3.5 w-3.5" />
         {up ? "افزایش" : "کاهش"} {formatNumber(Math.abs(amt))}
       </span>
-      {pct !== null && <span className="text-[11px] opacity-80">{toFaDigits(Math.abs(pct).toString())}٪</span>}
+      {pct !== null && (
+        <span className="text-[11px] opacity-80">{toFaDigits(Math.abs(pct).toString())}٪</span>
+      )}
     </div>
   );
 }
 
-function SummaryCard({ label, value, variant = "default" }: { label: string; value: string; variant?: "default" | "warning" }) {
+function SummaryCard({
+  label,
+  value,
+  variant = "default",
+}: {
+  label: string;
+  value: string;
+  variant?: "default" | "warning";
+}) {
   return (
     <Card className={variant === "warning" ? "border-amber-500/40" : undefined}>
       <CardContent className="p-3">

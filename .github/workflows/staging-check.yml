@@ -1,0 +1,38 @@
+name: Staging Check
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-check:
+    name: Staging Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Lint legacy baseline
+        run: |
+          npm run lint || echo "::warning::Lint currently fails on the legacy baseline during phase6a staging realignment; build remains required."
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192

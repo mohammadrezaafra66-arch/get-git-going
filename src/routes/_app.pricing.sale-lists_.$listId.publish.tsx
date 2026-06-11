@@ -70,7 +70,9 @@ function PublishSaleListPage() {
         .from("publish_recipients_view" as any)
         .select("id, full_name, roles");
       if (error) throw error;
-      return ((data ?? []) as unknown as Array<{ id: string; full_name: string | null; roles: string[] }>)
+      return (
+        (data ?? []) as unknown as Array<{ id: string; full_name: string | null; roles: string[] }>
+      )
         .map<RecipientRow>((r) => ({
           id: r.id,
           full_name: r.full_name,
@@ -225,7 +227,9 @@ function PublishSaleListPage() {
                   <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                   <span>انتخاب همه ({formatNumber(filtered.length)})</span>
                 </label>
-                <span><strong>{formatNumber(selected.length)}</strong> مخاطب انتخاب‌شده</span>
+                <span>
+                  <strong>{formatNumber(selected.length)}</strong> مخاطب انتخاب‌شده
+                </span>
               </div>
               <div className="space-y-2">
                 {filtered.map((r) => {
@@ -257,9 +261,15 @@ function PublishSaleListPage() {
 
       <div className="flex items-center justify-end gap-2">
         <Button asChild variant="outline" disabled={publishing}>
-          <Link to="/pricing/sale-lists/$listId" params={{ listId }}>انصراف</Link>
+          <Link to="/pricing/sale-lists/$listId" params={{ listId }}>
+            انصراف
+          </Link>
         </Button>
-        <Button onClick={handlePublishClick} disabled={publishing || selected.length === 0} className="gap-2">
+        <Button
+          onClick={handlePublishClick}
+          disabled={publishing || selected.length === 0}
+          className="gap-2"
+        >
           {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           {isRepublish ? "بازنشر لیست" : "انتشار لیست"}
         </Button>
@@ -270,8 +280,8 @@ function PublishSaleListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>تأیید بازنشر لیست</AlertDialogTitle>
             <AlertDialogDescription>
-              این لیست قبلاً منتشر شده است. آیا مطمئن هستید که می‌خواهید دوباره آن را منتشر کنید؟
-              یک رکورد جدید در گزارش‌های ممیزی ثبت خواهد شد.
+              این لیست قبلاً منتشر شده است. آیا مطمئن هستید که می‌خواهید دوباره آن را منتشر کنید؟ یک
+              رکورد جدید در گزارش‌های ممیزی ثبت خواهد شد.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

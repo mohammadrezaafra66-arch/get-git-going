@@ -186,7 +186,8 @@ export async function fetchStalePurchasePrices(opts?: {
         }
       }
     }
-    const is_usd_drifted = usd_drift_pct != null && Math.abs(usd_drift_pct) > USD_DRIFT_THRESHOLD_PCT;
+    const is_usd_drifted =
+      usd_drift_pct != null && Math.abs(usd_drift_pct) > USD_DRIFT_THRESHOLD_PCT;
 
     if (!is_toman_stale && !is_usd_drifted) continue;
 

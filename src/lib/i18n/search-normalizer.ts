@@ -12,7 +12,7 @@ export function normalizeSearchText(input: string | null | undefined): string {
   let s = String(input);
 
   // Persian digits ۰-۹ -> 0-9
-  s = s.replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06F0));
+  s = s.replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06f0));
   // Arabic-Indic digits ٠-٩ -> 0-9
   s = s.replace(/[\u0660-\u0669]/g, (ch) => String(ch.charCodeAt(0) - 0x0660));
 

@@ -92,9 +92,7 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchProfileAndRoles(
-  user: User,
-): Promise<{
+async function fetchProfileAndRoles(user: User): Promise<{
   profile: AuthProfile | null;
   roles: Array<{ role: string }>;
   profileError: string | null;
@@ -255,7 +253,9 @@ async function applySession(session: Session | null, force = false) {
   const sameInitializedUser = snapshot.initialized && snapshot.user?.id === session.user.id;
   const identityAlreadyLoaded =
     snapshot.lastLoadedUserId === session.user.id ||
-    (snapshot.profile?.id === session.user.id && !snapshot.profileLoading && !snapshot.rolesLoading);
+    (snapshot.profile?.id === session.user.id &&
+      !snapshot.profileLoading &&
+      !snapshot.rolesLoading);
   const identityLoadInProgress = snapshot.profileLoading || snapshot.rolesLoading;
   if (!force && sameInitializedUser && (identityAlreadyLoaded || identityLoadInProgress)) {
     setSnapshot({
@@ -340,14 +340,22 @@ export async function ensureAuthReady(force = false) {
         const message = getAuthClientError(error);
         console.error("[auth] getSession failed", error);
         logAuthDiagnostic("session.getSession.throw", message, error);
-        setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : message });
+        setSnapshot({
+          initialized: true,
+          loading: false,
+          authError: snapshot.user ? null : message,
+        });
         return snapshot;
       }
       const { data, error } = result;
       if (error) {
         console.error("[auth] getSession failed", error);
         logAuthDiagnostic("session.getSession.error", error.message, error);
-        setSnapshot({ initialized: true, loading: false, authError: snapshot.user ? null : error.message });
+        setSnapshot({
+          initialized: true,
+          loading: false,
+          authError: snapshot.user ? null : error.message,
+        });
         return snapshot;
       }
       return applySession(data.session, force);

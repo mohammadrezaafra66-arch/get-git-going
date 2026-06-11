@@ -12,18 +12,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import {
-  listAchievements, createAchievement, updateAchievement, setAchievementActive, listKpiOptions,
-  CONDITION_OPERATORS, type AchievementRow, type ConditionOperator,
+  listAchievements,
+  createAchievement,
+  updateAchievement,
+  setAchievementActive,
+  listKpiOptions,
+  CONDITION_OPERATORS,
+  type AchievementRow,
+  type ConditionOperator,
 } from "@/lib/operations/gamification-achievements";
 
 export const Route = createFileRoute("/_app/gamification/admin/achievements")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager"]);
+  },
   component: AchievementsAdminPage,
 });
 
@@ -33,31 +61,56 @@ const schema = z.object({
   title_fa: z.string().trim().min(1, "عنوان فارسی الزامی است").max(120),
   title_en: z.string().trim().max(120).optional().or(z.literal("")),
   description: z.string().max(500).optional().or(z.literal("")),
-  icon_key: z.string().trim().max(40).regex(/^[a-z0-9_-]*$/i, "آیکن نامعتبر").optional().or(z.literal("")),
+  icon_key: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^[a-z0-9_-]*$/i, "آیکن نامعتبر")
+    .optional()
+    .or(z.literal("")),
   condition_event_key: z.string().trim().min(1, "شرط مدال الزامی است"),
   condition_operator: z.enum([">=", ">", "=", "<=", "<"], { message: "اپراتور نامعتبر" }),
-  condition_value: z.coerce.number().refine((n) => Number.isFinite(n) && n > 0, "مقدار شرط باید عدد معتبر و بزرگ‌تر از صفر باشد"),
+  condition_value: z.coerce
+    .number()
+    .refine((n) => Number.isFinite(n) && n > 0, "مقدار شرط باید عدد معتبر و بزرگ‌تر از صفر باشد"),
   reward_xp: z.coerce.number().min(0, "XP جایزه نمی‌تواند منفی باشد"),
   is_active: z.boolean(),
   sort_order: z.coerce.number().int().min(0),
 });
 
-function fmtDate(d: string) { try { return new Date(d).toLocaleString("fa-IR"); } catch { return d; } }
+function fmtDate(d: string) {
+  try {
+    return new Date(d).toLocaleString("fa-IR");
+  } catch {
+    return d;
+  }
+}
 
 function AchievementsAdminPage() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["admin-achievements-v2"], queryFn: listAchievements });
-  const { data: kpis } = useQuery({ queryKey: ["admin-kpi-options"], queryFn: listKpiOptions, staleTime: 60_000 });
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-achievements-v2"],
+    queryFn: listAchievements,
+  });
+  const { data: kpis } = useQuery({
+    queryKey: ["admin-kpi-options"],
+    queryFn: listKpiOptions,
+    staleTime: 60_000,
+  });
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AchievementRow | null>(null);
 
   const toggleMut = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => setAchievementActive(id, is_active),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      setAchievementActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-achievements-v2"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const kpiMap = useMemo(() => Object.fromEntries((kpis ?? []).map((k) => [k.event_key, k])), [kpis]);
+  const kpiMap = useMemo(
+    () => Object.fromEntries((kpis ?? []).map((k) => [k.event_key, k])),
+    [kpis],
+  );
 
   return (
     <div className="space-y-4 pb-10" dir="rtl">
@@ -68,20 +121,38 @@ function AchievementsAdminPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">مدال‌ها</CardTitle>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+          <Dialog
+            open={open}
+            onOpenChange={(v) => {
+              setOpen(v);
+              if (!v) setEditing(null);
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm" onClick={() => setEditing(null)}>
-                <Plus className="ml-1 h-4 w-4" />افزودن مدال
+                <Plus className="ml-1 h-4 w-4" />
+                افزودن مدال
               </Button>
             </DialogTrigger>
-            <AchievementDialog initial={editing} kpiOptions={kpis ?? []} onClose={() => { setOpen(false); setEditing(null); }} />
+            <AchievementDialog
+              initial={editing}
+              kpiOptions={kpis ?? []}
+              onClose={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            />
           </Dialog>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           {isLoading ? (
-            <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
           ) : (data ?? []).length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">هیچ مدالی تعریف نشده است.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              هیچ مدالی تعریف نشده است.
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -102,7 +173,9 @@ function AchievementsAdminPage() {
                     <TableRow key={a.id}>
                       <TableCell className="font-medium">
                         <div>{a.title_fa}</div>
-                        {a.title_en && <div className="text-xs text-muted-foreground">{a.title_en}</div>}
+                        {a.title_en && (
+                          <div className="text-xs text-muted-foreground">{a.title_en}</div>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs">
                         {a.condition_event_key ? (
@@ -111,10 +184,14 @@ function AchievementsAdminPage() {
                             <span>{a.condition_operator}</span>
                             <span className="tabular-nums">{a.condition_value}</span>
                             {kpi && !kpi.is_active && (
-                              <Badge variant="secondary" className="mr-1">KPI غیرفعال</Badge>
+                              <Badge variant="secondary" className="mr-1">
+                                KPI غیرفعال
+                              </Badge>
                             )}
                           </span>
-                        ) : <span className="text-muted-foreground">—</span>}
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="tabular-nums">{a.xp_reward}</TableCell>
                       <TableCell>
@@ -129,9 +206,18 @@ function AchievementsAdminPage() {
                         </div>
                       </TableCell>
                       <TableCell className="tabular-nums">{a.display_order}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{fmtDate(a.updated_at)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {fmtDate(a.updated_at)}
+                      </TableCell>
                       <TableCell className="text-left">
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(a); setOpen(true); }}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditing(a);
+                            setOpen(true);
+                          }}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -151,7 +237,9 @@ function AchievementsAdminPage() {
 }
 
 function AchievementDialog({
-  initial, kpiOptions, onClose,
+  initial,
+  kpiOptions,
+  onClose,
 }: {
   initial: AchievementRow | null;
   kpiOptions: { event_key: string; title_fa: string; is_active: boolean }[];
@@ -213,9 +301,16 @@ function AchievementDialog({
       onClose();
     },
     onError: (e: unknown) => {
-      if (e instanceof z.ZodError) { toast.error(e.issues[0]?.message ?? "ورودی نامعتبر"); return; }
+      if (e instanceof z.ZodError) {
+        toast.error(e.issues[0]?.message ?? "ورودی نامعتبر");
+        return;
+      }
       const msg = e instanceof Error ? e.message : "خطا در ذخیره";
-      if (msg.includes("achievements_condition_uniq") || msg.includes("duplicate") || msg.includes("unique")) {
+      if (
+        msg.includes("achievements_condition_uniq") ||
+        msg.includes("duplicate") ||
+        msg.includes("unique")
+      ) {
         toast.error("این شرط قبلاً برای یک مدال دیگر تعریف شده است.");
       } else {
         toast.error(msg);
@@ -232,11 +327,17 @@ function AchievementDialog({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>عنوان فارسی *</Label>
-            <Input value={form.title_fa} onChange={(e) => setForm({ ...form, title_fa: e.target.value })} />
+            <Input
+              value={form.title_fa}
+              onChange={(e) => setForm({ ...form, title_fa: e.target.value })}
+            />
           </div>
           <div>
             <Label>عنوان انگلیسی</Label>
-            <Input value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} />
+            <Input
+              value={form.title_en}
+              onChange={(e) => setForm({ ...form, title_en: e.target.value })}
+            />
           </div>
         </div>
         <div>
@@ -251,15 +352,23 @@ function AchievementDialog({
           <div>
             <Label>آیکن</Label>
             <Select value={form.icon_key} onValueChange={(v) => setForm({ ...form, icon_key: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {ICON_KEYS.map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                {ICON_KEYS.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {k}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>پاداش XP *</Label>
-            <Input type="number" min={0}
+            <Input
+              type="number"
+              min={0}
               value={form.reward_xp}
               onChange={(e) => setForm({ ...form, reward_xp: Number(e.target.value) })}
             />
@@ -271,16 +380,23 @@ function AchievementDialog({
             value={form.condition_event_key}
             onValueChange={(v) => setForm({ ...form, condition_event_key: v })}
           >
-            <SelectTrigger><SelectValue placeholder="یک رویداد انتخاب کنید" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="یک رویداد انتخاب کنید" />
+            </SelectTrigger>
             <SelectContent>
               {visibleKpis.length === 0 ? (
                 <div className="p-2 text-xs text-muted-foreground">هیچ KPI فعالی موجود نیست</div>
-              ) : visibleKpis.map((k) => (
-                <SelectItem key={k.event_key} value={k.event_key}>
-                  {k.title_fa} <span className="text-xs text-muted-foreground" dir="ltr">({k.event_key})</span>
-                  {!k.is_active && " — غیرفعال"}
-                </SelectItem>
-              ))}
+              ) : (
+                visibleKpis.map((k) => (
+                  <SelectItem key={k.event_key} value={k.event_key}>
+                    {k.title_fa}{" "}
+                    <span className="text-xs text-muted-foreground" dir="ltr">
+                      ({k.event_key})
+                    </span>
+                    {!k.is_active && " — غیرفعال"}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -289,17 +405,27 @@ function AchievementDialog({
             <Label>اپراتور *</Label>
             <Select
               value={form.condition_operator}
-              onValueChange={(v) => setForm({ ...form, condition_operator: v as ConditionOperator })}
+              onValueChange={(v) =>
+                setForm({ ...form, condition_operator: v as ConditionOperator })
+              }
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {CONDITION_OPERATORS.map((op) => <SelectItem key={op} value={op}>{op}</SelectItem>)}
+                {CONDITION_OPERATORS.map((op) => (
+                  <SelectItem key={op} value={op}>
+                    {op}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>مقدار شرط *</Label>
-            <Input type="number" min={1}
+            <Input
+              type="number"
+              min={1}
               value={form.condition_value}
               onChange={(e) => setForm({ ...form, condition_value: Number(e.target.value) })}
             />
@@ -308,19 +434,26 @@ function AchievementDialog({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>ترتیب نمایش</Label>
-            <Input type="number" min={0}
+            <Input
+              type="number"
+              min={0}
               value={form.sort_order}
               onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
             />
           </div>
           <div className="flex items-end gap-2 pb-2">
-            <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+            <Switch
+              checked={form.is_active}
+              onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+            />
             <Label>فعال</Label>
           </div>
         </div>
       </div>
       <DialogFooter>
-        <Button variant="ghost" onClick={onClose}>انصراف</Button>
+        <Button variant="ghost" onClick={onClose}>
+          انصراف
+        </Button>
         <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
           {mut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}ذخیره
         </Button>

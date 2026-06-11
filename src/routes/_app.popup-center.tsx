@@ -28,12 +28,7 @@ function PopupCenterPage() {
           <span className="text-sm text-muted-foreground">تعداد:</span>
           <Badge variant={items.length ? "destructive" : "secondary"}>{items.length}</Badge>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={clearAll}
-          disabled={items.length === 0}
-        >
+        <Button variant="outline" size="sm" onClick={clearAll} disabled={items.length === 0}>
           همه را دیدم
         </Button>
       </div>

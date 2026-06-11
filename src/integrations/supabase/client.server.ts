@@ -2,8 +2,8 @@
 // Server-side Supabase client with service role key - bypasses RLS.
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
 
 /**
  * Server-side Supabase admin client — RPC / REST only.
@@ -38,8 +38,8 @@ class NoopRealtimeTransport {
   // realtime usage on the server fail loudly instead of silently no-op'ing.
   constructor() {
     throw new Error(
-      '[supabaseAdmin] Realtime is disabled on the server-side admin client. ' +
-        'Use the browser client for realtime subscriptions.',
+      "[supabaseAdmin] Realtime is disabled on the server-side admin client. " +
+        "Use the browser client for realtime subscriptions.",
     );
   }
 }
@@ -50,7 +50,7 @@ function createSupabaseAdminClient() {
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error(
-      'Missing Supabase server environment variables. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.'
+      "Missing Supabase server environment variables. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.",
     );
   }
 

@@ -71,7 +71,9 @@ export async function updateKpi(input: UpdateKpiInput): Promise<void> {
     .eq("id", id);
   if (error) throw error;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) {
     await supabase.from("audit_logs").insert({
       actor_id: user.id,
@@ -84,9 +86,12 @@ export async function updateKpi(input: UpdateKpiInput): Promise<void> {
 }
 
 export async function calculateEmployeeScore(employeeId: string): Promise<unknown> {
-  const { data, error } = await supabase.rpc("calculate_employee_score" as never, {
-    _employee_id: employeeId,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "calculate_employee_score" as never,
+    {
+      _employee_id: employeeId,
+    } as never,
+  );
   if (error) throw error;
   return data;
 }
@@ -134,13 +139,16 @@ export async function getLeaderboard(
           ? "get_leaderboard_all_time"
           : "get_leaderboard_monthly";
 
-  const { data, error } = await supabase.rpc(fnName as never, {
-    _team: filters.team ?? null,
-    _department: filters.department ?? null,
-    _role: filters.role ?? null,
-    _limit: filters.limit ?? 50,
-    _offset: filters.offset ?? 0,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    fnName as never,
+    {
+      _team: filters.team ?? null,
+      _department: filters.department ?? null,
+      _role: filters.role ?? null,
+      _limit: filters.limit ?? 50,
+      _offset: filters.offset ?? 0,
+    } as never,
+  );
   if (error) throw error;
   return (data ?? []) as unknown as LeaderboardRow[];
 }
@@ -158,9 +166,12 @@ export interface EmployeeRank {
 }
 
 export async function getEmployeeRank(employeeId: string): Promise<EmployeeRank | null> {
-  const { data, error } = await supabase.rpc("get_employee_rank" as never, {
-    _employee_id: employeeId,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "get_employee_rank" as never,
+    {
+      _employee_id: employeeId,
+    } as never,
+  );
   if (error) throw error;
   const rows = (data ?? []) as unknown as EmployeeRank[];
   return rows[0] ?? null;
@@ -179,11 +190,14 @@ export async function getRankNeighbors(
   period: LeaderboardPeriod = "monthly",
   windowSize = 3,
 ): Promise<RankNeighbor[]> {
-  const { data, error } = await supabase.rpc("get_rank_neighbors" as never, {
-    _employee_id: employeeId,
-    _period: period,
-    _window: windowSize,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "get_rank_neighbors" as never,
+    {
+      _employee_id: employeeId,
+      _period: period,
+      _window: windowSize,
+    } as never,
+  );
   if (error) throw error;
   return (data ?? []) as unknown as RankNeighbor[];
 }
@@ -214,9 +228,12 @@ export interface AddXpResult {
 }
 
 export async function getEmployeeProgress(employeeId: string): Promise<EmployeeProgress> {
-  const { data, error } = await supabase.rpc("get_employee_progress" as never, {
-    _employee_id: employeeId,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "get_employee_progress" as never,
+    {
+      _employee_id: employeeId,
+    } as never,
+  );
   if (error) throw error;
   return data as unknown as EmployeeProgress;
 }
@@ -256,9 +273,12 @@ export interface LeagueLeaderboardRow {
 }
 
 export async function getCurrentLeague(employeeId: string): Promise<CurrentLeague> {
-  const { data, error } = await supabase.rpc("get_current_league" as never, {
-    _employee_id: employeeId,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "get_current_league" as never,
+    {
+      _employee_id: employeeId,
+    } as never,
+  );
   if (error) throw error;
   return data as unknown as CurrentLeague;
 }
@@ -268,11 +288,14 @@ export async function getLeagueLeaderboard(
   limit = 100,
   offset = 0,
 ): Promise<LeagueLeaderboardRow[]> {
-  const { data, error } = await supabase.rpc("get_league_leaderboard" as never, {
-    _league: league,
-    _limit: limit,
-    _offset: offset,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    "get_league_leaderboard" as never,
+    {
+      _league: league,
+      _limit: limit,
+      _offset: offset,
+    } as never,
+  );
   if (error) throw error;
   return (data ?? []) as unknown as LeagueLeaderboardRow[];
 }
@@ -295,14 +318,24 @@ export interface UnlockedAchievement {
 export async function listEmployeeAchievements(employeeId: string): Promise<UnlockedAchievement[]> {
   const { data, error } = await supabase
     .from("employee_achievements" as never)
-    .select("id, achievement_id, unlocked_at, achievements:achievement_id(key, title_fa, description, icon, xp_reward)")
+    .select(
+      "id, achievement_id, unlocked_at, achievements:achievement_id(key, title_fa, description, icon, xp_reward)",
+    )
     .eq("employee_id", employeeId)
     .order("unlocked_at", { ascending: false })
     .limit(50);
   if (error) throw error;
   type Row = {
-    id: string; achievement_id: string; unlocked_at: string;
-    achievements: { key: string; title_fa: string; description: string | null; icon: string | null; xp_reward: number } | null;
+    id: string;
+    achievement_id: string;
+    unlocked_at: string;
+    achievements: {
+      key: string;
+      title_fa: string;
+      description: string | null;
+      icon: string | null;
+      xp_reward: number;
+    } | null;
   };
   return ((data ?? []) as unknown as Row[]).map((r) => ({
     id: r.id,
@@ -345,7 +378,15 @@ export async function listTodayMissions(employeeId: string): Promise<MissionWith
     .eq("period_key", today);
   if (pErr) throw pErr;
 
-  type M = { id: string; key: string; title_fa: string; description: string | null; target_value: number; xp_reward: number; frequency: "daily" | "weekly" };
+  type M = {
+    id: string;
+    key: string;
+    title_fa: string;
+    description: string | null;
+    target_value: number;
+    xp_reward: number;
+    frequency: "daily" | "weekly";
+  };
   type P = { mission_id: string; progress: number; completed: boolean };
   const pMap = new Map(((progress ?? []) as unknown as P[]).map((p) => [p.mission_id, p]));
   return ((missions ?? []) as unknown as M[]).map((m) => ({
@@ -398,7 +439,9 @@ export async function getAdminGamificationOverview(): Promise<AdminOverview> {
 }
 
 // ---- KPIs (admin extras; listKpis/updateKpi already defined above) ----
-export async function upsertKpi(input: Partial<GamificationKpi> & { key: string; label_fa: string }) {
+export async function upsertKpi(
+  input: Partial<GamificationKpi> & { key: string; label_fa: string },
+) {
   const { error } = await supabase
     .from("gamification_kpis" as never)
     .upsert(input as never, { onConflict: "key" } as never);
@@ -414,7 +457,10 @@ export async function toggleKpi(id: string, enabled: boolean) {
 }
 
 export async function deleteKpi(id: string) {
-  const { error } = await supabase.from("gamification_kpis" as never).delete().eq("id", id);
+  const { error } = await supabase
+    .from("gamification_kpis" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -441,7 +487,9 @@ export async function listAchievementsAdmin(): Promise<AchievementAdmin[]> {
   return (data ?? []) as unknown as AchievementAdmin[];
 }
 
-export async function upsertAchievement(input: Partial<AchievementAdmin> & { key: string; title_fa: string }) {
+export async function upsertAchievement(
+  input: Partial<AchievementAdmin> & { key: string; title_fa: string },
+) {
   const { error } = await supabase
     .from("achievements" as never)
     .upsert(input as never, { onConflict: "key" } as never);
@@ -457,7 +505,10 @@ export async function toggleAchievement(id: string, enabled: boolean) {
 }
 
 export async function deleteAchievement(id: string) {
-  const { error } = await supabase.from("achievements" as never).delete().eq("id", id);
+  const { error } = await supabase
+    .from("achievements" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -483,7 +534,9 @@ export async function listMissionsAdmin(): Promise<MissionAdmin[]> {
   return (data ?? []) as unknown as MissionAdmin[];
 }
 
-export async function upsertMission(input: Partial<MissionAdmin> & { key: string; title_fa: string }) {
+export async function upsertMission(
+  input: Partial<MissionAdmin> & { key: string; title_fa: string },
+) {
   const { error } = await supabase
     .from("missions" as never)
     .upsert(input as never, { onConflict: "key" } as never);
@@ -499,7 +552,10 @@ export async function toggleMission(id: string, enabled: boolean) {
 }
 
 export async function deleteMission(id: string) {
-  const { error } = await supabase.from("missions" as never).delete().eq("id", id);
+  const { error } = await supabase
+    .from("missions" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -553,7 +609,9 @@ export async function listRewards(): Promise<GamificationReward[]> {
   return (data ?? []) as unknown as GamificationReward[];
 }
 
-export async function upsertReward(input: Partial<GamificationReward> & { key: string; title_fa: string }) {
+export async function upsertReward(
+  input: Partial<GamificationReward> & { key: string; title_fa: string },
+) {
   const { error } = await supabase
     .from("gamification_rewards" as never)
     .upsert(input as never, { onConflict: "key" } as never);
@@ -569,7 +627,10 @@ export async function toggleReward(id: string, enabled: boolean) {
 }
 
 export async function deleteReward(id: string) {
-  const { error } = await supabase.from("gamification_rewards" as never).delete().eq("id", id);
+  const { error } = await supabase
+    .from("gamification_rewards" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -602,7 +663,9 @@ export type KpiRuleInput = {
 };
 
 async function logKpiRuleAudit(action: string, entityId: string, diff: Record<string, unknown>) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({
     actor_id: user.id,
@@ -645,7 +708,10 @@ export async function createKpiRule(input: KpiRuleInput): Promise<KpiRule> {
 
 export async function updateKpiRule(id: string, patch: Partial<KpiRuleInput>): Promise<KpiRule> {
   const { data: before } = await supabase
-    .from("gamification_kpi_rules" as never).select("*").eq("id", id).maybeSingle();
+    .from("gamification_kpi_rules" as never)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("gamification_kpi_rules" as never)
     .update(patch as never)
@@ -669,8 +735,14 @@ export async function toggleKpiRule(id: string, is_active: boolean): Promise<voi
 
 export async function deleteKpiRule(id: string): Promise<void> {
   const { data: before } = await supabase
-    .from("gamification_kpi_rules" as never).select("*").eq("id", id).maybeSingle();
-  const { error } = await supabase.from("gamification_kpi_rules" as never).delete().eq("id", id);
+    .from("gamification_kpi_rules" as never)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  const { error } = await supabase
+    .from("gamification_kpi_rules" as never)
+    .delete()
+    .eq("id", id);
   if (error) throw error;
   await logKpiRuleAudit("kpi_rule_deleted", id, { before });
 }

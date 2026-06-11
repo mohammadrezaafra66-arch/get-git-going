@@ -9,7 +9,9 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { FeedbackForm } from "@/shared/components/FeedbackForm";
 
 export const Route = createFileRoute("/_app/feedback_/create")({
-  beforeLoad: async () => { await requirePermission("feedback", "create"); },
+  beforeLoad: async () => {
+    await requirePermission("feedback", "create");
+  },
   component: FeedbackCreatePage,
 });
 
@@ -28,7 +30,10 @@ function FeedbackCreatePage() {
             submitting={submitting}
             onCancel={() => navigate({ to: "/feedback" })}
             onSubmit={async (v) => {
-              if (!user?.id) { toast.error("ابتدا وارد شوید"); return; }
+              if (!user?.id) {
+                toast.error("ابتدا وارد شوید");
+                return;
+              }
               setSubmitting(true);
               try {
                 const { data, error } = await supabase

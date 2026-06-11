@@ -16,7 +16,7 @@ export interface QuotePdfPayload {
   customer_name: string;
   customer_phone: string;
   salesperson_name?: string | null;
-  created_at: string;       // ISO
+  created_at: string; // ISO
   expires_at?: string | null; // ISO
   status_label: string;
   customer_note?: string | null;
@@ -26,7 +26,7 @@ export interface QuotePdfPayload {
   final_amount: number;
 }
 
-const FA_DIGITS = ["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 function toFaDigits(input: string | number): string {
   return String(input).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
 }
@@ -47,10 +47,14 @@ function fmtDate(iso?: string | null): string {
     const d = new Date(iso);
     return toFaDigits(
       new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        year: "numeric", month: "2-digit", day: "2-digit",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
       }).format(d),
     );
-  } catch { return "—"; }
+  } catch {
+    return "—";
+  }
 }
 function fmtDateTime(iso?: string | null): string {
   if (!iso) return "—";
@@ -58,11 +62,16 @@ function fmtDateTime(iso?: string | null): string {
     const d = new Date(iso);
     return toFaDigits(
       new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        year: "numeric", month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
       }).format(d),
     );
-  } catch { return "—"; }
+  } catch {
+    return "—";
+  }
 }
 
 let vfsLoaded = false;
@@ -87,10 +96,14 @@ async function loadPdfMake() {
   // Treat as a permissive object — typing for runtime is best-effort here.
   type PdfMakeRuntime = {
     vfs?: Record<string, string>;
-    fonts?: Record<string, { normal: string; bold: string; italics?: string; bolditalics?: string }>;
+    fonts?: Record<
+      string,
+      { normal: string; bold: string; italics?: string; bolditalics?: string }
+    >;
     createPdf: (def: unknown) => { download: (filename: string) => void };
   };
-  const pdfMake = (mod as unknown as { default: PdfMakeRuntime }).default ?? (mod as unknown as PdfMakeRuntime);
+  const pdfMake =
+    (mod as unknown as { default: PdfMakeRuntime }).default ?? (mod as unknown as PdfMakeRuntime);
 
   if (!vfsLoaded) {
     const [reg, bold] = await Promise.all([
@@ -147,10 +160,7 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
   ]);
 
   const infoLine = (label: string, value: string) => ({
-    text: [
-      { text: `${label}: `, bold: true, color: "#374151" },
-      { text: value },
-    ],
+    text: [{ text: `${label}: `, bold: true, color: "#374151" }, { text: value }],
     margin: [0, 0, 0, 3] as [number, number, number, number],
   });
 
@@ -181,7 +191,9 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
       },
       // Divider
       {
-        canvas: [{ type: "line", x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.6, lineColor: "#d1d5db" }],
+        canvas: [
+          { type: "line", x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.6, lineColor: "#d1d5db" },
+        ],
         margin: [0, 0, 0, 10] as [number, number, number, number],
       },
       // Stacked info section (no two-column layout to avoid RTL issues)
@@ -189,14 +201,22 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
       infoLine("نام مشتری", payload.customer_name || "—"),
       infoLine("شماره تماس", toFaDigits(payload.customer_phone || "—")),
 
-      { text: "اطلاعات سند", style: "sectionTitle", margin: [0, 8, 0, 4] as [number, number, number, number] },
+      {
+        text: "اطلاعات سند",
+        style: "sectionTitle",
+        margin: [0, 8, 0, 4] as [number, number, number, number],
+      },
       infoLine("فروشنده", payload.salesperson_name || "—"),
       infoLine("تاریخ صدور", fmtDateTime(payload.created_at)),
       infoLine("اعتبار تا", fmtDate(payload.expires_at)),
       infoLine("وضعیت", payload.status_label),
 
       // Items table
-      { text: "اقلام پیش‌فاکتور", style: "sectionTitle", margin: [0, 12, 0, 6] as [number, number, number, number] },
+      {
+        text: "اقلام پیش‌فاکتور",
+        style: "sectionTitle",
+        margin: [0, 12, 0, 6] as [number, number, number, number],
+      },
       {
         table: {
           headerRows: 1,
@@ -258,7 +278,11 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
 
       ...(payload.customer_note
         ? [
-            { text: "یادداشت مشتری", style: "sectionTitle", margin: [0, 14, 0, 4] as [number, number, number, number] },
+            {
+              text: "یادداشت مشتری",
+              style: "sectionTitle",
+              margin: [0, 14, 0, 4] as [number, number, number, number],
+            },
             { text: payload.customer_note },
           ]
         : []),

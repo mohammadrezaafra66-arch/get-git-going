@@ -9,7 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +43,8 @@ export const Route = createFileRoute("/_app/pricing/quick-price")({
 
 function QuickPricePage() {
   const { roles } = useAuth();
-  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const isPrivileged =
+    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
 
   const [productName, setProductName] = useState("");
   const [purchasePrice, setPurchasePrice] = useState<string>("");
@@ -84,16 +91,24 @@ function QuickPricePage() {
   }, [salePriceTypes, salePriceTypeId]);
 
   const salePriceTypeLabel = useMemo(
-    () => salePriceTypes.find((t: { id: string; title: string }) => t.id === salePriceTypeId)?.title ?? "—",
+    () =>
+      salePriceTypes.find((t: { id: string; title: string }) => t.id === salePriceTypeId)?.title ??
+      "—",
     [salePriceTypeId, salePriceTypes],
   );
   const settlementLabel = useMemo(() => {
     if (settlementTypeId === "__none__") return null;
-    return settlementTypes.find((s: { id: string; title: string }) => s.id === settlementTypeId)?.title ?? null;
+    return (
+      settlementTypes.find((s: { id: string; title: string }) => s.id === settlementTypeId)
+        ?.title ?? null
+    );
   }, [settlementTypeId, settlementTypes]);
   const categoryLabel = useMemo(() => {
     if (categoryId === "__none__") return null;
-    return (categories as Array<{ id: string; name: string }>).find((c) => c.id === categoryId)?.name ?? null;
+    return (
+      (categories as Array<{ id: string; name: string }>).find((c) => c.id === categoryId)?.name ??
+      null
+    );
   }, [categoryId, categories]);
 
   async function handleCalculate() {
@@ -199,7 +214,9 @@ function QuickPricePage() {
               <div className="space-y-2">
                 <Label>ارز قیمت خرید *</Label>
                 <Select value={currency} onValueChange={(v) => setCurrency(v as CurrencyCode)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="toman">تومان</SelectItem>
                     <SelectItem value="usd">دلار</SelectItem>
@@ -212,8 +229,13 @@ function QuickPricePage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>نوع کالا *</Label>
-                <Select value={productType} onValueChange={(v) => setProductType(v as "iranian" | "foreign")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={productType}
+                  onValueChange={(v) => setProductType(v as "iranian" | "foreign")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="iranian">ایرانی</SelectItem>
                     <SelectItem value="foreign">خارجی</SelectItem>
@@ -223,11 +245,15 @@ function QuickPricePage() {
               <div className="space-y-2">
                 <Label>دسته‌بندی (اختیاری)</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger><SelectValue placeholder="بدون دسته" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="بدون دسته" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">بدون دسته‌بندی</SelectItem>
                     {(categories as Array<{ id: string; name: string }>).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -238,10 +264,14 @@ function QuickPricePage() {
               <div className="space-y-2">
                 <Label>نوع قیمت فروش *</Label>
                 <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
-                  <SelectTrigger><SelectValue placeholder="انتخاب کنید" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
                   <SelectContent>
                     {(salePriceTypes as Array<{ id: string; title: string }>).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -249,11 +279,15 @@ function QuickPricePage() {
               <div className="space-y-2">
                 <Label>نوع تسویه (اختیاری)</Label>
                 <Select value={settlementTypeId} onValueChange={setSettlementTypeId}>
-                  <SelectTrigger><SelectValue placeholder="بدون تسویه" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="بدون تسویه" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">بدون تسویه</SelectItem>
                     {(settlementTypes as Array<{ id: string; title: string }>).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.title}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -271,7 +305,11 @@ function QuickPricePage() {
             </div>
 
             <Button onClick={handleCalculate} disabled={calculating} className="w-full">
-              {calculating ? <Loader2 className="ms-2 h-4 w-4 animate-spin" /> : <Calculator className="ms-2 h-4 w-4" />}
+              {calculating ? (
+                <Loader2 className="ms-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Calculator className="ms-2 h-4 w-4" />
+              )}
               محاسبه قیمت
             </Button>
 
@@ -300,13 +338,17 @@ function QuickPricePage() {
               <div className="space-y-4">
                 <div>
                   <div className="text-xs text-muted-foreground">کالا</div>
-                  <div className="font-semibold text-foreground">{breakdown.product_name ?? "—"}</div>
+                  <div className="font-semibold text-foreground">
+                    {breakdown.product_name ?? "—"}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary">{salePriceTypeLabel}</Badge>
                   {settlementLabel && <Badge variant="outline">{settlementLabel}</Badge>}
-                  <Badge variant="outline">{breakdown.product_type === "iranian" ? "ایرانی" : "خارجی"}</Badge>
+                  <Badge variant="outline">
+                    {breakdown.product_type === "iranian" ? "ایرانی" : "خارجی"}
+                  </Badge>
                   {categoryLabel && <Badge variant="outline">دسته: {categoryLabel}</Badge>}
                   {isPrivileged && (
                     <>
@@ -318,9 +360,15 @@ function QuickPricePage() {
 
                 {isPrivileged && (
                   <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3 text-sm">
-                    <Row label="قیمت خرید" value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`} />
+                    <Row
+                      label="قیمت خرید"
+                      value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`}
+                    />
                     <Row label="نرخ ارز" value={formatNumber(breakdown.currency_rate)} />
-                    <Row label="قیمت خرید (تومان)" value={`${formatNumber(breakdown.purchase_price_toman)} ت`} />
+                    <Row
+                      label="قیمت خرید (تومان)"
+                      value={`${formatNumber(breakdown.purchase_price_toman)} ت`}
+                    />
                     <Row
                       label="هزینه حمل"
                       value={
@@ -331,15 +379,24 @@ function QuickPricePage() {
                             : `${formatNumber(breakdown.shipping_cost)} ت`
                       }
                     />
-                    <Row label="سود محاسبه‌شده" value={`${formatNumber(breakdown.margin_amount)} ت`} />
-                    <Row label="قیمت قبل از گرد کردن" value={`${formatNumber(breakdown.final_sale_price)} ت`} />
+                    <Row
+                      label="سود محاسبه‌شده"
+                      value={`${formatNumber(breakdown.margin_amount)} ت`}
+                    />
+                    <Row
+                      label="قیمت قبل از گرد کردن"
+                      value={`${formatNumber(breakdown.final_sale_price)} ت`}
+                    />
                   </div>
                 )}
 
                 <div className="rounded-md border-2 border-primary bg-primary/5 p-4 text-center">
-                  <div className="text-xs text-muted-foreground">قیمت نهایی فروش پیشنهادی (گرد شده)</div>
+                  <div className="text-xs text-muted-foreground">
+                    قیمت نهایی فروش پیشنهادی (گرد شده)
+                  </div>
                   <div className="mt-1 text-3xl font-bold text-primary">
-                    {formatNumber(breakdown.rounded_sale_price)} <span className="text-base font-medium">تومان</span>
+                    {formatNumber(breakdown.rounded_sale_price)}{" "}
+                    <span className="text-base font-medium">تومان</span>
                   </div>
                 </div>
 
@@ -355,7 +412,9 @@ function QuickPricePage() {
 
                 <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                  <span>این نتیجه فقط محاسبه موقت است و در سیستم به‌عنوان قیمت رسمی ثبت نشده است.</span>
+                  <span>
+                    این نتیجه فقط محاسبه موقت است و در سیستم به‌عنوان قیمت رسمی ثبت نشده است.
+                  </span>
                 </div>
               </div>
             )}

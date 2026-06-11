@@ -16,10 +16,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/accounting/salesperson-capital-allocations")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: SalespersonCapitalAllocationsPage,
 });
 
@@ -71,7 +80,11 @@ function SalespersonCapitalAllocationsPage() {
   const [snapshotInput, setSnapshotInput] = useState<string>("");
   const [activeSnapshotId, setActiveSnapshotId] = useState<string>("");
   const [rows, setRows] = useState<RowState[]>([]);
-  const [meta, setMeta] = useState<{ capital_date: string; daily_final_capital: number; total_score: number } | null>(null);
+  const [meta, setMeta] = useState<{
+    capital_date: string;
+    daily_final_capital: number;
+    total_score: number;
+  } | null>(null);
 
   const computeQ = useQuery({
     queryKey: ["salesperson-capital-compute", activeSnapshotId],
@@ -100,19 +113,25 @@ function SalespersonCapitalAllocationsPage() {
       daily_final_capital: Number(first.daily_final_capital ?? 0),
       total_score: Number(first.total_score ?? 0),
     });
-    setRows(data.map((r) => ({
-      salesperson_id: r.salesperson_id,
-      score: Number(r.score ?? 0),
-      system_suggested_amount: Math.round(Number(r.system_suggested_amount ?? 0)),
-      final_amount: String(Math.round(Number(r.system_suggested_amount ?? 0))),
-      override_reason: "",
-    })));
+    setRows(
+      data.map((r) => ({
+        salesperson_id: r.salesperson_id,
+        score: Number(r.score ?? 0),
+        system_suggested_amount: Math.round(Number(r.system_suggested_amount ?? 0)),
+        final_amount: String(Math.round(Number(r.system_suggested_amount ?? 0))),
+        override_reason: "",
+      })),
+    );
   }, [computeQ.data]);
 
   const saveM = useMutation({
     mutationFn: async () => {
       if (!activeSnapshotId) throw new Error("ابتدا شناسه اسنپ‌شات سرمایه روز را انتخاب کنید.");
-      const payload: Array<{ salesperson_id: string; final_amount: number; override_reason?: string }> = [];
+      const payload: Array<{
+        salesperson_id: string;
+        final_amount: number;
+        override_reason?: string;
+      }> = [];
       for (const r of rows) {
         const final = toNum(r.final_amount);
         if (final < 0) {
@@ -174,7 +193,11 @@ function SalespersonCapitalAllocationsPage() {
         <CardContent className="p-4 space-y-3">
           <div className="text-sm font-semibold inline-flex items-center gap-1">
             انتخاب اسنپ‌شات سرمایه روز
-            <HelpHint text={"اسنپ‌شات همان سرمایه نهایی تأییدشده روز است که در صفحه «سرمایه روز» ذخیره کرده‌اید.\nشناسه (UUID) آن را از همان صفحه یا گزارش backend بردارید."} />
+            <HelpHint
+              text={
+                "اسنپ‌شات همان سرمایه نهایی تأییدشده روز است که در صفحه «سرمایه روز» ذخیره کرده‌اید.\nشناسه (UUID) آن را از همان صفحه یا گزارش backend بردارید."
+              }
+            />
           </div>
           <div className="text-xs text-muted-foreground">
             شناسه اسنپ‌شات (capital_snapshot_id) را از صفحه «سرمایه روز» یا گزارش backend وارد کنید.
@@ -219,34 +242,58 @@ function SalespersonCapitalAllocationsPage() {
       </Card>
 
       {!activeSnapshotId ? (
-        <Card><CardContent className="p-4 text-sm text-muted-foreground">برای مشاهده تخصیص، یک اسنپ‌شات معتبر وارد کنید.</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            برای مشاهده تخصیص، یک اسنپ‌شات معتبر وارد کنید.
+          </CardContent>
+        </Card>
       ) : computeQ.isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> در حال محاسبه…
         </div>
       ) : computeQ.isError ? (
-        <Card><CardContent className="p-4 text-destructive">{errMsg(computeQ.error, "دریافت محاسبه سهم فروشندگان با خطا مواجه شد.")}</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-destructive">
+            {errMsg(computeQ.error, "دریافت محاسبه سهم فروشندگان با خطا مواجه شد.")}
+          </CardContent>
+        </Card>
       ) : rows.length === 0 ? (
-        <Card><CardContent className="p-4 text-sm text-muted-foreground">برای این اسنپ‌شات، فروشنده‌ای با امتیاز ماهانه یافت نشد.</CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            برای این اسنپ‌شات، فروشنده‌ای با امتیاز ماهانه یافت نشد.
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">تاریخ سرمایه روز</div>
-              <div className="text-base font-semibold">{toFaDigits(meta?.capital_date ?? NA)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">سرمایه نهایی روز</div>
-              <div className="text-base font-semibold text-primary">{fmtMoney(meta?.daily_final_capital)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">مجموع امتیازها</div>
-              <div className="text-base font-semibold">{fmtNum(meta?.total_score)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">جمع سهم نهایی</div>
-              <div className="text-base font-semibold">{fmtMoney(totalFinal)}</div>
-            </CardContent></Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">تاریخ سرمایه روز</div>
+                <div className="text-base font-semibold">
+                  {toFaDigits(meta?.capital_date ?? NA)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">سرمایه نهایی روز</div>
+                <div className="text-base font-semibold text-primary">
+                  {fmtMoney(meta?.daily_final_capital)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">مجموع امتیازها</div>
+                <div className="text-base font-semibold">{fmtNum(meta?.total_score)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">جمع سهم نهایی</div>
+                <div className="text-base font-semibold">{fmtMoney(totalFinal)}</div>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>
@@ -258,35 +305,54 @@ function SalespersonCapitalAllocationsPage() {
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         امتیاز ماهانه
-                        <HelpHint text={"امتیاز عملکرد ماهانه فروشنده که از ماژول گیمیفیکیشن/فروش محاسبه می‌شود.\nهرچه امتیاز بیشتر باشد، سهم بیشتری از سرمایه روز می‌گیرد."} />
+                        <HelpHint
+                          text={
+                            "امتیاز عملکرد ماهانه فروشنده که از ماژول گیمیفیکیشن/فروش محاسبه می‌شود.\nهرچه امتیاز بیشتر باشد، سهم بیشتری از سرمایه روز می‌گیرد."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         سهم پیشنهادی سیستم
-                        <HelpHint text={"سهم پیشنهادی = سرمایه نهایی روز × (امتیاز فروشنده ÷ مجموع امتیازها).\nاین عدد فقط پیشنهاد است و قابل تغییر است."} />
+                        <HelpHint
+                          text={
+                            "سهم پیشنهادی = سرمایه نهایی روز × (امتیاز فروشنده ÷ مجموع امتیازها).\nاین عدد فقط پیشنهاد است و قابل تغییر است."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         سهم نهایی
-                        <HelpHint text={"عدد نهایی که فروشنده برای فروش حساب‌باز می‌تواند استفاده کند.\nاگر با سهم پیشنهادی فرق داشته باشد، باید دلیل تغییر را در ستون بعدی بنویسید."} />
+                        <HelpHint
+                          text={
+                            "عدد نهایی که فروشنده برای فروش حساب‌باز می‌تواند استفاده کند.\nاگر با سهم پیشنهادی فرق داشته باشد، باید دلیل تغییر را در ستون بعدی بنویسید."
+                          }
+                        />
                       </span>
                     </TableHead>
                     <TableHead className="text-right">
                       <span className="inline-flex items-center gap-1">
                         دلیل تغییر (در صورت override)
-                        <HelpHint text={"فقط وقتی پر کنید که «سهم نهایی» را با «سهم پیشنهادی» متفاوت گذاشته‌اید.\nاین دلیل برای حسابرسی ذخیره می‌شود."} />
+                        <HelpHint
+                          text={
+                            "فقط وقتی پر کنید که «سهم نهایی» را با «سهم پیشنهادی» متفاوت گذاشته‌اید.\nاین دلیل برای حسابرسی ذخیره می‌شود."
+                          }
+                        />
                       </span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r, idx) => {
-                    const isOverride = Math.round(toNum(r.final_amount)) !== Math.round(r.system_suggested_amount);
+                    const isOverride =
+                      Math.round(toNum(r.final_amount)) !== Math.round(r.system_suggested_amount);
                     return (
                       <TableRow key={r.salesperson_id}>
-                        <TableCell className="font-mono text-xs" dir="ltr">{shortId(r.salesperson_id)}…</TableCell>
+                        <TableCell className="font-mono text-xs" dir="ltr">
+                          {shortId(r.salesperson_id)}…
+                        </TableCell>
                         <TableCell>{fmtNum(r.score)}</TableCell>
                         <TableCell>{fmtMoney(r.system_suggested_amount)}</TableCell>
                         <TableCell className="min-w-[160px]">
@@ -336,7 +402,11 @@ function SalespersonCapitalAllocationsPage() {
               disabled={saveM.isPending || rows.length === 0}
               className="gap-2"
             >
-              {saveM.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saveM.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
               ذخیره تخصیص‌ها
             </Button>
           </div>
@@ -344,12 +414,16 @@ function SalespersonCapitalAllocationsPage() {
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="text-sm font-semibold">فرمول سهم پیشنهادی</div>
-              <pre className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground" dir="rtl">
-{`سهم پیشنهادی فروشنده = ROUND( سرمایه نهایی روز × ( امتیاز ماهانه فروشنده ÷ مجموع امتیازها ) )
+              <pre
+                className="text-xs leading-7 whitespace-pre-wrap text-muted-foreground"
+                dir="rtl"
+              >
+                {`سهم پیشنهادی فروشنده = ROUND( سرمایه نهایی روز × ( امتیاز ماهانه فروشنده ÷ مجموع امتیازها ) )
 اگر سهم نهایی با سهم پیشنهادی متفاوت باشد، ثبت دلیل override اجباری است.`}
               </pre>
               <div className="text-xs text-muted-foreground">
-                نمایش نام فروشنده در این فاز پشتیبانی نمی‌شود؛ به دلیل عدم وجود فیلد امن نام در RPC، فقط شناسه فروشنده نمایش داده می‌شود.
+                نمایش نام فروشنده در این فاز پشتیبانی نمی‌شود؛ به دلیل عدم وجود فیلد امن نام در RPC،
+                فقط شناسه فروشنده نمایش داده می‌شود.
               </div>
             </CardContent>
           </Card>

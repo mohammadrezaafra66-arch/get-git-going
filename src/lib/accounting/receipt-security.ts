@@ -116,10 +116,7 @@ export function evaluateReceiptSecurityWarnings(
 
   // --- OCR-side checks -------------------------------------------------------
   if (ex) {
-    if (
-      input.extraction_confidence != null &&
-      input.extraction_confidence < 0.5
-    ) {
+    if (input.extraction_confidence != null && input.extraction_confidence < 0.5) {
       warnings.push({
         code: "low_extraction_confidence",
         message: "اطمینان استخراج اطلاعات پایین است؛ بررسی دستی لازم است.",
@@ -148,8 +145,7 @@ export function evaluateReceiptSecurityWarnings(
     ) {
       warnings.push({
         code: "tracking_mismatch",
-        message:
-          "شماره پیگیری استخراج‌شده با شماره پیگیری ثبت‌شده متفاوت است.",
+        message: "شماره پیگیری استخراج‌شده با شماره پیگیری ثبت‌شده متفاوت است.",
         severity: "high",
         source: "ocr",
       });
@@ -173,8 +169,6 @@ export function evaluateReceiptSecurityWarnings(
 }
 
 /** Back-compat helper: messages only (used by older form code). */
-export function evaluateReceiptSecurityMessages(
-  input: ReceiptSecurityInput,
-): string[] {
+export function evaluateReceiptSecurityMessages(input: ReceiptSecurityInput): string[] {
   return evaluateReceiptSecurityWarnings(input).map((w) => w.message);
 }
