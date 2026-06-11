@@ -60,7 +60,9 @@ export async function searchProducts(term: string, limit = 15) {
   const safe = t.replace(/[%_]/g, "");
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, sku, base_currency, product_type, brand:brands(name), category:categories(name)")
+    .select(
+      "id, name, sku, base_currency, product_type, brand:brands(name), category:categories(name)",
+    )
     .or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`)
     .order("updated_at", { ascending: false })
     .limit(limit);
@@ -83,7 +85,9 @@ export async function fetchLatestPurchasePrice(productId: string, db: SbClient =
   const nowIso = new Date().toISOString();
   const { data, error } = await db
     .from("purchase_prices")
-    .select("id, product_id, supplier_id, purchase_price, currency, effective_at, expires_at, is_active")
+    .select(
+      "id, product_id, supplier_id, purchase_price, currency, effective_at, expires_at, is_active",
+    )
     .eq("product_id", productId)
     .eq("is_active", true)
     .lte("effective_at", nowIso)

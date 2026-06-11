@@ -39,7 +39,8 @@ export function validateStockAlertInput(input: StockAlertCreateInput): string | 
   if (name.length < 2) return "نام مشتری باید حداقل ۲ کاراکتر باشد.";
   if (name.length > 200) return "نام مشتری حداکثر ۲۰۰ کاراکتر است.";
   const phone = input.customer_phone.trim();
-  if (!PHONE_REGEX.test(phone)) return "شماره تماس معتبر نیست. فقط عدد، +، فاصله یا خط تیره مجاز است.";
+  if (!PHONE_REGEX.test(phone))
+    return "شماره تماس معتبر نیست. فقط عدد، +، فاصله یا خط تیره مجاز است.";
   if (!["low", "normal", "high"].includes(input.priority)) return "اولویت نامعتبر است.";
   if (input.note && input.note.length > 500) return "توضیحات حداکثر ۵۰۰ کاراکتر است.";
   return null;
@@ -81,9 +82,6 @@ export async function createStockAlertRequest(input: StockAlertCreateInput, sale
 }
 
 export async function updateStockAlertStatus(id: string, status: StockAlertStatus) {
-  const { error } = await supabase
-    .from("stock_alert_requests")
-    .update({ status })
-    .eq("id", id);
+  const { error } = await supabase.from("stock_alert_requests").update({ status }).eq("id", id);
   if (error) throw error;
 }

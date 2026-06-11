@@ -26,10 +26,10 @@ export const Route = createFileRoute("/api/public/hooks/process-pricing-queue")(
           ? authHeader.slice("Bearer ".length).trim()
           : "";
         if (!token || token !== expected) {
-          return new Response(
-            JSON.stringify({ ok: false, error: "Unauthorized" }),
-            { status: 401, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
         }
 
         let batchSize = 25;
@@ -55,10 +55,10 @@ export const Route = createFileRoute("/api/public/hooks/process-pricing-queue")(
         } catch (e: unknown) {
           const msg = (e as Error)?.message ?? "worker error";
           console.error("[pricing-worker] run failed", msg);
-          return new Response(
-            JSON.stringify({ ok: false, error: msg }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          return new Response(JSON.stringify({ ok: false, error: msg }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

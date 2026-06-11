@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, ShieldCheck, Check, ChevronsUpDown, X, Upload, Download } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Loader2,
+  ShieldCheck,
+  Check,
+  ChevronsUpDown,
+  X,
+  Upload,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -14,18 +24,30 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/customers")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("sales", "view");
+  },
   component: CustomersListPage,
 });
 
@@ -45,8 +67,7 @@ interface CustomerRow {
 
 function CustomersListPage() {
   const { roles } = useAuth();
-  const canFilterByResponsible =
-    roles.includes("admin") || roles.includes("manager");
+  const canFilterByResponsible = roles.includes("admin") || roles.includes("manager");
   const canImport = roles.includes("admin") || roles.includes("accountant");
   const canExport = roles.includes("admin") || roles.includes("manager");
   const [exporting, setExporting] = useState(false);
@@ -177,11 +198,7 @@ function CustomersListPage() {
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
             {canExport && (
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={exporting}
-              >
+              <Button variant="outline" onClick={handleExport} disabled={exporting}>
                 {exporting ? (
                   <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -216,14 +233,20 @@ function CustomersListPage() {
               <Input
                 placeholder="جستجو نام، تلفن یا کد حسابداری..."
                 value={search}
-                onChange={(e) => { setPage(0); setSearch(e.target.value); }}
+                onChange={(e) => {
+                  setPage(0);
+                  setSearch(e.target.value);
+                }}
                 className="max-w-sm"
               />
             </div>
             {canFilterByResponsible && (
               <ResponsibleFilter
                 value={responsibleFilter}
-                onChange={(f) => { setPage(0); setResponsibleFilter(f); }}
+                onChange={(f) => {
+                  setPage(0);
+                  setResponsibleFilter(f);
+                }}
               />
             )}
           </div>
@@ -250,9 +273,13 @@ function CustomersListPage() {
                 {(data?.rows ?? []).map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell dir="ltr" className="text-right">{c.phone ? toFaDigits(c.phone) : "—"}</TableCell>
+                    <TableCell dir="ltr" className="text-right">
+                      {c.phone ? toFaDigits(c.phone) : "—"}
+                    </TableCell>
                     <TableCell>{c.city || "—"}</TableCell>
-                    <TableCell dir="ltr" className="text-right font-mono text-xs">{c.accounting_code || "—"}</TableCell>
+                    <TableCell dir="ltr" className="text-right font-mono text-xs">
+                      {c.accounting_code || "—"}
+                    </TableCell>
                     <TableCell>
                       {c.responsible?.full_name ? (
                         <span>{c.responsible.full_name}</span>
@@ -267,7 +294,10 @@ function CustomersListPage() {
                         </Link>
                       </Button>
                       <Button asChild size="sm" variant="ghost" title="پروفایل اعتباری">
-                        <Link to="/sales/customers/$customerId/credit" params={{ customerId: c.id }}>
+                        <Link
+                          to="/sales/customers/$customerId/credit"
+                          params={{ customerId: c.id }}
+                        >
                           <ShieldCheck className="h-4 w-4" />
                         </Link>
                       </Button>
@@ -288,13 +318,23 @@ function CustomersListPage() {
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>مجموع: {toFaDigits(total)}</span>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
                 قبلی
               </Button>
               <span className="self-center">
                 صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
               </span>
-              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 بعدی
               </Button>
             </div>
@@ -358,11 +398,7 @@ function ResponsibleFilter({ value, onChange }: ResponsibleFilterProps) {
           </PopoverTrigger>
           <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
             <Command shouldFilter={false}>
-              <CommandInput
-                placeholder="نام کاربر..."
-                value={search}
-                onValueChange={setSearch}
-              />
+              <CommandInput placeholder="نام کاربر..." value={search} onValueChange={setSearch} />
               <CommandList>
                 <CommandEmpty>کاربری یافت نشد</CommandEmpty>
                 <CommandGroup>
@@ -375,8 +411,12 @@ function ResponsibleFilter({ value, onChange }: ResponsibleFilterProps) {
                         setOpen(false);
                       }}
                     >
-                      <Check className={cn("ml-2 h-4 w-4",
-                        p.id === value?.id ? "opacity-100" : "opacity-0")} />
+                      <Check
+                        className={cn(
+                          "ml-2 h-4 w-4",
+                          p.id === value?.id ? "opacity-100" : "opacity-0",
+                        )}
+                      />
                       <span>{p.full_name || "بدون نام"}</span>
                     </CommandItem>
                   ))}

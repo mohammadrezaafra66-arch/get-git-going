@@ -218,7 +218,9 @@ function StalePriceTable({
                 <TableRow key={r.product_id}>
                   <TableCell className="font-medium">
                     <div>{r.name}</div>
-                    {r.sku && <div className="font-mono text-xs text-muted-foreground">{r.sku}</div>}
+                    {r.sku && (
+                      <div className="font-mono text-xs text-muted-foreground">{r.sku}</div>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono">{formatNumber(r.purchase_price)}</TableCell>
                   <TableCell className="text-xs">

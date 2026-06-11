@@ -21,14 +21,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 /**
@@ -110,7 +117,11 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
   const watchedItems = form.watch("items");
   const totalAmount = useMemo(
-    () => watchedItems.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0),
+    () =>
+      watchedItems.reduce(
+        (s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0),
+        0,
+      ),
     [watchedItems],
   );
 
@@ -154,9 +165,13 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
   });
 
-  const availableCredit = Number((creditInfo as { available_credit?: number } | null)?.available_credit ?? 0);
+  const availableCredit = Number(
+    (creditInfo as { available_credit?: number } | null)?.available_credit ?? 0,
+  );
   const heldCredit = Number((creditInfo as { held_credit?: number } | null)?.held_credit ?? 0);
-  const outstanding = Number((creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0);
+  const outstanding = Number(
+    (creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0,
+  );
   const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
 
@@ -245,10 +260,9 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         values.invoice_type === "pre_invoice" ||
         (values.invoice_type === "advance_payment" && !!values.commitment_confirmed);
       if (willCommit) {
-        const { data: ovd, error: ovdErr } = await supabase.rpc(
-          "can_issue_customer_invoice",
-          { p_customer_id: values.customer_id },
-        );
+        const { data: ovd, error: ovdErr } = await supabase.rpc("can_issue_customer_invoice", {
+          p_customer_id: values.customer_id,
+        });
         if (ovdErr) throw ovdErr;
         const ovRow = Array.isArray(ovd) ? ovd[0] : ovd;
         if (ovRow && (ovRow as { can_issue?: boolean }).can_issue === false) {
@@ -327,9 +341,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           { p_customer_id: values.customer_id, p_amount: total },
         );
         if (capChkErr) {
-          throw new Error(
-            "برای فروش حساب‌باز، سرمایه روز و تخصیص سرمایه فعال لازم است.",
-          );
+          throw new Error("برای فروش حساب‌باز، سرمایه روز و تخصیص سرمایه فعال لازم است.");
         }
         const capRow = Array.isArray(capChk) ? capChk[0] : capChk;
         if (!capRow || (capRow as { can_use?: boolean }).can_use !== true) {
@@ -465,15 +477,19 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         <CardContent className="p-4 space-y-4">
           {/* مشتری */}
           <div className="space-y-2">
-            <Label>مشتری <span className="text-destructive">*</span></Label>
+            <Label>
+              مشتری <span className="text-destructive">*</span>
+            </Label>
             <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   role="combobox"
-                  className={cn("w-full justify-between font-normal",
-                    !selectedCustomer && "text-muted-foreground")}
+                  className={cn(
+                    "w-full justify-between font-normal",
+                    !selectedCustomer && "text-muted-foreground",
+                  )}
                 >
                   {selectedCustomer
                     ? `${selectedCustomer.name}${selectedCustomer.phone ? ` (${toFaDigits(selectedCustomer.phone)})` : ""}`
@@ -500,8 +516,12 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                             setCustomerOpen(false);
                           }}
                         >
-                          <Check className={cn("ml-2 h-4 w-4",
-                            c.id === form.watch("customer_id") ? "opacity-100" : "opacity-0")} />
+                          <Check
+                            className={cn(
+                              "ml-2 h-4 w-4",
+                              c.id === form.watch("customer_id") ? "opacity-100" : "opacity-0",
+                            )}
+                          />
                           <span>{c.name}</span>
                           {c.phone && (
                             <span className="mr-2 text-xs text-muted-foreground" dir="ltr">
@@ -515,7 +535,9 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                 </Command>
               </PopoverContent>
             </Popover>
-            {errors.customer_id && <p className="text-xs text-destructive">{errors.customer_id.message}</p>}
+            {errors.customer_id && (
+              <p className="text-xs text-destructive">{errors.customer_id.message}</p>
+            )}
           </div>
 
           {/* Credit info (real-time via get_customer_credit) */}
@@ -547,22 +569,31 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-900 dark:text-amber-200">
-                مبلغ فاکتور ({formatNumber(totalAmount)} ریال) به همراه بدهی جاری از سقف اعتبار مشتری فراتر می‌رود.
+                مبلغ فاکتور ({formatNumber(totalAmount)} ریال) به همراه بدهی جاری از سقف اعتبار
+                مشتری فراتر می‌رود.
               </AlertDescription>
             </Alert>
           )}
 
           {/* نوع قیمت */}
           <div className="space-y-2">
-            <Label>نوع قیمت فروش <span className="text-destructive">*</span></Label>
+            <Label>
+              نوع قیمت فروش <span className="text-destructive">*</span>
+            </Label>
             <Select
               value={form.watch("sale_price_type_id")}
-              onValueChange={(v) => form.setValue("sale_price_type_id", v, { shouldValidate: true })}
+              onValueChange={(v) =>
+                form.setValue("sale_price_type_id", v, { shouldValidate: true })
+              }
             >
-              <SelectTrigger><SelectValue placeholder="انتخاب نوع قیمت" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="انتخاب نوع قیمت" />
+              </SelectTrigger>
               <SelectContent>
                 {priceTypes.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.title}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -574,7 +605,9 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           {/* نوع پیش‌فاکتور */}
           {canChooseInvoiceType && (
             <div className="space-y-2">
-              <Label>نوع پیش‌فاکتور <span className="text-destructive">*</span></Label>
+              <Label>
+                نوع پیش‌فاکتور <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={invoiceType}
                 onValueChange={(v) =>
@@ -583,7 +616,9 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                   })
                 }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pre_invoice">پیش‌فاکتور اعتباری</SelectItem>
                   <SelectItem value="advance_payment">پیش‌فاکتور پیش‌واریزی (نقدی)</SelectItem>
@@ -596,9 +631,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             <AdvancePaymentSection
               totalAmount={totalAmount}
               depositAmount={form.watch("deposit_amount") ?? null}
-              onDepositChange={(v) =>
-                form.setValue("deposit_amount", v, { shouldValidate: true })
-              }
+              onDepositChange={(v) => form.setValue("deposit_amount", v, { shouldValidate: true })}
               commitmentConfirmed={!!form.watch("commitment_confirmed")}
               onCommitmentChange={(v) =>
                 form.setValue("commitment_confirmed", v, { shouldValidate: true })
@@ -614,14 +647,20 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             <Select
               value={form.watch("settlement_type_id") ?? "__none"}
               onValueChange={(v) =>
-                form.setValue("settlement_type_id", v === "__none" ? null : v, { shouldValidate: true })
+                form.setValue("settlement_type_id", v === "__none" ? null : v, {
+                  shouldValidate: true,
+                })
               }
             >
-              <SelectTrigger><SelectValue placeholder="انتخاب نوع تسویه (اختیاری)" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="انتخاب نوع تسویه (اختیاری)" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">—</SelectItem>
                 {settlementTypes.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -674,7 +713,9 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           </div>
 
           {errors.items && !Array.isArray(errors.items) && (
-            <p className="text-xs text-destructive">{(errors.items as { message?: string }).message}</p>
+            <p className="text-xs text-destructive">
+              {(errors.items as { message?: string }).message}
+            </p>
           )}
 
           <div className="flex items-center justify-between border-t pt-3">
@@ -694,11 +735,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
           {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           ذخیره پیش‌فاکتور
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate({ to: "/sales/invoices" })}
-        >
+        <Button type="button" variant="outline" onClick={() => navigate({ to: "/sales/invoices" })}>
           انصراف
         </Button>
       </div>
@@ -717,7 +754,14 @@ interface ItemRowProps {
   onChangeSalePriceType: (id: string) => void;
 }
 
-function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSalePriceType }: ItemRowProps) {
+function ItemRow({
+  index,
+  form,
+  remove,
+  salePriceTypeId,
+  priceTypes,
+  onChangeSalePriceType,
+}: ItemRowProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search, 350);
@@ -817,7 +861,10 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
         .eq("product_id", productId);
       if (error) throw error;
       const map = new Map<string, number>();
-      for (const r of (data ?? []) as Array<{ sale_price_type_id: string; rounded_sale_price: number | string }>) {
+      for (const r of (data ?? []) as Array<{
+        sale_price_type_id: string;
+        rounded_sale_price: number | string;
+      }>) {
         const n = Number(r.rounded_sale_price);
         if (Number.isFinite(n) && n > 0) map.set(r.sale_price_type_id, n);
       }
@@ -839,8 +886,10 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
                 variant="outline"
                 size="sm"
                 role="combobox"
-                className={cn("w-full justify-between font-normal",
-                  !productId && "text-muted-foreground")}
+                className={cn(
+                  "w-full justify-between font-normal",
+                  !productId && "text-muted-foreground",
+                )}
               >
                 {productLabel || "انتخاب محصول..."}
                 <ChevronsUpDown className="h-4 w-4 opacity-50" />
@@ -848,7 +897,11 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
               <Command shouldFilter={false}>
-                <CommandInput placeholder="نام یا کد محصول..." value={search} onValueChange={setSearch} />
+                <CommandInput
+                  placeholder="نام یا کد محصول..."
+                  value={search}
+                  onValueChange={setSearch}
+                />
                 <CommandList>
                   <CommandEmpty>محصولی یافت نشد</CommandEmpty>
                   <CommandGroup>
@@ -857,18 +910,28 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
                         key={p.id}
                         value={p.id}
                         onSelect={() => {
-                          form.setValue(`items.${index}.product_id`, p.id, { shouldValidate: true });
-                          form.setValue(`items.${index}.product_label`,
-                            `${p.name}${p.sku ? ` (${p.sku})` : ""}`);
+                          form.setValue(`items.${index}.product_id`, p.id, {
+                            shouldValidate: true,
+                          });
+                          form.setValue(
+                            `items.${index}.product_label`,
+                            `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
+                          );
                           // reset price so the RPC effect can populate it
                           form.setValue(`items.${index}.unit_price`, 0);
                           setOpen(false);
                         }}
                       >
-                        <Check className={cn("ml-2 h-4 w-4",
-                          p.id === productId ? "opacity-100" : "opacity-0")} />
+                        <Check
+                          className={cn(
+                            "ml-2 h-4 w-4",
+                            p.id === productId ? "opacity-100" : "opacity-0",
+                          )}
+                        />
                         <span>{p.name}</span>
-                        {p.sku && <span className="mr-2 text-xs text-muted-foreground">({p.sku})</span>}
+                        {p.sku && (
+                          <span className="mr-2 text-xs text-muted-foreground">({p.sku})</span>
+                        )}
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -876,7 +939,9 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
               </Command>
             </PopoverContent>
           </Popover>
-          {errors?.product_id && <p className="text-xs text-destructive">{errors.product_id.message}</p>}
+          {errors?.product_id && (
+            <p className="text-xs text-destructive">{errors.product_id.message}</p>
+          )}
         </div>
         <Button
           type="button"
@@ -930,7 +995,9 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
             inputMode="numeric"
             {...form.register(`items.${index}.quantity`, { valueAsNumber: true })}
           />
-          {errors?.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+          {errors?.quantity && (
+            <p className="text-xs text-destructive">{errors.quantity.message}</p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">قیمت واحد</Label>
@@ -941,10 +1008,10 @@ function ItemRow({ index, form, remove, salePriceTypeId, priceTypes, onChangeSal
             inputMode="decimal"
             {...form.register(`items.${index}.unit_price`, { valueAsNumber: true })}
           />
-          {errors?.unit_price && <p className="text-xs text-destructive">{errors.unit_price.message}</p>}
-          {priceViolation && (
-            <p className="text-xs text-destructive">{priceViolation}</p>
+          {errors?.unit_price && (
+            <p className="text-xs text-destructive">{errors.unit_price.message}</p>
           )}
+          {priceViolation && <p className="text-xs text-destructive">{priceViolation}</p>}
           {bounds && bounds.has_any && (
             <p className="text-[10px] text-muted-foreground leading-relaxed">
               کف: {formatNumber(Number(bounds.min_price ?? 0))}

@@ -94,14 +94,19 @@ export async function fetchMyWorkbenchRows(opts: {
   if (prErr) throw prErr;
 
   // اولین رکورد per product = آخرین فعال
-  const latestByProduct = new Map<string, (typeof prices extends (infer T)[] ? T : never)>();
+  const latestByProduct = new Map<string, typeof prices extends (infer T)[] ? T : never>();
   (prices ?? []).forEach((p) => {
     if (!latestByProduct.has(p.product_id)) latestByProduct.set(p.product_id, p as never);
   });
 
   const rows: WorkbenchRow[] = (products ?? []).map((p) => {
     const lp = latestByProduct.get(p.id) as
-      | { id: string; supplier_id: string; purchase_price: number; currency: WorkbenchRow["current_currency"] }
+      | {
+          id: string;
+          supplier_id: string;
+          purchase_price: number;
+          currency: WorkbenchRow["current_currency"];
+        }
       | undefined;
     return {
       id: p.id,
@@ -131,8 +136,16 @@ export async function userHasAssignedProducts(userId: string): Promise<boolean> 
 }
 
 /** به‌روزرسانی وضعیت موجودی محصول. */
-export async function updateProductStock(productId: string, status: StockStatus, actorId: string, prev: StockStatus) {
-  const { error } = await supabase.from("products").update({ stock_status: status }).eq("id", productId);
+export async function updateProductStock(
+  productId: string,
+  status: StockStatus,
+  actorId: string,
+  prev: StockStatus,
+) {
+  const { error } = await supabase
+    .from("products")
+    .update({ stock_status: status })
+    .eq("id", productId);
   if (error) throw error;
   await supabase.from("audit_logs").insert({
     action: "workbench_stock_update",
@@ -158,7 +171,8 @@ export async function upsertPurchasePrice(opts: {
   previousPrice: number | null;
   actorId: string;
 }): Promise<void> {
-  const { productId, newPrice, currency, supplierId, previousPriceId, previousPrice, actorId } = opts;
+  const { productId, newPrice, currency, supplierId, previousPriceId, previousPrice, actorId } =
+    opts;
 
   if (!Number.isFinite(newPrice) || newPrice <= 0) {
     throw new Error("قیمت معتبر نیست.");

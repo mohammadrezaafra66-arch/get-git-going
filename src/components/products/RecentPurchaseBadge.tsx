@@ -39,13 +39,20 @@ export function RecentPurchaseBadge({ productId, showTodayBadge = true, classNam
   return (
     <span className={"inline-flex flex-wrap gap-1 " + (className ?? "")}>
       {data.status === "full" && (
-        <Badge variant="default" className="text-[10px]">موجود</Badge>
+        <Badge variant="default" className="text-[10px]">
+          موجود
+        </Badge>
       )}
       {data.status === "limited" && (
-        <Badge variant="secondary" className="text-[10px]">موجودی محدود</Badge>
+        <Badge variant="secondary" className="text-[10px]">
+          موجودی محدود
+        </Badge>
       )}
       {showTodayBadge && data.is_today_purchase && (
-        <Badge variant="outline" className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-400">
+        <Badge
+          variant="outline"
+          className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-400"
+        >
           خرید روز
         </Badge>
       )}

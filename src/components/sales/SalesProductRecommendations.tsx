@@ -91,10 +91,7 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
         {recs.map((rec) => {
           const ps = pricesMap[rec.product_id] ?? [];
           return (
-            <li
-              key={rec.product_id}
-              className="rounded border bg-background/70 p-2 text-xs"
-            >
+            <li key={rec.product_id} className="rounded border bg-background/70 p-2 text-xs">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Package className="h-3 w-3 text-muted-foreground" />
                 <span className="font-medium truncate">{rec.name}</span>

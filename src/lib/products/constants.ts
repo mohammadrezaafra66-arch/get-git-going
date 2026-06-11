@@ -23,7 +23,10 @@ export const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
   unknown: "نامشخص",
 };
 
-export const STOCK_STATUS_VARIANTS: Record<StockStatus, "default" | "destructive" | "outline" | "secondary"> = {
+export const STOCK_STATUS_VARIANTS: Record<
+  StockStatus,
+  "default" | "destructive" | "outline" | "secondary"
+> = {
   available: "default",
   unavailable: "destructive",
   limited: "secondary",
@@ -36,7 +39,10 @@ export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
   discontinued: "متوقف‌شده",
 };
 
-export const PRODUCT_STATUS_VARIANTS: Record<ProductStatus, "default" | "destructive" | "outline" | "secondary"> = {
+export const PRODUCT_STATUS_VARIANTS: Record<
+  ProductStatus,
+  "default" | "destructive" | "outline" | "secondary"
+> = {
   active: "default",
   inactive: "secondary",
   discontinued: "destructive",

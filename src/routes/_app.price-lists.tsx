@@ -5,7 +5,9 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export const Route = createFileRoute("/_app/price-lists")({
-  beforeLoad: async () => { await requirePermission("price-lists", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("price-lists", "view");
+  },
   component: () => (
     <div className="space-y-6">
       <PageHeader title="لیست‌های قیمت" description="مدیریت چندین لیست قیمت با ارز و دوره اعتبار" />

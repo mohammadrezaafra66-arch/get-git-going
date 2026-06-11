@@ -5,7 +5,9 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export const Route = createFileRoute("/_app/reports")({
-  beforeLoad: async () => { await requirePermission("reports", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("reports", "view");
+  },
   component: () => (
     <div className="space-y-6">
       <PageHeader title="گزارش‌ها" description="گزارش‌های فروش، مالی و عملیاتی" />

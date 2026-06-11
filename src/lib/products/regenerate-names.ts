@@ -28,9 +28,11 @@ export async function regenerateProductNames(opts: RegenerateOptions = {}): Prom
   // Fetch products with related brand/category
   let q = supabase
     .from("products")
-    .select(`id, name, sku, color, capacity, model, primary_spec,
+    .select(
+      `id, name, sku, color, capacity, model, primary_spec,
              brand:brands(name),
-             category:categories(id, name, naming_template)`)
+             category:categories(id, name, naming_template)`,
+    )
     .order("updated_at", { ascending: false });
   if (opts.categoryId) q = q.eq("category_id", opts.categoryId);
 
@@ -67,15 +69,24 @@ export async function regenerateProductNames(opts: RegenerateOptions = {}): Prom
   }
 
   const results: RegenerateNameResult[] = [];
-  let updated = 0, skipped = 0, failed = 0;
+  let updated = 0,
+    skipped = 0,
+    failed = 0;
 
   for (let i = 0; i < list.length; i++) {
     const p = list[i];
     const cat = p.category;
     const tpl = cat?.naming_template ?? "";
     if (opts.onlyMissingTemplate && !tpl) {
-      const r: RegenerateNameResult = { product_id: p.id, old_name: p.name, new_name: p.name, status: "skipped", reason: "بدون الگوی نام‌گذاری" };
-      results.push(r); skipped++;
+      const r: RegenerateNameResult = {
+        product_id: p.id,
+        old_name: p.name,
+        new_name: p.name,
+        status: "skipped",
+        reason: "بدون الگوی نام‌گذاری",
+      };
+      results.push(r);
+      skipped++;
       opts.onProgress?.(i + 1, list.length, r);
       continue;
     }
@@ -105,15 +116,29 @@ export async function regenerateProductNames(opts: RegenerateOptions = {}): Prom
     });
 
     if (!newName || newName === p.name) {
-      const r: RegenerateNameResult = { product_id: p.id, old_name: p.name, new_name: newName || p.name, status: "skipped", reason: !newName ? "نام تولیدشده خالی" : "تغییری ندارد" };
-      results.push(r); skipped++;
+      const r: RegenerateNameResult = {
+        product_id: p.id,
+        old_name: p.name,
+        new_name: newName || p.name,
+        status: "skipped",
+        reason: !newName ? "نام تولیدشده خالی" : "تغییری ندارد",
+      };
+      results.push(r);
+      skipped++;
       opts.onProgress?.(i + 1, list.length, r);
       continue;
     }
 
     if (opts.dryRun) {
-      const r: RegenerateNameResult = { product_id: p.id, old_name: p.name, new_name: newName, status: "updated", reason: "پیش‌نمایش" };
-      results.push(r); updated++;
+      const r: RegenerateNameResult = {
+        product_id: p.id,
+        old_name: p.name,
+        new_name: newName,
+        status: "updated",
+        reason: "پیش‌نمایش",
+      };
+      results.push(r);
+      updated++;
       opts.onProgress?.(i + 1, list.length, r);
       continue;
     }
@@ -123,11 +148,24 @@ export async function regenerateProductNames(opts: RegenerateOptions = {}): Prom
       .update({ name: newName })
       .eq("id", p.id);
     if (upErr) {
-      const r: RegenerateNameResult = { product_id: p.id, old_name: p.name, new_name: newName, status: "error", reason: upErr.message };
-      results.push(r); failed++;
+      const r: RegenerateNameResult = {
+        product_id: p.id,
+        old_name: p.name,
+        new_name: newName,
+        status: "error",
+        reason: upErr.message,
+      };
+      results.push(r);
+      failed++;
     } else {
-      const r: RegenerateNameResult = { product_id: p.id, old_name: p.name, new_name: newName, status: "updated" };
-      results.push(r); updated++;
+      const r: RegenerateNameResult = {
+        product_id: p.id,
+        old_name: p.name,
+        new_name: newName,
+        status: "updated",
+      };
+      results.push(r);
+      updated++;
     }
     opts.onProgress?.(i + 1, list.length, results[results.length - 1]);
   }

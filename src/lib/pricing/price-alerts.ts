@@ -73,8 +73,12 @@ const TOMAN_PRICE_OPS = new Set<PriceAlertOperator>(["below_price", "above_price
 export function isPriceOp(op: PriceAlertOperator) {
   return TOMAN_PRICE_OPS.has(op) || USD_OPS.has(op);
 }
-export function isPercentOp(op: PriceAlertOperator) { return PERCENT_OPS.has(op); }
-export function isUsdOp(op: PriceAlertOperator) { return USD_OPS.has(op); }
+export function isPercentOp(op: PriceAlertOperator) {
+  return PERCENT_OPS.has(op);
+}
+export function isUsdOp(op: PriceAlertOperator) {
+  return USD_OPS.has(op);
+}
 
 export interface CreateAlertInput {
   product_id: string;
@@ -94,7 +98,11 @@ export function validateAlert(input: CreateAlertInput): string | null {
   if (!input.product_id) return "محصول الزامی است.";
   if (!input.operator) return "نوع شرط الزامی است.";
   if (input.operator !== "stock_status_changed") {
-    if (input.target_value === null || Number.isNaN(input.target_value) || input.target_value <= 0) {
+    if (
+      input.target_value === null ||
+      Number.isNaN(input.target_value) ||
+      input.target_value <= 0
+    ) {
       return "مقدار شرط باید بزرگ‌تر از صفر باشد.";
     }
     if (isPercentOp(input.operator) && (input.target_value < 0.1 || input.target_value > 100)) {
@@ -132,13 +140,15 @@ export async function createAlertRule(input: CreateAlertInput) {
     }
     throw error;
   }
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "price_alert_rule",
-    entity_id: data.id,
-    action: "price_alert_created",
-    diff: norm as unknown as Json,
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "price_alert_rule",
+      entity_id: data.id,
+      action: "price_alert_created",
+      diff: norm as unknown as Json,
+    },
+  ]);
   return data.id as string;
 }
 
@@ -162,13 +172,15 @@ export async function updateAlertRule(id: string, input: CreateAlertInput) {
     })
     .eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "price_alert_rule",
-    entity_id: id,
-    action: "price_alert_updated",
-    diff: norm as unknown as Json,
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "price_alert_rule",
+      entity_id: id,
+      action: "price_alert_updated",
+      diff: norm as unknown as Json,
+    },
+  ]);
 }
 
 export async function toggleAlertRule(id: string, isActive: boolean) {
@@ -180,13 +192,15 @@ export async function toggleAlertRule(id: string, isActive: boolean) {
     .update({ is_active: isActive })
     .eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "price_alert_rule",
-    entity_id: id,
-    action: "price_alert_toggled",
-    diff: { is_active: isActive },
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "price_alert_rule",
+      entity_id: id,
+      action: "price_alert_toggled",
+      diff: { is_active: isActive },
+    },
+  ]);
 }
 
 export async function deleteAlertRule(id: string) {
@@ -195,13 +209,15 @@ export async function deleteAlertRule(id: string) {
   if (!uid) throw new Error("ابتدا وارد شوید.");
   const { error } = await supabase.from("price_alert_rules").delete().eq("id", id);
   if (error) throw error;
-  await supabase.from("audit_logs").insert([{
-    actor_id: uid,
-    entity_type: "price_alert_rule",
-    entity_id: id,
-    action: "price_alert_deleted",
-    diff: {},
-  }]);
+  await supabase.from("audit_logs").insert([
+    {
+      actor_id: uid,
+      entity_type: "price_alert_rule",
+      entity_id: id,
+      action: "price_alert_deleted",
+      diff: {},
+    },
+  ]);
 }
 
 export async function fetchMyAlerts(opts: { page: number; pageSize: number }) {
@@ -219,7 +235,11 @@ export async function fetchMyAlerts(opts: { page: number; pageSize: number }) {
   return { rows: (data ?? []) as unknown as PriceAlertRule[], total: count ?? 0 };
 }
 
-export async function fetchMyNotifications(opts: { page: number; pageSize: number; unreadOnly?: boolean }) {
+export async function fetchMyNotifications(opts: {
+  page: number;
+  pageSize: number;
+  unreadOnly?: boolean;
+}) {
   const from = (opts.page - 1) * opts.pageSize;
   const to = from + opts.pageSize - 1;
   let q = supabase

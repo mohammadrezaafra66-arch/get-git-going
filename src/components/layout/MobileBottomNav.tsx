@@ -1,7 +1,18 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Package, FileText, Mail, Menu, ShoppingCart, ListOrdered,
-  Receipt, Wallet, Coins, Sparkles, BarChart3, Bell,
+  LayoutDashboard,
+  Package,
+  FileText,
+  Mail,
+  Menu,
+  ShoppingCart,
+  ListOrdered,
+  Receipt,
+  Wallet,
+  Coins,
+  Sparkles,
+  BarChart3,
+  Bell,
 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -71,14 +82,22 @@ export function MobileBottomNav() {
       {visible.map((it) => {
         const active = location.pathname.startsWith(it.to);
         return (
-          <Link key={it.to} to={it.to}
-            className={`flex flex-col items-center gap-1 py-2 text-[10px] ${active ? "text-primary" : "text-muted-foreground"}`}>
-            <it.icon className="h-5 w-5" /><span>{it.label}</span>
+          <Link
+            key={it.to}
+            to={it.to}
+            className={`flex flex-col items-center gap-1 py-2 text-[10px] ${active ? "text-primary" : "text-muted-foreground"}`}
+          >
+            <it.icon className="h-5 w-5" />
+            <span>{it.label}</span>
           </Link>
         );
       })}
-      <button onClick={() => setOpenMobile(true)} className="flex flex-col items-center gap-1 py-2 text-[10px] text-muted-foreground">
-        <Menu className="h-5 w-5" /><span>منو</span>
+      <button
+        onClick={() => setOpenMobile(true)}
+        className="flex flex-col items-center gap-1 py-2 text-[10px] text-muted-foreground"
+      >
+        <Menu className="h-5 w-5" />
+        <span>منو</span>
       </button>
     </nav>
   );

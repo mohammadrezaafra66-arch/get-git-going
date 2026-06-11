@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -13,7 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 export const Route = createFileRoute("/_app/academy_/$courseId_/$lessonId")({
-  beforeLoad: async () => { await requirePermission("academy", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("academy", "view");
+  },
   component: LessonPage,
 });
 
@@ -57,7 +59,13 @@ function LessonPage() {
     mutationFn: async () => {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const { error } = await supabase.from("academy_user_progress").upsert(
-        { user_id: user.id, course_id: courseId, lesson_id: lessonId, completed: true, completed_at: new Date().toISOString() },
+        {
+          user_id: user.id,
+          course_id: courseId,
+          lesson_id: lessonId,
+          completed: true,
+          completed_at: new Date().toISOString(),
+        },
         { onConflict: "user_id,course_id,lesson_id" },
       );
       if (error) throw error;
@@ -84,17 +92,24 @@ function LessonPage() {
     try {
       const raw = marked.parse(data.lesson.content) as string;
       return sanitizeHtml(raw);
+    } catch {
+      return sanitizeHtml(data.lesson.content);
     }
-    catch { return sanitizeHtml(data.lesson.content); }
   }, [data?.lesson?.content]);
 
-  if (isLoading) return <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
+  if (isLoading)
+    return (
+      <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
+    );
   if (!data || !data.lesson) {
     return (
       <div className="space-y-4 py-10 text-center">
         <p className="text-sm text-muted-foreground">درس یافت نشد.</p>
         <Button asChild variant="outline" size="sm">
-          <Link to="/academy/$courseId" params={{ courseId }}><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
+          <Link to="/academy/$courseId" params={{ courseId }}>
+            <ArrowRight className="ms-1 h-4 w-4" />
+            بازگشت
+          </Link>
         </Button>
       </div>
     );
@@ -108,7 +123,10 @@ function LessonPage() {
         title={lesson.title}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/academy/$courseId" params={{ courseId }}><ArrowRight className="ms-1 h-4 w-4" />بازگشت به دوره</Link>
+            <Link to="/academy/$courseId" params={{ courseId }}>
+              <ArrowRight className="ms-1 h-4 w-4" />
+              بازگشت به دوره
+            </Link>
           </Button>
         }
       />
@@ -128,7 +146,6 @@ function LessonPage() {
           <CardContent className="p-5">
             <div
               className="prose prose-sm max-w-none text-foreground rtl:prose-headings:text-right [&_*]:break-words"
-              // eslint-disable-next-line react/no-danger
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </CardContent>
@@ -141,7 +158,8 @@ function LessonPage() {
             <span className="text-sm text-muted-foreground">فایل ضمیمه درس</span>
             <Button asChild variant="outline" size="sm">
               <a href={lesson.attachment_url} target="_blank" rel="noopener noreferrer" download>
-                <Download className="ms-1 h-4 w-4" />دانلود
+                <Download className="ms-1 h-4 w-4" />
+                دانلود
               </a>
             </Button>
           </CardContent>
@@ -158,7 +176,10 @@ function LessonPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">پس از مطالعه کامل، تأیید کنید.</p>
-              <Button onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
+              <Button
+                onClick={() => completeMutation.mutate()}
+                disabled={completeMutation.isPending}
+              >
                 {completeMutation.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
                 تکمیل درس
               </Button>
@@ -167,7 +188,8 @@ function LessonPage() {
           {quizId && (
             <Button asChild variant="default">
               <Link to="/academy/$courseId/$lessonId/quiz" params={{ courseId, lessonId }}>
-                <FileQuestion className="ms-1 h-4 w-4" />شروع آزمون
+                <FileQuestion className="ms-1 h-4 w-4" />
+                شروع آزمون
               </Link>
             </Button>
           )}

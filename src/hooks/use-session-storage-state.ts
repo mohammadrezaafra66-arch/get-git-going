@@ -34,10 +34,7 @@ export function useSessionStorageState<T>(
     }
   }, [key, value]);
 
-  const setter: React.Dispatch<React.SetStateAction<T>> = useCallback(
-    (next) => setValue(next),
-    [],
-  );
+  const setter: React.Dispatch<React.SetStateAction<T>> = useCallback((next) => setValue(next), []);
 
   return [value, setter];
 }

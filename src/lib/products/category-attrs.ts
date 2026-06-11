@@ -23,7 +23,9 @@ export async function fetchCategoryAttributes(categoryId: string): Promise<Categ
   if (!categoryId) return [];
   const { data, error } = await supabase
     .from("category_product_attributes")
-    .select("id, category_id, attribute_key, label_fa, input_type, is_required, is_active, use_in_product_name, sort_order, options, help_text")
+    .select(
+      "id, category_id, attribute_key, label_fa, input_type, is_required, is_active, use_in_product_name, sort_order, options, help_text",
+    )
     .eq("category_id", categoryId)
     .eq("is_active", true)
     .order("sort_order")
@@ -37,7 +39,9 @@ export async function fetchCategoryAttributes(categoryId: string): Promise<Categ
 }
 
 /** Fetch saved values for a product, keyed by attribute id. */
-export async function fetchProductDynamicValues(productId: string): Promise<Record<string, string>> {
+export async function fetchProductDynamicValues(
+  productId: string,
+): Promise<Record<string, string>> {
   if (!productId) return {};
   const { data, error } = await supabase
     .from("product_category_attribute_values")

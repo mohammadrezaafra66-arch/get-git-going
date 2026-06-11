@@ -44,7 +44,11 @@ export interface MissionInput {
   sort_order: number;
 }
 
-export interface KpiOption { event_key: string; title_fa: string; is_active: boolean }
+export interface KpiOption {
+  event_key: string;
+  title_fa: string;
+  is_active: boolean;
+}
 
 const MISSION_COLUMNS =
   "id,title_fa,title_en,description,mission_type,condition_event_key,condition_operator,condition_value," +
@@ -94,7 +98,9 @@ function toDbRow(input: MissionInput) {
 }
 
 async function logAudit(action: string, entityId: string, diff: Record<string, unknown>) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({
     actor_id: user.id,
@@ -138,7 +144,11 @@ export async function createMission(input: MissionInput): Promise<MissionRow> {
 }
 
 export async function updateMission(id: string, input: MissionInput): Promise<MissionRow> {
-  const { data: before } = await supabase.from("missions").select(MISSION_COLUMNS).eq("id", id).maybeSingle();
+  const { data: before } = await supabase
+    .from("missions")
+    .select(MISSION_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("missions")
     .update(toDbRow(input) as never)

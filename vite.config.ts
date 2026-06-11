@@ -19,9 +19,7 @@ const cloudPublishableKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3d2twcGtjaWhyYmV1cnd1ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzU5MTUsImV4cCI6MjA5MjYxMTkxNX0.oowSHbrAEL04u9DwGjyPYIlCc8MSL0c00Odv6UvM4bE";
 
 const cloudProjectId =
-  process.env.VITE_SUPABASE_PROJECT_ID ??
-  process.env.SUPABASE_PROJECT_ID ??
-  "kwwkppkcihrbeurwudjh";
+  process.env.VITE_SUPABASE_PROJECT_ID ?? process.env.SUPABASE_PROJECT_ID ?? "kwwkppkcihrbeurwudjh";
 
 export default defineConfig({
   // NOTE: previously a `cloudflare: false` toggle was used when

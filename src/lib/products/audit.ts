@@ -1,5 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import { PRODUCT_TYPE_LABELS, BASE_CURRENCY_LABELS, STOCK_STATUS_LABELS, PRODUCT_STATUS_LABELS } from "@/lib/products/constants";
+import {
+  PRODUCT_TYPE_LABELS,
+  BASE_CURRENCY_LABELS,
+  STOCK_STATUS_LABELS,
+  PRODUCT_STATUS_LABELS,
+} from "@/lib/products/constants";
 
 export interface ProductFieldChange {
   label: string;
@@ -68,15 +73,15 @@ export function diffProductFields(
   return changes;
 }
 
-export function diffLabels(
-  prevIds: string[],
-  nextIds: string[],
-  titleMap: Record<string, string>,
-) {
+export function diffLabels(prevIds: string[], nextIds: string[], titleMap: Record<string, string>) {
   const prev = new Set(prevIds);
   const next = new Set(nextIds);
-  const added = [...next].filter((x) => !prev.has(x)).map((id) => ({ id, title: titleMap[id] ?? id }));
-  const removed = [...prev].filter((x) => !next.has(x)).map((id) => ({ id, title: titleMap[id] ?? id }));
+  const added = [...next]
+    .filter((x) => !prev.has(x))
+    .map((id) => ({ id, title: titleMap[id] ?? id }));
+  const removed = [...prev]
+    .filter((x) => !next.has(x))
+    .map((id) => ({ id, title: titleMap[id] ?? id }));
   return { added, removed };
 }
 
