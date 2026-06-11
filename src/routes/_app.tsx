@@ -36,11 +36,15 @@ export const Route = createFileRoute("/_app")({
         auth = await ensureAuthReady(true);
       }
       if (!auth.user && auth.authError) {
-        logAuthDiagnostic("_app.beforeLoad.authTransient", "auth unavailable; showing retry screen", {
-          initialized: auth.initialized,
-          loading: auth.loading,
-          authError: auth.authError,
-        });
+        logAuthDiagnostic(
+          "_app.beforeLoad.authTransient",
+          "auth unavailable; showing retry screen",
+          {
+            initialized: auth.initialized,
+            loading: auth.loading,
+            authError: auth.authError,
+          },
+        );
         return;
       }
       if (!auth.user) {
@@ -52,11 +56,15 @@ export const Route = createFileRoute("/_app")({
         throw redirect({ to: "/login" });
       }
       if (auth.user && !auth.profile && auth.authError) {
-        logAuthDiagnostic("_app.beforeLoad.profileMissing", "user exists but profile is unavailable", {
-          authError: auth.authError,
-          profileError: auth.profileError,
-          rolesError: auth.rolesError,
-        });
+        logAuthDiagnostic(
+          "_app.beforeLoad.profileMissing",
+          "user exists but profile is unavailable",
+          {
+            authError: auth.authError,
+            profileError: auth.profileError,
+            rolesError: auth.rolesError,
+          },
+        );
       }
       const status = auth.profile?.status;
       if (auth.profile && status && status !== "active") {

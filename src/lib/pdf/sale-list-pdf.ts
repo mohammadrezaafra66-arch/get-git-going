@@ -16,11 +16,24 @@
  * served from /fonts/vazirmatn/ already shipped with the app.
  */
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
-import { STOCK_STATUS_LABELS, PRODUCT_TYPE_LABELS, type StockStatus, type ProductType } from "@/lib/products/constants";
+import {
+  STOCK_STATUS_LABELS,
+  PRODUCT_TYPE_LABELS,
+  type StockStatus,
+  type ProductType,
+} from "@/lib/products/constants";
 
 export type SaleListPdfColumn =
-  | "name" | "brand" | "category" | "sale_price" | "previous_price"
-  | "change" | "stock_status" | "product_type" | "labels" | "description"
+  | "name"
+  | "brand"
+  | "category"
+  | "sale_price"
+  | "previous_price"
+  | "change"
+  | "stock_status"
+  | "product_type"
+  | "labels"
+  | "description"
   | "observatory_price_advantage";
 
 export interface SaleListPdfItem {
@@ -151,17 +164,26 @@ function arrangeItems(
   const firstSeen: string[] = [];
   for (const it of items) {
     const k = brandKey(it.brand_name);
-    if (!groups.has(k)) { groups.set(k, []); firstSeen.push(k); }
+    if (!groups.has(k)) {
+      groups.set(k, []);
+      firstSeen.push(k);
+    }
     groups.get(k)!.push(it);
   }
   const orderKeys = (brandOrder ?? []).map(brandKey);
   const seen = new Set<string>();
   const finalOrder: string[] = [];
   for (const k of orderKeys) {
-    if (groups.has(k) && !seen.has(k)) { finalOrder.push(k); seen.add(k); }
+    if (groups.has(k) && !seen.has(k)) {
+      finalOrder.push(k);
+      seen.add(k);
+    }
   }
   for (const k of firstSeen) {
-    if (!seen.has(k)) { finalOrder.push(k); seen.add(k); }
+    if (!seen.has(k)) {
+      finalOrder.push(k);
+      seen.add(k);
+    }
   }
   return finalOrder.map((k) => {
     const groupRows = (groups.get(k) ?? []).slice();
@@ -233,18 +255,25 @@ function fmtChange(amount: number | null | undefined, percent: number | null | u
   const a = Number(amount);
   if (a === 0) return "بدون تغییر";
   const sign = a > 0 ? "+" : "";
-  const pct = percent !== null && percent !== undefined ? ` (${formatNumber(Number(percent))}٪)` : "";
+  const pct =
+    percent !== null && percent !== undefined ? ` (${formatNumber(Number(percent))}٪)` : "";
   return `${sign}${formatNumber(a)} ت${pct}`;
 }
 
 function cellText(c: SaleListPdfColumn, it: SaleListPdfItem): string {
   switch (c) {
-    case "name": return it.product_name || "—";
-    case "brand": return it.brand_name || "—";
-    case "category": return it.category_name || "—";
-    case "sale_price": return fmtPrice(it.current_price);
-    case "previous_price": return fmtPrice(it.previous_price ?? null);
-    case "change": return fmtChange(it.change_amount ?? null, it.change_percent ?? null);
+    case "name":
+      return it.product_name || "—";
+    case "brand":
+      return it.brand_name || "—";
+    case "category":
+      return it.category_name || "—";
+    case "sale_price":
+      return fmtPrice(it.current_price);
+    case "previous_price":
+      return fmtPrice(it.previous_price ?? null);
+    case "change":
+      return fmtChange(it.change_amount ?? null, it.change_percent ?? null);
     case "stock_status":
       return it.stock_status
         ? (STOCK_STATUS_LABELS[it.stock_status as StockStatus] ?? it.stock_status)
@@ -253,8 +282,10 @@ function cellText(c: SaleListPdfColumn, it: SaleListPdfItem): string {
       return it.product_type
         ? (PRODUCT_TYPE_LABELS[it.product_type as ProductType] ?? it.product_type)
         : "—";
-    case "labels": return it.labels && it.labels.length ? it.labels.join("، ") : "—";
-    case "description": return it.description || "—";
+    case "labels":
+      return it.labels && it.labels.length ? it.labels.join("، ") : "—";
+    case "description":
+      return it.description || "—";
     case "observatory_price_advantage":
       return it.observatory_has_price_advantage === true ? "قیمت رقابتی" : "";
   }
@@ -291,11 +322,13 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
         .map((it) => {
           rowIdx += 1;
           const num = `<td class="row-num">${escapeHtml(formatNumber(rowIdx))}</td>`;
-          const tds = cols.map((c) => {
-            const cls = c === "change" ? changeClass(it) : "";
-            const classAttr = cls ? ` class="${cls}"` : "";
-            return `<td${classAttr}>${escapeHtml(cellText(c, it))}</td>`;
-          }).join("");
+          const tds = cols
+            .map((c) => {
+              const cls = c === "change" ? changeClass(it) : "";
+              const classAttr = cls ? ` class="${cls}"` : "";
+              return `<td${classAttr}>${escapeHtml(cellText(c, it))}</td>`;
+            })
+            .join("");
           return `<tr>${num}${tds}</tr>`;
         })
         .join("");
@@ -328,9 +361,10 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       ? `<div class="info-block">${sellerBlock}</div>`
       : "";
 
-  const termsBlock = input.termsText && input.termsText.trim()
-    ? `<div class="terms">${escapeHtml(input.termsText.trim())}</div>`
-    : "";
+  const termsBlock =
+    input.termsText && input.termsText.trim()
+      ? `<div class="terms">${escapeHtml(input.termsText.trim())}</div>`
+      : "";
 
   const title = `لیست فروش - ${input.listName}`;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -544,7 +578,8 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
   // the user a real downloadable .pdf file without relying on the browser's
   // print dialog (which some users find unreliable / hard to find).
   const html = buildHtmlDocument(input, false);
-  const safeName = (input.listName || "sale-list").replace(/[\\/:*?"<>|]+/g, "_").trim() || "sale-list";
+  const safeName =
+    (input.listName || "sale-list").replace(/[\\/:*?"<>|]+/g, "_").trim() || "sale-list";
   const fileName = `${safeName}-v${input.versionNumber}.pdf`;
 
   const iframe = document.createElement("iframe");
@@ -573,8 +608,9 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
     } catch {}
     await new Promise((r) => setTimeout(r, 250));
 
-    const target = (iframe.contentDocument?.querySelector(".page") as HTMLElement | null)
-      ?? (iframe.contentDocument?.body as HTMLElement);
+    const target =
+      (iframe.contentDocument?.querySelector(".page") as HTMLElement | null) ??
+      (iframe.contentDocument?.body as HTMLElement);
     // Hide toolbar in capture
     const toolbar = iframe.contentDocument?.querySelector(".toolbar") as HTMLElement | null;
     if (toolbar) toolbar.style.display = "none";
@@ -612,7 +648,17 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
       if (!ctx) throw new Error("canvas_ctx");
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, slice.width, slice.height);
-      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedPx,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx,
+      );
       const imgData = slice.toDataURL("image/jpeg", 0.92);
       if (pageIndex > 0) pdf.addPage();
       const sliceHeightMm = sliceHeightPx / pxPerMm;
@@ -633,12 +679,16 @@ export async function downloadSaleListPdf(input: SaleListPdfInput): Promise<void
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
-      try { document.body.removeChild(a); } catch {}
+      try {
+        document.body.removeChild(a);
+      } catch {}
       URL.revokeObjectURL(blobUrl);
     }, 1000);
   } finally {
     setTimeout(() => {
-      try { document.body.removeChild(iframe); } catch {}
+      try {
+        document.body.removeChild(iframe);
+      } catch {}
     }, 500);
   }
 }

@@ -1,11 +1,6 @@
 import type { QuoteShareChannel } from "@/lib/sales/quote-share";
 
-export type QuoteSendQueueStatus =
-  | "pending"
-  | "processing"
-  | "sent"
-  | "failed"
-  | "canceled";
+export type QuoteSendQueueStatus = "pending" | "processing" | "sent" | "failed" | "canceled";
 
 export const QUOTE_SEND_QUEUE_STATUS_LABELS: Record<QuoteSendQueueStatus, string> = {
   pending: "در انتظار",

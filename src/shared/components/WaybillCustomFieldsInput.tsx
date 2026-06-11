@@ -1,7 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 
 export type CustomFieldDef = {
@@ -17,7 +21,9 @@ export type CustomFieldDef = {
 
 export type CustomData = Record<string, string | number | null>;
 
-function normalizeOptions(opts: CustomFieldDef["field_options"]): { value: string; label: string }[] {
+function normalizeOptions(
+  opts: CustomFieldDef["field_options"],
+): { value: string; label: string }[] {
   if (!opts) return [];
   if (Array.isArray(opts)) {
     return opts.map((o) => {
@@ -79,10 +85,14 @@ export function WaybillCustomFieldsInput({
               </Label>
               {f.field_type === "select" ? (
                 <Select value={String(v)} onValueChange={(val) => set(f.field_key, val)}>
-                  <SelectTrigger><SelectValue placeholder="انتخاب کنید" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب کنید" />
+                  </SelectTrigger>
                   <SelectContent>
                     {normalizeOptions(f.field_options).map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -11,10 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,12 +31,18 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import {
-  FEEDBACK_STATUSES, FEEDBACK_STATUS_LABELS, FEEDBACK_STATUS_COLORS,
-  FEEDBACK_TYPE_LABELS, type FeedbackStatus, type FeedbackType,
+  FEEDBACK_STATUSES,
+  FEEDBACK_STATUS_LABELS,
+  FEEDBACK_STATUS_COLORS,
+  FEEDBACK_TYPE_LABELS,
+  type FeedbackStatus,
+  type FeedbackType,
 } from "@/lib/feedback/constants";
 
 export const Route = createFileRoute("/_app/feedback_/$feedbackId")({
-  beforeLoad: async () => { await requirePermission("feedback", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("feedback", "view");
+  },
   component: FeedbackDetailPage,
 });
 
@@ -85,7 +100,10 @@ function FeedbackDetailPage() {
           diff: { old_status: data.status, new_status: payload.newStatus },
         });
       }
-      if (payload.newResponse !== undefined && (payload.newResponse ?? "") !== (data.response ?? "")) {
+      if (
+        payload.newResponse !== undefined &&
+        (payload.newResponse ?? "") !== (data.response ?? "")
+      ) {
         updates.response = payload.newResponse;
         updates.responded_by = user.id;
         updates.responded_at = new Date().toISOString();
@@ -141,33 +159,60 @@ function FeedbackDetailPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="بازخورد یافت نشد" description="ممکن است حذف شده یا دسترسی ندارید" />
-        <Button asChild variant="outline"><Link to="/feedback"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link></Button>
+        <Button asChild variant="outline">
+          <Link to="/feedback">
+            <ArrowRight className="ms-1 h-4 w-4" />
+            بازگشت
+          </Link>
+        </Button>
       </div>
     );
   }
 
   const attachments = (Array.isArray(data.attachment_urls) ? data.attachment_urls : []) as string[];
 
-  return <FeedbackDetailContent
-    data={data} attachments={attachments}
-    status={status} setStatus={setStatus}
-    response={response} setResponse={setResponse}
-    taskDialogOpen={taskDialogOpen} setTaskDialogOpen={setTaskDialogOpen}
-    taskId={taskId} setTaskId={setTaskId}
-    canManage={canManage} updateMut={updateMut}
-  />;
+  return (
+    <FeedbackDetailContent
+      data={data}
+      attachments={attachments}
+      status={status}
+      setStatus={setStatus}
+      response={response}
+      setResponse={setResponse}
+      taskDialogOpen={taskDialogOpen}
+      setTaskDialogOpen={setTaskDialogOpen}
+      taskId={taskId}
+      setTaskId={setTaskId}
+      canManage={canManage}
+      updateMut={updateMut}
+    />
+  );
 }
 
 type DetailProps = {
-  data: { id: string; title: string; description: string; created_at: string; type: string; status: string;
-    where_occurred: string | null; impact: string | null; suggestion: string | null;
-    response: string | null; responded_at: string | null; converted_task_id: string | null;
+  data: {
+    id: string;
+    title: string;
+    description: string;
+    created_at: string;
+    type: string;
+    status: string;
+    where_occurred: string | null;
+    impact: string | null;
+    suggestion: string | null;
+    response: string | null;
+    responded_at: string | null;
+    converted_task_id: string | null;
   };
   attachments: string[];
-  status: FeedbackStatus; setStatus: (s: FeedbackStatus) => void;
-  response: string; setResponse: (s: string) => void;
-  taskDialogOpen: boolean; setTaskDialogOpen: (b: boolean) => void;
-  taskId: string; setTaskId: (s: string) => void;
+  status: FeedbackStatus;
+  setStatus: (s: FeedbackStatus) => void;
+  response: string;
+  setResponse: (s: string) => void;
+  taskDialogOpen: boolean;
+  setTaskDialogOpen: (b: boolean) => void;
+  taskId: string;
+  setTaskId: (s: string) => void;
   canManage: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateMut: any;
@@ -189,15 +234,20 @@ function AttachmentsSection({ attachments }: { attachments: string[] }) {
           .from("feedback-attachments")
           .createSignedUrl(item, 60 * 60);
         const ext = item.split(".").pop()?.toLowerCase() ?? "";
-        const mime =
-          ["jpg","jpeg","png","gif","webp","heic"].includes(ext) ? "image" :
-          ["mp4","webm","mov","quicktime"].includes(ext) ? "video" :
-          ["mp3","m4a","ogg","wav","webm"].includes(ext) ? "audio" : "";
+        const mime = ["jpg", "jpeg", "png", "gif", "webp", "heic"].includes(ext)
+          ? "image"
+          : ["mp4", "webm", "mov", "quicktime"].includes(ext)
+            ? "video"
+            : ["mp3", "m4a", "ogg", "wav", "webm"].includes(ext)
+              ? "audio"
+              : "";
         out.push({ url: data?.signedUrl ?? "", mime, raw: item });
       }
       if (!cancelled) setSigned(out);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [attachments]);
 
   return (
@@ -207,15 +257,15 @@ function AttachmentsSection({ attachments }: { attachments: string[] }) {
           {s.mime === "image" && s.url && (
             <img src={s.url} alt="" className="max-h-48 w-auto rounded" />
           )}
-          {s.mime === "video" && s.url && (
-            <video src={s.url} controls className="w-full rounded" />
-          )}
-          {s.mime === "audio" && s.url && (
-            <audio src={s.url} controls className="w-full" />
-          )}
+          {s.mime === "video" && s.url && <video src={s.url} controls className="w-full rounded" />}
+          {s.mime === "audio" && s.url && <audio src={s.url} controls className="w-full" />}
           {s.url && (
-            <a href={s.url} target="_blank" rel="noopener noreferrer"
-               className="block truncate text-xs text-primary hover:underline">
+            <a
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block truncate text-xs text-primary hover:underline"
+            >
               دانلود فایل
             </a>
           )}
@@ -226,10 +276,19 @@ function AttachmentsSection({ attachments }: { attachments: string[] }) {
 }
 
 function FeedbackDetailContent({
-  data, attachments, status, setStatus, response, setResponse,
-  taskDialogOpen, setTaskDialogOpen, taskId, setTaskId, canManage, updateMut,
+  data,
+  attachments,
+  status,
+  setStatus,
+  response,
+  setResponse,
+  taskDialogOpen,
+  setTaskDialogOpen,
+  taskId,
+  setTaskId,
+  canManage,
+  updateMut,
 }: DetailProps) {
-
   return (
     <div className="space-y-5">
       <PageHeader
@@ -237,7 +296,10 @@ function FeedbackDetailContent({
         description={`ثبت‌شده در ${formatDateFa(data.created_at)}`}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link to="/feedback"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
+            <Link to="/feedback">
+              <ArrowRight className="ms-1 h-4 w-4" />
+              بازگشت
+            </Link>
           </Button>
         }
       />
@@ -250,28 +312,46 @@ function FeedbackDetailContent({
       </div>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">شرح کامل</CardTitle></CardHeader>
-        <CardContent className="whitespace-pre-wrap text-sm leading-7">{data.description}</CardContent>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">شرح کامل</CardTitle>
+        </CardHeader>
+        <CardContent className="whitespace-pre-wrap text-sm leading-7">
+          {data.description}
+        </CardContent>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-3">
         {data.where_occurred && (
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">محل وقوع</CardTitle></CardHeader>
-            <CardContent className="text-sm">{data.where_occurred}</CardContent></Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">محل وقوع</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm">{data.where_occurred}</CardContent>
+          </Card>
         )}
         {data.impact && (
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">اثر</CardTitle></CardHeader>
-            <CardContent className="text-sm">{data.impact}</CardContent></Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">اثر</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm">{data.impact}</CardContent>
+          </Card>
         )}
         {data.suggestion && (
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">پیشنهاد</CardTitle></CardHeader>
-            <CardContent className="text-sm whitespace-pre-wrap">{data.suggestion}</CardContent></Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">پیشنهاد</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm whitespace-pre-wrap">{data.suggestion}</CardContent>
+          </Card>
         )}
       </div>
 
       {attachments.length > 0 && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">پیوست‌ها</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">پیوست‌ها</CardTitle>
+          </CardHeader>
           <CardContent>
             <AttachmentsSection attachments={attachments} />
           </CardContent>
@@ -280,7 +360,9 @@ function FeedbackDetailContent({
 
       {data.response && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">پاسخ مدیر</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">پاسخ مدیر</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-1">
             <p className="whitespace-pre-wrap text-sm leading-7">{data.response}</p>
             {data.responded_at && (
@@ -292,23 +374,31 @@ function FeedbackDetailContent({
 
       {data.converted_task_id && (
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base">شناسه وظیفه مرتبط</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">شناسه وظیفه مرتبط</CardTitle>
+          </CardHeader>
           <CardContent className="font-mono text-sm">{data.converted_task_id}</CardContent>
         </Card>
       )}
 
       {canManage && (
         <Card>
-          <CardHeader><CardTitle className="text-base">مدیریت بازخورد</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">مدیریت بازخورد</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>وضعیت</Label>
                 <Select value={status} onValueChange={(v) => setStatus(v as FeedbackStatus)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {FEEDBACK_STATUSES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -330,7 +420,8 @@ function FeedbackDetailContent({
               <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <ListChecks className="ms-1 h-4 w-4" />تبدیل به وظیفه
+                    <ListChecks className="ms-1 h-4 w-4" />
+                    تبدیل به وظیفه
                   </Button>
                 </DialogTrigger>
                 <DialogContent dir="rtl">
@@ -349,7 +440,9 @@ function FeedbackDetailContent({
                     </p>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>انصراف</Button>
+                    <Button variant="outline" onClick={() => setTaskDialogOpen(false)}>
+                      انصراف
+                    </Button>
                     <Button
                       disabled={!taskId.trim() || updateMut.isPending}
                       onClick={async () => {
@@ -368,10 +461,12 @@ function FeedbackDetailContent({
               <Button
                 size="sm"
                 disabled={updateMut.isPending}
-                onClick={() => updateMut.mutate({
-                  newStatus: status,
-                  newResponse: response.trim() || null,
-                })}
+                onClick={() =>
+                  updateMut.mutate({
+                    newStatus: status,
+                    newResponse: response.trim() || null,
+                  })
+                }
               >
                 {updateMut.isPending ? (
                   <Loader2 className="ms-1 h-4 w-4 animate-spin" />

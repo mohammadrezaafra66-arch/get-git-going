@@ -13,12 +13,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/credit")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager", "accountant"]);
+  },
   component: CustomerCreditPage,
 });
 
@@ -38,7 +45,10 @@ function CustomerCreditPage() {
     queryKey: ["customer-basic", customerId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("customers").select("id, name, phone").eq("id", customerId).maybeSingle();
+        .from("customers")
+        .select("id, name, phone")
+        .eq("id", customerId)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -50,7 +60,9 @@ function CustomerCreditPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customer_credit_profile")
-        .select("*").eq("customer_id", customerId).maybeSingle();
+        .select("*")
+        .eq("customer_id", customerId)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -72,7 +84,9 @@ function CustomerCreditPage() {
 
   const recalc = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("calculate_credit_score", { _customer_id: customerId });
+      const { data, error } = await supabase.rpc("calculate_credit_score", {
+        _customer_id: customerId,
+      });
       if (error) throw error;
       return data;
     },
@@ -113,9 +127,11 @@ function CustomerCreditPage() {
             </Button>
             {canRecalc && (
               <Button onClick={() => recalc.mutate()} disabled={recalc.isPending}>
-                {recalc.isPending
-                  ? <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  : <RefreshCw className="ml-2 h-4 w-4" />}
+                {recalc.isPending ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="ml-2 h-4 w-4" />
+                )}
                 محاسبه مجدد امتیاز
               </Button>
             )}
@@ -145,7 +161,9 @@ function CustomerCreditPage() {
             <MetricCard
               icon={<ShieldCheck className="h-5 w-5" />}
               label="امتیاز اعتباری"
-              hintText={"عدد ۰ تا ۱۰۰: تا ۳۰ پرریسک (قرمز)، ۳۱ تا ۶۰ متوسط (کهربایی)، بالاتر از ۶۰ خوش‌حساب (سبز)."}
+              hintText={
+                "عدد ۰ تا ۱۰۰: تا ۳۰ پرریسک (قرمز)، ۳۱ تا ۶۰ متوسط (کهربایی)، بالاتر از ۶۰ خوش‌حساب (سبز)."
+              }
               value={
                 <Badge className={`text-lg px-3 py-1 ${scoreColor(score)}`}>
                   {toFaDigits(score)} / ۱۰۰
@@ -155,14 +173,18 @@ function CustomerCreditPage() {
             <MetricCard
               icon={<Wallet className="h-5 w-5" />}
               label="سقف اعتبار"
-              hintText={"حداکثر مبلغی که این مشتری می‌تواند بدهکار شود. هنگام صدور فاکتور اعتباری چک می‌شود."}
+              hintText={
+                "حداکثر مبلغی که این مشتری می‌تواند بدهکار شود. هنگام صدور فاکتور اعتباری چک می‌شود."
+              }
               value={<span className="text-xl font-bold">{formatNumber(limit)}</span>}
               hint="ریال"
             />
             <MetricCard
               icon={<AlertTriangle className="h-5 w-5 text-amber-500" />}
               label="بدهی جاری"
-              hintText={"مبلغی که هنوز پرداخت نشده. هر فاکتور اعتباری به آن اضافه و هر دریافت از آن کم می‌شود."}
+              hintText={
+                "مبلغی که هنوز پرداخت نشده. هر فاکتور اعتباری به آن اضافه و هر دریافت از آن کم می‌شود."
+              }
               value={<span className="text-xl font-bold">{formatNumber(outstanding)}</span>}
               hint="ریال"
             />
@@ -192,7 +214,9 @@ function CustomerCreditPage() {
               <Stat label="تعداد تأخیر" value={toFaDigits(profile.late_payments_count ?? 0)} />
               <Stat
                 label="آخرین خرید"
-                value={profile.last_purchase_date ? formatDateTimeFa(profile.last_purchase_date) : "—"}
+                value={
+                  profile.last_purchase_date ? formatDateTimeFa(profile.last_purchase_date) : "—"
+                }
               />
             </CardContent>
           </Card>
@@ -247,8 +271,18 @@ function CustomerCreditPage() {
 }
 
 function MetricCard({
-  icon, label, value, hint, hintText,
-}: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; hintText?: string }) {
+  icon,
+  label,
+  value,
+  hint,
+  hintText,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  hintText?: string;
+}) {
   return (
     <Card>
       <CardContent className="p-4 space-y-2">

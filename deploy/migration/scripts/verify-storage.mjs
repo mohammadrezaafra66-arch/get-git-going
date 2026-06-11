@@ -23,7 +23,10 @@ const exportManifest = join(SRC_DIR, "storage-manifest.json");
 const targetManifest = join(SRC_DIR, "storage-manifest.target.json");
 
 function load(p) {
-  if (!existsSync(p)) { console.error(`[MISSING] ${p}`); return null; }
+  if (!existsSync(p)) {
+    console.error(`[MISSING] ${p}`);
+    return null;
+  }
   return JSON.parse(readFileSync(p, "utf8"));
 }
 
@@ -34,17 +37,24 @@ if (!a || !b) {
   process.exit(1);
 }
 
-const idx = new Map(b.items.map(i => [i.path, i]));
-let same = 0, mismatch = 0, missing = 0;
+const idx = new Map(b.items.map((i) => [i.path, i]));
+let same = 0,
+  mismatch = 0,
+  missing = 0;
 const issues = [];
 for (const it of a.items) {
   const t = idx.get(it.path);
-  if (!t) { missing++; issues.push(`MISSING: ${it.path}`); continue; }
+  if (!t) {
+    missing++;
+    issues.push(`MISSING: ${it.path}`);
+    continue;
+  }
   if (t.sha256 !== it.sha256 || t.size !== it.size) {
-    mismatch++; issues.push(`DIFF   : ${it.path} (size ${it.size}→${t.size})`);
+    mismatch++;
+    issues.push(`DIFF   : ${it.path} (size ${it.size}→${t.size})`);
   } else same++;
 }
-const extras = b.items.filter(i => !a.items.find(x => x.path === i.path));
+const extras = b.items.filter((i) => !a.items.find((x) => x.path === i.path));
 
 console.log(`Bucket  : ${BUCKET}`);
 console.log(`Source  : ${a.items.length}`);
@@ -53,5 +63,8 @@ console.log(`Same    : ${same}`);
 console.log(`Diff    : ${mismatch}`);
 console.log(`Missing : ${missing}`);
 console.log(`Extras  : ${extras.length}`);
-if (issues.length) { console.log("\nIssues:"); issues.slice(0, 50).forEach(i => console.log("  " + i)); }
+if (issues.length) {
+  console.log("\nIssues:");
+  issues.slice(0, 50).forEach((i) => console.log("  " + i));
+}
 process.exit(missing + mismatch === 0 ? 0 : 2);

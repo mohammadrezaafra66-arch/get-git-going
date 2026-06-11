@@ -13,51 +13,91 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import {
-  listLeagueSettings, updateLeagueSetting, setLeagueSettingActive,
-  listSeasons, createSeason, updateSeason, activateSeason, closeSeason,
+  listLeagueSettings,
+  updateLeagueSetting,
+  setLeagueSettingActive,
+  listSeasons,
+  createSeason,
+  updateSeason,
+  activateSeason,
+  closeSeason,
   previewLeagueSeasonChanges,
-  TIER_FA, STATUS_FA, SEASON_STATUSES,
-  type LeagueSettingRow, type SeasonRow, type SeasonStatus, type PreviewRow,
+  TIER_FA,
+  STATUS_FA,
+  SEASON_STATUSES,
+  type LeagueSettingRow,
+  type SeasonRow,
+  type SeasonStatus,
+  type PreviewRow,
 } from "@/lib/operations/gamification-leagues";
 
 export const Route = createFileRoute("/_app/gamification/admin/leagues")({
-  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
+  beforeLoad: async () => {
+    await requireAnyRole(["admin", "manager"]);
+  },
   component: LeaguesAdminPage,
 });
 
-const tierSchema = z.object({
-  title_fa: z.string().trim().min(1, "عنوان فارسی الزامی است").max(120),
-  title_en: z.string().trim().max(120).optional().or(z.literal("")),
-  min_level: z.coerce.number().int().min(0, "حداقل سطح نمی‌تواند منفی باشد"),
-  min_xp: z.coerce.number().min(0, "حداقل XP نمی‌تواند منفی باشد"),
-  promotion_percent: z.coerce.number().min(0).max(100, "درصد ارتقا باید بین ۰ و ۱۰۰ باشد"),
-  demotion_percent: z.coerce.number().min(0).max(100, "درصد سقوط باید بین ۰ و ۱۰۰ باشد"),
-  sort_order: z.coerce.number().int().min(0),
-  is_active: z.boolean(),
-}).refine((v) => v.promotion_percent + v.demotion_percent <= 100, {
-  message: "درصد ارتقا و سقوط نمی‌توانند مجموعاً بیشتر از ۱۰۰ باشند",
-  path: ["demotion_percent"],
-});
+const tierSchema = z
+  .object({
+    title_fa: z.string().trim().min(1, "عنوان فارسی الزامی است").max(120),
+    title_en: z.string().trim().max(120).optional().or(z.literal("")),
+    min_level: z.coerce.number().int().min(0, "حداقل سطح نمی‌تواند منفی باشد"),
+    min_xp: z.coerce.number().min(0, "حداقل XP نمی‌تواند منفی باشد"),
+    promotion_percent: z.coerce.number().min(0).max(100, "درصد ارتقا باید بین ۰ و ۱۰۰ باشد"),
+    demotion_percent: z.coerce.number().min(0).max(100, "درصد سقوط باید بین ۰ و ۱۰۰ باشد"),
+    sort_order: z.coerce.number().int().min(0),
+    is_active: z.boolean(),
+  })
+  .refine((v) => v.promotion_percent + v.demotion_percent <= 100, {
+    message: "درصد ارتقا و سقوط نمی‌توانند مجموعاً بیشتر از ۱۰۰ باشند",
+    path: ["demotion_percent"],
+  });
 
-const seasonSchema = z.object({
-  title_fa: z.string().trim().min(1, "عنوان فارسی الزامی است").max(120),
-  title_en: z.string().trim().max(120).optional().or(z.literal("")),
-  starts_at: z.string().min(1, "تاریخ شروع الزامی است"),
-  ends_at: z.string().min(1, "تاریخ پایان الزامی است"),
-  status: z.enum(["draft", "active", "closed"]),
-}).refine((v) => new Date(v.ends_at) > new Date(v.starts_at), {
-  message: "تاریخ پایان باید بعد از تاریخ شروع باشد",
-  path: ["ends_at"],
-});
+const seasonSchema = z
+  .object({
+    title_fa: z.string().trim().min(1, "عنوان فارسی الزامی است").max(120),
+    title_en: z.string().trim().max(120).optional().or(z.literal("")),
+    starts_at: z.string().min(1, "تاریخ شروع الزامی است"),
+    ends_at: z.string().min(1, "تاریخ پایان الزامی است"),
+    status: z.enum(["draft", "active", "closed"]),
+  })
+  .refine((v) => new Date(v.ends_at) > new Date(v.starts_at), {
+    message: "تاریخ پایان باید بعد از تاریخ شروع باشد",
+    path: ["ends_at"],
+  });
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
-  try { return new Date(d).toLocaleDateString("fa-IR"); } catch { return d; }
+  try {
+    return new Date(d).toLocaleDateString("fa-IR");
+  } catch {
+    return d;
+  }
 }
 
 function LeaguesAdminPage() {
@@ -72,8 +112,12 @@ function LeaguesAdminPage() {
           <TabsTrigger value="tiers">تنظیمات لیگ‌ها</TabsTrigger>
           <TabsTrigger value="seasons">فصل‌ها</TabsTrigger>
         </TabsList>
-        <TabsContent value="tiers"><TiersPanel /></TabsContent>
-        <TabsContent value="seasons"><SeasonsPanel /></TabsContent>
+        <TabsContent value="tiers">
+          <TiersPanel />
+        </TabsContent>
+        <TabsContent value="seasons">
+          <SeasonsPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -82,21 +126,29 @@ function LeaguesAdminPage() {
 // ---------------- Tiers ----------------
 function TiersPanel() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["league-settings"], queryFn: listLeagueSettings });
+  const { data, isLoading } = useQuery({
+    queryKey: ["league-settings"],
+    queryFn: listLeagueSettings,
+  });
   const [editing, setEditing] = useState<LeagueSettingRow | null>(null);
 
   const toggleMut = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) => setLeagueSettingActive(id, is_active),
+    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
+      setLeagueSettingActive(id, is_active),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["league-settings"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <Card>
-      <CardHeader><CardTitle>لیگ‌ها</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>لیگ‌ها</CardTitle>
+      </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin h-6 w-6" /></div>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin h-6 w-6" />
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -115,7 +167,9 @@ function TiersPanel() {
             <TableBody>
               {(data ?? []).map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell><Badge variant="outline">{TIER_FA[row.tier]}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{TIER_FA[row.tier]}</Badge>
+                  </TableCell>
                   <TableCell>{row.title_fa}</TableCell>
                   <TableCell>{row.min_level}</TableCell>
                   <TableCell>{row.min_xp}</TableCell>
@@ -144,7 +198,15 @@ function TiersPanel() {
   );
 }
 
-function TierDialog({ row, open, onClose }: { row: LeagueSettingRow | null; open: boolean; onClose: () => void }) {
+function TierDialog({
+  row,
+  open,
+  onClose,
+}: {
+  row: LeagueSettingRow | null;
+  open: boolean;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const [form, setForm] = useState(() => ({
     title_fa: row?.title_fa ?? "",
@@ -178,7 +240,11 @@ function TierDialog({ row, open, onClose }: { row: LeagueSettingRow | null; open
     mutationFn: async () => {
       if (!row) throw new Error("ردیف نامعتبر");
       const parsed = tierSchema.parse(form);
-      return updateLeagueSetting(row.id, { ...parsed, tier: row.tier, title_en: parsed.title_en || null });
+      return updateLeagueSetting(row.id, {
+        ...parsed,
+        tier: row.tier,
+        title_en: parsed.title_en || null,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["league-settings"] });
@@ -191,19 +257,83 @@ function TierDialog({ row, open, onClose }: { row: LeagueSettingRow | null; open
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl">
-        <DialogHeader><DialogTitle>ویرایش لیگ {row ? TIER_FA[row.tier] : ""}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>ویرایش لیگ {row ? TIER_FA[row.tier] : ""}</DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>عنوان فارسی</Label><Input value={form.title_fa} onChange={(e) => setForm({ ...form, title_fa: e.target.value })} /></div>
-          <div><Label>عنوان انگلیسی</Label><Input value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} /></div>
-          <div><Label>حداقل سطح</Label><Input type="number" min={0} value={form.min_level} onChange={(e) => setForm({ ...form, min_level: Number(e.target.value) })} /></div>
-          <div><Label>حداقل XP</Label><Input type="number" min={0} value={form.min_xp} onChange={(e) => setForm({ ...form, min_xp: Number(e.target.value) })} /></div>
-          <div><Label>درصد ارتقا</Label><Input type="number" min={0} max={100} value={form.promotion_percent} onChange={(e) => setForm({ ...form, promotion_percent: Number(e.target.value) })} /></div>
-          <div><Label>درصد سقوط</Label><Input type="number" min={0} max={100} value={form.demotion_percent} onChange={(e) => setForm({ ...form, demotion_percent: Number(e.target.value) })} /></div>
-          <div><Label>ترتیب</Label><Input type="number" min={0} value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} /></div>
-          <div className="flex items-center gap-2 pt-6"><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /><Label>فعال</Label></div>
+          <div>
+            <Label>عنوان فارسی</Label>
+            <Input
+              value={form.title_fa}
+              onChange={(e) => setForm({ ...form, title_fa: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>عنوان انگلیسی</Label>
+            <Input
+              value={form.title_en}
+              onChange={(e) => setForm({ ...form, title_en: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>حداقل سطح</Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.min_level}
+              onChange={(e) => setForm({ ...form, min_level: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <Label>حداقل XP</Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.min_xp}
+              onChange={(e) => setForm({ ...form, min_xp: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <Label>درصد ارتقا</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.promotion_percent}
+              onChange={(e) => setForm({ ...form, promotion_percent: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <Label>درصد سقوط</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={form.demotion_percent}
+              onChange={(e) => setForm({ ...form, demotion_percent: Number(e.target.value) })}
+            />
+          </div>
+          <div>
+            <Label>ترتیب</Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.sort_order}
+              onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
+            />
+          </div>
+          <div className="flex items-center gap-2 pt-6">
+            <Switch
+              checked={form.is_active}
+              onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+            />
+            <Label>فعال</Label>
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>انصراف</Button>
+          <Button variant="outline" onClick={onClose}>
+            انصراف
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
             {mut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}ذخیره
           </Button>
@@ -216,19 +346,28 @@ function TierDialog({ row, open, onClose }: { row: LeagueSettingRow | null; open
 // ---------------- Seasons ----------------
 function SeasonsPanel() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["league-seasons-admin"], queryFn: listSeasons });
+  const { data, isLoading } = useQuery({
+    queryKey: ["league-seasons-admin"],
+    queryFn: listSeasons,
+  });
   const [editing, setEditing] = useState<SeasonRow | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [previewSeason, setPreviewSeason] = useState<SeasonRow | null>(null);
 
   const activateMut = useMutation({
     mutationFn: (id: string) => activateSeason(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["league-seasons-admin"] }); toast.success("فصل فعال شد"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["league-seasons-admin"] });
+      toast.success("فصل فعال شد");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const closeMut = useMutation({
     mutationFn: (id: string) => closeSeason(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["league-seasons-admin"] }); toast.success("فصل بسته شد"); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["league-seasons-admin"] });
+      toast.success("فصل بسته شد");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -236,11 +375,16 @@ function SeasonsPanel() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>فصل‌ها</CardTitle>
-        <Button size="sm" onClick={() => setOpenCreate(true)}><Plus className="ml-1 h-4 w-4" />افزودن فصل</Button>
+        <Button size="sm" onClick={() => setOpenCreate(true)}>
+          <Plus className="ml-1 h-4 w-4" />
+          افزودن فصل
+        </Button>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin h-6 w-6" /></div>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin h-6 w-6" />
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -259,10 +403,17 @@ function SeasonsPanel() {
                   <TableCell>{s.title_fa}</TableCell>
                   <TableCell>{fmtDate(s.starts_at)}</TableCell>
                   <TableCell>{fmtDate(s.ends_at)}</TableCell>
-                  <TableCell><Badge>{STATUS_FA[s.status]}</Badge></TableCell>
+                  <TableCell>
+                    <Badge>{STATUS_FA[s.status]}</Badge>
+                  </TableCell>
                   <TableCell>{s.is_active ? "بله" : "خیر"}</TableCell>
                   <TableCell className="flex gap-1 flex-wrap">
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(s)} disabled={s.status === "closed"}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditing(s)}
+                      disabled={s.status === "closed"}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     {s.status === "draft" && (
@@ -288,7 +439,10 @@ function SeasonsPanel() {
           row={editing}
           open={!!editing || openCreate}
           isCreate={openCreate}
-          onClose={() => { setEditing(null); setOpenCreate(false); }}
+          onClose={() => {
+            setEditing(null);
+            setOpenCreate(false);
+          }}
         />
         <PreviewDialog season={previewSeason} onClose={() => setPreviewSeason(null)} />
       </CardContent>
@@ -297,14 +451,26 @@ function SeasonsPanel() {
 }
 
 function SeasonDialog({
-  row, open, isCreate, onClose,
-}: { row: SeasonRow | null; open: boolean; isCreate: boolean; onClose: () => void }) {
+  row,
+  open,
+  isCreate,
+  onClose,
+}: {
+  row: SeasonRow | null;
+  open: boolean;
+  isCreate: boolean;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    title_fa: "", title_en: "", starts_at: "", ends_at: "", status: "draft" as SeasonStatus,
+    title_fa: "",
+    title_en: "",
+    starts_at: "",
+    ends_at: "",
+    status: "draft" as SeasonStatus,
   });
 
-  const rowKey = isCreate ? "new" : row?.id ?? "";
+  const rowKey = isCreate ? "new" : (row?.id ?? "");
   const [lastKey, setLastKey] = useState("");
   if (rowKey !== lastKey && open) {
     setLastKey(rowKey);
@@ -342,24 +508,63 @@ function SeasonDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl">
-        <DialogHeader><DialogTitle>{isCreate ? "افزودن فصل" : "ویرایش فصل"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{isCreate ? "افزودن فصل" : "ویرایش فصل"}</DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>عنوان فارسی</Label><Input value={form.title_fa} onChange={(e) => setForm({ ...form, title_fa: e.target.value })} /></div>
-          <div><Label>عنوان انگلیسی</Label><Input value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value })} /></div>
-          <div><Label>تاریخ شروع</Label><Input type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></div>
-          <div><Label>تاریخ پایان</Label><Input type="date" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} /></div>
+          <div>
+            <Label>عنوان فارسی</Label>
+            <Input
+              value={form.title_fa}
+              onChange={(e) => setForm({ ...form, title_fa: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>عنوان انگلیسی</Label>
+            <Input
+              value={form.title_en}
+              onChange={(e) => setForm({ ...form, title_en: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>تاریخ شروع</Label>
+            <Input
+              type="date"
+              value={form.starts_at}
+              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label>تاریخ پایان</Label>
+            <Input
+              type="date"
+              value={form.ends_at}
+              onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+            />
+          </div>
           <div className="col-span-2">
             <Label>وضعیت</Label>
-            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as SeasonStatus })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={form.status}
+              onValueChange={(v) => setForm({ ...form, status: v as SeasonStatus })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {SEASON_STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_FA[s]}</SelectItem>)}
+                {SEASON_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_FA[s]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>انصراف</Button>
+          <Button variant="outline" onClick={onClose}>
+            انصراف
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
             {mut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}ذخیره
           </Button>
@@ -379,14 +584,19 @@ function PreviewDialog({ season, onClose }: { season: SeasonRow | null; onClose:
   return (
     <Dialog open={!!season} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="max-w-4xl">
-        <DialogHeader><DialogTitle>پیش‌نمایش ارتقا/سقوط — {season?.title_fa}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>پیش‌نمایش ارتقا/سقوط — {season?.title_fa}</DialogTitle>
+        </DialogHeader>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin h-6 w-6" /></div>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="animate-spin h-6 w-6" />
+          </div>
         ) : error ? (
           <div className="text-destructive text-sm">{(error as Error).message}</div>
         ) : (data ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground py-4">
-            داده‌ای برای این فصل ثبت نشده است. منبع امتیازدهی فصل برای پیش‌نمایش ارتقا/سقوط هنوز کامل نیست.
+            داده‌ای برای این فصل ثبت نشده است. منبع امتیازدهی فصل برای پیش‌نمایش ارتقا/سقوط هنوز
+            کامل نیست.
           </div>
         ) : (
           <div className="max-h-[60vh] overflow-auto">
@@ -409,8 +619,20 @@ function PreviewDialog({ season, onClose }: { season: SeasonRow | null; onClose:
                     <TableCell>{r.score}</TableCell>
                     <TableCell>{r.rank_in_tier}</TableCell>
                     <TableCell>
-                      <Badge variant={r.suggested_action === "promote" ? "default" : r.suggested_action === "demote" ? "destructive" : "secondary"}>
-                        {r.suggested_action === "promote" ? "ارتقا" : r.suggested_action === "demote" ? "سقوط" : "ماندن"}
+                      <Badge
+                        variant={
+                          r.suggested_action === "promote"
+                            ? "default"
+                            : r.suggested_action === "demote"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {r.suggested_action === "promote"
+                          ? "ارتقا"
+                          : r.suggested_action === "demote"
+                            ? "سقوط"
+                            : "ماندن"}
                       </Badge>
                     </TableCell>
                     <TableCell>{TIER_FA[r.target_tier]}</TableCell>
@@ -421,7 +643,8 @@ function PreviewDialog({ season, onClose }: { season: SeasonRow | null; onClose:
           </div>
         )}
         <div className="text-xs text-muted-foreground border-t pt-2">
-          اعمال خودکار ارتقا/سقوط در این فاز فعال نیست. <code>Apply league season changes deferred until scoring source is finalized.</code>
+          اعمال خودکار ارتقا/سقوط در این فاز فعال نیست.{" "}
+          <code>Apply league season changes deferred until scoring source is finalized.</code>
         </div>
       </DialogContent>
     </Dialog>

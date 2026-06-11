@@ -209,10 +209,7 @@ function NewSaleListPage() {
   });
 
   // Fetch sale price snapshots for visible products to render the price column
-  const visibleIds = useMemo(
-    () => (productsQ.data?.rows ?? []).map((p) => p.id),
-    [productsQ.data],
-  );
+  const visibleIds = useMemo(() => (productsQ.data?.rows ?? []).map((p) => p.id), [productsQ.data]);
 
   const visiblePricesQ = useQuery({
     queryKey: ["sale-list-new-visible-prices", salePriceTypeId, visibleIds],
@@ -246,8 +243,7 @@ function NewSaleListPage() {
   const rows = productsQ.data?.rows ?? [];
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const allVisibleSelected =
-    rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
+  const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
 
   const toggleSelectAllVisible = () => {
     if (allVisibleSelected) {
@@ -259,9 +255,7 @@ function NewSaleListPage() {
   };
 
   const toggleOne = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const toggleColumn = (key: ColumnKey) => {
@@ -719,9 +713,7 @@ function NewSaleListPage() {
                     />
                     <span>{opt.label}</span>
                     {opt.locked && (
-                      <span className="mr-auto text-[10px] text-muted-foreground">
-                        (الزامی)
-                      </span>
+                      <span className="mr-auto text-[10px] text-muted-foreground">(الزامی)</span>
                     )}
                   </label>
                 );
@@ -812,7 +804,9 @@ function NewSaleListPage() {
                 <SelectContent>
                   <SelectItem value="__none">— بدون نوع تسویه —</SelectItem>
                   {(settlementTypesQ.data ?? []).map((s: { id: string; title: string }) => (
-                    <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -841,7 +835,7 @@ function NewSaleListPage() {
 
         {step < 3 ? (
           <Button
-            onClick={() => setStep((s) => ((s + 1) as 1 | 2 | 3))}
+            onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)}
             disabled={step === 1 ? !canGoStep2 : !canGoStep3}
             className="gap-2"
           >
@@ -850,11 +844,7 @@ function NewSaleListPage() {
           </Button>
         ) : (
           <Button onClick={handleSave} disabled={saving} className="gap-2">
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             ذخیره لیست فروش
           </Button>
         )}
@@ -892,9 +882,7 @@ function Stepper({ step }: { step: 1 | 2 | 3 }) {
             >
               {it.label}
             </span>
-            {idx < items.length - 1 && (
-              <span className="mx-1 h-px w-6 bg-border sm:w-10" />
-            )}
+            {idx < items.length - 1 && <span className="mx-1 h-px w-6 bg-border sm:w-10" />}
           </div>
         );
       })}

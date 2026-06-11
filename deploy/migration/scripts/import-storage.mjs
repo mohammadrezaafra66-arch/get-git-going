@@ -29,7 +29,10 @@ const OVERWRITE = process.argv.includes("--overwrite");
 
 function need(k) {
   const v = process.env[k];
-  if (!v) { console.error(`[ERROR] missing env: ${k}`); process.exit(1); }
+  if (!v) {
+    console.error(`[ERROR] missing env: ${k}`);
+    process.exit(1);
+  }
   return v;
 }
 
@@ -51,7 +54,8 @@ async function uploadOne(path, buf) {
 (async () => {
   const manifestPath = join(SRC_DIR, "storage-manifest.json");
   if (!existsSync(manifestPath)) {
-    console.error(`[ERROR] manifest not found: ${manifestPath}`); process.exit(1);
+    console.error(`[ERROR] manifest not found: ${manifestPath}`);
+    process.exit(1);
   }
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   console.log(`Bucket   : ${BUCKET}`);
@@ -61,26 +65,47 @@ async function uploadOne(path, buf) {
   console.log(`DRY_RUN  : ${DRY}`);
 
   if (DRY) {
-    manifest.items.slice(0, 20).forEach(i => console.log(`  - ${i.path} (${i.size}b)`));
+    manifest.items.slice(0, 20).forEach((i) => console.log(`  - ${i.path} (${i.size}b)`));
     console.log("[DRY_RUN] چیزی آپلود نشد.");
     return;
   }
 
   const targetManifest = [];
-  let ok = 0, fail = 0;
+  let ok = 0,
+    fail = 0;
   for (const it of manifest.items) {
     const fp = join(SRC_DIR, BUCKET, it.path);
     const buf = await readFile(fp);
     const sha = createHash("sha256").update(buf).digest("hex");
     if (sha !== it.sha256) {
-      console.warn(`[WARN] sha mismatch local file: ${it.path}`); fail++; continue;
+      console.warn(`[WARN] sha mismatch local file: ${it.path}`);
+      fail++;
+      continue;
     }
-    try { await uploadOne(it.path, buf); targetManifest.push({ ...it }); ok++; process.stdout.write("."); }
-    catch (e) { console.warn(`\n[FAIL] ${it.path}: ${e.message}`); fail++; }
+    try {
+      await uploadOne(it.path, buf);
+      targetManifest.push({ ...it });
+      ok++;
+      process.stdout.write(".");
+    } catch (e) {
+      console.warn(`\n[FAIL] ${it.path}: ${e.message}`);
+      fail++;
+    }
   }
   await readFile; // noop
   const out = join(SRC_DIR, "storage-manifest.target.json");
-  await (await import("node:fs/promises")).writeFile(out,
-    JSON.stringify({ bucket: BUCKET, count: targetManifest.length, items: targetManifest }, null, 2));
+  await (
+    await import("node:fs/promises")
+  ).writeFile(
+    out,
+    JSON.stringify(
+      { bucket: BUCKET, count: targetManifest.length, items: targetManifest },
+      null,
+      2,
+    ),
+  );
   console.log(`\n[DONE] uploaded=${ok} failed=${fail} → manifest: ${out}`);
-})().catch(e => { console.error("[ERROR]", e.message); process.exit(1); });
+})().catch((e) => {
+  console.error("[ERROR]", e.message);
+  process.exit(1);
+});

@@ -1,8 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
 import { LEAGUE_TIERS, TIER_FA, type LeagueTier } from "@/lib/operations/gamification-leagues";
 
-export type RewardType = "gift_card" | "cash_bonus" | "commission_bonus" | "paid_leave" | "badge_reward" | "custom";
-export const REWARD_TYPES: RewardType[] = ["gift_card", "cash_bonus", "commission_bonus", "paid_leave", "badge_reward", "custom"];
+export type RewardType =
+  | "gift_card"
+  | "cash_bonus"
+  | "commission_bonus"
+  | "paid_leave"
+  | "badge_reward"
+  | "custom";
+export const REWARD_TYPES: RewardType[] = [
+  "gift_card",
+  "cash_bonus",
+  "commission_bonus",
+  "paid_leave",
+  "badge_reward",
+  "custom",
+];
 export const REWARD_TYPE_FA: Record<RewardType, string> = {
   gift_card: "کارت هدیه",
   cash_bonus: "پاداش نقدی",
@@ -12,8 +25,19 @@ export const REWARD_TYPE_FA: Record<RewardType, string> = {
   custom: "سفارشی",
 };
 
-export type TriggerType = "level_reached" | "achievement_unlocked" | "mission_completed" | "league_reached" | "season_top_rank";
-export const TRIGGER_TYPES: TriggerType[] = ["level_reached", "achievement_unlocked", "mission_completed", "league_reached", "season_top_rank"];
+export type TriggerType =
+  | "level_reached"
+  | "achievement_unlocked"
+  | "mission_completed"
+  | "league_reached"
+  | "season_top_rank";
+export const TRIGGER_TYPES: TriggerType[] = [
+  "level_reached",
+  "achievement_unlocked",
+  "mission_completed",
+  "league_reached",
+  "season_top_rank",
+];
 export const TRIGGER_TYPE_FA: Record<TriggerType, string> = {
   level_reached: "رسیدن به سطح",
   achievement_unlocked: "آزاد شدن مدال",
@@ -25,7 +49,12 @@ export const TRIGGER_TYPE_FA: Record<TriggerType, string> = {
 export type RewardUnit = "toman" | "day" | "percent" | "point" | "item" | "custom";
 export const REWARD_UNITS: RewardUnit[] = ["toman", "day", "percent", "point", "item", "custom"];
 export const REWARD_UNIT_FA: Record<RewardUnit, string> = {
-  toman: "تومان", day: "روز", percent: "درصد", point: "امتیاز", item: "عدد", custom: "سفارشی",
+  toman: "تومان",
+  day: "روز",
+  percent: "درصد",
+  point: "امتیاز",
+  item: "عدد",
+  custom: "سفارشی",
 };
 
 export interface RewardRow {
@@ -61,9 +90,19 @@ export interface RewardInput {
   sort_order: number;
 }
 
-export interface AchievementOption { id: string; title_fa: string; }
-export interface MissionOption { id: string; title_fa: string; }
-export interface LeagueOption { id: string; tier: LeagueTier; title_fa: string; }
+export interface AchievementOption {
+  id: string;
+  title_fa: string;
+}
+export interface MissionOption {
+  id: string;
+  title_fa: string;
+}
+export interface LeagueOption {
+  id: string;
+  tier: LeagueTier;
+  title_fa: string;
+}
 
 const COLS =
   "id,title_fa,title_en,description,reward_type,trigger_type,trigger_ref_id,trigger_value," +
@@ -107,7 +146,9 @@ function toDbRow(input: RewardInput) {
 }
 
 async function logAudit(action: string, entityId: string, diff: Record<string, unknown>) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({
     actor_id: user.id,
@@ -142,7 +183,11 @@ export async function createReward(input: RewardInput): Promise<RewardRow> {
 }
 
 export async function updateReward(id: string, input: RewardInput): Promise<RewardRow> {
-  const { data: before } = await supabase.from("gamification_rewards").select(COLS).eq("id", id).maybeSingle();
+  const { data: before } = await supabase
+    .from("gamification_rewards")
+    .select(COLS)
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("gamification_rewards")
     .update(toDbRow(input) as never)
@@ -159,7 +204,10 @@ export async function updateReward(id: string, input: RewardInput): Promise<Rewa
 }
 
 export async function setRewardActive(id: string, is_active: boolean): Promise<void> {
-  const { error } = await supabase.from("gamification_rewards").update({ is_active } as never).eq("id", id);
+  const { error } = await supabase
+    .from("gamification_rewards")
+    .update({ is_active } as never)
+    .eq("id", id);
   if (error) throw error;
   await logAudit(is_active ? "reward_enabled" : "reward_disabled", id, { is_active });
 }
@@ -195,5 +243,9 @@ export async function listLeagueOptions(): Promise<LeagueOption[]> {
   if (error) throw error;
   return ((data ?? []) as unknown as Array<{ id: string; tier: string; title_fa: string }>)
     .filter((r) => LEAGUE_TIERS.includes(r.tier as LeagueTier))
-    .map((r) => ({ id: r.id, tier: r.tier as LeagueTier, title_fa: r.title_fa || TIER_FA[r.tier as LeagueTier] }));
+    .map((r) => ({
+      id: r.id,
+      tier: r.tier as LeagueTier,
+      title_fa: r.title_fa || TIER_FA[r.tier as LeagueTier],
+    }));
 }

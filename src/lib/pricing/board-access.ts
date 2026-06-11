@@ -103,7 +103,9 @@ export async function fetchPendingBoardRequests(
   }));
 }
 
-async function enrichWithProfiles(rows: BoardAccessRequest[]): Promise<BoardAccessRequestWithProfile[]> {
+async function enrichWithProfiles(
+  rows: BoardAccessRequest[],
+): Promise<BoardAccessRequestWithProfile[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.user_id);
   const [{ data: profiles }, rolesMap] = await Promise.all([
@@ -167,7 +169,8 @@ export async function reviewBoardAccessRequest(opts: {
 
   // audit log
   await supabase.from("audit_logs").insert({
-    action: newStatus === "approved" ? "pricing_board_access_approved" : "pricing_board_access_rejected",
+    action:
+      newStatus === "approved" ? "pricing_board_access_approved" : "pricing_board_access_rejected",
     entity_type: "pricing_board_access_requests",
     entity_id: updated.id,
     actor_id: reviewerId,

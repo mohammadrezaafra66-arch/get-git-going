@@ -43,18 +43,31 @@ import {
   splitViolations,
   type RuleViolation,
 } from "@/lib/validation/rules";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 /* ------------- Party (payer/receiver) lookup helper ------------- */
@@ -66,13 +79,7 @@ type PartyMatch = {
   accounting_code: string | null;
 };
 
-function PartyLookup({
-  label,
-  onPick,
-}: {
-  label: string;
-  onPick: (m: PartyMatch) => void;
-}) {
+function PartyLookup({ label, onPick }: { label: string; onPick: (m: PartyMatch) => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search, 350);
@@ -87,9 +94,7 @@ function PartyLookup({
       const { data, error } = await supabase
         .from("customers")
         .select("id, name, phone, accounting_code")
-        .or(
-          `name.ilike.%${term}%,phone.ilike.%${term}%,accounting_code.ilike.%${term}%`,
-        )
+        .or(`name.ilike.%${term}%,phone.ilike.%${term}%,accounting_code.ilike.%${term}%`)
         .order("name", { ascending: true })
         .limit(20);
       if (error) throw error;
@@ -180,56 +185,58 @@ function evaluateFormWarnings(values: {
   });
 }
 
-const schema = z.object({
-  customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
-  receipt_type: z.enum(["payment", "prepayment"]),
-  payer_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
-  payer_phone: z.string().trim().max(30).optional().or(z.literal("")),
-  payer_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
-  receiver_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
-  receiver_phone: z.string().trim().max(30).optional().or(z.literal("")),
-  receiver_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
-  beneficiary_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
-  amount: z
-    .number({ message: "مبلغ الزامی است" })
-    .positive("مبلغ باید مثبت باشد")
-    .max(1e12, "مبلغ نامعتبر است (حداکثر ۱۰۰۰ میلیارد تومان)"),
-  payment_date: z.string()
-    .min(1, "تاریخ الزامی است")
-    .refine((d) => d <= today, "تاریخ نمی‌تواند در آینده باشد"),
-  payment_time: z.string().regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM"),
-  tracking_number: z.string().trim().min(1, "شماره پیگیری الزامی است").max(100, "حداکثر ۱۰۰ کاراکتر"),
-  bank_name: z.string().trim().max(100).optional().or(z.literal("")),
-  source_bank: z.string().trim().max(100).optional().or(z.literal("")),
-  destination_bank: z.string().trim().max(100).optional().or(z.literal("")),
-  payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
-  receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
-  has_perforation: z.boolean(),
-  receipt_time: z
-    .string()
-    .trim()
-    .regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM")
-    .optional()
-    .or(z.literal("")),
-  document_channel: z.union([
-    z.enum(["card_to_card","paya","pol","satna","cash","other"]),
-    z.literal(""),
-  ]),
-  is_typed_receipt: z.boolean(),
-  receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
-  description: z.string().trim().max(1000).optional().or(z.literal("")),
-  source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
-  destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
-  receiver_party_id: z.string().uuid().optional().or(z.literal("")),
-}).refine(
-  (v) =>
-    Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id),
-  {
-    message:
-      "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
+const schema = z
+  .object({
+    customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
+    receipt_type: z.enum(["payment", "prepayment"]),
+    payer_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
+    payer_phone: z.string().trim().max(30).optional().or(z.literal("")),
+    payer_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
+    receiver_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
+    receiver_phone: z.string().trim().max(30).optional().or(z.literal("")),
+    receiver_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
+    beneficiary_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
+    amount: z
+      .number({ message: "مبلغ الزامی است" })
+      .positive("مبلغ باید مثبت باشد")
+      .max(1e12, "مبلغ نامعتبر است (حداکثر ۱۰۰۰ میلیارد تومان)"),
+    payment_date: z
+      .string()
+      .min(1, "تاریخ الزامی است")
+      .refine((d) => d <= today, "تاریخ نمی‌تواند در آینده باشد"),
+    payment_time: z.string().regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM"),
+    tracking_number: z
+      .string()
+      .trim()
+      .min(1, "شماره پیگیری الزامی است")
+      .max(100, "حداکثر ۱۰۰ کاراکتر"),
+    bank_name: z.string().trim().max(100).optional().or(z.literal("")),
+    source_bank: z.string().trim().max(100).optional().or(z.literal("")),
+    destination_bank: z.string().trim().max(100).optional().or(z.literal("")),
+    payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+    receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
+    has_perforation: z.boolean(),
+    receipt_time: z
+      .string()
+      .trim()
+      .regex(/^\d{2}:\d{2}$/, "فرمت ساعت HH:MM")
+      .optional()
+      .or(z.literal("")),
+    document_channel: z.union([
+      z.enum(["card_to_card", "paya", "pol", "satna", "cash", "other"]),
+      z.literal(""),
+    ]),
+    is_typed_receipt: z.boolean(),
+    receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
+    description: z.string().trim().max(1000).optional().or(z.literal("")),
+    source_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+    destination_bank_account_id: z.string().uuid().optional().or(z.literal("")),
+    receiver_party_id: z.string().uuid().optional().or(z.literal("")),
+  })
+  .refine((v) => Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id), {
+    message: "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
     path: ["receiver_party_id"],
-  },
-);
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -260,18 +267,20 @@ export function PaymentReceiptForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [duplicateOpen, setDuplicateOpen] = useState(false);
-  const [pendingValues, setPendingValues] = useState<
-    { values: FormValues; allocations: InvoiceAllocation[] } | null
-  >(null);
+  const [pendingValues, setPendingValues] = useState<{
+    values: FormValues;
+    allocations: InvoiceAllocation[];
+  } | null>(null);
   const [duplicateCount, setDuplicateCount] = useState(0);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [pendingWarnings, setPendingWarnings] = useState<ReceiptSecurityWarning[]>([]);
   const [pendingRuleWarnings, setPendingRuleWarnings] = useState<RuleViolation[]>([]);
   const [blockingViolations, setBlockingViolations] = useState<RuleViolation[]>([]);
   const [blockingOpen, setBlockingOpen] = useState(false);
-  const [pendingWarningContext, setPendingWarningContext] = useState<
-    { values: FormValues; allocations: InvoiceAllocation[] } | null
-  >(null);
+  const [pendingWarningContext, setPendingWarningContext] = useState<{
+    values: FormValues;
+    allocations: InvoiceAllocation[];
+  } | null>(null);
   const [allocations, setAllocations] = useState<InvoiceAllocation[]>([]);
   const [invoicePickerOpen, setInvoicePickerOpen] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
@@ -344,13 +353,21 @@ export function PaymentReceiptForm() {
               continue;
             }
             ocr = await extractReceiptFromBytes({
-              data: { file_name: file.name, mime: file.type || "application/octet-stream", base64: b64 },
+              data: {
+                file_name: file.name,
+                mime: file.type || "application/octet-stream",
+                base64: b64,
+              },
               headers: { Authorization: `Bearer ${token}` },
             });
           } catch (err) {
             let msg = "خطای ناشناخته";
             if (err instanceof Response) {
-              try { msg = await err.text(); } catch { /* noop */ }
+              try {
+                msg = await err.text();
+              } catch {
+                /* noop */
+              }
             } else if (err instanceof Error) {
               msg = err.message;
             }
@@ -359,8 +376,11 @@ export function PaymentReceiptForm() {
           }
           if (cancelled) return;
           // SH-RA.2B-UI: explicit message when server reports OCR disabled.
-          if (ocr && (ocr as { disabled?: boolean; reason?: string }).disabled === true &&
-              (ocr as { reason?: string }).reason === "ocr_disabled") {
+          if (
+            ocr &&
+            (ocr as { disabled?: boolean; reason?: string }).disabled === true &&
+            (ocr as { reason?: string }).reason === "ocr_disabled"
+          ) {
             toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
             continue;
           }
@@ -386,7 +406,10 @@ export function PaymentReceiptForm() {
             filled.push("مبلغ");
           }
           if (parsed.tracking_number && !form.getValues("tracking_number")) {
-            form.setValue("tracking_number", parsed.tracking_number, { shouldValidate: true, shouldDirty: true });
+            form.setValue("tracking_number", parsed.tracking_number, {
+              shouldValidate: true,
+              shouldDirty: true,
+            });
             filled.push("شماره پیگیری");
           }
           if (parsed.receipt_date) {
@@ -414,12 +437,20 @@ export function PaymentReceiptForm() {
             filled.push("بانک مقصد");
           }
           if (parsed.payer_name_on_receipt && !form.getValues("payer_name_on_receipt")) {
-            form.setValue("payer_name_on_receipt", parsed.payer_name_on_receipt, { shouldDirty: true });
+            form.setValue("payer_name_on_receipt", parsed.payer_name_on_receipt, {
+              shouldDirty: true,
+            });
           }
           if (parsed.receiver_name_on_receipt && !form.getValues("receiver_name_on_receipt")) {
-            form.setValue("receiver_name_on_receipt", parsed.receiver_name_on_receipt, { shouldDirty: true });
+            form.setValue("receiver_name_on_receipt", parsed.receiver_name_on_receipt, {
+              shouldDirty: true,
+            });
           }
-          if (parsed.document_channel && parsed.document_channel !== "unknown" && !form.getValues("document_channel")) {
+          if (
+            parsed.document_channel &&
+            parsed.document_channel !== "unknown" &&
+            !form.getValues("document_channel")
+          ) {
             form.setValue("document_channel", parsed.document_channel, { shouldDirty: true });
           }
 
@@ -470,13 +501,23 @@ export function PaymentReceiptForm() {
       .select("id, name, phone")
       .eq("accounting_code" as never, c as never)
       .maybeSingle();
-    if (cust) return { name: (cust as { name: string }).name, phone: (cust as { phone: string | null }).phone, valid: true };
+    if (cust)
+      return {
+        name: (cust as { name: string }).name,
+        phone: (cust as { phone: string | null }).phone,
+        valid: true,
+      };
     const { data: ext } = await supabase
       .from("external_parties")
       .select("id, full_name, phone")
       .eq("accounting_code" as never, c as never)
       .maybeSingle();
-    if (ext) return { name: (ext as { full_name: string }).full_name, phone: (ext as { phone: string | null }).phone, valid: true };
+    if (ext)
+      return {
+        name: (ext as { full_name: string }).full_name,
+        phone: (ext as { phone: string | null }).phone,
+        valid: true,
+      };
     return { valid: false };
   }
 
@@ -485,8 +526,10 @@ export function PaymentReceiptForm() {
     if (!code) return;
     const r = await resolveByAccountingCode(code);
     if (r.valid) {
-      if (!form.getValues("payer_name") && r.name) form.setValue("payer_name", r.name, { shouldValidate: true });
-      if (!form.getValues("payer_phone") && r.phone) form.setValue("payer_phone", r.phone, { shouldValidate: true });
+      if (!form.getValues("payer_name") && r.name)
+        form.setValue("payer_name", r.name, { shouldValidate: true });
+      if (!form.getValues("payer_phone") && r.phone)
+        form.setValue("payer_phone", r.phone, { shouldValidate: true });
       toast.success(`واریزکننده شناسایی شد: ${r.name}`);
     }
   }
@@ -495,8 +538,10 @@ export function PaymentReceiptForm() {
     if (!code) return;
     const r = await resolveByAccountingCode(code);
     if (r.valid) {
-      if (!form.getValues("receiver_name") && r.name) form.setValue("receiver_name", r.name, { shouldValidate: true });
-      if (!form.getValues("receiver_phone") && r.phone) form.setValue("receiver_phone", r.phone, { shouldValidate: true });
+      if (!form.getValues("receiver_name") && r.name)
+        form.setValue("receiver_name", r.name, { shouldValidate: true });
+      if (!form.getValues("receiver_phone") && r.phone)
+        form.setValue("receiver_phone", r.phone, { shouldValidate: true });
       toast.success(`گیرنده شناسایی شد: ${r.name}`);
     }
   }
@@ -504,7 +549,10 @@ export function PaymentReceiptForm() {
   const [beneficiaryName, setBeneficiaryName] = useState<string>("");
   async function handleBeneficiaryCodeBlur() {
     const code = (form.getValues("beneficiary_accounting_code") || "").trim();
-    if (!code) { setBeneficiaryName(""); return; }
+    if (!code) {
+      setBeneficiaryName("");
+      return;
+    }
     const r = await resolveByAccountingCode(code);
     if (r.valid && r.name) {
       setBeneficiaryName(r.name);
@@ -522,14 +570,16 @@ export function PaymentReceiptForm() {
     if (codes.length === 0) return new Set();
     const set = new Set<string>();
     const { data: cs } = await supabase
-      .from("customers").select("accounting_code")
+      .from("customers")
+      .select("accounting_code")
       .in("accounting_code" as never, codes as never);
     (cs ?? []).forEach((r) => {
       const c = (r as { accounting_code: string | null }).accounting_code;
       if (c) set.add(c);
     });
     const { data: ex } = await supabase
-      .from("external_parties").select("accounting_code")
+      .from("external_parties")
+      .select("accounting_code")
       .in("accounting_code" as never, codes as never);
     (ex ?? []).forEach((r) => {
       const c = (r as { accounting_code: string | null }).accounting_code;
@@ -585,8 +635,12 @@ export function PaymentReceiptForm() {
         .limit(50);
       if (error) throw error;
       const list = (invs ?? []) as Array<{
-        id: string; number: string | null; total_amount: number; status: string;
-        issue_date: string | null; due_date: string | null;
+        id: string;
+        number: string | null;
+        total_amount: number;
+        status: string;
+        issue_date: string | null;
+        due_date: string | null;
       }>;
       if (list.length === 0) return [];
 
@@ -597,7 +651,11 @@ export function PaymentReceiptForm() {
         .in("invoice_id", ids);
       if (linkErr) throw linkErr;
       const paidMap = new Map<string, number>();
-      for (const l of (links ?? []) as Array<{ invoice_id: string; amount: number; receipt: { status: string } | null }>) {
+      for (const l of (links ?? []) as Array<{
+        invoice_id: string;
+        amount: number;
+        receipt: { status: string } | null;
+      }>) {
         if (l.receipt?.status === "approved") {
           paidMap.set(l.invoice_id, (paidMap.get(l.invoice_id) ?? 0) + Number(l.amount));
         }
@@ -693,16 +751,14 @@ export function PaymentReceiptForm() {
         reason = "مبلغ فیش نزدیک‌ترین مقدار به مانده این پیش‌فاکتور است.";
       } else if (dueProximity <= 7 || dateProximity <= 7) {
         confidence = "medium";
-        reason = dueProximity <= 7
-          ? "تاریخ سررسید این پیش‌فاکتور نزدیک تاریخ فیش است."
-          : "تاریخ صدور این پیش‌فاکتور نزدیک تاریخ فیش است.";
+        reason =
+          dueProximity <= 7
+            ? "تاریخ سررسید این پیش‌فاکتور نزدیک تاریخ فیش است."
+            : "تاریخ صدور این پیش‌فاکتور نزدیک تاریخ فیش است.";
       }
 
       // Composite rank: lower is better
-      const rank =
-        (exact ? 0 : 1) * 1000 +
-        closeness * 100 +
-        Math.min(dateProximity, 365) * 0.05;
+      const rank = (exact ? 0 : 1) * 1000 + closeness * 100 + Math.min(dateProximity, 365) * 0.05;
 
       return { invoice: inv, allocated_amount: allocated, confidence, reason, rank };
     });
@@ -716,9 +772,7 @@ export function PaymentReceiptForm() {
   };
 
   const setAllocationAmount = (invoiceId: string, amount: number) => {
-    setAllocations((prev) =>
-      prev.map((a) => (a.invoice_id === invoiceId ? { ...a, amount } : a)),
-    );
+    setAllocations((prev) => prev.map((a) => (a.invoice_id === invoiceId ? { ...a, amount } : a)));
   };
 
   // Optional lookups for bank accounts and external parties (Phase 11.9B)
@@ -746,8 +800,11 @@ export function PaymentReceiptForm() {
         .order("full_name", { ascending: true });
       if (error) throw error;
       return (data ?? []) as {
-        id: string; full_name: string; phone: string | null;
-        accounting_code: string | null; is_active: boolean;
+        id: string;
+        full_name: string;
+        phone: string | null;
+        accounting_code: string | null;
+        is_active: boolean;
       }[];
     },
     staleTime: 60_000,
@@ -760,7 +817,9 @@ export function PaymentReceiptForm() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_receipt_custom_fields")
-        .select("id, field_key, field_label, field_type, field_options, is_required, is_active, sort_order")
+        .select(
+          "id, field_key, field_label, field_type, field_options, is_required, is_active, sort_order",
+        )
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .limit(200);
@@ -770,16 +829,20 @@ export function PaymentReceiptForm() {
   });
 
   const mutation = useMutation({
-    mutationFn: async (
-      args: {
-        values: FormValues;
-        allocations: InvoiceAllocation[];
-        bypassDuplicate?: boolean;
-        securityWarnings?: ReceiptSecurityWarning[];
-        customData?: CustomData;
-      },
-    ) => {
-      const { values, allocations: allocs, bypassDuplicate, securityWarnings = [], customData: cData = {} } = args;
+    mutationFn: async (args: {
+      values: FormValues;
+      allocations: InvoiceAllocation[];
+      bypassDuplicate?: boolean;
+      securityWarnings?: ReceiptSecurityWarning[];
+      customData?: CustomData;
+    }) => {
+      const {
+        values,
+        allocations: allocs,
+        bypassDuplicate,
+        securityWarnings = [],
+        customData: cData = {},
+      } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
       // Front-end allocation validation (server has no constraint)
@@ -912,20 +975,21 @@ export function PaymentReceiptForm() {
             accounting_code: values.receiver_accounting_code || null,
           },
           status: "pending_review",
-          linked_invoices: values.receipt_type === "payment"
-            ? allocs.map((a) => ({
-                invoice_id: a.invoice_id,
-                amount: Number(a.amount),
-                ...(a.suggestion
-                  ? {
-                      matched_invoice_id: a.invoice_id,
-                      suggested_confidence: a.suggestion.confidence,
-                      suggested_reason: a.suggestion.reason,
-                      allocated_amount: Number(a.amount),
-                    }
-                  : {}),
-              }))
-            : [],
+          linked_invoices:
+            values.receipt_type === "payment"
+              ? allocs.map((a) => ({
+                  invoice_id: a.invoice_id,
+                  amount: Number(a.amount),
+                  ...(a.suggestion
+                    ? {
+                        matched_invoice_id: a.invoice_id,
+                        suggested_confidence: a.suggestion.confidence,
+                        suggested_reason: a.suggestion.reason,
+                        allocated_amount: Number(a.amount),
+                      }
+                    : {}),
+                }))
+              : [],
         },
       } as never);
 
@@ -969,914 +1033,977 @@ export function PaymentReceiptForm() {
 
   return (
     <>
-    <form
-      onSubmit={form.handleSubmit((v) => {
-        const cErrs = validateCustomData(customFields, customData);
-        setCustomErrors(cErrs);
-        if (Object.keys(cErrs).length > 0) {
-          toast.error("لطفاً فیلدهای اطلاعات تکمیلی را تکمیل کنید");
-          return;
-        }
-        // Async path: evaluate validation_rules then security warnings
-        (async () => {
-          const validCodes = await buildValidCodesSet(v);
-          const allRules = [...receiptRules, ...journalRules];
-          const fieldValues: Record<string, unknown> = {
-            receiver_name: v.receiver_name,
-            payer_name: v.payer_name,
-            payer_accounting_code: v.payer_accounting_code,
-            receiver_accounting_code: v.receiver_accounting_code,
-          };
-          const violations = evaluateRules(allRules, fieldValues, validCodes);
-          const { blocking, warnings: ruleWarnings } = splitViolations(violations);
-          if (blocking.length > 0) {
-            setBlockingViolations(blocking);
-            setBlockingOpen(true);
-            return;
-          }
-          const warnings = evaluateFormWarnings({
-          payment_date: v.payment_date,
-          tracking_number: v.tracking_number,
-          amount: v.amount,
-          document_channel: v.document_channel,
-          payer_name_on_receipt: v.payer_name_on_receipt,
-          has_perforation: v.has_perforation,
-          is_typed_receipt: v.is_typed_receipt,
-        });
-          if (warnings.length > 0 || ruleWarnings.length > 0) {
-            setPendingWarnings(warnings);
-            setPendingRuleWarnings(ruleWarnings);
-            setPendingWarningContext({ values: v, allocations });
-            setWarningsOpen(true);
-            return;
-          }
-          mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
-        })();
-      }, (errors) => {
-        console.warn("[receipt-form] validation failed", errors);
-        const labels: Record<string, string> = {
-          customer_id: "مشتری",
-          payer_name: "نام پرداخت‌کننده",
-          receiver_name: "نام گیرنده",
-          amount: "مبلغ",
-          payment_date: "تاریخ پرداخت",
-          payment_time: "ساعت پرداخت",
-          tracking_number: "شماره پیگیری",
-          receiver_party_id: "گیرنده (حساب بانکی ما یا طرف خارجی)",
-          destination_bank_account_id: "حساب بانکی مقصد",
-        };
-        const fields = Object.keys(errors);
-        const named = fields.map((f) => labels[f] ?? f);
-        const first = fields[0];
-        toast.error(
-          named.length
-            ? `فیلدهای ناقص: ${named.join("، ")}`
-            : "فرم نامعتبر است",
-        );
-        if (first) {
-          const el = document.querySelector(`[name="${first}"]`) as HTMLElement | null;
-          el?.scrollIntoView({ behavior: "smooth", block: "center" });
-          el?.focus?.();
-        }
-      })}
-      className="space-y-6"
-      dir="rtl"
-    >
-      <Card>
-        <CardContent className="p-4 space-y-4">
-          {/* مشتری */}
-          <div className="space-y-2">
-            <Label>مشتری <span className="text-destructive">*</span></Label>
-            <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  className={cn(
-                    "w-full justify-between font-normal",
-                    !selectedCustomer && "text-muted-foreground",
-                  )}
-                >
-                  {selectedCustomer
-                    ? `${selectedCustomer.name}${selectedCustomer.phone ? ` (${toFaDigits(selectedCustomer.phone)})` : ""}`
-                    : "جستجو و انتخاب مشتری..."}
-                  <ChevronsUpDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput
-                    placeholder="نام یا تلفن مشتری..."
-                    value={customerSearch}
-                    onValueChange={setCustomerSearch}
-                  />
-                  <CommandList>
-                    <CommandEmpty>مشتری یافت نشد</CommandEmpty>
-                    <CommandGroup>
-                      {customers.map((c) => (
-                        <CommandItem
-                          key={c.id}
-                          value={c.id}
-                          onSelect={() => {
-                            form.setValue("customer_id", c.id, { shouldValidate: true });
-                            setCustomerOpen(false);
-                          }}
-                        >
-                          <Check className={cn("ml-2 h-4 w-4",
-                            c.id === form.watch("customer_id") ? "opacity-100" : "opacity-0")} />
-                          <span>{c.name}</span>
-                          {c.phone && (
-                            <span className="mr-2 text-xs text-muted-foreground" dir="ltr">
-                              {toFaDigits(c.phone)}
-                            </span>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {errors.customer_id && (
-              <p className="text-xs text-destructive">{errors.customer_id.message}</p>
-            )}
-          </div>
-
-          {/* نوع فیش */}
-          <div className="space-y-2">
-            <Label>نوع فیش <span className="text-destructive">*</span></Label>
-            <Select
-              value={watchedReceiptType}
-              onValueChange={(v) => form.setValue("receipt_type", v as "payment" | "prepayment", { shouldValidate: true })}
-            >
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
-                <SelectItem value="prepayment">پیش واریز: اعتبار مثبت</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {watchedReceiptType === "payment"
-                ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
-                : "برای پیش‌واریز، نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان اعتبار مثبت مشتری ثبت می‌شود."}
-            </p>
-          </div>
-
-          {/* اتصال به پیش‌فاکتورها */}
-          {watchedReceiptType === "payment" && (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-              {suggestions.length > 0 && (
-                <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">پیشنهاد اتصال به پیش‌فاکتور</h4>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    این پیشنهادها بر اساس مبلغ و تاریخ فیش محاسبه شده‌اند. پذیرش و یا تغییر مبلغ تخصیص با حسابدار است.
-                  </p>
-                  <div className="space-y-2">
-                    {suggestions.map((s) => {
-                      const already = allocations.some((a) => a.invoice_id === s.invoice.id);
-                      const confidenceLabel =
-                        s.confidence === "high" ? "اطمینان بالا"
-                        : s.confidence === "medium" ? "اطمینان متوسط"
-                        : "اطمینان پایین";
-                      const confidenceClass =
-                        s.confidence === "high"
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                          : s.confidence === "medium"
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                          : "border-muted-foreground/30 bg-muted text-muted-foreground";
-                      return (
-                        <div
-                          key={s.invoice.id}
-                          className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span dir="ltr" className="text-sm font-medium">
-                                {toFaDigits(s.invoice.number ?? s.invoice.id.slice(0, 8))}
+      <form
+        onSubmit={form.handleSubmit(
+          (v) => {
+            const cErrs = validateCustomData(customFields, customData);
+            setCustomErrors(cErrs);
+            if (Object.keys(cErrs).length > 0) {
+              toast.error("لطفاً فیلدهای اطلاعات تکمیلی را تکمیل کنید");
+              return;
+            }
+            // Async path: evaluate validation_rules then security warnings
+            (async () => {
+              const validCodes = await buildValidCodesSet(v);
+              const allRules = [...receiptRules, ...journalRules];
+              const fieldValues: Record<string, unknown> = {
+                receiver_name: v.receiver_name,
+                payer_name: v.payer_name,
+                payer_accounting_code: v.payer_accounting_code,
+                receiver_accounting_code: v.receiver_accounting_code,
+              };
+              const violations = evaluateRules(allRules, fieldValues, validCodes);
+              const { blocking, warnings: ruleWarnings } = splitViolations(violations);
+              if (blocking.length > 0) {
+                setBlockingViolations(blocking);
+                setBlockingOpen(true);
+                return;
+              }
+              const warnings = evaluateFormWarnings({
+                payment_date: v.payment_date,
+                tracking_number: v.tracking_number,
+                amount: v.amount,
+                document_channel: v.document_channel,
+                payer_name_on_receipt: v.payer_name_on_receipt,
+                has_perforation: v.has_perforation,
+                is_typed_receipt: v.is_typed_receipt,
+              });
+              if (warnings.length > 0 || ruleWarnings.length > 0) {
+                setPendingWarnings(warnings);
+                setPendingRuleWarnings(ruleWarnings);
+                setPendingWarningContext({ values: v, allocations });
+                setWarningsOpen(true);
+                return;
+              }
+              mutation.mutate({ values: v, allocations, securityWarnings: [], customData });
+            })();
+          },
+          (errors) => {
+            console.warn("[receipt-form] validation failed", errors);
+            const labels: Record<string, string> = {
+              customer_id: "مشتری",
+              payer_name: "نام پرداخت‌کننده",
+              receiver_name: "نام گیرنده",
+              amount: "مبلغ",
+              payment_date: "تاریخ پرداخت",
+              payment_time: "ساعت پرداخت",
+              tracking_number: "شماره پیگیری",
+              receiver_party_id: "گیرنده (حساب بانکی ما یا طرف خارجی)",
+              destination_bank_account_id: "حساب بانکی مقصد",
+            };
+            const fields = Object.keys(errors);
+            const named = fields.map((f) => labels[f] ?? f);
+            const first = fields[0];
+            toast.error(named.length ? `فیلدهای ناقص: ${named.join("، ")}` : "فرم نامعتبر است");
+            if (first) {
+              const el = document.querySelector(`[name="${first}"]`) as HTMLElement | null;
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+              el?.focus?.();
+            }
+          },
+        )}
+        className="space-y-6"
+        dir="rtl"
+      >
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            {/* مشتری */}
+            <div className="space-y-2">
+              <Label>
+                مشتری <span className="text-destructive">*</span>
+              </Label>
+              <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className={cn(
+                      "w-full justify-between font-normal",
+                      !selectedCustomer && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedCustomer
+                      ? `${selectedCustomer.name}${selectedCustomer.phone ? ` (${toFaDigits(selectedCustomer.phone)})` : ""}`
+                      : "جستجو و انتخاب مشتری..."}
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="نام یا تلفن مشتری..."
+                      value={customerSearch}
+                      onValueChange={setCustomerSearch}
+                    />
+                    <CommandList>
+                      <CommandEmpty>مشتری یافت نشد</CommandEmpty>
+                      <CommandGroup>
+                        {customers.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.id}
+                            onSelect={() => {
+                              form.setValue("customer_id", c.id, { shouldValidate: true });
+                              setCustomerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "ml-2 h-4 w-4",
+                                c.id === form.watch("customer_id") ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            <span>{c.name}</span>
+                            {c.phone && (
+                              <span className="mr-2 text-xs text-muted-foreground" dir="ltr">
+                                {toFaDigits(c.phone)}
                               </span>
-                              <span className={cn("rounded-md border px-2 py-0.5 text-[10px]", confidenceClass)}>
-                                {confidenceLabel}
-                              </span>
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {errors.customer_id && (
+                <p className="text-xs text-destructive">{errors.customer_id.message}</p>
+              )}
+            </div>
+
+            {/* نوع فیش */}
+            <div className="space-y-2">
+              <Label>
+                نوع فیش <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={watchedReceiptType}
+                onValueChange={(v) =>
+                  form.setValue("receipt_type", v as "payment" | "prepayment", {
+                    shouldValidate: true,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
+                  <SelectItem value="prepayment">پیش واریز: اعتبار مثبت</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {watchedReceiptType === "payment"
+                  ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
+                  : "برای پیش‌واریز، نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان اعتبار مثبت مشتری ثبت می‌شود."}
+              </p>
+            </div>
+
+            {/* اتصال به پیش‌فاکتورها */}
+            {watchedReceiptType === "payment" && (
+              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                {suggestions.length > 0 && (
+                  <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <h4 className="text-sm font-semibold">پیشنهاد اتصال به پیش‌فاکتور</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      این پیشنهادها بر اساس مبلغ و تاریخ فیش محاسبه شده‌اند. پذیرش و یا تغییر مبلغ
+                      تخصیص با حسابدار است.
+                    </p>
+                    <div className="space-y-2">
+                      {suggestions.map((s) => {
+                        const already = allocations.some((a) => a.invoice_id === s.invoice.id);
+                        const confidenceLabel =
+                          s.confidence === "high"
+                            ? "اطمینان بالا"
+                            : s.confidence === "medium"
+                              ? "اطمینان متوسط"
+                              : "اطمینان پایین";
+                        const confidenceClass =
+                          s.confidence === "high"
+                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                            : s.confidence === "medium"
+                              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                              : "border-muted-foreground/30 bg-muted text-muted-foreground";
+                        return (
+                          <div
+                            key={s.invoice.id}
+                            className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span dir="ltr" className="text-sm font-medium">
+                                  {toFaDigits(s.invoice.number ?? s.invoice.id.slice(0, 8))}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "rounded-md border px-2 py-0.5 text-[10px]",
+                                    confidenceClass,
+                                  )}
+                                >
+                                  {confidenceLabel}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                مانده: {formatNumber(s.invoice.remaining)} • تخصیص پیشنهادی:{" "}
+                                {formatNumber(s.allocated_amount)}
+                              </div>
+                              <div className="text-xs">{s.reason}</div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              مانده: {formatNumber(s.invoice.remaining)} • تخصیص پیشنهادی: {formatNumber(s.allocated_amount)}
-                            </div>
-                            <div className="text-xs">{s.reason}</div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={already ? "outline" : "default"}
+                              disabled={already}
+                              onClick={() =>
+                                addAllocation(s.invoice, {
+                                  amount: s.allocated_amount,
+                                  suggestion: { confidence: s.confidence, reason: s.reason },
+                                })
+                              }
+                            >
+                              {already ? "افزوده شده" : "اعمال پیشنهاد"}
+                            </Button>
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">اتصال به پیش‌فاکتورها</h3>
+                  <Popover open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!watchedCustomerId}
+                      >
+                        <Plus className="ml-1 h-4 w-4" />
+                        افزودن پیش‌فاکتور
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <Command>
+                        <CommandInput placeholder="جستجو شماره فاکتور..." />
+                        <CommandList>
+                          <CommandEmpty>پیش‌فاکتور بازی یافت نشد</CommandEmpty>
+                          <CommandGroup>
+                            {customerInvoices
+                              .filter((i) => !allocations.some((a) => a.invoice_id === i.id))
+                              .map((inv) => (
+                                <CommandItem
+                                  key={inv.id}
+                                  value={`${inv.number ?? ""} ${inv.id}`}
+                                  onSelect={() => addAllocation(inv)}
+                                >
+                                  <div className="flex w-full items-center justify-between gap-2">
+                                    <span dir="ltr" className="text-sm">
+                                      {toFaDigits(inv.number ?? inv.id.slice(0, 8))}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      مانده: {formatNumber(inv.remaining)}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {!watchedCustomerId && (
+                  <p className="text-xs text-muted-foreground">ابتدا مشتری را انتخاب کنید.</p>
+                )}
+
+                {watchedCustomerId && allocations.length === 0 && (
+                  <p className="text-xs text-muted-foreground">هنوز پیش‌فاکتوری انتخاب نشده است.</p>
+                )}
+
+                {allocations.length > 0 && (
+                  <div className="space-y-2">
+                    {allocations.map((a) => (
+                      <div
+                        key={a.invoice_id}
+                        className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center"
+                      >
+                        <div className="flex-1 space-y-0.5">
+                          <div className="text-sm font-medium" dir="ltr">
+                            {toFaDigits(a.number ?? a.invoice_id.slice(0, 8))}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            مبلغ کل: {formatNumber(a.total_amount)} • مانده:{" "}
+                            {formatNumber(a.remaining)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            max={a.remaining}
+                            value={a.amount || ""}
+                            onChange={(e) =>
+                              setAllocationAmount(a.invoice_id, Number(e.target.value) || 0)
+                            }
+                            className="w-36"
+                          />
                           <Button
                             type="button"
-                            size="sm"
-                            variant={already ? "outline" : "default"}
-                            disabled={already}
-                            onClick={() =>
-                              addAllocation(s.invoice, {
-                                amount: s.allocated_amount,
-                                suggestion: { confidence: s.confidence, reason: s.reason },
-                              })
-                            }
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeAllocation(a.invoice_id)}
+                            aria-label="حذف"
                           >
-                            {already ? "افزوده شده" : "اعمال پیشنهاد"}
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">اتصال به پیش‌فاکتورها</h3>
-                <Popover open={invoicePickerOpen} onOpenChange={setInvoicePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={!watchedCustomerId}
-                    >
-                      <Plus className="ml-1 h-4 w-4" />
-                      افزودن پیش‌فاکتور
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
-                    <Command>
-                      <CommandInput placeholder="جستجو شماره فاکتور..." />
-                      <CommandList>
-                        <CommandEmpty>پیش‌فاکتور بازی یافت نشد</CommandEmpty>
-                        <CommandGroup>
-                          {customerInvoices
-                            .filter((i) => !allocations.some((a) => a.invoice_id === i.id))
-                            .map((inv) => (
-                              <CommandItem
-                                key={inv.id}
-                                value={`${inv.number ?? ""} ${inv.id}`}
-                                onSelect={() => addAllocation(inv)}
-                              >
-                                <div className="flex w-full items-center justify-between gap-2">
-                                  <span dir="ltr" className="text-sm">
-                                    {toFaDigits(inv.number ?? inv.id.slice(0, 8))}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    مانده: {formatNumber(inv.remaining)}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {!watchedCustomerId && (
-                <p className="text-xs text-muted-foreground">
-                  ابتدا مشتری را انتخاب کنید.
-                </p>
-              )}
-
-              {watchedCustomerId && allocations.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  هنوز پیش‌فاکتوری انتخاب نشده است.
-                </p>
-              )}
-
-              {allocations.length > 0 && (
-                <div className="space-y-2">
-                  {allocations.map((a) => (
-                    <div
-                      key={a.invoice_id}
-                      className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center"
-                    >
-                      <div className="flex-1 space-y-0.5">
-                        <div className="text-sm font-medium" dir="ltr">
-                          {toFaDigits(a.number ?? a.invoice_id.slice(0, 8))}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          مبلغ کل: {formatNumber(a.total_amount)} • مانده: {formatNumber(a.remaining)}
-                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          max={a.remaining}
-                          value={a.amount || ""}
-                          onChange={(e) =>
-                            setAllocationAmount(a.invoice_id, Number(e.target.value) || 0)
-                          }
-                          className="w-36"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeAllocation(a.invoice_id)}
-                          aria-label="حذف"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
+                    ))}
+
+                    <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
+                      <span>
+                        مجموع تخصیص: <strong>{formatNumber(totalAllocated)}</strong> از{" "}
+                        {formatNumber(watchedAmount)}
+                      </span>
+                      {overAllocated ? (
+                        <span className="text-destructive">
+                          مازاد: {formatNumber(totalAllocated - watchedAmount)}
+                        </span>
+                      ) : allocationDiff > 0 ? (
+                        <span className="text-muted-foreground">
+                          باقی‌مانده: {formatNumber(allocationDiff)}
+                        </span>
+                      ) : (
+                        <span className="text-primary">برابر</span>
+                      )}
                     </div>
-                  ))}
-
-                  <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-                    <span>
-                      مجموع تخصیص: <strong>{formatNumber(totalAllocated)}</strong> از {formatNumber(watchedAmount)}
-                    </span>
-                    {overAllocated ? (
-                      <span className="text-destructive">
-                        مازاد: {formatNumber(totalAllocated - watchedAmount)}
-                      </span>
-                    ) : allocationDiff > 0 ? (
-                      <span className="text-muted-foreground">
-                        باقی‌مانده: {formatNumber(allocationDiff)}
-                      </span>
-                    ) : (
-                      <span className="text-primary">برابر</span>
-                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* اطلاعات واریزکننده */}
-          <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
-              <PartyLookup
-                label="جستجو و تکمیل خودکار"
-                onPick={(m) => {
-                  form.setValue("payer_name", m.name, { shouldValidate: true });
-                  form.setValue("payer_phone", m.phone ?? "", { shouldValidate: true });
-                  form.setValue("payer_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
-                }}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label>نام و نام‌خانوادگی <span className="text-destructive">*</span></Label>
-                <Input {...form.register("payer_name")} />
-                {errors.payer_name && (
-                  <p className="text-xs text-destructive">{errors.payer_name.message}</p>
                 )}
               </div>
-              <div className="space-y-1">
-                <Label>شماره موبایل</Label>
-                <Input dir="ltr" {...form.register("payer_phone")} />
-              </div>
-              <div className="space-y-1">
-                <Label>کد حسابداری</Label>
-                <Input
-                  dir="ltr"
-                  {...form.register("payer_accounting_code", { onBlur: handlePayerCodeBlur })}
+            )}
+
+            {/* اطلاعات واریزکننده */}
+            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">اطلاعات واریزکننده</h3>
+                <PartyLookup
+                  label="جستجو و تکمیل خودکار"
+                  onPick={(m) => {
+                    form.setValue("payer_name", m.name, { shouldValidate: true });
+                    form.setValue("payer_phone", m.phone ?? "", { shouldValidate: true });
+                    form.setValue("payer_accounting_code", m.accounting_code ?? "", {
+                      shouldValidate: true,
+                    });
+                  }}
                 />
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label>
+                    نام و نام‌خانوادگی <span className="text-destructive">*</span>
+                  </Label>
+                  <Input {...form.register("payer_name")} />
+                  {errors.payer_name && (
+                    <p className="text-xs text-destructive">{errors.payer_name.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label>شماره موبایل</Label>
+                  <Input dir="ltr" {...form.register("payer_phone")} />
+                </div>
+                <div className="space-y-1">
+                  <Label>کد حسابداری</Label>
+                  <Input
+                    dir="ltr"
+                    {...form.register("payer_accounting_code", { onBlur: handlePayerCodeBlur })}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* اطلاعات گیرنده */}
-          <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
-              <PartyLookup
-                label="جستجو و تکمیل خودکار"
-                onPick={(m) => {
-                  form.setValue("receiver_name", m.name, { shouldValidate: true });
-                  form.setValue("receiver_phone", m.phone ?? "", { shouldValidate: true });
-                  form.setValue("receiver_accounting_code", m.accounting_code ?? "", { shouldValidate: true });
-                }}
-              />
+            {/* اطلاعات گیرنده */}
+            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">اطلاعات گیرنده وجه</h3>
+                <PartyLookup
+                  label="جستجو و تکمیل خودکار"
+                  onPick={(m) => {
+                    form.setValue("receiver_name", m.name, { shouldValidate: true });
+                    form.setValue("receiver_phone", m.phone ?? "", { shouldValidate: true });
+                    form.setValue("receiver_accounting_code", m.accounting_code ?? "", {
+                      shouldValidate: true,
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>
+                  گیرنده وجه{" "}
+                  <span className="text-[10px] text-muted-foreground">
+                    — یکی از دو حالت زیر را انتخاب کنید
+                  </span>
+                </Label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      حالت ۱: حساب بانکی خودِ ما
+                    </Label>
+                    <Select
+                      value={form.watch("destination_bank_account_id") || "__none"}
+                      disabled={Boolean(form.watch("receiver_party_id"))}
+                      onValueChange={(v) => {
+                        if (v === "__none") {
+                          form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                          return;
+                        }
+                        form.setValue("destination_bank_account_id", v, { shouldDirty: true });
+                        form.setValue("receiver_party_id", "", { shouldDirty: true });
+                        const b = bankAccounts.find((x) => x.id === v);
+                        if (b) {
+                          if (!form.getValues("destination_bank")) {
+                            form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
+                          }
+                          if (!form.getValues("bank_name")) {
+                            form.setValue("bank_name", b.bank_name, { shouldDirty: true });
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="انتخاب حساب بانکی ما" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                        {bankAccounts.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.title} • {b.bank_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      حالت ۲: شخص/طرف حساب خارجی
+                    </Label>
+                    <Select
+                      value={form.watch("receiver_party_id") || "__none"}
+                      disabled={Boolean(form.watch("destination_bank_account_id"))}
+                      onValueChange={(v) => {
+                        if (v === "__none") {
+                          form.setValue("receiver_party_id", "", { shouldDirty: true });
+                          return;
+                        }
+                        form.setValue("receiver_party_id", v, { shouldDirty: true });
+                        form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                        const p = externalParties.find((x) => x.id === v);
+                        if (p) {
+                          form.setValue("receiver_name", p.full_name, { shouldValidate: true });
+                          if (p.phone)
+                            form.setValue("receiver_phone", p.phone, { shouldValidate: true });
+                          if (p.accounting_code)
+                            form.setValue("receiver_accounting_code", p.accounting_code, {
+                              shouldValidate: true,
+                            });
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="انتخاب طرف حساب خارجی" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— بدون انتخاب —</SelectItem>
+                        {externalParties.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.full_name}
+                            {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {errors.receiver_party_id && (
+                  <p className="text-xs text-destructive">{errors.receiver_party_id.message}</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label>
+                    نام گیرنده <span className="text-destructive">*</span>
+                  </Label>
+                  <Input {...form.register("receiver_name")} />
+                  {errors.receiver_name && (
+                    <p className="text-xs text-destructive">{errors.receiver_name.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label>شماره موبایل</Label>
+                  <Input dir="ltr" {...form.register("receiver_phone")} />
+                </div>
+                <div className="space-y-1">
+                  <Label>کد حسابداری</Label>
+                  <Input
+                    dir="ltr"
+                    {...form.register("receiver_accounting_code", {
+                      onBlur: handleReceiverCodeBlur,
+                    })}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>
-                گیرنده وجه{" "}
-                <span className="text-[10px] text-muted-foreground">
-                  — یکی از دو حالت زیر را انتخاب کنید
-                </span>
-              </Label>
+
+            {/* ذینفع حسابداری (طلبکار / صاحب بدهی) */}
+            <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">ذینفع حسابداری (طلبکار)</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  طرفی که بدهی ما به او با این پرداخت کم می‌شود. ممکن است با «گیرنده وجه» (صاحب حساب
+                  مقصد فیش) متفاوت باشد. مثلاً اگر افرا به حساب حسن‌زاده پول می‌فرستد تا بدهی ما به
+                  ترابی تسویه شود، ذینفع = ترابی.
+                </p>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">
-                    حالت ۱: حساب بانکی خودِ ما
-                  </Label>
+                  <Label>کد آسان ذینفع</Label>
+                  <Input
+                    dir="ltr"
+                    placeholder="کد حسابداری طلبکار"
+                    {...form.register("beneficiary_accounting_code", {
+                      onBlur: handleBeneficiaryCodeBlur,
+                    })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>نام ذینفع (خودکار)</Label>
+                  <Input value={beneficiaryName} readOnly disabled className="bg-muted/50" />
+                </div>
+              </div>
+            </div>
+
+            {/* پیش‌نمایش سند حسابداری خودکار */}
+            {(() => {
+              const payerCode = form.watch("payer_accounting_code");
+              const benefCode =
+                form.watch("beneficiary_accounting_code") || form.watch("receiver_accounting_code");
+              const amt = form.watch("amount") || 0;
+              if (!payerCode || !benefCode || amt <= 0) return null;
+              return (
+                <div className="space-y-2 rounded-md border bg-background p-3">
+                  <h3 className="text-sm font-semibold">پیش‌نمایش سند حسابداری خودکار</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    پس از تأیید این فیش، سند زیر به‌صورت خودکار ثبت می‌شود.
+                  </p>
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 text-muted-foreground">
+                      <tr>
+                        <th className="p-2 text-right">شرح</th>
+                        <th className="p-2 text-right">کد آسان</th>
+                        <th className="p-2 text-left">بدهکار</th>
+                        <th className="p-2 text-left">بستانکار</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="p-2">
+                          ذینفع (طلبکار) {beneficiaryName ? `- ${beneficiaryName}` : ""}
+                        </td>
+                        <td className="p-2 font-mono" dir="ltr">
+                          {toFaDigits(benefCode)}
+                        </td>
+                        <td className="p-2 text-left">{formatNumber(amt)}</td>
+                        <td className="p-2 text-left">—</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="p-2">
+                          پرداخت‌کننده{" "}
+                          {form.watch("payer_name") ? `- ${form.watch("payer_name")}` : ""}
+                        </td>
+                        <td className="p-2 font-mono" dir="ltr">
+                          {toFaDigits(payerCode)}
+                        </td>
+                        <td className="p-2 text-left">—</td>
+                        <td className="p-2 text-left">{formatNumber(amt)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            {/* جزئیات تراکنش */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>
+                  مبلغ (تومان) <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step="1"
+                  {...form.register("amount", { valueAsNumber: true })}
+                />
+                {errors.amount && (
+                  <p className="text-xs text-destructive">{errors.amount.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label>
+                  شماره پیگیری <span className="text-destructive">*</span>
+                </Label>
+                <Input dir="ltr" {...form.register("tracking_number")} />
+                {errors.tracking_number && (
+                  <p className="text-xs text-destructive">{errors.tracking_number.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label>تاریخ ثبت فیش</Label>
+                <Input
+                  value={isoToJalaliDisplay(today)}
+                  readOnly
+                  disabled
+                  dir="ltr"
+                  className="bg-muted/50 cursor-not-allowed text-center"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  به‌صورت خودکار با تاریخ امروز پر می‌شود.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>
+                  تاریخ روی فیش واریزی <span className="text-destructive">*</span>
+                </Label>
+                <JalaliDateInput
+                  value={watchedPaymentDate}
+                  onChange={(iso) =>
+                    form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true })
+                  }
+                  max={today}
+                  placeholder="انتخاب تاریخ شمسی"
+                  invalid={!watchedPaymentDate || Boolean(errors.payment_date)}
+                />
+                {!watchedPaymentDate && !errors.payment_date && (
+                  <p className="text-xs text-destructive font-medium">
+                    تاریخ از روی فیش استخراج نشد — لطفاً دستی وارد کنید (اجباری).
+                  </p>
+                )}
+                {errors.payment_date && (
+                  <p className="text-xs text-destructive">{errors.payment_date.message}</p>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  در صورت آپلود فیش، به‌صورت خودکار از فیش استخراج می‌شود.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>
+                  ساعت واریز <span className="text-destructive">*</span>
+                </Label>
+                <Input type="time" {...form.register("payment_time")} />
+                {errors.payment_time && (
+                  <p className="text-xs text-destructive">{errors.payment_time.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>توضیحات</Label>
+              <Textarea rows={3} {...form.register("description")} />
+            </div>
+
+            {/* جزئیات تکمیلی فیش (قابل استخراج خودکار از تصویر) */}
+            <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">جزئیات تکمیلی فیش</h3>
+                <p className="text-xs text-muted-foreground">
+                  در صورت آپلود تصویر فیش، این فیلدها به‌صورت خودکار از روی فیش پر می‌شوند. در صورت
+                  نیاز قابل ویرایش دستی هستند.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>حساب مبدأ ما (اختیاری)</Label>
                   <Select
-                    value={form.watch("destination_bank_account_id") || "__none"}
-                    disabled={Boolean(form.watch("receiver_party_id"))}
+                    value={form.watch("source_bank_account_id") || "__none"}
                     onValueChange={(v) => {
                       if (v === "__none") {
-                        form.setValue("destination_bank_account_id", "", { shouldDirty: true });
+                        form.setValue("source_bank_account_id", "", { shouldDirty: true });
                         return;
                       }
-                      form.setValue("destination_bank_account_id", v, { shouldDirty: true });
-                      form.setValue("receiver_party_id", "", { shouldDirty: true });
+                      form.setValue("source_bank_account_id", v, { shouldDirty: true });
                       const b = bankAccounts.find((x) => x.id === v);
-                      if (b) {
-                        if (!form.getValues("destination_bank")) {
-                          form.setValue("destination_bank", b.bank_name, { shouldDirty: true });
-                        }
-                        if (!form.getValues("bank_name")) {
-                          form.setValue("bank_name", b.bank_name, { shouldDirty: true });
-                        }
+                      if (b && !form.getValues("source_bank")) {
+                        form.setValue("source_bank", b.bank_name, { shouldDirty: true });
                       }
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="انتخاب حساب بانکی ما" />
+                      <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none">— بدون انتخاب —</SelectItem>
                       {bankAccounts.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.title} • {b.bank_name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <Input
+                    className="mt-1"
+                    {...form.register("source_bank")}
+                    placeholder="نام بانک مبدأ (متن)"
+                  />
                 </div>
+
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">
-                    حالت ۲: شخص/طرف حساب خارجی
-                  </Label>
+                  <Label>نام بانک مقصد (متن)</Label>
+                  <Input {...form.register("destination_bank")} placeholder="مثلاً: بانک ملت" />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>ساعت روی فیش</Label>
+                  <Input type="time" dir="ltr" {...form.register("receipt_time")} />
+                  {errors.receipt_time && (
+                    <p className="text-xs text-destructive">{errors.receipt_time.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label>روش انتقال</Label>
                   <Select
-                    value={form.watch("receiver_party_id") || "__none"}
-                    disabled={Boolean(form.watch("destination_bank_account_id"))}
-                    onValueChange={(v) => {
-                      if (v === "__none") {
-                        form.setValue("receiver_party_id", "", { shouldDirty: true });
-                        return;
-                      }
-                      form.setValue("receiver_party_id", v, { shouldDirty: true });
-                      form.setValue("destination_bank_account_id", "", { shouldDirty: true });
-                      const p = externalParties.find((x) => x.id === v);
-                      if (p) {
-                        form.setValue("receiver_name", p.full_name, { shouldValidate: true });
-                        if (p.phone) form.setValue("receiver_phone", p.phone, { shouldValidate: true });
-                        if (p.accounting_code) form.setValue("receiver_accounting_code", p.accounting_code, { shouldValidate: true });
-                      }
-                    }}
+                    value={form.watch("document_channel") || undefined}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        "document_channel",
+                        v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
+                        { shouldDirty: true },
+                      )
+                    }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="انتخاب طرف حساب خارجی" />
+                      <SelectValue placeholder="انتخاب کنید" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none">— بدون انتخاب —</SelectItem>
-                      {externalParties.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.full_name}
-                          {p.accounting_code ? ` (${toFaDigits(p.accounting_code)})` : ""}
+                      {DOCUMENT_CHANNELS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-1">
+                  <Label>نام واریزکننده روی فیش</Label>
+                  <Input {...form.register("payer_name_on_receipt")} />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>نام گیرنده روی فیش</Label>
+                  <Input {...form.register("receiver_name_on_receipt")} />
+                </div>
+
+                <div className="flex flex-col gap-2 pt-1 sm:col-span-2">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.watch("has_perforation")}
+                      onCheckedChange={(c) =>
+                        form.setValue("has_perforation", c === true, { shouldDirty: true })
+                      }
+                    />
+                    پرفراژ دارد؟
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.watch("is_typed_receipt")}
+                      onCheckedChange={(c) =>
+                        form.setValue("is_typed_receipt", c === true, { shouldDirty: true })
+                      }
+                    />
+                    فیش تایپی است؟
+                  </label>
+                </div>
               </div>
-              {errors.receiver_party_id && (
-                <p className="text-xs text-destructive">{errors.receiver_party_id.message}</p>
-              )}
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <Label>نام گیرنده <span className="text-destructive">*</span></Label>
-                <Input {...form.register("receiver_name")} />
-                {errors.receiver_name && (
-                  <p className="text-xs text-destructive">{errors.receiver_name.message}</p>
-                )}
+
+            <ReceiptDocumentPicker
+              files={stagedFiles}
+              onChange={setStagedFiles}
+              disabled={mutation.isPending}
+            />
+            {autoFilling && (
+              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                در حال استخراج خودکار اطلاعات از فایل آپلودشده…
               </div>
-              <div className="space-y-1">
-                <Label>شماره موبایل</Label>
-                <Input dir="ltr" {...form.register("receiver_phone")} />
-              </div>
-              <div className="space-y-1">
-                <Label>کد حسابداری</Label>
-                <Input
-                  dir="ltr"
-                  {...form.register("receiver_accounting_code", { onBlur: handleReceiverCodeBlur })}
+            )}
+
+            {customFields.length > 0 && (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <WaybillCustomFieldsInput
+                  fields={customFields}
+                  value={customData}
+                  onChange={setCustomData}
+                  errors={customErrors}
                 />
               </div>
-            </div>
-          </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* ذینفع حسابداری (طلبکار / صاحب بدهی) */}
-          <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold">ذینفع حسابداری (طلبکار)</h3>
-              <p className="text-[11px] text-muted-foreground">
-                طرفی که بدهی ما به او با این پرداخت کم می‌شود. ممکن است با «گیرنده وجه» (صاحب حساب مقصد فیش) متفاوت باشد.
-                مثلاً اگر افرا به حساب حسن‌زاده پول می‌فرستد تا بدهی ما به ترابی تسویه شود، ذینفع = ترابی.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>کد آسان ذینفع</Label>
-                <Input
-                  dir="ltr"
-                  placeholder="کد حسابداری طلبکار"
-                  {...form.register("beneficiary_accounting_code", { onBlur: handleBeneficiaryCodeBlur })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>نام ذینفع (خودکار)</Label>
-                <Input value={beneficiaryName} readOnly disabled className="bg-muted/50" />
-              </div>
-            </div>
-          </div>
-
-          {/* پیش‌نمایش سند حسابداری خودکار */}
-          {(() => {
-            const payerCode = form.watch("payer_accounting_code");
-            const benefCode = form.watch("beneficiary_accounting_code") || form.watch("receiver_accounting_code");
-            const amt = form.watch("amount") || 0;
-            if (!payerCode || !benefCode || amt <= 0) return null;
-            return (
-              <div className="space-y-2 rounded-md border bg-background p-3">
-                <h3 className="text-sm font-semibold">پیش‌نمایش سند حسابداری خودکار</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  پس از تأیید این فیش، سند زیر به‌صورت خودکار ثبت می‌شود.
-                </p>
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50 text-muted-foreground">
-                    <tr>
-                      <th className="p-2 text-right">شرح</th>
-                      <th className="p-2 text-right">کد آسان</th>
-                      <th className="p-2 text-left">بدهکار</th>
-                      <th className="p-2 text-left">بستانکار</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-t">
-                      <td className="p-2">ذینفع (طلبکار) {beneficiaryName ? `- ${beneficiaryName}` : ""}</td>
-                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(benefCode)}</td>
-                      <td className="p-2 text-left">{formatNumber(amt)}</td>
-                      <td className="p-2 text-left">—</td>
-                    </tr>
-                    <tr className="border-t">
-                      <td className="p-2">پرداخت‌کننده {form.watch("payer_name") ? `- ${form.watch("payer_name")}` : ""}</td>
-                      <td className="p-2 font-mono" dir="ltr">{toFaDigits(payerCode)}</td>
-                      <td className="p-2 text-left">—</td>
-                      <td className="p-2 text-left">{formatNumber(amt)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            );
-          })()}
-
-          {/* جزئیات تراکنش */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label>مبلغ (تومان) <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                step="1"
-                {...form.register("amount", { valueAsNumber: true })}
-              />
-              {errors.amount && (
-                <p className="text-xs text-destructive">{errors.amount.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Label>شماره پیگیری <span className="text-destructive">*</span></Label>
-              <Input dir="ltr" {...form.register("tracking_number")} />
-              {errors.tracking_number && (
-                <p className="text-xs text-destructive">{errors.tracking_number.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Label>تاریخ ثبت فیش</Label>
-              <Input
-                value={isoToJalaliDisplay(today)}
-                readOnly
-                disabled
-                dir="ltr"
-                className="bg-muted/50 cursor-not-allowed text-center"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                به‌صورت خودکار با تاریخ امروز پر می‌شود.
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <Label>تاریخ روی فیش واریزی <span className="text-destructive">*</span></Label>
-              <JalaliDateInput
-                value={watchedPaymentDate}
-                onChange={(iso) =>
-                  form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true })
-                }
-                max={today}
-                placeholder="انتخاب تاریخ شمسی"
-                invalid={!watchedPaymentDate || Boolean(errors.payment_date)}
-              />
-              {!watchedPaymentDate && !errors.payment_date && (
-                <p className="text-xs text-destructive font-medium">
-                  تاریخ از روی فیش استخراج نشد — لطفاً دستی وارد کنید (اجباری).
-                </p>
-              )}
-              {errors.payment_date && (
-                <p className="text-xs text-destructive">{errors.payment_date.message}</p>
-              )}
-              <p className="text-[10px] text-muted-foreground">
-                در صورت آپلود فیش، به‌صورت خودکار از فیش استخراج می‌شود.
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <Label>ساعت واریز <span className="text-destructive">*</span></Label>
-              <Input type="time" {...form.register("payment_time")} />
-              {errors.payment_time && (
-                <p className="text-xs text-destructive">{errors.payment_time.message}</p>
-              )}
-            </div>
-
-          </div>
-
-          <div className="space-y-1">
-            <Label>توضیحات</Label>
-            <Textarea rows={3} {...form.register("description")} />
-          </div>
-
-          {/* جزئیات تکمیلی فیش (قابل استخراج خودکار از تصویر) */}
-          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold">جزئیات تکمیلی فیش</h3>
-              <p className="text-xs text-muted-foreground">
-                در صورت آپلود تصویر فیش، این فیلدها به‌صورت خودکار از روی فیش پر می‌شوند. در صورت نیاز قابل ویرایش دستی هستند.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>حساب مبدأ ما (اختیاری)</Label>
-                <Select
-                  value={form.watch("source_bank_account_id") || "__none"}
-                  onValueChange={(v) => {
-                    if (v === "__none") {
-                      form.setValue("source_bank_account_id", "", { shouldDirty: true });
-                      return;
-                    }
-                    form.setValue("source_bank_account_id", v, { shouldDirty: true });
-                    const b = bankAccounts.find((x) => x.id === v);
-                    if (b && !form.getValues("source_bank")) {
-                      form.setValue("source_bank", b.bank_name, { shouldDirty: true });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="انتخاب از حساب‌های بانکی" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">— بدون انتخاب —</SelectItem>
-                    {bankAccounts.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.title} • {b.bank_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input className="mt-1" {...form.register("source_bank")} placeholder="نام بانک مبدأ (متن)" />
-              </div>
-
-              <div className="space-y-1">
-                <Label>نام بانک مقصد (متن)</Label>
-                <Input {...form.register("destination_bank")} placeholder="مثلاً: بانک ملت" />
-              </div>
-
-              <div className="space-y-1">
-                <Label>ساعت روی فیش</Label>
-                <Input type="time" dir="ltr" {...form.register("receipt_time")} />
-                {errors.receipt_time && (
-                  <p className="text-xs text-destructive">{errors.receipt_time.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <Label>روش انتقال</Label>
-                <Select
-                  value={form.watch("document_channel") || undefined}
-                  onValueChange={(v) =>
-                    form.setValue(
-                      "document_channel",
-                      v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
-                      { shouldDirty: true },
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="انتخاب کنید" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DOCUMENT_CHANNELS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label>نام واریزکننده روی فیش</Label>
-                <Input {...form.register("payer_name_on_receipt")} />
-              </div>
-
-              <div className="space-y-1">
-                <Label>نام گیرنده روی فیش</Label>
-                <Input {...form.register("receiver_name_on_receipt")} />
-              </div>
-
-              <div className="flex flex-col gap-2 pt-1 sm:col-span-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={form.watch("has_perforation")}
-                    onCheckedChange={(c) =>
-                      form.setValue("has_perforation", c === true, { shouldDirty: true })
-                    }
-                  />
-                  پرفراژ دارد؟
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={form.watch("is_typed_receipt")}
-                    onCheckedChange={(c) =>
-                      form.setValue("is_typed_receipt", c === true, { shouldDirty: true })
-                    }
-                  />
-                  فیش تایپی است؟
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <ReceiptDocumentPicker
-            files={stagedFiles}
-            onChange={setStagedFiles}
-            disabled={mutation.isPending}
-          />
-          {autoFilling && (
-            <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-primary">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              در حال استخراج خودکار اطلاعات از فایل آپلودشده…
-            </div>
-          )}
-
-          {customFields.length > 0 && (
-            <div className="rounded-md border bg-muted/30 p-3">
-              <WaybillCustomFieldsInput
-                fields={customFields}
-                value={customData}
-                onChange={setCustomData}
-                errors={customErrors}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate({ to: "/accounting/receipts" })}
-          disabled={mutation.isPending}
-        >
-          انصراف
-        </Button>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
-            type="submit"
-            disabled={
-              mutation.isPending ||
-              (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
-            }
-          >
-            {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            ثبت فیش
-          </Button>
-          {watchedReceiptType === "payment" && allocations.length === 0 && (
-            <p className="text-xs text-destructive">
-              برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
-            </p>
-          )}
-          {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
-            <p className="text-xs text-destructive">
-              مجموع تخصیص بیشتر از مبلغ فیش است.
-            </p>
-          )}
-        </div>
-      </div>
-    </form>
-
-    <AlertDialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
-      <AlertDialogContent dir="rtl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>احتمال ثبت فیش تکراری</AlertDialogTitle>
-          <AlertDialogDescription>
-            {`بر اساس شماره پیگیری، مبلغ، تاریخ و بانک، ${toFaDigits(String(duplicateCount))} فیش مشابه قبلاً ثبت شده است. آیا مطمئن هستید که می‌خواهید این فیش را ثبت کنید؟`}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              setPendingValues(null);
-              setDuplicateCount(0);
-            }}
+            type="button"
+            variant="outline"
+            onClick={() => navigate({ to: "/accounting/receipts" })}
+            disabled={mutation.isPending}
           >
             انصراف
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              if (pendingValues) {
-                mutation.mutate({
-                  values: pendingValues.values,
-                  allocations: pendingValues.allocations,
-                  bypassDuplicate: true,
-                  customData,
-                });
+          </Button>
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              type="submit"
+              disabled={
+                mutation.isPending ||
+                (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
               }
-              setDuplicateOpen(false);
-            }}
-          >
-            ادامه و ثبت
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+            >
+              {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              ثبت فیش
+            </Button>
+            {watchedReceiptType === "payment" && allocations.length === 0 && (
+              <p className="text-xs text-destructive">
+                برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
+              </p>
+            )}
+            {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
+              <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
+            )}
+          </div>
+        </div>
+      </form>
 
-    <AlertDialog open={warningsOpen} onOpenChange={setWarningsOpen}>
-      <AlertDialogContent dir="rtl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>هشدارهای امنیتی فیش</AlertDialogTitle>
-          <AlertDialogDescription>
-            موارد زیر پیش از ثبت فیش نیاز به بررسی دارند:
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
-          {pendingWarnings.map((w, i) => (
-            <li key={i}>
-              <span className="font-medium">[{w.severity === "high" ? "مهم" : w.severity === "medium" ? "متوسط" : "کم"}] </span>
-              {w.message}
-            </li>
-          ))}
-          {pendingRuleWarnings.map((rv) => (
-            <li key={rv.rule.id}>
-              <span className="font-medium">[استاندارد] </span>
-              {rv.rule.message}
-            </li>
-          ))}
-        </ul>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              setPendingWarnings([]);
-              setPendingRuleWarnings([]);
-              setPendingWarningContext(null);
-            }}
-          >
-            بازگشت و اصلاح
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              if (pendingWarningContext) {
-                mutation.mutate({
-                  values: pendingWarningContext.values,
-                  allocations: pendingWarningContext.allocations,
-                  securityWarnings: pendingWarnings,
-                  customData,
-                });
-              }
-              setWarningsOpen(false);
-            }}
-          >
-            ثبت با تأیید حسابدار
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog open={duplicateOpen} onOpenChange={setDuplicateOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>احتمال ثبت فیش تکراری</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`بر اساس شماره پیگیری، مبلغ، تاریخ و بانک، ${toFaDigits(String(duplicateCount))} فیش مشابه قبلاً ثبت شده است. آیا مطمئن هستید که می‌خواهید این فیش را ثبت کنید؟`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPendingValues(null);
+                setDuplicateCount(0);
+              }}
+            >
+              انصراف
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingValues) {
+                  mutation.mutate({
+                    values: pendingValues.values,
+                    allocations: pendingValues.allocations,
+                    bypassDuplicate: true,
+                    customData,
+                  });
+                }
+                setDuplicateOpen(false);
+              }}
+            >
+              ادامه و ثبت
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-    <AlertDialog open={blockingOpen} onOpenChange={setBlockingOpen}>
-      <AlertDialogContent dir="rtl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>ثبت ممکن نیست</AlertDialogTitle>
-          <AlertDialogDescription>
-            موارد زیر طبق استانداردهای سیستم اجباری هستند و باید اصلاح شوند:
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <ul className="list-disc space-y-1 pr-6 text-sm text-destructive">
-          {blockingViolations.map((rv) => (
-            <li key={rv.rule.id}>{rv.rule.message}</li>
-          ))}
-        </ul>
-        <AlertDialogFooter>
-          <AlertDialogAction onClick={() => setBlockingOpen(false)}>متوجه شدم</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog open={warningsOpen} onOpenChange={setWarningsOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>هشدارهای امنیتی فیش</AlertDialogTitle>
+            <AlertDialogDescription>
+              موارد زیر پیش از ثبت فیش نیاز به بررسی دارند:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc space-y-1 pr-6 text-sm text-foreground">
+            {pendingWarnings.map((w, i) => (
+              <li key={i}>
+                <span className="font-medium">
+                  [{w.severity === "high" ? "مهم" : w.severity === "medium" ? "متوسط" : "کم"}]{" "}
+                </span>
+                {w.message}
+              </li>
+            ))}
+            {pendingRuleWarnings.map((rv) => (
+              <li key={rv.rule.id}>
+                <span className="font-medium">[استاندارد] </span>
+                {rv.rule.message}
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPendingWarnings([]);
+                setPendingRuleWarnings([]);
+                setPendingWarningContext(null);
+              }}
+            >
+              بازگشت و اصلاح
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingWarningContext) {
+                  mutation.mutate({
+                    values: pendingWarningContext.values,
+                    allocations: pendingWarningContext.allocations,
+                    securityWarnings: pendingWarnings,
+                    customData,
+                  });
+                }
+                setWarningsOpen(false);
+              }}
+            >
+              ثبت با تأیید حسابدار
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={blockingOpen} onOpenChange={setBlockingOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>ثبت ممکن نیست</AlertDialogTitle>
+            <AlertDialogDescription>
+              موارد زیر طبق استانداردهای سیستم اجباری هستند و باید اصلاح شوند:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc space-y-1 pr-6 text-sm text-destructive">
+            {blockingViolations.map((rv) => (
+              <li key={rv.rule.id}>{rv.rule.message}</li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setBlockingOpen(false)}>متوجه شدم</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

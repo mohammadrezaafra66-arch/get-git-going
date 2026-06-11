@@ -2,8 +2,12 @@ import { REASONS } from "@/lib/operations/daily-mood";
 import { cn } from "@/lib/utils";
 
 export function MoodReasonSelector({
-  value, onChange,
-}: { value: string[]; onChange: (next: string[]) => void }) {
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
   const toggle = (r: string) => {
     if (value.includes(r)) onChange(value.filter((x) => x !== r));
     else onChange([...value, r]);
@@ -19,7 +23,9 @@ export function MoodReasonSelector({
             onClick={() => toggle(r)}
             className={cn(
               "rounded-full border px-4 py-2 text-sm transition-colors",
-              active ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-accent",
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card hover:bg-accent",
             )}
           >
             {r}

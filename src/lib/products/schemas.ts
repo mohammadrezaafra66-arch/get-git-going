@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 export const productSchema = z.object({
-  name: z.string().trim().min(1, "نام محصول الزامی است").max(200, "نام نباید بیش از ۲۰۰ کاراکتر باشد"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "نام محصول الزامی است")
+    .max(200, "نام نباید بیش از ۲۰۰ کاراکتر باشد"),
   // SKU توسط دیتابیس به‌صورت خودکار تولید می‌شود؛ در فرم وارد نمی‌شود
   brand_id: z.string().uuid().nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
@@ -23,7 +27,12 @@ export type ProductFormValues = z.infer<typeof productSchema>;
 
 export const brandSchema = z.object({
   name: z.string().trim().min(1, "نام برند الزامی است").max(120),
-  slug: z.string().trim().min(1, "اسلاگ الزامی است").max(120).regex(/^[a-z0-9-]+$/i, "فقط حروف انگلیسی، عدد و خط تیره"),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "اسلاگ الزامی است")
+    .max(120)
+    .regex(/^[a-z0-9-]+$/i, "فقط حروف انگلیسی، عدد و خط تیره"),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
   is_active: z.boolean().default(true),
 });
@@ -31,7 +40,12 @@ export type BrandFormValues = z.infer<typeof brandSchema>;
 
 export const categorySchema = z.object({
   name: z.string().trim().min(1, "نام دسته الزامی است").max(120),
-  slug: z.string().trim().min(1, "اسلاگ الزامی است").max(120).regex(/^[a-z0-9-]+$/i, "فقط حروف انگلیسی، عدد و خط تیره"),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "اسلاگ الزامی است")
+    .max(120)
+    .regex(/^[a-z0-9-]+$/i, "فقط حروف انگلیسی، عدد و خط تیره"),
   parent_id: z.string().uuid().nullable().optional(),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
   is_active: z.boolean().default(true),
@@ -40,7 +54,10 @@ export type CategoryFormValues = z.infer<typeof categorySchema>;
 
 export const labelSchema = z.object({
   title: z.string().trim().min(1, "عنوان برچسب الزامی است").max(80),
-  color: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "کد رنگ باید مانند #RRGGBB باشد"),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "کد رنگ باید مانند #RRGGBB باشد"),
   description: z.string().trim().max(500).optional().or(z.literal("")),
   is_active: z.boolean().default(true),
   weight: z.number().int().min(0, "حداقل ۰").max(100, "حداکثر ۱۰۰").default(0),

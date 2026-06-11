@@ -5,7 +5,13 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
@@ -44,7 +50,9 @@ function NotificationsPage() {
     setLoading(true);
     let q = supabase
       .from("notification_queue")
-      .select("id,title,body,type,reference_type,reference_id,is_read,created_at", { count: "exact" })
+      .select("id,title,body,type,reference_type,reference_id,is_read,created_at", {
+        count: "exact",
+      })
       .order("created_at", { ascending: false })
       .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
     if (filterType !== "all") q = q.eq("type", filterType);
@@ -91,8 +99,16 @@ function NotificationsPage() {
       <PageHeader title="نوتیفیکیشن‌ها" description="لیست تمام اعلان‌های داخلی شما" />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={filterType} onValueChange={(v) => { setFilterType(v); setPage(0); }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="نوع" /></SelectTrigger>
+        <Select
+          value={filterType}
+          onValueChange={(v) => {
+            setFilterType(v);
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="نوع" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه نوع‌ها</SelectItem>
             <SelectItem value="stock_alert">موجودی کالا</SelectItem>
@@ -101,15 +117,25 @@ function NotificationsPage() {
             <SelectItem value="payment">پرداخت</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterRead} onValueChange={(v) => { setFilterRead(v); setPage(0); }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="وضعیت" /></SelectTrigger>
+        <Select
+          value={filterRead}
+          onValueChange={(v) => {
+            setFilterRead(v);
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="وضعیت" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">همه</SelectItem>
             <SelectItem value="unread">خوانده‌نشده</SelectItem>
             <SelectItem value="read">خوانده‌شده</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={markAll}>علامت همه به‌عنوان خوانده‌شده</Button>
+        <Button variant="outline" size="sm" onClick={markAll}>
+          علامت همه به‌عنوان خوانده‌شده
+        </Button>
       </div>
 
       <div className="rounded-lg border">
@@ -130,7 +156,11 @@ function NotificationsPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold">{n.title}</span>
-                  {!n.is_read && <Badge variant="destructive" className="text-[10px]">جدید</Badge>}
+                  {!n.is_read && (
+                    <Badge variant="destructive" className="text-[10px]">
+                      جدید
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground">{relativeFa(n.created_at)}</span>
               </div>
@@ -142,9 +172,25 @@ function NotificationsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>قبلی</Button>
-          <span className="text-xs text-muted-foreground">صفحه {page + 1} از {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>بعدی</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            قبلی
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            صفحه {page + 1} از {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page + 1 >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            بعدی
+          </Button>
         </div>
       )}
     </div>

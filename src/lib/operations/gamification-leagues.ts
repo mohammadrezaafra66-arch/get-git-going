@@ -1,15 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type LeagueTier = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond" | "Legend";
-export const LEAGUE_TIERS: LeagueTier[] = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Legend"];
+export const LEAGUE_TIERS: LeagueTier[] = [
+  "Bronze",
+  "Silver",
+  "Gold",
+  "Platinum",
+  "Diamond",
+  "Legend",
+];
 export const TIER_FA: Record<LeagueTier, string> = {
-  Bronze: "برنز", Silver: "نقره", Gold: "طلا", Platinum: "پلاتین", Diamond: "الماس", Legend: "افسانه",
+  Bronze: "برنز",
+  Silver: "نقره",
+  Gold: "طلا",
+  Platinum: "پلاتین",
+  Diamond: "الماس",
+  Legend: "افسانه",
 };
 
 export type SeasonStatus = "draft" | "active" | "closed";
 export const SEASON_STATUSES: SeasonStatus[] = ["draft", "active", "closed"];
 export const STATUS_FA: Record<SeasonStatus, string> = {
-  draft: "پیش‌نویس", active: "فعال", closed: "بسته",
+  draft: "پیش‌نویس",
+  active: "فعال",
+  closed: "بسته",
 };
 
 export interface LeagueSettingRow {
@@ -67,11 +81,19 @@ export interface PreviewRow {
   target_tier: LeagueTier;
 }
 
-const SETTING_COLS = "id,tier,title_fa,title_en,min_level,min_xp,promotion_percent,demotion_percent,sort_order,is_active";
+const SETTING_COLS =
+  "id,tier,title_fa,title_en,min_level,min_xp,promotion_percent,demotion_percent,sort_order,is_active";
 const SEASON_COLS = "id,title_fa,title_en,starts_at,ends_at,status,is_active,created_at,updated_at";
 
-async function logAudit(action: string, entityType: string, entityId: string, diff: Record<string, unknown>) {
-  const { data: { user } } = await supabase.auth.getUser();
+async function logAudit(
+  action: string,
+  entityType: string,
+  entityId: string,
+  diff: Record<string, unknown>,
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({
     actor_id: user.id,
@@ -94,8 +116,15 @@ export async function listLeagueSettings(): Promise<LeagueSettingRow[]> {
   return (data ?? []) as unknown as LeagueSettingRow[];
 }
 
-export async function updateLeagueSetting(id: string, input: LeagueSettingInput): Promise<LeagueSettingRow> {
-  const { data: before } = await supabase.from("league_settings").select(SETTING_COLS).eq("id", id).maybeSingle();
+export async function updateLeagueSetting(
+  id: string,
+  input: LeagueSettingInput,
+): Promise<LeagueSettingRow> {
+  const { data: before } = await supabase
+    .from("league_settings")
+    .select(SETTING_COLS)
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("league_settings")
     .update(input as never)
@@ -103,14 +132,25 @@ export async function updateLeagueSetting(id: string, input: LeagueSettingInput)
     .select(SETTING_COLS)
     .single();
   if (error) throw error;
-  await logAudit("league_setting_updated", "gamification_league_setting", id, { before, after: data });
+  await logAudit("league_setting_updated", "gamification_league_setting", id, {
+    before,
+    after: data,
+  });
   return data as unknown as LeagueSettingRow;
 }
 
 export async function setLeagueSettingActive(id: string, is_active: boolean): Promise<void> {
-  const { error } = await supabase.from("league_settings").update({ is_active } as never).eq("id", id);
+  const { error } = await supabase
+    .from("league_settings")
+    .update({ is_active } as never)
+    .eq("id", id);
   if (error) throw error;
-  await logAudit(is_active ? "league_setting_enabled" : "league_setting_disabled", "gamification_league_setting", id, { is_active });
+  await logAudit(
+    is_active ? "league_setting_enabled" : "league_setting_disabled",
+    "gamification_league_setting",
+    id,
+    { is_active },
+  );
 }
 
 // ---------- Seasons ----------
@@ -131,12 +171,18 @@ export async function createSeason(input: SeasonInput): Promise<SeasonRow> {
     .select(SEASON_COLS)
     .single();
   if (error) throw error;
-  await logAudit("season_created", "gamification_season", (data as { id: string }).id, { after: data });
+  await logAudit("season_created", "gamification_season", (data as { id: string }).id, {
+    after: data,
+  });
   return data as unknown as SeasonRow;
 }
 
 export async function updateSeason(id: string, input: SeasonInput): Promise<SeasonRow> {
-  const { data: before } = await supabase.from("league_seasons").select(SEASON_COLS).eq("id", id).maybeSingle();
+  const { data: before } = await supabase
+    .from("league_seasons")
+    .select(SEASON_COLS)
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("league_seasons")
     .update(input as never)
@@ -149,13 +195,19 @@ export async function updateSeason(id: string, input: SeasonInput): Promise<Seas
 }
 
 export async function activateSeason(id: string): Promise<void> {
-  const { error } = await supabase.from("league_seasons").update({ status: "active" } as never).eq("id", id);
+  const { error } = await supabase
+    .from("league_seasons")
+    .update({ status: "active" } as never)
+    .eq("id", id);
   if (error) throw error;
   await logAudit("season_activated", "gamification_season", id, { status: "active" });
 }
 
 export async function closeSeason(id: string): Promise<void> {
-  const { error } = await supabase.from("league_seasons").update({ status: "closed" } as never).eq("id", id);
+  const { error } = await supabase
+    .from("league_seasons")
+    .update({ status: "closed" } as never)
+    .eq("id", id);
   if (error) throw error;
   await logAudit("season_closed", "gamification_season", id, { status: "closed" });
 }
@@ -167,6 +219,8 @@ export async function previewLeagueSeasonChanges(seasonId: string): Promise<Prev
     { _season_id: seasonId } as never,
   );
   if (error) throw error;
-  await logAudit("league_season_previewed", "gamification_season", seasonId, { rows: (data as unknown[] | null)?.length ?? 0 });
+  await logAudit("league_season_previewed", "gamification_season", seasonId, {
+    rows: (data as unknown[] | null)?.length ?? 0,
+  });
   return (data ?? []) as unknown as PreviewRow[];
 }

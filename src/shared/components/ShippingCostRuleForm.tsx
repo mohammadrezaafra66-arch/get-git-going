@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { shippingRuleSchema, type ShippingRuleFormValues } from "@/lib/pricing/schemas";
@@ -67,7 +71,14 @@ interface Props {
 }
 
 export function ShippingCostRuleForm({
-  values, onChange, errors, loading, onSubmit, onCancel, isEditing, initialProductLabel,
+  values,
+  onChange,
+  errors,
+  loading,
+  onSubmit,
+  onCancel,
+  isEditing,
+  initialProductLabel,
 }: Props) {
   const { data: currencies } = useQuery({
     queryKey: ["currencies-active-lite"],
@@ -107,7 +118,7 @@ export function ShippingCostRuleForm({
         : "مبلغ (به ارز انتخابی)";
   const amountHint = useMemo(
     () => "این مقدار به عنوان هزینه حمل به قیمت پایه محصول اضافه می‌شود.",
-    []
+    [],
   );
 
   const set = <K extends keyof ShippingRuleFormValues>(k: K, v: ShippingRuleFormValues[K]) =>
@@ -115,7 +126,10 @@ export function ShippingCostRuleForm({
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); onSubmit(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
       className="grid gap-3 sm:grid-cols-2"
     >
       <div className="sm:col-span-2">
@@ -135,7 +149,9 @@ export function ShippingCostRuleForm({
             if (next !== "product") setProductTerm("");
           }}
         >
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="product">بر اساس محصول</SelectItem>
             <SelectItem value="price_range">بر اساس بازه قیمتی</SelectItem>
@@ -165,7 +181,10 @@ export function ShippingCostRuleForm({
                     className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
                       values.product_id === p.id ? "bg-muted font-semibold" : ""
                     }`}
-                    onClick={() => { set("product_id", p.id); setProductTerm(p.name); }}
+                    onClick={() => {
+                      set("product_id", p.id);
+                      setProductTerm(p.name);
+                    }}
                   >
                     {p.name}
                   </button>
@@ -178,28 +197,33 @@ export function ShippingCostRuleForm({
               انتخاب‌شده — برای حذف، فیلد را خالی کنید.
             </p>
           )}
-          {errors.product_id && <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>}
+          {errors.product_id && (
+            <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>
+          )}
         </div>
       )}
 
       {values.scope_mode === "category" && (
         <div className="sm:col-span-2">
           <Label>دسته *</Label>
-          <Select
-            value={values.category_id ?? ""}
-            onValueChange={(v) => set("category_id", v)}
-          >
-            <SelectTrigger><SelectValue placeholder="انتخاب دسته" /></SelectTrigger>
+          <Select value={values.category_id ?? ""} onValueChange={(v) => set("category_id", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="انتخاب دسته" />
+            </SelectTrigger>
             <SelectContent>
               {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="mt-1 text-[11px] text-muted-foreground">
             هزینه برای تمام محصولات این دسته اعمال می‌شود.
           </p>
-          {errors.category_id && <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>}
+          {errors.category_id && (
+            <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
+          )}
         </div>
       )}
 
@@ -208,20 +232,32 @@ export function ShippingCostRuleForm({
           <div>
             <Label>کف بازه قیمت خرید (تومان)</Label>
             <Input
-              type="number" inputMode="decimal" dir="ltr"
+              type="number"
+              inputMode="decimal"
+              dir="ltr"
               value={values.min_purchase_price ?? ""}
-              onChange={(e) => set("min_purchase_price", e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) =>
+                set("min_purchase_price", e.target.value === "" ? null : Number(e.target.value))
+              }
             />
-            {errors.min_purchase_price && <p className="mt-1 text-xs text-destructive">{errors.min_purchase_price}</p>}
+            {errors.min_purchase_price && (
+              <p className="mt-1 text-xs text-destructive">{errors.min_purchase_price}</p>
+            )}
           </div>
           <div>
             <Label>سقف بازه قیمت خرید (تومان)</Label>
             <Input
-              type="number" inputMode="decimal" dir="ltr"
+              type="number"
+              inputMode="decimal"
+              dir="ltr"
               value={values.max_purchase_price ?? ""}
-              onChange={(e) => set("max_purchase_price", e.target.value === "" ? null : Number(e.target.value))}
+              onChange={(e) =>
+                set("max_purchase_price", e.target.value === "" ? null : Number(e.target.value))
+              }
             />
-            {errors.max_purchase_price && <p className="mt-1 text-xs text-destructive">{errors.max_purchase_price}</p>}
+            {errors.max_purchase_price && (
+              <p className="mt-1 text-xs text-destructive">{errors.max_purchase_price}</p>
+            )}
           </div>
         </>
       )}
@@ -245,11 +281,13 @@ export function ShippingCostRuleForm({
             onChange({
               ...values,
               cost_type: next,
-              cost_currency: next === "currency" ? values.cost_currency ?? null : null,
+              cost_currency: next === "currency" ? (values.cost_currency ?? null) : null,
             });
           }}
         >
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="fixed">ثابت (تومان)</SelectItem>
             <SelectItem value="percent">درصدی</SelectItem>
@@ -274,21 +312,24 @@ export function ShippingCostRuleForm({
       {values.cost_type === "currency" && (
         <div className="sm:col-span-2">
           <Label>نوع ارز *</Label>
-          <Select
-            value={values.cost_currency ?? ""}
-            onValueChange={(v) => set("cost_currency", v)}
-          >
-            <SelectTrigger><SelectValue placeholder="انتخاب ارز" /></SelectTrigger>
+          <Select value={values.cost_currency ?? ""} onValueChange={(v) => set("cost_currency", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="انتخاب ارز" />
+            </SelectTrigger>
             <SelectContent>
               {(currencies ?? []).map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.title}</SelectItem>
+                <SelectItem key={c.code} value={c.code}>
+                  {c.title}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <p className="mt-1 text-[11px] text-muted-foreground">
             هنگام محاسبه قیمت، آخرین نرخ فعال این ارز اعمال می‌شود.
           </p>
-          {errors.cost_currency && <p className="mt-1 text-xs text-destructive">{errors.cost_currency}</p>}
+          {errors.cost_currency && (
+            <p className="mt-1 text-xs text-destructive">{errors.cost_currency}</p>
+          )}
         </div>
       )}
 
@@ -298,7 +339,9 @@ export function ShippingCostRuleForm({
       </div>
 
       <div className="flex justify-end gap-2 sm:col-span-2">
-        <Button type="button" variant="outline" onClick={onCancel}>انصراف</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          انصراف
+        </Button>
         <Button type="submit" disabled={loading}>
           {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
           {isEditing ? "ذخیره تغییرات" : "ایجاد قانون"}

@@ -3,7 +3,15 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search, Filter, Loader2, Inbox, ChevronRight, ChevronLeft, CheckCircle2, XCircle, Send,
+  Search,
+  Filter,
+  Loader2,
+  Inbox,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  XCircle,
+  Send,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -11,7 +19,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -20,14 +32,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import {
-  QUOTE_SHARE_CHANNELS, QUOTE_SHARE_CHANNEL_LABELS,
-  QUOTE_SHARE_STATUSES, QUOTE_SHARE_STATUS_LABELS,
+  QUOTE_SHARE_CHANNELS,
+  QUOTE_SHARE_CHANNEL_LABELS,
+  QUOTE_SHARE_STATUSES,
+  QUOTE_SHARE_STATUS_LABELS,
   QUOTE_SHARE_LOGS_PAGE_SIZE,
-  type QuoteShareChannel, type QuoteShareStatus,
+  type QuoteShareChannel,
+  type QuoteShareStatus,
 } from "@/lib/sales/quote-share";
 
 export const Route = createFileRoute("/_app/sales/quote-share-logs")({
-  beforeLoad: async () => { await requirePermission("sales", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("sales", "view");
+  },
   component: QuoteShareLogsPage,
 });
 
@@ -55,7 +72,9 @@ function QuoteShareLogsPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
 
-  useMemo(() => { setPage(1); }, [dSearch, channel, status, dateFrom, dateTo]);
+  useMemo(() => {
+    setPage(1);
+  }, [dSearch, channel, status, dateFrom, dateTo]);
 
   const listQuery = useQuery({
     enabled: !!user,
@@ -92,7 +111,8 @@ function QuoteShareLogsPage() {
       if (status !== "__all") q = q.eq("status", status);
       if (dateFrom) q = q.gte("attempted_at", new Date(dateFrom).toISOString());
       if (dateTo) {
-        const d = new Date(dateTo); d.setHours(23, 59, 59, 999);
+        const d = new Date(dateTo);
+        d.setHours(23, 59, 59, 999);
         q = q.lte("attempted_at", d.toISOString());
       }
       if (term.length >= 2) {
@@ -107,13 +127,18 @@ function QuoteShareLogsPage() {
 
       const { data, error, count } = await q;
       if (error) throw error;
-      const baseRows = (data ?? []) as Array<Omit<ShareLogRow, "quote_number" | "attempted_by_name">>;
+      const baseRows = (data ?? []) as Array<
+        Omit<ShareLogRow, "quote_number" | "attempted_by_name">
+      >;
 
       // Hydrate quote numbers
       const quoteIds = Array.from(new Set(baseRows.map((r) => r.quote_id).filter(Boolean)));
       const quoteMap = new Map<string, string | null>();
       if (quoteIds.length > 0) {
-        const qr = await supabase.from("sales_quotes").select("id, quote_number").in("id", quoteIds);
+        const qr = await supabase
+          .from("sales_quotes")
+          .select("id, quote_number")
+          .in("id", quoteIds);
         if (!qr.error) {
           for (const r of qr.data ?? []) {
             quoteMap.set(r.id as string, (r.quote_number as string | null) ?? null);
@@ -122,7 +147,9 @@ function QuoteShareLogsPage() {
       }
 
       // Hydrate attempted_by names
-      const userIds = Array.from(new Set(baseRows.map((r) => r.attempted_by).filter((x): x is string => !!x)));
+      const userIds = Array.from(
+        new Set(baseRows.map((r) => r.attempted_by).filter((x): x is string => !!x)),
+      );
       const userMap = new Map<string, string | null>();
       if (userIds.length > 0) {
         const pr = await supabase.from("profiles").select("id, full_name").in("id", userIds);
@@ -169,20 +196,28 @@ function QuoteShareLogsPage() {
               />
             </div>
             <Select value={channel} onValueChange={setChannel}>
-              <SelectTrigger><SelectValue placeholder="کانال" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="کانال" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه کانال‌ها</SelectItem>
                 {QUOTE_SHARE_CHANNELS.map((c) => (
-                  <SelectItem key={c} value={c}>{QUOTE_SHARE_CHANNEL_LABELS[c]}</SelectItem>
+                  <SelectItem key={c} value={c}>
+                    {QUOTE_SHARE_CHANNEL_LABELS[c]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger><SelectValue placeholder="وضعیت" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="وضعیت" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">همه وضعیت‌ها</SelectItem>
                 {QUOTE_SHARE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{QUOTE_SHARE_STATUS_LABELS[s]}</SelectItem>
+                  <SelectItem key={s} value={s}>
+                    {QUOTE_SHARE_STATUS_LABELS[s]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -224,11 +259,16 @@ function QuoteShareLogsPage() {
                     <tbody className="divide-y divide-border">
                       {rows.map((r) => (
                         <tr key={r.id} className="hover:bg-muted/30">
-                          <td className="p-3 align-top font-mono text-xs">{r.quote_number ?? "—"}</td>
-                          <td className="p-3 align-top">
-                            {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}
+                          <td className="p-3 align-top font-mono text-xs">
+                            {r.quote_number ?? "—"}
                           </td>
-                          <td className="p-3 align-top" dir="ltr">{r.recipient}</td>
+                          <td className="p-3 align-top">
+                            {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ??
+                              r.channel}
+                          </td>
+                          <td className="p-3 align-top" dir="ltr">
+                            {r.recipient}
+                          </td>
                           <td className="p-3 align-top">
                             <Badge variant="outline">
                               {QUOTE_SHARE_STATUS_LABELS[r.status as QuoteShareStatus] ?? r.status}
@@ -241,8 +281,12 @@ function QuoteShareLogsPage() {
                               <XCircle className="h-4 w-4 text-muted-foreground" />
                             )}
                           </td>
-                          <td className="p-3 align-top text-xs text-muted-foreground">{r.attempted_by_name ?? "—"}</td>
-                          <td className="p-3 align-top text-[11px] text-muted-foreground">{formatDateTimeFa(r.attempted_at)}</td>
+                          <td className="p-3 align-top text-xs text-muted-foreground">
+                            {r.attempted_by_name ?? "—"}
+                          </td>
+                          <td className="p-3 align-top text-[11px] text-muted-foreground">
+                            {formatDateTimeFa(r.attempted_at)}
+                          </td>
                           <td className="p-3 align-top">
                             <EnqueueButton row={r} />
                           </td>
@@ -259,14 +303,18 @@ function QuoteShareLogsPage() {
               <Card key={r.id}>
                 <CardContent className="p-3 space-y-1.5 text-sm">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-mono text-xs text-muted-foreground">{r.quote_number ?? "—"}</div>
+                    <div className="font-mono text-xs text-muted-foreground">
+                      {r.quote_number ?? "—"}
+                    </div>
                     <Badge variant="outline">
                       {QUOTE_SHARE_STATUS_LABELS[r.status as QuoteShareStatus] ?? r.status}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">کانال</span>
-                    <span>{QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}</span>
+                    <span>
+                      {QUOTE_SHARE_CHANNEL_LABELS[r.channel as QuoteShareChannel] ?? r.channel}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">گیرنده</span>
@@ -288,13 +336,24 @@ function QuoteShareLogsPage() {
 
           <div className="flex items-center justify-between gap-2 pt-2">
             <div className="text-xs text-muted-foreground">
-              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)} سابقه
+              صفحه {toFaDigits(page)} از {toFaDigits(totalPages)} — مجموع {formatNumber(total)}{" "}
+              سابقه
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
                 <ChevronRight className="h-4 w-4" /> قبلی
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
                 بعدی <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
@@ -338,8 +397,7 @@ function EnqueueButton({ row }: { row: ShareLogRow }) {
       toast.success("به صف ارسال اضافه شد.");
       qc.invalidateQueries({ queryKey: ["sales-quote-send-queue"] });
     },
-    onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "خطا در افزودن به صف."),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "خطا در افزودن به صف."),
   });
 
   if (row.status !== "draft") {

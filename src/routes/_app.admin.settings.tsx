@@ -28,7 +28,11 @@ export const Route = createFileRoute("/_app/admin/settings")({
   component: ShopSettingsPage,
 });
 
-const TEXTAREA_KEYS: ShopSettingKey[] = ["shop_address", "default_seller_info", "birthday_message_template"];
+const TEXTAREA_KEYS: ShopSettingKey[] = [
+  "shop_address",
+  "default_seller_info",
+  "birthday_message_template",
+];
 
 const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   shop_name: "مثلاً فروشگاه افراکالا",
@@ -68,7 +72,10 @@ function ShopSettingsPage() {
     try {
       // Validate alert threshold
       const threshold = Number(values.alert_threshold_percent);
-      if (values.alert_threshold_percent && (isNaN(threshold) || threshold < 1 || threshold > 100)) {
+      if (
+        values.alert_threshold_percent &&
+        (isNaN(threshold) || threshold < 1 || threshold > 100)
+      ) {
         toast.error("آستانه هشدار باید عددی بین ۱ تا ۱۰۰ باشد.");
         setSaving(false);
         return;
@@ -90,9 +97,7 @@ function ShopSettingsPage() {
         return { key: k, value: newV, updated_at: new Date().toISOString(), updated_by: userId };
       });
 
-      const { error } = await supabase
-        .from("shop_settings")
-        .upsert(rows, { onConflict: "key" });
+      const { error } = await supabase.from("shop_settings").upsert(rows, { onConflict: "key" });
       if (error) throw error;
 
       if (Object.keys(changed).length > 0 && userId) {
@@ -135,10 +140,7 @@ function ShopSettingsPage() {
               {SHOP_SETTING_KEYS.map((k) => {
                 const isTextarea = TEXTAREA_KEYS.includes(k);
                 return (
-                  <div
-                    key={k}
-                    className={`space-y-1 ${isTextarea ? "md:col-span-2" : ""}`}
-                  >
+                  <div key={k} className={`space-y-1 ${isTextarea ? "md:col-span-2" : ""}`}>
                     <Label htmlFor={`ss-${k}`}>{SHOP_SETTING_LABELS[k]}</Label>
                     {isTextarea ? (
                       <Textarea

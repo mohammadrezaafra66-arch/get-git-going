@@ -20,7 +20,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { ReceiptDocumentsList } from "@/components/accounting/PaymentReceiptDocuments";
 import {
@@ -30,11 +35,22 @@ import {
   type WarningSeverity,
 } from "@/lib/accounting/receipt-security";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/accounting/receipts/$receiptId")({
@@ -150,21 +166,38 @@ function readStoredWarnings(raw: unknown): ReceiptSecurityWarning[] | null {
       typeof (item as { severity?: unknown }).severity === "string"
     ) {
       const r = item as { code: string; message: string; severity: string; source?: string };
-      const sev = (r.severity === "low" || r.severity === "medium" || r.severity === "high")
-        ? r.severity
-        : "medium";
-      const src = r.source === "manual" || r.source === "ocr" || r.source === "both" ? r.source : "manual";
-      out.push({ code: r.code, message: r.message, severity: sev as WarningSeverity, source: src as "manual" | "ocr" | "both" });
+      const sev =
+        r.severity === "low" || r.severity === "medium" || r.severity === "high"
+          ? r.severity
+          : "medium";
+      const src =
+        r.source === "manual" || r.source === "ocr" || r.source === "both" ? r.source : "manual";
+      out.push({
+        code: r.code,
+        message: r.message,
+        severity: sev as WarningSeverity,
+        source: src as "manual" | "ocr" | "both",
+      });
     }
   }
   return out;
 }
 
-function Field({ label, children, dir }: { label: string; children: React.ReactNode; dir?: "ltr" | "rtl" }) {
+function Field({
+  label,
+  children,
+  dir,
+}: {
+  label: string;
+  children: React.ReactNode;
+  dir?: "ltr" | "rtl";
+}) {
   return (
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div dir={dir} className="text-sm font-medium">{children || "—"}</div>
+      <div dir={dir} className="text-sm font-medium">
+        {children || "—"}
+      </div>
     </div>
   );
 }
@@ -181,7 +214,11 @@ function ReceiptDetailPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
 
-  const { data: receipt, isLoading, error } = useQuery({
+  const {
+    data: receipt,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["payment-receipt", receiptId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -218,11 +255,13 @@ function ReceiptDetailPage() {
         p_customer_id: receipt!.customer_id,
       });
       if (error) throw error;
-      const row = (data as unknown as Array<{
-        available_credit: number;
-        held_credit: number;
-        outstanding_balance: number;
-      }>)?.[0];
+      const row = (
+        data as unknown as Array<{
+          available_credit: number;
+          held_credit: number;
+          outstanding_balance: number;
+        }>
+      )?.[0];
       return row ?? null;
     },
     staleTime: 30_000,
@@ -234,12 +273,19 @@ function ReceiptDetailPage() {
     queryFn: async () => {
       const { data: entry, error: entryErr } = await supabase
         .from("journal_entries")
-        .select("id, source_type, source_id, entry_date, description, status, posted_by, posted_at, created_at")
+        .select(
+          "id, source_type, source_id, entry_date, description, status, posted_by, posted_at, created_at",
+        )
         .eq("source_type", "payment_receipt")
         .eq("source_id", receiptId)
         .maybeSingle();
       if (entryErr) throw entryErr;
-      if (!entry) return { entry: null as JournalEntry | null, lines: [] as JournalLine[], poster: null as string | null };
+      if (!entry)
+        return {
+          entry: null as JournalEntry | null,
+          lines: [] as JournalLine[],
+          poster: null as string | null,
+        };
 
       const [{ data: lines, error: linesErr }, posterRes] = await Promise.all([
         supabase
@@ -282,10 +328,10 @@ function ReceiptDetailPage() {
       if (updErr) throw updErr;
 
       // 2) Atomic accounting posting via RPC (idempotent, prevents duplicate posting)
-      const { data: postResult, error: rpcErr } = await supabase.rpc(
-        "post_receipt_accounting",
-        { p_receipt_id: receipt.id, p_user_id: user.id },
-      );
+      const { data: postResult, error: rpcErr } = await supabase.rpc("post_receipt_accounting", {
+        p_receipt_id: receipt.id,
+        p_user_id: user.id,
+      });
       if (rpcErr) {
         // Roll back the approval if posting failed
         await supabase
@@ -308,7 +354,10 @@ function ReceiptDetailPage() {
         actor_id: user.id,
         entity_type: "payment_receipt",
         entity_id: receipt.id,
-        action: receipt.receipt_type === "prepayment" ? "prepayment_credit_added" : "payment_receipt_approved",
+        action:
+          receipt.receipt_type === "prepayment"
+            ? "prepayment_credit_added"
+            : "payment_receipt_approved",
         diff: {
           receipt_id: receipt.id,
           customer_id: receipt.customer_id,
@@ -407,7 +456,9 @@ function ReceiptDetailPage() {
                     {STATUS_LABEL[receipt.status] ?? receipt.status}
                   </Badge>
                   <Badge variant="outline">
-                    {receipt.receipt_type === "prepayment" ? "پیش واریز: اعتبار مثبت" : "پرداخت بدهی"}
+                    {receipt.receipt_type === "prepayment"
+                      ? "پیش واریز: اعتبار مثبت"
+                      : "پرداخت بدهی"}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
                     شماره پیگیری: <span dir="ltr">{toFaDigits(receipt.tracking_number)}</span>
@@ -494,7 +545,9 @@ function ReceiptDetailPage() {
                   <Field label="مبلغ (تومان)">
                     <span className="text-base">{formatNumber(Number(receipt.amount))}</span>
                   </Field>
-                  <Field label="تاریخ فیش" dir="ltr">{isoToJalaliDisplay(receipt.payment_date)}</Field>
+                  <Field label="تاریخ فیش" dir="ltr">
+                    {isoToJalaliDisplay(receipt.payment_date)}
+                  </Field>
                   <Field label="ساعت" dir="ltr">
                     {toFaDigits(receipt.payment_time?.slice(0, 5) ?? "")}
                   </Field>
@@ -519,7 +572,9 @@ function ReceiptDetailPage() {
                   <Field label="شماره موبایل" dir="ltr">
                     {receipt.payer_phone ? toFaDigits(receipt.payer_phone) : ""}
                   </Field>
-                  <Field label="کد حسابداری" dir="ltr">{receipt.payer_accounting_code}</Field>
+                  <Field label="کد حسابداری" dir="ltr">
+                    {receipt.payer_accounting_code}
+                  </Field>
                 </div>
 
                 <Separator />
@@ -530,7 +585,9 @@ function ReceiptDetailPage() {
                   <Field label="شماره موبایل" dir="ltr">
                     {receipt.receiver_phone ? toFaDigits(receipt.receiver_phone) : ""}
                   </Field>
-                  <Field label="کد حسابداری" dir="ltr">{receipt.receiver_accounting_code}</Field>
+                  <Field label="کد حسابداری" dir="ltr">
+                    {receipt.receiver_accounting_code}
+                  </Field>
                 </div>
 
                 {receipt.description && (
@@ -627,73 +684,89 @@ function ReceiptDetailPage() {
                 <p className="text-xs text-muted-foreground">
                   برای این فیش هنوز سند حسابداری ثبت نشده است.
                 </p>
-              ) : (() => {
-                const totalDebit = journal.lines.reduce((s, l) => s + Number(l.debit || 0), 0);
-                const totalCredit = journal.lines.reduce((s, l) => s + Number(l.credit || 0), 0);
-                const isBalanced = totalDebit === totalCredit && totalDebit > 0;
-                return (
-                  <>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      <Field label="شماره سند" dir="ltr">{toFaDigits(journal.entry.id.slice(0, 8))}</Field>
-                      <Field label="تاریخ سند" dir="ltr">{isoToJalaliDisplay(journal.entry.entry_date)}</Field>
-                      <Field label="وضعیت سند">
-                        <Badge variant={journal.entry.status === "posted" ? "default" : "secondary"}>
-                          {JOURNAL_STATUS_LABEL[journal.entry.status] ?? journal.entry.status}
-                        </Badge>
-                      </Field>
-                      <Field label="ثبت‌کننده">{journal.poster ?? "—"}</Field>
-                      <Field label="زمان ثبت" dir="ltr">
-                        {toFaDigits(new Date(journal.entry.posted_at).toLocaleString("fa-IR"))}
-                      </Field>
-                      <Field label="توضیحات">{journal.entry.description}</Field>
-                    </div>
+              ) : (
+                (() => {
+                  const totalDebit = journal.lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+                  const totalCredit = journal.lines.reduce((s, l) => s + Number(l.credit || 0), 0);
+                  const isBalanced = totalDebit === totalCredit && totalDebit > 0;
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <Field label="شماره سند" dir="ltr">
+                          {toFaDigits(journal.entry.id.slice(0, 8))}
+                        </Field>
+                        <Field label="تاریخ سند" dir="ltr">
+                          {isoToJalaliDisplay(journal.entry.entry_date)}
+                        </Field>
+                        <Field label="وضعیت سند">
+                          <Badge
+                            variant={journal.entry.status === "posted" ? "default" : "secondary"}
+                          >
+                            {JOURNAL_STATUS_LABEL[journal.entry.status] ?? journal.entry.status}
+                          </Badge>
+                        </Field>
+                        <Field label="ثبت‌کننده">{journal.poster ?? "—"}</Field>
+                        <Field label="زمان ثبت" dir="ltr">
+                          {toFaDigits(new Date(journal.entry.posted_at).toLocaleString("fa-IR"))}
+                        </Field>
+                        <Field label="توضیحات">{journal.entry.description}</Field>
+                      </div>
 
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-right">ردیف</TableHead>
-                            <TableHead className="text-right">نوع حساب</TableHead>
-                            <TableHead className="text-right">شناسه حساب</TableHead>
-                            <TableHead className="text-right">شرح</TableHead>
-                            <TableHead className="text-right">بدهکار</TableHead>
-                            <TableHead className="text-right">بستانکار</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {journal.lines.map((l) => (
-                            <TableRow key={l.id}>
-                              <TableCell>{toFaDigits(String(l.line_no))}</TableCell>
-                              <TableCell>{ACCOUNT_KIND_LABEL[l.account_kind] ?? l.account_kind}</TableCell>
-                              <TableCell dir="ltr" className="text-xs text-muted-foreground">
-                                {l.account_ref_id ? toFaDigits(l.account_ref_id.slice(0, 8)) : "—"}
-                              </TableCell>
-                              <TableCell>{l.description ?? "—"}</TableCell>
-                              <TableCell>{Number(l.debit) > 0 ? formatNumber(Number(l.debit)) : "—"}</TableCell>
-                              <TableCell>{Number(l.credit) > 0 ? formatNumber(Number(l.credit)) : "—"}</TableCell>
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-right">ردیف</TableHead>
+                              <TableHead className="text-right">نوع حساب</TableHead>
+                              <TableHead className="text-right">شناسه حساب</TableHead>
+                              <TableHead className="text-right">شرح</TableHead>
+                              <TableHead className="text-right">بدهکار</TableHead>
+                              <TableHead className="text-right">بستانکار</TableHead>
                             </TableRow>
-                          ))}
-                          <TableRow className="bg-muted/40 font-semibold">
-                            <TableCell colSpan={4}>جمع کل</TableCell>
-                            <TableCell>{formatNumber(totalDebit)}</TableCell>
-                            <TableCell>{formatNumber(totalCredit)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
+                          </TableHeader>
+                          <TableBody>
+                            {journal.lines.map((l) => (
+                              <TableRow key={l.id}>
+                                <TableCell>{toFaDigits(String(l.line_no))}</TableCell>
+                                <TableCell>
+                                  {ACCOUNT_KIND_LABEL[l.account_kind] ?? l.account_kind}
+                                </TableCell>
+                                <TableCell dir="ltr" className="text-xs text-muted-foreground">
+                                  {l.account_ref_id
+                                    ? toFaDigits(l.account_ref_id.slice(0, 8))
+                                    : "—"}
+                                </TableCell>
+                                <TableCell>{l.description ?? "—"}</TableCell>
+                                <TableCell>
+                                  {Number(l.debit) > 0 ? formatNumber(Number(l.debit)) : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {Number(l.credit) > 0 ? formatNumber(Number(l.credit)) : "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            <TableRow className="bg-muted/40 font-semibold">
+                              <TableCell colSpan={4}>جمع کل</TableCell>
+                              <TableCell>{formatNumber(totalDebit)}</TableCell>
+                              <TableCell>{formatNumber(totalCredit)}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
 
-                    <div
-                      className={
-                        isBalanced
-                          ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-sm text-emerald-700 dark:text-emerald-400"
-                          : "rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive"
-                      }
-                    >
-                      {isBalanced ? "سند متوازن است" : "سند نامتوازن است"}
-                    </div>
-                  </>
-                );
-              })()}
+                      <div
+                        className={
+                          isBalanced
+                            ? "rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2 text-sm text-emerald-700 dark:text-emerald-400"
+                            : "rounded-md border border-destructive/50 bg-destructive/10 p-2 text-sm text-destructive"
+                        }
+                      >
+                        {isBalanced ? "سند متوازن است" : "سند نامتوازن است"}
+                      </div>
+                    </>
+                  );
+                })()
+              )}
             </CardContent>
           </Card>
 
@@ -715,9 +788,7 @@ function ReceiptDetailPage() {
                   }}
                   disabled={approveMutation.isPending}
                 >
-                  {approveMutation.isPending && (
-                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  )}
+                  {approveMutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   تأیید
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -725,13 +796,16 @@ function ReceiptDetailPage() {
           </AlertDialog>
 
           {/* Reject dialog */}
-          <Dialog open={rejectOpen} onOpenChange={(open) => {
-            setRejectOpen(open);
-            if (!open) {
-              setRejectReason("");
-              setRejectError(null);
-            }
-          }}>
+          <Dialog
+            open={rejectOpen}
+            onOpenChange={(open) => {
+              setRejectOpen(open);
+              if (!open) {
+                setRejectReason("");
+                setRejectError(null);
+              }
+            }}
+          >
             <DialogContent dir="rtl">
               <DialogHeader>
                 <DialogTitle>رد فیش واریزی</DialogTitle>
@@ -740,7 +814,9 @@ function ReceiptDetailPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
-                <Label>دلیل رد <span className="text-destructive">*</span></Label>
+                <Label>
+                  دلیل رد <span className="text-destructive">*</span>
+                </Label>
                 <Textarea
                   rows={4}
                   value={rejectReason}
@@ -772,9 +848,7 @@ function ReceiptDetailPage() {
                   }}
                   disabled={rejectMutation.isPending}
                 >
-                  {rejectMutation.isPending && (
-                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                  )}
+                  {rejectMutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   رد فیش
                 </Button>
               </DialogFooter>

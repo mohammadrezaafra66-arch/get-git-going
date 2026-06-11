@@ -35,13 +35,7 @@ const STALE_CHUNK_PATTERNS = [
  * full page reload re-mounts the React tree (resetting auth/session
  * state to the "checking session…" screen indefinitely).
  */
-const DEV_URL_PATTERNS = [
-  /\/@id\//,
-  /\/@vite\//,
-  /\/@fs\//,
-  /virtual:/,
-  /node_modules\/\.vite\//,
-];
+const DEV_URL_PATTERNS = [/\/@id\//, /\/@vite\//, /\/@fs\//, /virtual:/, /node_modules\/\.vite\//];
 
 function isDevModuleUrl(message: string | undefined | null): boolean {
   if (!message) return false;
@@ -264,10 +258,7 @@ export function initCacheBuster() {
   };
   const onRejection = (event: PromiseRejectionEvent) => {
     const reason = event?.reason;
-    const msg =
-      typeof reason === "string"
-        ? reason
-        : reason?.message ?? String(reason ?? "");
+    const msg = typeof reason === "string" ? reason : (reason?.message ?? String(reason ?? ""));
     if (isDevImportError(msg)) {
       event.preventDefault();
       handleDevImportError(`unhandledrejection: ${msg}`);

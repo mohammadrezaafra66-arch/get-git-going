@@ -42,7 +42,10 @@ export interface ComposeNameInput {
 function clean(v: string | null | undefined): string {
   if (v == null) return "";
   // Plain text only: strip angle brackets and control chars
-  return String(v).replace(/[<>]/g, "").replace(/[\u0000-\u001F\u007F]/g, "").trim();
+  return String(v)
+    .replace(/[<>]/g, "")
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .trim();
 }
 
 export function composeProductName(input: ComposeNameInput): string {
@@ -75,9 +78,7 @@ export function composeProductName(input: ComposeNameInput): string {
   });
 
   // Append values flagged use_in_product_name that were NOT referenced explicitly.
-  const appendKeys = (input.use_in_name_keys ?? []).filter(
-    (k) => !referencedAttrKeys.has(k),
-  );
+  const appendKeys = (input.use_in_name_keys ?? []).filter((k) => !referencedAttrKeys.has(k));
   const appended: string[] = [];
   for (const k of appendKeys) {
     const v = clean(dyn[k]);

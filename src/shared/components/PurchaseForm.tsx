@@ -19,18 +19,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 const SUPPLIER_UNKNOWN = "__none__";
@@ -47,9 +60,11 @@ const schema = z.object({
     .number({ message: "تعداد الزامی است" })
     .int("تعداد باید عدد صحیح باشد")
     .min(1, "تعداد باید حداقل ۱ باشد"),
-  purchase_date: z.date({ message: "تاریخ خرید الزامی است" })
-    .refine((d) => d.getTime() <= new Date().setHours(23, 59, 59, 999),
-      { message: "تاریخ نمی‌تواند در آینده باشد" }),
+  purchase_date: z
+    .date({ message: "تاریخ خرید الزامی است" })
+    .refine((d) => d.getTime() <= new Date().setHours(23, 59, 59, 999), {
+      message: "تاریخ نمی‌تواند در آینده باشد",
+    }),
   notes: z.string().max(500, "حداکثر ۵۰۰ کاراکتر").optional(),
   cash_price: z
     .number({ message: "قیمت نقدی نامعتبر است" })
@@ -60,7 +75,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const CURRENCY_LABELS: Record<FormValues["currency"], string> = {
-  toman: "تومان", usd: "دلار", aed: "درهم",
+  toman: "تومان",
+  usd: "دلار",
+  aed: "درهم",
 };
 
 const defaultValues: FormValues = {
@@ -146,8 +163,8 @@ export function PurchaseForm() {
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
-      const supplierId = values.supplier_id && values.supplier_id !== SUPPLIER_UNKNOWN
-        ? values.supplier_id : null;
+      const supplierId =
+        values.supplier_id && values.supplier_id !== SUPPLIER_UNKNOWN ? values.supplier_id : null;
       const lineTotal = Number(values.purchase_price) * Number(values.quantity);
 
       const { data: purchase, error: pErr } = await supabase
@@ -212,15 +229,19 @@ export function PurchaseForm() {
     >
       {/* محصول */}
       <div className="space-y-2">
-        <Label>محصول <span className="text-destructive">*</span></Label>
+        <Label>
+          محصول <span className="text-destructive">*</span>
+        </Label>
         <Popover open={productOpen} onOpenChange={setProductOpen}>
           <PopoverTrigger asChild>
             <Button
               type="button"
               variant="outline"
               role="combobox"
-              className={cn("w-full justify-between font-normal",
-                !selectedProduct && "text-muted-foreground")}
+              className={cn(
+                "w-full justify-between font-normal",
+                !selectedProduct && "text-muted-foreground",
+              )}
             >
               {selectedProduct
                 ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ""}`
@@ -252,10 +273,16 @@ export function PurchaseForm() {
                         setProductOpen(false);
                       }}
                     >
-                      <Check className={cn("ml-2 h-4 w-4",
-                        p.id === form.watch("product_id") ? "opacity-100" : "opacity-0")} />
+                      <Check
+                        className={cn(
+                          "ml-2 h-4 w-4",
+                          p.id === form.watch("product_id") ? "opacity-100" : "opacity-0",
+                        )}
+                      />
                       <span>{p.name}</span>
-                      {p.sku && <span className="mr-2 text-xs text-muted-foreground">({p.sku})</span>}
+                      {p.sku && (
+                        <span className="mr-2 text-xs text-muted-foreground">({p.sku})</span>
+                      )}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -263,7 +290,9 @@ export function PurchaseForm() {
             </Command>
           </PopoverContent>
         </Popover>
-        {errors.product_id && <p className="text-xs text-destructive">{errors.product_id.message}</p>}
+        {errors.product_id && (
+          <p className="text-xs text-destructive">{errors.product_id.message}</p>
+        )}
       </div>
 
       {/* تأمین‌کننده */}
@@ -271,15 +300,17 @@ export function PurchaseForm() {
         <Label>تأمین‌کننده</Label>
         <Select
           value={form.watch("supplier_id") ?? SUPPLIER_UNKNOWN}
-          onValueChange={(v) =>
-            form.setValue("supplier_id", v === SUPPLIER_UNKNOWN ? null : v)
-          }
+          onValueChange={(v) => form.setValue("supplier_id", v === SUPPLIER_UNKNOWN ? null : v)}
         >
-          <SelectTrigger><SelectValue placeholder="انتخاب تأمین‌کننده" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="انتخاب تأمین‌کننده" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value={SUPPLIER_UNKNOWN}>نامشخص</SelectItem>
             {suppliers.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -287,12 +318,16 @@ export function PurchaseForm() {
 
       {/* زمان تسویه */}
       <div className="space-y-2">
-        <Label>زمان تسویه <span className="text-destructive">*</span></Label>
+        <Label>
+          زمان تسویه <span className="text-destructive">*</span>
+        </Label>
         <Select
           value={form.watch("payment_term_id") || undefined}
           onValueChange={(v) => form.setValue("payment_term_id", v, { shouldValidate: true })}
         >
-          <SelectTrigger><SelectValue placeholder="انتخاب زمان تسویه" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="انتخاب زمان تسویه" />
+          </SelectTrigger>
           <SelectContent>
             {paymentTerms.length === 0 ? (
               <div className="px-3 py-2 text-xs text-muted-foreground">
@@ -301,18 +336,23 @@ export function PurchaseForm() {
             ) : (
               paymentTerms.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
-                  {t.name}{t.days != null ? ` (${toFaDigits(String(t.days))} روز)` : ""}
+                  {t.name}
+                  {t.days != null ? ` (${toFaDigits(String(t.days))} روز)` : ""}
                 </SelectItem>
               ))
             )}
           </SelectContent>
         </Select>
-        {errors.payment_term_id && <p className="text-xs text-destructive">{errors.payment_term_id.message}</p>}
+        {errors.payment_term_id && (
+          <p className="text-xs text-destructive">{errors.payment_term_id.message}</p>
+        )}
       </div>
 
       {/* قیمت خرید */}
       <div className="space-y-2">
-        <Label htmlFor="purchase_price">قیمت خرید <span className="text-destructive">*</span></Label>
+        <Label htmlFor="purchase_price">
+          قیمت خرید <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="purchase_price"
           type="number"
@@ -322,7 +362,9 @@ export function PurchaseForm() {
           placeholder="مثلاً ۱۲۰۰۰۰"
           {...form.register("purchase_price", { valueAsNumber: true })}
         />
-        {errors.purchase_price && <p className="text-xs text-destructive">{errors.purchase_price.message}</p>}
+        {errors.purchase_price && (
+          <p className="text-xs text-destructive">{errors.purchase_price.message}</p>
+        )}
       </div>
 
       {/* قیمت نقدی همان تأمین‌کننده — مبنای امتیازدهی طلای زمان */}
@@ -346,22 +388,33 @@ export function PurchaseForm() {
           })}
         />
         <p className="text-[11px] leading-5 text-muted-foreground">
-          هرچه قیمت با مهلت به قیمت نقدی نزدیک‌تر باشد و مهلت تسویه طولانی‌تر، امتیاز شما در گیمیفیکیشن «طلای زمان» بیشتر می‌شود.
+          هرچه قیمت با مهلت به قیمت نقدی نزدیک‌تر باشد و مهلت تسویه طولانی‌تر، امتیاز شما در
+          گیمیفیکیشن «طلای زمان» بیشتر می‌شود.
         </p>
-        {errors.cash_price && <p className="text-xs text-destructive">{errors.cash_price.message}</p>}
+        {errors.cash_price && (
+          <p className="text-xs text-destructive">{errors.cash_price.message}</p>
+        )}
       </div>
 
       {/* ارز */}
       <div className="space-y-2">
-        <Label>ارز <span className="text-destructive">*</span></Label>
+        <Label>
+          ارز <span className="text-destructive">*</span>
+        </Label>
         <Select
           value={form.watch("currency")}
-          onValueChange={(v) => form.setValue("currency", v as FormValues["currency"], { shouldValidate: true })}
+          onValueChange={(v) =>
+            form.setValue("currency", v as FormValues["currency"], { shouldValidate: true })
+          }
         >
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             {(Object.keys(CURRENCY_LABELS) as Array<FormValues["currency"]>).map((c) => (
-              <SelectItem key={c} value={c}>{CURRENCY_LABELS[c]}</SelectItem>
+              <SelectItem key={c} value={c}>
+                {CURRENCY_LABELS[c]}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -369,7 +422,9 @@ export function PurchaseForm() {
 
       {/* تعداد */}
       <div className="space-y-2">
-        <Label htmlFor="quantity">تعداد <span className="text-destructive">*</span></Label>
+        <Label htmlFor="quantity">
+          تعداد <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="quantity"
           type="number"
@@ -383,7 +438,9 @@ export function PurchaseForm() {
 
       {/* تاریخ خرید (شمسی) */}
       <div className="space-y-2">
-        <Label>تاریخ خرید <span className="text-destructive">*</span></Label>
+        <Label>
+          تاریخ خرید <span className="text-destructive">*</span>
+        </Label>
         <JalaliDateInput
           value={purchaseDate ? format(purchaseDate, "yyyy-MM-dd") : ""}
           onChange={(iso: string) => {
@@ -396,7 +453,9 @@ export function PurchaseForm() {
           max={format(new Date(), "yyyy-MM-dd")}
           invalid={!!errors.purchase_date}
         />
-        {errors.purchase_date && <p className="text-xs text-destructive">{errors.purchase_date.message}</p>}
+        {errors.purchase_date && (
+          <p className="text-xs text-destructive">{errors.purchase_date.message}</p>
+        )}
       </div>
 
       {/* توضیحات */}
@@ -412,11 +471,7 @@ export function PurchaseForm() {
         {errors.notes && <p className="text-xs text-destructive">{errors.notes.message}</p>}
       </div>
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={mutation.isPending}
-      >
+      <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
         ثبت خرید
       </Button>

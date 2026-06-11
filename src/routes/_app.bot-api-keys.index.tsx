@@ -3,7 +3,19 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  KeyRound, Plus, Loader2, Copy, Check, Eye, EyeOff, Trash2, Settings2, Activity, BookOpen, FlaskConical, Tags,
+  KeyRound,
+  Plus,
+  Loader2,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Trash2,
+  Settings2,
+  Activity,
+  BookOpen,
+  FlaskConical,
+  Tags,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -16,10 +28,19 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -27,7 +48,9 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/bot-api-keys/")({
-  beforeLoad: async () => { await requirePermission("bot-api-keys", "view"); },
+  beforeLoad: async () => {
+    await requirePermission("bot-api-keys", "view");
+  },
   component: BotApiKeysPage,
 });
 
@@ -70,7 +93,11 @@ function BotApiKeysPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newExpires, setNewExpires] = useState<string>("");
-  const [revealedKey, setRevealedKey] = useState<{ id: string; raw: string; prefix: string } | null>(null);
+  const [revealedKey, setRevealedKey] = useState<{
+    id: string;
+    raw: string;
+    prefix: string;
+  } | null>(null);
   const [accessKey, setAccessKey] = useState<BotKey | null>(null);
   const [labelKey, setLabelKey] = useState<BotKey | null>(null);
 
@@ -96,8 +123,11 @@ function BotApiKeysPage() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("bot_key_stats_today");
       if (error) throw error;
-      const map = new Map<string, { requests_today: number; errors_today: number; last_used_at: string | null }>();
-      for (const r of (data ?? [])) {
+      const map = new Map<
+        string,
+        { requests_today: number; errors_today: number; last_used_at: string | null }
+      >();
+      for (const r of data ?? []) {
         map.set(r.api_key_id, {
           requests_today: Number(r.requests_today ?? 0),
           errors_today: Number(r.errors_today ?? 0),
@@ -116,7 +146,11 @@ function BotApiKeysPage() {
         p_expires_at: expIso ?? undefined,
       });
       if (error) throw error;
-      const row = (Array.isArray(data) ? data[0] : data) as { id: string; raw_key: string; key_prefix: string } | null;
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        id: string;
+        raw_key: string;
+        key_prefix: string;
+      } | null;
       if (!row) throw new Error("پاسخ نامعتبر");
       return row;
     },
@@ -124,7 +158,8 @@ function BotApiKeysPage() {
       toast.success("کلید جدید ساخته شد. این کلید را اکنون کپی کنید — دیگر نمایش داده نمی‌شود.");
       setRevealedKey({ id: row.id, raw: row.raw_key, prefix: row.key_prefix });
       setCreateOpen(false);
-      setNewName(""); setNewExpires("");
+      setNewName("");
+      setNewExpires("");
       qc.invalidateQueries({ queryKey: ["bot-api-keys"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا در ساخت کلید"),
@@ -133,7 +168,8 @@ function BotApiKeysPage() {
   const toggleMut = useMutation({
     mutationFn: async (vars: { id: string; isActive: boolean }) => {
       const { error } = await supabase.rpc("set_bot_api_key_active", {
-        p_key_id: vars.id, p_is_active: vars.isActive,
+        p_key_id: vars.id,
+        p_is_active: vars.isActive,
       });
       if (error) throw error;
     },
@@ -154,21 +190,25 @@ function BotApiKeysPage() {
           <div className="flex items-center gap-2">
             <Link to="/bot-api-keys/docs">
               <Button variant="outline">
-                <BookOpen className="ml-2 h-4 w-4" />مستندات و تست API
+                <BookOpen className="ml-2 h-4 w-4" />
+                مستندات و تست API
               </Button>
             </Link>
             <Link to="/bot-api-keys/playground">
               <Button variant="outline">
-                <FlaskConical className="ml-2 h-4 w-4" />API Playground
+                <FlaskConical className="ml-2 h-4 w-4" />
+                API Playground
               </Button>
             </Link>
             <Link to="/bot-api-keys/usage">
               <Button variant="outline">
-                <Activity className="ml-2 h-4 w-4" />گزارش استفاده
+                <Activity className="ml-2 h-4 w-4" />
+                گزارش استفاده
               </Button>
             </Link>
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="ml-2 h-4 w-4" />کلید جدید
+              <Plus className="ml-2 h-4 w-4" />
+              کلید جدید
             </Button>
           </div>
         }
@@ -191,7 +231,9 @@ function BotApiKeysPage() {
           ) : (
             <div className="divide-y divide-border">
               {(keysQuery.data ?? []).map((k) => {
-                const expired = k.expires_at ? new Date(k.expires_at).getTime() < Date.now() : false;
+                const expired = k.expires_at
+                  ? new Date(k.expires_at).getTime() < Date.now()
+                  : false;
                 const stat = statsQuery.data?.get(k.id);
                 const lastUsed = stat?.last_used_at ?? k.last_used_at;
                 return (
@@ -221,10 +263,12 @@ function BotApiKeysPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button size="sm" variant="outline" onClick={() => setAccessKey(k)}>
-                        <Settings2 className="ml-2 h-4 w-4" />دسترسی جداول
+                        <Settings2 className="ml-2 h-4 w-4" />
+                        دسترسی جداول
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setLabelKey(k)}>
-                        <Tags className="ml-2 h-4 w-4" />دسترسی برچسب محصولات
+                        <Tags className="ml-2 h-4 w-4" />
+                        دسترسی برچسب محصولات
                       </Button>
                       <label className="flex items-center gap-2 text-xs">
                         <Switch
@@ -249,22 +293,41 @@ function BotApiKeysPage() {
           <DialogHeader>
             <DialogTitle>ساخت کلید API ربات جدید</DialogTitle>
             <DialogDescription>
-              نام توصیفی برای کلید انتخاب کنید. در صورت تعیین تاریخ انقضا، کلید پس از آن قابل استفاده نخواهد بود.
+              نام توصیفی برای کلید انتخاب کنید. در صورت تعیین تاریخ انقضا، کلید پس از آن قابل
+              استفاده نخواهد بود.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>نام کلید</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثلاً ربات تلگرام فروش" />
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="مثلاً ربات تلگرام فروش"
+              />
             </div>
             <div className="space-y-1">
               <Label>تاریخ انقضا (اختیاری)</Label>
-              <Input type="datetime-local" dir="ltr" value={newExpires} onChange={(e) => setNewExpires(e.target.value)} />
+              <Input
+                type="datetime-local"
+                dir="ltr"
+                value={newExpires}
+                onChange={(e) => setNewExpires(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createMut.isPending}>انصراف</Button>
-            <Button onClick={() => createMut.mutate()} disabled={createMut.isPending || !newName.trim()}>
+            <Button
+              variant="outline"
+              onClick={() => setCreateOpen(false)}
+              disabled={createMut.isPending}
+            >
+              انصراف
+            </Button>
+            <Button
+              onClick={() => createMut.mutate()}
+              disabled={createMut.isPending || !newName.trim()}
+            >
               {createMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ساخت کلید
             </Button>
@@ -273,29 +336,24 @@ function BotApiKeysPage() {
       </Dialog>
 
       {/* Reveal-once dialog */}
-      <RevealKeyDialog
-        revealed={revealedKey}
-        onClose={() => setRevealedKey(null)}
-      />
+      <RevealKeyDialog revealed={revealedKey} onClose={() => setRevealedKey(null)} />
 
       {/* Access management dialog */}
-      <AccessDialog
-        botKey={accessKey}
-        onClose={() => setAccessKey(null)}
-      />
+      <AccessDialog botKey={accessKey} onClose={() => setAccessKey(null)} />
 
       {/* Product label access dialog */}
-      <LabelAccessDialog
-        botKey={labelKey}
-        onClose={() => setLabelKey(null)}
-      />
+      <LabelAccessDialog botKey={labelKey} onClose={() => setLabelKey(null)} />
     </div>
   );
 }
 
 function RevealKeyDialog({
-  revealed, onClose,
-}: { revealed: { id: string; raw: string; prefix: string } | null; onClose: () => void }) {
+  revealed,
+  onClose,
+}: {
+  revealed: { id: string; raw: string; prefix: string } | null;
+  onClose: () => void;
+}) {
   const [shown, setShown] = useState(false);
   const [copied, setCopied] = useState(false);
   const open = !!revealed;
@@ -313,7 +371,16 @@ function RevealKeyDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setShown(false); setCopied(false); } }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          onClose();
+          setShown(false);
+          setCopied(false);
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>کلید جدید آماده شد</DialogTitle>
@@ -323,7 +390,10 @@ function RevealKeyDialog({
         </DialogHeader>
         {revealed && (
           <div className="space-y-3">
-            <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-sm break-all" dir="ltr">
+            <div
+              className="rounded-md border border-border bg-muted/40 p-3 font-mono text-sm break-all"
+              dir="ltr"
+            >
               {shown ? revealed.raw : "•".repeat(revealed.raw.length)}
             </div>
             <div className="flex gap-2">
@@ -339,7 +409,15 @@ function RevealKeyDialog({
           </div>
         )}
         <DialogFooter>
-          <Button onClick={() => { onClose(); setShown(false); setCopied(false); }}>متوجه شدم، بستن</Button>
+          <Button
+            onClick={() => {
+              onClose();
+              setShown(false);
+              setCopied(false);
+            }}
+          >
+            متوجه شدم، بستن
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -383,13 +461,19 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
   const tables = tablesQuery.data ?? [];
   const access = accessQuery.data ?? [];
   const linkedIds = useMemo(() => new Set(access.map((a) => a.table_id)), [access]);
-  const unlinkedTables = useMemo(() => tables.filter((t) => !linkedIds.has(t.id)), [tables, linkedIds]);
+  const unlinkedTables = useMemo(
+    () => tables.filter((t) => !linkedIds.has(t.id)),
+    [tables, linkedIds],
+  );
 
   const addAccessMut = useMutation({
     mutationFn: async (tableId: string) => {
       const { error } = await supabase.rpc("set_bot_api_key_table_access", {
-        p_key_id: botKey!.id, p_table_id: tableId,
-        p_can_read: true, p_can_update: false, p_allowed_update_columns: [],
+        p_key_id: botKey!.id,
+        p_table_id: tableId,
+        p_can_read: true,
+        p_can_update: false,
+        p_allowed_update_columns: [],
       });
       if (error) throw error;
     },
@@ -402,7 +486,12 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
   });
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>دسترسی جداول — {botKey?.name}</DialogTitle>
@@ -417,13 +506,19 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
             <div className="flex-1 space-y-1">
               <Label className="text-xs">افزودن جدول جدید</Label>
               <Select value={selectedTableId} onValueChange={setSelectedTableId}>
-                <SelectTrigger><SelectValue placeholder="یک جدول انتخاب کنید" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="یک جدول انتخاب کنید" />
+                </SelectTrigger>
                 <SelectContent>
                   {unlinkedTables.length === 0 && (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">جدول جدیدی برای افزودن نیست.</div>
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      جدول جدیدی برای افزودن نیست.
+                    </div>
                   )}
                   {unlinkedTables.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -432,7 +527,8 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
               onClick={() => addAccessMut.mutate(selectedTableId)}
               disabled={!selectedTableId || addAccessMut.isPending}
             >
-              <Plus className="ml-2 h-4 w-4" />افزودن
+              <Plus className="ml-2 h-4 w-4" />
+              افزودن
             </Button>
           </div>
 
@@ -459,7 +555,9 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>بستن</Button>
+          <Button variant="outline" onClick={onClose}>
+            بستن
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -467,8 +565,14 @@ function AccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () 
 }
 
 function AccessRowCard({
-  keyId, access, tableName,
-}: { keyId: string; access: AccessRow; tableName: string }) {
+  keyId,
+  access,
+  tableName,
+}: {
+  keyId: string;
+  access: AccessRow;
+  tableName: string;
+}) {
   const qc = useQueryClient();
   const [canRead, setCanRead] = useState(access.can_read);
   const [canUpdate, setCanUpdate] = useState(access.can_update);
@@ -509,7 +613,8 @@ function AccessRowCard({
   const removeMut = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.rpc("delete_bot_api_key_table_access", {
-        p_key_id: keyId, p_table_id: access.table_id,
+        p_key_id: keyId,
+        p_table_id: access.table_id,
       });
       if (error) throw error;
     },
@@ -521,14 +626,20 @@ function AccessRowCard({
   });
 
   const toggleCol = (id: string) => {
-    setAllowedCols((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    setAllowedCols((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   return (
     <div className="rounded-md border border-border p-3 space-y-3">
       <div className="flex items-center justify-between">
         <span className="font-medium text-sm">{tableName}</span>
-        <Button size="icon" variant="ghost" onClick={() => removeMut.mutate()} disabled={removeMut.isPending} title="حذف دسترسی">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => removeMut.mutate()}
+          disabled={removeMut.isPending}
+          title="حذف دسترسی"
+        >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
@@ -541,9 +652,8 @@ function AccessRowCard({
         </label>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        خواندن = اجازه GET؛ به‌روزرسانی = اجازه PATCH و POST (افزودن ردیف جدید).
-        برای اینکه ربات بتواند ردیف جدید ثبت کند، «به‌روزرسانی» باید فعال باشد و
-        ستون‌های مجاز انتخاب شده باشند.
+        خواندن = اجازه GET؛ به‌روزرسانی = اجازه PATCH و POST (افزودن ردیف جدید). برای اینکه ربات
+        بتواند ردیف جدید ثبت کند، «به‌روزرسانی» باید فعال باشد و ستون‌های مجاز انتخاب شده باشند.
       </p>
       {canUpdate && (
         <div className="space-y-1">
@@ -577,7 +687,11 @@ function AccessRowCard({
   );
 }
 
-interface LabelRow { id: string; title: string; color: string | null }
+interface LabelRow {
+  id: string;
+  title: string;
+  color: string | null;
+}
 
 function LabelAccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose: () => void }) {
   const qc = useQueryClient();
@@ -638,13 +752,18 @@ function LabelAccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose
   const allowed = allowedQuery.data ?? new Set<string>();
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>دسترسی برچسب محصولات — {botKey?.name}</DialogTitle>
           <DialogDescription>
-            ربات فقط می‌تواند محصولاتی را بخواند که حداقل یکی از این برچسب‌ها روی آن‌ها باشد.
-            اگر هیچ برچسبی انتخاب نشود، endpoint محصولات برای این کلید مسدود است.
+            ربات فقط می‌تواند محصولاتی را بخواند که حداقل یکی از این برچسب‌ها روی آن‌ها باشد. اگر
+            هیچ برچسبی انتخاب نشود، endpoint محصولات برای این کلید مسدود است.
           </DialogDescription>
         </DialogHeader>
 
@@ -658,14 +777,20 @@ function LabelAccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose
               {labels.map((l) => {
                 const checked = allowed.has(l.id);
                 return (
-                  <label key={l.id} className="flex items-center gap-2 rounded-md border border-border p-2 text-sm cursor-pointer hover:bg-muted/40">
+                  <label
+                    key={l.id}
+                    className="flex items-center gap-2 rounded-md border border-border p-2 text-sm cursor-pointer hover:bg-muted/40"
+                  >
                     <Checkbox
                       checked={checked}
                       disabled={toggleMut.isPending}
                       onCheckedChange={(v) => toggleMut.mutate({ labelId: l.id, allow: !!v })}
                     />
                     {l.color && (
-                      <span className="inline-block h-3 w-3 rounded-full border" style={{ background: l.color }} />
+                      <span
+                        className="inline-block h-3 w-3 rounded-full border"
+                        style={{ background: l.color }}
+                      />
                     )}
                     <span>{l.title}</span>
                   </label>
@@ -676,7 +801,9 @@ function LabelAccessDialog({ botKey, onClose }: { botKey: BotKey | null; onClose
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>بستن</Button>
+          <Button variant="outline" onClick={onClose}>
+            بستن
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
