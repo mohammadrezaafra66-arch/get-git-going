@@ -1,0 +1,46 @@
+---
+description: Branch discipline for AfraKala development.
+alwaysApply: true
+---
+
+# Branch Discipline
+
+Before making changes:
+
+1. Confirm the repository path.
+2. Confirm the current branch.
+3. Confirm the working tree is clean.
+4. Confirm the task belongs to the current branch family.
+
+Approved branch families:
+
+- `main`: production only
+- `staging`: human testing only
+- `lovable/ui-*`: Lovable UI work only
+- `cursor/api-*`: API and OpenAPI work
+- `cursor/worker-*`: Worker and multi-robot work
+- `cursor/db-*`: database migration work
+- `cursor/docs-*`: documentation and governance work
+- `cursor/phase6-*`: Phase 6 governance work
+- `hotfix/*`: emergency production fixes only
+
+Current Phase 6 branch:
+
+`cursor/phase6-boundary-governance`
+
+For this branch, only governance-related files may be changed.
+
+Allowed areas for this branch include:
+
+- `docs/governance/**`
+- `.cursor/rules/**`
+- `.github/**` only when explicitly requested in later Phase 6 steps
+
+Forbidden in this branch:
+
+- New product features
+- Broad UI redesign
+- Real bot execution
+- New pricing features
+- Supabase migrations unless explicitly requested in a database step
+- Production deployment changes unless explicitly requested in a release/governance step

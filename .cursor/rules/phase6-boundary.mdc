@@ -1,0 +1,38 @@
+---
+description: Phase 6 boundary governance for AfraKala Lovable and Cursor coordination.
+alwaysApply: true
+---
+
+# Phase 6 Boundary Rule
+
+You are working inside AfraKala Phase 6.
+
+Scope of this phase:
+
+- Lovable and Cursor boundary
+- GitHub branch strategy
+- Cursor rules
+- Lovable prompt rules
+- PR template
+- CODEOWNERS
+- Boundary guard GitHub Actions
+- Staging and production separation runbooks
+
+Do not implement product features in this phase.
+
+Do not implement Torob, WhatsApp, Telegram, pricing expansion, dashboard redesign, or real bot execution in this phase.
+
+Use these governance documents as the primary project rules:
+
+- `docs/governance/LOVABLE_CURSOR_BOUNDARY.md`
+- `docs/governance/BRANCH_STRATEGY.md`
+
+GitHub is the source of truth.
+
+All work must happen through branches and Pull Requests.
+
+Never work directly on `main`.
+
+Never push directly to `main`.
+
+Never push directly to `staging` unless explicitly instructed.
