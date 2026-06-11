@@ -39,7 +39,9 @@ export function emptyShopSettings(): ShopSettingsMap {
 }
 
 export async function fetchShopSettings(): Promise<ShopSettingsMap> {
-  const { data, error } = await supabase.from("shop_settings").select("key, value");
+  const { data, error } = await supabase
+    .from("shop_settings")
+    .select("key, value");
   if (error) throw error;
   const map = emptyShopSettings();
   for (const row of data ?? []) {

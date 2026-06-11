@@ -35,8 +35,7 @@ export function AdvancePaymentSection({
   const ratio = totalAmount > 0 ? Math.round((dep / totalAmount) * 100) : 0;
 
   const depositError =
-    showErrors &&
-    (!hasDeposit
+    showErrors && (!hasDeposit
       ? "مبلغ بیعانه الزامی است"
       : !meetsMin
         ? `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${formatNumber(minRequired)} ریال) باشد`
@@ -75,9 +74,13 @@ export function AdvancePaymentSection({
             aria-invalid={!!depositError}
           />
           {totalAmount > 0 && hasDeposit && (
-            <p className="text-xs text-muted-foreground">نسبت بیعانه: {toFaDigits(ratio)}٪</p>
+            <p className="text-xs text-muted-foreground">
+              نسبت بیعانه: {toFaDigits(ratio)}٪
+            </p>
           )}
-          {depositError && <p className="text-xs text-destructive">{depositError}</p>}
+          {depositError && (
+            <p className="text-xs text-destructive">{depositError}</p>
+          )}
         </div>
 
         <div className="space-y-1">
@@ -96,14 +99,21 @@ export function AdvancePaymentSection({
           onCheckedChange={(v) => onCommitmentChange(v === true)}
           className="mt-0.5"
         />
-        <Label htmlFor="commitment_confirmed" className="text-xs leading-relaxed cursor-pointer">
-          تأیید می‌کنم که حداقل ۳۰٪ مبلغ کل پیش‌فاکتور به عنوان بیعانه از مشتری دریافت شده است و
-          مسئولیت آن را تا زمان ثبت فیش توسط حسابدار می‌پذیرم.
+        <Label
+          htmlFor="commitment_confirmed"
+          className="text-xs leading-relaxed cursor-pointer"
+        >
+          تأیید می‌کنم که حداقل ۳۰٪ مبلغ کل پیش‌فاکتور به عنوان بیعانه از مشتری
+          دریافت شده است و مسئولیت آن را تا زمان ثبت فیش توسط حسابدار می‌پذیرم.
         </Label>
       </div>
-      {commitmentError && <p className="text-xs text-destructive">{commitmentError}</p>}
+      {commitmentError && (
+        <p className="text-xs text-destructive">{commitmentError}</p>
+      )}
       {commitmentLocked && (
-        <p className="text-xs text-muted-foreground">این تعهد قبلاً تأیید شده و قابل تغییر نیست.</p>
+        <p className="text-xs text-muted-foreground">
+          این تعهد قبلاً تأیید شده و قابل تغییر نیست.
+        </p>
       )}
 
       {totalAmount > 0 && hasDeposit && !meetsMin && !showErrors && (

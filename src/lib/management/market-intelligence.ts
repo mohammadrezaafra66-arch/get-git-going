@@ -2,14 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type RangeDays = 1 | 7 | 30 | 90;
 
-export interface BrandRef {
-  id: string;
-  name: string;
-}
-export interface CategoryRef {
-  id: string;
-  name: string;
-}
+export interface BrandRef { id: string; name: string }
+export interface CategoryRef { id: string; name: string }
 
 export interface TrendingProduct {
   product_id: string;
@@ -53,10 +47,7 @@ export interface MarketIndex {
   range_days: number;
 }
 
-export async function fetchTrendingProducts(
-  days: RangeDays,
-  limit = 10,
-): Promise<TrendingProduct[]> {
+export async function fetchTrendingProducts(days: RangeDays, limit = 10): Promise<TrendingProduct[]> {
   const { data, error } = await supabase.rpc("mi_get_trending_products", {
     p_days: days,
     p_limit: limit,
@@ -168,14 +159,8 @@ export async function fetchDemandGrowth(days: RangeDays): Promise<DemandGrowth |
   return row ?? null;
 }
 
-export async function fetchEmergingProducts(
-  days: RangeDays,
-  limit = 10,
-): Promise<EmergingProduct[]> {
-  const { data, error } = await supabase.rpc("mi_get_emerging_products", {
-    p_days: days,
-    p_limit: limit,
-  });
+export async function fetchEmergingProducts(days: RangeDays, limit = 10): Promise<EmergingProduct[]> {
+  const { data, error } = await supabase.rpc("mi_get_emerging_products", { p_days: days, p_limit: limit });
   if (error) throw error;
   return (data ?? []) as EmergingProduct[];
 }
@@ -187,22 +172,13 @@ export async function fetchHotBrands(days: RangeDays, limit = 10): Promise<HotBr
 }
 
 export async function fetchHotCategories(days: RangeDays, limit = 10): Promise<HotCategory[]> {
-  const { data, error } = await supabase.rpc("mi_get_hot_categories", {
-    p_days: days,
-    p_limit: limit,
-  });
+  const { data, error } = await supabase.rpc("mi_get_hot_categories", { p_days: days, p_limit: limit });
   if (error) throw error;
   return (data ?? []) as HotCategory[];
 }
 
-export async function fetchSellerTopProducts(
-  days: RangeDays,
-  limit = 10,
-): Promise<SellerTopProduct[]> {
-  const { data, error } = await supabase.rpc("mi_get_seller_top_products", {
-    p_days: days,
-    p_limit: limit,
-  });
+export async function fetchSellerTopProducts(days: RangeDays, limit = 10): Promise<SellerTopProduct[]> {
+  const { data, error } = await supabase.rpc("mi_get_seller_top_products", { p_days: days, p_limit: limit });
   if (error) throw error;
   return (data ?? []) as SellerTopProduct[];
 }

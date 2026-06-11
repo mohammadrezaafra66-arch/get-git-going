@@ -225,16 +225,12 @@ async function fetchNavasan(): Promise<ProviderResult> {
   const apiKey = (process.env.NAVASAN_API_KEY ?? "").trim();
   if (!apiKey) return { ok: false, reason: "navasan_api_key_missing" };
   try {
-    const baseUrl = (process.env.NAVASAN_BASE_URL ?? "https://www.navasan.tech/api").replace(
-      /\/$/,
-      "",
-    );
+    const baseUrl = (process.env.NAVASAN_BASE_URL ?? "https://www.navasan.tech/api").replace(/\/$/, "");
     const url = `${baseUrl}/latest/?api_key=${encodeURIComponent(apiKey)}`;
     const res = await fetchWithTimeout(url, safeTimeoutMs());
     if (!res.ok) return { ok: false, reason: `navasan_http_${res.status}` };
     const payload = (await res.json()) as Record<string, unknown>;
-    if (!payload || typeof payload !== "object")
-      return { ok: false, reason: "navasan_invalid_payload" };
+    if (!payload || typeof payload !== "object") return { ok: false, reason: "navasan_invalid_payload" };
     const out: Record<string, { value: number; reportedAt: string | null; raw: unknown }> = {};
     let count = 0;
     for (const [sym, node] of Object.entries(payload)) {
@@ -263,22 +259,26 @@ async function handle(request: Request): Promise<Response> {
     timestamp: ts,
   });
 
-  // Bearer token check — mirrors process-pricing-queue.ts.
-  // When MARKET_RATES_CRON_SECRET is set in the environment, require the
-  // caller to present `Authorization: Bearer <secret>`. Self-host operators
-  // wire this header into pg_cron / external schedulers (see
+  // Bearer token check — MANDATORY.
+  // MARKET_RATES_CRON_SECRET must be set in the environment. Without it the
+  // endpoint refuses to run, because it triggers external API calls and
+  // writes via the service-role client (RLS bypass) and must never be
+  // callable by unauthenticated callers. Self-host operators wire this
+  // header into pg_cron / external schedulers (see
   // deploy/migration/scripts/mr-auto-1-schedule-market-rates.sql).
-  //
-  // We intentionally keep the secret OPTIONAL so legacy deployments that
-  // never set it continue to work. Self-host docs document setting this
-  // secret as the recommended hardening step.
   const expected = (process.env.MARKET_RATES_CRON_SECRET ?? "").trim();
-  if (expected) {
-    const authHeader = request.headers.get("authorization") ?? "";
-    const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
-    if (!token || token !== expected) {
-      return makeResponse(baseEmpty("unauthorized", "invalid_or_missing_bearer_token"), 401);
-    }
+  if (!expected) {
+    return makeResponse(
+      baseEmpty("failed", "MARKET_RATES_CRON_SECRET_not_configured"),
+      500,
+    );
+  }
+  const authHeader = request.headers.get("authorization") ?? "";
+  const token = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!token || token !== expected) {
+    return makeResponse(baseEmpty("unauthorized", "invalid_or_missing_bearer_token"), 401);
   }
 
   if (!flagOn("MARKET_RATES_AUTO_INGEST_ENABLED")) {
@@ -327,7 +327,6 @@ export const Route = createFileRoute("/api/public/hooks/ingest-market-rates")({
   server: {
     handlers: {
       POST: async ({ request }) => handle(request),
-      GET: async ({ request }) => handle(request),
     },
   },
 });

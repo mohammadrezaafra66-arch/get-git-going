@@ -10,20 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  SelectGroup, SelectLabel,
 } from "@/components/ui/select";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/bot-api-keys/playground")({
-  beforeLoad: async () => {
-    await requirePermission("bot-api-keys", "view");
-  },
+  beforeLoad: async () => { await requirePermission("bot-api-keys", "view"); },
   component: ApiPlaygroundPage,
 });
 
@@ -74,9 +67,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
       setCopied(true);
       toast.success("کپی شد.");
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error("کپی ناموفق بود.");
-    }
+    } catch { toast.error("کپی ناموفق بود."); }
   };
   return (
     <div className="relative">
@@ -85,19 +76,11 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
           {lang}
         </Badge>
       )}
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={copy}
-        className="absolute top-2 right-2 z-10 h-7"
-      >
+      <Button type="button" size="sm" variant="outline" onClick={copy}
+        className="absolute top-2 right-2 z-10 h-7">
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>
-      <pre
-        className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 pt-10 text-xs font-mono leading-relaxed"
-        dir="ltr"
-      >
+      <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 pt-10 text-xs font-mono leading-relaxed" dir="ltr">
         <code>{code}</code>
       </pre>
     </div>
@@ -139,33 +122,17 @@ function ApiPlaygroundPage() {
   };
 
   const send = async () => {
-    if (endpoint.needs.bearer && !bearer.trim()) {
-      toast.error("کلید Bearer را وارد کنید.");
-      return;
-    }
-    if (endpoint.needs.tableId && !tableId.trim()) {
-      toast.error("tableId الزامی است.");
-      return;
-    }
-    if (endpoint.needs.rowId && !rowId.trim()) {
-      toast.error("rowId الزامی است.");
-      return;
-    }
+    if (endpoint.needs.bearer && !bearer.trim()) { toast.error("کلید Bearer را وارد کنید."); return; }
+    if (endpoint.needs.tableId && !tableId.trim()) { toast.error("tableId الزامی است."); return; }
+    if (endpoint.needs.rowId && !rowId.trim()) { toast.error("rowId الزامی است."); return; }
 
     let payload: string | undefined;
     if (endpoint.needs.body) {
-      try {
-        JSON.parse(body);
-        payload = body;
-      } catch {
-        toast.error("بدنه JSON معتبر نیست.");
-        return;
-      }
+      try { JSON.parse(body); payload = body; }
+      catch { toast.error("بدنه JSON معتبر نیست."); return; }
     }
 
-    setBusy(true);
-    setResStatus(null);
-    setResBody("");
+    setBusy(true); setResStatus(null); setResBody("");
     try {
       const init: RequestInit = {
         method: endpoint.method,
@@ -180,11 +147,8 @@ function ApiPlaygroundPage() {
       const text = await res.text();
       const ct = res.headers.get("content-type") ?? "";
       if (ct.includes("application/json")) {
-        try {
-          setResBody(JSON.stringify(JSON.parse(text), null, 2));
-        } catch {
-          setResBody(text);
-        }
+        try { setResBody(JSON.stringify(JSON.parse(text), null, 2)); }
+        catch { setResBody(text); }
       } else {
         setResBody(text || "(پاسخ خالی)");
       }
@@ -213,25 +177,18 @@ function ApiPlaygroundPage() {
         description="انتخاب endpoint و تست زنده درخواست‌ها"
         actions={
           <Button asChild variant="outline">
-            <Link to="/bot-api-keys">
-              <ArrowLeft className="ml-2 h-4 w-4" />
-              بازگشت
-            </Link>
+            <Link to="/bot-api-keys"><ArrowLeft className="ml-2 h-4 w-4" />بازگشت</Link>
           </Button>
         }
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">انتخاب endpoint</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">انتخاب endpoint</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
             <Label className="text-xs">Endpoint</Label>
             <Select value={endpointId} onValueChange={onChangeEndpoint}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {groups.map(([groupName, items]) => (
                   <SelectGroup key={groupName}>
@@ -259,18 +216,11 @@ function ApiPlaygroundPage() {
               <div className="flex gap-2">
                 <Input
                   type={showKey ? "text" : "password"}
-                  dir="ltr"
-                  placeholder="bk_…"
-                  value={bearer}
+                  dir="ltr" placeholder="bk_…" value={bearer}
                   onChange={(e) => setBearer(e.target.value)}
                   className="font-mono"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowKey((s) => !s)}
-                >
+                <Button type="button" variant="outline" size="icon" onClick={() => setShowKey((s) => !s)}>
                   {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
@@ -281,23 +231,13 @@ function ApiPlaygroundPage() {
             {endpoint.needs.tableId && (
               <div className="space-y-1">
                 <Label className="text-xs">tableId (UUID)</Label>
-                <Input
-                  dir="ltr"
-                  value={tableId}
-                  onChange={(e) => setTableId(e.target.value)}
-                  className="font-mono"
-                />
+                <Input dir="ltr" value={tableId} onChange={(e) => setTableId(e.target.value)} className="font-mono" />
               </div>
             )}
             {endpoint.needs.rowId && (
               <div className="space-y-1">
                 <Label className="text-xs">rowId (UUID)</Label>
-                <Input
-                  dir="ltr"
-                  value={rowId}
-                  onChange={(e) => setRowId(e.target.value)}
-                  className="font-mono"
-                />
+                <Input dir="ltr" value={rowId} onChange={(e) => setRowId(e.target.value)} className="font-mono" />
               </div>
             )}
           </div>
@@ -305,22 +245,14 @@ function ApiPlaygroundPage() {
           {endpoint.needs.body && (
             <div className="space-y-1">
               <Label className="text-xs">Body (JSON)</Label>
-              <Textarea
-                dir="ltr"
-                rows={8}
-                value={body}
+              <Textarea dir="ltr" rows={8} value={body}
                 onChange={(e) => setBody(e.target.value)}
-                className="font-mono text-xs"
-              />
+                className="font-mono text-xs" />
             </div>
           )}
 
           <Button onClick={send} disabled={busy}>
-            {busy ? (
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="ml-2 h-4 w-4" />
-            )}
+            {busy ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Play className="ml-2 h-4 w-4" />}
             ارسال درخواست
           </Button>
         </CardContent>

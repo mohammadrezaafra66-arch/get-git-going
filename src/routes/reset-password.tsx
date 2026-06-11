@@ -77,10 +77,7 @@ function ResetPasswordPage() {
   };
 
   return (
-    <main
-      dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8"
-    >
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
@@ -91,23 +88,18 @@ function ResetPasswordPage() {
         </CardHeader>
         <CardContent>
           {checkingSession ? (
-            <p className="text-center text-sm text-muted-foreground">
-              در حال بررسی لینک بازیابی...
-            </p>
+            <p className="text-center text-sm text-muted-foreground">در حال بررسی لینک بازیابی...</p>
           ) : !hasRecoverySession ? (
             <div className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                لینک بازیابی معتبر نیست یا منقضی شده است. از صفحه ورود دوباره لینک تنظیم رمز دریافت
-                کنید.
+                لینک بازیابی معتبر نیست یا منقضی شده است. از صفحه ورود دوباره لینک تنظیم رمز دریافت کنید.
               </p>
               <Button asChild className="w-full">
                 <Link to="/login">بازگشت به ورود</Link>
               </Button>
             </div>
           ) : done ? (
-            <p className="text-center text-sm text-muted-foreground">
-              رمز تغییر کرد؛ در حال انتقال به صفحه ورود...
-            </p>
+            <p className="text-center text-sm text-muted-foreground">رمز تغییر کرد؛ در حال انتقال به صفحه ورود...</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
@@ -136,11 +128,7 @@ function ResetPasswordPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
+              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
               <Button type="submit" className="w-full" disabled={submitting} aria-busy={submitting}>
                 {submitting ? "در حال ذخیره..." : "ذخیره رمز جدید"}
               </Button>

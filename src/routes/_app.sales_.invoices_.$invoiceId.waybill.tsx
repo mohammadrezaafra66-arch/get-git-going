@@ -7,24 +7,11 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,9 +19,7 @@ import { WaybillStatusBadge, WAYBILL_STATUS_LABEL } from "@/shared/components/Wa
 import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/sales_/invoices_/$invoiceId/waybill")({
-  beforeLoad: async () => {
-    await requirePermission("invoices", "view");
-  },
+  beforeLoad: async () => { await requirePermission("invoices", "view"); },
   component: WaybillViewPage,
 });
 
@@ -51,11 +36,7 @@ function WaybillViewPage() {
   const canManage = roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
   const [acting, setActing] = useState(false);
 
-  const {
-    data: waybill,
-    refetch,
-    isFetching,
-  } = useQuery({
+  const { data: waybill, refetch, isFetching } = useQuery({
     queryKey: ["waybill", invoiceId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -99,25 +80,15 @@ function WaybillViewPage() {
   const changeStatus = async (newStatus: string) => {
     if (!waybill) return;
     setActing(true);
-    const { error } = await supabase.rpc("update_waybill_status", {
-      p_waybill_id: waybill.id,
-      p_new_status: newStatus,
-    });
+    const { error } = await supabase.rpc("update_waybill_status", { p_waybill_id: waybill.id, p_new_status: newStatus });
     setActing(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success("وضعیت به‌روزرسانی شد");
     refetch();
   };
 
   if (isFetching && !waybill) {
-    return (
-      <div className="flex items-center py-10 text-sm text-muted-foreground" dir="rtl">
-        <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
-      </div>
-    );
+    return <div className="flex items-center py-10 text-sm text-muted-foreground" dir="rtl"><Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری...</div>;
   }
 
   if (!waybill) {
@@ -131,9 +102,7 @@ function WaybillViewPage() {
             </Link>
           </Button>
           <Button asChild>
-            <Link to="/sales/invoices/$invoiceId/waybill/create" params={{ invoiceId }}>
-              صدور بیجک
-            </Link>
+            <Link to="/sales/invoices/$invoiceId/waybill/create" params={{ invoiceId }}>صدور بیجک</Link>
           </Button>
         </div>
       </div>
@@ -160,45 +129,33 @@ function WaybillViewPage() {
                 انتقال به: {WAYBILL_STATUS_LABEL(next)}
               </Button>
             )}
-            {canManage &&
-              waybill.status !== "canceled" &&
-              waybill.status !== "delivered_to_customer" && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={acting}>
-                      لغو بیجک
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent dir="rtl">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>تأیید لغو بیجک</AlertDialogTitle>
-                      <AlertDialogDescription>این عملیات قابل بازگشت نیست.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>انصراف</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => changeStatus("canceled")}>
-                        تأیید لغو
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
+            {canManage && waybill.status !== "canceled" && waybill.status !== "delivered_to_customer" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={acting}>لغو بیجک</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>تأیید لغو بیجک</AlertDialogTitle>
+                    <AlertDialogDescription>این عملیات قابل بازگشت نیست.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>انصراف</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => changeStatus("canceled")}>تأیید لغو</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         }
       />
 
       <Card>
         <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <Field label="وضعیت">
-            <WaybillStatusBadge status={waybill.status} />
-          </Field>
+          <Field label="وضعیت"><WaybillStatusBadge status={waybill.status} /></Field>
           <Field label="شماره بیجک">{toFaDigits(waybill.waybill_number)}</Field>
-          <Field label="فرستنده">
-            {waybill.sender_name} ({waybill.sender_phone})
-          </Field>
-          <Field label="گیرنده">
-            {waybill.receiver_name} ({waybill.receiver_phone})
-          </Field>
+          <Field label="فرستنده">{waybill.sender_name} ({waybill.sender_phone})</Field>
+          <Field label="گیرنده">{waybill.receiver_name} ({waybill.receiver_phone})</Field>
           <Field label="باربری">{waybill.shipping_company}</Field>
           <Field label="شهر مقصد">{waybill.destination_city}</Field>
           <Field label="کد حسابداری مشتری">{waybill.customer_accounting_code ?? "—"}</Field>
@@ -206,9 +163,7 @@ function WaybillViewPage() {
           {waybill.shipping_notes && (
             <div className="sm:col-span-2">
               <div className="text-xs text-muted-foreground mb-1">توضیحات</div>
-              <div className="rounded-md border p-3 whitespace-pre-wrap">
-                {waybill.shipping_notes}
-              </div>
+              <div className="rounded-md border p-3 whitespace-pre-wrap">{waybill.shipping_notes}</div>
             </div>
           )}
         </CardContent>
@@ -226,9 +181,7 @@ function WaybillViewPage() {
               <div className="text-sm font-semibold">اطلاعات تکمیلی</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 {keys.map((k) => (
-                  <Field key={k} label={labelOf(k)}>
-                    {String(cd[k])}
-                  </Field>
+                  <Field key={k} label={labelOf(k)}>{String(cd[k])}</Field>
                 ))}
               </div>
             </CardContent>

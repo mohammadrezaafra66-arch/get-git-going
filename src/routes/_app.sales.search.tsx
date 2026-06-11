@@ -1,23 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Search,
-  Loader2,
-  PackageX,
-  Tag,
-  Calculator,
-  Sparkles,
-  UserPlus,
-  Filter,
-  X,
-  LineChart,
-  Copy,
-  Wand2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Search, Loader2, PackageX, Tag, Calculator, Sparkles, UserPlus, Filter, X, LineChart, Copy, Wand2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -27,25 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-  SheetClose,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SupplierReferralModal } from "@/shared/components/SupplierReferralModal";
 import { RoleGuard } from "@/components/rbac/RoleGuard";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
@@ -74,9 +46,7 @@ import {
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 
 export const Route = createFileRoute("/_app/sales/search")({
-  beforeLoad: async () => {
-    await requirePermission("sales", "view");
-  },
+  beforeLoad: async () => { await requirePermission("sales", "view"); },
   component: SalesSearchPage,
 });
 
@@ -129,10 +99,8 @@ const STOCK_VARIANT: Record<string, "default" | "secondary" | "destructive" | "o
 
 function SalesSearchPage() {
   const { roles } = useAuth();
-  const isPrivileged =
-    roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
-  const canRecalcPrice =
-    hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
+  const isPrivileged = roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
+  const canRecalcPrice = hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
   const queryClient = useQueryClient();
 
   // PRICE-RT.7 — هرگاه worker «product_computed_prices» را به‌روزرسانی کند،
@@ -141,59 +109,35 @@ function SalesSearchPage() {
   // invalidate می‌شوند (state در useSessionStorageState نگه‌داری می‌شود).
   useComputedPricesRealtime({
     channelName: "sales-search-computed-prices",
-    invalidateKeys: [["sales-search-products-rpc"], ["sales-search-products-rpc-label-mode"]],
+    invalidateKeys: [
+      ["sales-search-products-rpc"],
+      ["sales-search-products-rpc-label-mode"],
+    ],
   });
 
   const [search, setSearch] = useSessionStorageState<string>("sales-search:q", "");
   // supplier referral moved to per-product card actions
   const dSearch = useDebounce(search, 350);
   const [brandIds, setBrandIds] = useSessionStorageState<string[]>("sales-search:brandIds", []);
-  const [categoryIds, setCategoryIds] = useSessionStorageState<string[]>(
-    "sales-search:categoryIds",
-    [],
-  );
+  const [categoryIds, setCategoryIds] = useSessionStorageState<string[]>("sales-search:categoryIds", []);
   const [labelIds, setLabelIds] = useSessionStorageState<string[]>("sales-search:labelIds", []);
-  const [stockStatus, setStockStatus] = useSessionStorageState<string>(
-    "sales-search:stockStatus",
-    "__all",
-  );
-  const [productType, setProductType] = useSessionStorageState<string>(
-    "sales-search:productType",
-    "__all",
-  );
+  const [stockStatus, setStockStatus] = useSessionStorageState<string>("sales-search:stockStatus", "__all");
+  const [productType, setProductType] = useSessionStorageState<string>("sales-search:productType", "__all");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // local search inputs inside filter panels
   const [brandFilterText, setBrandFilterText] = useState("");
   const [categoryFilterText, setCategoryFilterText] = useState("");
   const [labelFilterText, setLabelFilterText] = useState("");
-  const [salePriceTypeId, setSalePriceTypeId] = useSessionStorageState<string>(
-    "sales-search:salePriceTypeId",
-    "",
-  );
-  const [onlyWithPrice, setOnlyWithPrice] = useSessionStorageState<boolean>(
-    "sales-search:onlyWithPrice",
-    false,
-  );
+  const [salePriceTypeId, setSalePriceTypeId] = useSessionStorageState<string>("sales-search:salePriceTypeId", "");
+  const [onlyWithPrice, setOnlyWithPrice] = useSessionStorageState<boolean>("sales-search:onlyWithPrice", false);
   const [chartCtx, setChartCtx] = useState<{
-    productId: string;
-    productName: string;
-    salePriceTypeId: string;
-    salePriceTypeTitle: string;
+    productId: string; productName: string; salePriceTypeId: string; salePriceTypeTitle: string;
   } | null>(null);
 
   // Labeled-products mode (shortcut to show all labeled products with the selected price type)
-  const [labelMode, setLabelMode] = useSessionStorageState<LabelMode>(
-    "sales-search:labelMode",
-    "off",
-  );
-  const [labelModeIds, setLabelModeIds] = useSessionStorageState<string[]>(
-    "sales-search:labelModeIds",
-    [],
-  );
-  const [labelModePage, setLabelModePage] = useSessionStorageState<number>(
-    "sales-search:labelModePage",
-    1,
-  );
+  const [labelMode, setLabelMode] = useSessionStorageState<LabelMode>("sales-search:labelMode", "off");
+  const [labelModeIds, setLabelModeIds] = useSessionStorageState<string[]>("sales-search:labelModeIds", []);
+  const [labelModePage, setLabelModePage] = useSessionStorageState<number>("sales-search:labelModePage", 1);
   const [labelPickerOpen, setLabelPickerOpen] = useState(false);
   const [labelPickerDraft, setLabelPickerDraft] = useState<string[]>([]);
 
@@ -205,22 +149,15 @@ function SalesSearchPage() {
   const dLabelText = useDebounce(normalizeSearchText(labelFilterText), 200);
 
   const activeFilterCount =
-    brandIds.length +
-    categoryIds.length +
-    labelIds.length +
-    (stockStatus !== "__all" ? 1 : 0) +
-    (productType !== "__all" ? 1 : 0);
+    brandIds.length + categoryIds.length + labelIds.length +
+    (stockStatus !== "__all" ? 1 : 0) + (productType !== "__all" ? 1 : 0);
 
   // ---------- reference data ----------
   const { data: brands = [] } = useQuery({
     queryKey: ["brands-lite-sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("brands")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name")
-        .limit(500);
+        .from("brands").select("id, name").eq("is_active", true).order("name").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -231,11 +168,7 @@ function SalesSearchPage() {
     queryKey: ["categories-lite-sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
-        .select("id, name, parent_id")
-        .eq("is_active", true)
-        .order("name")
-        .limit(500);
+        .from("categories").select("id, name, parent_id").eq("is_active", true).order("name").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -246,10 +179,7 @@ function SalesSearchPage() {
     queryKey: ["product-labels-lite-sales"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("product_labels")
-        .select("id, title, color, visibility")
-        .order("title")
-        .limit(500);
+        .from("product_labels").select("id, title, color, visibility").order("title").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -276,9 +206,7 @@ function SalesSearchPage() {
   }, [salePriceTypes, salePriceTypeId]);
 
   // reset page when label-mode filters change
-  useEffect(() => {
-    setLabelModePage(1);
-  }, [labelMode, labelModeIds]);
+  useEffect(() => { setLabelModePage(1); }, [labelMode, labelModeIds]);
 
   // Effective label ids for the current label-mode (always within visibleLabels)
   const visibleLabelIds = useMemo(
@@ -296,24 +224,20 @@ function SalesSearchPage() {
   // ---------- products query ----------
   const productsQuery = useQuery({
     enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
-    queryKey:
-      labelMode === "off"
-        ? [
-            "sales-search-products-rpc",
-            { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice },
-          ]
-        : ["sales-search-products-rpc-label-mode", { effectiveLabelIds, labelModePage }],
+    queryKey: labelMode === "off"
+      ? ["sales-search-products-rpc", { term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice }]
+      : ["sales-search-products-rpc-label-mode", { effectiveLabelIds, labelModePage }],
     queryFn: async () => {
       const isLabelMode = labelMode !== "off";
       const { data, error } = await supabase.rpc("get_sales_search_products", {
         p_search: isLabelMode ? "" : term,
         p_brand_ids: !isLabelMode && brandIds.length > 0 ? brandIds : undefined,
         p_category_ids: !isLabelMode && categoryIds.length > 0 ? categoryIds : undefined,
-        p_label_ids: isLabelMode ? effectiveLabelIds : labelIds.length > 0 ? labelIds : undefined,
+        p_label_ids: isLabelMode ? effectiveLabelIds : (labelIds.length > 0 ? labelIds : undefined),
         // In label-mode we pull both available + limited by leaving stock filter open
         // and filter client-side below to stay consistent with the user's intent.
-        p_stock_status: isLabelMode ? undefined : stockStatus !== "__all" ? stockStatus : undefined,
-        p_product_type: isLabelMode ? undefined : productType !== "__all" ? productType : undefined,
+        p_stock_status: isLabelMode ? undefined : (stockStatus !== "__all" ? stockStatus : undefined),
+        p_product_type: isLabelMode ? undefined : (productType !== "__all" ? productType : undefined),
         p_only_with_price: isLabelMode ? false : onlyWithPrice,
         p_limit: isLabelMode ? LABEL_PAGE_SIZE : RESULT_LIMIT,
         p_offset: isLabelMode ? (labelModePage - 1) * LABEL_PAGE_SIZE : 0,
@@ -378,9 +302,7 @@ function SalesSearchPage() {
         .select("product_id")
         .in("label_id", effectiveLabelIds);
       if (linkErr) throw linkErr;
-      const productIds = Array.from(
-        new Set((linkRows ?? []).map((r: any) => r.product_id as string)),
-      );
+      const productIds = Array.from(new Set((linkRows ?? []).map((r: any) => r.product_id as string)));
       if (productIds.length === 0) return 0;
       const { count, error: cntErr } = await supabase
         .from("products")
@@ -396,9 +318,8 @@ function SalesSearchPage() {
 
   const labelModeTotal = labelModeCountQuery.data ?? 0;
   const labelModeTotalPages = Math.max(1, Math.ceil(labelModeTotal / LABEL_PAGE_SIZE));
-  const salePriceTypeTitle =
-    (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === salePriceTypeId)
-      ?.title ?? "—";
+  const salePriceTypeTitle = (salePriceTypes as Array<{ id: string; title: string }>)
+    .find((t) => t.id === salePriceTypeId)?.title ?? "—";
 
   const exitLabelMode = () => {
     setLabelMode("off");
@@ -433,9 +354,7 @@ function SalesSearchPage() {
               </SelectTrigger>
               <SelectContent>
                 {salePriceTypes.map((t: { id: string; title: string }) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.title}
-                  </SelectItem>
+                  <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -469,13 +388,7 @@ function SalesSearchPage() {
               }}
             >
               <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  aria-label="انتخاب برچسب خاص"
-                >
+                <Button type="button" variant="outline" size="sm" className="gap-1" aria-label="انتخاب برچسب خاص">
                   <ChevronDown className="h-4 w-4" />
                   انتخاب برچسب خاص
                 </Button>
@@ -487,9 +400,7 @@ function SalesSearchPage() {
                 ) : (
                   <ScrollArea className="h-56 pr-1">
                     <div className="space-y-1">
-                      {(
-                        visibleLabels as Array<{ id: string; title: string; color?: string | null }>
-                      ).map((l) => {
+                      {(visibleLabels as Array<{ id: string; title: string; color?: string | null }>).map((l) => {
                         const checked = labelPickerDraft.includes(l.id);
                         return (
                           <label
@@ -500,9 +411,7 @@ function SalesSearchPage() {
                               checked={checked}
                               onCheckedChange={(v) => {
                                 setLabelPickerDraft((prev) =>
-                                  v
-                                    ? Array.from(new Set([...prev, l.id]))
-                                    : prev.filter((x) => x !== l.id),
+                                  v ? Array.from(new Set([...prev, l.id])) : prev.filter((x) => x !== l.id),
                                 );
                               }}
                             />
@@ -586,18 +495,14 @@ function SalesSearchPage() {
           )}
 
           {/* mobile filters trigger */}
-          <div
-            className={`flex items-center justify-between md:hidden ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}
-          >
+          <div className={`flex items-center justify-between md:hidden ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Filter className="h-4 w-4" />
                   فیلترها
                   {activeFilterCount > 0 && (
-                    <Badge variant="secondary" className="h-5 min-w-5 px-1">
-                      {formatNumber(activeFilterCount)}
-                    </Badge>
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1">{formatNumber(activeFilterCount)}</Badge>
                   )}
                 </Button>
               </SheetTrigger>
@@ -608,43 +513,26 @@ function SalesSearchPage() {
                 <div className="mt-4">
                   <FiltersPanel
                     brands={brands as { id: string; name: string }[]}
-                    categories={
-                      categories as { id: string; name: string; parent_id: string | null }[]
-                    }
+                    categories={categories as { id: string; name: string; parent_id: string | null }[]}
                     labels={visibleLabels as { id: string; title: string; color: string | null }[]}
-                    brandIds={brandIds}
-                    setBrandIds={setBrandIds}
-                    categoryIds={categoryIds}
-                    setCategoryIds={setCategoryIds}
-                    labelIds={labelIds}
-                    setLabelIds={setLabelIds}
-                    stockStatus={stockStatus}
-                    setStockStatus={setStockStatus}
-                    productType={productType}
-                    setProductType={setProductType}
-                    brandFilterText={brandFilterText}
-                    setBrandFilterText={setBrandFilterText}
-                    categoryFilterText={categoryFilterText}
-                    setCategoryFilterText={setCategoryFilterText}
-                    labelFilterText={labelFilterText}
-                    setLabelFilterText={setLabelFilterText}
-                    dBrandText={dBrandText}
-                    dCategoryText={dCategoryText}
-                    dLabelText={dLabelText}
-                    onlyWithPrice={onlyWithPrice}
-                    setOnlyWithPrice={setOnlyWithPrice}
+                    brandIds={brandIds} setBrandIds={setBrandIds}
+                    categoryIds={categoryIds} setCategoryIds={setCategoryIds}
+                    labelIds={labelIds} setLabelIds={setLabelIds}
+                    stockStatus={stockStatus} setStockStatus={setStockStatus}
+                    productType={productType} setProductType={setProductType}
+                    brandFilterText={brandFilterText} setBrandFilterText={setBrandFilterText}
+                    categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
+                    labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
+                    dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+                    onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
                   />
                 </div>
                 <SheetFooter className="mt-4 flex-row gap-2">
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      setBrandIds([]);
-                      setCategoryIds([]);
-                      setLabelIds([]);
-                      setStockStatus("__all");
-                      setProductType("__all");
-                      setOnlyWithPrice(false);
+                      setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                     }}
                   >
                     پاک کردن همه
@@ -660,12 +548,8 @@ function SalesSearchPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setBrandIds([]);
-                  setCategoryIds([]);
-                  setLabelIds([]);
-                  setStockStatus("__all");
-                  setProductType("__all");
-                  setOnlyWithPrice(false);
+                  setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                  setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                 }}
               >
                 <X className="ml-1 h-3.5 w-3.5" /> پاک کردن
@@ -674,9 +558,7 @@ function SalesSearchPage() {
           </div>
 
           {/* desktop horizontal filters */}
-          <div
-            className={`hidden md:block space-y-2 ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}
-          >
+          <div className={`hidden md:block space-y-2 ${labelMode !== "off" ? "opacity-50 pointer-events-none" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Filter className="h-4 w-4" />
@@ -692,12 +574,8 @@ function SalesSearchPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setBrandIds([]);
-                    setCategoryIds([]);
-                    setLabelIds([]);
-                    setStockStatus("__all");
-                    setProductType("__all");
-                    setOnlyWithPrice(false);
+                    setBrandIds([]); setCategoryIds([]); setLabelIds([]);
+                    setStockStatus("__all"); setProductType("__all"); setOnlyWithPrice(false);
                   }}
                 >
                   <X className="ml-1 h-3.5 w-3.5" /> پاک کردن همه فیلترها
@@ -708,27 +586,16 @@ function SalesSearchPage() {
               brands={brands as { id: string; name: string }[]}
               categories={categories as { id: string; name: string; parent_id: string | null }[]}
               labels={visibleLabels as { id: string; title: string; color: string | null }[]}
-              brandIds={brandIds}
-              setBrandIds={setBrandIds}
-              categoryIds={categoryIds}
-              setCategoryIds={setCategoryIds}
-              labelIds={labelIds}
-              setLabelIds={setLabelIds}
-              stockStatus={stockStatus}
-              setStockStatus={setStockStatus}
-              productType={productType}
-              setProductType={setProductType}
-              brandFilterText={brandFilterText}
-              setBrandFilterText={setBrandFilterText}
-              categoryFilterText={categoryFilterText}
-              setCategoryFilterText={setCategoryFilterText}
-              labelFilterText={labelFilterText}
-              setLabelFilterText={setLabelFilterText}
-              dBrandText={dBrandText}
-              dCategoryText={dCategoryText}
-              dLabelText={dLabelText}
-              onlyWithPrice={onlyWithPrice}
-              setOnlyWithPrice={setOnlyWithPrice}
+              brandIds={brandIds} setBrandIds={setBrandIds}
+              categoryIds={categoryIds} setCategoryIds={setCategoryIds}
+              labelIds={labelIds} setLabelIds={setLabelIds}
+              stockStatus={stockStatus} setStockStatus={setStockStatus}
+              productType={productType} setProductType={setProductType}
+              brandFilterText={brandFilterText} setBrandFilterText={setBrandFilterText}
+              categoryFilterText={categoryFilterText} setCategoryFilterText={setCategoryFilterText}
+              labelFilterText={labelFilterText} setLabelFilterText={setLabelFilterText}
+              dBrandText={dBrandText} dCategoryText={dCategoryText} dLabelText={dLabelText}
+              onlyWithPrice={onlyWithPrice} setOnlyWithPrice={setOnlyWithPrice}
             />
           </div>
         </CardContent>
@@ -768,78 +635,73 @@ function SalesSearchPage() {
         </div>
       ) : (
         <>
-          <RecentPurchaseGroup productIds={products.map((p) => p.id)}>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {products.map((p) => {
-                return (
-                  <ProductCard
-                    key={p.id}
-                    product={p}
-                    primarySalePriceTypeId={salePriceTypeId}
-                    isPrivileged={isPrivileged}
-                    canRecalcPrice={canRecalcPrice}
-                    observatorySnippet={snippetMap[p.id] ?? null}
-                    onRecalcDone={() => {
-                      queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
-                      queryClient.invalidateQueries({
-                        queryKey: ["sales-search-products-rpc-label-mode"],
-                      });
-                    }}
-                    onOpenChart={(typeId) => {
-                      const targetId = typeId ?? salePriceTypeId;
-                      if (!targetId) return;
-                      const title =
-                        (salePriceTypes as Array<{ id: string; title: string }>).find(
-                          (t) => t.id === targetId,
-                        )?.title ??
-                        p.prices?.find((x) => x.sale_price_type_id === targetId)?.title ??
-                        "—";
-                      trackProductInteraction({
-                        productId: p.id,
-                        eventType: "chart_opened",
-                        source: "sales_search",
-                        salePriceTypeId: targetId,
-                      });
-                      setChartCtx({
-                        productId: p.id,
-                        productName: p.name,
-                        salePriceTypeId: targetId,
-                        salePriceTypeTitle: title,
-                      });
-                    }}
-                  />
-                );
-              })}
+        <RecentPurchaseGroup productIds={products.map((p) => p.id)}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {products.map((p) => {
+            return (
+              <ProductCard
+                key={p.id}
+                product={p}
+                primarySalePriceTypeId={salePriceTypeId}
+                isPrivileged={isPrivileged}
+                canRecalcPrice={canRecalcPrice}
+                observatorySnippet={snippetMap[p.id] ?? null}
+                onRecalcDone={() => {
+                  queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
+                  queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc-label-mode"] });
+                }}
+                onOpenChart={(typeId) => {
+                  const targetId = typeId ?? salePriceTypeId;
+                  if (!targetId) return;
+                  const title = (salePriceTypes as Array<{ id: string; title: string }>).find((t) => t.id === targetId)?.title
+                    ?? p.prices?.find((x) => x.sale_price_type_id === targetId)?.title
+                    ?? "—";
+                  trackProductInteraction({
+                    productId: p.id,
+                    eventType: "chart_opened",
+                    source: "sales_search",
+                    salePriceTypeId: targetId,
+                  });
+                  setChartCtx({
+                    productId: p.id,
+                    productName: p.name,
+                    salePriceTypeId: targetId,
+                    salePriceTypeTitle: title,
+                  });
+                }}
+              />
+            );
+          })}
+        </div>
+        </RecentPurchaseGroup>
+        {labelMode !== "off" && (
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 sm:flex-row">
+            <div className="text-xs text-muted-foreground">
+              نمایش {formatNumber(products.length)} از {formatNumber(labelModeTotal)} محصول
             </div>
-          </RecentPurchaseGroup>
-          {labelMode !== "off" && (
-            <div className="mt-4 flex flex-col items-center justify-between gap-2 sm:flex-row">
-              <div className="text-xs text-muted-foreground">
-                نمایش {formatNumber(products.length)} از {formatNumber(labelModeTotal)} محصول
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLabelModePage((p) => Math.max(1, p - 1))}
-                  disabled={labelModePage <= 1 || productsQuery.isFetching}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <span className="text-xs">
-                  صفحه {formatNumber(labelModePage)} از {formatNumber(labelModeTotalPages)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLabelModePage((p) => Math.min(labelModeTotalPages, p + 1))}
-                  disabled={labelModePage >= labelModeTotalPages || productsQuery.isFetching}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.max(1, p - 1))}
+                disabled={labelModePage <= 1 || productsQuery.isFetching}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span className="text-xs">
+                صفحه {formatNumber(labelModePage)} از {formatNumber(labelModeTotalPages)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLabelModePage((p) => Math.min(labelModeTotalPages, p + 1))}
+                disabled={labelModePage >= labelModeTotalPages || productsQuery.isFetching}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
             </div>
-          )}
+          </div>
+        )}
         </>
       )}
 
@@ -858,9 +720,7 @@ function SalesSearchPage() {
 
       <ProductPriceHistoryDrawer
         open={!!chartCtx}
-        onOpenChange={(v) => {
-          if (!v) setChartCtx(null);
-        }}
+        onOpenChange={(v) => { if (!v) setChartCtx(null); }}
         productId={chartCtx?.productId ?? null}
         productName={chartCtx?.productName ?? null}
         salePriceTypeId={chartCtx?.salePriceTypeId ?? null}
@@ -880,14 +740,7 @@ interface ProductCardProps {
   onOpenChart: (salePriceTypeId?: string) => void;
 }
 
-function ProductCard({
-  product,
-  primarySalePriceTypeId,
-  canRecalcPrice,
-  observatorySnippet,
-  onRecalcDone,
-  onOpenChart,
-}: ProductCardProps) {
+function ProductCard({ product, primarySalePriceTypeId, canRecalcPrice, observatorySnippet, onRecalcDone, onOpenChart }: ProductCardProps) {
   const stockKey = product.stock_status ?? "unknown";
   const isUnavailable = stockKey === "unavailable";
   const prices = product.prices ?? [];
@@ -906,11 +759,11 @@ function ProductCard({
 
   const hasAnyPrice = prices.some((p) => p.current_price != null);
   const noPriceReason = !hasAnyPrice
-    ? isUnavailable
-      ? "ناموجود — قیمت نمایش داده نمی‌شود"
-      : product.has_purchase_price === false
-        ? "قیمت خرید فعالی ثبت نشده است"
-        : "قیمت فروش هنوز محاسبه نشده است"
+    ? (isUnavailable
+        ? "ناموجود — قیمت نمایش داده نمی‌شود"
+        : product.has_purchase_price === false
+          ? "قیمت خرید فعالی ثبت نشده است"
+          : "قیمت فروش هنوز محاسبه نشده است")
     : null;
 
   const specChips: Array<{ label: string; value: string }> = [];
@@ -921,10 +774,7 @@ function ProductCard({
   if (product.brand?.name) specChips.push({ label: "برند", value: product.brand.name });
   if (product.category?.name) specChips.push({ label: "دسته", value: product.category.name });
   if (product.product_type === "iranian" || product.product_type === "foreign") {
-    specChips.push({
-      label: "نوع",
-      value: product.product_type === "foreign" ? "خارجی" : "ایرانی",
-    });
+    specChips.push({ label: "نوع", value: product.product_type === "foreign" ? "خارجی" : "ایرانی" });
   }
 
   const handleCopySalesText = async (e: React.MouseEvent) => {
@@ -970,9 +820,7 @@ function ProductCard({
     try {
       const r = await publishProductPrices({ productId: product.id, source: "sales_search" });
       if (r.succeeded > 0) {
-        toast.success(
-          `${r.succeeded} قیمت محاسبه و ذخیره شد` + (r.failed > 0 ? ` — ${r.failed} خطا` : ""),
-        );
+        toast.success(`${r.succeeded} قیمت محاسبه و ذخیره شد` + (r.failed > 0 ? ` — ${r.failed} خطا` : ""));
         onRecalcDone();
       } else {
         const firstErr = r.results.find((x) => !x.ok)?.error;
@@ -990,9 +838,7 @@ function ProductCard({
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h3 className="font-semibold text-foreground break-words">
-              {formatProductDisplayNameWithFallback(product)}
-            </h3>
+            <h3 className="font-semibold text-foreground break-words">{formatProductDisplayNameWithFallback(product)}</h3>
             <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
               {product.sku && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
@@ -1039,11 +885,7 @@ function ProductCard({
             </Badge>
             <RecentPurchaseBadge productId={product.id} />
             <span className="text-[11px] text-muted-foreground">
-              {product.product_type === "foreign"
-                ? "خارجی"
-                : product.product_type === "iranian"
-                  ? "ایرانی"
-                  : ""}
+              {product.product_type === "foreign" ? "خارجی" : product.product_type === "iranian" ? "ایرانی" : ""}
             </span>
           </div>
         </div>
@@ -1063,18 +905,10 @@ function ProductCard({
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
                 {prev !== null && (
-                  <div className="text-[11px] text-muted-foreground line-through">
-                    {formatNumber(prev)} ت
-                  </div>
+                  <div className="text-[11px] text-muted-foreground line-through">{formatNumber(prev)} ت</div>
                 )}
                 <div className="mt-1">
-                  <PriceChangeBadge
-                    info={{
-                      change_amount: amt,
-                      change_percent: pct,
-                      direction: computeDirection(amt),
-                    }}
-                  />
+                  <PriceChangeBadge info={{ change_amount: amt, change_percent: pct, direction: computeDirection(amt) }} />
                 </div>
               </div>
               {primary.last_updated_at && (
@@ -1107,32 +941,20 @@ function ProductCard({
                 <button
                   key={p.sale_price_type_id}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenChart(p.sale_price_type_id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); onOpenChart(p.sale_price_type_id); }}
                   className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
                 >
                   <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
                   <div className="text-sm font-semibold tabular-nums">
-                    {c !== null ? (
-                      formatNumber(c)
-                    ) : (
-                      <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>
-                    )}
+                    {c !== null ? formatNumber(c) : <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>}
                   </div>
                   {a !== null && a !== 0 && (
-                    <div
-                      className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}
-                    >
-                      {a > 0 ? "+" : ""}
-                      {formatNumber(a)}
+                    <div className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {a > 0 ? "+" : ""}{formatNumber(a)}
                     </div>
                   )}
                   {p.last_updated_at && (
-                    <div className="text-[9px] text-muted-foreground truncate">
-                      {formatDateTimeFa(p.last_updated_at)}
-                    </div>
+                    <div className="text-[9px] text-muted-foreground truncate">{formatDateTimeFa(p.last_updated_at)}</div>
                   )}
                 </button>
               );
@@ -1144,7 +966,12 @@ function ProductCard({
         <SalesProductRecommendations productId={product.id} />
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleCopySalesText}
+          >
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
           {canRecalcPrice && (
@@ -1155,11 +982,7 @@ function ProductCard({
               onClick={handleRecalc}
               disabled={recalcing}
             >
-              {recalcing ? (
-                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
-              ) : (
-                <Wand2 className="ms-1 h-4 w-4" />
-              )}
+              {recalcing ? <Loader2 className="ms-1 h-4 w-4 animate-spin" /> : <Wand2 className="ms-1 h-4 w-4" />}
               محاسبه دقیق قیمت
             </Button>
           )}
@@ -1167,10 +990,7 @@ function ProductCard({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenChart(primary?.sale_price_type_id);
-            }}
+            onClick={(e) => { e.stopPropagation(); onOpenChart(primary?.sale_price_type_id); }}
             disabled={!primary || cur === null}
           >
             <LineChart className="ms-1 h-4 w-4" /> نمودار قیمت
@@ -1191,10 +1011,7 @@ function ProductCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSupplierModalOpen(true);
-              }}
+              onClick={(e) => { e.stopPropagation(); setSupplierModalOpen(true); }}
             >
               <UserPlus className="ms-1 h-4 w-4" />
               معرفی تأمین‌کننده برای این محصول
@@ -1219,55 +1036,28 @@ interface FiltersPanelProps {
   brands: { id: string; name: string }[];
   categories: { id: string; name: string; parent_id: string | null }[];
   labels: { id: string; title: string; color: string | null }[];
-  brandIds: string[];
-  setBrandIds: (v: string[]) => void;
-  categoryIds: string[];
-  setCategoryIds: (v: string[]) => void;
-  labelIds: string[];
-  setLabelIds: (v: string[]) => void;
-  stockStatus: string;
-  setStockStatus: (v: string) => void;
-  productType: string;
-  setProductType: (v: string) => void;
-  brandFilterText: string;
-  setBrandFilterText: (v: string) => void;
-  categoryFilterText: string;
-  setCategoryFilterText: (v: string) => void;
-  labelFilterText: string;
-  setLabelFilterText: (v: string) => void;
-  dBrandText: string;
-  dCategoryText: string;
-  dLabelText: string;
-  onlyWithPrice: boolean;
-  setOnlyWithPrice: (v: boolean) => void;
+  brandIds: string[]; setBrandIds: (v: string[]) => void;
+  categoryIds: string[]; setCategoryIds: (v: string[]) => void;
+  labelIds: string[]; setLabelIds: (v: string[]) => void;
+  stockStatus: string; setStockStatus: (v: string) => void;
+  productType: string; setProductType: (v: string) => void;
+  brandFilterText: string; setBrandFilterText: (v: string) => void;
+  categoryFilterText: string; setCategoryFilterText: (v: string) => void;
+  labelFilterText: string; setLabelFilterText: (v: string) => void;
+  dBrandText: string; dCategoryText: string; dLabelText: string;
+  onlyWithPrice: boolean; setOnlyWithPrice: (v: boolean) => void;
 }
 
 function FiltersPanel(props: FiltersPanelProps) {
   const {
-    brands,
-    categories,
-    labels,
-    brandIds,
-    setBrandIds,
-    categoryIds,
-    setCategoryIds,
-    labelIds,
-    setLabelIds,
-    stockStatus,
-    setStockStatus,
-    productType,
-    setProductType,
-    brandFilterText,
-    setBrandFilterText,
-    categoryFilterText,
-    setCategoryFilterText,
-    labelFilterText,
-    setLabelFilterText,
-    dBrandText,
-    dCategoryText,
-    dLabelText,
-    onlyWithPrice,
-    setOnlyWithPrice,
+    brands, categories, labels,
+    brandIds, setBrandIds, categoryIds, setCategoryIds, labelIds, setLabelIds,
+    stockStatus, setStockStatus, productType, setProductType,
+    brandFilterText, setBrandFilterText,
+    categoryFilterText, setCategoryFilterText,
+    labelFilterText, setLabelFilterText,
+    dBrandText, dCategoryText, dLabelText,
+    onlyWithPrice, setOnlyWithPrice,
   } = props;
 
   const filteredBrands = useMemo(() => {
@@ -1295,11 +1085,7 @@ function FiltersPanel(props: FiltersPanelProps) {
       <div className="space-y-2">
         <div className="text-sm font-semibold">
           وضعیت موجودی
-          {stockStatus !== "__all" && (
-            <Badge variant="secondary" className="mr-2">
-              ۱
-            </Badge>
-          )}
+          {stockStatus !== "__all" && <Badge variant="secondary" className="mr-2">۱</Badge>}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {[
@@ -1338,7 +1124,10 @@ function FiltersPanel(props: FiltersPanelProps) {
           ))}
         </div>
         <label className="flex items-center gap-2 text-sm pt-2 cursor-pointer">
-          <Checkbox checked={onlyWithPrice} onCheckedChange={(v) => setOnlyWithPrice(!!v)} />
+          <Checkbox
+            checked={onlyWithPrice}
+            onCheckedChange={(v) => setOnlyWithPrice(!!v)}
+          />
           <span>فقط محصولات دارای قیمت معتبر</span>
         </label>
       </div>
@@ -1346,12 +1135,7 @@ function FiltersPanel(props: FiltersPanelProps) {
       {/* Brands */}
       <div className="space-y-2">
         <div className="text-sm font-semibold">
-          برندها{" "}
-          {brandIds.length > 0 && (
-            <Badge variant="secondary" className="mr-2">
-              {formatNumber(brandIds.length)} انتخاب
-            </Badge>
-          )}
+          برندها {brandIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(brandIds.length)} انتخاب</Badge>}
         </div>
         <Input
           value={brandFilterText}
@@ -1363,20 +1147,15 @@ function FiltersPanel(props: FiltersPanelProps) {
           <div className="space-y-1.5">
             {filteredBrands.length === 0 ? (
               <div className="text-xs text-muted-foreground text-center py-4">برندی یافت نشد</div>
-            ) : (
-              filteredBrands.map((b) => (
-                <label
-                  key={b.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
-                >
-                  <Checkbox
-                    checked={brandIds.includes(b.id)}
-                    onCheckedChange={() => toggle(brandIds, setBrandIds, b.id)}
-                  />
-                  <span className="truncate">{b.name}</span>
-                </label>
-              ))
-            )}
+            ) : filteredBrands.map((b) => (
+              <label key={b.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                <Checkbox
+                  checked={brandIds.includes(b.id)}
+                  onCheckedChange={() => toggle(brandIds, setBrandIds, b.id)}
+                />
+                <span className="truncate">{b.name}</span>
+              </label>
+            ))}
           </div>
         </ScrollArea>
       </div>
@@ -1384,12 +1163,7 @@ function FiltersPanel(props: FiltersPanelProps) {
       {/* Categories */}
       <div className="space-y-2">
         <div className="text-sm font-semibold">
-          دسته‌بندی‌ها{" "}
-          {categoryIds.length > 0 && (
-            <Badge variant="secondary" className="mr-2">
-              {formatNumber(categoryIds.length)} انتخاب
-            </Badge>
-          )}
+          دسته‌بندی‌ها {categoryIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(categoryIds.length)} انتخاب</Badge>}
         </div>
         <Input
           value={categoryFilterText}
@@ -1401,20 +1175,15 @@ function FiltersPanel(props: FiltersPanelProps) {
           <div className="space-y-1.5">
             {filteredCategories.length === 0 ? (
               <div className="text-xs text-muted-foreground text-center py-4">دسته‌ای یافت نشد</div>
-            ) : (
-              filteredCategories.map((c) => (
-                <label
-                  key={c.id}
-                  className={`flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 ${c.parent_id ? "pr-4" : ""}`}
-                >
-                  <Checkbox
-                    checked={categoryIds.includes(c.id)}
-                    onCheckedChange={() => toggle(categoryIds, setCategoryIds, c.id)}
-                  />
-                  <span className="truncate">{c.name}</span>
-                </label>
-              ))
-            )}
+            ) : filteredCategories.map((c) => (
+              <label key={c.id} className={`flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 ${c.parent_id ? "pr-4" : ""}`}>
+                <Checkbox
+                  checked={categoryIds.includes(c.id)}
+                  onCheckedChange={() => toggle(categoryIds, setCategoryIds, c.id)}
+                />
+                <span className="truncate">{c.name}</span>
+              </label>
+            ))}
           </div>
         </ScrollArea>
       </div>
@@ -1422,12 +1191,7 @@ function FiltersPanel(props: FiltersPanelProps) {
       {/* Labels */}
       <div className="space-y-2">
         <div className="text-sm font-semibold">
-          برچسب‌ها{" "}
-          {labelIds.length > 0 && (
-            <Badge variant="secondary" className="mr-2">
-              {formatNumber(labelIds.length)} انتخاب
-            </Badge>
-          )}
+          برچسب‌ها {labelIds.length > 0 && <Badge variant="secondary" className="mr-2">{formatNumber(labelIds.length)} انتخاب</Badge>}
         </div>
         <Input
           value={labelFilterText}
@@ -1439,24 +1203,19 @@ function FiltersPanel(props: FiltersPanelProps) {
           <div className="space-y-1.5">
             {filteredLabels.length === 0 ? (
               <div className="text-xs text-muted-foreground text-center py-4">برچسبی یافت نشد</div>
-            ) : (
-              filteredLabels.map((l) => (
-                <label
-                  key={l.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
-                >
-                  <Checkbox
-                    checked={labelIds.includes(l.id)}
-                    onCheckedChange={() => toggle(labelIds, setLabelIds, l.id)}
-                  />
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full border"
-                    style={l.color ? { backgroundColor: l.color } : undefined}
-                  />
-                  <span className="truncate">{l.title}</span>
-                </label>
-              ))
-            )}
+            ) : filteredLabels.map((l) => (
+              <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5">
+                <Checkbox
+                  checked={labelIds.includes(l.id)}
+                  onCheckedChange={() => toggle(labelIds, setLabelIds, l.id)}
+                />
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full border"
+                  style={l.color ? { backgroundColor: l.color } : undefined}
+                />
+                <span className="truncate">{l.title}</span>
+              </label>
+            ))}
           </div>
         </ScrollArea>
       </div>

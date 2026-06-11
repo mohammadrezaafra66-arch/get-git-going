@@ -1,9 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import {
-  STOCK_ALERT_STATUS_LABEL,
-  STOCK_ALERT_PRIORITY_LABEL,
-  type StockAlertStatus,
-  type StockAlertPriority,
+  STOCK_ALERT_STATUS_LABEL, STOCK_ALERT_PRIORITY_LABEL,
+  type StockAlertStatus, type StockAlertPriority,
 } from "@/lib/sales/stock-alerts";
 
 const STATUS_CLS: Record<StockAlertStatus, string> = {

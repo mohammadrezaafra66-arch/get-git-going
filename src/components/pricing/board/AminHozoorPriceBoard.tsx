@@ -1,32 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Filter,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  RefreshCw,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  PackageX,
+  Filter, Loader2, Maximize2, Minimize2, RefreshCw, Search, ChevronLeft, ChevronRight, PackageX,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/common/EmptyState";
 import { useDebounce } from "@/hooks/use-debounce";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
-import { AMIN_HOZOOR_BOARD_KEY, fetchBoardSetting } from "@/lib/pricing/board-settings";
+import {
+  AMIN_HOZOOR_BOARD_KEY,
+  fetchBoardSetting,
+} from "@/lib/pricing/board-settings";
 import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { BoardSettingsSelector } from "./BoardSettingsSelector";
 import { BoardPriceTable } from "./BoardPriceTable";
@@ -56,9 +47,7 @@ export function AminHozoorPriceBoard() {
   const [detailsId, setDetailsId] = useState<string | null>(null);
 
   // reset page on filter change
-  useEffect(() => {
-    setPage(1);
-  }, [dSearch, brandId, categoryId, stockFilter, changedTodayOnly]);
+  useEffect(() => { setPage(1); }, [dSearch, brandId, categoryId, stockFilter, changedTodayOnly]);
 
   const settingQuery = useQuery({
     queryKey: ["pricing-board-setting", AMIN_HOZOOR_BOARD_KEY],
@@ -86,11 +75,7 @@ export function AminHozoorPriceBoard() {
     queryKey: ["brands-lite"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("brands")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name")
-        .limit(500);
+        .from("brands").select("id, name").eq("is_active", true).order("name").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -100,11 +85,7 @@ export function AminHozoorPriceBoard() {
     queryKey: ["categories-lite"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name")
-        .limit(500);
+        .from("categories").select("id, name").eq("is_active", true).order("name").limit(500);
       if (error) throw error;
       return data ?? [];
     },
@@ -167,8 +148,8 @@ export function AminHozoorPriceBoard() {
             access.status === "rejected"
               ? "rejected"
               : access.status === "loading" || access.status === "unauthenticated"
-                ? "loading"
-                : "pending"
+              ? "loading"
+              : "pending"
           }
         />
       </div>
@@ -184,18 +165,13 @@ export function AminHozoorPriceBoard() {
             تابلوی قیمت فروش امین حضور
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>
-              آخرین به‌روزرسانی: {formatDateTimeFa(lastFetchedAt ? new Date(lastFetchedAt) : null)}
-            </span>
+            <span>آخرین به‌روزرسانی: {formatDateTimeFa(lastFetchedAt ? new Date(lastFetchedAt) : null)}</span>
             <span>•</span>
             <span>به‌روزرسانی خودکار هر {toFaDigits(REFETCH_INTERVAL_MS / 1000)} ثانیه</span>
             {isFetching && <Loader2 className="h-3 w-3 animate-spin" />}
           </div>
           <div className="mt-1 text-sm">
-            نوع قیمت نمایش‌داده‌شده:{" "}
-            <Badge variant="outline" className="text-sm">
-              {salePriceTypeTitle}
-            </Badge>
+            نوع قیمت نمایش‌داده‌شده: <Badge variant="outline" className="text-sm">{salePriceTypeTitle}</Badge>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -203,16 +179,8 @@ export function AminHozoorPriceBoard() {
             <RefreshCw className={`ml-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             تازه‌سازی
           </Button>
-          <Button
-            variant={kioskMode ? "secondary" : "default"}
-            size="sm"
-            onClick={() => setKioskMode((v) => !v)}
-          >
-            {kioskMode ? (
-              <Minimize2 className="ml-2 h-4 w-4" />
-            ) : (
-              <Maximize2 className="ml-2 h-4 w-4" />
-            )}
+          <Button variant={kioskMode ? "secondary" : "default"} size="sm" onClick={() => setKioskMode((v) => !v)}>
+            {kioskMode ? <Minimize2 className="ml-2 h-4 w-4" /> : <Maximize2 className="ml-2 h-4 w-4" />}
             {kioskMode ? "خروج از حالت نمایشگر" : "حالت نمایشگر"}
           </Button>
         </div>
@@ -251,48 +219,29 @@ export function AminHozoorPriceBoard() {
                 />
               </div>
               <Select value={brandId} onValueChange={setBrandId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="برند" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="برند" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه برندها</SelectItem>
-                  {brands.map((b: any) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
+                  {brands.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
                 </SelectContent>
               </Select>
               <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="دسته" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="دسته" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">همه دسته‌ها</SelectItem>
-                  {categories.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                  {categories.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
                 </SelectContent>
               </Select>
               <Select value={stockFilter} onValueChange={(v) => setStockFilter(v as any)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="موجودی" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="موجودی" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="both">موجود + محدود</SelectItem>
                   <SelectItem value="available">فقط موجود</SelectItem>
                   <SelectItem value="limited">فقط محدود</SelectItem>
                 </SelectContent>
               </Select>
-              <Select
-                value={changedTodayOnly ? "yes" : "no"}
-                onValueChange={(v) => setChangedTodayOnly(v === "yes")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="تغییر امروز" />
-                </SelectTrigger>
+              <Select value={changedTodayOnly ? "yes" : "no"} onValueChange={(v) => setChangedTodayOnly(v === "yes")}>
+                <SelectTrigger><SelectValue placeholder="تغییر امروز" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="no">همه محصولات</SelectItem>
                   <SelectItem value="yes">فقط تغییرکرده امروز</SelectItem>
@@ -343,23 +292,13 @@ export function AminHozoorPriceBoard() {
               نمایش {toFaDigits(items.length)} از {formatNumber(total)} محصول
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <span className="text-xs">
                 صفحه {toFaDigits(page)} از {toFaDigits(totalPages)}
               </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>

@@ -38,9 +38,7 @@ export interface AchievementInput {
 }
 
 async function logAudit(action: string, entityId: string, diff: Record<string, unknown>) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase.from("audit_logs").insert({
     actor_id: user.id,
@@ -54,9 +52,7 @@ async function logAudit(action: string, entityId: string, diff: Record<string, u
 export async function listAchievements(): Promise<AchievementRow[]> {
   const { data, error } = await supabase
     .from("achievements")
-    .select(
-      "id,title_fa,title_en,description,icon,condition_event_key,condition_operator,condition_value,xp_reward,enabled,display_order,created_at,updated_at",
-    )
+    .select("id,title_fa,title_en,description,icon,condition_event_key,condition_operator,condition_value,xp_reward,enabled,display_order,created_at,updated_at")
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(500);
@@ -64,11 +60,7 @@ export async function listAchievements(): Promise<AchievementRow[]> {
   return (data ?? []) as unknown as AchievementRow[];
 }
 
-export interface KpiOption {
-  event_key: string;
-  title_fa: string;
-  is_active: boolean;
-}
+export interface KpiOption { event_key: string; title_fa: string; is_active: boolean }
 export async function listKpiOptions(): Promise<KpiOption[]> {
   const { data, error } = await supabase
     .from("gamification_kpi_rules" as never)
@@ -109,15 +101,8 @@ export async function createAchievement(input: AchievementInput): Promise<Achiev
   return row;
 }
 
-export async function updateAchievement(
-  id: string,
-  input: AchievementInput,
-): Promise<AchievementRow> {
-  const { data: before } = await supabase
-    .from("achievements")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+export async function updateAchievement(id: string, input: AchievementInput): Promise<AchievementRow> {
+  const { data: before } = await supabase.from("achievements").select("*").eq("id", id).maybeSingle();
   const { data, error } = await supabase
     .from("achievements")
     .update(toRow(input) as never)

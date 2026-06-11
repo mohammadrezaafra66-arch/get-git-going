@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
@@ -24,6 +25,7 @@ import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
+import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
@@ -80,6 +82,7 @@ import { Route as AppPricingCurrencyRatesRouteImport } from './routes/_app.prici
 import { Route as AppPricingCurrenciesRouteImport } from './routes/_app.pricing.currencies'
 import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.pricing.change-reasons'
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
+import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.attention'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
@@ -165,6 +168,11 @@ const UnauthorizedRoute = UnauthorizedRouteImport.update({
   path: '/unauthorized',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -232,6 +240,11 @@ const AppPurchasesRoute = AppPurchasesRouteImport.update({
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
   id: '/price-lists',
   path: '/price-lists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPopupCenterRoute = AppPopupCenterRouteImport.update({
+  id: '/popup-center',
+  path: '/popup-center',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPersonsRoute = AppPersonsRouteImport.update({
@@ -521,6 +534,11 @@ const AppPricingChangeReasonsRoute = AppPricingChangeReasonsRouteImport.update({
 const AppPricingCalculatorRoute = AppPricingCalculatorRouteImport.update({
   id: '/pricing/calculator',
   path: '/pricing/calculator',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPricingAttentionRoute = AppPricingAttentionRouteImport.update({
+  id: '/pricing/attention',
+  path: '/pricing/attention',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPricingAminHozoorBoardRoute =
@@ -968,6 +986,7 @@ export interface FileRoutesByFullPath {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
@@ -981,6 +1000,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
+  '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1029,6 +1049,7 @@ export interface FileRoutesByFullPath {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1119,6 +1140,7 @@ export interface FileRoutesByTo {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
@@ -1131,6 +1153,7 @@ export interface FileRoutesByTo {
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
+  '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1178,6 +1201,7 @@ export interface FileRoutesByTo {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
   '/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1269,6 +1293,7 @@ export interface FileRoutesById {
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/academy': typeof AppAcademyRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
@@ -1282,6 +1307,7 @@ export interface FileRoutesById {
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
+  '/_app/popup-center': typeof AppPopupCenterRoute
   '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
@@ -1330,6 +1356,7 @@ export interface FileRoutesById {
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
+  '/_app/pricing/attention': typeof AppPricingAttentionRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
   '/_app/pricing/change-reasons': typeof AppPricingChangeReasonsRoute
   '/_app/pricing/currencies': typeof AppPricingCurrenciesRoute
@@ -1422,6 +1449,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
     | '/audit-logs'
@@ -1435,6 +1463,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/persons'
+    | '/popup-center'
     | '/price-lists'
     | '/purchases'
     | '/reports'
@@ -1483,6 +1512,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
+    | '/pricing/attention'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1573,6 +1603,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
     | '/audit-logs'
@@ -1585,6 +1616,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/persons'
+    | '/popup-center'
     | '/price-lists'
     | '/purchases'
     | '/reports'
@@ -1632,6 +1664,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
+    | '/pricing/attention'
     | '/pricing/calculator'
     | '/pricing/change-reasons'
     | '/pricing/currencies'
@@ -1722,6 +1755,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/register'
     | '/reset-password'
+    | '/sitemap.xml'
     | '/unauthorized'
     | '/_app/academy'
     | '/_app/audit-logs'
@@ -1735,6 +1769,7 @@ export interface FileRouteTypes {
     | '/_app/messages'
     | '/_app/notifications'
     | '/_app/persons'
+    | '/_app/popup-center'
     | '/_app/price-lists'
     | '/_app/purchases'
     | '/_app/reports'
@@ -1783,6 +1818,7 @@ export interface FileRouteTypes {
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
     | '/_app/pricing/amin-hozoor-board'
+    | '/_app/pricing/attention'
     | '/_app/pricing/calculator'
     | '/_app/pricing/change-reasons'
     | '/_app/pricing/currencies'
@@ -1875,6 +1911,7 @@ export interface RootRouteChildren {
   PendingApprovalRoute: typeof PendingApprovalRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
@@ -1894,6 +1931,13 @@ declare module '@tanstack/react-router' {
       path: '/unauthorized'
       fullPath: '/unauthorized'
       preLoaderRoute: typeof UnauthorizedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1992,6 +2036,13 @@ declare module '@tanstack/react-router' {
       path: '/price-lists'
       fullPath: '/price-lists'
       preLoaderRoute: typeof AppPriceListsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/popup-center': {
+      id: '/_app/popup-center'
+      path: '/popup-center'
+      fullPath: '/popup-center'
+      preLoaderRoute: typeof AppPopupCenterRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/persons': {
@@ -2384,6 +2435,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/calculator'
       fullPath: '/pricing/calculator'
       preLoaderRoute: typeof AppPricingCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/attention': {
+      id: '/_app/pricing/attention'
+      path: '/pricing/attention'
+      fullPath: '/pricing/attention'
+      preLoaderRoute: typeof AppPricingAttentionRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/amin-hozoor-board': {
@@ -3143,6 +3201,7 @@ interface AppRouteChildren {
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
+  AppPopupCenterRoute: typeof AppPopupCenterRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -3186,6 +3245,7 @@ interface AppRouteChildren {
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
+  AppPricingAttentionRoute: typeof AppPricingAttentionRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
   AppPricingChangeReasonsRoute: typeof AppPricingChangeReasonsRoute
   AppPricingCurrenciesRoute: typeof AppPricingCurrenciesRoute
@@ -3244,6 +3304,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
+  AppPopupCenterRoute: AppPopupCenterRoute,
   AppPriceListsRoute: AppPriceListsRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
@@ -3289,6 +3350,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
+  AppPricingAttentionRoute: AppPricingAttentionRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,
   AppPricingChangeReasonsRoute: AppPricingChangeReasonsRoute,
   AppPricingCurrenciesRoute: AppPricingCurrenciesRoute,
@@ -3373,6 +3435,7 @@ const rootRouteChildren: RootRouteChildren = {
   PendingApprovalRoute: PendingApprovalRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
@@ -3391,13 +3454,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

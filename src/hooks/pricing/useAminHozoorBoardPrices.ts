@@ -94,13 +94,19 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     enabled: enabled && productIds.length > 0,
     queryKey: ["amin-board-computed", productIds, opts.salePriceTypeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_computed_prices")
+      const { data, error } = await (supabase as any)
+        .from("product_computed_prices_public")
         .select("product_id, sale_price_type_id, rounded_sale_price, final_sale_price, computed_at")
         .in("product_id", productIds)
         .eq("sale_price_type_id", opts.salePriceTypeId!);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Array<{
+        product_id: string;
+        sale_price_type_id: string;
+        rounded_sale_price: number | string | null;
+        final_sale_price: number | string | null;
+        computed_at: string;
+      }>;
     },
     staleTime: 10_000,
     refetchInterval: opts.refetchInterval,
@@ -113,9 +119,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_sale_price_history")
-        .select(
-          "product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at",
-        )
+        .select("product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at")
         .in("product_id", productIds)
         .eq("sale_price_type_id", opts.salePriceTypeId!)
         .order("created_at", { ascending: false })
@@ -138,16 +142,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
       });
     }
     // آخرین رکورد تاریخچه برای هر محصول (مرتب‌شده desc)
-    const historyLatestMap = new Map<
-      string,
-      {
-        new_price: number;
-        old_price: number | null;
-        change_percent: number | null;
-        change_amount: number | null;
-        at: string;
-      }
-    >();
+    const historyLatestMap = new Map<string, { new_price: number; old_price: number | null; change_percent: number | null; change_amount: number | null; at: string }>();
     for (const h of historyQuery.data ?? []) {
       if (historyLatestMap.has(h.product_id)) continue;
       historyLatestMap.set(h.product_id, {
@@ -184,9 +179,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
       }
 
       const previous_price = history?.old_price ?? null;
-      const change_amount =
-        history?.change_amount ??
-        (current_price !== null && previous_price !== null ? current_price - previous_price : null);
+      const change_amount = history?.change_amount ?? (current_price !== null && previous_price !== null ? current_price - previous_price : null);
       const change_percent = history?.change_percent ?? null;
 
       return {
@@ -204,9 +197,7 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     if (opts.changedTodayOnly) {
       return result.filter((r) => {
         if (!r.last_updated_at) return false;
-        return (
-          new Date(r.last_updated_at).getTime() >= startOfToday && (r.change_amount ?? 0) !== 0
-        );
+        return new Date(r.last_updated_at).getTime() >= startOfToday && (r.change_amount ?? 0) !== 0;
       });
     }
     return result;
@@ -218,22 +209,18 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
   const { isLive: isRealtimeLive } = useComputedPricesRealtime({
     enabled,
     channelName: "amin-board-computed-prices",
-    invalidateKeys: [["amin-board-computed"], ["amin-board-history"]],
+    invalidateKeys: [
+      ["amin-board-computed"],
+      ["amin-board-history"],
+    ],
   });
 
-  const isLoading =
-    productsQuery.isLoading ||
-    (productIds.length > 0 && (computedQuery.isLoading || historyQuery.isLoading));
-  const isFetching =
-    productsQuery.isFetching || computedQuery.isFetching || historyQuery.isFetching;
+  const isLoading = productsQuery.isLoading || (productIds.length > 0 && (computedQuery.isLoading || historyQuery.isLoading));
+  const isFetching = productsQuery.isFetching || computedQuery.isFetching || historyQuery.isFetching;
 
   // آخرین زمان به‌روزرسانی query (نزدیک‌ترین)
   const lastFetchedAt = useMemo(() => {
-    const candidates = [
-      productsQuery.dataUpdatedAt,
-      computedQuery.dataUpdatedAt,
-      historyQuery.dataUpdatedAt,
-    ].filter((n) => n > 0);
+    const candidates = [productsQuery.dataUpdatedAt, computedQuery.dataUpdatedAt, historyQuery.dataUpdatedAt].filter((n) => n > 0);
     return candidates.length ? Math.max(...candidates) : null;
   }, [productsQuery.dataUpdatedAt, computedQuery.dataUpdatedAt, historyQuery.dataUpdatedAt]);
 

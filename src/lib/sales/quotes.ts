@@ -33,9 +33,7 @@ export interface DraftQuoteItem {
   discount_amount: number;
 }
 
-export function lineTotal(
-  item: Pick<DraftQuoteItem, "quantity" | "unit_price" | "discount_amount">,
-): number {
+export function lineTotal(item: Pick<DraftQuoteItem, "quantity" | "unit_price" | "discount_amount">): number {
   const gross = (item.quantity || 0) * (item.unit_price || 0);
   const disc = item.discount_amount || 0;
   return Math.max(0, gross - disc);
@@ -75,29 +73,22 @@ export interface QuoteValidationError {
   message: string;
 }
 
-export function validateQuote(
-  header: QuoteHeaderInput,
-  items: DraftQuoteItem[],
-): QuoteValidationError[] {
+export function validateQuote(header: QuoteHeaderInput, items: DraftQuoteItem[]): QuoteValidationError[] {
   const errs: QuoteValidationError[] = [];
   const name = header.customer_name?.trim() ?? "";
-  if (name.length < 2)
-    errs.push({ field: "customer_name", message: "نام مشتری باید حداقل ۲ کاراکتر باشد." });
-  if (name.length > 200)
-    errs.push({ field: "customer_name", message: "نام مشتری حداکثر ۲۰۰ کاراکتر." });
+  if (name.length < 2) errs.push({ field: "customer_name", message: "نام مشتری باید حداقل ۲ کاراکتر باشد." });
+  if (name.length > 200) errs.push({ field: "customer_name", message: "نام مشتری حداکثر ۲۰۰ کاراکتر." });
 
   const phone = header.customer_phone?.trim() ?? "";
   if (!phone) errs.push({ field: "customer_phone", message: "شماره تماس مشتری الزامی است." });
-  else if (!PHONE_RE.test(phone))
-    errs.push({ field: "customer_phone", message: "شماره تماس نامعتبر است." });
+  else if (!PHONE_RE.test(phone)) errs.push({ field: "customer_phone", message: "شماره تماس نامعتبر است." });
 
   if (header.expires_at) {
     const d = new Date(header.expires_at);
     if (Number.isNaN(d.getTime())) {
       errs.push({ field: "expires_at", message: "تاریخ اعتبار نامعتبر است." });
     } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
       if (d.getTime() <= today.getTime()) {
         errs.push({ field: "expires_at", message: "تاریخ اعتبار باید بعد از امروز باشد." });
       }
@@ -110,43 +101,22 @@ export function validateQuote(
 
   items.forEach((it, idx) => {
     if (it.source === "product_price" && !it.product_id) {
-      errs.push({
-        field: `items.${idx}.product_id`,
-        message: `آیتم ${idx + 1}: محصول انتخاب نشده است.`,
-      });
+      errs.push({ field: `items.${idx}.product_id`, message: `آیتم ${idx + 1}: محصول انتخاب نشده است.` });
     }
-    if (
-      (it.source === "manual" || it.source === "quick_price") &&
-      !(it.free_item_name && it.free_item_name.trim().length > 0)
-    ) {
-      errs.push({
-        field: `items.${idx}.free_item_name`,
-        message: `آیتم ${idx + 1}: نام کالا الزامی است.`,
-      });
+    if ((it.source === "manual" || it.source === "quick_price") && !(it.free_item_name && it.free_item_name.trim().length > 0)) {
+      errs.push({ field: `items.${idx}.free_item_name`, message: `آیتم ${idx + 1}: نام کالا الزامی است.` });
     }
     if (!(it.quantity > 0)) {
-      errs.push({
-        field: `items.${idx}.quantity`,
-        message: `آیتم ${idx + 1}: تعداد باید بزرگ‌تر از صفر باشد.`,
-      });
+      errs.push({ field: `items.${idx}.quantity`, message: `آیتم ${idx + 1}: تعداد باید بزرگ‌تر از صفر باشد.` });
     }
     if (!(it.unit_price > 0)) {
-      errs.push({
-        field: `items.${idx}.unit_price`,
-        message: `آیتم ${idx + 1}: قیمت واحد باید بزرگ‌تر از صفر باشد.`,
-      });
+      errs.push({ field: `items.${idx}.unit_price`, message: `آیتم ${idx + 1}: قیمت واحد باید بزرگ‌تر از صفر باشد.` });
     }
     if (it.discount_amount < 0) {
-      errs.push({
-        field: `items.${idx}.discount_amount`,
-        message: `آیتم ${idx + 1}: تخفیف نمی‌تواند منفی باشد.`,
-      });
+      errs.push({ field: `items.${idx}.discount_amount`, message: `آیتم ${idx + 1}: تخفیف نمی‌تواند منفی باشد.` });
     }
     if (it.discount_amount > it.quantity * it.unit_price) {
-      errs.push({
-        field: `items.${idx}.discount_amount`,
-        message: `آیتم ${idx + 1}: تخفیف از مبلغ خط بیشتر است.`,
-      });
+      errs.push({ field: `items.${idx}.discount_amount`, message: `آیتم ${idx + 1}: تخفیف از مبلغ خط بیشتر است.` });
     }
   });
 

@@ -19,11 +19,7 @@ import {
   listTodayMissions,
   listEmployeeStreaks,
 } from "@/lib/operations/gamification";
-import {
-  LeagueBadge,
-  getLeagueLabel,
-  type LeagueTier,
-} from "@/components/gamification/LeagueBadge";
+import { LeagueBadge, getLeagueLabel, type LeagueTier } from "@/components/gamification/LeagueBadge";
 import { LevelUpOverlay } from "@/components/gamification/LevelUpOverlay";
 
 export const Route = createFileRoute("/_app/gamification")({
@@ -187,9 +183,7 @@ function GamificationDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-bold tabular-nums">
-                {Math.floor(progress.data?.xp_current ?? 0)}
-              </span>
+              <span className="text-3xl font-bold tabular-nums">{Math.floor(progress.data?.xp_current ?? 0)}</span>
               <span className="text-sm text-muted-foreground tabular-nums">
                 / {Math.floor(progress.data?.xp_next_level ?? 0)} XP
               </span>
@@ -231,9 +225,7 @@ function GamificationDashboard() {
                 <div className="text-[10px] text-muted-foreground">رتبه لیگ</div>
               </div>
               <div>
-                <div className="text-lg font-bold tabular-nums">
-                  {Math.floor(league.data?.score ?? 0)}
-                </div>
+                <div className="text-lg font-bold tabular-nums">{Math.floor(league.data?.score ?? 0)}</div>
                 <div className="text-[10px] text-muted-foreground">امتیاز فصل</div>
               </div>
             </div>
@@ -252,31 +244,20 @@ function GamificationDashboard() {
           </CardHeader>
           <CardContent className="p-0">
             {neighbors.isLoading ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
+              <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
             ) : !neighbors.data?.length ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                داده‌ای وجود ندارد.
-              </div>
+              <div className="p-6 text-center text-sm text-muted-foreground">داده‌ای وجود ندارد.</div>
             ) : (
               <ul className="divide-y">
                 {neighbors.data.map((n) => {
                   const isSelf = n.relative_position === "self";
                   return (
-                    <li
-                      key={n.employee_id}
-                      className={`flex items-center gap-3 px-4 py-2.5 ${isSelf ? "bg-primary/10 font-bold" : ""}`}
-                    >
-                      <span
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                      >
+                    <li key={n.employee_id} className={`flex items-center gap-3 px-4 py-2.5 ${isSelf ? "bg-primary/10 font-bold" : ""}`}>
+                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                         {n.rank}
                       </span>
                       <span className="flex-1 truncate text-sm">{n.full_name ?? "—"}</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {Math.floor(n.score)}
-                      </span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{Math.floor(n.score)}</span>
                     </li>
                   );
                 })}
@@ -299,26 +280,18 @@ function GamificationDashboard() {
           </CardHeader>
           <CardContent className="p-0">
             {top5.isLoading ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
+              <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
             ) : !top5.data?.length ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                رتبه‌بندی‌ای موجود نیست.
-              </div>
+              <div className="p-6 text-center text-sm text-muted-foreground">رتبه‌بندی‌ای موجود نیست.</div>
             ) : (
               <ul className="divide-y">
                 {top5.data.map((row) => (
                   <li key={row.employee_id} className="flex items-center gap-3 px-4 py-2.5">
-                    <span
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${row.rank === 1 ? "bg-yellow-500 text-white" : row.rank === 2 ? "bg-slate-400 text-white" : row.rank === 3 ? "bg-amber-700 text-white" : "bg-muted"}`}
-                    >
+                    <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${row.rank === 1 ? "bg-yellow-500 text-white" : row.rank === 2 ? "bg-slate-400 text-white" : row.rank === 3 ? "bg-amber-700 text-white" : "bg-muted"}`}>
                       {row.rank}
                     </span>
                     <span className="flex-1 truncate text-sm">{row.full_name ?? "—"}</span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {Math.floor(row.score)}
-                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{Math.floor(row.score)}</span>
                   </li>
                 ))}
               </ul>
@@ -338,9 +311,7 @@ function GamificationDashboard() {
           </CardHeader>
           <CardContent>
             {achievements.isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
             ) : !achievements.data?.length ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
                 <Lock className="h-8 w-8 opacity-30" />
@@ -349,10 +320,7 @@ function GamificationDashboard() {
             ) : (
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {achievements.data.slice(0, 8).map((a) => (
-                  <div
-                    key={a.id}
-                    className="group flex flex-col items-center gap-1 rounded-lg border bg-card p-3 text-center transition-all hover:scale-105 hover:shadow-md hover:shadow-primary/20"
-                  >
+                  <div key={a.id} className="group flex flex-col items-center gap-1 rounded-lg border bg-card p-3 text-center transition-all hover:scale-105 hover:shadow-md hover:shadow-primary/20">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow">
                       <Medal className="h-6 w-6" />
                     </div>
@@ -373,30 +341,17 @@ function GamificationDashboard() {
           </CardHeader>
           <CardContent>
             {streaks.isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
             ) : !streaks.data?.length ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                هیچ زنجیره‌ای ثبت نشده.
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">هیچ زنجیره‌ای ثبت نشده.</div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {streaks.data.map((s) => (
-                  <div
-                    key={s.streak_type}
-                    className="flex flex-col items-center rounded-lg border bg-gradient-to-b from-orange-500/10 to-transparent p-3 text-center"
-                  >
+                  <div key={s.streak_type} className="flex flex-col items-center rounded-lg border bg-gradient-to-b from-orange-500/10 to-transparent p-3 text-center">
                     <Flame className="h-6 w-6 text-orange-500" />
                     <div className="mt-1 text-2xl font-bold tabular-nums">{s.current_count}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {s.streak_type === "login"
-                        ? "ورود"
-                        : s.streak_type === "sales"
-                          ? "فروش"
-                          : s.streak_type === "calls"
-                            ? "تماس"
-                            : s.streak_type}
+                      {s.streak_type === "login" ? "ورود" : s.streak_type === "sales" ? "فروش" : s.streak_type === "calls" ? "تماس" : s.streak_type}
                     </div>
                   </div>
                 ))}
@@ -418,27 +373,17 @@ function GamificationDashboard() {
           {missions.isLoading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !missions.data?.length ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              مأموریتی برای امروز تعریف نشده است.
-            </div>
+            <div className="py-6 text-center text-sm text-muted-foreground">مأموریتی برای امروز تعریف نشده است.</div>
           ) : (
             <ul className="space-y-3">
               {missions.data.map((m) => {
-                const pct =
-                  m.target_value > 0 ? Math.min(100, (m.progress / m.target_value) * 100) : 0;
+                const pct = m.target_value > 0 ? Math.min(100, (m.progress / m.target_value) * 100) : 0;
                 return (
-                  <li
-                    key={m.id}
-                    className={`rounded-lg border p-3 ${m.completed ? "bg-emerald-500/5 border-emerald-500/30" : ""}`}
-                  >
+                  <li key={m.id} className={`rounded-lg border p-3 ${m.completed ? "bg-emerald-500/5 border-emerald-500/30" : ""}`}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-sm font-medium">
-                          {m.completed ? (
-                            <Trophy className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <Target className="h-4 w-4 text-muted-foreground" />
-                          )}
+                          {m.completed ? <Trophy className="h-4 w-4 text-emerald-500" /> : <Target className="h-4 w-4 text-muted-foreground" />}
                           {m.title_fa}
                         </div>
                         {m.description ? (
@@ -452,9 +397,7 @@ function GamificationDashboard() {
                     <div className="mt-2">
                       <Progress value={pct} className="h-2" />
                       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
-                        <span>
-                          {m.progress} / {m.target_value}
-                        </span>
+                        <span>{m.progress} / {m.target_value}</span>
                         <span>{pct.toFixed(0)}%</span>
                       </div>
                     </div>

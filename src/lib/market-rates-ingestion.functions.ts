@@ -111,7 +111,9 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
 
     const masterOn = flagOn("MARKET_RATES_EXTERNAL_ENABLED");
     const targets: SourceCode[] =
-      data.source_code === "ALL" ? ["NAVASAN_API", "TGJU_API"] : [data.source_code];
+      data.source_code === "ALL"
+        ? ["NAVASAN_API", "TGJU_API"]
+        : [data.source_code];
 
     const results: IngestionResult[] = [];
 
@@ -120,9 +122,10 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
         code === "NAVASAN_API" ? flagOn("NAVASAN_ENABLED") : flagOn("TGJU_ENABLED");
 
       // Always create a run row (started) for audit trail
-      const { data: runId, error: runErr } = await supabase.rpc("start_market_rate_ingestion_run", {
-        p_source_code: code,
-      });
+      const { data: runId, error: runErr } = await supabase.rpc(
+        "start_market_rate_ingestion_run",
+        { p_source_code: code },
+      );
       if (runErr || !runId) {
         results.push({
           source_code: code,
@@ -139,19 +142,14 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
 
       if (!masterOn || !sourceFlag) {
         await supabase.rpc("finish_market_rate_ingestion_run", {
-          p_run_id: runId,
-          p_status: "skipped",
-          p_fetched: 0,
-          p_inserted: 0,
-          p_suspect: 0,
-          p_error: !masterOn ? "MARKET_RATES_EXTERNAL_ENABLED=false" : `${code} disabled`,
+          p_run_id: runId, p_status: "skipped",
+          p_fetched: 0, p_inserted: 0, p_suspect: 0,
+          p_error: !masterOn
+            ? "MARKET_RATES_EXTERNAL_ENABLED=false"
+            : `${code} disabled`,
         });
         results.push({
-          source_code: code,
-          status: "skipped",
-          fetched: 0,
-          inserted: 0,
-          suspect: 0,
+          source_code: code, status: "skipped", fetched: 0, inserted: 0, suspect: 0,
           error: null,
           message_fa: "این منبع در پیکربندی سرور غیرفعال است.",
           run_id: runId as string,
@@ -161,10 +159,7 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
 
       // Load source id + active mappings
       const { data: src } = await supabase
-        .from("market_rate_sources")
-        .select("id")
-        .eq("code", code)
-        .maybeSingle();
+        .from("market_rate_sources").select("id").eq("code", code).maybeSingle();
       const { data: mappings } = await supabase
         .from("market_rate_source_mappings")
         .select("indicator_id, source_symbol, normalize_multiplier, is_enabled")
@@ -173,21 +168,13 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
 
       if (!src || !mappings || mappings.length === 0) {
         await supabase.rpc("finish_market_rate_ingestion_run", {
-          p_run_id: runId,
-          p_status: "skipped",
-          p_fetched: 0,
-          p_inserted: 0,
-          p_suspect: 0,
+          p_run_id: runId, p_status: "skipped",
+          p_fetched: 0, p_inserted: 0, p_suspect: 0,
           p_error: "هیچ نگاشت فعالی برای این منبع وجود ندارد",
         });
         results.push({
-          source_code: code,
-          status: "skipped",
-          fetched: 0,
-          inserted: 0,
-          suspect: 0,
-          error: null,
-          message_fa: "نگاشت فعال برای این منبع تعریف نشده است.",
+          source_code: code, status: "skipped", fetched: 0, inserted: 0, suspect: 0,
+          error: null, message_fa: "نگاشت فعال برای این منبع تعریف نشده است.",
           run_id: runId as string,
         });
         continue;
@@ -200,35 +187,24 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
         } else {
           // TGJU: endpoint/symbol رسمی هنوز تأیید نشده → graceful skip (بدون throw، بدون fetch خارجی).
           await supabase.rpc("finish_market_rate_ingestion_run", {
-            p_run_id: runId,
-            p_status: "skipped",
-            p_fetched: 0,
-            p_inserted: 0,
-            p_suspect: 0,
+            p_run_id: runId, p_status: "skipped",
+            p_fetched: 0, p_inserted: 0, p_suspect: 0,
             p_error: "TGJU fetcher تأیید نشده؛ منتظر endpoint/symbol رسمی",
           });
           results.push({
-            source_code: code,
-            status: "skipped",
-            fetched: 0,
-            inserted: 0,
-            suspect: 0,
-            error: null,
+            source_code: code, status: "skipped",
+            fetched: 0, inserted: 0, suspect: 0, error: null,
             message_fa: "اتصال TGJU هنوز فعال نیست؛ نیاز به تأیید endpoint و نمادهای رسمی دارد.",
             run_id: runId as string,
           });
           continue;
         }
 
-        let fetched = 0,
-          inserted = 0,
-          suspect = 0;
+        let fetched = 0, inserted = 0, suspect = 0;
         const observedAt = new Date().toISOString();
 
         for (const m of mappings as Array<{
-          indicator_id: string;
-          source_symbol: string;
-          normalize_multiplier: number;
+          indicator_id: string; source_symbol: string; normalize_multiplier: number;
         }>) {
           const entry = extractNavasanEntry(payload, m.source_symbol);
           if (!entry) continue;
@@ -259,19 +235,12 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
         }
 
         await supabase.rpc("finish_market_rate_ingestion_run", {
-          p_run_id: runId,
-          p_status: "completed",
-          p_fetched: fetched,
-          p_inserted: inserted,
-          p_suspect: suspect,
+          p_run_id: runId, p_status: "completed",
+          p_fetched: fetched, p_inserted: inserted, p_suspect: suspect,
           p_error: undefined,
         });
         results.push({
-          source_code: code,
-          status: "completed",
-          fetched,
-          inserted,
-          suspect,
+          source_code: code, status: "completed", fetched, inserted, suspect,
           error: null,
           message_fa: `دریافت موفق: ${inserted} نرخ ثبت شد (${suspect} مشکوک)`,
           run_id: runId as string,
@@ -280,21 +249,12 @@ export const ingestMarketRatesExternal = createServerFn({ method: "POST" })
         const msg = e instanceof Error ? e.message : String(e);
         console.error(`[market-rates] ${code} failed:`, msg);
         await supabase.rpc("finish_market_rate_ingestion_run", {
-          p_run_id: runId,
-          p_status: "failed",
-          p_fetched: 0,
-          p_inserted: 0,
-          p_suspect: 0,
-          p_error: msg.slice(0, 500),
+          p_run_id: runId, p_status: "failed",
+          p_fetched: 0, p_inserted: 0, p_suspect: 0, p_error: msg.slice(0, 500),
         });
         results.push({
-          source_code: code,
-          status: "failed",
-          fetched: 0,
-          inserted: 0,
-          suspect: 0,
-          error: msg,
-          message_fa: `دریافت از این منبع ناموفق بود: ${msg}`,
+          source_code: code, status: "failed", fetched: 0, inserted: 0, suspect: 0,
+          error: msg, message_fa: `دریافت از این منبع ناموفق بود: ${msg}`,
           run_id: runId as string,
         });
       }
@@ -319,9 +279,7 @@ export const getExternalRatesStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<ExternalSourcesStatus> => {
     const { supabase, userId } = context;
     const { data: roleRows } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+      .from("user_roles").select("role").eq("user_id", userId);
     const roles = (roleRows ?? []).map((r: { role: string }) => r.role);
     if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
       // Return safe defaults instead of throwing — keeps UI stable for users

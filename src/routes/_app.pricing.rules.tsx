@@ -3,14 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Plus,
-  ArrowRight,
-  Loader2,
-  Pencil,
-  Power,
-  ChevronRight,
-  ChevronLeft,
-  X,
+  Plus, ArrowRight, Loader2, Pencil, Power, ChevronRight, ChevronLeft, X,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -21,18 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -43,9 +28,7 @@ import { fetchSettlementTypes, fetchSalePriceTypes } from "@/lib/pricing/queries
 import { formatNumber } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/rules")({
-  beforeLoad: async () => {
-    await requirePermission("pricing", "view");
-  },
+  beforeLoad: async () => { await requirePermission("pricing", "view"); },
   component: PricingRulesPage,
 });
 
@@ -108,15 +91,7 @@ function PricingRulesPage() {
   }, [saleTypesQ.data]);
 
   const listQ = useQuery({
-    queryKey: [
-      "pricing-rules",
-      "list",
-      search,
-      filters.settlement,
-      filters.saleType,
-      filters.status,
-      page,
-    ],
+    queryKey: ["pricing-rules", "list", search, filters.settlement, filters.saleType, filters.status, page],
     queryFn: async () => {
       let q = supabase
         .from("pricing_rules")
@@ -153,28 +128,16 @@ function PricingRulesPage() {
   const disable = async (r: PRule) => {
     if (!canWrite) return;
     if (!confirm(`قانون "${r.rule_name ?? r.name}" غیرفعال شود؟`)) return;
-    const { error } = await supabase
-      .from("pricing_rules")
-      .update({ is_active: false })
-      .eq("id", r.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("pricing_rules").update({ is_active: false }).eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
     toast.success("قانون غیرفعال شد");
     refresh();
   };
 
   const enable = async (r: PRule) => {
     if (!canWrite) return;
-    const { error } = await supabase
-      .from("pricing_rules")
-      .update({ is_active: true })
-      .eq("id", r.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("pricing_rules").update({ is_active: true }).eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
     toast.success("قانون فعال شد");
     refresh();
   };
@@ -187,21 +150,11 @@ function PricingRulesPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/pricing">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setOpen(true);
-                }}
-              >
-                <Plus className="ms-1 h-4 w-4" />
-                قانون جدید
+              <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus className="ms-1 h-4 w-4" />قانون جدید
               </Button>
             )}
           </>
@@ -215,10 +168,7 @@ function PricingRulesPage() {
             <Label className="text-xs text-muted-foreground">جستجو در نام قانون</Label>
             <Input
               value={filters.search}
-              onChange={(e) => {
-                setFilters((f) => ({ ...f, search: e.target.value }));
-                setPage(0);
-              }}
+              onChange={(e) => { setFilters((f) => ({ ...f, search: e.target.value })); setPage(0); }}
               placeholder="نام قانون..."
               className="h-9"
             />
@@ -227,20 +177,13 @@ function PricingRulesPage() {
             <Label className="text-xs text-muted-foreground">نوع تسویه</Label>
             <Select
               value={filters.settlement}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, settlement: v }));
-                setPage(0);
-              }}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, settlement: v })); setPage(0); }}
             >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
                 {(settlementsQ.data ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -249,20 +192,13 @@ function PricingRulesPage() {
             <Label className="text-xs text-muted-foreground">نوع قیمت فروش</Label>
             <Select
               value={filters.saleType}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, saleType: v }));
-                setPage(0);
-              }}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, saleType: v })); setPage(0); }}
             >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
                 {(saleTypesQ.data ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
+                  <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -271,14 +207,9 @@ function PricingRulesPage() {
             <Label className="text-xs text-muted-foreground">وضعیت</Label>
             <Select
               value={filters.status}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, status: v as Filters["status"] }));
-                setPage(0);
-              }}
+              onValueChange={(v) => { setFilters((f) => ({ ...f, status: v as Filters["status"] })); setPage(0); }}
             >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
                 <SelectItem value="active">فعال</SelectItem>
@@ -287,19 +218,13 @@ function PricingRulesPage() {
             </Select>
           </div>
           <div className="flex items-center justify-between gap-2 sm:col-span-2 lg:col-span-4">
-            <span className="text-xs text-muted-foreground">
-              مجموع: {formatNumber(total)} قانون
-            </span>
+            <span className="text-xs text-muted-foreground">مجموع: {formatNumber(total)} قانون</span>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setFilters(DEFAULT_FILTERS);
-                setPage(0);
-              }}
+              onClick={() => { setFilters(DEFAULT_FILTERS); setPage(0); }}
             >
-              <X className="ms-1 h-3 w-3" />
-              پاک‌سازی فیلترها
+              <X className="ms-1 h-3 w-3" />پاک‌سازی فیلترها
             </Button>
           </div>
         </CardContent>
@@ -311,9 +236,7 @@ function PricingRulesPage() {
           {listQ.isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : rows.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              قانونی ثبت نشده است.
-            </div>
+            <div className="p-6 text-center text-sm text-muted-foreground">قانونی ثبت نشده است.</div>
           ) : (
             <>
               {/* موبایل */}
@@ -325,15 +248,13 @@ function PricingRulesPage() {
                         <div className="truncate font-semibold">{r.rule_name ?? r.name}</div>
                         <div className="text-[11px] text-muted-foreground">
                           اولویت: {formatNumber(r.priority)}
-                          {r.settlement_type_id && settlementMap[r.settlement_type_id]
-                            ? ` · تسویه: ${settlementMap[r.settlement_type_id]}`
-                            : ""}
-                          {r.sale_price_type_id && saleTypeMap[r.sale_price_type_id]
-                            ? ` · قیمت: ${saleTypeMap[r.sale_price_type_id]}`
-                            : ""}
+                          {r.settlement_type_id && settlementMap[r.settlement_type_id] ? ` · تسویه: ${settlementMap[r.settlement_type_id]}` : ""}
+                          {r.sale_price_type_id && saleTypeMap[r.sale_price_type_id] ? ` · قیمت: ${saleTypeMap[r.sale_price_type_id]}` : ""}
                         </div>
                       </div>
-                      {r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
+                      {r.is_active
+                        ? <Badge>فعال</Badge>
+                        : <Badge variant="outline">غیرفعال</Badge>}
                     </div>
                     <div className="text-sm">
                       <span className="text-xs text-muted-foreground">سود: </span>
@@ -341,37 +262,17 @@ function PricingRulesPage() {
                     </div>
                     {canWrite && (
                       <div className="flex gap-1 pt-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            setEditing(r);
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="ms-1 h-3 w-3" />
-                          ویرایش
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs"
+                          onClick={() => { setEditing(r); setOpen(true); }}>
+                          <Pencil className="ms-1 h-3 w-3" />ویرایش
                         </Button>
                         {r.is_active ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => disable(r)}
-                          >
-                            <Power className="ms-1 h-3 w-3" />
-                            غیرفعال‌سازی
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => disable(r)}>
+                            <Power className="ms-1 h-3 w-3" />غیرفعال‌سازی
                           </Button>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => enable(r)}
-                          >
-                            <Power className="ms-1 h-3 w-3" />
-                            فعال‌سازی
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => enable(r)}>
+                            <Power className="ms-1 h-3 w-3" />فعال‌سازی
                           </Button>
                         )}
                       </div>
@@ -399,52 +300,31 @@ function PricingRulesPage() {
                       <tr key={r.id} className="border-b last:border-0">
                         <td className="p-3 font-medium">{r.rule_name ?? r.name}</td>
                         <td className="p-3 text-xs text-muted-foreground">
-                          {r.sale_price_type_id ? (saleTypeMap[r.sale_price_type_id] ?? "—") : "—"}
+                          {r.sale_price_type_id ? saleTypeMap[r.sale_price_type_id] ?? "—" : "—"}
                         </td>
                         <td className="p-3 text-xs text-muted-foreground">
-                          {r.settlement_type_id
-                            ? (settlementMap[r.settlement_type_id] ?? "—")
-                            : "—"}
+                          {r.settlement_type_id ? settlementMap[r.settlement_type_id] ?? "—" : "—"}
                         </td>
                         <td className="p-3 font-semibold">{formatMargin(r)}</td>
                         <td className="p-3 text-xs">{formatNumber(r.priority)}</td>
                         <td className="p-3">
-                          {r.is_active ? (
-                            <Badge>فعال</Badge>
-                          ) : (
-                            <Badge variant="outline">غیرفعال</Badge>
-                          )}
+                          {r.is_active
+                            ? <Badge>فعال</Badge>
+                            : <Badge variant="outline">غیرفعال</Badge>}
                         </td>
                         <td className="p-3">
                           {canWrite && (
                             <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  setEditing(r);
-                                  setOpen(true);
-                                }}
-                              >
+                              <Button variant="ghost" size="icon" className="h-8 w-8"
+                                onClick={() => { setEditing(r); setOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               {r.is_active ? (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => disable(r)}
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => disable(r)}>
                                   <Power className="h-4 w-4 text-destructive" />
                                 </Button>
                               ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => enable(r)}
-                                >
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => enable(r)}>
                                   <Power className="h-4 w-4" />
                                 </Button>
                               )}
@@ -464,20 +344,12 @@ function PricingRulesPage() {
                     صفحه {formatNumber(page + 1)} از {formatNumber(totalPages)}
                   </span>
                   <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page === 0}
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    >
+                    <Button variant="outline" size="sm" disabled={page === 0}
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= totalPages - 1}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
+                    <Button variant="outline" size="sm" disabled={page >= totalPages - 1}
+                      onClick={() => setPage((p) => p + 1)}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                   </div>
@@ -510,12 +382,7 @@ function formatMargin(r: PRule): string {
 }
 
 function RuleDialog({
-  open,
-  onOpenChange,
-  editing,
-  settlements,
-  saleTypes,
-  onSaved,
+  open, onOpenChange, editing, settlements, saleTypes, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -545,26 +412,21 @@ function RuleDialog({
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
-      setValues(
-        editing
-          ? {
-              rule_name: editing.rule_name ?? editing.name,
-              product_type: null,
-              category_id: null,
-              brand_id: null,
-              min_purchase_price_toman: null,
-              max_purchase_price_toman: null,
-              settlement_type_id: editing.settlement_type_id,
-              sale_price_type_id: editing.sale_price_type_id,
-              margin_type: editing.margin_type,
-              margin_value: Number(editing.margin_value ?? 0),
-              fixed_margin_value:
-                editing.fixed_margin_value != null ? Number(editing.fixed_margin_value) : null,
-              priority: editing.priority,
-              is_active: editing.is_active,
-            }
-          : emptyValues,
-      );
+      setValues(editing ? {
+        rule_name: editing.rule_name ?? editing.name,
+        product_type: null,
+        category_id: null,
+        brand_id: null,
+        min_purchase_price_toman: null,
+        max_purchase_price_toman: null,
+        settlement_type_id: editing.settlement_type_id,
+        sale_price_type_id: editing.sale_price_type_id,
+        margin_type: editing.margin_type,
+        margin_value: Number(editing.margin_value ?? 0),
+        fixed_margin_value: editing.fixed_margin_value != null ? Number(editing.fixed_margin_value) : null,
+        priority: editing.priority,
+        is_active: editing.is_active,
+      } : emptyValues);
       setErrors({});
     }
     onOpenChange(v);
@@ -620,33 +482,21 @@ function RuleDialog({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>نام قانون *</Label>
-            <Input
-              value={values.rule_name}
-              onChange={(e) => setValues((s) => ({ ...s, rule_name: e.target.value }))}
-            />
-            {errors.rule_name && (
-              <p className="mt-1 text-xs text-destructive">{errors.rule_name}</p>
-            )}
+            <Input value={values.rule_name}
+              onChange={(e) => setValues((s) => ({ ...s, rule_name: e.target.value }))} />
+            {errors.rule_name && <p className="mt-1 text-xs text-destructive">{errors.rule_name}</p>}
           </div>
 
           <div>
             <Label>نوع تسویه</Label>
             <Select
               value={values.settlement_type_id ?? "none"}
-              onValueChange={(v) =>
-                setValues((s) => ({ ...s, settlement_type_id: v === "none" ? null : v }))
-              }
+              onValueChange={(v) => setValues((s) => ({ ...s, settlement_type_id: v === "none" ? null : v }))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">—</SelectItem>
-                {settlements.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
-                ))}
+                {settlements.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -655,20 +505,12 @@ function RuleDialog({
             <Label>نوع قیمت فروش</Label>
             <Select
               value={values.sale_price_type_id ?? "none"}
-              onValueChange={(v) =>
-                setValues((s) => ({ ...s, sale_price_type_id: v === "none" ? null : v }))
-              }
+              onValueChange={(v) => setValues((s) => ({ ...s, sale_price_type_id: v === "none" ? null : v }))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">—</SelectItem>
-                {saleTypes.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.title}
-                  </SelectItem>
-                ))}
+                {saleTypes.map((s) => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
               </SelectContent>
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -680,13 +522,9 @@ function RuleDialog({
             <Label>نوع حاشیه سود *</Label>
             <Select
               value={values.margin_type}
-              onValueChange={(v) =>
-                setValues((s) => ({ ...s, margin_type: v as "fixed" | "percent" | "mixed" }))
-              }
+              onValueChange={(v) => setValues((s) => ({ ...s, margin_type: v as "fixed" | "percent" | "mixed" }))}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="percent">درصدی</SelectItem>
                 <SelectItem value="fixed">مبلغ ثابت</SelectItem>
@@ -697,64 +535,45 @@ function RuleDialog({
 
           <div>
             <Label>{values.margin_type === "fixed" ? "مبلغ سود (تومان) *" : "درصد سود *"}</Label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              dir="ltr"
+            <Input type="number" inputMode="numeric" dir="ltr"
               value={values.margin_value || ""}
-              onChange={(e) => setValues((s) => ({ ...s, margin_value: Number(e.target.value) }))}
-            />
-            {errors.margin_value && (
-              <p className="mt-1 text-xs text-destructive">{errors.margin_value}</p>
-            )}
+              onChange={(e) => setValues((s) => ({ ...s, margin_value: Number(e.target.value) }))} />
+            {errors.margin_value && <p className="mt-1 text-xs text-destructive">{errors.margin_value}</p>}
           </div>
 
           {values.margin_type === "mixed" && (
             <div className="sm:col-span-2">
               <Label>مبلغ ثابت تکمیلی (تومان)</Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                dir="ltr"
+              <Input type="number" inputMode="numeric" dir="ltr"
                 value={values.fixed_margin_value ?? ""}
-                onChange={(e) =>
-                  setValues((s) => ({
-                    ...s,
-                    fixed_margin_value: e.target.value === "" ? null : Number(e.target.value),
-                  }))
-                }
-              />
+                onChange={(e) => setValues((s) => ({
+                  ...s,
+                  fixed_margin_value: e.target.value === "" ? null : Number(e.target.value),
+                }))} />
             </div>
           )}
 
           <div>
             <Label>اولویت</Label>
-            <Input
-              type="number"
-              dir="ltr"
+            <Input type="number" dir="ltr"
               value={values.priority}
-              onChange={(e) => setValues((s) => ({ ...s, priority: Number(e.target.value) }))}
-            />
+              onChange={(e) => setValues((s) => ({ ...s, priority: Number(e.target.value) }))} />
             <p className="mt-1 text-[11px] text-muted-foreground">عدد کوچکتر = اولویت بالاتر</p>
           </div>
 
           <div className="flex items-center gap-2 sm:col-span-2">
-            <Switch
-              checked={values.is_active}
-              onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))}
-            />
+            <Switch checked={values.is_active}
+              onCheckedChange={(v) => setValues((s) => ({ ...s, is_active: v }))} />
             <Label>فعال</Label>
           </div>
 
           <p className="rounded bg-muted/50 p-2 text-[11px] text-muted-foreground sm:col-span-2">
-            گرد کردن قیمت فروش به‌صورت متمرکز توسط موتور قیمت‌گذاری انجام می‌شود (زیر ۱م → ۱۰٬۰۰۰ ·
-            ۱م تا ۱۰م → ۵۰٬۰۰۰ · بالای ۱۰م → ۱۰۰٬۰۰۰).
+            گرد کردن قیمت فروش به‌صورت متمرکز توسط موتور قیمت‌گذاری انجام می‌شود
+            (زیر ۱م → ۱۰٬۰۰۰ · ۱م تا ۱۰م → ۵۰٬۰۰۰ · بالای ۱۰م → ۱۰۰٬۰۰۰).
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button onClick={submit} disabled={loading}>
             {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
           </Button>

@@ -10,32 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -60,14 +42,8 @@ interface ProductSupplierRow {
 }
 
 function trustBadge(level: TrustLevel | null) {
-  if (level === "high")
-    return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">بالا</Badge>;
-  if (level === "low")
-    return (
-      <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">
-        پایین
-      </Badge>
-    );
+  if (level === "high") return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">بالا</Badge>;
+  if (level === "low") return <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive">پایین</Badge>;
   return <Badge className="bg-amber-500 text-white hover:bg-amber-500">متوسط</Badge>;
 }
 
@@ -84,9 +60,7 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_suppliers")
-        .select(
-          "id, supplier_id, is_primary, notes, supplier:suppliers(id,name,contact_name,phone,city,trust_level,status)",
-        )
+        .select("id, supplier_id, is_primary, notes, supplier:suppliers(id,name,contact_name,phone,city,trust_level,status)")
         .eq("product_id", productId)
         .order("is_primary", { ascending: false });
       if (error) throw error;
@@ -113,8 +87,7 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
         <CardTitle className="text-base">تأمین‌کنندگان</CardTitle>
         {canManage && (
           <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="ms-1 h-4 w-4" />
-            افزودن تأمین‌کننده
+            <Plus className="ms-1 h-4 w-4" />افزودن تأمین‌کننده
           </Button>
         )}
       </CardHeader>
@@ -159,24 +132,17 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
                           )}
                           {r.is_primary && (
                             <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                              <Star className="ms-1 h-3 w-3" />
-                              اصلی
+                              <Star className="ms-1 h-3 w-3" />اصلی
                             </Badge>
                           )}
                         </div>
                       </td>
                       {canSeeContact && <td className="py-2">{r.supplier?.contact_name ?? "—"}</td>}
-                      {canSeeContact && (
-                        <td className="py-2 font-mono text-xs">{r.supplier?.phone ?? "—"}</td>
-                      )}
+                      {canSeeContact && <td className="py-2 font-mono text-xs">{r.supplier?.phone ?? "—"}</td>}
                       <td className="py-2">{r.supplier?.city ?? "—"}</td>
                       <td className="py-2">{trustBadge(r.supplier?.trust_level ?? null)}</td>
                       <td className="py-2 text-xs text-muted-foreground">
-                        {r.supplier?.status === "active"
-                          ? "فعال"
-                          : r.supplier?.status === "rejected"
-                            ? "رد شده"
-                            : "در انتظار"}
+                        {r.supplier?.status === "active" ? "فعال" : r.supplier?.status === "rejected" ? "رد شده" : "در انتظار"}
                       </td>
                       {canManage && (
                         <td className="py-2 pe-2 text-end">
@@ -205,14 +171,11 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
                         >
                           {r.supplier.name}
                         </Link>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      ) : <span className="text-muted-foreground">—</span>}
                       <div className="flex flex-wrap gap-1.5">
                         {r.is_primary && (
                           <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-                            <Star className="ms-1 h-3 w-3" />
-                            اصلی
+                            <Star className="ms-1 h-3 w-3" />اصلی
                           </Badge>
                         )}
                         {trustBadge(r.supplier?.trust_level ?? null)}
@@ -227,19 +190,11 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     {canSeeContact && (
                       <>
-                        <div>
-                          <span className="text-muted-foreground">تماس:</span>{" "}
-                          {r.supplier?.contact_name ?? "—"}
-                        </div>
-                        <div className="font-mono">
-                          <span className="text-muted-foreground">تلفن:</span>{" "}
-                          {r.supplier?.phone ?? "—"}
-                        </div>
+                        <div><span className="text-muted-foreground">تماس:</span> {r.supplier?.contact_name ?? "—"}</div>
+                        <div className="font-mono"><span className="text-muted-foreground">تلفن:</span> {r.supplier?.phone ?? "—"}</div>
                       </>
                     )}
-                    <div>
-                      <span className="text-muted-foreground">شهر:</span> {r.supplier?.city ?? "—"}
-                    </div>
+                    <div><span className="text-muted-foreground">شهر:</span> {r.supplier?.city ?? "—"}</div>
                   </div>
                 </div>
               ))}
@@ -282,11 +237,7 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
 }
 
 function AddSupplierDialog({
-  open,
-  onOpenChange,
-  productId,
-  existingSupplierIds,
-  existingPrimary,
+  open, onOpenChange, productId, existingSupplierIds, existingPrimary,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -329,10 +280,7 @@ function AddSupplierDialog({
   );
 
   const reset = () => {
-    setSupplierId(null);
-    setIsPrimary(false);
-    setNotes("");
-    setSearch("");
+    setSupplierId(null); setIsPrimary(false); setNotes(""); setSearch("");
   };
 
   const addMutation = useMutation({
@@ -367,13 +315,7 @@ function AddSupplierDialog({
   });
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        onOpenChange(v);
-        if (!v) reset();
-      }}
-    >
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>افزودن تأمین‌کننده به محصول</DialogTitle>
@@ -392,16 +334,10 @@ function AddSupplierDialog({
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command shouldFilter={false}>
-                  <CommandInput
-                    placeholder="جستجوی نام..."
-                    value={search}
-                    onValueChange={setSearch}
-                  />
+                  <CommandInput placeholder="جستجوی نام..." value={search} onValueChange={setSearch} />
                   <CommandList>
                     {loadingSuppliers ? (
-                      <div className="py-4 text-center text-sm text-muted-foreground">
-                        در حال بارگذاری...
-                      </div>
+                      <div className="py-4 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
                     ) : availableSuppliers.length === 0 ? (
                       <CommandEmpty>تأمین‌کننده‌ای یافت نشد.</CommandEmpty>
                     ) : (
@@ -410,21 +346,11 @@ function AddSupplierDialog({
                           <CommandItem
                             key={s.id}
                             value={s.id}
-                            onSelect={() => {
-                              setSupplierId(s.id);
-                              setPickerOpen(false);
-                            }}
+                            onSelect={() => { setSupplierId(s.id); setPickerOpen(false); }}
                           >
-                            <Check
-                              className={cn(
-                                "ms-2 h-4 w-4",
-                                supplierId === s.id ? "opacity-100" : "opacity-0",
-                              )}
-                            />
+                            <Check className={cn("ms-2 h-4 w-4", supplierId === s.id ? "opacity-100" : "opacity-0")} />
                             <span>{s.name}</span>
-                            {s.city && (
-                              <span className="ms-2 text-xs text-muted-foreground">{s.city}</span>
-                            )}
+                            {s.city && <span className="ms-2 text-xs text-muted-foreground">{s.city}</span>}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -442,13 +368,10 @@ function AddSupplierDialog({
               onCheckedChange={(v) => setIsPrimary(v === true)}
             />
             <div className="space-y-1">
-              <Label htmlFor="is-primary" className="cursor-pointer">
-                تأمین‌کننده اصلی
-              </Label>
+              <Label htmlFor="is-primary" className="cursor-pointer">تأمین‌کننده اصلی</Label>
               {isPrimary && existingPrimary && (
                 <p className="text-xs text-amber-600">
-                  «{existingPrimary.supplier?.name}» اکنون به‌عنوان اصلی ثبت شده. با تأیید، جایگزین
-                  خواهد شد.
+                  «{existingPrimary.supplier?.name}» اکنون به‌عنوان اصلی ثبت شده. با تأیید، جایگزین خواهد شد.
                 </p>
               )}
             </div>
@@ -468,13 +391,8 @@ function AddSupplierDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
-          <Button
-            onClick={() => addMutation.mutate()}
-            disabled={!supplierId || addMutation.isPending}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
+          <Button onClick={() => addMutation.mutate()} disabled={!supplierId || addMutation.isPending}>
             {addMutation.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}افزودن
           </Button>
         </DialogFooter>

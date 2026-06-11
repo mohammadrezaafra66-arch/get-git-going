@@ -1,18 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Loader2,
-  Pin,
-  PinOff,
-  Search,
-  Trash2,
-  Plus,
-  EyeOff,
-  Eye,
-  Sparkles,
-  Package,
-} from "lucide-react";
+import { Loader2, Pin, PinOff, Search, Trash2, Plus, EyeOff, Eye, Sparkles, Package } from "lucide-react";
 import { toast } from "sonner";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -52,7 +41,11 @@ function ProductRecommendationsAdminPage() {
         description="پین کردن، حذف یا تغییر اولویت پیشنهادهای خودکار سیستم برای هر محصول."
       />
 
-      <ProductPicker label="محصول مبدأ" onSelect={setSourceProduct} selected={sourceProduct} />
+      <ProductPicker
+        label="محصول مبدأ"
+        onSelect={setSourceProduct}
+        selected={sourceProduct}
+      />
 
       {sourceProduct ? (
         <ManagePanel sourceProduct={sourceProduct} />
@@ -112,15 +105,7 @@ function ProductPicker({ label, onSelect, selected, excludeId, autoClose }: Pick
                 {selected.sku && <span> · {selected.sku}</span>}
               </div>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                onSelect(null);
-                setOpen(true);
-              }}
-            >
+            <Button type="button" size="sm" variant="ghost" onClick={() => { onSelect(null); setOpen(true); }}>
               تغییر
             </Button>
           </div>
@@ -210,28 +195,19 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
   const updateMut = useMutation({
     mutationFn: (vars: { id: string; patch: Parameters<typeof updateOverride>[1] }) =>
       updateOverride(vars.id, vars.patch),
-    onSuccess: () => {
-      invalidate();
-      toast.success("به‌روزرسانی شد.");
-    },
+    onSuccess: () => { invalidate(); toast.success("به‌روزرسانی شد."); },
     onError: (e: Error) => toast.error(e.message ?? "خطا در به‌روزرسانی"),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteOverride(id),
-    onSuccess: () => {
-      invalidate();
-      toast.success("حذف شد.");
-    },
+    onSuccess: () => { invalidate(); toast.success("حذف شد."); },
     onError: (e: Error) => toast.error(e.message ?? "خطا در حذف"),
   });
 
   const createMut = useMutation({
     mutationFn: createOverride,
-    onSuccess: () => {
-      invalidate();
-      toast.success("override اضافه شد.");
-    },
+    onSuccess: () => { invalidate(); toast.success("override اضافه شد."); },
     onError: (e: Error) => toast.error(e.message ?? "خطا در ایجاد"),
   });
 
@@ -261,14 +237,9 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
           ) : (
             <ul className="divide-y divide-border">
               {recsQuery.data!.map((rec) => {
-                const ov = overridesQuery.data?.find(
-                  (o) => o.recommended_product_id === rec.product_id,
-                );
+                const ov = overridesQuery.data?.find((o) => o.recommended_product_id === rec.product_id);
                 return (
-                  <li
-                    key={rec.product_id}
-                    className="flex flex-wrap items-center justify-between gap-2 py-2"
-                  >
+                  <li key={rec.product_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Package className="h-3.5 w-3.5 text-muted-foreground" />
@@ -304,13 +275,11 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
                             size="sm"
                             variant="outline"
                             disabled={createMut.isPending}
-                            onClick={() =>
-                              createMut.mutate({
-                                product_id: productId,
-                                recommended_product_id: rec.product_id,
-                                is_pinned: true,
-                              })
-                            }
+                            onClick={() => createMut.mutate({
+                              product_id: productId,
+                              recommended_product_id: rec.product_id,
+                              is_pinned: true,
+                            })}
                           >
                             <Pin className="ms-1 h-3 w-3" /> پین
                           </Button>
@@ -319,13 +288,11 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
                             size="sm"
                             variant="ghost"
                             disabled={createMut.isPending}
-                            onClick={() =>
-                              createMut.mutate({
-                                product_id: productId,
-                                recommended_product_id: rec.product_id,
-                                is_disabled: true,
-                              })
-                            }
+                            onClick={() => createMut.mutate({
+                              product_id: productId,
+                              recommended_product_id: rec.product_id,
+                              is_disabled: true,
+                            })}
                           >
                             <EyeOff className="ms-1 h-3 w-3" /> حذف
                           </Button>
@@ -377,13 +344,11 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
       <ManualAddOverride
         sourceProductId={productId}
         existingRecIds={new Set((overridesQuery.data ?? []).map((o) => o.recommended_product_id))}
-        onAdd={(recommendedId) =>
-          createMut.mutate({
-            product_id: productId,
-            recommended_product_id: recommendedId,
-            is_pinned: true,
-          })
-        }
+        onAdd={(recommendedId) => createMut.mutate({
+          product_id: productId,
+          recommended_product_id: recommendedId,
+          is_pinned: true,
+        })}
         busy={createMut.isPending}
       />
     </div>
@@ -413,14 +378,10 @@ function OverrideRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <Package className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="truncate text-sm font-medium">
-            {product?.name ?? override.recommended_product_id}
-          </span>
+          <span className="truncate text-sm font-medium">{product?.name ?? override.recommended_product_id}</span>
           {override.is_pinned && <Badge className="h-4 px-1.5 text-[10px]">پین</Badge>}
           {override.is_disabled && (
-            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-              غیرفعال
-            </Badge>
+            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">غیرفعال</Badge>
           )}
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -458,11 +419,7 @@ function OverrideRow({
           onClick={() => onUpdate({ is_pinned: !override.is_pinned })}
           disabled={busy}
         >
-          {override.is_pinned ? (
-            <PinOff className="ms-1 h-3 w-3" />
-          ) : (
-            <Pin className="ms-1 h-3 w-3" />
-          )}
+          {override.is_pinned ? <PinOff className="ms-1 h-3 w-3" /> : <Pin className="ms-1 h-3 w-3" />}
           {override.is_pinned ? "برداشتن پین" : "پین"}
         </Button>
         <Button
@@ -472,11 +429,7 @@ function OverrideRow({
           onClick={() => onUpdate({ is_disabled: !override.is_disabled })}
           disabled={busy}
         >
-          {override.is_disabled ? (
-            <Eye className="ms-1 h-3 w-3" />
-          ) : (
-            <EyeOff className="ms-1 h-3 w-3" />
-          )}
+          {override.is_disabled ? <Eye className="ms-1 h-3 w-3" /> : <EyeOff className="ms-1 h-3 w-3" />}
           {override.is_disabled ? "فعال‌سازی" : "غیرفعال"}
         </Button>
         <Button
@@ -509,11 +462,7 @@ function OverrideQuickActions({
   return (
     <div className="flex items-center gap-1">
       {override.is_pinned && <Badge className="h-4 px-1.5 text-[10px]">پین</Badge>}
-      {override.is_disabled && (
-        <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-          غیرفعال
-        </Badge>
-      )}
+      {override.is_disabled && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">غیرفعال</Badge>}
       <Button
         type="button"
         size="sm"
@@ -521,11 +470,7 @@ function OverrideQuickActions({
         onClick={() => onUpdate({ is_pinned: !override.is_pinned })}
         disabled={busy}
       >
-        {override.is_pinned ? (
-          <PinOff className="ms-1 h-3 w-3" />
-        ) : (
-          <Pin className="ms-1 h-3 w-3" />
-        )}
+        {override.is_pinned ? <PinOff className="ms-1 h-3 w-3" /> : <Pin className="ms-1 h-3 w-3" />}
       </Button>
       <Button
         type="button"

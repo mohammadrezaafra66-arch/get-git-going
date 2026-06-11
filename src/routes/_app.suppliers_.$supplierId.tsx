@@ -12,23 +12,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SupplierForm } from "@/shared/components/SupplierForm";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/suppliers_/$supplierId")({
-  beforeLoad: async () => {
-    await requirePermission("suppliers", "view");
-  },
+  beforeLoad: async () => { await requirePermission("suppliers", "view"); },
   component: SupplierDetailPage,
 });
 
@@ -60,9 +52,7 @@ function SupplierDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("suppliers")
-        .select(
-          "id, name, contact_name, phone, city, notes, trust_level, status, created_at, updated_at, created_by",
-        )
+        .select("id, name, contact_name, phone, city, notes, trust_level, status, created_at, updated_at, created_by")
         .eq("id", supplierId)
         .maybeSingle();
       if (error) throw error;
@@ -94,11 +84,9 @@ function SupplierDetailPage() {
       return (
         <div className="space-y-4" dir="rtl">
           <PageHeader title="تأمین‌کننده جدید" />
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              دسترسی ایجاد تأمین‌کننده ندارید.
-            </CardContent>
-          </Card>
+          <Card><CardContent className="py-8 text-center text-muted-foreground">
+            دسترسی ایجاد تأمین‌کننده ندارید.
+          </CardContent></Card>
         </div>
       );
     }
@@ -113,11 +101,9 @@ function SupplierDetailPage() {
             </Button>
           }
         />
-        <Card>
-          <CardContent className="pt-6">
-            <SupplierForm />
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-6">
+          <SupplierForm />
+        </CardContent></Card>
       </div>
     );
   }
@@ -134,16 +120,14 @@ function SupplierDetailPage() {
     return (
       <div className="space-y-4" dir="rtl">
         <PageHeader title="یافت نشد" />
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            تأمین‌کننده مورد نظر یافت نشد.
-            <div className="mt-4">
-              <Button asChild variant="outline">
-                <Link to="/suppliers">بازگشت به لیست</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-8 text-center text-muted-foreground">
+          تأمین‌کننده مورد نظر یافت نشد.
+          <div className="mt-4">
+            <Button asChild variant="outline">
+              <Link to="/suppliers">بازگشت به لیست</Link>
+            </Button>
+          </div>
+        </CardContent></Card>
       </div>
     );
   }
@@ -176,10 +160,7 @@ function SupplierDetailPage() {
                 actionLabel="تأیید"
                 onConfirm={() => setStatus.mutate("active")}
                 trigger={
-                  <Button
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    disabled={setStatus.isPending}
-                  >
+                  <Button className="bg-emerald-600 hover:bg-emerald-700" disabled={setStatus.isPending}>
                     <Check className="ml-2 h-4 w-4" /> تأیید
                   </Button>
                 }
@@ -200,39 +181,30 @@ function SupplierDetailPage() {
         </Card>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <SupplierForm
-            supplierId={data.id}
-            hideStatus
-            defaultValues={{
-              name: data.name,
-              contact_name: data.contact_name ?? "",
-              phone: data.phone ?? "",
-              city: data.city ?? "",
-              notes: data.notes ?? "",
-              trust_level: data.trust_level,
-              status: data.status,
-            }}
-          />
-        </CardContent>
-      </Card>
+      <Card><CardContent className="pt-6">
+        <SupplierForm
+          supplierId={data.id}
+          hideStatus
+          defaultValues={{
+            name: data.name,
+            contact_name: data.contact_name ?? "",
+            phone: data.phone ?? "",
+            city: data.city ?? "",
+            notes: data.notes ?? "",
+            trust_level: data.trust_level,
+            status: data.status,
+          }}
+        />
+      </CardContent></Card>
     </div>
   );
 }
 
 function ConfirmAction({
-  title,
-  description,
-  actionLabel,
-  onConfirm,
-  trigger,
+  title, description, actionLabel, onConfirm, trigger,
 }: {
-  title: string;
-  description: string;
-  actionLabel: string;
-  onConfirm: () => void;
-  trigger: React.ReactNode;
+  title: string; description: string; actionLabel: string;
+  onConfirm: () => void; trigger: React.ReactNode;
 }) {
   return (
     <AlertDialog>

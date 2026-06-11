@@ -21,7 +21,14 @@ export const Route = createFileRoute("/public/sale-lists/$listId")({
   },
   head: ({ loaderData }) => {
     const title = loaderData ? `${loaderData.name} — لیست فروش افراکالا` : "لیست فروش افراکالا";
-    const description = loaderData?.description ?? "لیست فروش منتشرشده افراکالا.";
+    const description =
+      loaderData?.description ??
+      (loaderData
+        ? `لیست فروش «${loaderData.name}» شامل محصولات منتشرشده افراکالا با قیمت‌های به‌روز.`
+        : "لیست فروش منتشرشدهٔ افراکالا شامل محصولات و قیمت‌های به‌روز برای مشتریان.");
+    const url = loaderData
+      ? `https://get-git-going.lovable.app/public/sale-lists/${loaderData.id ?? ""}`
+      : "https://get-git-going.lovable.app/";
     return {
       meta: [
         { title },
@@ -29,8 +36,32 @@ export const Route = createFileRoute("/public/sale-lists/$listId")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
         { name: "robots", content: "noindex, nofollow" },
       ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: loaderData
+        ? [
+            {
+              type: "application/ld+json",
+              children: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                name: loaderData.name,
+                description,
+                url,
+                inLanguage: "fa-IR",
+                isPartOf: {
+                  "@type": "WebSite",
+                  name: "افراکالا",
+                  url: "https://get-git-going.lovable.app",
+                },
+              }),
+            },
+          ]
+        : [],
     };
   },
   notFoundComponent: PublicNotFound,
@@ -109,8 +140,7 @@ function PublicSaleListPage() {
               صفحه قبل
             </Button>
             <span className="text-muted-foreground">
-              صفحه {formatNumber(page)} از {formatNumber(totalPages)} •{" "}
-              {formatNumber(data.total_items)} محصول
+              صفحه {formatNumber(page)} از {formatNumber(totalPages)} • {formatNumber(data.total_items)} محصول
             </span>
             <Button
               variant="outline"

@@ -10,10 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DynamicProfileFields,
-  type DynamicValues,
-} from "@/components/profile/DynamicProfileFields";
+import { DynamicProfileFields, type DynamicValues } from "@/components/profile/DynamicProfileFields";
 import { fetchActiveProfileFields, saveProfileFieldValues } from "@/lib/profile-fields/queries";
 
 export const Route = createFileRoute("/register")({
@@ -28,6 +25,32 @@ export const Route = createFileRoute("/register")({
     }
   },
   component: RegisterPage,
+  head: () => ({
+    meta: [
+      { title: "ثبت‌نام در افراکالا" },
+      {
+        name: "description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:title", content: "ثبت‌نام در افراکالا" },
+      {
+        property: "og:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/register" },
+      { name: "twitter:title", content: "ثبت‌نام در افراکالا" },
+      {
+        name: "twitter:description",
+        content:
+          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+      },
+    ],
+    links: [
+      { rel: "canonical", href: "https://get-git-going.lovable.app/register" },
+    ],
+  }),
 });
 
 const schema = z.object({
@@ -36,11 +59,7 @@ const schema = z.object({
   phone: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09121234567)"),
   email: z.string().trim().email("ایمیل معتبر نیست").max(255),
   position_proposed: z.string().trim().max(100).optional().or(z.literal("")),
-  password: z
-    .string()
-    .min(8, "رمز عبور حداقل ۸ کاراکتر")
-    .regex(/[A-Za-z]/, "رمز باید حداقل یک حرف داشته باشد")
-    .regex(/\d/, "رمز باید حداقل یک عدد داشته باشد"),
+  password: z.string().min(8, "رمز عبور حداقل ۸ کاراکتر").regex(/[A-Za-z]/, "رمز باید حداقل یک حرف داشته باشد").regex(/\d/, "رمز باید حداقل یک عدد داشته باشد"),
 });
 
 function RegisterPage() {
@@ -48,12 +67,7 @@ function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    email: "",
-    position_proposed: "",
-    password: "",
+    first_name: "", last_name: "", phone: "", email: "", position_proposed: "", password: "",
   });
   const [dynValues, setDynValues] = useState<DynamicValues>({});
   const { data: dynFields = [] } = useQuery({
@@ -83,8 +97,7 @@ function RegisterPage() {
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
-          emailRedirectTo:
-            typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
+          emailRedirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
           data: {
             full_name: fullName,
             phone: parsed.data.phone,
@@ -121,19 +134,14 @@ function RegisterPage() {
   };
 
   return (
-    <div
-      dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8"
-    >
+    <main dir="rtl" className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
             <Sparkles className="h-7 w-7" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">ثبت‌نام در سامانه</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            پس از ثبت‌نام، حساب شما توسط مدیر بررسی و فعال می‌شود.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">پس از ثبت‌نام، حساب شما توسط مدیر بررسی و فعال می‌شود.</p>
         </div>
         <Card>
           <CardHeader>
@@ -145,66 +153,32 @@ function RegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="first_name">نام</Label>
-                  <Input
-                    id="first_name"
-                    value={form.first_name}
-                    onChange={(e) => upd("first_name", e.target.value)}
-                  />
-                  {errors.first_name && (
-                    <p className="text-xs text-destructive">{errors.first_name}</p>
-                  )}
+                  <Input id="first_name" value={form.first_name} onChange={(e) => upd("first_name", e.target.value)} />
+                  {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last_name">نام خانوادگی</Label>
-                  <Input
-                    id="last_name"
-                    value={form.last_name}
-                    onChange={(e) => upd("last_name", e.target.value)}
-                  />
-                  {errors.last_name && (
-                    <p className="text-xs text-destructive">{errors.last_name}</p>
-                  )}
+                  <Input id="last_name" value={form.last_name} onChange={(e) => upd("last_name", e.target.value)} />
+                  {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">شماره موبایل</Label>
-                <Input
-                  id="phone"
-                  dir="ltr"
-                  placeholder="09xxxxxxxxx"
-                  value={form.phone}
-                  onChange={(e) => upd("phone", e.target.value)}
-                />
+                <Input id="phone" dir="ltr" placeholder="09xxxxxxxxx" value={form.phone} onChange={(e) => upd("phone", e.target.value)} />
                 {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">ایمیل</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  dir="ltr"
-                  value={form.email}
-                  onChange={(e) => upd("email", e.target.value)}
-                />
+                <Input id="email" type="email" dir="ltr" value={form.email} onChange={(e) => upd("email", e.target.value)} />
                 {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="position_proposed">سمت پیشنهادی (اختیاری)</Label>
-                <Input
-                  id="position_proposed"
-                  value={form.position_proposed}
-                  onChange={(e) => upd("position_proposed", e.target.value)}
-                />
+                <Input id="position_proposed" value={form.position_proposed} onChange={(e) => upd("position_proposed", e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">رمز عبور (حداقل ۸ کاراکتر، شامل حروف و عدد)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  dir="ltr"
-                  value={form.password}
-                  onChange={(e) => upd("password", e.target.value)}
-                />
+                <Input id="password" type="password" dir="ltr" value={form.password} onChange={(e) => upd("password", e.target.value)} />
                 {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
               </div>
               {dynFields.length > 0 && (
@@ -222,15 +196,12 @@ function RegisterPage() {
                 {submitting ? "در حال ثبت‌نام..." : "ثبت‌نام"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                حساب دارید؟{" "}
-                <Link to="/login" className="text-primary">
-                  ورود
-                </Link>
+                حساب دارید؟ <Link to="/login" className="text-primary">ورود</Link>
               </p>
             </form>
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

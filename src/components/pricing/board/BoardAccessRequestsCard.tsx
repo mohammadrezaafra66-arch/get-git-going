@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { AMIN_HOZOOR_BOARD_KEY } from "@/lib/pricing/board-settings";
-import { fetchPendingBoardRequests, reviewBoardAccessRequest } from "@/lib/pricing/board-access";
+import {
+  fetchPendingBoardRequests,
+  reviewBoardAccessRequest,
+} from "@/lib/pricing/board-access";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export function BoardAccessRequestsCard() {
@@ -54,7 +57,9 @@ export function BoardAccessRequestsCard() {
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldCheck className="h-4 w-4" />
           درخواست‌های دسترسی به تابلوی امین حضور
-          {items.length > 0 && <Badge variant="secondary">{items.length}</Badge>}
+          {items.length > 0 && (
+            <Badge variant="secondary">{items.length}</Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -71,7 +76,9 @@ export function BoardAccessRequestsCard() {
               className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="space-y-1">
-                <div className="text-sm font-medium">{r.profile?.full_name ?? "بدون نام"}</div>
+                <div className="text-sm font-medium">
+                  {r.profile?.full_name ?? "بدون نام"}
+                </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {r.profile?.phone && <span>📱 {r.profile.phone}</span>}
                   <span>زمان درخواست: {formatDateTimeFa(new Date(r.requested_at))}</span>

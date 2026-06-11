@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, Copy, Check, Loader2, Play, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowLeft, BookOpen, Copy, Check, Loader2, Play, Eye, EyeOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,36 +14,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 export const Route = createFileRoute("/_app/bot-api-keys/docs")({
-  beforeLoad: async () => {
-    await requirePermission("bot-api-keys", "view");
-  },
+  beforeLoad: async () => { await requirePermission("bot-api-keys", "view"); },
   component: BotApiDocsPage,
 });
 
-interface KeyOpt {
-  id: string;
-  name: string;
-  key_prefix: string | null;
-  is_active: boolean;
-}
-interface AccessTable {
-  id: string;
-  name: string;
-  slug: string;
-  can_read: boolean;
-  can_update: boolean;
-}
+interface KeyOpt { id: string; name: string; key_prefix: string | null; is_active: boolean }
+interface AccessTable { id: string; name: string; slug: string; can_read: boolean; can_update: boolean }
 
 function CodeBlock({ code, lang }: { code: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
@@ -106,80 +91,64 @@ function BotApiDocsPage() {
     }
   }'`;
 
-  const sampleSuccessGet = JSON.stringify(
-    {
-      rows: [
-        {
-          row_id: "11111111-1111-1111-1111-111111111111",
-          row_number: 1,
-          is_active: true,
-          created_at: "2026-04-26T10:00:00Z",
-          updated_at: "2026-04-26T10:00:00Z",
-          values: { name: "نمونه", qty: 5, status: "open" },
-        },
-      ],
-      pagination: { page: 1, page_size: 50, total: 1, total_pages: 1 },
-    },
-    null,
-    2,
-  );
-
-  const sampleSuccessPatch = JSON.stringify(
-    {
-      row_id: "11111111-1111-1111-1111-111111111111",
-      updated_count: 2,
-      applied_columns: ["status", "qty"],
-    },
-    null,
-    2,
-  );
-
-  const sampleSuccessPost = JSON.stringify(
-    {
-      row_id: "22222222-2222-2222-2222-222222222222",
-      row_number: 42,
-      is_active: true,
-      created_at: "2026-05-16T10:00:00Z",
-      updated_at: "2026-05-16T10:00:00Z",
-      values: {
-        source: "rubika",
-        customer_name: "علی رضایی",
-        mobile: "09121234567",
-        status: "new",
+  const sampleSuccessGet = JSON.stringify({
+    rows: [
+      {
+        row_id: "11111111-1111-1111-1111-111111111111",
+        row_number: 1,
+        is_active: true,
+        created_at: "2026-04-26T10:00:00Z",
+        updated_at: "2026-04-26T10:00:00Z",
+        values: { name: "نمونه", qty: 5, status: "open" },
       },
+    ],
+    pagination: { page: 1, page_size: 50, total: 1, total_pages: 1 },
+  }, null, 2);
+
+  const sampleSuccessPatch = JSON.stringify({
+    row_id: "11111111-1111-1111-1111-111111111111",
+    updated_count: 2,
+    applied_columns: ["status", "qty"],
+  }, null, 2);
+
+  const sampleSuccessPost = JSON.stringify({
+    row_id: "22222222-2222-2222-2222-222222222222",
+    row_number: 42,
+    is_active: true,
+    created_at: "2026-05-16T10:00:00Z",
+    updated_at: "2026-05-16T10:00:00Z",
+    values: {
+      source: "rubika",
+      customer_name: "علی رضایی",
+      mobile: "09121234567",
+      status: "new",
     },
-    null,
-    2,
-  );
+  }, null, 2);
 
   const torobSlug = "torob-purchista-extracted-data";
   const torobBySlugCurl = `curl -X GET "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}" \\
   -H "Authorization: Bearer <API_KEY>"`;
 
-  const torobUpsertBody = JSON.stringify(
-    {
-      unique_by: ["source", "extraction_batch_id", "external_product_id"],
-      values: {
-        source: "torob",
-        extraction_batch_id: "batch-2026-05-16-001",
-        extracted_at: "2026-05-16T10:00:00Z",
-        external_product_id: "torob-12345",
-        product_url: "https://torob.com/p/12345",
-        product_title_raw: "گوشی سامسونگ گلکسی S24",
-        brand_raw: "Samsung",
-        model_raw: "Galaxy S24",
-        seller_name: "فروشگاه نمونه",
-        extracted_price_toman: 45000000,
-        stock_status_raw: "in_stock",
-        match_key: "samsung-galaxy-s24",
-        afrakala_product_id: "afk-9876",
-        match_confidence: 0.92,
-        bot_notes: "استخراج خودکار",
-      },
+  const torobUpsertBody = JSON.stringify({
+    unique_by: ["source", "extraction_batch_id", "external_product_id"],
+    values: {
+      source: "torob",
+      extraction_batch_id: "batch-2026-05-16-001",
+      extracted_at: "2026-05-16T10:00:00Z",
+      external_product_id: "torob-12345",
+      product_url: "https://torob.com/p/12345",
+      product_title_raw: "گوشی سامسونگ گلکسی S24",
+      brand_raw: "Samsung",
+      model_raw: "Galaxy S24",
+      seller_name: "فروشگاه نمونه",
+      extracted_price_toman: 45000000,
+      stock_status_raw: "in_stock",
+      match_key: "samsung-galaxy-s24",
+      afrakala_product_id: "afk-9876",
+      match_confidence: 0.92,
+      bot_notes: "استخراج خودکار",
     },
-    null,
-    2,
-  );
+  }, null, 2);
 
   const torobUpsertCurl = `curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert" \\
   -H "Authorization: Bearer <API_KEY>" \\
@@ -209,24 +178,15 @@ function BotApiDocsPage() {
         description="راهنمای استفاده از endpointهای عمومی ربات و ابزار تست داخلی"
         actions={
           <Button asChild variant="outline">
-            <Link to="/bot-api-keys">
-              <ArrowLeft className="ml-2 h-4 w-4" />
-              بازگشت
-            </Link>
+            <Link to="/bot-api-keys"><ArrowLeft className="ml-2 h-4 w-4" />بازگشت</Link>
           </Button>
         }
       />
 
       <Tabs defaultValue="docs" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="docs">
-            <BookOpen className="ml-2 h-4 w-4" />
-            مستندات
-          </TabsTrigger>
-          <TabsTrigger value="test">
-            <Play className="ml-2 h-4 w-4" />
-            تست داخلی
-          </TabsTrigger>
+          <TabsTrigger value="docs"><BookOpen className="ml-2 h-4 w-4" />مستندات</TabsTrigger>
+          <TabsTrigger value="test"><Play className="ml-2 h-4 w-4" />تست داخلی</TabsTrigger>
         </TabsList>
 
         <TabsContent value="docs" className="space-y-4">
@@ -236,607 +196,431 @@ function BotApiDocsPage() {
               <TabsTrigger value="products">محصولات / ربات ووردپرس</TabsTrigger>
             </TabsList>
             <TabsContent value="dynamic" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">معرفی Bot API</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm leading-7">
-                  <p>
-                    Bot API یک رابط امن و عمومی برای اتصال ربات‌ها (مانند ربات‌های تلگرام،
-                    اسکریپت‌های خودکار یا سرویس‌های خارجی) به «جداول داده پویا» این سامانه است.
-                  </p>
-                  <p>
-                    با این API می‌توان ردیف‌های یک جدول مشخص را خواند یا مقدار ستون‌های مجاز را
-                    به‌روزرسانی کرد. هر کلید API فقط به جداول و ستون‌هایی دسترسی دارد که مدیر صریحاً
-                    به آن داده باشد.
-                  </p>
-                  <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-                    <li>
-                      سه endpoint عمومی: GET برای خواندن، POST برای افزودن ردیف، PATCH برای
-                      به‌روزرسانی
-                    </li>
-                    <li>
-                      احراز هویت با هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code>
-                    </li>
-                    <li>کنترل دسترسی در سطح جدول و ستون، با Rate Limit و ثبت Usage Log</li>
-                  </ul>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">معرفی Bot API</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <p>
+                Bot API یک رابط امن و عمومی برای اتصال ربات‌ها (مانند ربات‌های تلگرام، اسکریپت‌های
+                خودکار یا سرویس‌های خارجی) به «جداول داده پویا» این سامانه است.
+              </p>
+              <p>
+                با این API می‌توان ردیف‌های یک جدول مشخص را خواند یا مقدار ستون‌های مجاز را
+                به‌روزرسانی کرد. هر کلید API فقط به جداول و ستون‌هایی دسترسی دارد که مدیر صریحاً به
+                آن داده باشد.
+              </p>
+              <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
+                <li>سه endpoint عمومی: GET برای خواندن، POST برای افزودن ردیف، PATCH برای به‌روزرسانی</li>
+                <li>احراز هویت با هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code></li>
+                <li>کنترل دسترسی در سطح جدول و ستون، با Rate Limit و ثبت Usage Log</li>
+              </ul>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">ساخت کلید API</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm leading-7">
-                  <ol className="list-decimal pr-5 space-y-1">
-                    <li>
-                      به صفحه{" "}
-                      <Link to="/bot-api-keys" className="underline">
-                        کلیدهای API
-                      </Link>{" "}
-                      بروید و «کلید جدید» بسازید.
-                    </li>
-                    <li>کلید خام فقط یک‌بار نمایش داده می‌شود؛ آن را در محل امنی ذخیره کنید.</li>
-                    <li>از بخش «دسترسی جداول» کلید را به جدول مورد نظر متصل کنید.</li>
-                    <li>
-                      برای هر جدول، گزینه‌های <strong>read</strong> و در صورت نیاز{" "}
-                      <strong>update</strong> را فعال کنید.
-                    </li>
-                    <li>
-                      اگر update فعال است، ستون‌های مجاز برای تغییر را در «ستون‌های قابل
-                      به‌روزرسانی» انتخاب کنید.
-                    </li>
-                    <li>
-                      توجه: برای افزودن ردیف جدید توسط ربات (POST)، گزینه «به‌روزرسانی» باید فعال
-                      باشد و ستون‌های مجاز انتخاب شده باشند.
-                    </li>
-                  </ol>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">ساخت کلید API</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <ol className="list-decimal pr-5 space-y-1">
+                <li>به صفحه <Link to="/bot-api-keys" className="underline">کلیدهای API</Link> بروید و «کلید جدید» بسازید.</li>
+                <li>کلید خام فقط یک‌بار نمایش داده می‌شود؛ آن را در محل امنی ذخیره کنید.</li>
+                <li>از بخش «دسترسی جداول» کلید را به جدول مورد نظر متصل کنید.</li>
+                <li>برای هر جدول، گزینه‌های <strong>read</strong> و در صورت نیاز <strong>update</strong> را فعال کنید.</li>
+                <li>اگر update فعال است، ستون‌های مجاز برای تغییر را در «ستون‌های قابل به‌روزرسانی» انتخاب کنید.</li>
+                <li>توجه: برای افزودن ردیف جدید توسط ربات (POST)، گزینه «به‌روزرسانی» باید فعال باشد و ستون‌های مجاز انتخاب شده باشند.</li>
+              </ol>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">احراز هویت</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <p>
-                    همه درخواست‌ها باید در هدر{" "}
-                    <code className="font-mono" dir="ltr">
-                      Authorization
-                    </code>{" "}
-                    دارای کلید API به شکل زیر باشند:
-                  </p>
-                  <CodeBlock lang="header" code={`Authorization: Bearer <API_KEY>`} />
-                  <p className="text-xs text-muted-foreground">
-                    کلید فقط یک‌بار هنگام ساخت نمایش داده می‌شود و در سرور به‌صورت رمزشده ذخیره
-                    می‌شود.
-                  </p>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">احراز هویت</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p>
+                همه درخواست‌ها باید در هدر <code className="font-mono" dir="ltr">Authorization</code>{" "}
+                دارای کلید API به شکل زیر باشند:
+              </p>
+              <CodeBlock lang="header" code={`Authorization: Bearer <API_KEY>`} />
+              <p className="text-xs text-muted-foreground">
+                کلید فقط یک‌بار هنگام ساخت نمایش داده می‌شود و در سرور به‌صورت رمزشده ذخیره می‌شود.
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge variant="outline">GET</Badge>
-                    خواندن ردیف‌های جدول
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <CodeBlock
-                    lang="endpoint"
-                    code={`GET /api/public/bot/dynamic-tables/{table_id}/rows`}
-                  />
-                  <div>
-                    <p className="font-medium mb-1">پارامترهای Query</p>
-                    <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-                      <li>
-                        <code dir="ltr">page</code> — شماره صفحه (پیش‌فرض ۱)
-                      </li>
-                      <li>
-                        <code dir="ltr">page_size</code> — اندازه صفحه (پیش‌فرض ۵۰، حداکثر ۱۰۰)
-                      </li>
-                      <li>
-                        <code dir="ltr">search</code> — جستجوی متنی روی مقادیر ردیف‌ها
-                      </li>
-                    </ul>
-                  </div>
-                  <CodeBlock lang="curl" code={docCurlGet} />
-                  <div>
-                    <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
-                    <CodeBlock lang="json" code={sampleSuccessGet} />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge variant="outline">GET</Badge>
+                خواندن ردیف‌های جدول
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <CodeBlock lang="endpoint" code={`GET /api/public/bot/dynamic-tables/{table_id}/rows`} />
+              <div>
+                <p className="font-medium mb-1">پارامترهای Query</p>
+                <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
+                  <li><code dir="ltr">page</code> — شماره صفحه (پیش‌فرض ۱)</li>
+                  <li><code dir="ltr">page_size</code> — اندازه صفحه (پیش‌فرض ۵۰، حداکثر ۱۰۰)</li>
+                  <li><code dir="ltr">search</code> — جستجوی متنی روی مقادیر ردیف‌ها</li>
+                </ul>
+              </div>
+              <CodeBlock lang="curl" code={docCurlGet} />
+              <div>
+                <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
+                <CodeBlock lang="json" code={sampleSuccessGet} />
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge variant="outline">PATCH</Badge>
-                    به‌روزرسانی یک ردیف
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <CodeBlock
-                    lang="endpoint"
-                    code={`PATCH /api/public/bot/dynamic-tables/{table_id}/rows/{row_id}`}
-                  />
-                  <div>
-                    <p className="font-medium mb-1">بدنه درخواست</p>
-                    <CodeBlock
-                      lang="json"
-                      code={`{ "values": { "<column_key>": <value>, ... } }`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      تنها ستون‌های موجود در «ستون‌های قابل تغییر» این کلید قابل به‌روزرسانی هستند.
-                      مقدارها بر اساس نوع ستون اعتبارسنجی می‌شوند (عدد، بولی، تاریخ و ...).
-                    </p>
-                  </div>
-                  <CodeBlock lang="curl" code={docCurlPatch} />
-                  <div>
-                    <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
-                    <CodeBlock lang="json" code={sampleSuccessPatch} />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge variant="outline">PATCH</Badge>
+                به‌روزرسانی یک ردیف
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <CodeBlock
+                lang="endpoint"
+                code={`PATCH /api/public/bot/dynamic-tables/{table_id}/rows/{row_id}`}
+              />
+              <div>
+                <p className="font-medium mb-1">بدنه درخواست</p>
+                <CodeBlock lang="json" code={`{ "values": { "<column_key>": <value>, ... } }`} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  تنها ستون‌های موجود در «ستون‌های قابل تغییر» این کلید قابل به‌روزرسانی هستند. مقدارها
+                  بر اساس نوع ستون اعتبارسنجی می‌شوند (عدد، بولی، تاریخ و ...).
+                </p>
+              </div>
+              <CodeBlock lang="curl" code={docCurlPatch} />
+              <div>
+                <p className="font-medium mb-1">نمونه پاسخ موفق (200)</p>
+                <CodeBlock lang="json" code={sampleSuccessPatch} />
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge variant="outline">POST</Badge>
-                    افزودن ردیف جدید (ثبت داده استخراجی ربات)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <CodeBlock
-                    lang="endpoint"
-                    code={`POST /api/public/bot/dynamic-tables/{table_id}/rows`}
-                  />
-                  <div>
-                    <p className="font-medium mb-1">بدنه درخواست (پیشنهادی)</p>
-                    <CodeBlock
-                      lang="json"
-                      code={`{ "values": { "<column_key>": <value>, ... } }`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      فقط ستون‌های موجود در «ستون‌های قابل به‌روزرسانی» این کلید قابل ثبت هستند.
-                      ستون‌های الزامی (is_required) باید مقدار داشته باشند، در غیر این صورت خطای
-                      <code dir="ltr"> required_column_missing</code> برمی‌گردد. نوع داده هر ستون
-                      اعتبارسنجی می‌شود.
-                    </p>
-                  </div>
-                  <CodeBlock lang="curl" code={docCurlPost} />
-                  <div>
-                    <p className="font-medium mb-1">نمونه پاسخ موفق (201)</p>
-                    <CodeBlock lang="json" code={sampleSuccessPost} />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge variant="outline">POST</Badge>
+                افزودن ردیف جدید (ثبت داده استخراجی ربات)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <CodeBlock
+                lang="endpoint"
+                code={`POST /api/public/bot/dynamic-tables/{table_id}/rows`}
+              />
+              <div>
+                <p className="font-medium mb-1">بدنه درخواست (پیشنهادی)</p>
+                <CodeBlock lang="json" code={`{ "values": { "<column_key>": <value>, ... } }`} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  فقط ستون‌های موجود در «ستون‌های قابل به‌روزرسانی» این کلید قابل ثبت هستند.
+                  ستون‌های الزامی (is_required) باید مقدار داشته باشند، در غیر این صورت خطای
+                  <code dir="ltr"> required_column_missing</code> برمی‌گردد. نوع داده هر ستون
+                  اعتبارسنجی می‌شود.
+                </p>
+              </div>
+              <CodeBlock lang="curl" code={docCurlPost} />
+              <div>
+                <p className="font-medium mb-1">نمونه پاسخ موفق (201)</p>
+                <CodeBlock lang="json" code={sampleSuccessPost} />
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">خطاهای رایج</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <ErrorRow
-                      status={401}
-                      code="invalid_key | missing_key | inactive_key | expired_key"
-                      desc="کلید API نامعتبر، غیرفعال، منقضی یا ارسال نشده است."
-                    />
-                    <ErrorRow
-                      status={403}
-                      code="forbidden_table | forbidden_read | forbidden_update | column_not_allowed"
-                      desc="کلید مجوز دسترسی به این جدول/ستون را ندارد."
-                    />
-                    <ErrorRow status={404} code="row_not_found" desc="ردیف موردنظر یافت نشد." />
-                    <ErrorRow
-                      status={400}
-                      code="invalid_json | invalid_values | unknown_column"
-                      desc="بدنه درخواست JSON معتبر نیست، آبجکت نیست، یا ستون ناشناخته‌ای ارسال شده است."
-                    />
-                    <ErrorRow
-                      status={400}
-                      code="required_column_missing"
-                      desc="یکی از ستون‌های الزامی در POST مقدار ندارد."
-                    />
-                    <ErrorRow
-                      status={400}
-                      code="invalid_number | invalid_boolean | invalid_date | invalid_datetime | value_too_long"
-                      desc="مقدار یکی از ستون‌ها با نوع داده ستون سازگار نیست."
-                    />
-                    <ErrorRow
-                      status={413}
-                      code="body_too_large"
-                      desc="اندازه بدنه درخواست بیش از حد مجاز (۶۴ کیلوبایت) است."
-                    />
-                    <ErrorRow
-                      status={429}
-                      code="rate_limit_per_minute | rate_limit_per_day | rate_limit_ip_failures"
-                      desc="از حد مجاز درخواست‌ها عبور کرده‌اید. هدر Retry-After را بررسی کنید."
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">خطاهای رایج</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <ErrorRow status={401} code="invalid_key | missing_key | inactive_key | expired_key"
+                  desc="کلید API نامعتبر، غیرفعال، منقضی یا ارسال نشده است." />
+                <ErrorRow status={403} code="forbidden_table | forbidden_read | forbidden_update | column_not_allowed"
+                  desc="کلید مجوز دسترسی به این جدول/ستون را ندارد." />
+                <ErrorRow status={404} code="row_not_found"
+                  desc="ردیف موردنظر یافت نشد." />
+                <ErrorRow status={400} code="invalid_json | invalid_values | unknown_column"
+                  desc="بدنه درخواست JSON معتبر نیست، آبجکت نیست، یا ستون ناشناخته‌ای ارسال شده است." />
+                <ErrorRow status={400} code="required_column_missing"
+                  desc="یکی از ستون‌های الزامی در POST مقدار ندارد." />
+                <ErrorRow status={400} code="invalid_number | invalid_boolean | invalid_date | invalid_datetime | value_too_long"
+                  desc="مقدار یکی از ستون‌ها با نوع داده ستون سازگار نیست." />
+                <ErrorRow status={413} code="body_too_large"
+                  desc="اندازه بدنه درخواست بیش از حد مجاز (۶۴ کیلوبایت) است." />
+                <ErrorRow status={429} code="rate_limit_per_minute | rate_limit_per_day | rate_limit_ip_failures"
+                  desc="از حد مجاز درخواست‌ها عبور کرده‌اید. هدر Retry-After را بررسی کنید." />
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge variant="outline">GET</Badge>
-                    محصولات (برای ربات ووردپرس)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <p className="text-muted-foreground">
-                    مستندات کامل این بخش به تب «محصولات / ربات ووردپرس» منتقل شده است.
-                  </p>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge variant="outline">GET</Badge>
+                محصولات (برای ربات ووردپرس)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                مستندات کامل این بخش به تب «محصولات / ربات ووردپرس» منتقل شده است.
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">محدودیت نرخ (Rate Limit)</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm leading-7">
-                  <ul className="list-disc pr-5 space-y-1">
-                    <li>
-                      حداکثر <strong>۱۲۰ درخواست در دقیقه</strong> برای هر کلید.
-                    </li>
-                    <li>
-                      حداکثر <strong>۵۰۰۰ درخواست در روز</strong> برای هر کلید.
-                    </li>
-                    <li>
-                      حداکثر <strong>۳۰ درخواست ناموفق در ۱۰ دقیقه</strong> برای هر IP (برای جلوگیری
-                      از حملات brute-force).
-                    </li>
-                  </ul>
-                  <p className="text-xs text-muted-foreground">
-                    در صورت عبور از سقف، پاسخ <code dir="ltr">HTTP 429</code> همراه با هدر
-                    <code dir="ltr"> Retry-After</code> برمی‌گردد. مقدار این هدر به ثانیه است و نشان
-                    می‌دهد ربات باید پیش از ارسال درخواست بعدی چقدر صبر کند.
-                  </p>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">محدودیت نرخ (Rate Limit)</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm leading-7">
+              <ul className="list-disc pr-5 space-y-1">
+                <li>حداکثر <strong>۱۲۰ درخواست در دقیقه</strong> برای هر کلید.</li>
+                <li>حداکثر <strong>۵۰۰۰ درخواست در روز</strong> برای هر کلید.</li>
+                <li>حداکثر <strong>۳۰ درخواست ناموفق در ۱۰ دقیقه</strong> برای هر IP (برای جلوگیری از حملات brute-force).</li>
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                در صورت عبور از سقف، پاسخ <code dir="ltr">HTTP 429</code> همراه با هدر
+                <code dir="ltr"> Retry-After</code> برمی‌گردد. مقدار این هدر به ثانیه است و نشان می‌دهد
+                ربات باید پیش از ارسال درخواست بعدی چقدر صبر کند.
+              </p>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">نمونه درخواست با curl</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div>
-                    <p className="font-medium mb-1">GET — خواندن ردیف‌ها</p>
-                    <CodeBlock lang="bash" code={docCurlGet} />
-                  </div>
-                  <div>
-                    <p className="font-medium mb-1">PATCH — به‌روزرسانی یک ردیف</p>
-                    <CodeBlock lang="bash" code={docCurlPatch} />
-                  </div>
-                  <div>
-                    <p className="font-medium mb-1">POST — افزودن ردیف جدید</p>
-                    <CodeBlock lang="bash" code={docCurlPost} />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">نمونه درخواست با curl</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div>
+                <p className="font-medium mb-1">GET — خواندن ردیف‌ها</p>
+                <CodeBlock lang="bash" code={docCurlGet} />
+              </div>
+              <div>
+                <p className="font-medium mb-1">PATCH — به‌روزرسانی یک ردیف</p>
+                <CodeBlock lang="bash" code={docCurlPatch} />
+              </div>
+              <div>
+                <p className="font-medium mb-1">POST — افزودن ردیف جدید</p>
+                <CodeBlock lang="bash" code={docCurlPost} />
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">چک‌لیست اتصال ربات</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm leading-7">
-                  <ol className="list-decimal pr-5 space-y-1">
-                    <li>یک کلید API بسازید و کلید خام را ذخیره کنید.</li>
-                    <li>
-                      کلید را به جدول هدف متصل کرده و سطح دسترسی (read / update) را تعیین کنید.
-                    </li>
-                    <li>اگر نیاز به تغییر ستون‌ها هست، ستون‌های قابل update را مشخص کنید.</li>
-                    <li>
-                      درخواست را در «
-                      <Link to="/bot-api-keys/playground" className="underline">
-                        API Playground
-                      </Link>
-                      » تست کنید.
-                    </li>
-                    <li>کلید را در ربات/سرویس خود تنظیم کرده و درخواست‌ها را ارسال کنید.</li>
-                    <li>
-                      مصرف و خطاها را در «
-                      <Link to="/bot-api-keys/usage" className="underline">
-                        گزارش استفاده
-                      </Link>
-                      » پایش کنید.
-                    </li>
-                  </ol>
-                </CardContent>
-              </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">چک‌لیست اتصال ربات</CardTitle></CardHeader>
+            <CardContent className="text-sm leading-7">
+              <ol className="list-decimal pr-5 space-y-1">
+                <li>یک کلید API بسازید و کلید خام را ذخیره کنید.</li>
+                <li>کلید را به جدول هدف متصل کرده و سطح دسترسی (read / update) را تعیین کنید.</li>
+                <li>اگر نیاز به تغییر ستون‌ها هست، ستون‌های قابل update را مشخص کنید.</li>
+                <li>درخواست را در «<Link to="/bot-api-keys/playground" className="underline">API Playground</Link>» تست کنید.</li>
+                <li>کلید را در ربات/سرویس خود تنظیم کرده و درخواست‌ها را ارسال کنید.</li>
+                <li>مصرف و خطاها را در «<Link to="/bot-api-keys/usage" className="underline">گزارش استفاده</Link>» پایش کنید.</li>
+              </ol>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge>Torob / Purchista</Badge>
-                    قرارداد API جدول دیتای استخراج‌شده ترب - پورچیستا
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm leading-7">
-                  <div className="space-y-1">
-                    <p>
-                      این بخش قرارداد رسمی ارسال داده توسط ربات استخراج ترب/پورچیستا به جدول
-                      داینامیک
-                      <code dir="ltr"> torob-purchista-extracted-data</code> را مستند می‌کند.
-                      کلیدهای ستون‌ها دقیقاً مطابق Seed واقعی دیتابیس هستند و باید بدون تغییر
-                      استفاده شوند.
-                    </p>
-                    <ul className="list-disc pr-5 text-xs text-muted-foreground">
-                      <li>
-                        <strong>Slug:</strong> <code dir="ltr">torob-purchista-extracted-data</code>
-                      </li>
-                      <li>
-                        <strong>Table ID:</strong>{" "}
-                        <code dir="ltr">918c6729-c82c-4f20-8b66-77cf0954ba50</code>
-                      </li>
-                      <li>
-                        تمام درخواست‌ها نیاز به هدر{" "}
-                        <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code> دارند.
-                      </li>
-                    </ul>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge>Torob / Purchista</Badge>
+                قرارداد API جدول دیتای استخراج‌شده ترب - پورچیستا
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm leading-7">
+              <div className="space-y-1">
+                <p>
+                  این بخش قرارداد رسمی ارسال داده توسط ربات استخراج ترب/پورچیستا به جدول داینامیک
+                  <code dir="ltr"> torob-purchista-extracted-data</code> را مستند می‌کند. کلیدهای
+                  ستون‌ها دقیقاً مطابق Seed واقعی دیتابیس هستند و باید بدون تغییر استفاده شوند.
+                </p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground">
+                  <li><strong>Slug:</strong> <code dir="ltr">torob-purchista-extracted-data</code></li>
+                  <li><strong>Table ID:</strong> <code dir="ltr">918c6729-c82c-4f20-8b66-77cf0954ba50</code></li>
+                  <li>تمام درخواست‌ها نیاز به هدر <code dir="ltr">Authorization: Bearer &lt;API_KEY&gt;</code> دارند.</li>
+                </ul>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۱) دریافت متادیتا با Slug</p>
-                    <CodeBlock
-                      lang="endpoint"
-                      code={`GET /api/public/bot/dynamic-tables/by-slug/${torobSlug}`}
-                    />
-                    <CodeBlock lang="curl" code={torobBySlugCurl} />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      پاسخ شامل لیست ستون‌ها، نوع داده، الزامی بودن و فلگ{" "}
-                      <code dir="ltr">is_computed</code> است.
-                    </p>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۱) دریافت متادیتا با Slug</p>
+                <CodeBlock lang="endpoint" code={`GET /api/public/bot/dynamic-tables/by-slug/${torobSlug}`} />
+                <CodeBlock lang="curl" code={torobBySlugCurl} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  پاسخ شامل لیست ستون‌ها، نوع داده، الزامی بودن و فلگ <code dir="ltr">is_computed</code> است.
+                </p>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۲) Upsert ردیف بر اساس کلید یکتا</p>
-                    <CodeBlock
-                      lang="endpoint"
-                      code={`POST /api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert`}
-                    />
-                    <p className="text-xs text-muted-foreground mb-2">
-                      مقدار <code dir="ltr">unique_by</code> الزامی است و باید دقیقاً برابر با
-                      <code dir="ltr">
-                        {" "}
-                        ["source","extraction_batch_id","external_product_id"]
-                      </code>{" "}
-                      باشد. در صورت ارسال آرایه خالی یا نادرست، خطای{" "}
-                      <code dir="ltr">invalid_unique_by</code>
-                      با وضعیت ۴۰۰ برمی‌گردد.
-                    </p>
-                    <CodeBlock lang="json" code={torobUpsertBody} />
-                    <CodeBlock lang="curl" code={torobUpsertCurl} />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      پاسخ موفق: <code dir="ltr">201 Created</code> برای ردیف جدید یا
-                      <code dir="ltr"> 200 OK</code> برای به‌روزرسانی ردیف موجود.
-                    </p>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۲) Upsert ردیف بر اساس کلید یکتا</p>
+                <CodeBlock
+                  lang="endpoint"
+                  code={`POST /api/public/bot/dynamic-tables/by-slug/${torobSlug}/rows/upsert`}
+                />
+                <p className="text-xs text-muted-foreground mb-2">
+                  مقدار <code dir="ltr">unique_by</code> الزامی است و باید دقیقاً برابر با
+                  <code dir="ltr"> ["source","extraction_batch_id","external_product_id"]</code> باشد.
+                  در صورت ارسال آرایه خالی یا نادرست، خطای <code dir="ltr">invalid_unique_by</code>
+                  با وضعیت ۴۰۰ برمی‌گردد.
+                </p>
+                <CodeBlock lang="json" code={torobUpsertBody} />
+                <CodeBlock lang="curl" code={torobUpsertCurl} />
+                <p className="text-xs text-muted-foreground mt-2">
+                  پاسخ موفق: <code dir="ltr">201 Created</code> برای ردیف جدید یا
+                  <code dir="ltr"> 200 OK</code> برای به‌روزرسانی ردیف موجود.
+                </p>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۳) ستون‌های قابل نوشتن توسط ربات</p>
-                    <div className="overflow-x-auto rounded-md border border-border">
-                      <table className="w-full text-xs" dir="ltr">
-                        <thead className="bg-muted/40">
-                          <tr>
-                            <th className="p-2 text-left">column_key</th>
-                            <th className="p-2 text-left">type</th>
-                            <th className="p-2 text-left">required</th>
-                          </tr>
-                        </thead>
-                        <tbody className="font-mono">
-                          {[
-                            ["source", "status (enum)", "✔"],
-                            ["extraction_batch_id", "text", "✔"],
-                            ["extracted_at", "datetime (ISO 8601)", "✔"],
-                            ["external_product_id", "text", "—"],
-                            ["product_url", "text (URL)", "—"],
-                            ["product_title_raw", "text", "✔"],
-                            ["brand_raw", "text", "—"],
-                            ["model_raw", "text", "—"],
-                            ["seller_name", "text", "—"],
-                            ["extracted_price_toman", "number", "—"],
-                            ["stock_status_raw", "status (enum)", "—"],
-                            ["match_key", "text", "—"],
-                            ["afrakala_product_id", "text", "—"],
-                            ["match_confidence", "number (0..1)", "—"],
-                            ["bot_notes", "text", "—"],
-                          ].map(([k, t, r]) => (
-                            <tr key={k} className="border-t border-border">
-                              <td className="p-2">{k}</td>
-                              <td className="p-2">{t}</td>
-                              <td className="p-2">{r}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۳) ستون‌های قابل نوشتن توسط ربات</p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-xs" dir="ltr">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-2 text-left">column_key</th>
+                        <th className="p-2 text-left">type</th>
+                        <th className="p-2 text-left">required</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {[
+                        ["source", "status (enum)", "✔"],
+                        ["extraction_batch_id", "text", "✔"],
+                        ["extracted_at", "datetime (ISO 8601)", "✔"],
+                        ["external_product_id", "text", "—"],
+                        ["product_url", "text (URL)", "—"],
+                        ["product_title_raw", "text", "✔"],
+                        ["brand_raw", "text", "—"],
+                        ["model_raw", "text", "—"],
+                        ["seller_name", "text", "—"],
+                        ["extracted_price_toman", "number", "—"],
+                        ["stock_status_raw", "status (enum)", "—"],
+                        ["match_key", "text", "—"],
+                        ["afrakala_product_id", "text", "—"],
+                        ["match_confidence", "number (0..1)", "—"],
+                        ["bot_notes", "text", "—"],
+                      ].map(([k, t, r]) => (
+                        <tr key={k} className="border-t border-border">
+                          <td className="p-2">{k}</td>
+                          <td className="p-2">{t}</td>
+                          <td className="p-2">{r}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۴) ستون‌های محاسباتی (Read-only)</p>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      این ستون‌ها به‌صورت خودکار توسط سرور محاسبه می‌شوند. ربات
-                      <strong> نباید </strong> آن‌ها را در <code dir="ltr">values</code> ارسال کند؛
-                      در غیر این صورت پاسخ <code dir="ltr">403 column_not_allowed</code> دریافت
-                      خواهد شد.
-                    </p>
-                    <ul className="list-disc pr-5 text-xs font-mono" dir="ltr">
-                      <li>afrakala_purchase_price_toman</li>
-                      <li>afrakala_min_sale_price</li>
-                      <li>latest_batch_average_price</li>
-                      <li>price_gap_to_market_avg</li>
-                      <li>price_gap_percent_to_market_avg</li>
-                    </ul>
-                    <CodeBlock lang="curl" code={torobComputedRejectCurl} />
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۴) ستون‌های محاسباتی (Read-only)</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  این ستون‌ها به‌صورت خودکار توسط سرور محاسبه می‌شوند. ربات
+                  <strong> نباید </strong> آن‌ها را در <code dir="ltr">values</code> ارسال کند؛
+                  در غیر این صورت پاسخ <code dir="ltr">403 column_not_allowed</code> دریافت خواهد شد.
+                </p>
+                <ul className="list-disc pr-5 text-xs font-mono" dir="ltr">
+                  <li>afrakala_purchase_price_toman</li>
+                  <li>afrakala_min_sale_price</li>
+                  <li>latest_batch_average_price</li>
+                  <li>price_gap_to_market_avg</li>
+                  <li>price_gap_percent_to_market_avg</li>
+                </ul>
+                <CodeBlock lang="curl" code={torobComputedRejectCurl} />
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۵) جدول تطبیق کلیدهای قدیمی → کلیدهای واقعی</p>
-                    <div className="overflow-x-auto rounded-md border border-border">
-                      <table className="w-full text-xs" dir="ltr">
-                        <thead className="bg-muted/40">
-                          <tr>
-                            <th className="p-2 text-left">old / wrong key</th>
-                            <th className="p-2 text-left">real seeded key</th>
-                          </tr>
-                        </thead>
-                        <tbody className="font-mono">
-                          {[
-                            ["external_url", "product_url"],
-                            ["matched_product_id", "afrakala_product_id"],
-                            ["availability_status", "stock_status_raw"],
-                            ["notes", "bot_notes"],
-                            [
-                              "latest_purchase_price_toman",
-                              "afrakala_purchase_price_toman (computed)",
-                            ],
-                            ["min_sale_price", "afrakala_min_sale_price (computed)"],
-                          ].map(([o, n]) => (
-                            <tr key={o} className="border-t border-border">
-                              <td className="p-2 text-destructive">{o}</td>
-                              <td className="p-2">{n}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      توجه: کلیدهای <code dir="ltr">seller_url</code> و{" "}
-                      <code dir="ltr">raw_payload</code>
-                      در Seed فعلی جدول تعریف نشده‌اند و ارسال آن‌ها باعث خطای
-                      <code dir="ltr"> unknown_column</code> می‌شود. تا زمانی که migration رسمی برای
-                      افزودن این ستون‌ها ایجاد نشده، نباید ارسال شوند.
-                    </p>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۵) جدول تطبیق کلیدهای قدیمی → کلیدهای واقعی</p>
+                <div className="overflow-x-auto rounded-md border border-border">
+                  <table className="w-full text-xs" dir="ltr">
+                    <thead className="bg-muted/40">
+                      <tr>
+                        <th className="p-2 text-left">old / wrong key</th>
+                        <th className="p-2 text-left">real seeded key</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {[
+                        ["external_url", "product_url"],
+                        ["matched_product_id", "afrakala_product_id"],
+                        ["availability_status", "stock_status_raw"],
+                        ["notes", "bot_notes"],
+                        ["latest_purchase_price_toman", "afrakala_purchase_price_toman (computed)"],
+                        ["min_sale_price", "afrakala_min_sale_price (computed)"],
+                      ].map(([o, n]) => (
+                        <tr key={o} className="border-t border-border">
+                          <td className="p-2 text-destructive">{o}</td>
+                          <td className="p-2">{n}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  توجه: کلیدهای <code dir="ltr">seller_url</code> و <code dir="ltr">raw_payload</code>
+                  در Seed فعلی جدول تعریف نشده‌اند و ارسال آن‌ها باعث خطای
+                  <code dir="ltr"> unknown_column</code> می‌شود. تا زمانی که migration رسمی برای
+                  افزودن این ستون‌ها ایجاد نشده، نباید ارسال شوند.
+                </p>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۶) ملاحظات امنیتی</p>
-                    <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
-                      <li>
-                        کلید API باید فقط از صفحه{" "}
-                        <Link to="/bot-api-keys" className="underline">
-                          Bot API Keys
-                        </Link>{" "}
-                        ساخته شود.
-                      </li>
-                      <li>
-                        دسترسی کلید را فقط به همین جدول (<code dir="ltr">{torobSlug}</code>) محدود
-                        کنید.
-                      </li>
-                      <li>
-                        گزینه <code dir="ltr">can_update=true</code> الزامی است (upsert از مسیر
-                        update عبور می‌کند).
-                      </li>
-                      <li>
-                        در «ستون‌های قابل به‌روزرسانی» فقط ستون‌های غیرمحاسباتی بالا را انتخاب کنید.
-                      </li>
-                      <li>
-                        کلید خام را هرگز در frontend، repo عمومی یا لاگ‌ها قرار ندهید؛ فقط در ENV
-                        سرور ربات نگهداری شود.
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+              <div>
+                <p className="font-medium mb-1">۶) ملاحظات امنیتی</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li>کلید API باید فقط از صفحه <Link to="/bot-api-keys" className="underline">Bot API Keys</Link> ساخته شود.</li>
+                  <li>دسترسی کلید را فقط به همین جدول (<code dir="ltr">{torobSlug}</code>) محدود کنید.</li>
+                  <li>گزینه <code dir="ltr">can_update=true</code> الزامی است (upsert از مسیر update عبور می‌کند).</li>
+                  <li>در «ستون‌های قابل به‌روزرسانی» فقط ستون‌های غیرمحاسباتی بالا را انتخاب کنید.</li>
+                  <li>کلید خام را هرگز در frontend، repo عمومی یا لاگ‌ها قرار ندهید؛ فقط در ENV سرور ربات نگهداری شود.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Badge>رصدخانه</Badge>
-                    قرارداد API رصدخانه قیمت محصولات افراکالا
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm leading-7">
-                  <p>
-                    این بخش قرارداد ربات قیمت‌گذاری برای جدول «رصدخانه قیمت محصولات افراکالا» را
-                    توضیح می‌دهد. ربات فقط داده‌های بازار (ترب و پورچیستا) را برای محصولات فعال
-                    افراکالا به‌روز می‌کند و حق ساخت/حذف ردیف یا تغییر ستون‌های دیگر را ندارد.
-                  </p>
-                  <div className="text-xs space-y-1">
-                    <p>
-                      <span className="font-medium">slug جدول:</span>{" "}
-                      <code dir="ltr">afrakala-product-price-observatory</code>
-                    </p>
-                    <p>
-                      <span className="font-medium">unique_by:</span>{" "}
-                      <code dir="ltr">["afrakala_product_id"]</code>
-                    </p>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Badge>رصدخانه</Badge>
+                قرارداد API رصدخانه قیمت محصولات افراکالا
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-7">
+              <p>
+                این بخش قرارداد ربات قیمت‌گذاری برای جدول «رصدخانه قیمت محصولات افراکالا»
+                را توضیح می‌دهد. ربات فقط داده‌های بازار (ترب و پورچیستا) را برای محصولات
+                فعال افراکالا به‌روز می‌کند و حق ساخت/حذف ردیف یا تغییر ستون‌های دیگر را ندارد.
+              </p>
+              <div className="text-xs space-y-1">
+                <p><span className="font-medium">slug جدول:</span> <code dir="ltr">afrakala-product-price-observatory</code></p>
+                <p><span className="font-medium">unique_by:</span> <code dir="ltr">["afrakala_product_id"]</code></p>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">گرفتن metadata جدول</p>
-                    <CodeBlock
-                      lang="endpoint"
-                      code={`GET /api/public/bot/dynamic-tables/by-slug/afrakala-product-price-observatory`}
-                    />
-                  </div>
+              <div>
+                <p className="font-medium mb-1">گرفتن metadata جدول</p>
+                <CodeBlock lang="endpoint" code={`GET /api/public/bot/dynamic-tables/by-slug/afrakala-product-price-observatory`} />
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">۹ ستون مجاز برای ربات</p>
-                    <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
-                      <li>
-                        <code dir="ltr">torob_avg_price_toman</code> — میانگین قیمت ترب
-                      </li>
-                      <li>
-                        <code dir="ltr">torob_min_price_toman</code> — کمترین قیمت ترب
-                      </li>
-                      <li>
-                        <code dir="ltr">torob_max_price_toman</code> — بیشترین قیمت ترب
-                      </li>
-                      <li>
-                        <code dir="ltr">torob_seller_count</code> — تعداد فروشنده ترب
-                      </li>
-                      <li>
-                        <code dir="ltr">torob_last_seen_at</code> — آخرین رصد ترب (datetime ISO)
-                      </li>
-                      <li>
-                        <code dir="ltr">purchista_avg_price_toman</code> — میانگین قیمت پورچیستا
-                      </li>
-                      <li>
-                        <code dir="ltr">purchista_min_price_toman</code> — کمترین قیمت پورچیستا
-                      </li>
-                      <li>
-                        <code dir="ltr">purchista_max_price_toman</code> — بیشترین قیمت پورچیستا
-                      </li>
-                      <li>
-                        <code dir="ltr">purchista_last_seen_at</code> — آخرین رصد پورچیستا (datetime
-                        ISO)
-                      </li>
-                    </ul>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">۹ ستون مجاز برای ربات</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li><code dir="ltr">torob_avg_price_toman</code> — میانگین قیمت ترب</li>
+                  <li><code dir="ltr">torob_min_price_toman</code> — کمترین قیمت ترب</li>
+                  <li><code dir="ltr">torob_max_price_toman</code> — بیشترین قیمت ترب</li>
+                  <li><code dir="ltr">torob_seller_count</code> — تعداد فروشنده ترب</li>
+                  <li><code dir="ltr">torob_last_seen_at</code> — آخرین رصد ترب (datetime ISO)</li>
+                  <li><code dir="ltr">purchista_avg_price_toman</code> — میانگین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_min_price_toman</code> — کمترین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_max_price_toman</code> — بیشترین قیمت پورچیستا</li>
+                  <li><code dir="ltr">purchista_last_seen_at</code> — آخرین رصد پورچیستا (datetime ISO)</li>
+                </ul>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">ستون‌هایی که ربات نباید بفرستد</p>
-                    <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
-                      <li>
-                        سیستمی: <code dir="ltr">product_name</code>،{" "}
-                        <code dir="ltr">brand_name</code>، <code dir="ltr">category_name</code>،{" "}
-                        <code dir="ltr">product_labels</code> و سایر فیلدهای محصول
-                      </li>
-                      <li>
-                        محاسباتی: <code dir="ltr">afrakala_purchase_price_toman</code>،{" "}
-                        <code dir="ltr">afrakala_min_sale_price</code>،{" "}
-                        <code dir="ltr">price_gap_to_market_avg</code>،{" "}
-                        <code dir="ltr">price_gap_percent_to_market_avg</code>
-                      </li>
-                      <li>placeholder تحلیلی: مثل پیام پیشنهادی و امتیاز فرصت فروش</li>
-                      <li>
-                        مدیریتی: <code dir="ltr">manager_note</code>،{" "}
-                        <code dir="ltr">show_in_pdf</code>،{" "}
-                        <code dir="ltr">show_in_quick_sales_search</code>،{" "}
-                        <code dir="ltr">is_watch_active</code>
-                      </li>
-                    </ul>
-                  </div>
+              <div>
+                <p className="font-medium mb-1">ستون‌هایی که ربات نباید بفرستد</p>
+                <ul className="list-disc pr-5 text-xs text-muted-foreground space-y-1">
+                  <li>سیستمی: <code dir="ltr">product_name</code>، <code dir="ltr">brand_name</code>، <code dir="ltr">category_name</code>، <code dir="ltr">product_labels</code> و سایر فیلدهای محصول</li>
+                  <li>محاسباتی: <code dir="ltr">afrakala_purchase_price_toman</code>، <code dir="ltr">afrakala_min_sale_price</code>، <code dir="ltr">price_gap_to_market_avg</code>، <code dir="ltr">price_gap_percent_to_market_avg</code></li>
+                  <li>placeholder تحلیلی: مثل پیام پیشنهادی و امتیاز فرصت فروش</li>
+                  <li>مدیریتی: <code dir="ltr">manager_note</code>، <code dir="ltr">show_in_pdf</code>، <code dir="ltr">show_in_quick_sales_search</code>، <code dir="ltr">is_watch_active</code></li>
+                </ul>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">نمونه upsert با curl</p>
-                    <CodeBlock
-                      lang="bash"
-                      code={`curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/{table_id}/rows/upsert" \\
+              <div>
+                <p className="font-medium mb-1">نمونه upsert با curl</p>
+                <CodeBlock
+                  lang="bash"
+                  code={`curl -X POST "${baseUrl}/api/public/bot/dynamic-tables/{table_id}/rows/upsert" \\
   -H "Authorization: Bearer $BOT_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -854,56 +638,44 @@ function BotApiDocsPage() {
       "purchista_last_seen_at": "2026-05-16T12:05:00Z"
     }
   }'`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      پاسخ مورد انتظار برای محصول موجود: <code dir="ltr">HTTP 200</code> با
-                      <code dir="ltr"> {'"mode": "updated"'}</code> و همان{" "}
-                      <code dir="ltr">row_id</code>. هیچ ردیف جدیدی ساخته نمی‌شود.
-                    </p>
-                  </div>
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  پاسخ مورد انتظار برای محصول موجود: <code dir="ltr">HTTP 200</code> با
+                  <code dir="ltr"> {"\"mode\": \"updated\""}</code> و همان <code dir="ltr">row_id</code>.
+                  هیچ ردیف جدیدی ساخته نمی‌شود.
+                </p>
+              </div>
 
-                  <div>
-                    <p className="font-medium mb-1">نمونه خطای ۴۰۳ برای ستون غیرمجاز</p>
-                    <CodeBlock
-                      lang="json"
-                      code={`HTTP/1.1 403 Forbidden
+              <div>
+                <p className="font-medium mb-1">نمونه خطای ۴۰۳ برای ستون غیرمجاز</p>
+                <CodeBlock
+                  lang="json"
+                  code={`HTTP/1.1 403 Forbidden
 {
   "error": "column_not_allowed",
   "message": "این کلید مجاز به تغییر ستون «product_name» نیست. ..."
 }`}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      همین خطا برای <code dir="ltr">afrakala_min_sale_price</code> (محاسباتی) و
-                      <code dir="ltr"> manager_note</code> (مدیریتی) نیز بازگردانده می‌شود.
-                    </p>
-                  </div>
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  همین خطا برای <code dir="ltr">afrakala_min_sale_price</code> (محاسباتی) و
+                  <code dir="ltr"> manager_note</code> (مدیریتی) نیز بازگردانده می‌شود.
+                </p>
+              </div>
 
-                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs space-y-1">
-                    <p className="font-medium">هشدارهای امنیتی</p>
-                    <ul className="list-disc pr-5 space-y-1 text-muted-foreground">
-                      <li>
-                        کلید API فقط در backend ربات (ENV سرور) نگهداری شود؛ هرگز در frontend، repo
-                        یا لاگ.
-                      </li>
-                      <li>
-                        دسترسی کلید را فقط به جدول{" "}
-                        <code dir="ltr">afrakala-product-price-observatory</code> محدود کنید.
-                      </li>
-                      <li>
-                        <code dir="ltr">allowed_update_columns</code> باید دقیقاً همان ۹ ستون بازار
-                        باشد — <code dir="ltr">afrakala_product_id</code> را اضافه نکنید. این ستون
-                        فقط کلید تطبیق unique_by است و سرور به‌صورت خودکار آن را از payload
-                        به‌روزرسانی حذف می‌کند.
-                      </li>
-                      <li>
-                        ربات اجازه ساخت محصول جدید در این جدول را ندارد؛ ردیف‌ها از روی محصولات فعال
-                        داخلی backfill می‌شوند.
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs space-y-1">
+                <p className="font-medium">هشدارهای امنیتی</p>
+                <ul className="list-disc pr-5 space-y-1 text-muted-foreground">
+                  <li>کلید API فقط در backend ربات (ENV سرور) نگهداری شود؛ هرگز در frontend، repo یا لاگ.</li>
+                  <li>دسترسی کلید را فقط به جدول <code dir="ltr">afrakala-product-price-observatory</code> محدود کنید.</li>
+                  <li><code dir="ltr">allowed_update_columns</code> باید دقیقاً همان ۹ ستون بازار باشد — <code dir="ltr">afrakala_product_id</code> را اضافه نکنید. این ستون فقط کلید تطبیق unique_by است و سرور به‌صورت خودکار آن را از payload به‌روزرسانی حذف می‌کند.</li>
+                  <li>ربات اجازه ساخت محصول جدید در این جدول را ندارد؛ ردیف‌ها از روی محصولات فعال داخلی backfill می‌شوند.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
             </TabsContent>
+
 
             <TabsContent value="products" className="space-y-4">
               <ProductsDocs baseUrl={baseUrl} />
@@ -923,9 +695,7 @@ function ErrorRow({ status, code, desc }: { status: number; code: string; desc: 
   return (
     <div className="flex flex-wrap items-start gap-2 rounded-md border border-border p-2">
       <Badge variant="destructive">{status}</Badge>
-      <code className="font-mono text-xs" dir="ltr">
-        {code}
-      </code>
+      <code className="font-mono text-xs" dir="ltr">{code}</code>
       <span className="text-xs text-muted-foreground flex-1 min-w-[200px]">{desc}</span>
     </div>
   );
@@ -1002,24 +772,12 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
   });
 
   const tables = accessQuery.data ?? [];
-  const selectedTable = useMemo(
-    () => tables.find((t) => t.id === tableId) ?? null,
-    [tables, tableId],
-  );
+  const selectedTable = useMemo(() => tables.find((t) => t.id === tableId) ?? null, [tables, tableId]);
 
   const send = async (mode: "GET" | "PATCH" | "POST") => {
-    if (!rawKey.trim()) {
-      toast.error("کلید API را وارد کنید.");
-      return;
-    }
-    if (!tableId) {
-      toast.error("یک جدول مجاز انتخاب کنید.");
-      return;
-    }
-    if (mode === "PATCH" && !rowId.trim()) {
-      toast.error("شناسه ردیف را وارد کنید.");
-      return;
-    }
+    if (!rawKey.trim()) { toast.error("کلید API را وارد کنید."); return; }
+    if (!tableId) { toast.error("یک جدول مجاز انتخاب کنید."); return; }
+    if (mode === "PATCH" && !rowId.trim()) { toast.error("شناسه ردیف را وارد کنید."); return; }
 
     let body: string | undefined;
     if (mode === "PATCH") {
@@ -1073,16 +831,13 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
       const text = await res.text();
       const ct = res.headers.get("content-type") ?? "";
       if (ct.includes("application/json")) {
-        try {
-          setResBody(JSON.stringify(JSON.parse(text), null, 2));
-        } catch {
-          setResBody(text);
-        }
+        try { setResBody(JSON.stringify(JSON.parse(text), null, 2)); }
+        catch { setResBody(text); }
       } else if (text.trimStart().startsWith("<!DOCTYPE") || text.trimStart().startsWith("<html")) {
         setResBody(
           "⚠️ سرور به‌جای JSON، صفحه HTML برگرداند.\n" +
-            "این معمولاً یعنی نسخه فعلی برنامه هنوز publish نشده و endpoint روی production در دسترس نیست.\n" +
-            "برای رفع: روی دکمه Publish کلیک کنید و چند لحظه بعد دوباره تست کنید.",
+          "این معمولاً یعنی نسخه فعلی برنامه هنوز publish نشده و endpoint روی production در دسترس نیست.\n" +
+          "برای رفع: روی دکمه Publish کلیک کنید و چند لحظه بعد دوباره تست کنید.",
         );
       } else {
         setResBody(text || "(پاسخ خالی)");
@@ -1103,24 +858,15 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-md border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
-            کلید API فقط در حافظه همین صفحه نگهداری می‌شود و با رفرش پاک می‌شود. هرگز در دیتابیس
-            ذخیره نمی‌شود.
+            کلید API فقط در حافظه همین صفحه نگهداری می‌شود و با رفرش پاک می‌شود. هرگز در دیتابیس ذخیره نمی‌شود.
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">انتخاب کلید (برای فیلتر جداول مجاز)</Label>
-              <Select
-                value={keyId}
-                onValueChange={(v) => {
-                  setKeyId(v);
-                  setTableId("");
-                }}
-              >
+              <Select value={keyId} onValueChange={(v) => { setKeyId(v); setTableId(""); }}>
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={keysQuery.isLoading ? "در حال بارگذاری…" : "یک کلید انتخاب کنید"}
-                  />
+                  <SelectValue placeholder={keysQuery.isLoading ? "در حال بارگذاری…" : "یک کلید انتخاب کنید"} />
                 </SelectTrigger>
                 <SelectContent>
                   {(keysQuery.data ?? []).map((k) => (
@@ -1143,12 +889,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
                   onChange={(e) => setRawKey(e.target.value)}
                   className="font-mono"
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowKey((s) => !s)}
-                >
+                <Button type="button" variant="outline" size="icon" onClick={() => setShowKey((s) => !s)}>
                   {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
@@ -1158,15 +899,12 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
               <Label className="text-xs">جدول مجاز برای این کلید</Label>
               <Select value={tableId} onValueChange={setTableId} disabled={!keyId}>
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={!keyId ? "ابتدا کلید را انتخاب کنید" : "یک جدول انتخاب کنید"}
-                  />
+                  <SelectValue placeholder={!keyId ? "ابتدا کلید را انتخاب کنید" : "یک جدول انتخاب کنید"} />
                 </SelectTrigger>
                 <SelectContent>
                   {tables.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} — {t.can_read ? "خواندن" : "—"}
-                      {t.can_update ? "/به‌روزرسانی" : ""}
+                      {t.name} — {t.can_read ? "خواندن" : "—"}{t.can_update ? "/به‌روزرسانی" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1192,24 +930,12 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">page</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    dir="ltr"
-                    value={page}
-                    onChange={(e) => setPage(e.target.value)}
-                  />
+                  <Input type="number" min={1} dir="ltr" value={page} onChange={(e) => setPage(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">page_size (≤۱۰۰)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100}
-                    dir="ltr"
-                    value={pageSize}
-                    onChange={(e) => setPageSize(e.target.value)}
-                  />
+                  <Input type="number" min={1} max={100} dir="ltr" value={pageSize}
+                    onChange={(e) => setPageSize(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">search (اختیاری)</Label>
@@ -1217,11 +943,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
                 </div>
               </div>
               <Button onClick={() => send("GET")} disabled={busy}>
-                {busy ? (
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="ml-2 h-4 w-4" />
-                )}
+                {busy ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Play className="ml-2 h-4 w-4" />}
                 ارسال درخواست GET
               </Button>
             </CardContent>
@@ -1233,12 +955,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
             <CardContent className="space-y-3 pt-6">
               <div className="space-y-1">
                 <Label className="text-xs">شناسه ردیف (row_id UUID)</Label>
-                <Input
-                  dir="ltr"
-                  value={rowId}
-                  onChange={(e) => setRowId(e.target.value)}
-                  className="font-mono"
-                />
+                <Input dir="ltr" value={rowId} onChange={(e) => setRowId(e.target.value)} className="font-mono" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">مقادیر (JSON object از column_key → value)</Label>
@@ -1250,12 +967,11 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
                   className="font-mono text-xs"
                 />
               </div>
-              <Button onClick={() => send("PATCH")} disabled={busy || !selectedTable?.can_update}>
-                {busy ? (
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="ml-2 h-4 w-4" />
-                )}
+              <Button
+                onClick={() => send("PATCH")}
+                disabled={busy || !selectedTable?.can_update}
+              >
+                {busy ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Play className="ml-2 h-4 w-4" />}
                 ارسال درخواست PATCH
               </Button>
               {selectedTable && !selectedTable.can_update && (
@@ -1271,9 +987,7 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
           <Card>
             <CardContent className="space-y-3 pt-6">
               <div className="space-y-1">
-                <Label className="text-xs">
-                  مقادیر ردیف جدید (JSON object از column_key → value)
-                </Label>
+                <Label className="text-xs">مقادیر ردیف جدید (JSON object از column_key → value)</Label>
                 <Textarea
                   dir="ltr"
                   rows={8}
@@ -1282,16 +996,15 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
                   className="font-mono text-xs"
                 />
                 <p className="text-xs text-muted-foreground">
-                  فقط ستون‌هایی پذیرفته می‌شوند که در «ستون‌های قابل به‌روزرسانی» این کلید مجاز
-                  هستند. ستون‌های الزامی باید مقدار داشته باشند.
+                  فقط ستون‌هایی پذیرفته می‌شوند که در «ستون‌های قابل به‌روزرسانی» این کلید مجاز هستند.
+                  ستون‌های الزامی باید مقدار داشته باشند.
                 </p>
               </div>
-              <Button onClick={() => send("POST")} disabled={busy || !selectedTable?.can_update}>
-                {busy ? (
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="ml-2 h-4 w-4" />
-                )}
+              <Button
+                onClick={() => send("POST")}
+                disabled={busy || !selectedTable?.can_update}
+              >
+                {busy ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Play className="ml-2 h-4 w-4" />}
                 ارسال درخواست POST
               </Button>
               {selectedTable && !selectedTable.can_update && (
@@ -1328,60 +1041,19 @@ function BotApiTester({ baseUrl, userReady }: { baseUrl: string; userReady: bool
 /* ----------------------------- Products Docs (WordPress) ----------------------------- */
 
 function ProductsDocs({ baseUrl }: { baseUrl: string }) {
-  const sampleList = JSON.stringify(
-    {
-      products: [
-        {
-          id: "8f2c9d10-0001-4a11-9b22-aaaaaaaaaaaa",
-          sku: "SAM-A55-128-BLK",
-          name: "گوشی سامسونگ A55 ظرفیت ۱۲۸ مشکی",
-          brand: { id: "b1", title: "سامسونگ" },
-          category: { id: "c1", title: "گوشی موبایل" },
-          status: "active",
-          stock_status: "in_stock",
-          labels: [{ id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" }],
-          prices: [
-            {
-              sale_price_type_id: "spt-1",
-              sale_price_type_title: "خرده‌فروشی نقدی",
-              amount: 18500000,
-              currency: "IRT",
-              computed_at: "2026-05-09T08:30:00Z",
-            },
-            {
-              sale_price_type_id: "spt-2",
-              sale_price_type_title: "عمده نقدی",
-              amount: 17900000,
-              currency: "IRT",
-              computed_at: "2026-05-09T08:30:00Z",
-            },
-          ],
-          updated_at: "2026-05-09T08:31:12Z",
-        },
-      ],
-      pagination: { page: 1, page_size: 50, total: 1, total_pages: 1 },
-    },
-    null,
-    2,
-  );
-
-  const sampleSingle = JSON.stringify(
-    {
-      product: {
+  const sampleList = JSON.stringify({
+    products: [
+      {
         id: "8f2c9d10-0001-4a11-9b22-aaaaaaaaaaaa",
         sku: "SAM-A55-128-BLK",
         name: "گوشی سامسونگ A55 ظرفیت ۱۲۸ مشکی",
-        description: "...",
-        unit: "عدد",
         brand: { id: "b1", title: "سامسونگ" },
         category: { id: "c1", title: "گوشی موبایل" },
         status: "active",
         stock_status: "in_stock",
-        color: "مشکی",
-        capacity: "128GB",
-        model: "A55",
-        labels: [{ id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" }],
-        attributes: { ram: "8GB", screen: "6.6 inch" },
+        labels: [
+          { id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" },
+        ],
         prices: [
           {
             sale_price_type_id: "spt-1",
@@ -1398,13 +1070,38 @@ function ProductsDocs({ baseUrl }: { baseUrl: string }) {
             computed_at: "2026-05-09T08:30:00Z",
           },
         ],
-        created_at: "2026-01-12T10:00:00Z",
         updated_at: "2026-05-09T08:31:12Z",
       },
+    ],
+    pagination: { page: 1, page_size: 50, total: 1, total_pages: 1 },
+  }, null, 2);
+
+  const sampleSingle = JSON.stringify({
+    product: {
+      id: "8f2c9d10-0001-4a11-9b22-aaaaaaaaaaaa",
+      sku: "SAM-A55-128-BLK",
+      name: "گوشی سامسونگ A55 ظرفیت ۱۲۸ مشکی",
+      description: "...",
+      unit: "عدد",
+      brand: { id: "b1", title: "سامسونگ" },
+      category: { id: "c1", title: "گوشی موبایل" },
+      status: "active",
+      stock_status: "in_stock",
+      color: "مشکی",
+      capacity: "128GB",
+      model: "A55",
+      labels: [
+        { id: "lbl-001", title: "وب‌سایت اصلی", color: "#16a34a" },
+      ],
+      attributes: { ram: "8GB", screen: "6.6 inch" },
+      prices: [
+        { sale_price_type_id: "spt-1", sale_price_type_title: "خرده‌فروشی نقدی", amount: 18500000, currency: "IRT", computed_at: "2026-05-09T08:30:00Z" },
+        { sale_price_type_id: "spt-2", sale_price_type_title: "عمده نقدی", amount: 17900000, currency: "IRT", computed_at: "2026-05-09T08:30:00Z" },
+      ],
+      created_at: "2026-01-12T10:00:00Z",
+      updated_at: "2026-05-09T08:31:12Z",
     },
-    null,
-    2,
-  );
+  }, null, 2);
 
   const phpCode = `<?php
 /**
@@ -1515,20 +1212,16 @@ syncAll(process.env.LAST_SYNC).catch(console.error);
     <div className="space-y-4">
       {/* TOC */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">فهرست</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">فهرست</CardTitle></CardHeader>
         <CardContent className="text-xs text-muted-foreground leading-7">
-          ۱) سناریو · ۲) پیش‌نیاز و ساخت کلید · ۳) GET لیست محصولات · ۴) GET تک محصول · ۵) ساختار
-          قیمت · ۶) Sync تدریجی · ۷) نمونه کد PHP / Node / curl · ۸) خطاها · ۹) چک‌لیست راه‌اندازی
+          ۱) سناریو · ۲) پیش‌نیاز و ساخت کلید · ۳) GET لیست محصولات · ۴) GET تک محصول ·
+          ۵) ساختار قیمت · ۶) Sync تدریجی · ۷) نمونه کد PHP / Node / curl · ۸) خطاها · ۹) چک‌لیست راه‌اندازی
         </CardContent>
       </Card>
 
       {/* 1 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۱) سناریو</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۱) سناریو</CardTitle></CardHeader>
         <CardContent className="text-sm leading-7 space-y-2">
           <p>
             یک سایت ووردپرس (یا ووکامرس) از قبل دارید و محصولات را آنجا منتشر کرده‌اید. می‌خواهید
@@ -1536,50 +1229,24 @@ syncAll(process.env.LAST_SYNC).catch(console.error);
             محصولات وردپرسی به‌روزرسانی کنید — بدون اینکه مدیر دسترسی به کل دیتابیس داشته باشد.
           </p>
           <p>
-            مدل امنیتی: هر کلید API فقط محصولاتی را می‌بیند که{" "}
-            <strong>حداقل یکی از برچسب‌های مجاز آن کلید</strong> روی محصول نشسته باشد. پس می‌توانید
-            چند کلید برای چند سایت مختلف بسازید و هر سایت فقط محصولات مربوط به برچسب خودش را sync
-            کند.
+            مدل امنیتی: هر کلید API فقط محصولاتی را می‌بیند که <strong>حداقل یکی از برچسب‌های مجاز
+            آن کلید</strong> روی محصول نشسته باشد. پس می‌توانید چند کلید برای چند سایت مختلف بسازید
+            و هر سایت فقط محصولات مربوط به برچسب خودش را sync کند.
           </p>
         </CardContent>
       </Card>
 
       {/* 2 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۲) پیش‌نیاز و ساخت کلید (صفر)</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۲) پیش‌نیاز و ساخت کلید (صفر)</CardTitle></CardHeader>
         <CardContent className="text-sm leading-7 space-y-2">
           <ol className="list-decimal pr-5 space-y-2">
-            <li>
-              به{" "}
-              <Link to="/products/labels" className="underline">
-                برچسب‌های محصول
-              </Link>{" "}
-              بروید و یک برچسب مثل «وب‌سایت اصلی» بسازید.
-            </li>
-            <li>
-              در صفحه محصولات، این برچسب را به محصولاتی که می‌خواهید روی WP منتشر شوند بچسبانید.
-            </li>
-            <li>
-              به{" "}
-              <Link to="/bot-api-keys" className="underline">
-                کلیدهای API
-              </Link>{" "}
-              بروید و دکمه «کلید جدید» را بزنید.
-            </li>
-            <li>
-              <strong>کلید خام</strong> فقط یک‌بار نمایش داده می‌شود؛ فوراً کپی و در محل امن (مثلاً{" "}
-              <code dir="ltr">wp-config.php</code>) ذخیره کنید.
-            </li>
-            <li>
-              روبه‌روی همان کلید روی دکمه <strong>«دسترسی برچسب محصولات»</strong> بزنید و برچسب‌های
-              مجاز را تیک بزنید.
-            </li>
-            <li>
-              اگر می‌خواهید SKU/قیمت را روی WP داشته باشید، مطمئن شوید SKU محصولات افراکالا با SKU
-              محصولات WP یکی است.
-            </li>
+            <li>به <Link to="/products/labels" className="underline">برچسب‌های محصول</Link> بروید و یک برچسب مثل «وب‌سایت اصلی» بسازید.</li>
+            <li>در صفحه محصولات، این برچسب را به محصولاتی که می‌خواهید روی WP منتشر شوند بچسبانید.</li>
+            <li>به <Link to="/bot-api-keys" className="underline">کلیدهای API</Link> بروید و دکمه «کلید جدید» را بزنید.</li>
+            <li><strong>کلید خام</strong> فقط یک‌بار نمایش داده می‌شود؛ فوراً کپی و در محل امن (مثلاً <code dir="ltr">wp-config.php</code>) ذخیره کنید.</li>
+            <li>روبه‌روی همان کلید روی دکمه <strong>«دسترسی برچسب محصولات»</strong> بزنید و برچسب‌های مجاز را تیک بزنید.</li>
+            <li>اگر می‌خواهید SKU/قیمت را روی WP داشته باشید، مطمئن شوید SKU محصولات افراکالا با SKU محصولات WP یکی است.</li>
           </ol>
         </CardContent>
       </Card>
@@ -1596,18 +1263,9 @@ syncAll(process.env.LAST_SYNC).catch(console.error);
           <div>
             <p className="font-medium mb-1">پارامترهای Query</p>
             <ul className="list-disc pr-5 space-y-1 text-xs text-muted-foreground">
-              <li>
-                <code dir="ltr">label_id</code> — UUID برچسب (اختیاری)؛ فقط محصولات این برچسب. باید
-                جزو برچسب‌های مجاز کلید باشد.
-              </li>
-              <li>
-                <code dir="ltr">updated_since</code> — ISO 8601 datetime؛ فقط محصولاتی که بعد از این
-                زمان تغییر کرده‌اند.
-              </li>
-              <li>
-                <code dir="ltr">page</code> پیش‌فرض ۱، <code dir="ltr">page_size</code> پیش‌فرض ۵۰،
-                حداکثر ۱۰۰.
-              </li>
+              <li><code dir="ltr">label_id</code> — UUID برچسب (اختیاری)؛ فقط محصولات این برچسب. باید جزو برچسب‌های مجاز کلید باشد.</li>
+              <li><code dir="ltr">updated_since</code> — ISO 8601 datetime؛ فقط محصولاتی که بعد از این زمان تغییر کرده‌اند.</li>
+              <li><code dir="ltr">page</code> پیش‌فرض ۱، <code dir="ltr">page_size</code> پیش‌فرض ۵۰، حداکثر ۱۰۰.</li>
             </ul>
           </div>
           <CodeBlock lang="curl — همه" code={curlList} />
@@ -1634,70 +1292,50 @@ syncAll(process.env.LAST_SYNC).catch(console.error);
             <CodeBlock lang="json" code={sampleSingle} />
           </div>
           <p className="text-xs text-muted-foreground">
-            اگر هیچ‌یک از برچسب‌های مجاز کلید روی این محصول نباشد، پاسخ{" "}
-            <code dir="ltr">403 forbidden_product</code> برمی‌گردد.
+            اگر هیچ‌یک از برچسب‌های مجاز کلید روی این محصول نباشد،
+            پاسخ <code dir="ltr">403 forbidden_product</code> برمی‌گردد.
           </p>
         </CardContent>
       </Card>
 
       {/* 5 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۵) ساختار قیمت</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۵) ساختار قیمت</CardTitle></CardHeader>
         <CardContent className="text-sm leading-7 space-y-2">
           <p>
-            میدان <code dir="ltr">prices[]</code> برای هر محصول شامل همه قیمت‌های فعال (به ازای هر
-            «نوع قیمت») است. هر آیتم:
+            میدان <code dir="ltr">prices[]</code> برای هر محصول شامل همه قیمت‌های فعال
+            (به ازای هر «نوع قیمت») است. هر آیتم:
           </p>
-          <CodeBlock
-            lang="schema"
-            code={`{
+          <CodeBlock lang="schema" code={`{
   "sale_price_type_id":    "uuid",
   "sale_price_type_title": "خرده‌فروشی نقدی | عمده نقدی | ...",
   "amount":                18500000,
   "currency":              "IRT",
   "computed_at":           "2026-05-09T08:30:00Z"
-}`}
-          />
+}`} />
           <p className="text-xs text-muted-foreground">
-            در ربات WP معمولاً یک عنوان مشخص (مثلاً «خرده‌فروشی نقدی») را انتخاب می‌کنید و آن را روی{" "}
-            <code dir="ltr">_regular_price</code> ووکامرس می‌نویسید (نمونه در بخش ۷).
+            در ربات WP معمولاً یک عنوان مشخص (مثلاً «خرده‌فروشی نقدی») را انتخاب می‌کنید و آن را
+            روی <code dir="ltr">_regular_price</code> ووکامرس می‌نویسید (نمونه در بخش ۷).
           </p>
         </CardContent>
       </Card>
 
       {/* 6 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۶) استراتژی Sync تدریجی</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۶) استراتژی Sync تدریجی</CardTitle></CardHeader>
         <CardContent className="text-sm leading-7 space-y-2">
           <ol className="list-decimal pr-5 space-y-1">
-            <li>
-              اولین بار <code dir="ltr">updated_since</code> را خالی بگذارید و از{" "}
-              <code dir="ltr">page=1</code> شروع کنید.
-            </li>
-            <li>
-              بعد از پایان هر دور، زمان شروع همان دور را در سمت ربات ذخیره کنید (مثلاً{" "}
-              <code dir="ltr">last_sync_at</code> در WP options).
-            </li>
-            <li>
-              دفعه بعد همان مقدار را به <code dir="ltr">updated_since</code> بدهید تا فقط تغییرات
-              جدید برگردد.
-            </li>
-            <li>
-              تا زمانی که <code dir="ltr">page &lt;= total_pages</code> است صفحه‌بندی را ادامه دهید.
-            </li>
+            <li>اولین بار <code dir="ltr">updated_since</code> را خالی بگذارید و از <code dir="ltr">page=1</code> شروع کنید.</li>
+            <li>بعد از پایان هر دور، زمان شروع همان دور را در سمت ربات ذخیره کنید (مثلاً <code dir="ltr">last_sync_at</code> در WP options).</li>
+            <li>دفعه بعد همان مقدار را به <code dir="ltr">updated_since</code> بدهید تا فقط تغییرات جدید برگردد.</li>
+            <li>تا زمانی که <code dir="ltr">page &lt;= total_pages</code> است صفحه‌بندی را ادامه دهید.</li>
           </ol>
         </CardContent>
       </Card>
 
       {/* 7 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۷) نمونه کد ربات</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۷) نمونه کد ربات</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <Tabs defaultValue="php">
             <TabsList>
@@ -1705,87 +1343,46 @@ syncAll(process.env.LAST_SYNC).catch(console.error);
               <TabsTrigger value="node">Node.js</TabsTrigger>
               <TabsTrigger value="bash">curl</TabsTrigger>
             </TabsList>
-            <TabsContent value="php">
-              <CodeBlock lang="php" code={phpCode} />
-            </TabsContent>
-            <TabsContent value="node">
-              <CodeBlock lang="javascript" code={nodeCode} />
-            </TabsContent>
-            <TabsContent value="bash">
-              <CodeBlock lang="bash" code={curlList + "\n\n" + curlByLabel + "\n\n" + curlSingle} />
-            </TabsContent>
+            <TabsContent value="php"><CodeBlock lang="php" code={phpCode} /></TabsContent>
+            <TabsContent value="node"><CodeBlock lang="javascript" code={nodeCode} /></TabsContent>
+            <TabsContent value="bash"><CodeBlock lang="bash" code={curlList + "\n\n" + curlByLabel + "\n\n" + curlSingle} /></TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
       {/* 8 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۸) خطاهای اختصاصی</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۸) خطاهای اختصاصی</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <ErrorRow
-            status={403}
-            code="forbidden_no_labels"
-            desc="هیچ برچسبی برای این کلید فعال نیست. از دکمه «دسترسی برچسب محصولات» حداقل یک برچسب فعال کنید."
-          />
-          <ErrorRow
-            status={403}
-            code="forbidden_label"
-            desc="label_id ارسال شد، اما این برچسب در فهرست مجاز کلید نیست."
-          />
-          <ErrorRow
-            status={403}
-            code="forbidden_product"
-            desc="محصول هست، ولی هیچ‌یک از برچسب‌های مجاز کلید روی آن نیست."
-          />
+          <ErrorRow status={403} code="forbidden_no_labels"
+            desc="هیچ برچسبی برای این کلید فعال نیست. از دکمه «دسترسی برچسب محصولات» حداقل یک برچسب فعال کنید." />
+          <ErrorRow status={403} code="forbidden_label"
+            desc="label_id ارسال شد، اما این برچسب در فهرست مجاز کلید نیست." />
+          <ErrorRow status={403} code="forbidden_product"
+            desc="محصول هست، ولی هیچ‌یک از برچسب‌های مجاز کلید روی آن نیست." />
           <ErrorRow status={404} code="product_not_found" desc="محصولی با این شناسه وجود ندارد." />
-          <ErrorRow
-            status={400}
-            code="invalid_label_id"
-            desc="مقدار label_id باید UUID معتبر باشد."
-          />
-          <ErrorRow
-            status={400}
-            code="invalid_product_id"
-            desc="شناسه محصول در URL باید UUID معتبر باشد."
-          />
-          <ErrorRow
-            status={401}
-            code="invalid_key | missing_key | inactive_key | expired_key"
-            desc="کلید نامعتبر، غیرفعال، منقضی یا ارسال نشده است."
-          />
-          <ErrorRow
-            status={429}
-            code="rate_limit_*"
-            desc="عبور از سقف نرخ. هدر Retry-After را رعایت کنید."
-          />
+          <ErrorRow status={400} code="invalid_label_id" desc="مقدار label_id باید UUID معتبر باشد." />
+          <ErrorRow status={400} code="invalid_product_id" desc="شناسه محصول در URL باید UUID معتبر باشد." />
+          <ErrorRow status={401} code="invalid_key | missing_key | inactive_key | expired_key"
+            desc="کلید نامعتبر، غیرفعال، منقضی یا ارسال نشده است." />
+          <ErrorRow status={429} code="rate_limit_*"
+            desc="عبور از سقف نرخ. هدر Retry-After را رعایت کنید." />
         </CardContent>
       </Card>
 
       {/* 9 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">۹) چک‌لیست راه‌اندازی ربات WP</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">۹) چک‌لیست راه‌اندازی ربات WP</CardTitle></CardHeader>
         <CardContent className="text-sm leading-7">
           <ol className="list-decimal pr-5 space-y-1">
             <li>برچسب «وب‌سایت اصلی» را بسازید و به محصولات هدف بچسبانید.</li>
-            <li>
-              کلید API بسازید و کلید خام را در <code dir="ltr">wp-config.php</code> ذخیره کنید.
-            </li>
+            <li>کلید API بسازید و کلید خام را در <code dir="ltr">wp-config.php</code> ذخیره کنید.</li>
             <li>برچسب مجاز را روی کلید فعال کنید.</li>
             <li>اول با curl یک GET بزنید و مطمئن شوید پاسخ ۲۰۰ می‌گیرید.</li>
             <li>کد PHP بخش ۷ را در یک پلاگین کوچک قرار دهید.</li>
             <li>SKU محصولات WP و افراکالا را همسان کنید.</li>
             <li>WP-Cron یا cron سرور را روی فاصله ۱۵ دقیقه تنظیم کنید.</li>
-            <li>
-              گزارش مصرف و خطاها را در{" "}
-              <Link to="/bot-api-keys/usage" className="underline">
-                گزارش استفاده
-              </Link>{" "}
-              پایش کنید.
-            </li>
+            <li>گزارش مصرف و خطاها را در <Link to="/bot-api-keys/usage" className="underline">گزارش استفاده</Link> پایش کنید.</li>
           </ol>
         </CardContent>
       </Card>

@@ -84,7 +84,11 @@ export function SearchableSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={true}>
-          <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
@@ -98,7 +102,10 @@ export function SearchableSelect({
                   }}
                 >
                   <Check
-                    className={cn("ms-auto h-4 w-4", value === null ? "opacity-100" : "opacity-0")}
+                    className={cn(
+                      "ms-auto h-4 w-4",
+                      value === null ? "opacity-100" : "opacity-0",
+                    )}
                   />
                   <span className="text-muted-foreground">{noneLabel}</span>
                 </CommandItem>

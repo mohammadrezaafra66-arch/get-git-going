@@ -19,37 +19,26 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Tabs, TabsList, TabsTrigger, TabsContent,
+} from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 
 export const Route = createFileRoute("/_app/accounting/purchase-payments")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager", "accountant"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager", "accountant"]); },
   component: PurchasePaymentsPage,
 });
 
@@ -99,15 +88,13 @@ function PurchasePaymentsPage() {
     queryFn: async () => {
       let q = supabase
         .from("purchases")
-        .select(
-          `
+        .select(`
           id, number, purchase_date, purchase_price, cash_price, quantity,
           total_amount, currency, paid_at, paid_by,
           product:products(name),
           supplier:suppliers(name),
           payment_term:payment_terms(name, days)
-        `,
-        )
+        `)
         .order("purchase_date", { ascending: false })
         .limit(200);
       q = tab === "unpaid" ? q.is("paid_at", null) : q.not("paid_at", "is", null);
@@ -135,12 +122,11 @@ function PurchasePaymentsPage() {
   });
 
   const overdueCount = useMemo(
-    () =>
-      rows.filter((r) => {
-        if (r.paid_at) return false;
-        const d = r.payment_term?.days ?? 0;
-        return daysSince(r.purchase_date) > d;
-      }).length,
+    () => rows.filter((r) => {
+      if (r.paid_at) return false;
+      const d = (r.payment_term?.days ?? 0);
+      return daysSince(r.purchase_date) > d;
+    }).length,
     [rows],
   );
 
@@ -195,9 +181,7 @@ function PurchasePaymentsPage() {
           <TabsTrigger value="unpaid">
             تسویه نشده
             {overdueCount > 0 && (
-              <Badge variant="destructive" className="mr-2">
-                {toFaDigits(String(overdueCount))} دیرکرد
-              </Badge>
+              <Badge variant="destructive" className="mr-2">{toFaDigits(String(overdueCount))} دیرکرد</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="paid">تسویه شده</TabsTrigger>
@@ -229,11 +213,7 @@ function PurchasePaymentsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 {tab === "unpaid" && (
                   <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                    <Switch
-                      checked={overdueOnly}
-                      onCheckedChange={setOverdueOnly}
-                      id="overdue-only"
-                    />
+                    <Switch checked={overdueOnly} onCheckedChange={setOverdueOnly} id="overdue-only" />
                     <Label htmlFor="overdue-only" className="cursor-pointer text-xs">
                       فقط دیرکردها
                     </Label>
@@ -259,20 +239,15 @@ function PurchasePaymentsPage() {
           </Card>
 
           <div className="mb-2 px-1 text-xs text-muted-foreground">
-            {toFaDigits(String(filteredRows.length))} مورد از {toFaDigits(String(rows.length))}{" "}
-            نمایش داده شد
+            {toFaDigits(String(filteredRows.length))} مورد از {toFaDigits(String(rows.length))} نمایش داده شد
           </div>
 
           <Card>
             <CardContent className="p-0">
               {isLoading ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
+                <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>
               ) : filteredRows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-muted-foreground">
-                  موردی یافت نشد
-                </div>
+                <div className="py-10 text-center text-sm text-muted-foreground">موردی یافت نشد</div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -298,9 +273,7 @@ function PurchasePaymentsPage() {
                             <TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
                             <TableCell>{r.product?.name ?? "—"}</TableCell>
                             <TableCell>{r.supplier?.name ?? "—"}</TableCell>
-                            <TableCell>
-                              {toFaDigits(formatDateFa(new Date(r.purchase_date)))}
-                            </TableCell>
+                            <TableCell>{toFaDigits(formatDateFa(new Date(r.purchase_date)))}</TableCell>
                             <TableCell>{fmtMoney(r.total_amount, r.currency)}</TableCell>
                             <TableCell>
                               {r.payment_term?.name ?? "—"}
@@ -331,10 +304,7 @@ function PurchasePaymentsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    setTarget(r);
-                                    setPaidAt(new Date());
-                                  }}
+                                  onClick={() => { setTarget(r); setPaidAt(new Date()); }}
                                 >
                                   <Wallet className="ml-1 h-4 w-4" />
                                   ثبت پرداخت
@@ -365,36 +335,18 @@ function PurchasePaymentsPage() {
           {target && (
             <div className="space-y-3">
               <div className="rounded-md border p-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground">محصول: </span>
-                  {target.product?.name ?? "—"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">تأمین‌کننده: </span>
-                  {target.supplier?.name ?? "—"}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">مبلغ: </span>
-                  {fmtMoney(target.total_amount, target.currency)}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">تاریخ خرید: </span>
-                  {toFaDigits(formatDateFa(new Date(target.purchase_date)))}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">مهلت: </span>
-                  {target.payment_term?.name ?? "—"}
-                </div>
+                <div><span className="text-muted-foreground">محصول: </span>{target.product?.name ?? "—"}</div>
+                <div><span className="text-muted-foreground">تأمین‌کننده: </span>{target.supplier?.name ?? "—"}</div>
+                <div><span className="text-muted-foreground">مبلغ: </span>{fmtMoney(target.total_amount, target.currency)}</div>
+                <div><span className="text-muted-foreground">تاریخ خرید: </span>{toFaDigits(formatDateFa(new Date(target.purchase_date)))}</div>
+                <div><span className="text-muted-foreground">مهلت: </span>{target.payment_term?.name ?? "—"}</div>
               </div>
 
               <div className="space-y-2">
                 <Label>تاریخ پرداخت</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn("w-full justify-start text-right font-normal")}
-                    >
+                    <Button variant="outline" className={cn("w-full justify-start text-right font-normal")}>
                       <CalendarIcon className="ml-2 h-4 w-4" />
                       {toFaDigits(formatDateFa(paidAt))}
                     </Button>
@@ -415,9 +367,7 @@ function PurchasePaymentsPage() {
           )}
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setTarget(null)}>
-              انصراف
-            </Button>
+            <Button variant="ghost" onClick={() => setTarget(null)}>انصراف</Button>
             <Button onClick={() => markPaid.mutate()} disabled={markPaid.isPending}>
               {markPaid.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ثبت پرداخت

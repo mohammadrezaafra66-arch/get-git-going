@@ -16,27 +16,12 @@ import { LessonForm, type LessonFormValues } from "@/shared/components/LessonFor
 import { QuizForm, type QuizFormValues, type QuizQuestion } from "@/shared/components/QuizForm";
 
 export const Route = createFileRoute("/_app/academy_/manage")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
-  },
+  beforeLoad: async () => { await requireAnyRole(["admin", "manager"]); },
   component: AcademyManagePage,
 });
 
-interface CourseRow {
-  id: string;
-  title: string;
-  description: string | null;
-  is_published: boolean;
-}
-interface LessonRow {
-  id: string;
-  course_id: string;
-  title: string;
-  content: string | null;
-  video_url: string | null;
-  attachment_url: string | null;
-  order_index: number;
-}
+interface CourseRow { id: string; title: string; description: string | null; is_published: boolean; }
+interface LessonRow { id: string; course_id: string; title: string; content: string | null; video_url: string | null; attachment_url: string | null; order_index: number; }
 
 function AcademyManagePage() {
   const { user } = useAuth();
@@ -81,23 +66,16 @@ function AcademyManagePage() {
     queryFn: async () => {
       const ids = (lessons ?? []).map((l) => l.id);
       if (ids.length === 0) return {} as Record<string, string>;
-      const { data } = await supabase
-        .from("academy_quizzes")
-        .select("id, lesson_id")
-        .in("lesson_id", ids);
+      const { data } = await supabase.from("academy_quizzes").select("id, lesson_id").in("lesson_id", ids);
       const map: Record<string, string> = {};
-      (data ?? []).forEach((q) => {
-        map[q.lesson_id] = q.id;
-      });
+      (data ?? []).forEach((q) => { map[q.lesson_id] = q.id; });
       return map;
     },
   });
 
   const audit = async (action: string, entity_type: string, entity_id: string, diff: any) => {
     if (!user?.id) return;
-    const { error } = await supabase
-      .from("audit_logs")
-      .insert({ action, entity_type, entity_id, actor_id: user.id, diff });
+    const { error } = await supabase.from("audit_logs").insert({ action, entity_type, entity_id, actor_id: user.id, diff });
     if (error) console.warn("audit insert failed:", error);
   };
 
@@ -106,46 +84,24 @@ function AcademyManagePage() {
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
       const { data, error } = await supabase
         .from("academy_courses")
-        .insert({
-          title: v.title,
-          description: v.description || null,
-          is_published: v.is_published,
-          created_by: user.id,
-        })
-        .select("id")
-        .single();
+        .insert({ title: v.title, description: v.description || null, is_published: v.is_published, created_by: user.id })
+        .select("id").single();
       if (error) throw error;
       await audit("academy_course_created", "academy_course", data.id, { title: v.title });
     },
-    onSuccess: () => {
-      toast.success("دوره ایجاد شد");
-      setCreatingCourse(false);
-      qc.invalidateQueries({ queryKey: ["academy-courses-manage"] });
-    },
+    onSuccess: () => { toast.success("دوره ایجاد شد"); setCreatingCourse(false); qc.invalidateQueries({ queryKey: ["academy-courses-manage"] }); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
   const courseUpdate = useMutation({
     mutationFn: async ({ id, v }: { id: string; v: CourseFormValues }) => {
-      const { error } = await supabase
-        .from("academy_courses")
-        .update({
-          title: v.title,
-          description: v.description || null,
-          is_published: v.is_published,
-        })
+      const { error } = await supabase.from("academy_courses")
+        .update({ title: v.title, description: v.description || null, is_published: v.is_published })
         .eq("id", id);
       if (error) throw error;
-      await audit("academy_course_updated", "academy_course", id, {
-        title: v.title,
-        is_published: v.is_published,
-      });
+      await audit("academy_course_updated", "academy_course", id, { title: v.title, is_published: v.is_published });
     },
-    onSuccess: () => {
-      toast.success("به‌روزرسانی شد");
-      setEditingCourse(null);
-      qc.invalidateQueries({ queryKey: ["academy-courses-manage"] });
-    },
+    onSuccess: () => { toast.success("به‌روزرسانی شد"); setEditingCourse(null); qc.invalidateQueries({ queryKey: ["academy-courses-manage"] }); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -155,23 +111,12 @@ function AcademyManagePage() {
       if (error) throw error;
       await audit("academy_course_deleted", "academy_course", id, {});
     },
-    onSuccess: () => {
-      toast.success("دوره حذف شد");
-      qc.invalidateQueries({ queryKey: ["academy-courses-manage"] });
-    },
+    onSuccess: () => { toast.success("دوره حذف شد"); qc.invalidateQueries({ queryKey: ["academy-courses-manage"] }); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
   const lessonSave = useMutation({
-    mutationFn: async ({
-      id,
-      courseId,
-      v,
-    }: {
-      id?: string;
-      courseId: string;
-      v: LessonFormValues;
-    }) => {
+    mutationFn: async ({ id, courseId, v }: { id?: string; courseId: string; v: LessonFormValues }) => {
       const payload = {
         title: v.title,
         content: v.content || null,
@@ -185,22 +130,13 @@ function AcademyManagePage() {
         if (error) throw error;
         await audit("academy_lesson_updated", "academy_lesson", id, { title: v.title });
       } else {
-        const { data, error } = await supabase
-          .from("academy_lessons")
-          .insert(payload)
-          .select("id")
-          .single();
+        const { data, error } = await supabase.from("academy_lessons").insert(payload).select("id").single();
         if (error) throw error;
-        await audit("academy_lesson_created", "academy_lesson", data.id, {
-          title: v.title,
-          course_id: courseId,
-        });
+        await audit("academy_lesson_created", "academy_lesson", data.id, { title: v.title, course_id: courseId });
       }
     },
     onSuccess: () => {
-      toast.success("ذخیره شد");
-      setEditingLesson(null);
-      setCreatingLessonFor(null);
+      toast.success("ذخیره شد"); setEditingLesson(null); setCreatingLessonFor(null);
       qc.invalidateQueries({ queryKey: ["academy-lessons-manage", expandedCourse] });
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
@@ -212,10 +148,7 @@ function AcademyManagePage() {
       if (error) throw error;
       await audit("academy_lesson_deleted", "academy_lesson", id, {});
     },
-    onSuccess: () => {
-      toast.success("درس حذف شد");
-      qc.invalidateQueries({ queryKey: ["academy-lessons-manage", expandedCourse] });
-    },
+    onSuccess: () => { toast.success("درس حذف شد"); qc.invalidateQueries({ queryKey: ["academy-lessons-manage", expandedCourse] }); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -225,21 +158,14 @@ function AcademyManagePage() {
       const existingQuizId = quizzesByLesson?.[lesson.id];
       let quizId = existingQuizId;
       if (existingQuizId) {
-        const { error } = await supabase
-          .from("academy_quizzes")
+        const { error } = await supabase.from("academy_quizzes")
           .update({ title: values.title || null, passing_score: values.passing_score })
           .eq("id", existingQuizId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
-          .from("academy_quizzes")
-          .insert({
-            lesson_id: lesson.id,
-            title: values.title || null,
-            passing_score: values.passing_score,
-          })
-          .select("id")
-          .single();
+        const { data, error } = await supabase.from("academy_quizzes")
+          .insert({ lesson_id: lesson.id, title: values.title || null, passing_score: values.passing_score })
+          .select("id").single();
         if (error) throw error;
         quizId = data.id;
       }
@@ -258,14 +184,10 @@ function AcademyManagePage() {
         const { error } = await supabase.from("academy_quiz_questions").insert(rows);
         if (error) throw error;
       }
-      await audit("academy_quiz_saved", "academy_quiz", quizId!, {
-        lesson_id: lesson.id,
-        questions_count: rows.length,
-      });
+      await audit("academy_quiz_saved", "academy_quiz", quizId!, { lesson_id: lesson.id, questions_count: rows.length });
     },
     onSuccess: () => {
-      toast.success("آزمون ذخیره شد");
-      setEditingQuizForLesson(null);
+      toast.success("آزمون ذخیره شد"); setEditingQuizForLesson(null);
       qc.invalidateQueries({ queryKey: ["academy-quizzes-manage", expandedCourse] });
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
@@ -279,16 +201,10 @@ function AcademyManagePage() {
       const lesson = editingQuizForLesson!;
       const quizId = quizzesByLesson?.[lesson.id];
       if (!quizId) return { title: "", passing_score: 50, questions: [] as QuizQuestion[] };
-      const { data: quiz } = await supabase
-        .from("academy_quizzes")
-        .select("title, passing_score")
-        .eq("id", quizId)
-        .maybeSingle();
-      const { data: questions } = await supabase
-        .from("academy_quiz_questions")
+      const { data: quiz } = await supabase.from("academy_quizzes").select("title, passing_score").eq("id", quizId).maybeSingle();
+      const { data: questions } = await supabase.from("academy_quiz_questions")
         .select("id, question_text, options, correct_value, order_index")
-        .eq("quiz_id", quizId)
-        .order("order_index", { ascending: true });
+        .eq("quiz_id", quizId).order("order_index", { ascending: true });
       return {
         title: quiz?.title ?? "",
         passing_score: quiz?.passing_score ?? 50,
@@ -311,14 +227,10 @@ function AcademyManagePage() {
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
-              <Link to="/academy">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/academy"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             <Button size="sm" onClick={() => setCreatingCourse(true)}>
-              <Plus className="ms-1 h-4 w-4" />
-              دوره جدید
+              <Plus className="ms-1 h-4 w-4" />دوره جدید
             </Button>
           </div>
         }
@@ -327,9 +239,7 @@ function AcademyManagePage() {
       {isLoading ? (
         <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
       ) : !courses || courses.length === 0 ? (
-        <p className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
-          دوره‌ای ثبت نشده است.
-        </p>
+        <p className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">دوره‌ای ثبت نشده است.</p>
       ) : (
         <div className="space-y-3">
           {courses.map((c) => {
@@ -346,26 +256,15 @@ function AcademyManagePage() {
                       {c.title}
                     </button>
                     <Badge variant={c.is_published ? "default" : "secondary"}>
-                      {c.is_published ? (
-                        <Eye className="ms-1 h-3 w-3" />
-                      ) : (
-                        <EyeOff className="ms-1 h-3 w-3" />
-                      )}
+                      {c.is_published ? <Eye className="ms-1 h-3 w-3" /> : <EyeOff className="ms-1 h-3 w-3" />}
                       {c.is_published ? "منتشرشده" : "پیش‌نویس"}
                     </Badge>
                     <Button variant="ghost" size="sm" onClick={() => setEditingCourse(c)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        if (
-                          confirm(`حذف دوره «${c.title}»؟ تمام درس‌ها و آزمون‌ها نیز حذف می‌شوند.`)
-                        )
-                          courseDelete.mutate(c.id);
-                      }}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      if (confirm(`حذف دوره «${c.title}»؟ تمام درس‌ها و آزمون‌ها نیز حذف می‌شوند.`)) courseDelete.mutate(c.id);
+                    }}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -373,13 +272,8 @@ function AcademyManagePage() {
                     <div className="space-y-2 border-t pt-3">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-bold">درس‌ها</h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCreatingLessonFor(c.id)}
-                        >
-                          <Plus className="ms-1 h-4 w-4" />
-                          درس جدید
+                        <Button variant="outline" size="sm" onClick={() => setCreatingLessonFor(c.id)}>
+                          <Plus className="ms-1 h-4 w-4" />درس جدید
                         </Button>
                       </div>
                       {(lessons ?? []).length === 0 ? (
@@ -387,37 +281,19 @@ function AcademyManagePage() {
                       ) : (
                         <div className="space-y-1.5">
                           {(lessons ?? []).map((l) => (
-                            <div
-                              key={l.id}
-                              className="flex flex-wrap items-center gap-2 rounded border p-2 text-sm"
-                            >
-                              <span className="text-xs text-muted-foreground">
-                                #{l.order_index}
-                              </span>
+                            <div key={l.id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-sm">
+                              <span className="text-xs text-muted-foreground">#{l.order_index}</span>
                               <span className="flex-1">{l.title}</span>
-                              {quizzesByLesson?.[l.id] && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  <FileQuestion className="ms-1 h-3 w-3" />
-                                  آزمون
-                                </Badge>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingQuizForLesson(l)}
-                              >
+                              {quizzesByLesson?.[l.id] && <Badge variant="outline" className="text-[10px]"><FileQuestion className="ms-1 h-3 w-3" />آزمون</Badge>}
+                              <Button variant="ghost" size="sm" onClick={() => setEditingQuizForLesson(l)}>
                                 <FileQuestion className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => setEditingLesson(l)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm(`حذف درس «${l.title}»؟`)) lessonDelete.mutate(l.id);
-                                }}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                if (confirm(`حذف درس «${l.title}»؟`)) lessonDelete.mutate(l.id);
+                              }}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
@@ -436,13 +312,9 @@ function AcademyManagePage() {
       {/* Create/Edit Course Dialogs */}
       <Dialog open={creatingCourse} onOpenChange={(o) => !o && setCreatingCourse(false)}>
         <DialogContent dir="rtl" className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>دوره جدید</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>دوره جدید</DialogTitle></DialogHeader>
           <CourseForm
-            onSubmit={async (v) => {
-              await courseCreate.mutateAsync(v);
-            }}
+            onSubmit={async (v) => { await courseCreate.mutateAsync(v); }}
             submitting={courseCreate.isPending}
             onCancel={() => setCreatingCourse(false)}
           />
@@ -451,19 +323,11 @@ function AcademyManagePage() {
 
       <Dialog open={!!editingCourse} onOpenChange={(o) => !o && setEditingCourse(null)}>
         <DialogContent dir="rtl" className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>ویرایش دوره</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>ویرایش دوره</DialogTitle></DialogHeader>
           {editingCourse && (
             <CourseForm
-              defaultValues={{
-                title: editingCourse.title,
-                description: editingCourse.description ?? "",
-                is_published: editingCourse.is_published,
-              }}
-              onSubmit={async (v) => {
-                await courseUpdate.mutateAsync({ id: editingCourse.id, v });
-              }}
+              defaultValues={{ title: editingCourse.title, description: editingCourse.description ?? "", is_published: editingCourse.is_published }}
+              onSubmit={async (v) => { await courseUpdate.mutateAsync({ id: editingCourse.id, v }); }}
               submitting={courseUpdate.isPending}
               onCancel={() => setEditingCourse(null)}
             />
@@ -472,68 +336,43 @@ function AcademyManagePage() {
       </Dialog>
 
       {/* Lesson Dialogs */}
-      <Dialog
-        open={!!creatingLessonFor || !!editingLesson}
-        onOpenChange={(o) => {
-          if (!o) {
-            setCreatingLessonFor(null);
-            setEditingLesson(null);
-          }
-        }}
-      >
+      <Dialog open={!!creatingLessonFor || !!editingLesson} onOpenChange={(o) => { if (!o) { setCreatingLessonFor(null); setEditingLesson(null); } }}>
         <DialogContent dir="rtl" className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingLesson ? "ویرایش درس" : "درس جدید"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editingLesson ? "ویرایش درس" : "درس جدید"}</DialogTitle></DialogHeader>
           <LessonForm
-            defaultValues={
-              editingLesson
-                ? {
-                    title: editingLesson.title,
-                    content: editingLesson.content ?? "",
-                    video_url: editingLesson.video_url ?? "",
-                    attachment_url: editingLesson.attachment_url ?? "",
-                    order_index: editingLesson.order_index,
-                  }
-                : { order_index: lessons?.length ?? 0 }
-            }
+            defaultValues={editingLesson ? {
+              title: editingLesson.title,
+              content: editingLesson.content ?? "",
+              video_url: editingLesson.video_url ?? "",
+              attachment_url: editingLesson.attachment_url ?? "",
+              order_index: editingLesson.order_index,
+            } : { order_index: (lessons?.length ?? 0) }}
             onSubmit={async (v) => {
               const courseId = editingLesson?.course_id ?? creatingLessonFor!;
               await lessonSave.mutateAsync({ id: editingLesson?.id, courseId, v });
             }}
             submitting={lessonSave.isPending}
-            onCancel={() => {
-              setCreatingLessonFor(null);
-              setEditingLesson(null);
-            }}
+            onCancel={() => { setCreatingLessonFor(null); setEditingLesson(null); }}
           />
         </DialogContent>
       </Dialog>
 
       {/* Quiz Dialog */}
-      <Dialog
-        open={!!editingQuizForLesson}
-        onOpenChange={(o) => !o && setEditingQuizForLesson(null)}
-      >
+      <Dialog open={!!editingQuizForLesson} onOpenChange={(o) => !o && setEditingQuizForLesson(null)}>
         <DialogContent dir="rtl" className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>آزمون درس: {editingQuizForLesson?.title}</DialogTitle>
-          </DialogHeader>
-          {editingQuizForLesson &&
-            (editingQuizData ? (
+          <DialogHeader><DialogTitle>آزمون درس: {editingQuizForLesson?.title}</DialogTitle></DialogHeader>
+          {editingQuizForLesson && (
+            editingQuizData ? (
               <QuizForm
                 defaultValues={editingQuizData}
-                onSubmit={async (v) => {
-                  await quizSave.mutateAsync({ lesson: editingQuizForLesson, values: v });
-                }}
+                onSubmit={async (v) => { await quizSave.mutateAsync({ lesson: editingQuizForLesson, values: v }); }}
                 submitting={quizSave.isPending}
                 onCancel={() => setEditingQuizForLesson(null)}
               />
             ) : (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ))}
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            )
+          )}
         </DialogContent>
       </Dialog>
     </div>

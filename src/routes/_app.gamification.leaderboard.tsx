@@ -53,10 +53,7 @@ function LeaderboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <PageHeader
-          title="تابلوی برترین‌ها"
-          description="رتبه‌بندی کارشناسان فروش بر اساس امتیاز."
-        />
+        <PageHeader title="تابلوی برترین‌ها" description="رتبه‌بندی کارشناسان فروش بر اساس امتیاز." />
         <Button variant="ghost" size="sm" asChild>
           <Link to="/gamification">
             <ChevronRight className="ml-1 h-4 w-4" /> بازگشت به داشبورد
@@ -76,25 +73,18 @@ function LeaderboardPage() {
       <Card>
         <CardContent className="p-0">
           {q.isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !q.data?.length ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              داده‌ای موجود نیست.
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">داده‌ای موجود نیست.</div>
           ) : (
             <ul className="divide-y">
               {q.data.map((row) => {
                 const isSelf = row.employee_id === user?.id;
                 const podium =
-                  row.rank === 1
-                    ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-yellow-500/40"
-                    : row.rank === 2
-                      ? "bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-400/40"
-                      : row.rank === 3
-                        ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-amber-700/40"
-                        : "bg-muted text-muted-foreground";
+                  row.rank === 1 ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-yellow-500/40"
+                  : row.rank === 2 ? "bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-400/40"
+                  : row.rank === 3 ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-amber-700/40"
+                  : "bg-muted text-muted-foreground";
                 const initials = (row.full_name ?? "؟").trim().slice(0, 2);
                 const tier = leagues.data?.get(row.employee_id) ?? null;
                 return (
@@ -106,9 +96,7 @@ function LeaderboardPage() {
                         : "hover:bg-muted/40 hover:shadow-[inset_4px_0_0_0_hsl(var(--primary))]"
                     }`}
                   >
-                    <span
-                      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums shadow-md ${podium}`}
-                    >
+                    <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums shadow-md ${podium}`}>
                       {row.rank <= 3 ? <Crown className="h-5 w-5" /> : row.rank}
                     </span>
                     <Avatar className="h-10 w-10 ring-2 ring-background shadow">

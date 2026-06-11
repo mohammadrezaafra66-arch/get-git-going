@@ -13,19 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,9 +25,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/products/attributes")({
-  beforeLoad: async () => {
-    await requirePermission("products", "view");
-  },
+  beforeLoad: async () => { await requirePermission("products", "view"); },
   component: ProductAttributesPage,
 });
 
@@ -67,10 +56,7 @@ interface AttrValue {
 }
 
 function normalizeKey(s: string): string {
-  return s
-    .toString()
-    .trim()
-    .toLowerCase()
+  return s.toString().trim().toLowerCase()
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 60);
@@ -87,10 +73,7 @@ function ProductAttributesPage() {
 
   const [editingGroup, setEditingGroup] = useState<AttrGroup | null>(null);
   const [creatingGroup, setCreatingGroup] = useState<boolean>(false);
-  const [valueDialog, setValueDialog] = useState<{
-    group: AttrGroup;
-    value: AttrValue | null;
-  } | null>(null);
+  const [valueDialog, setValueDialog] = useState<{ group: AttrGroup; value: AttrValue | null } | null>(null);
 
   const groupsQ = useQuery({
     queryKey: ["product-attribute-groups"],
@@ -108,10 +91,7 @@ function ProductAttributesPage() {
   const brandsQ = useQuery({
     queryKey: ["attr-brands"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("brands")
-        .select("id, name, is_active")
-        .order("name");
+      const { data, error } = await supabase.from("brands").select("id, name, is_active").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -119,10 +99,7 @@ function ProductAttributesPage() {
   const catsQ = useQuery({
     queryKey: ["attr-categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, name, is_active")
-        .order("name");
+      const { data, error } = await supabase.from("categories").select("id, name, is_active").order("name");
       if (error) throw error;
       return data ?? [];
     },
@@ -151,29 +128,16 @@ function ProductAttributesPage() {
       if (g.key === "brand") {
         const rows: AttrValue[] = (brandsQ.data ?? [])
           .filter((b) => matches(b.name))
-          .map((b) => ({
-            id: b.id,
-            group_id: g.id,
-            type: "brand",
-            name: b.name,
-            is_active: b.is_active,
-          }));
+          .map((b) => ({ id: b.id, group_id: g.id, type: "brand", name: b.name, is_active: b.is_active }));
         map.set(g.id, rows);
       } else if (g.key === "category") {
         const rows: AttrValue[] = (catsQ.data ?? [])
           .filter((c) => matches(c.name))
-          .map((c) => ({
-            id: c.id,
-            group_id: g.id,
-            type: "category",
-            name: c.name,
-            is_active: c.is_active,
-          }));
+          .map((c) => ({ id: c.id, group_id: g.id, type: "category", name: c.name, is_active: c.is_active }));
         map.set(g.id, rows);
       } else {
-        const rows = (valuesQ.data ?? []).filter(
-          (v) => (v.group_id === g.id || v.type === g.key) && matches(v.name),
-        );
+        const rows = (valuesQ.data ?? [])
+          .filter((v) => (v.group_id === g.id || v.type === g.key) && matches(v.name));
         map.set(g.id, rows);
       }
     }
@@ -201,15 +165,10 @@ function ProductAttributesPage() {
   const toggleValueMut = useMutation({
     mutationFn: async (vars: { group: AttrGroup; value: AttrValue; is_active: boolean }) => {
       const table =
-        vars.group.key === "brand"
-          ? "brands"
-          : vars.group.key === "category"
-            ? "categories"
-            : "product_attributes";
-      const { error } = await supabase
-        .from(table)
-        .update({ is_active: vars.is_active })
-        .eq("id", vars.value.id);
+        vars.group.key === "brand" ? "brands" :
+        vars.group.key === "category" ? "categories" :
+        "product_attributes";
+      const { error } = await supabase.from(table).update({ is_active: vars.is_active }).eq("id", vars.value.id);
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
@@ -240,10 +199,7 @@ function ProductAttributesPage() {
       const { error } = await supabase.from("product_attribute_groups").delete().eq("id", group.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("گروه حذف شد");
-      invalidateAll();
-    },
+    onSuccess: () => { toast.success("گروه حذف شد"); invalidateAll(); },
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
@@ -255,21 +211,11 @@ function ProductAttributesPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/products">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/products"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditingGroup(null);
-                  setCreatingGroup(true);
-                }}
-              >
-                <Plus className="ms-1 h-4 w-4" />
-                گروه ویژگی جدید
+              <Button size="sm" onClick={() => { setEditingGroup(null); setCreatingGroup(true); }}>
+                <Plus className="ms-1 h-4 w-4" />گروه ویژگی جدید
               </Button>
             )}
           </>
@@ -283,223 +229,152 @@ function ProductAttributesPage() {
           <TabsTrigger value="category-attrs">ویژگی‌های اختصاصی دسته‌بندی</TabsTrigger>
         </TabsList>
         <TabsContent value="attrs" className="space-y-5">
-          <Card>
-            <CardContent className="grid gap-3 p-4 md:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">جستجو</Label>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="جستجوی نام مقدار..."
-                    className="pr-8"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">فیلتر بر اساس گروه</Label>
-                <Select value={filterGroupId} onValueChange={(v) => setFilterGroupId(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">همه گروه‌ها</SelectItem>
-                    {(groupsQ.data ?? []).map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.label_fa}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">جستجو</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="جستجوی نام مقدار..."
+                className="pr-8"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">فیلتر بر اساس گروه</Label>
+            <Select value={filterGroupId} onValueChange={(v) => setFilterGroupId(v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه گروه‌ها</SelectItem>
+                {(groupsQ.data ?? []).map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.label_fa}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
-          {isLoading ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </CardContent>
-            </Card>
-          ) : visibleGroups.length === 0 ? (
-            <EmptyState
-              icon={Tag}
-              title="گروهی یافت نشد"
-              description="هنوز گروه ویژگی‌ای تعریف نشده است."
-            />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {visibleGroups.map((g) => {
-                const rows = valuesByGroup.get(g.id) ?? [];
-                return (
-                  <Card key={g.id} className={g.is_active ? "" : "opacity-60"}>
-                    <CardContent className="space-y-3 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <Tag className="h-4 w-4 text-muted-foreground" />
-                          <h3 className="truncate font-semibold">{g.label_fa}</h3>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {VALUE_TYPE_LABELS[g.value_type]}
-                          </Badge>
-                          {g.is_system && (
-                            <Lock
-                              className="h-3 w-3 text-muted-foreground"
-                              aria-label="گروه سیستمی"
-                            />
-                          )}
-                          {g.value_type === "select" && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {rows.length}
-                            </Badge>
-                          )}
-                          {!g.is_active && (
-                            <Badge variant="outline" className="text-[10px]">
-                              غیرفعال
-                            </Badge>
-                          )}
-                        </div>
-                        {canWrite && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setCreatingGroup(false);
-                                setEditingGroup(g);
-                              }}
-                              aria-label="ویرایش گروه"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Switch
-                              checked={g.is_active}
-                              onCheckedChange={(v) =>
-                                toggleGroupMut.mutate({ group: g, is_active: v })
-                              }
-                              disabled={toggleGroupMut.isPending}
-                            />
-                            {!g.is_system && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  if (confirm(`گروه «${g.label_fa}» حذف شود؟`))
-                                    deleteGroupMut.mutate(g);
-                                }}
-                                aria-label="حذف گروه"
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
+      {isLoading ? (
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
+      ) : visibleGroups.length === 0 ? (
+        <EmptyState icon={Tag} title="گروهی یافت نشد" description="هنوز گروه ویژگی‌ای تعریف نشده است." />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {visibleGroups.map((g) => {
+            const rows = valuesByGroup.get(g.id) ?? [];
+            return (
+              <Card key={g.id} className={g.is_active ? "" : "opacity-60"}>
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="truncate font-semibold">{g.label_fa}</h3>
+                      <Badge variant="secondary" className="text-[10px]">{VALUE_TYPE_LABELS[g.value_type]}</Badge>
+                      {g.is_system && <Lock className="h-3 w-3 text-muted-foreground" aria-label="گروه سیستمی" />}
+                      {g.value_type === "select" && <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>}
+                      {!g.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
+                    </div>
+                    {canWrite && (
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => { setCreatingGroup(false); setEditingGroup(g); }} aria-label="ویرایش گروه">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Switch
+                          checked={g.is_active}
+                          onCheckedChange={(v) => toggleGroupMut.mutate({ group: g, is_active: v })}
+                          disabled={toggleGroupMut.isPending}
+                        />
+                        {!g.is_system && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm(`گروه «${g.label_fa}» حذف شود؟`)) deleteGroupMut.mutate(g);
+                            }}
+                            aria-label="حذف گروه"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         )}
                       </div>
+                    )}
+                  </div>
 
-                      {g.value_type !== "select" ? (
-                        <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-                          {g.value_type === "text"
-                            ? "این گروه مقدار متنی آزاد می‌گیرد — نیازی به تعریف لیست مقادیر نیست."
-                            : "این گروه مقدار عددی می‌گیرد — کاربر در فرم محصول عدد وارد می‌کند."}
-                        </p>
-                      ) : rows.length === 0 ? (
-                        <div className="space-y-2">
-                          <p className="py-4 text-center text-xs text-muted-foreground">
-                            موردی نیست
-                          </p>
-                          {canWrite && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => setValueDialog({ group: g, value: null })}
-                            >
-                              <Plus className="ms-1 h-4 w-4" />
-                              افزودن مقدار
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <ul className="divide-y divide-border">
-                            {rows.map((r) => (
-                              <li
-                                key={`${g.key}-${r.id}`}
-                                className="flex items-center justify-between gap-2 py-2"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <span
-                                    className={`text-sm ${r.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}
-                                  >
-                                    {r.name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {canWrite && (
-                                    <>
-                                      <Switch
-                                        checked={r.is_active}
-                                        onCheckedChange={(v) =>
-                                          toggleValueMut.mutate({
-                                            group: g,
-                                            value: r,
-                                            is_active: v,
-                                          })
-                                        }
-                                        disabled={toggleValueMut.isPending}
-                                      />
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => setValueDialog({ group: g, value: r })}
-                                        aria-label="ویرایش"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                          {canWrite && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="w-full"
-                              onClick={() => setValueDialog({ group: g, value: null })}
-                            >
-                              <Plus className="ms-1 h-4 w-4" />
-                              افزودن مقدار
-                            </Button>
-                          )}
-                        </>
+                  {g.value_type !== "select" ? (
+                    <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                      {g.value_type === "text"
+                        ? "این گروه مقدار متنی آزاد می‌گیرد — نیازی به تعریف لیست مقادیر نیست."
+                        : "این گروه مقدار عددی می‌گیرد — کاربر در فرم محصول عدد وارد می‌کند."}
+                    </p>
+                  ) : rows.length === 0 ? (
+                    <div className="space-y-2">
+                      <p className="py-4 text-center text-xs text-muted-foreground">موردی نیست</p>
+                      {canWrite && (
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => setValueDialog({ group: g, value: null })}>
+                          <Plus className="ms-1 h-4 w-4" />افزودن مقدار
+                        </Button>
                       )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                    </div>
+                  ) : (
+                    <>
+                      <ul className="divide-y divide-border">
+                        {rows.map((r) => (
+                          <li key={`${g.key}-${r.id}`} className="flex items-center justify-between gap-2 py-2">
+                            <div className="min-w-0 flex-1">
+                              <span className={`text-sm ${r.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+                                {r.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {canWrite && (
+                                <>
+                                  <Switch
+                                    checked={r.is_active}
+                                    onCheckedChange={(v) => toggleValueMut.mutate({ group: g, value: r, is_active: v })}
+                                    disabled={toggleValueMut.isPending}
+                                  />
+                                  <Button size="icon" variant="ghost" onClick={() => setValueDialog({ group: g, value: r })} aria-label="ویرایش">
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                      {canWrite && (
+                        <Button size="sm" variant="ghost" className="w-full" onClick={() => setValueDialog({ group: g, value: null })}>
+                          <Plus className="ms-1 h-4 w-4" />افزودن مقدار
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-          {canWrite && (creatingGroup || editingGroup) && (
-            <GroupDialog
-              group={editingGroup}
-              onClose={() => {
-                setCreatingGroup(false);
-                setEditingGroup(null);
-              }}
-              onSaved={invalidateAll}
-            />
-          )}
-          {canWrite && valueDialog && (
-            <ValueDialog
-              group={valueDialog.group}
-              value={valueDialog.value}
-              onClose={() => setValueDialog(null)}
-              onSaved={invalidateAll}
-            />
-          )}
+      {canWrite && (creatingGroup || editingGroup) && (
+        <GroupDialog
+          group={editingGroup}
+          onClose={() => { setCreatingGroup(false); setEditingGroup(null); }}
+          onSaved={invalidateAll}
+        />
+      )}
+      {canWrite && valueDialog && (
+        <ValueDialog
+          group={valueDialog.group}
+          value={valueDialog.value}
+          onClose={() => setValueDialog(null)}
+          onSaved={invalidateAll}
+        />
+      )}
         </TabsContent>
         <TabsContent value="naming" className="space-y-4">
           <CategoryNamingSection canWrite={canWrite} />
@@ -516,9 +391,7 @@ function ProductAttributesPage() {
 // Group create/edit dialog
 // =====================================================================
 function GroupDialog({
-  group,
-  onClose,
-  onSaved,
+  group, onClose, onSaved,
 }: {
   group: AttrGroup | null;
   onClose: () => void;
@@ -554,26 +427,23 @@ function GroupDialog({
         // Editing: system groups can only change label / sort / active
         const payload = group.is_system
           ? { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder }
-          : {
-              label_fa: cleanLabel,
-              is_active: isActive,
-              sort_order: sortOrder,
-              value_type: valueType,
-            };
+          : { label_fa: cleanLabel, is_active: isActive, sort_order: sortOrder, value_type: valueType };
         const { error } = await supabase
           .from("product_attribute_groups")
           .update(payload)
           .eq("id", group.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("product_attribute_groups").insert({
-          key: cleanKey,
-          label_fa: cleanLabel,
-          value_type: valueType,
-          is_active: isActive,
-          sort_order: sortOrder,
-          is_system: false,
-        });
+        const { error } = await supabase
+          .from("product_attribute_groups")
+          .insert({
+            key: cleanKey,
+            label_fa: cleanLabel,
+            value_type: valueType,
+            is_active: isActive,
+            sort_order: sortOrder,
+            is_system: false,
+          });
         if (error) {
           if ((error as any).code === "23505") throw new Error("این شناسه قبلاً استفاده شده است");
           throw error;
@@ -589,12 +459,7 @@ function GroupDialog({
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEdit ? "ویرایش گروه ویژگی" : "گروه ویژگی جدید"}</DialogTitle>
@@ -605,12 +470,7 @@ function GroupDialog({
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>عنوان فارسی</Label>
-            <Input
-              value={labelFa}
-              onChange={(e) => setLabelFa(e.target.value)}
-              maxLength={80}
-              placeholder="مثلاً: گارانتی"
-            />
+            <Input value={labelFa} onChange={(e) => setLabelFa(e.target.value)} maxLength={80} placeholder="مثلاً: گارانتی" />
           </div>
           <div className="space-y-1.5">
             <Label>شناسه (لاتین)</Label>
@@ -623,11 +483,7 @@ function GroupDialog({
               disabled={isEdit}
               className="font-mono"
             />
-            {!isEdit && (
-              <p className="text-[11px] text-muted-foreground">
-                فقط حروف انگلیسی، عدد و _ . پس از ساخت قابل تغییر نیست.
-              </p>
-            )}
+            {!isEdit && <p className="text-[11px] text-muted-foreground">فقط حروف انگلیسی، عدد و _ . پس از ساخت قابل تغییر نیست.</p>}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -637,9 +493,7 @@ function GroupDialog({
                 onValueChange={(v) => setValueType(v as ValueType)}
                 disabled={isEdit && group?.is_system}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="select">کشویی (لیست مقادیر)</SelectItem>
                   <SelectItem value="text">متنی (مقدار آزاد)</SelectItem>
@@ -647,9 +501,7 @@ function GroupDialog({
                 </SelectContent>
               </Select>
               {isEdit && group?.is_system && (
-                <p className="text-[11px] text-muted-foreground">
-                  گروه سیستمی — نوع مقدار قابل تغییر نیست.
-                </p>
+                <p className="text-[11px] text-muted-foreground">گروه سیستمی — نوع مقدار قابل تغییر نیست.</p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -658,9 +510,7 @@ function GroupDialog({
                 type="number"
                 min={0}
                 value={sortOrder}
-                onChange={(e) =>
-                  setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))
-                }
+                onChange={(e) => setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))}
               />
             </div>
           </div>
@@ -670,9 +520,7 @@ function GroupDialog({
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !labelFa.trim()}>
             {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
             ذخیره
@@ -687,10 +535,7 @@ function GroupDialog({
 // Value create/edit dialog (only for select-type groups)
 // =====================================================================
 function ValueDialog({
-  group,
-  value,
-  onClose,
-  onSaved,
+  group, value, onClose, onSaved,
 }: {
   group: AttrGroup;
   value: AttrValue | null;
@@ -702,9 +547,7 @@ function ValueDialog({
   const [isActive, setIsActive] = useState<boolean>(value?.is_active ?? true);
 
   const slugify = (s: string) =>
-    s
-      .trim()
-      .toLowerCase()
+    s.trim().toLowerCase()
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
@@ -717,11 +560,9 @@ function ValueDialog({
 
       if (isEdit && value) {
         const table =
-          group.key === "brand"
-            ? "brands"
-            : group.key === "category"
-              ? "categories"
-              : "product_attributes";
+          group.key === "brand" ? "brands" :
+          group.key === "category" ? "categories" :
+          "product_attributes";
         const { error } = await supabase
           .from(table)
           .update({ name: trimmed, is_active: isActive })
@@ -748,12 +589,14 @@ function ValueDialog({
         if (!legacyTypes.includes(group.key)) {
           throw new Error("افزودن مقدار برای گروه‌های جدید کشویی هنوز پشتیبانی نمی‌شود (فاز بعد).");
         }
-        const { error } = await supabase.from("product_attributes").insert({
-          name: trimmed,
-          type: group.key as "color" | "capacity" | "model",
-          group_id: group.id,
-          is_active: isActive,
-        });
+        const { error } = await supabase
+          .from("product_attributes")
+          .insert({
+            name: trimmed,
+            type: group.key as "color" | "capacity" | "model",
+            group_id: group.id,
+            is_active: isActive,
+          });
         if (error) throw error;
       }
     },
@@ -766,27 +609,16 @@ function ValueDialog({
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "ویرایش مقدار" : `افزودن مقدار جدید به «${group.label_fa}»`}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "ویرایش مقدار" : `افزودن مقدار جدید به «${group.label_fa}»`}</DialogTitle>
           <DialogDescription>این مقدار در فرم محصولات قابل انتخاب خواهد بود.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label>نام</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="مثلاً: قرمز، ۱۰۰ لیتری، X200"
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: قرمز، ۱۰۰ لیتری، X200" />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -794,9 +626,7 @@ function ValueDialog({
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !name.trim()}>
             {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
             ذخیره
@@ -899,9 +729,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("category_product_attributes")
-        .select(
-          "id, category_id, attribute_key, label_fa, input_type, is_required, is_active, use_in_product_name, sort_order, options, help_text",
-        )
+        .select("id, category_id, attribute_key, label_fa, input_type, is_required, is_active, use_in_product_name, sort_order, options, help_text")
         .eq("category_id", categoryId)
         .order("sort_order")
         .order("label_fa");
@@ -918,9 +746,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
         .eq("id", vars.row.id);
       if (error) throw error;
       await logCpaAudit(
-        vars.is_active
-          ? "category_product_attribute_enabled"
-          : "category_product_attribute_disabled",
+        vars.is_active ? "category_product_attribute_enabled" : "category_product_attribute_disabled",
         vars.row.id,
         {
           category_id: vars.row.category_id,
@@ -949,8 +775,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
               <SelectContent>
                 {(catsQ.data ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                    {!c.is_active ? " (غیرفعال)" : ""}
+                    {c.name}{!c.is_active ? " (غیرفعال)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -961,13 +786,9 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
               <Button
                 size="sm"
                 disabled={!categoryId}
-                onClick={() => {
-                  setEditing(null);
-                  setCreating(true);
-                }}
+                onClick={() => { setEditing(null); setCreating(true); }}
               >
-                <Plus className="ms-1 h-4 w-4" />
-                ویژگی جدید
+                <Plus className="ms-1 h-4 w-4" />ویژگی جدید
               </Button>
             )}
           </div>
@@ -981,11 +802,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
           description="ویژگی‌های اختصاصی برای هر دسته جداگانه تعریف می‌شوند."
         />
       ) : attrsQ.isLoading ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            در حال بارگذاری...
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
       ) : (attrsQ.data ?? []).length === 0 ? (
         <EmptyState
           icon={Tag}
@@ -999,34 +816,17 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
               {(attrsQ.data ?? []).map((r) => {
                 const opts = Array.isArray(r.options) ? (r.options as unknown[]).map(String) : [];
                 return (
-                  <li
-                    key={r.id}
-                    className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between"
-                  >
+                  <li key={r.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`font-medium ${r.is_active ? "" : "text-muted-foreground line-through"}`}
-                        >
+                        <span className={`font-medium ${r.is_active ? "" : "text-muted-foreground line-through"}`}>
                           {r.label_fa}
                         </span>
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          {r.attribute_key}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {CPA_INPUT_LABELS[r.input_type]}
-                        </Badge>
+                        <Badge variant="outline" className="font-mono text-[10px]">{r.attribute_key}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{CPA_INPUT_LABELS[r.input_type]}</Badge>
                         {r.is_required && <Badge className="text-[10px]">الزامی</Badge>}
-                        {r.use_in_product_name && (
-                          <Badge variant="outline" className="text-[10px]">
-                            در نام محصول
-                          </Badge>
-                        )}
-                        {!r.is_active && (
-                          <Badge variant="outline" className="text-[10px]">
-                            غیرفعال
-                          </Badge>
-                        )}
+                        {r.use_in_product_name && <Badge variant="outline" className="text-[10px]">در نام محصول</Badge>}
+                        {!r.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground">ترتیب: {r.sort_order}</div>
                       {r.input_type === "select" && opts.length > 0 && (
@@ -1045,16 +845,8 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
                           onCheckedChange={(v) => toggleMut.mutate({ row: r, is_active: v })}
                           disabled={toggleMut.isPending}
                         />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setCreating(false);
-                            setEditing(r);
-                          }}
-                        >
-                          <Pencil className="ms-1 h-4 w-4" />
-                          ویرایش
+                        <Button size="sm" variant="outline" onClick={() => { setCreating(false); setEditing(r); }}>
+                          <Pencil className="ms-1 h-4 w-4" />ویرایش
                         </Button>
                       </div>
                     )}
@@ -1070,10 +862,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
         <CpaEditDialog
           categoryId={categoryId}
           row={editing}
-          onClose={() => {
-            setEditing(null);
-            setCreating(false);
-          }}
+          onClose={() => { setEditing(null); setCreating(false); }}
           onSaved={() => qc.invalidateQueries({ queryKey: ["cpa-attrs", categoryId] })}
         />
       )}
@@ -1082,10 +871,7 @@ function CategoryAttributesSection({ canWrite }: { canWrite: boolean }) {
 }
 
 function CpaEditDialog({
-  categoryId,
-  row,
-  onClose,
-  onSaved,
+  categoryId, row, onClose, onSaved,
 }: {
   categoryId: string;
   row: CpaRow | null;
@@ -1129,8 +915,7 @@ function CpaEditDialog({
       if (cleanKey.length > 60) throw new Error("کلید نباید بیش از ۶۰ کاراکتر باشد");
       if (cleanLabel.length > 120) throw new Error("عنوان نباید بیش از ۱۲۰ کاراکتر باشد");
       if (cleanHelp.length > 500) throw new Error("راهنما نباید بیش از ۵۰۰ کاراکتر باشد");
-      if (sortOrder < 0 || !Number.isInteger(sortOrder))
-        throw new Error("ترتیب باید عدد صحیح غیرمنفی باشد");
+      if (sortOrder < 0 || !Number.isInteger(sortOrder)) throw new Error("ترتیب باید عدد صحیح غیرمنفی باشد");
       if (inputType === "select" && opts.length === 0) {
         throw new Error("برای نوع «انتخابی» حداقل یک گزینه وارد کنید");
       }
@@ -1198,27 +983,19 @@ function CpaEditDialog({
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "ویرایش ویژگی" : "ویژگی جدید"}</DialogTitle>
-          <DialogDescription>ویژگی فقط برای دسته انتخاب‌شده ذخیره می‌شود.</DialogDescription>
+          <DialogDescription>
+            ویژگی فقط برای دسته انتخاب‌شده ذخیره می‌شود.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>عنوان فارسی</Label>
-              <Input
-                value={labelFa}
-                onChange={(e) => setLabelFa(e.target.value)}
-                maxLength={120}
-                placeholder="مثلاً: ظرفیت"
-              />
+              <Input value={labelFa} onChange={(e) => setLabelFa(e.target.value)} maxLength={120} placeholder="مثلاً: ظرفیت" />
             </div>
             <div className="space-y-1.5">
               <Label>کلید (لاتین)</Label>
@@ -1231,9 +1008,7 @@ function CpaEditDialog({
                 disabled={isEdit}
                 className="font-mono"
               />
-              {!isEdit && (
-                <p className="text-[11px] text-muted-foreground">فقط حروف انگلیسی، عدد و _</p>
-              )}
+              {!isEdit && <p className="text-[11px] text-muted-foreground">فقط حروف انگلیسی، عدد و _</p>}
             </div>
           </div>
 
@@ -1241,14 +1016,10 @@ function CpaEditDialog({
             <div className="space-y-1.5">
               <Label>نوع ورودی</Label>
               <Select value={inputType} onValueChange={(v) => setInputType(v as CpaInputType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CPA_INPUT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {CPA_INPUT_LABELS[t]}
-                    </SelectItem>
+                    <SelectItem key={t} value={t}>{CPA_INPUT_LABELS[t]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1259,9 +1030,7 @@ function CpaEditDialog({
                 type="number"
                 min={0}
                 value={sortOrder}
-                onChange={(e) =>
-                  setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))
-                }
+                onChange={(e) => setSortOrder(Math.max(0, parseInt(e.target.value || "0", 10) || 0))}
               />
             </div>
           </div>
@@ -1306,9 +1075,7 @@ function CpaEditDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
             {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
             ذخیره
@@ -1333,15 +1100,7 @@ const SAMPLE_VALUES: Record<string, string> = {
   sku: "AFK-2026-00001",
 };
 
-const ALLOWED_TOKENS = [
-  "category",
-  "brand",
-  "primary_spec",
-  "model",
-  "capacity",
-  "color",
-  "sku",
-] as const;
+const ALLOWED_TOKENS = ["category", "brand", "primary_spec", "model", "capacity", "color", "sku"] as const;
 
 function renderTemplate(tpl: string, values: Record<string, string>): string {
   if (!tpl) return "";
@@ -1350,10 +1109,7 @@ function renderTemplate(tpl: string, values: Record<string, string>): string {
 
 function sanitizePlain(s: string): string {
   // strip control chars and angle brackets to avoid html/script injection
-  return s
-    .replace(/[<>]/g, "")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-    .trim();
+  return s.replace(/[<>]/g, "").replace(/[\u0000-\u001F\u007F]/g, "").trim();
 }
 
 interface CategoryNamingRow {
@@ -1388,7 +1144,7 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
   }, [q.data, search]);
 
   const editingRow = useMemo(
-    () => (editingId ? ((q.data ?? []).find((c) => c.id === editingId) ?? null) : null),
+    () => (editingId ? (q.data ?? []).find((c) => c.id === editingId) ?? null : null),
     [q.data, editingId],
   );
 
@@ -1405,8 +1161,7 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
             ))}
           </div>
           <div>
-            مثال:{" "}
-            <span className="font-mono">{"{category} {brand} {primary_spec} مدل {model}"}</span>
+            مثال: <span className="font-mono">{"{category} {brand} {primary_spec} مدل {model}"}</span>
           </div>
           <div className="mt-2 border-t pt-2">
             <div className="font-medium text-foreground">توکن ویژگی اختصاصی دسته:</div>
@@ -1416,8 +1171,7 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
               مثال: <span className="font-mono">{"{attr:inverter_type}"}</span>
             </div>
             <div className="mt-1">
-              اگر ویژگی‌ای با گزینهٔ «استفاده در نام محصول» فعال باشد ولی در الگو نیامده باشد،
-              مقدارش به‌صورت خودکار به انتهای نام افزوده می‌شود.
+              اگر ویژگی‌ای با گزینهٔ «استفاده در نام محصول» فعال باشد ولی در الگو نیامده باشد، مقدارش به‌صورت خودکار به انتهای نام افزوده می‌شود.
             </div>
           </div>
         </CardContent>
@@ -1438,17 +1192,9 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
       </Card>
 
       {q.isLoading ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            در حال بارگذاری...
-          </CardContent>
-        </Card>
+        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</CardContent></Card>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Tag}
-          title="دسته‌ای یافت نشد"
-          description="هنوز دسته‌بندی‌ای ثبت نشده است."
-        />
+        <EmptyState icon={Tag} title="دسته‌ای یافت نشد" description="هنوز دسته‌بندی‌ای ثبت نشده است." />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -1458,32 +1204,19 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
                   ? renderTemplate(c.naming_template, SAMPLE_VALUES)
                   : "—";
                 return (
-                  <li
-                    key={c.id}
-                    className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between"
-                  >
+                  <li key={c.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}
-                        >
+                        <span className={`font-medium ${c.is_active ? "" : "text-muted-foreground line-through"}`}>
                           {c.name}
                         </span>
-                        {!c.is_active && (
-                          <Badge variant="outline" className="text-[10px]">
-                            غیرفعال
-                          </Badge>
-                        )}
+                        {!c.is_active && <Badge variant="outline" className="text-[10px]">غیرفعال</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        برچسب اسپک اصلی:{" "}
-                        <span className="text-foreground">{c.primary_spec_label || "—"}</span>
+                        برچسب اسپک اصلی: <span className="text-foreground">{c.primary_spec_label || "—"}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        الگو:{" "}
-                        <span className="font-mono text-foreground">
-                          {c.naming_template || "—"}
-                        </span>
+                        الگو: <span className="font-mono text-foreground">{c.naming_template || "—"}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         پیش‌نمایش: <span className="text-foreground">{preview}</span>
@@ -1491,8 +1224,7 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
                     </div>
                     {canWrite && (
                       <Button size="sm" variant="outline" onClick={() => setEditingId(c.id)}>
-                        <Pencil className="ms-1 h-4 w-4" />
-                        ویرایش
+                        <Pencil className="ms-1 h-4 w-4" />ویرایش
                       </Button>
                     )}
                   </li>
@@ -1515,9 +1247,7 @@ function CategoryNamingSection({ canWrite }: { canWrite: boolean }) {
 }
 
 function NamingEditDialog({
-  row,
-  onClose,
-  onSaved,
+  row, onClose, onSaved,
 }: {
   row: CategoryNamingRow;
   onClose: () => void;
@@ -1551,7 +1281,10 @@ function NamingEditDialog({
         primary_spec_label: cleanSpec ? cleanSpec : null,
       };
 
-      const { error } = await supabase.from("categories").update(after).eq("id", row.id);
+      const { error } = await supabase
+        .from("categories")
+        .update(after)
+        .eq("id", row.id);
       if (error) throw error;
 
       try {
@@ -1576,12 +1309,7 @@ function NamingEditDialog({
   });
 
   return (
-    <Dialog
-      open
-      onOpenChange={(v) => {
-        if (!v) onClose();
-      }}
-    >
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>استاندارد نام‌گذاری — {row.name}</DialogTitle>
@@ -1613,15 +1341,9 @@ function NamingEditDialog({
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
               <span>توکن‌ها:</span>
               {ALLOWED_TOKENS.map((t) => (
-                <Badge
-                  key={t}
-                  variant="outline"
-                  className="font-mono text-[10px]"
-                >{`{${t}}`}</Badge>
+                <Badge key={t} variant="outline" className="font-mono text-[10px]">{`{${t}}`}</Badge>
               ))}
-              <Badge variant="outline" className="font-mono text-[10px]">
-                {"{attr:attribute_key}"}
-              </Badge>
+              <Badge variant="outline" className="font-mono text-[10px]">{"{attr:attribute_key}"}</Badge>
             </div>
             {tplTooLong && <p className="text-xs text-destructive">حداکثر ۳۰۰ کاراکتر</p>}
             <p className="text-xs text-muted-foreground">
@@ -1634,13 +1356,8 @@ function NamingEditDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>
-            انصراف
-          </Button>
-          <Button
-            onClick={() => saveMut.mutate()}
-            disabled={saveMut.isPending || tplTooLong || specTooLong}
-          >
+          <Button variant="outline" onClick={onClose} disabled={saveMut.isPending}>انصراف</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || tplTooLong || specTooLong}>
             {saveMut.isPending && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
             ذخیره
           </Button>

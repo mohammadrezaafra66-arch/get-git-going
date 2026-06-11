@@ -8,19 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -75,10 +66,7 @@ function SuggestionsHistoryPage() {
     },
   });
 
-  const filters = useMemo(
-    () => ({ fromDate, toDate, channelId, page }),
-    [fromDate, toDate, channelId, page],
-  );
+  const filters = useMemo(() => ({ fromDate, toDate, channelId, page }), [fromDate, toDate, channelId, page]);
 
   const logsQuery = useQuery({
     queryKey: ["promotion-suggestion-history", filters],
@@ -110,9 +98,7 @@ function SuggestionsHistoryPage() {
       const names = new Map<string, string>();
       if (ids.length) {
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", ids);
+          .from("profiles").select("id, full_name").in("id", ids);
         for (const p of profiles ?? []) names.set(p.id, p.full_name ?? p.id.slice(0, 8));
       }
       return { rows, count: count ?? 0, names };
@@ -134,46 +120,24 @@ function SuggestionsHistoryPage() {
       <div className="flex flex-col gap-3 rounded-md border bg-card p-4 md:flex-row md:items-end">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="from">از تاریخ</Label>
-          <Input
-            id="from"
-            type="date"
-            value={fromInput}
-            onChange={(e) => {
-              setPage(0);
-              setFromInput(e.target.value);
-            }}
-          />
+          <Input id="from" type="date" value={fromInput}
+            onChange={(e) => { setPage(0); setFromInput(e.target.value); }} />
         </div>
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="to">تا تاریخ</Label>
-          <Input
-            id="to"
-            type="date"
-            value={toInput}
-            onChange={(e) => {
-              setPage(0);
-              setToInput(e.target.value);
-            }}
-          />
+          <Input id="to" type="date" value={toInput}
+            onChange={(e) => { setPage(0); setToInput(e.target.value); }} />
         </div>
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="channel">کانال</Label>
-          <Select
-            value={channelId}
-            onValueChange={(v) => {
-              setPage(0);
-              setChannelId(v);
-            }}
-          >
+          <Select value={channelId} onValueChange={(v) => { setPage(0); setChannelId(v); }}>
             <SelectTrigger id="channel">
               <SelectValue placeholder="همه کانال‌ها" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">همه کانال‌ها</SelectItem>
               {(channelsQuery.data ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -222,16 +186,12 @@ function SuggestionsHistoryPage() {
                     <TableCell className="font-medium">{d.product_name ?? "—"}</TableCell>
                     <TableCell>{d.channel_name ?? "—"}</TableCell>
                     <TableCell className="font-bold">
-                      {Number.isFinite(score)
-                        ? score.toLocaleString("fa-IR", { maximumFractionDigits: 2 })
-                        : "—"}
+                      {Number.isFinite(score) ? score.toLocaleString("fa-IR", { maximumFractionDigits: 2 }) : "—"}
                     </TableCell>
                     <TableCell>
-                      {r.actor_id ? (
-                        (data.names.get(r.actor_id) ?? r.actor_id.slice(0, 8))
-                      ) : (
-                        <span className="text-muted-foreground">سیستم</span>
-                      )}
+                      {r.actor_id
+                        ? (data.names.get(r.actor_id) ?? r.actor_id.slice(0, 8))
+                        : <span className="text-muted-foreground">سیستم</span>}
                     </TableCell>
                   </TableRow>
                 );
@@ -244,26 +204,13 @@ function SuggestionsHistoryPage() {
       {data && data.count > PAGE_SIZE ? (
         <div className="flex items-center justify-between text-sm">
           <div className="text-muted-foreground">
-            صفحه {(page + 1).toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")} —
-            مجموع {data.count.toLocaleString("fa-IR")}
+            صفحه {(page + 1).toLocaleString("fa-IR")} از {totalPages.toLocaleString("fa-IR")} — مجموع {data.count.toLocaleString("fa-IR")}
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              قبلی
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              بعدی
-            </Button>
+            <Button variant="outline" size="sm" disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}>قبلی</Button>
+            <Button variant="outline" size="sm" disabled={page + 1 >= totalPages}
+              onClick={() => setPage((p) => p + 1)}>بعدی</Button>
           </div>
         </div>
       ) : null}

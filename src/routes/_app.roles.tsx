@@ -9,9 +9,7 @@ import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/roles")({
-  beforeLoad: async () => {
-    await requireAdmin();
-  },
+  beforeLoad: async () => { await requireAdmin(); },
   component: RolesPage,
 });
 
@@ -27,10 +25,7 @@ function RolesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["roles-matrix"],
     queryFn: async (): Promise<UserWithRoles[]> => {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .order("full_name");
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       const map = new Map<string, AppRole[]>();
       for (const r of roles ?? []) {
@@ -43,15 +38,7 @@ function RolesPage() {
   });
 
   const toggle = useMutation({
-    mutationFn: async ({
-      userId,
-      role,
-      enabled,
-    }: {
-      userId: string;
-      role: AppRole;
-      enabled: boolean;
-    }) => {
+    mutationFn: async ({ userId, role, enabled }: { userId: string; role: AppRole; enabled: boolean }) => {
       if (enabled) {
         const { error } = await supabase.rpc("assign_user_role", {
           _target_user: userId,
@@ -83,15 +70,10 @@ function RolesPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !data || data.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              کاربری برای مدیریت نقش وجود ندارد.{" "}
-              <Link to="/users" className="text-primary">
-                مشاهده کاربران
-              </Link>
+              کاربری برای مدیریت نقش وجود ندارد. <Link to="/users" className="text-primary">مشاهده کاربران</Link>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -100,9 +82,7 @@ function RolesPage() {
                   <tr>
                     <th className="p-3 font-medium">کاربر</th>
                     {ALL_ROLES.map((r) => (
-                      <th key={r} className="p-3 text-center font-medium">
-                        {ROLE_LABELS[r]}
-                      </th>
+                      <th key={r} className="p-3 text-center font-medium">{ROLE_LABELS[r]}</th>
                     ))}
                   </tr>
                 </thead>

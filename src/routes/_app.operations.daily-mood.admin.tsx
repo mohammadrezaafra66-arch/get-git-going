@@ -15,18 +15,13 @@ function DailyMoodAdminPage() {
     return (
       <div className="container py-12 text-center" dir="rtl">
         <p className="text-muted-foreground">دسترسی به این صفحه را ندارید.</p>
-        <Link to="/operations/daily-mood" className="text-primary underline mt-2 inline-block">
-          بازگشت به صفحه ثبت
-        </Link>
+        <Link to="/operations/daily-mood" className="text-primary underline mt-2 inline-block">بازگشت به صفحه ثبت</Link>
       </div>
     );
   }
   return (
     <div className="container py-6 space-y-4" dir="rtl">
-      <PageHeader
-        title="مدیریت حال‌وهوای کارکنان"
-        description="مشاهده ثبت‌های روزانه، فیلتر، رسیدگی و یادداشت مدیریتی"
-      />
+      <PageHeader title="مدیریت حال‌وهوای کارکنان" description="مشاهده ثبت‌های روزانه، فیلتر، رسیدگی و یادداشت مدیریتی" />
       <DailyMoodAdminTable />
     </div>
   );

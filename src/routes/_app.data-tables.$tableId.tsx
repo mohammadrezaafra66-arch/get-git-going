@@ -5,18 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import {
-  ArrowRight,
-  Plus,
-  Loader2,
-  Inbox,
-  Search,
-  AlertTriangle,
-  Pencil,
-  ArrowUp,
-  ArrowDown,
-  Eye,
-  EyeOff,
-  Download,
+  ArrowRight, Plus, Loader2, Inbox, Search, AlertTriangle,
+  Pencil, ArrowUp, ArrowDown, Eye, EyeOff, Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -27,18 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -46,23 +28,11 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toFaDigits, formatDateTimeFa, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import {
-  DYNAMIC_COLUMN_DATA_TYPES,
-  DYNAMIC_COLUMN_DATA_TYPE_LABELS,
-  COLUMN_KEY_REGEX,
-  type DynamicColumnDataType,
+  DYNAMIC_COLUMN_DATA_TYPES, DYNAMIC_COLUMN_DATA_TYPE_LABELS,
+  COLUMN_KEY_REGEX, type DynamicColumnDataType,
 } from "@/lib/data-tables/constants";
-import {
-  FiltersBar,
-  type FilterRule,
-  type FilterColumn,
-} from "@/components/data-tables/FiltersBar";
-import {
-  buildCsv,
-  downloadCsv,
-  buildExportFilename,
-  type ExportColumnDef,
-  type ExportRow,
-} from "@/lib/data-tables/csv-export";
+import { FiltersBar, type FilterRule, type FilterColumn } from "@/components/data-tables/FiltersBar";
+import { buildCsv, downloadCsv, buildExportFilename, type ExportColumnDef, type ExportRow } from "@/lib/data-tables/csv-export";
 import {
   DYNAMIC_TABLE_ACCESS_LEVEL_BADGE,
   DYNAMIC_TABLE_ACCESS_LEVEL_LABELS,
@@ -82,9 +52,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/_app/data-tables/$tableId")({
-  beforeLoad: async () => {
-    await requirePermission("data-tables", "view");
-  },
+  beforeLoad: async () => { await requirePermission("data-tables", "view"); },
   component: DataTableDetailPage,
 });
 
@@ -125,8 +93,7 @@ function DataTableDetailPage() {
   // Row data CRUD: admin & manager only (accountant & viewer are read-only per spec)
   const canEditRows = canEdit;
   // Export is allowed for everyone with view access (admin, manager, accountant, viewer)
-  const canExport =
-    canEdit || (roles ?? []).includes("accountant") || (roles ?? []).includes("viewer");
+  const canExport = canEdit || (roles ?? []).includes("accountant") || (roles ?? []).includes("viewer");
   // Only admin can change access_level / allowed_roles
   const canChangeAccess = isAdmin;
   const qc = useQueryClient();
@@ -139,29 +106,19 @@ function DataTableDetailPage() {
 
   const [addRowOpen, setAddRowOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [columnDialog, setColumnDialog] = useState<{
-    mode: "create" | "edit";
-    col?: ColumnRow;
-  } | null>(null);
+  const [columnDialog, setColumnDialog] = useState<{ mode: "create" | "edit"; col?: ColumnRow } | null>(null);
   const [accessDialogOpen, setAccessDialogOpen] = useState(false);
 
   // Spreadsheet keyboard grid state
   const [focused, setFocused] = useState<{ row: number; col: number } | null>(null);
-  const [editingPos, setEditingPos] = useState<{
-    row: number;
-    col: number;
-    initial?: string;
-  } | null>(null);
+  const [editingPos, setEditingPos] = useState<{ row: number; col: number; initial?: string } | null>(null);
   const cellRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const cellKey = (r: number, c: number) => `${r}:${c}`;
-  const setCellRef = useCallback(
-    (r: number, c: number) => (el: HTMLDivElement | null) => {
-      const k = cellKey(r, c);
-      if (el) cellRefs.current.set(k, el);
-      else cellRefs.current.delete(k);
-    },
-    [],
-  );
+  const setCellRef = useCallback((r: number, c: number) => (el: HTMLDivElement | null) => {
+    const k = cellKey(r, c);
+    if (el) cellRefs.current.set(k, el);
+    else cellRefs.current.delete(k);
+  }, []);
   const focusCell = useCallback((r: number, c: number) => {
     const el = cellRefs.current.get(cellKey(r, c));
     if (el) {
@@ -178,8 +135,7 @@ function DataTableDetailPage() {
       const { data, error } = await supabase
         .from("dynamic_tables")
         .select("id, name, slug, description, is_active, created_at, access_level, allowed_roles")
-        .eq("id", tableId)
-        .maybeSingle();
+        .eq("id", tableId).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -192,9 +148,7 @@ function DataTableDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dynamic_table_columns")
-        .select(
-          "id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order, is_computed, formula_key, formula_config",
-        )
+        .select("id, table_id, column_key, label, data_type, is_required, is_filterable, is_editable_by_bot, sort_order, is_computed, formula_key, formula_config")
         .eq("table_id", tableId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -210,11 +164,13 @@ function DataTableDetailPage() {
 
   const isTorobTable = (tableQuery.data?.slug ?? "") === TOROB_PURCHISTA_SLUG;
   const isObservatoryTable = (tableQuery.data?.slug ?? "") === OBSERVATORY_SLUG;
-  const rpcName =
-    isTorobTable || isObservatoryTable ? "query_dynamic_table_rows_v2" : "query_dynamic_table_rows";
+  const rpcName = (isTorobTable || isObservatoryTable)
+    ? "query_dynamic_table_rows_v2"
+    : "query_dynamic_table_rows";
 
   const isObservatoryReadOnly = useCallback(
-    (col: ColumnRow) => isObservatoryTable && OBSERVATORY_READONLY_KEYS.has(col.column_key),
+    (col: ColumnRow) =>
+      isObservatoryTable && OBSERVATORY_READONLY_KEYS.has(col.column_key),
     [isObservatoryTable],
   );
 
@@ -240,7 +196,8 @@ function DataTableDetailPage() {
         const tier = getObservatoryScoreTier(clamped);
         return (
           <span className="inline-flex items-center gap-1.5">
-            <Badge variant="outline" className={`${tier.className} text-[11px]`} title={tier.label}>
+            <Badge variant="outline" className={`${tier.className} text-[11px]`}
+              title={tier.label}>
               {toFaDigits(String(clamped))} از ۱۰۰
             </Badge>
             <span className="text-[11px] text-muted-foreground">{tier.label}</span>
@@ -261,11 +218,8 @@ function DataTableDetailPage() {
     [isObservatoryTable],
   );
   const filterableColumns: FilterColumn[] = useMemo(
-    () =>
-      columns
-        .filter((c) => c.is_filterable)
-        .map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
-    [columns],
+    () => columns.filter((c) => c.is_filterable).map((c) => ({ id: c.id, label: c.label, data_type: c.data_type })),
+    [columns]
   );
 
   // Sanitize rules sent to server (drop incomplete ones)
@@ -291,27 +245,17 @@ function DataTableDetailPage() {
 
   // Infinite paged window via offset (single window of PAGE_SIZE for now; "load more" appends)
   const [pageCount, setPageCount] = useState(1);
-  useEffect(() => {
-    setPageCount(1);
-  }, [tableId, search, showInactive, JSON.stringify(serverFilters)]);
+  useEffect(() => { setPageCount(1); }, [tableId, search, showInactive, JSON.stringify(serverFilters)]);
 
   const rowsQuery = useQuery({
     enabled: !!user && !!tableId,
-    queryKey: [
-      "dynamic-table-rows-v2",
-      tableId,
-      search,
-      showInactive,
-      serverFilters,
-      pageCount,
-      rpcName,
-    ],
+    queryKey: ["dynamic-table-rows-v2", tableId, search, showInactive, serverFilters, pageCount, rpcName],
     staleTime: 10_000,
     refetchInterval: isTorobTable
       ? TOROB_PURCHISTA_REFETCH_MS
       : isObservatoryTable
-        ? OBSERVATORY_REFETCH_MS
-        : false,
+      ? OBSERVATORY_REFETCH_MS
+      : false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(rpcName, {
@@ -357,15 +301,13 @@ function DataTableDetailPage() {
         else if (c.is_required) throw new Error(`مقدار ستون «${c.label}» الزامی است.`);
       }
       const { error } = await supabase.rpc("create_dynamic_table_row", {
-        p_table_id: tableId,
-        p_values: payload,
+        p_table_id: tableId, p_values: payload,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("ردیف افزوده شد.");
-      setAddRowOpen(false);
-      setValues({});
+      setAddRowOpen(false); setValues({});
       invalidateRows();
     },
     onError: (e: any) => toast.error(e?.message ?? "خطا در افزودن ردیف"),
@@ -374,23 +316,18 @@ function DataTableDetailPage() {
   const cellMut = useMutation({
     mutationFn: async (vars: { rowId: string; columnId: string; value: string }) => {
       const { error } = await supabase.rpc("update_dynamic_table_cell", {
-        p_row_id: vars.rowId,
-        p_column_id: vars.columnId,
-        p_value: vars.value,
+        p_row_id: vars.rowId, p_column_id: vars.columnId, p_value: vars.value,
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateRows();
-    },
+    onSuccess: () => { invalidateRows(); },
     onError: (e: any) => toast.error(e?.message ?? "خطا در ذخیره سلول"),
   });
 
   const toggleRowMut = useMutation({
     mutationFn: async (vars: { rowId: string; isActive: boolean }) => {
       const { error } = await supabase.rpc("set_dynamic_table_row_active", {
-        p_row_id: vars.rowId,
-        p_is_active: vars.isActive,
+        p_row_id: vars.rowId, p_is_active: vars.isActive,
       });
       if (error) throw error;
     },
@@ -404,8 +341,7 @@ function DataTableDetailPage() {
   const reorderMut = useMutation({
     mutationFn: async (orderedIds: string[]) => {
       const { error } = await supabase.rpc("reorder_dynamic_table_columns", {
-        p_table_id: tableId,
-        p_ordered_ids: orderedIds,
+        p_table_id: tableId, p_ordered_ids: orderedIds,
       });
       if (error) throw error;
     },
@@ -508,10 +444,7 @@ function DataTableDetailPage() {
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline">
-              <Link to="/data-tables">
-                <ArrowRight className="ml-2 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/data-tables"><ArrowRight className="ml-2 h-4 w-4" />بازگشت</Link>
             </Button>
             {canExport && (
               <Button
@@ -534,19 +467,16 @@ function DataTableDetailPage() {
                   disabled
                   title="ردیف‌های رصدخانه از محصولات فعال افراکالا ساخته می‌شوند و دستی اضافه نمی‌شوند."
                 >
-                  <Plus className="ml-2 h-4 w-4" />
-                  افزودن ردیف
+                  <Plus className="ml-2 h-4 w-4" />افزودن ردیف
                 </Button>
               ) : (
                 <Button onClick={() => setAddRowOpen(true)} disabled={!columns.length}>
-                  <Plus className="ml-2 h-4 w-4" />
-                  افزودن ردیف
+                  <Plus className="ml-2 h-4 w-4" />افزودن ردیف
                 </Button>
               )
             ) : (
               <Button disabled title="شما دسترسی انجام این عملیات را ندارید">
-                <Plus className="ml-2 h-4 w-4" />
-                افزودن ردیف
+                <Plus className="ml-2 h-4 w-4" />افزودن ردیف
               </Button>
             )}
           </div>
@@ -556,11 +486,9 @@ function DataTableDetailPage() {
       {t && (
         <div className="flex flex-wrap items-center gap-2 -mt-2">
           {(() => {
-            const lvl = ((t as { access_level?: string }).access_level ??
-              "all") as DynamicTableAccessLevel;
+            const lvl = ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel;
             const cls = DYNAMIC_TABLE_ACCESS_LEVEL_BADGE[lvl]?.className ?? "";
-            const allowed =
-              (((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [];
+            const allowed = (((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [];
             return (
               <>
                 <Badge variant="outline" className={cls}>
@@ -568,10 +496,7 @@ function DataTableDetailPage() {
                 </Badge>
                 {lvl === "custom" && allowed.length > 0 && (
                   <Badge variant="outline" className="text-xs">
-                    نقش‌ها:{" "}
-                    {allowed
-                      .map((r) => SELECTABLE_ROLES.find((x) => x.value === r)?.label ?? r)
-                      .join("، ")}
+                    نقش‌ها: {allowed.map((r) => SELECTABLE_ROLES.find((x) => x.value === r)?.label ?? r).join("، ")}
                   </Badge>
                 )}
                 {canChangeAccess && (
@@ -602,8 +527,9 @@ function DataTableDetailPage() {
               رصدخانه قیمت محصولات افراکالا
             </div>
             <p className="text-foreground/80">
-              این جدول قیمت داخلی افراکالا را با داده‌های بازار مثل ترب و پورچیستا مقایسه می‌کند و
-              به تیم فروش کمک می‌کند محصولات رقابتی‌تر را سریع‌تر تشخیص دهند.
+              این جدول قیمت داخلی افراکالا را با داده‌های بازار مثل ترب و
+              پورچیستا مقایسه می‌کند و به تیم فروش کمک می‌کند محصولات رقابتی‌تر
+              را سریع‌تر تشخیص دهند.
             </p>
             <ul className="space-y-0.5">
               <li>• داده‌های بازار توسط ربات به‌روزرسانی می‌شوند.</li>
@@ -616,27 +542,28 @@ function DataTableDetailPage() {
               </summary>
               <ul className="mt-2 space-y-1 text-foreground/75">
                 <li>
-                  <b>شناسه محصول افراکالا:</b> از کارت محصول داخلی می‌آید و نباید توسط کاربر یا ربات
-                  تغییر کند.
+                  <b>شناسه محصول افراکالا:</b> از کارت محصول داخلی می‌آید و
+                  نباید توسط کاربر یا ربات تغییر کند.
                 </li>
                 <li>
-                  <b>میانگین قیمت بازار:</b> میانگین قیمت‌های ثبت‌شده از منابع بازار مانند ترب و
-                  پورچیستا است.
+                  <b>میانگین قیمت بازار:</b> میانگین قیمت‌های ثبت‌شده از منابع
+                  بازار مانند ترب و پورچیستا است.
                 </li>
                 <li>
-                  <b>درصد اختلاف با میانگین بازار:</b> نشان می‌دهد حداقل قیمت فروش افراکالا چند درصد
-                  با میانگین بازار اختلاف دارد.
+                  <b>درصد اختلاف با میانگین بازار:</b> نشان می‌دهد حداقل قیمت
+                  فروش افراکالا چند درصد با میانگین بازار اختلاف دارد.
                 </li>
                 <li>
-                  <b>وضعیت رقابتی قیمت:</b> وضعیت ساده‌شده محصول نسبت به بازار؛ پایین‌تر، نزدیک یا
-                  بالاتر از بازار.
+                  <b>وضعیت رقابتی قیمت:</b> وضعیت ساده‌شده محصول نسبت به بازار؛
+                  پایین‌تر، نزدیک یا بالاتر از بازار.
                 </li>
                 <li>
-                  <b>امتیاز فرصت فروش:</b> امتیازی بین ۰ تا ۱۰۰ برای کمک به تشخیص جذابیت فروش محصول.
+                  <b>امتیاز فرصت فروش:</b> امتیازی بین ۰ تا ۱۰۰ برای کمک به
+                  تشخیص جذابیت فروش محصول.
                 </li>
                 <li>
-                  <b>پیام پیشنهادی فروشنده:</b> جمله آماده برای کمک به فروشنده در مذاکره با مشتری.
-                  فعلاً rule-based است و AI نیست.
+                  <b>پیام پیشنهادی فروشنده:</b> جمله آماده برای کمک به فروشنده
+                  در مذاکره با مشتری. فعلاً rule-based است و AI نیست.
                 </li>
               </ul>
             </details>
@@ -653,13 +580,8 @@ function DataTableDetailPage() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">ستون‌ها</h2>
             {canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setColumnDialog({ mode: "create" })}
-              >
-                <Plus className="ml-2 h-4 w-4" />
-                افزودن ستون
+              <Button size="sm" variant="outline" onClick={() => setColumnDialog({ mode: "create" })}>
+                <Plus className="ml-2 h-4 w-4" />افزودن ستون
               </Button>
             )}
           </div>
@@ -670,10 +592,7 @@ function DataTableDetailPage() {
           ) : (
             <div className="space-y-2">
               {columns.map((c, idx) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
-                >
+                <div key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
                   <span className="font-medium text-sm">{c.label}</span>
                   <span className="text-xs text-muted-foreground font-mono">{c.column_key}</span>
                   <Badge variant="outline">{DYNAMIC_COLUMN_DATA_TYPE_LABELS[c.data_type]}</Badge>
@@ -695,30 +614,18 @@ function DataTableDetailPage() {
                   )}
                   {canEdit && (
                     <div className="ms-auto flex items-center gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="بالا"
+                      <Button size="icon" variant="ghost" title="بالا"
                         disabled={idx === 0 || reorderMut.isPending}
-                        onClick={() => moveColumn(idx, -1)}
-                      >
+                        onClick={() => moveColumn(idx, -1)}>
                         <ArrowUp className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="پایین"
+                      <Button size="icon" variant="ghost" title="پایین"
                         disabled={idx === columns.length - 1 || reorderMut.isPending}
-                        onClick={() => moveColumn(idx, 1)}
-                      >
+                        onClick={() => moveColumn(idx, 1)}>
                         <ArrowDown className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="ویرایش"
-                        onClick={() => setColumnDialog({ mode: "edit", col: c })}
-                      >
+                      <Button size="icon" variant="ghost" title="ویرایش"
+                        onClick={() => setColumnDialog({ mode: "edit", col: c })}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </div>
@@ -761,12 +668,7 @@ function DataTableDetailPage() {
               {rowsQuery.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             </div>
             {canLoadMore && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setPageCount((p) => p + 1)}
-                disabled={rowsQuery.isFetching}
-              >
+              <Button size="sm" variant="ghost" onClick={() => setPageCount((p) => p + 1)} disabled={rowsQuery.isFetching}>
                 بارگذاری بیشتر
               </Button>
             )}
@@ -778,9 +680,7 @@ function DataTableDetailPage() {
       <Card>
         <CardContent className="p-0">
           {rowsQuery.isLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : rowsQuery.isError ? (
             <div className="py-10">
               <EmptyState
@@ -800,25 +700,21 @@ function DataTableDetailPage() {
             </div>
           ) : loadedRows.length === 0 ? (
             <div className="py-10">
-              <EmptyState
-                icon={Inbox}
-                title="ردیفی یافت نشد"
+              <EmptyState icon={Inbox} title="ردیفی یافت نشد"
                 description={
                   search || serverFilters.length
                     ? "با فیلتر یا جستجوی فعلی نتیجه‌ای نیست."
                     : isObservatoryTable
-                      ? "هنوز محصولی در رصدخانه ثبت نشده است. ابتدا sync محصولات را اجرا کنید."
-                      : "با دکمه افزودن ردیف، اولین رکورد را وارد کنید."
-                }
-              />
+                    ? "هنوز محصولی در رصدخانه ثبت نشده است. ابتدا sync محصولات را اجرا کنید."
+                    : "با دکمه افزودن ردیف، اولین رکورد را وارد کنید."
+                } />
             </div>
           ) : (
             <>
               {/* Desktop virtualized grid */}
               <div className="hidden md:block">
                 <div className="px-3 pt-3 text-[11px] text-muted-foreground">
-                  راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. تایپ یا Enter برای ویرایش، Esc
-                  برای لغو، Backspace برای پاک‌کردن.
+                  راهنما: با کلیدهای جهت‌دار بین سلول‌ها حرکت کنید. تایپ یا Enter برای ویرایش، Esc برای لغو، Backspace برای پاک‌کردن.
                 </div>
                 <VirtualizedGrid
                   scrollRef={scrollRef}
@@ -849,38 +745,24 @@ function DataTableDetailPage() {
                     <div key={r.id} className={`p-3 space-y-2 ${inactive ? "bg-muted/30" : ""}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs">
-                            #{toFaDigits(String(r.row_number))}
-                          </span>
+                          <span className="font-mono text-xs">#{toFaDigits(String(r.row_number))}</span>
                           {inactive && (
                             <Badge variant="outline" className="text-[10px] gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              غیرفعال
+                              <AlertTriangle className="h-3 w-3" />غیرفعال
                             </Badge>
                           )}
                         </div>
                         {canEdit && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                          <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
                             disabled={toggleRowMut.isPending}
-                            onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}
-                          >
-                            {inactive ? (
-                              <Eye className="h-4 w-4" />
-                            ) : (
-                              <EyeOff className="h-4 w-4" />
-                            )}
+                            onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
+                            {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                           </Button>
                         )}
                       </div>
                       <div className="space-y-1.5">
                         {columns.map((c) => (
-                          <div
-                            key={c.id}
-                            className="flex items-start justify-between gap-2 text-sm"
-                          >
+                          <div key={c.id} className="flex items-start justify-between gap-2 text-sm">
                             <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
                               {c.label}
                               {c.is_computed && (
@@ -897,23 +779,20 @@ function DataTableDetailPage() {
                               <CellEditor
                                 column={c}
                                 value={stringifyValue(c, r.values[c.column_key])}
-                                canEdit={canEditRows && !c.is_computed && !isObservatoryReadOnly(c)}
-                                inactive={inactive}
-                                displayOverride={renderObservatoryDisplay(
-                                  c,
-                                  r.values[c.column_key],
-                                )}
-                                onSave={(val) =>
-                                  cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })
+                                canEdit={
+                                  canEditRows &&
+                                  !c.is_computed &&
+                                  !isObservatoryReadOnly(c)
                                 }
+                                inactive={inactive}
+                                displayOverride={renderObservatoryDisplay(c, r.values[c.column_key])}
+                                onSave={(val) => cellMut.mutateAsync({ rowId: r.id, columnId: c.id, value: val })}
                               />
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {formatDateTimeFa(r.created_at)}
-                      </div>
+                      <div className="text-[11px] text-muted-foreground">{formatDateTimeFa(r.created_at)}</div>
                     </div>
                   );
                 })}
@@ -926,54 +805,36 @@ function DataTableDetailPage() {
       {/* Add row dialog */}
       <Dialog open={addRowOpen} onOpenChange={setAddRowOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>افزودن ردیف</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>افزودن ردیف</DialogTitle></DialogHeader>
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            {columns
-              .filter((c) => !c.is_computed)
-              .map((c) => (
-                <div key={c.id} className="space-y-1.5">
-                  <Label>
-                    {c.label}
-                    {c.is_required && <span className="text-destructive"> *</span>}
-                  </Label>
-                  {c.data_type === "boolean" ? (
-                    <Select
-                      value={values[c.column_key] ?? ""}
-                      onValueChange={(v) => setValues((s) => ({ ...s, [c.column_key]: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="انتخاب کنید" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="true">بله</SelectItem>
-                        <SelectItem value="false">خیر</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      type={
-                        c.data_type === "number"
-                          ? "number"
-                          : c.data_type === "date"
-                            ? "date"
-                            : c.data_type === "datetime"
-                              ? "datetime-local"
-                              : "text"
-                      }
-                      value={values[c.column_key] ?? ""}
-                      onChange={(e) => setValues((s) => ({ ...s, [c.column_key]: e.target.value }))}
-                      dir={c.data_type === "phone" || c.data_type === "number" ? "ltr" : undefined}
-                    />
-                  )}
-                </div>
-              ))}
+            {columns.filter((c) => !c.is_computed).map((c) => (
+              <div key={c.id} className="space-y-1.5">
+                <Label>
+                  {c.label}
+                  {c.is_required && <span className="text-destructive"> *</span>}
+                </Label>
+                {c.data_type === "boolean" ? (
+                  <Select value={values[c.column_key] ?? ""}
+                    onValueChange={(v) => setValues((s) => ({ ...s, [c.column_key]: v }))}>
+                    <SelectTrigger><SelectValue placeholder="انتخاب کنید" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">بله</SelectItem>
+                      <SelectItem value="false">خیر</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type={c.data_type === "number" ? "number" : c.data_type === "date" ? "date" : c.data_type === "datetime" ? "datetime-local" : "text"}
+                    value={values[c.column_key] ?? ""}
+                    onChange={(e) => setValues((s) => ({ ...s, [c.column_key]: e.target.value }))}
+                    dir={c.data_type === "phone" || c.data_type === "number" ? "ltr" : undefined}
+                  />
+                )}
+              </div>
+            ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddRowOpen(false)}>
-              انصراف
-            </Button>
+            <Button variant="outline" onClick={() => setAddRowOpen(false)}>انصراف</Button>
             <Button onClick={() => addRowMut.mutate()} disabled={addRowMut.isPending}>
               {addRowMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ذخیره
@@ -1003,12 +864,8 @@ function DataTableDetailPage() {
           open={accessDialogOpen}
           onOpenChange={setAccessDialogOpen}
           tableId={tableId}
-          initialAccessLevel={
-            ((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel
-          }
-          initialAllowedRoles={
-            (((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || []
-          }
+          initialAccessLevel={(((t as { access_level?: string }).access_level ?? "all") as DynamicTableAccessLevel)}
+          initialAllowedRoles={((((t as { allowed_roles?: unknown }).allowed_roles ?? []) as string[]) || [])}
           onSaved={() => {
             setAccessDialogOpen(false);
             qc.invalidateQueries({ queryKey: ["dynamic-table", tableId] });
@@ -1026,23 +883,10 @@ const ROWNUM_W = 90;
 const ACT_W = 60;
 
 function VirtualizedGrid({
-  scrollRef,
-  virtualizer,
-  columns,
-  rows,
-  canEdit,
-  canDelete,
-  focused,
-  setFocused,
-  editingPos,
-  setEditingPos,
-  setCellRef,
-  focusCell,
-  cellMut,
-  toggleRowMut,
-  stringifyValue,
-  isCellReadOnly,
-  renderCellOverride,
+  scrollRef, virtualizer, columns, rows, canEdit, canDelete,
+  focused, setFocused, editingPos, setEditingPos,
+  setCellRef, focusCell, cellMut, toggleRowMut, stringifyValue,
+  isCellReadOnly, renderCellOverride,
 }: {
   scrollRef: React.MutableRefObject<HTMLDivElement | null>;
   virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -1056,9 +900,7 @@ function VirtualizedGrid({
   setEditingPos: (v: { row: number; col: number; initial?: string } | null) => void;
   setCellRef: (r: number, c: number) => (el: HTMLDivElement | null) => void;
   focusCell: (r: number, c: number) => void;
-  cellMut: {
-    mutateAsync: (v: { rowId: string; columnId: string; value: string }) => Promise<void>;
-  };
+  cellMut: { mutateAsync: (v: { rowId: string; columnId: string; value: string }) => Promise<void> };
   toggleRowMut: { isPending: boolean; mutate: (v: { rowId: string; isActive: boolean }) => void };
   stringifyValue: (col: ColumnRow, raw: unknown) => string;
   isCellReadOnly?: (col: ColumnRow) => boolean;
@@ -1069,32 +911,23 @@ function VirtualizedGrid({
   const totalHeight = virtualizer.getTotalSize();
 
   return (
-    <div ref={scrollRef} className="relative overflow-auto" style={{ height: 540 }}>
+    <div
+      ref={scrollRef}
+      className="relative overflow-auto"
+      style={{ height: 540 }}
+    >
       <div style={{ width: totalWidth, position: "relative" }}>
         {/* Header */}
         <div
           className="sticky top-0 z-20 flex bg-muted text-muted-foreground text-xs font-medium border-b border-border"
           style={{ height: 36 }}
         >
-          <div
-            className="sticky right-0 z-30 bg-muted px-3 py-2 border-l border-border"
-            style={{ width: ROWNUM_W }}
-          >
-            #
-          </div>
+          <div className="sticky right-0 z-30 bg-muted px-3 py-2 border-l border-border" style={{ width: ROWNUM_W }}>#</div>
           {columns.map((c) => (
-            <div key={c.id} className="px-3 py-2 truncate" style={{ width: COL_W }}>
-              {c.label}
-            </div>
+            <div key={c.id} className="px-3 py-2 truncate" style={{ width: COL_W }}>{c.label}</div>
           ))}
-          <div className="px-3 py-2" style={{ width: 130 }}>
-            ایجاد
-          </div>
-          {canDelete && (
-            <div className="px-3 py-2" style={{ width: ACT_W }}>
-              —
-            </div>
-          )}
+          <div className="px-3 py-2" style={{ width: 130 }}>ایجاد</div>
+          {canDelete && <div className="px-3 py-2" style={{ width: ACT_W }}>—</div>}
         </div>
 
         {/* Body (virtualized) */}
@@ -1122,7 +955,8 @@ function VirtualizedGrid({
                   const value = stringifyValue(c, raw);
                   const isFocused = focused?.row === rowIdx && focused?.col === colIdx;
                   const isEditing = editingPos?.row === rowIdx && editingPos?.col === colIdx;
-                  const cellEditable = canEdit && !c.is_computed && !(isCellReadOnly?.(c) ?? false);
+                  const cellEditable =
+                    canEdit && !c.is_computed && !(isCellReadOnly?.(c) ?? false);
                   const override = renderCellOverride?.(c, raw) ?? null;
                   return (
                     <GridCell
@@ -1157,35 +991,25 @@ function VirtualizedGrid({
                           }
                           setEditingPos(null);
                           requestAnimationFrame(() => {
-                            const nextRow =
-                              moveDown && rowIdx + 1 < rows.length ? rowIdx + 1 : rowIdx;
+                            const nextRow = moveDown && rowIdx + 1 < rows.length ? rowIdx + 1 : rowIdx;
                             focusCell(nextRow, colIdx);
                           });
-                        } catch {
-                          /* toast handled */
-                        }
+                        } catch { /* toast handled */ }
                       }}
                       onNavigate={(dir) => {
                         const total = rows.length;
                         const cols = columns.length;
-                        let nr = rowIdx,
-                          nc = colIdx;
+                        let nr = rowIdx, nc = colIdx;
                         if (dir === "right") nc = Math.min(cols - 1, colIdx + 1);
                         else if (dir === "left") nc = Math.max(0, colIdx - 1);
                         else if (dir === "down") nr = Math.min(total - 1, rowIdx + 1);
                         else if (dir === "up") nr = Math.max(0, rowIdx - 1);
                         else if (dir === "tab-next") {
                           if (colIdx + 1 < cols) nc = colIdx + 1;
-                          else if (rowIdx + 1 < total) {
-                            nr = rowIdx + 1;
-                            nc = 0;
-                          }
+                          else if (rowIdx + 1 < total) { nr = rowIdx + 1; nc = 0; }
                         } else if (dir === "tab-prev") {
                           if (colIdx - 1 >= 0) nc = colIdx - 1;
-                          else if (rowIdx - 1 >= 0) {
-                            nr = rowIdx - 1;
-                            nc = cols - 1;
-                          }
+                          else if (rowIdx - 1 >= 0) { nr = rowIdx - 1; nc = cols - 1; }
                         }
                         if (nr !== rowIdx || nc !== colIdx) {
                           // ensure target row is rendered: scroll into view
@@ -1201,13 +1025,9 @@ function VirtualizedGrid({
                 </div>
                 {canDelete && (
                   <div className="px-1 py-1 flex items-center" style={{ width: ACT_W }}>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
+                    <Button size="icon" variant="ghost" title={inactive ? "فعال‌سازی" : "غیرفعال‌سازی"}
                       disabled={toggleRowMut.isPending}
-                      onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}
-                    >
+                      onClick={() => toggleRowMut.mutate({ rowId: r.id, isActive: inactive })}>
                       {inactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -1222,48 +1042,32 @@ function VirtualizedGrid({
 }
 
 // =============== Spreadsheet grid cell (desktop, keyboard-driven) ===============
-const GridCell = forwardRef<
-  HTMLDivElement,
-  {
-    column: ColumnRow;
-    value: string;
-    width: number;
-    canEdit: boolean;
-    inactive: boolean;
-    isFocused: boolean;
-    isEditing: boolean;
-    initialEditValue?: string;
-    displayOverride?: React.ReactNode | null;
-    onFocusCell: () => void;
-    onRequestEdit: (initial?: string) => void;
-    onClearCell: () => Promise<void> | void;
-    onCancelEdit: () => void;
-    onCommitEdit: (value: string, moveDown: boolean) => Promise<void> | void;
-    onNavigate: (dir: NavDir) => void;
-  }
->(function GridCell(props, ref) {
+const GridCell = forwardRef<HTMLDivElement, {
+  column: ColumnRow;
+  value: string;
+  width: number;
+  canEdit: boolean;
+  inactive: boolean;
+  isFocused: boolean;
+  isEditing: boolean;
+  initialEditValue?: string;
+  displayOverride?: React.ReactNode | null;
+  onFocusCell: () => void;
+  onRequestEdit: (initial?: string) => void;
+  onClearCell: () => Promise<void> | void;
+  onCancelEdit: () => void;
+  onCommitEdit: (value: string, moveDown: boolean) => Promise<void> | void;
+  onNavigate: (dir: NavDir) => void;
+}>(function GridCell(props, ref) {
   const {
-    column,
-    value,
-    width,
-    canEdit,
-    inactive,
-    isFocused,
-    isEditing,
-    initialEditValue,
+    column, value, width, canEdit, inactive, isFocused, isEditing, initialEditValue,
     displayOverride,
-    onFocusCell,
-    onRequestEdit,
-    onClearCell,
-    onCancelEdit,
-    onCommitEdit,
-    onNavigate,
+    onFocusCell, onRequestEdit, onClearCell, onCancelEdit, onCommitEdit, onNavigate,
   } = props;
 
   const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
-    if (column.data_type === "boolean")
-      return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
+    if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
     if (column.data_type === "date") return formatDateFa(value);
     if (column.data_type === "number") {
@@ -1278,42 +1082,14 @@ const GridCell = forwardRef<
   const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isEditing) return;
     const k = e.key;
-    if (k === "ArrowRight") {
-      e.preventDefault();
-      onNavigate("right");
-      return;
-    }
-    if (k === "ArrowLeft") {
-      e.preventDefault();
-      onNavigate("left");
-      return;
-    }
-    if (k === "ArrowUp") {
-      e.preventDefault();
-      onNavigate("up");
-      return;
-    }
-    if (k === "ArrowDown") {
-      e.preventDefault();
-      onNavigate("down");
-      return;
-    }
-    if (k === "Tab") {
-      e.preventDefault();
-      onNavigate(e.shiftKey ? "tab-prev" : "tab-next");
-      return;
-    }
+    if (k === "ArrowRight") { e.preventDefault(); onNavigate("right"); return; }
+    if (k === "ArrowLeft")  { e.preventDefault(); onNavigate("left"); return; }
+    if (k === "ArrowUp")    { e.preventDefault(); onNavigate("up"); return; }
+    if (k === "ArrowDown")  { e.preventDefault(); onNavigate("down"); return; }
+    if (k === "Tab") { e.preventDefault(); onNavigate(e.shiftKey ? "tab-prev" : "tab-next"); return; }
     if (!canEdit) return;
-    if (k === "Enter") {
-      e.preventDefault();
-      onRequestEdit();
-      return;
-    }
-    if (k === "Backspace" || k === "Delete") {
-      e.preventDefault();
-      void onClearCell();
-      return;
-    }
+    if (k === "Enter") { e.preventDefault(); onRequestEdit(); return; }
+    if (k === "Backspace" || k === "Delete") { e.preventDefault(); void onClearCell(); return; }
     if (k === " " && column.data_type === "boolean") {
       e.preventDefault();
       const next = value === "true" ? "false" : value === "false" ? "" : "true";
@@ -1328,15 +1104,13 @@ const GridCell = forwardRef<
     onRequestEdit(k);
   };
 
-  const focusedClass = isFocused
-    ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5"
-    : "";
+  const focusedClass = isFocused ? "outline outline-2 outline-primary outline-offset-[-2px] bg-primary/5" : "";
   const computed = column.is_computed;
   const titleText = computed
     ? "این مقدار توسط فرمول سیستم محاسبه می‌شود."
     : canEdit
-      ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت"
-      : undefined;
+    ? "Enter یا تایپ برای ویرایش، فلش‌ها برای حرکت"
+    : undefined;
   return (
     <div
       ref={ref}
@@ -1357,18 +1131,13 @@ const GridCell = forwardRef<
           onCancel={onCancelEdit}
           onCommit={onCommitEdit}
         />
-      ) : (
-        display
-      )}
+      ) : display}
     </div>
   );
 });
 
 function CellEditorInput({
-  column,
-  initialValue,
-  onCancel,
-  onCommit,
+  column, initialValue, onCancel, onCommit,
 }: {
   column: ColumnRow;
   initialValue: string;
@@ -1383,46 +1152,29 @@ function CellEditorInput({
     inputRef.current?.focus();
     const el = inputRef.current;
     if (el && (el.type === "text" || el.type === "number")) {
-      try {
-        el.setSelectionRange(el.value.length, el.value.length);
-      } catch {
-        /* */
-      }
+      try { el.setSelectionRange(el.value.length, el.value.length); } catch { /* */ }
     }
   }, []);
 
   const commit = async (moveDown: boolean) => {
     if (saving) return;
     setSaving(true);
-    try {
-      await onCommit(draft, moveDown);
-    } finally {
-      setSaving(false);
-    }
+    try { await onCommit(draft, moveDown); } finally { setSaving(false); }
   };
 
   if (column.data_type === "boolean") {
     return (
       <div className="flex items-center gap-1">
-        <Select
-          value={draft || "__empty__"}
-          onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}
-        >
-          <SelectTrigger className="h-7 w-24 text-xs">
-            <SelectValue placeholder="—" />
-          </SelectTrigger>
+        <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
+          <SelectTrigger className="h-7 w-24 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__empty__">—</SelectItem>
             <SelectItem value="true">بله</SelectItem>
             <SelectItem value="false">خیر</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" variant="ghost" disabled={saving} onClick={() => commit(false)}>
-          ذخیره
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onCancel}>
-          لغو
-        </Button>
+        <Button size="sm" variant="ghost" disabled={saving} onClick={() => commit(false)}>ذخیره</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>لغو</Button>
       </div>
     );
   }
@@ -1431,28 +1183,13 @@ function CellEditorInput({
     <Input
       ref={inputRef}
       className="h-7 w-full text-sm"
-      type={
-        column.data_type === "number"
-          ? "number"
-          : column.data_type === "date"
-            ? "date"
-            : column.data_type === "datetime"
-              ? "datetime-local"
-              : "text"
-      }
+      type={column.data_type === "number" ? "number" : column.data_type === "date" ? "date" : column.data_type === "datetime" ? "datetime-local" : "text"}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        void commit(false);
-      }}
+      onBlur={() => { void commit(false); }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          void commit(!e.ctrlKey && !e.metaKey);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          onCancel();
-        }
+        if (e.key === "Enter") { e.preventDefault(); void commit(!e.ctrlKey && !e.metaKey); }
+        else if (e.key === "Escape") { e.preventDefault(); onCancel(); }
       }}
       dir={column.data_type === "phone" || column.data_type === "number" ? "ltr" : undefined}
       disabled={saving}
@@ -1462,12 +1199,7 @@ function CellEditorInput({
 
 // =============== Inline cell editor (mobile card view) ===============
 function CellEditor({
-  column,
-  value,
-  canEdit,
-  inactive,
-  displayOverride,
-  onSave,
+  column, value, canEdit, inactive, displayOverride, onSave,
 }: {
   column: ColumnRow;
   value: string;
@@ -1481,17 +1213,12 @@ function CellEditor({
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    setDraft(value);
-  }, [value]);
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
   const defaultDisplay = useMemo(() => {
     if (!value) return <span className="text-muted-foreground">—</span>;
-    if (column.data_type === "boolean")
-      return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
+    if (column.data_type === "boolean") return value === "true" ? "بله" : value === "false" ? "خیر" : "—";
     if (column.data_type === "datetime") return formatDateTimeFa(value);
     if (column.data_type === "date") return formatDateFa(value);
     if (column.data_type === "number") {
@@ -1507,12 +1234,8 @@ function CellEditor({
     return (
       <div
         className={canEdit ? "cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 -mx-1" : ""}
-        onDoubleClick={() => {
-          if (canEdit) setEditing(true);
-        }}
-        title={
-          canEdit ? (inactive ? "ردیف غیرفعال — قابل ویرایش" : "دابل‌کلیک برای ویرایش") : undefined
-        }
+        onDoubleClick={() => { if (canEdit) setEditing(true); }}
+        title={canEdit ? (inactive ? "ردیف غیرفعال — قابل ویرایش" : "دابل‌کلیک برای ویرایش") : undefined}
       >
         {display}
       </div>
@@ -1520,47 +1243,26 @@ function CellEditor({
   }
 
   const commit = async () => {
-    if (draft === value) {
-      setEditing(false);
-      return;
-    }
+    if (draft === value) { setEditing(false); return; }
     setSaving(true);
-    try {
-      await onSave(draft);
-      setEditing(false);
-    } catch {
-      /* */
-    } finally {
-      setSaving(false);
-    }
+    try { await onSave(draft); setEditing(false); }
+    catch { /* */ } finally { setSaving(false); }
   };
-  const cancel = () => {
-    setDraft(value);
-    setEditing(false);
-  };
+  const cancel = () => { setDraft(value); setEditing(false); };
 
   if (column.data_type === "boolean") {
     return (
       <div className="flex items-center gap-1">
-        <Select
-          value={draft || "__empty__"}
-          onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}
-        >
-          <SelectTrigger className="h-8 w-28">
-            <SelectValue placeholder="—" />
-          </SelectTrigger>
+        <Select value={draft || "__empty__"} onValueChange={(v) => setDraft(v === "__empty__" ? "" : v)}>
+          <SelectTrigger className="h-8 w-28"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__empty__">—</SelectItem>
             <SelectItem value="true">بله</SelectItem>
             <SelectItem value="false">خیر</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" variant="ghost" disabled={saving} onClick={commit}>
-          ذخیره
-        </Button>
-        <Button size="sm" variant="ghost" onClick={cancel}>
-          لغو
-        </Button>
+        <Button size="sm" variant="ghost" disabled={saving} onClick={commit}>ذخیره</Button>
+        <Button size="sm" variant="ghost" onClick={cancel}>لغو</Button>
       </div>
     );
   }
@@ -1570,21 +1272,10 @@ function CellEditor({
       <Input
         ref={inputRef}
         className="h-8 w-40"
-        type={
-          column.data_type === "number"
-            ? "number"
-            : column.data_type === "date"
-              ? "date"
-              : column.data_type === "datetime"
-                ? "datetime-local"
-                : "text"
-        }
+        type={column.data_type === "number" ? "number" : column.data_type === "date" ? "date" : column.data_type === "datetime" ? "datetime-local" : "text"}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          else if (e.key === "Escape") cancel();
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); else if (e.key === "Escape") cancel(); }}
         dir={column.data_type === "phone" || column.data_type === "number" ? "ltr" : undefined}
         disabled={saving}
       />
@@ -1595,12 +1286,7 @@ function CellEditor({
 
 // =============== Column add/edit dialog ===============
 function ColumnDialog({
-  tableId,
-  mode,
-  column,
-  existingKeys,
-  onClose,
-  onDone,
+  tableId, mode, column, existingKeys, onClose, onDone,
 }: {
   tableId: string;
   mode: "create" | "edit";
@@ -1618,21 +1304,12 @@ function ColumnDialog({
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!label.trim()) {
-      toast.error("برچسب الزامی است.");
-      return;
-    }
+    if (!label.trim()) { toast.error("برچسب الزامی است."); return; }
     setBusy(true);
     try {
       if (mode === "create") {
-        if (!COLUMN_KEY_REGEX.test(columnKey)) {
-          toast.error("کلید ستون باید حروف کوچک، عدد و _ باشد.");
-          return;
-        }
-        if (existingKeys.includes(columnKey)) {
-          toast.error("این کلید قبلاً استفاده شده.");
-          return;
-        }
+        if (!COLUMN_KEY_REGEX.test(columnKey)) { toast.error("کلید ستون باید حروف کوچک، عدد و _ باشد."); return; }
+        if (existingKeys.includes(columnKey)) { toast.error("این کلید قبلاً استفاده شده."); return; }
         const { error } = await supabase.rpc("add_dynamic_table_column", {
           p_table_id: tableId,
           p_column_key: columnKey,
@@ -1664,12 +1341,7 @@ function ColumnDialog({
   };
 
   return (
-    <Dialog
-      open
-      onOpenChange={(o) => {
-        if (!o) onClose();
-      }}
-    >
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "افزودن ستون" : "ویرایش ستون"}</DialogTitle>
@@ -1683,30 +1355,17 @@ function ColumnDialog({
             <>
               <div className="space-y-1.5">
                 <Label>کلید ستون (column_key)</Label>
-                <Input
-                  value={columnKey}
-                  onChange={(e) => setColumnKey(e.target.value)}
-                  dir="ltr"
-                  placeholder="مثال: customer_phone"
-                />
-                <p className="text-xs text-muted-foreground">
-                  فقط حروف کوچک، عدد و _ — بعد از ساخت قابل تغییر نیست.
-                </p>
+                <Input value={columnKey} onChange={(e) => setColumnKey(e.target.value)}
+                  dir="ltr" placeholder="مثال: customer_phone" />
+                <p className="text-xs text-muted-foreground">فقط حروف کوچک، عدد و _ — بعد از ساخت قابل تغییر نیست.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>نوع داده</Label>
-                <Select
-                  value={dataType}
-                  onValueChange={(v) => setDataType(v as DynamicColumnDataType)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={dataType} onValueChange={(v) => setDataType(v as DynamicColumnDataType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {DYNAMIC_COLUMN_DATA_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {DYNAMIC_COLUMN_DATA_TYPE_LABELS[t]}
-                      </SelectItem>
+                      <SelectItem key={t} value={t}>{DYNAMIC_COLUMN_DATA_TYPE_LABELS[t]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1715,9 +1374,7 @@ function ColumnDialog({
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 p-2 text-xs space-y-1">
-              <div>
-                کلید: <span className="font-mono">{column?.column_key}</span>
-              </div>
+              <div>کلید: <span className="font-mono">{column?.column_key}</span></div>
               <div>نوع: {column ? DYNAMIC_COLUMN_DATA_TYPE_LABELS[column.data_type] : ""}</div>
             </div>
           )}
@@ -1735,9 +1392,7 @@ function ColumnDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={onClose}>انصراف</Button>
           <Button onClick={submit} disabled={busy}>
             {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             ذخیره
@@ -1750,12 +1405,7 @@ function ColumnDialog({
 
 // =============== Access Dialog (admin only) ===============
 function AccessDialog({
-  open,
-  onOpenChange,
-  tableId,
-  initialAccessLevel,
-  initialAllowedRoles,
-  onSaved,
+  open, onOpenChange, tableId, initialAccessLevel, initialAllowedRoles, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -1807,18 +1457,11 @@ function AccessDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>سطح دسترسی</Label>
-            <Select
-              value={accessLevel}
-              onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={accessLevel} onValueChange={(v) => setAccessLevel(v as DynamicTableAccessLevel)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DYNAMIC_TABLE_ACCESS_LEVELS.map((lvl) => (
-                  <SelectItem key={lvl} value={lvl}>
-                    {DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}
-                  </SelectItem>
+                  <SelectItem key={lvl} value={lvl}>{DYNAMIC_TABLE_ACCESS_LEVEL_LABELS[lvl]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1833,9 +1476,7 @@ function AccessDialog({
                       checked={allowedRoles.includes(r.value)}
                       onCheckedChange={(v) =>
                         setAllowedRoles((prev) =>
-                          v
-                            ? Array.from(new Set([...prev, r.value]))
-                            : prev.filter((x) => x !== r.value),
+                          v ? Array.from(new Set([...prev, r.value])) : prev.filter((x) => x !== r.value),
                         )
                       }
                     />
@@ -1843,14 +1484,14 @@ function AccessDialog({
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">مدیر کل و مدیر همیشه دسترسی دارند.</p>
+              <p className="text-xs text-muted-foreground">
+                مدیر کل و مدیر همیشه دسترسی دارند.
+              </p>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
             {saveMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             ذخیره

@@ -44,42 +44,28 @@ function rowIssues(r: WorkbenchRowV2): IssueCode[] {
 /** CSV محصولات ناقص / غیرقابل فروش. */
 export function exportIncompleteCsv(rows: WorkbenchRowV2[]) {
   const headers = [
-    "نام محصول",
-    "برند",
-    "مدل",
-    "دسته",
-    "زیر دسته",
-    "نوع خرید",
-    "ارز",
-    "وضعیت موجودی",
-    "وضعیت فعال بودن",
-    "قیمت فروش",
-    "مسئول محصول",
-    "علت مشکل",
-    "آخرین بروزرسانی قیمت فروش",
+    "نام محصول", "برند", "مدل", "دسته", "زیر دسته",
+    "نوع خرید", "ارز", "وضعیت موجودی", "وضعیت فعال بودن",
+    "قیمت فروش", "مسئول محصول", "علت مشکل", "آخرین بروزرسانی قیمت فروش",
   ];
   const lines = [headers.map(esc).join(",")];
   for (const r of rows) {
     const issues = rowIssues(r);
-    lines.push(
-      [
-        r.name,
-        r.brand_name ?? "",
-        r.model ?? "",
-        r.parent_category_name ?? r.category_name ?? "",
-        r.parent_category_name ? (r.category_name ?? "") : "",
-        r.product_type === "foreign" ? "ارزی" : "تومانی",
-        r.current_currency ?? r.base_currency ?? "",
-        STOCK_LABEL[r.stock_status],
-        PRODUCT_STATUS_LABEL[r.status],
-        r.sale_price ?? "",
-        r.owners.map((o) => o.full_name ?? o.user_id).join(" / ") || "—",
-        issues.map((c) => ISSUE_LABEL[c]).join(" + "),
-        r.sale_price_updated_at ?? "",
-      ]
-        .map(esc)
-        .join(","),
-    );
+    lines.push([
+      r.name,
+      r.brand_name ?? "",
+      r.model ?? "",
+      r.parent_category_name ?? r.category_name ?? "",
+      r.parent_category_name ? (r.category_name ?? "") : "",
+      r.product_type === "foreign" ? "ارزی" : "تومانی",
+      r.current_currency ?? r.base_currency ?? "",
+      STOCK_LABEL[r.stock_status],
+      PRODUCT_STATUS_LABEL[r.status],
+      r.sale_price ?? "",
+      r.owners.map((o) => o.full_name ?? o.user_id).join(" / ") || "—",
+      issues.map((c) => ISSUE_LABEL[c]).join(" + "),
+      r.sale_price_updated_at ?? "",
+    ].map(esc).join(","));
   }
   download("workbench-incomplete-products.csv", lines.join("\n"));
 }
@@ -87,19 +73,9 @@ export function exportIncompleteCsv(rows: WorkbenchRowV2[]) {
 /** CSV محصولات برچسب‌دار مشکل‌دار. */
 export function exportTaggedRiskCsv(rows: WorkbenchRowV2[]) {
   const headers = [
-    "نام محصول",
-    "برند",
-    "مدل",
-    "دسته",
-    "زیر دسته",
-    "برچسب‌ها",
-    "وضعیت موجودی",
-    "وضعیت فعال بودن",
-    "قیمت فروش",
-    "مسئول محصول",
-    "علت مشکل",
-    "اولویت اصلاح",
-    "آخرین بروزرسانی قیمت فروش",
+    "نام محصول", "برند", "مدل", "دسته", "زیر دسته", "برچسب‌ها",
+    "وضعیت موجودی", "وضعیت فعال بودن", "قیمت فروش", "مسئول محصول",
+    "علت مشکل", "اولویت اصلاح", "آخرین بروزرسانی قیمت فروش",
   ];
   const lines = [headers.map(esc).join(",")];
   for (const r of rows) {
@@ -111,25 +87,21 @@ export function exportTaggedRiskCsv(rows: WorkbenchRowV2[]) {
       owners_count: r.owners.length,
       tags_count: r.tags.length,
     });
-    lines.push(
-      [
-        r.name,
-        r.brand_name ?? "",
-        r.model ?? "",
-        r.parent_category_name ?? r.category_name ?? "",
-        r.parent_category_name ? (r.category_name ?? "") : "",
-        r.tags.map((t) => t.title).join(" / "),
-        STOCK_LABEL[r.stock_status],
-        PRODUCT_STATUS_LABEL[r.status],
-        r.sale_price ?? "",
-        r.owners.map((o) => o.full_name ?? o.user_id).join(" / ") || "—",
-        issues.map((c) => ISSUE_LABEL[c]).join(" + "),
-        PRIORITY_LABEL[priority],
-        r.sale_price_updated_at ?? "",
-      ]
-        .map(esc)
-        .join(","),
-    );
+    lines.push([
+      r.name,
+      r.brand_name ?? "",
+      r.model ?? "",
+      r.parent_category_name ?? r.category_name ?? "",
+      r.parent_category_name ? (r.category_name ?? "") : "",
+      r.tags.map((t) => t.title).join(" / "),
+      STOCK_LABEL[r.stock_status],
+      PRODUCT_STATUS_LABEL[r.status],
+      r.sale_price ?? "",
+      r.owners.map((o) => o.full_name ?? o.user_id).join(" / ") || "—",
+      issues.map((c) => ISSUE_LABEL[c]).join(" + "),
+      PRIORITY_LABEL[priority],
+      r.sale_price_updated_at ?? "",
+    ].map(esc).join(","));
   }
   download("workbench-tagged-risk-products.csv", lines.join("\n"));
 }

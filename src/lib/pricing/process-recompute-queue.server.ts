@@ -102,7 +102,8 @@ export async function processPricingRecomputeQueue(
         supabaseAdmin,
       );
       if (res.failed > 0 && res.succeeded === 0) {
-        const firstErr = res.results.find((r) => !r.ok)?.error ?? "no sale price types succeeded";
+        const firstErr =
+          res.results.find((r) => !r.ok)?.error ?? "no sale price types succeeded";
         throw new Error(firstErr);
       }
       const { error: updErr } = await supabaseAdmin
@@ -117,7 +118,8 @@ export async function processPricingRecomputeQueue(
       succeeded += 1;
     } catch (e: unknown) {
       failed += 1;
-      const msg = (e as Error)?.message?.slice(0, 1000) ?? "unknown worker error";
+      const msg =
+        (e as Error)?.message?.slice(0, 1000) ?? "unknown worker error";
       if (sampleErrors.length < 3) sampleErrors.push(msg);
       await supabaseAdmin
         .from("pricing_recompute_queue")

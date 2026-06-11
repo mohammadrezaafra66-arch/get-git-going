@@ -121,16 +121,8 @@ function PurchasePricesPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
 
-  const brandsQ = useQuery({
-    queryKey: ["brands-lite"],
-    queryFn: fetchBrandsLite,
-    staleTime: 60_000,
-  });
-  const categoriesQ = useQuery({
-    queryKey: ["categories-lite"],
-    queryFn: fetchCategoriesLite,
-    staleTime: 60_000,
-  });
+  const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite, staleTime: 60_000 });
+  const categoriesQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite, staleTime: 60_000 });
 
   // محصولات مرتبط با brand/category انتخاب‌شده برای فیلتر تاریخچه
   const filteredProductIdsQ = useQuery({
@@ -166,15 +158,7 @@ function PurchasePricesPage() {
 
       if ((filters.brandId !== "all" || filters.categoryId !== "all") && !filters.productId) {
         const ids = filteredProductIdsQ.data ?? [];
-        if (ids.length === 0)
-          return {
-            rows: [],
-            total: 0,
-            productMap: {},
-            supplierMap: {},
-            reasonMap: {},
-            registrarMap: {},
-          };
+        if (ids.length === 0) return { rows: [], total: 0, productMap: {}, supplierMap: {}, reasonMap: {}, registrarMap: {} };
         q = q.in("product_id", ids);
       }
 
@@ -183,15 +167,9 @@ function PurchasePricesPage() {
       const rows = data ?? [];
 
       const productIds = Array.from(new Set(rows.map((r) => r.product_id)));
-      const supplierIds = Array.from(
-        new Set(rows.map((r) => r.supplier_id).filter(Boolean) as string[]),
-      );
-      const reasonIds = Array.from(
-        new Set(rows.map((r) => r.reason_id).filter(Boolean) as string[]),
-      );
-      const registrarIds = Array.from(
-        new Set(rows.map((r) => r.registered_by).filter(Boolean) as string[]),
-      );
+      const supplierIds = Array.from(new Set(rows.map((r) => r.supplier_id).filter(Boolean) as string[]));
+      const reasonIds = Array.from(new Set(rows.map((r) => r.reason_id).filter(Boolean) as string[]));
+      const registrarIds = Array.from(new Set(rows.map((r) => r.registered_by).filter(Boolean) as string[]));
 
       const [products, suppliers, reasons, registrars] = await Promise.all([
         productIds.length
@@ -233,10 +211,7 @@ function PurchasePricesPage() {
   const deactivate = async (id: string) => {
     if (!canWrite) return;
     if (!confirm("این قیمت خرید غیرفعال شود؟")) return;
-    const { error } = await supabase
-      .from("purchase_prices")
-      .update({ is_active: false })
-      .eq("id", id);
+    const { error } = await supabase.from("purchase_prices").update({ is_active: false }).eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
@@ -288,9 +263,7 @@ function PurchasePricesPage() {
                 setPage(0);
               }}
             >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
                 <SelectItem value="toman">تومان</SelectItem>
@@ -301,64 +274,32 @@ function PurchasePricesPage() {
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">برند</Label>
-            <Select
-              value={filters.brandId}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, brandId: v }));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="همه" />
-              </SelectTrigger>
+            <Select value={filters.brandId} onValueChange={(v) => { setFilters((f) => ({ ...f, brandId: v })); setPage(0); }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="همه" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
-                {(brandsQ.data ?? [])
-                  .filter((b) => b.is_active)
-                  .map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
+                {(brandsQ.data ?? []).filter((b) => b.is_active).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">دسته‌بندی</Label>
-            <Select
-              value={filters.categoryId}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, categoryId: v }));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="همه" />
-              </SelectTrigger>
+            <Select value={filters.categoryId} onValueChange={(v) => { setFilters((f) => ({ ...f, categoryId: v })); setPage(0); }}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="همه" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
-                {(categoriesQ.data ?? [])
-                  .filter((c) => c.is_active)
-                  .map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+                {(categoriesQ.data ?? []).filter((c) => c.is_active).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">وضعیت</Label>
-            <Select
-              value={filters.status}
-              onValueChange={(v) => {
-                setFilters((f) => ({ ...f, status: v as Filters["status"] }));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={filters.status} onValueChange={(v) => { setFilters((f) => ({ ...f, status: v as Filters["status"] })); setPage(0); }}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه</SelectItem>
                 <SelectItem value="active">فعال</SelectItem>
@@ -368,19 +309,13 @@ function PurchasePricesPage() {
           </div>
           <div className="flex items-end justify-end sm:col-span-2 lg:col-span-3">
             <div className="flex w-full items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">
-                مجموع: {formatNumber(total)} ردیف
-              </span>
+              <span className="text-xs text-muted-foreground">مجموع: {formatNumber(total)} ردیف</span>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setFilters(DEFAULT_FILTERS);
-                  setPage(0);
-                }}
+                onClick={() => { setFilters(DEFAULT_FILTERS); setPage(0); }}
               >
-                <X className="ms-1 h-3 w-3" />
-                پاک‌سازی فیلترها
+                <X className="ms-1 h-3 w-3" />پاک‌سازی فیلترها
               </Button>
             </div>
           </div>
@@ -402,34 +337,23 @@ function PurchasePricesPage() {
                   const product = listQ.data?.productMap[r.product_id];
                   const supplier = r.supplier_id ? listQ.data?.supplierMap[r.supplier_id] : null;
                   const reason = r.reason_id ? listQ.data?.reasonMap[r.reason_id] : null;
-                  const registrar = r.registered_by
-                    ? listQ.data?.registrarMap[r.registered_by]
-                    : null;
+                  const registrar = r.registered_by ? listQ.data?.registrarMap[r.registered_by] : null;
                   return (
                     <li key={r.id} className="space-y-1 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <div className="truncate font-semibold">{product?.name ?? "—"}</div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {product?.sku ?? "—"}
-                          </div>
+                          <div className="text-[11px] text-muted-foreground">{product?.sku ?? "—"}</div>
                         </div>
                         {r.is_active ? (
-                          <Badge variant="default">
-                            <Check className="ms-1 h-3 w-3" />
-                            فعال
-                          </Badge>
+                          <Badge variant="default"><Check className="ms-1 h-3 w-3" />فعال</Badge>
                         ) : (
                           <Badge variant="outline">غیرفعال</Badge>
                         )}
                       </div>
                       <div className="text-sm">
-                        <span className="font-semibold">
-                          {formatNumber(Number(r.purchase_price))}
-                        </span>{" "}
-                        <span className="text-xs text-muted-foreground">
-                          {CURRENCY_LABELS[r.currency as CurrencyCode]}
-                        </span>
+                        <span className="font-semibold">{formatNumber(Number(r.purchase_price))}</span>{" "}
+                        <span className="text-xs text-muted-foreground">{CURRENCY_LABELS[r.currency as CurrencyCode]}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">
                         {supplier ? `تأمین‌کننده: ${supplier} · ` : ""}
@@ -437,9 +361,7 @@ function PurchasePricesPage() {
                         {formatDateTimeFa(r.effective_at)}
                       </div>
                       {registrar && (
-                        <div className="text-[11px] text-muted-foreground">
-                          ثبت‌کننده: {registrar}
-                        </div>
+                        <div className="text-[11px] text-muted-foreground">ثبت‌کننده: {registrar}</div>
                       )}
                       {r.private_note && (
                         <div className="rounded bg-muted/50 p-1.5 text-[11px] text-muted-foreground">
@@ -447,28 +369,13 @@ function PurchasePricesPage() {
                         </div>
                       )}
                       {canWrite && r.is_active && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => deactivate(r.id)}
-                        >
-                          <Power className="ms-1 h-3 w-3" />
-                          غیرفعال‌سازی
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => deactivate(r.id)}>
+                          <Power className="ms-1 h-3 w-3" />غیرفعال‌سازی
                         </Button>
                       )}
                       {canWrite && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            setEditingRow(r);
-                            setOpen(true);
-                          }}
-                        >
-                          <Pencil className="ms-1 h-3 w-3" />
-                          ویرایش
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setEditingRow(r); setOpen(true); }}>
+                          <Pencil className="ms-1 h-3 w-3" />ویرایش
                         </Button>
                       )}
                     </li>
@@ -495,66 +402,36 @@ function PurchasePricesPage() {
                   <tbody>
                     {rows.map((r) => {
                       const product = listQ.data?.productMap[r.product_id];
-                      const supplier = r.supplier_id
-                        ? listQ.data?.supplierMap[r.supplier_id]
-                        : null;
+                      const supplier = r.supplier_id ? listQ.data?.supplierMap[r.supplier_id] : null;
                       const reason = r.reason_id ? listQ.data?.reasonMap[r.reason_id] : null;
-                      const registrar = r.registered_by
-                        ? listQ.data?.registrarMap[r.registered_by]
-                        : null;
+                      const registrar = r.registered_by ? listQ.data?.registrarMap[r.registered_by] : null;
                       return (
                         <tr key={r.id} className="border-b last:border-0">
                           <td className="p-3">
                             <div className="font-medium">{product?.name ?? "—"}</div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {product?.sku ?? "—"}
-                            </div>
+                            <div className="text-[11px] text-muted-foreground">{product?.sku ?? "—"}</div>
                           </td>
-                          <td className="p-3 font-semibold">
-                            {formatNumber(Number(r.purchase_price))}
-                          </td>
-                          <td className="p-3 text-xs">
-                            {CURRENCY_LABELS[r.currency as CurrencyCode]}
-                          </td>
+                          <td className="p-3 font-semibold">{formatNumber(Number(r.purchase_price))}</td>
+                          <td className="p-3 text-xs">{CURRENCY_LABELS[r.currency as CurrencyCode]}</td>
                           <td className="p-3 text-xs text-muted-foreground">{supplier ?? "—"}</td>
                           <td className="p-3 text-xs text-muted-foreground">{reason ?? "—"}</td>
-                          <td className="p-3 text-xs text-muted-foreground">
-                            {formatDateTimeFa(r.effective_at)}
-                          </td>
+                          <td className="p-3 text-xs text-muted-foreground">{formatDateTimeFa(r.effective_at)}</td>
                           <td className="p-3 text-xs text-muted-foreground">{registrar ?? "—"}</td>
                           <td className="p-3">
                             {r.is_active ? (
-                              <Badge variant="default">
-                                <Check className="ms-1 h-3 w-3" />
-                                فعال
-                              </Badge>
+                              <Badge variant="default"><Check className="ms-1 h-3 w-3" />فعال</Badge>
                             ) : (
                               <Badge variant="outline">غیرفعال</Badge>
                             )}
                           </td>
                           <td className="p-3">
                             {canWrite && r.is_active && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 px-2 text-xs"
-                                onClick={() => deactivate(r.id)}
-                              >
-                                <Power className="ms-1 h-3 w-3" />
-                                غیرفعال
+                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => deactivate(r.id)}>
+                                <Power className="ms-1 h-3 w-3" />غیرفعال
                               </Button>
                             )}
                             {canWrite && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => {
-                                  setEditingRow(r);
-                                  setOpen(true);
-                                }}
-                                aria-label="ویرایش"
-                              >
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingRow(r); setOpen(true); }} aria-label="ویرایش">
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                             )}
@@ -576,33 +453,18 @@ function PurchasePricesPage() {
           صفحه {formatNumber(page + 1)} از {formatNumber(totalPages)}
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-            قبلی
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            <ChevronRight className="h-4 w-4" />قبلی
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            بعدی
-            <ChevronLeft className="h-4 w-4" />
+          <Button variant="outline" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            بعدی<ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <PurchasePriceDialog
         open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (!v) setEditingRow(null);
-        }}
+        onOpenChange={(v) => { setOpen(v); if (!v) setEditingRow(null); }}
         onSaved={refresh}
         editing={editingRow}
         productMap={listQ.data?.productMap}
@@ -649,10 +511,7 @@ function ProductPicker({
             variant="ghost"
             size="sm"
             className="h-6 px-2"
-            onClick={() => {
-              onChange(null, null);
-              setTerm("");
-            }}
+            onClick={() => { onChange(null, null); setTerm(""); }}
           >
             <X className="h-3 w-3" />
           </Button>
@@ -662,10 +521,7 @@ function ProductPicker({
           <Search className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={term}
-            onChange={(e) => {
-              setTerm(e.target.value);
-              setOpenList(true);
-            }}
+            onChange={(e) => { setTerm(e.target.value); setOpenList(true); }}
             onFocus={() => setOpenList(true)}
             onBlur={() => setTimeout(() => setOpenList(false), 200)}
             placeholder="جستجو بر اساس نام یا SKU..."
@@ -673,9 +529,7 @@ function ProductPicker({
           />
           {openList && debounced.trim().length >= 2 && (
             <div className="absolute z-30 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
-              {search.isLoading && (
-                <div className="p-2 text-xs text-muted-foreground">در حال جستجو...</div>
-              )}
+              {search.isLoading && <div className="p-2 text-xs text-muted-foreground">در حال جستجو...</div>}
               {!search.isLoading && (search.data ?? []).length === 0 && (
                 <div className="p-2 text-xs text-muted-foreground">محصولی یافت نشد.</div>
               )}
@@ -708,10 +562,7 @@ function ProductPicker({
 
 /* ─────────── دیالوگ ثبت قیمت خرید ─────────── */
 
-const EMPTY_FORM: PurchasePriceFormValues & {
-  selectedProductLabel: string | null;
-  is_active: boolean;
-} = {
+const EMPTY_FORM: PurchasePriceFormValues & { selectedProductLabel: string | null; is_active: boolean } = {
   product_id: "",
   supplier_id: null,
   purchase_price: 0,
@@ -764,10 +615,7 @@ function PurchasePriceDialog({
         selectedProductLabel: prodLabel,
         is_active: !!editing.is_active,
       });
-      setExpiresAt(
-        toDateOnly(editing.expires_at) ||
-          addMonthsIsoDate(toDateOnly(editing.effective_at) || todayIsoDate(), 6),
-      );
+      setExpiresAt(toDateOnly(editing.expires_at) || addMonthsIsoDate(toDateOnly(editing.effective_at) || todayIsoDate(), 6));
       setErrors({});
     } else {
       const today = todayIsoDate();
@@ -820,11 +668,7 @@ function PurchasePriceDialog({
       setErrors({ reason_id: "دلیل تغییر قیمت الزامی است" });
       return;
     }
-    if (
-      expiresAt &&
-      parsed.data.effective_at &&
-      new Date(expiresAt) <= new Date(parsed.data.effective_at)
-    ) {
+    if (expiresAt && parsed.data.effective_at && new Date(expiresAt) <= new Date(parsed.data.effective_at)) {
       setErrors({ expires_at: "تاریخ انقضا باید بعد از تاریخ مؤثر باشد" });
       return;
     }
@@ -844,10 +688,7 @@ function PurchasePriceDialog({
       if (expiresAt) payload.expires_at = dateEndIso(expiresAt);
 
       if (editing?.id) {
-        const { error } = await supabase
-          .from("purchase_prices")
-          .update(payload)
-          .eq("id", editing.id);
+        const { error } = await supabase.from("purchase_prices").update(payload).eq("id", editing.id);
         if (error) throw error;
         toast.success("قیمت خرید ویرایش شد");
       } else {
@@ -894,13 +735,9 @@ function PurchasePriceDialog({
                 inputMode="numeric"
                 dir="ltr"
                 value={values.purchase_price || ""}
-                onChange={(e) =>
-                  setValues((s) => ({ ...s, purchase_price: Number(e.target.value) }))
-                }
+                onChange={(e) => setValues((s) => ({ ...s, purchase_price: Number(e.target.value) }))}
               />
-              {errors.purchase_price && (
-                <p className="mt-1 text-xs text-destructive">{errors.purchase_price}</p>
-              )}
+              {errors.purchase_price && <p className="mt-1 text-xs text-destructive">{errors.purchase_price}</p>}
             </div>
             <div>
               <Label>ارز *</Label>
@@ -908,9 +745,7 @@ function PurchasePriceDialog({
                 value={values.currency}
                 onValueChange={(v) => setValues((s) => ({ ...s, currency: v as CurrencyCode }))}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="toman">تومان</SelectItem>
                   <SelectItem value="usd">دلار</SelectItem>
@@ -924,19 +759,13 @@ function PurchasePriceDialog({
             <Label>تأمین‌کننده (اختیاری)</Label>
             <Select
               value={values.supplier_id ?? "none"}
-              onValueChange={(v) =>
-                setValues((s) => ({ ...s, supplier_id: v === "none" ? null : v }))
-              }
+              onValueChange={(v) => setValues((s) => ({ ...s, supplier_id: v === "none" ? null : v }))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="انتخاب کنید" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="انتخاب کنید" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">— بدون تأمین‌کننده —</SelectItem>
                 {(suppliersQ.data ?? []).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -948,20 +777,14 @@ function PurchasePriceDialog({
               value={values.reason_id ?? ""}
               onValueChange={(v) => setValues((s) => ({ ...s, reason_id: v }))}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="یک دلیل انتخاب کنید" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="یک دلیل انتخاب کنید" /></SelectTrigger>
               <SelectContent>
                 {(reasonsQ.data ?? []).map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.title}
-                  </SelectItem>
+                  <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {errors.reason_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.reason_id}</p>
-            )}
+            {errors.reason_id && <p className="mt-1 text-xs text-destructive">{errors.reason_id}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -984,18 +807,14 @@ function PurchasePriceDialog({
                 min={values.effective_at || undefined}
                 invalid={!!errors.expires_at}
               />
-              {errors.expires_at && (
-                <p className="mt-1 text-xs text-destructive">{errors.expires_at}</p>
-              )}
+              {errors.expires_at && <p className="mt-1 text-xs text-destructive">{errors.expires_at}</p>}
             </div>
           </div>
 
           <div>
             <Label className="flex items-center gap-1">
               یادداشت خصوصی
-              <span className="text-[10px] font-normal text-muted-foreground">
-                (فقط مدیر و حسابدار)
-              </span>
+              <span className="text-[10px] font-normal text-muted-foreground">(فقط مدیر و حسابدار)</span>
             </Label>
             <Textarea
               rows={2}
@@ -1014,9 +833,7 @@ function PurchasePriceDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button onClick={submit} disabled={loading}>
             {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
           </Button>

@@ -11,21 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/pricing/currencies")({
-  beforeLoad: async () => {
-    await requirePermission("pricing", "view");
-  },
+  beforeLoad: async () => { await requirePermission("pricing", "view"); },
   component: CurrenciesPage,
 });
 
@@ -66,14 +58,8 @@ function CurrenciesPage() {
 
   const toggleActive = async (c: CurrencyRow) => {
     if (!canWrite) return;
-    const { error } = await supabase
-      .from("currencies")
-      .update({ is_active: !c.is_active })
-      .eq("id", c.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("currencies").update({ is_active: !c.is_active }).eq("id", c.id);
+    if (error) { toast.error(error.message); return; }
     toast.success(c.is_active ? "ارز غیرفعال شد" : "ارز فعال شد");
     refresh();
   };
@@ -85,9 +71,7 @@ function CurrenciesPage() {
     if (error) {
       const msg = String(error.message ?? "");
       if (/foreign key|violat|reference/i.test(msg)) {
-        toast.error(
-          "این ارز در محصولات استفاده شده و قابل حذف نیست. می‌توانید آن را غیرفعال کنید.",
-        );
+        toast.error("این ارز در محصولات استفاده شده و قابل حذف نیست. می‌توانید آن را غیرفعال کنید.");
       } else {
         toast.error(msg || "خطا در حذف ارز");
       }
@@ -105,21 +89,11 @@ function CurrenciesPage() {
         actions={
           <>
             <Button asChild variant="outline" size="sm">
-              <Link to="/pricing">
-                <ArrowRight className="ms-1 h-4 w-4" />
-                بازگشت
-              </Link>
+              <Link to="/pricing"><ArrowRight className="ms-1 h-4 w-4" />بازگشت</Link>
             </Button>
             {canWrite && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setOpen(true);
-                }}
-              >
-                <Plus className="ms-1 h-4 w-4" />
-                ارز جدید
+              <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+                <Plus className="ms-1 h-4 w-4" />ارز جدید
               </Button>
             )}
           </>
@@ -131,66 +105,31 @@ function CurrenciesPage() {
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : !data || data.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              ارزی تعریف نشده است.
-            </div>
+            <div className="p-6 text-center text-sm text-muted-foreground">ارزی تعریف نشده است.</div>
           ) : (
             <ul className="divide-y">
               {data.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
+                <li key={c.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{c.title}</span>
-                      <Badge variant="outline" className="font-mono uppercase">
-                        {c.code}
-                      </Badge>
-                      {c.symbol && (
-                        <span className="text-sm text-muted-foreground">({c.symbol})</span>
-                      )}
-                      {c.is_active ? (
-                        <Badge variant="default">فعال</Badge>
-                      ) : (
-                        <Badge variant="outline">غیرفعال</Badge>
-                      )}
+                      <Badge variant="outline" className="font-mono uppercase">{c.code}</Badge>
+                      {c.symbol && <span className="text-sm text-muted-foreground">({c.symbol})</span>}
+                      {c.is_active ? <Badge variant="default">فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
                     </div>
                     <div className="text-xs text-muted-foreground">ترتیب نمایش: {c.sort_order}</div>
                   </div>
                   {canWrite && (
                     <div className="flex flex-wrap items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => {
-                          setEditing(c);
-                          setOpen(true);
-                        }}
-                      >
-                        <Pencil className="ms-1 h-3 w-3" />
-                        ویرایش
+                      <Button variant="ghost" size="sm" className="h-8" onClick={() => { setEditing(c); setOpen(true); }}>
+                        <Pencil className="ms-1 h-3 w-3" />ویرایش
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => toggleActive(c)}
-                      >
-                        <Power
-                          className={`ms-1 h-3 w-3 ${c.is_active ? "text-destructive" : ""}`}
-                        />
+                      <Button variant="ghost" size="sm" className="h-8" onClick={() => toggleActive(c)}>
+                        <Power className={`ms-1 h-3 w-3 ${c.is_active ? "text-destructive" : ""}`} />
                         {c.is_active ? "غیرفعال" : "فعال"}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-destructive"
-                        onClick={() => remove(c)}
-                      >
-                        <Trash2 className="ms-1 h-3 w-3" />
-                        حذف
+                      <Button variant="ghost" size="sm" className="h-8 text-destructive" onClick={() => remove(c)}>
+                        <Trash2 className="ms-1 h-3 w-3" />حذف
                       </Button>
                     </div>
                   )}
@@ -207,16 +146,8 @@ function CurrenciesPage() {
 }
 
 function CurrencyDialog({
-  open,
-  onOpenChange,
-  editing,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  editing: CurrencyRow | null;
-  onSaved: () => void;
-}) {
+  open, onOpenChange, editing, onSaved,
+}: { open: boolean; onOpenChange: (v: boolean) => void; editing: CurrencyRow | null; onSaved: () => void }) {
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
   const [symbol, setSymbol] = useState("");
@@ -240,10 +171,7 @@ function CurrencyDialog({
       toast.error("کد ارز باید بین ۲ تا ۱۶ کاراکتر و فقط شامل حروف انگلیسی، عدد، _ یا - باشد.");
       return;
     }
-    if (!title.trim()) {
-      toast.error("عنوان ارز الزامی است.");
-      return;
-    }
+    if (!title.trim()) { toast.error("عنوان ارز الزامی است."); return; }
     setLoading(true);
     try {
       const payload = {
@@ -268,34 +196,18 @@ function CurrencyDialog({
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در ذخیره ارز");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{editing ? "ویرایش ارز" : "ارز جدید"}</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>{editing ? "ویرایش ارز" : "ارز جدید"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>
-              کد ارز * <span className="text-xs text-muted-foreground">(مثلاً eur، cny)</span>
-            </Label>
-            <Input
-              dir="ltr"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="eur"
-              disabled={!!editing}
-            />
-            {editing && (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                کد ارز پس از ثبت قابل تغییر نیست.
-              </p>
-            )}
+            <Label>کد ارز * <span className="text-xs text-muted-foreground">(مثلاً eur، cny)</span></Label>
+            <Input dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} placeholder="eur" disabled={!!editing} />
+            {editing && <p className="mt-1 text-[11px] text-muted-foreground">کد ارز پس از ثبت قابل تغییر نیست.</p>}
           </div>
           <div>
             <Label>عنوان فارسی *</Label>
@@ -307,12 +219,7 @@ function CurrencyDialog({
           </div>
           <div>
             <Label>ترتیب نمایش</Label>
-            <Input
-              type="number"
-              dir="ltr"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-            />
+            <Input type="number" dir="ltr" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <Switch checked={isActive} onCheckedChange={setIsActive} />
@@ -320,9 +227,7 @@ function CurrencyDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>انصراف</Button>
           <Button onClick={submit} disabled={loading}>
             {loading && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}ذخیره
           </Button>

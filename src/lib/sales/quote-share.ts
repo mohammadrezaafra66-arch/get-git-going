@@ -11,7 +11,12 @@ export type QuoteShareChannel =
   | "rubika"
   | "manual_link";
 
-export type QuoteShareStatus = "draft" | "queued" | "sent" | "failed" | "canceled";
+export type QuoteShareStatus =
+  | "draft"
+  | "queued"
+  | "sent"
+  | "failed"
+  | "canceled";
 
 export const QUOTE_SHARE_CHANNEL_LABELS: Record<QuoteShareChannel, string> = {
   whatsapp: "واتساپ",

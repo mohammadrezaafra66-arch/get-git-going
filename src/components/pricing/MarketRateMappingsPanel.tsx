@@ -9,20 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -116,20 +104,14 @@ export function MarketRateMappingsPanel() {
       const srcCode = r.source?.code ?? "";
       if (sourceFilter === "navasan" && srcCode !== "NAVASAN_API") return false;
       if (sourceFilter === "tgju" && srcCode !== "TGJU_API") return false;
-      if (sourceFilter === "other" && (srcCode === "NAVASAN_API" || srcCode === "TGJU_API"))
-        return false;
+      if (sourceFilter === "other" && (srcCode === "NAVASAN_API" || srcCode === "TGJU_API")) return false;
       if (statusFilter !== "all" && getMappingStatus(r) !== statusFilter) return false;
       if (!term) return true;
       const hay = [
-        r.source?.code,
-        r.source?.title_fa,
-        r.indicator?.code,
-        r.indicator?.title_fa,
-        r.source_symbol,
-        r.note ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
+        r.source?.code, r.source?.title_fa,
+        r.indicator?.code, r.indicator?.title_fa,
+        r.source_symbol, r.note ?? "",
+      ].join(" ").toLowerCase();
       return hay.includes(term);
     });
   }, [q.data, search, sourceFilter, statusFilter]);
@@ -173,13 +155,8 @@ export function MarketRateMappingsPanel() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="text-xs"
               />
-              <Select
-                value={sourceFilter}
-                onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="منبع" />
-                </SelectTrigger>
+              <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="منبع" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه منابع</SelectItem>
                   <SelectItem value="navasan">نوسان</SelectItem>
@@ -187,13 +164,8 @@ export function MarketRateMappingsPanel() {
                   <SelectItem value="other">سایر</SelectItem>
                 </SelectContent>
               </Select>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="وضعیت" />
-                </SelectTrigger>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                <SelectTrigger className="text-xs"><SelectValue placeholder="وضعیت" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه وضعیت‌ها</SelectItem>
                   <SelectItem value="active">فعال</SelectItem>
@@ -237,49 +209,40 @@ export function MarketRateMappingsPanel() {
                           const meta = STATUS_META[status];
                           const hint = getMappingHint(r);
                           return (
-                            <tr key={r.id} className="border-t">
+                          <tr key={r.id} className="border-t">
+                            <td className="px-2 py-2">
+                              <div className="font-medium">{r.indicator?.title_fa ?? "—"}</div>
+                              <div className="text-[10px] text-muted-foreground">{r.indicator?.code}</div>
+                            </td>
+                            <td className="px-2 py-2 font-mono">{r.source_symbol}</td>
+                            <td className="px-2 py-2">{Number(r.normalize_multiplier)}</td>
+                            <td className="px-2 py-2">
+                              <div className="flex flex-col gap-1">
+                                <Badge variant={meta.variant} className="w-fit text-[10px]">
+                                  {meta.label}
+                                </Badge>
+                                {hint && (
+                                  <span className="text-[10px] text-muted-foreground">{hint}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 max-w-[280px] truncate text-muted-foreground" title={r.note ?? ""}>
+                              {r.note ?? "—"}
+                            </td>
+                            <td className="px-2 py-2 text-muted-foreground">{formatDateFa(r.updated_at)}</td>
+                            {canEdit && (
                               <td className="px-2 py-2">
-                                <div className="font-medium">{r.indicator?.title_fa ?? "—"}</div>
-                                <div className="text-[10px] text-muted-foreground">
-                                  {r.indicator?.code}
-                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditing(r)}
+                                  aria-label="ویرایش نگاشت"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
                               </td>
-                              <td className="px-2 py-2 font-mono">{r.source_symbol}</td>
-                              <td className="px-2 py-2">{Number(r.normalize_multiplier)}</td>
-                              <td className="px-2 py-2">
-                                <div className="flex flex-col gap-1">
-                                  <Badge variant={meta.variant} className="w-fit text-[10px]">
-                                    {meta.label}
-                                  </Badge>
-                                  {hint && (
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {hint}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td
-                                className="px-2 py-2 max-w-[280px] truncate text-muted-foreground"
-                                title={r.note ?? ""}
-                              >
-                                {r.note ?? "—"}
-                              </td>
-                              <td className="px-2 py-2 text-muted-foreground">
-                                {formatDateFa(r.updated_at)}
-                              </td>
-                              {canEdit && (
-                                <td className="px-2 py-2">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setEditing(r)}
-                                    aria-label="ویرایش نگاشت"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                </td>
-                              )}
-                            </tr>
+                            )}
+                          </tr>
                           );
                         })}
                       </tbody>
@@ -307,14 +270,8 @@ export function MarketRateMappingsPanel() {
 }
 
 function EditMappingDialog({
-  row,
-  onClose,
-  onSaved,
-}: {
-  row: MappingRow;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+  row, onClose, onSaved,
+}: { row: MappingRow; onClose: () => void; onSaved: () => void }) {
   const [state, setState] = useState<EditState>({
     source_symbol: row.source_symbol,
     normalize_multiplier: String(row.normalize_multiplier ?? 1),
@@ -322,10 +279,8 @@ function EditMappingDialog({
     note: row.note ?? "",
   });
 
-  const needsConfirm =
-    !row.is_enabled &&
-    state.is_enabled &&
-    ((row.note ?? "").includes("نیاز به تأیید") || (row.note ?? "").includes("مبهم"));
+  const needsConfirm = !row.is_enabled && state.is_enabled
+    && ((row.note ?? "").includes("نیاز به تأیید") || (row.note ?? "").includes("مبهم"));
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -333,8 +288,7 @@ function EditMappingDialog({
       if (!sym) throw new Error("نماد منبع نمی‌تواند خالی باشد");
       if (sym.length > 100) throw new Error("نماد منبع طولانی است");
       const mult = Number(state.normalize_multiplier);
-      if (!Number.isFinite(mult) || mult <= 0)
-        throw new Error("ضریب باید عددی بزرگ‌تر از صفر باشد");
+      if (!Number.isFinite(mult) || mult <= 0) throw new Error("ضریب باید عددی بزرگ‌تر از صفر باشد");
       if (state.note.length > 500) throw new Error("یادداشت طولانی است");
 
       if (needsConfirm) {
@@ -382,10 +336,7 @@ function EditMappingDialog({
           <div className="space-y-1">
             <Label>ضریب نرمال‌سازی</Label>
             <Input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="any"
+              type="number" inputMode="decimal" min="0" step="any"
               value={state.normalize_multiplier}
               onChange={(e) => setState((s) => ({ ...s, normalize_multiplier: e.target.value }))}
             />
@@ -405,23 +356,19 @@ function EditMappingDialog({
           <div className="space-y-1">
             <Label>یادداشت</Label>
             <Textarea
-              rows={2}
-              maxLength={500}
+              rows={2} maxLength={500}
               value={state.note}
               onChange={(e) => setState((s) => ({ ...s, note: e.target.value }))}
             />
           </div>
           {needsConfirm && (
             <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
-              توجه: این نگاشت با وضعیت «نیاز به تأیید/مبهم» ذخیره شده بود؛ هنگام ذخیره از شما تأیید
-              گرفته خواهد شد.
+              توجه: این نگاشت با وضعیت «نیاز به تأیید/مبهم» ذخیره شده بود؛ هنگام ذخیره از شما تأیید گرفته خواهد شد.
             </p>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={mut.isPending}>
-            انصراف
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={mut.isPending}>انصراف</Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
             {mut.isPending ? "در حال ذخیره…" : "ذخیره"}
           </Button>

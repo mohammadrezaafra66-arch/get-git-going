@@ -20,28 +20,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_app/accounting/receipts")({
@@ -67,10 +55,9 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> = 
 function ReceiptsLayout() {
   const matches = useMatches();
   // If a child route is active, render only the child (Outlet)
-  const hasChild = matches.some(
-    (m) =>
-      m.routeId === "/_app/accounting/receipts/create" ||
-      m.routeId === "/_app/accounting/receipts/$receiptId",
+  const hasChild = matches.some((m) =>
+    m.routeId === "/_app/accounting/receipts/create" ||
+    m.routeId === "/_app/accounting/receipts/$receiptId"
   );
   if (hasChild) return <Outlet />;
   return <ReceiptsListPage />;
@@ -109,7 +96,7 @@ function ReceiptsListPage() {
            receiver_name, receiver_phone, receiver_accounting_code, created_at, created_by,
            customer:customers(id, name, phone, accounting_code),
            destination_bank_account:bank_accounts!payment_receipts_destination_bank_account_id_fkey(id, title),
-           receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, name)`,
+           receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, name)`
         )
         .order("created_at", { ascending: false })
         .limit(5000);
@@ -150,11 +137,7 @@ function ReceiptsListPage() {
         receiver_accounting_code: string | null;
         created_at: string;
         created_by: string | null;
-        customer: {
-          name: string | null;
-          phone: string | null;
-          accounting_code: string | null;
-        } | null;
+        customer: { name: string | null; phone: string | null; accounting_code: string | null } | null;
         destination_bank_account: { title: string | null } | null;
         receiver_party: { name: string | null } | null;
       };
@@ -172,10 +155,7 @@ function ReceiptsListPage() {
           .select("id, full_name")
           .in("id", creatorIds);
         (profs ?? []).forEach((p) => {
-          creatorMap.set(
-            (p as { id: string }).id,
-            (p as { full_name: string | null }).full_name ?? "",
-          );
+          creatorMap.set((p as { id: string }).id, (p as { full_name: string | null }).full_name ?? "");
         });
       }
 
@@ -197,7 +177,7 @@ function ReceiptsListPage() {
           "واریزکننده (تلفن)": r.payer_phone ?? "",
           "واریزکننده (کد آسان)": r.payer_accounting_code ?? "",
           "بانک مبدأ": r.source_bank ?? r.bank_name ?? "",
-          گیرنده: receiverTarget,
+          "گیرنده": receiverTarget,
           "گیرنده (نام روی فیش)": r.receiver_name,
           "گیرنده (تلفن)": r.receiver_phone ?? "",
           "گیرنده (کد آسان)": r.receiver_accounting_code ?? "",
@@ -205,11 +185,11 @@ function ReceiptsListPage() {
           "مبلغ (تومان)": Number(r.amount),
           "شماره پیگیری": r.tracking_number,
           "نوع فیش": RECEIPT_TYPE_FA[r.receipt_type] ?? r.receipt_type,
-          وضعیت: STATUS_FA[r.status] ?? r.status,
+          "وضعیت": STATUS_FA[r.status] ?? r.status,
           "وضعیت ثبت سند": r.posting_status ?? "",
           "تاریخ ثبت سند (شمسی)": r.posted_at ? isoToJalaliDisplay(r.posted_at.slice(0, 10)) : "",
           "علت رد": r.rejection_reason ?? "",
-          توضیحات: r.description ?? "",
+          "توضیحات": r.description ?? "",
           "شناسه فیش": r.id,
         };
       });
@@ -342,12 +322,7 @@ function ReceiptsListPage() {
                             setPage(0);
                           }}
                         >
-                          <Check
-                            className={cn(
-                              "ml-2 h-4 w-4",
-                              !customerId ? "opacity-100" : "opacity-0",
-                            )}
-                          />
+                          <Check className={cn("ml-2 h-4 w-4", !customerId ? "opacity-100" : "opacity-0")} />
                           همه مشتریان
                         </CommandItem>
                         {customers.map((c) => (
@@ -360,12 +335,7 @@ function ReceiptsListPage() {
                               setPage(0);
                             }}
                           >
-                            <Check
-                              className={cn(
-                                "ml-2 h-4 w-4",
-                                c.id === customerId ? "opacity-100" : "opacity-0",
-                              )}
-                            />
+                            <Check className={cn("ml-2 h-4 w-4", c.id === customerId ? "opacity-100" : "opacity-0")} />
                             {c.name}
                           </CommandItem>
                         ))}
@@ -377,16 +347,8 @@ function ReceiptsListPage() {
             </div>
             <div className="space-y-1">
               <Label>وضعیت</Label>
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">همه وضعیت‌ها</SelectItem>
                   <SelectItem value="pending_review">در انتظار بررسی</SelectItem>
@@ -399,20 +361,14 @@ function ReceiptsListPage() {
               <Label>از تاریخ</Label>
               <JalaliDateInput
                 value={dateFrom}
-                onChange={(iso) => {
-                  setDateFrom(iso);
-                  setPage(0);
-                }}
+                onChange={(iso) => { setDateFrom(iso); setPage(0); }}
               />
             </div>
             <div className="space-y-1">
               <Label>تا تاریخ</Label>
               <JalaliDateInput
                 value={dateTo}
-                onChange={(iso) => {
-                  setDateTo(iso);
-                  setPage(0);
-                }}
+                onChange={(iso) => { setDateTo(iso); setPage(0); }}
               />
             </div>
           </div>
@@ -456,19 +412,13 @@ function ReceiptsListPage() {
                   return (
                     <TableRow key={row.id}>
                       <TableCell>{row.customer?.name ?? "—"}</TableCell>
-                      <TableCell className="font-medium">
-                        {formatNumber(Number(row.amount))}
-                      </TableCell>
+                      <TableCell className="font-medium">{formatNumber(Number(row.amount))}</TableCell>
                       <TableCell dir="ltr">{isoToJalaliDisplay(row.payment_date)}</TableCell>
-                      <TableCell dir="ltr">
-                        {toFaDigits(row.payment_time?.slice(0, 5) ?? "")}
-                      </TableCell>
+                      <TableCell dir="ltr">{toFaDigits(row.payment_time?.slice(0, 5) ?? "")}</TableCell>
                       <TableCell dir="ltr">{toFaDigits(row.tracking_number)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {row.receipt_type === "prepayment"
-                            ? "پیش واریز: اعتبار مثبت"
-                            : "پرداخت بدهی"}
+                          {row.receipt_type === "prepayment" ? "پیش واریز: اعتبار مثبت" : "پرداخت بدهی"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -478,7 +428,10 @@ function ReceiptsListPage() {
                       </TableCell>
                       <TableCell>
                         <Button asChild variant="outline" size="sm">
-                          <Link to="/accounting/receipts/$receiptId" params={{ receiptId: row.id }}>
+                          <Link
+                            to="/accounting/receipts/$receiptId"
+                            params={{ receiptId: row.id }}
+                          >
                             <Eye className="ml-1 h-4 w-4" />
                             جزئیات
                           </Link>
@@ -499,20 +452,14 @@ function ReceiptsListPage() {
             صفحه {toFaDigits(page + 1)} از {toFaDigits(totalPages)}
           </span>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+            <Button variant="outline" size="sm"
               disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
+              onClick={() => setPage((p) => Math.max(0, p - 1))}>
               قبلی
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
+            <Button variant="outline" size="sm"
               disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
-            >
+              onClick={() => setPage((p) => p + 1)}>
               بعدی
             </Button>
           </div>

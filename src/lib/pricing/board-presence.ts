@@ -63,10 +63,7 @@ export async function startOrUpdateSession(opts: {
   return data as BoardSession;
 }
 
-export async function heartbeatSession(
-  sessionId: string,
-  salePriceTypeId: string | null,
-): Promise<void> {
+export async function heartbeatSession(sessionId: string, salePriceTypeId: string | null): Promise<void> {
   await supabase
     .from("pricing_board_viewer_sessions")
     .update({

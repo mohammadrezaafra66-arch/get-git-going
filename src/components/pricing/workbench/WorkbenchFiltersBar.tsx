@@ -7,11 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, RotateCcw } from "lucide-react";
 import { User, Users, UserX } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { WorkbenchFilters, CurrencyCodeV } from "@/lib/pricing/workbench-filters";
 import { DEFAULT_WORKBENCH_FILTERS, STOCK_LABEL } from "@/lib/pricing/workbench-filters";
@@ -31,17 +27,9 @@ type OwnerOpt = { user_id: string; full_name: string | null };
 export type WorkbenchScope = "mine" | "all" | "no-owner";
 
 export function WorkbenchFiltersBar({
-  filters,
-  onChange,
-  brands,
-  categories,
-  labels,
-  owners,
-  search,
-  onSearchChange,
-  scope,
-  onScopeChange,
-  canShowAll,
+  filters, onChange, brands, categories, labels, owners,
+  search, onSearchChange,
+  scope, onScopeChange, canShowAll,
 }: {
   filters: WorkbenchFilters;
   onChange: (f: WorkbenchFilters) => void;
@@ -57,13 +45,13 @@ export function WorkbenchFiltersBar({
 }) {
   const parents = useMemo(() => categories.filter((c) => !c.parent_id), [categories]);
   const subs = useMemo(
-    () =>
-      filters.categoryId !== "all"
-        ? categories.filter((c) => c.parent_id === filters.categoryId)
-        : [],
+    () => filters.categoryId !== "all"
+      ? categories.filter((c) => c.parent_id === filters.categoryId)
+      : [],
     [categories, filters.categoryId],
   );
-  const set = (patch: Partial<WorkbenchFilters>) => onChange({ ...filters, ...patch });
+  const set = (patch: Partial<WorkbenchFilters>) =>
+    onChange({ ...filters, ...patch });
 
   const activeCount =
     (filters.brandId !== "all" ? 1 : 0) +
@@ -136,10 +124,7 @@ export function WorkbenchFiltersBar({
             label="برند"
             value={filters.brandId}
             onValue={(v) => set({ brandId: v })}
-            options={[
-              { value: "all", label: "همه برندها" },
-              ...brands.map((b) => ({ value: b.id, label: b.name })),
-            ]}
+            options={[{ value: "all", label: "همه برندها" }, ...brands.map((b) => ({ value: b.id, label: b.name }))]}
           />
 
           {/* Category */}
@@ -147,10 +132,7 @@ export function WorkbenchFiltersBar({
             label="دسته محصول"
             value={filters.categoryId}
             onValue={(v) => set({ categoryId: v, subcategoryId: "all" })}
-            options={[
-              { value: "all", label: "همه دسته‌ها" },
-              ...parents.map((c) => ({ value: c.id, label: c.name })),
-            ]}
+            options={[{ value: "all", label: "همه دسته‌ها" }, ...parents.map((c) => ({ value: c.id, label: c.name }))]}
           />
 
           {/* Subcategory */}
@@ -161,15 +143,11 @@ export function WorkbenchFiltersBar({
               onValueChange={(v) => set({ subcategoryId: v })}
               disabled={filters.categoryId === "all" || subs.length === 0}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه زیر دسته‌ها</SelectItem>
                 {subs.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -194,18 +172,16 @@ export function WorkbenchFiltersBar({
             <Label className="mb-1 block text-xs">ارز خرید</Label>
             <Select
               value={filters.currency}
-              onValueChange={(v) => set({ currency: v === "all" ? "all" : (v as CurrencyCodeV) })}
+              onValueChange={(v) =>
+                set({ currency: v === "all" ? "all" : (v as CurrencyCodeV) })
+              }
               disabled={filters.currencyType !== "foreign"}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">همه ارزها</SelectItem>
                 {FOREIGN_CURRENCIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {CURRENCY_LABELS[c]}
-                  </SelectItem>
+                  <SelectItem key={c} value={c}>{CURRENCY_LABELS[c]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -287,10 +263,7 @@ export function WorkbenchFiltersBar({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              onChange(DEFAULT_WORKBENCH_FILTERS);
-              onSearchChange("");
-            }}
+            onClick={() => { onChange(DEFAULT_WORKBENCH_FILTERS); onSearchChange(""); }}
             disabled={activeCount === 0 && !search}
           >
             <RotateCcw className="ms-1 h-3.5 w-3.5" /> پاک‌کردن فیلترها
@@ -302,10 +275,7 @@ export function WorkbenchFiltersBar({
 }
 
 function FilterSelect({
-  label,
-  value,
-  onValue,
-  options,
+  label, value, onValue, options,
 }: {
   label: string;
   value: string;
@@ -316,14 +286,10 @@ function FilterSelect({
     <div>
       <Label className="mb-1 block text-xs">{label}</Label>
       <Select value={value} onValueChange={onValue}>
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
+        <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>
           {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>

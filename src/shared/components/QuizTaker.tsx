@@ -20,14 +20,7 @@ interface Props {
   onRetry?: () => void;
 }
 
-export function QuizTaker({
-  questions,
-  passingScore,
-  submitting,
-  onSubmit,
-  result,
-  onRetry,
-}: Props) {
+export function QuizTaker({ questions, passingScore, submitting, onSubmit, result, onRetry }: Props) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -52,14 +45,10 @@ export function QuizTaker({
           )}
           <div className="text-2xl font-bold">{result.score}%</div>
           <p className={result.passed ? "text-emerald-700" : "text-destructive"}>
-            {result.passed
-              ? "تبریک! شما در آزمون قبول شدید."
-              : `متأسفانه قبول نشدید (حد قبولی: ${passingScore}٪).`}
+            {result.passed ? "تبریک! شما در آزمون قبول شدید." : `متأسفانه قبول نشدید (حد قبولی: ${passingScore}٪).`}
           </p>
           {onRetry && (
-            <Button onClick={onRetry} variant="outline">
-              تلاش مجدد
-            </Button>
+            <Button onClick={onRetry} variant="outline">تلاش مجدد</Button>
           )}
         </CardContent>
       </Card>
@@ -71,15 +60,10 @@ export function QuizTaker({
       {questions.map((q, qIdx) => (
         <Card key={q.id}>
           <CardContent className="space-y-3 p-4">
-            <Label className="block text-sm font-bold">
-              {qIdx + 1}. {q.question_text}
-            </Label>
+            <Label className="block text-sm font-bold">{qIdx + 1}. {q.question_text}</Label>
             <div className="space-y-2">
               {q.options.map((opt, oIdx) => (
-                <label
-                  key={oIdx}
-                  className="flex cursor-pointer items-center gap-2 rounded border p-2 hover:bg-muted"
-                >
+                <label key={oIdx} className="flex cursor-pointer items-center gap-2 rounded border p-2 hover:bg-muted">
                   <input
                     type="radio"
                     name={`q-${q.id}`}

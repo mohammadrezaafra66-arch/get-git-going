@@ -19,15 +19,16 @@ const cloudPublishableKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3d2twcGtjaWhyYmV1cnd1ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzU5MTUsImV4cCI6MjA5MjYxMTkxNX0.oowSHbrAEL04u9DwGjyPYIlCc8MSL0c00Odv6UvM4bE";
 
 const cloudProjectId =
-  process.env.VITE_SUPABASE_PROJECT_ID ?? process.env.SUPABASE_PROJECT_ID ?? "kwwkppkcihrbeurwudjh";
+  process.env.VITE_SUPABASE_PROJECT_ID ??
+  process.env.SUPABASE_PROJECT_ID ??
+  "kwwkppkcihrbeurwudjh";
 
 export default defineConfig({
-  // Build target is conditional:
-  //   - SELF_HOST_NODE=1  → disable Cloudflare Workers plugin so `vite build`
-  //     produces a pure Node SSR bundle (used by Dockerfile / SH.3A self-host).
-  //   - default           → keep Cloudflare Workers build (required for
-  //     Lovable preview & published deployments which run on Workers).
-  cloudflare: process.env.SELF_HOST_NODE === "1" ? false : undefined,
+  // NOTE: previously a `cloudflare: false` toggle was used when
+  // SELF_HOST_NODE=1 to switch to a pure Node SSR build. The current
+  // @lovable.dev/vite-tanstack-config no longer exposes that option,
+  // so the toggle must be handled at the Dockerfile/runtime level.
+  // See deploy/app/README.md section "Build target — Cloudflare Workers vs Node SSR".
   vite: {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),

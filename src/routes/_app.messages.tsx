@@ -5,9 +5,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 
 export const Route = createFileRoute("/_app/messages")({
-  beforeLoad: async () => {
-    await requirePermission("messages", "view");
-  },
+  beforeLoad: async () => { await requirePermission("messages", "view"); },
   component: () => (
     <div className="space-y-6">
       <PageHeader title="پیام‌های داخلی" description="ارسال و دریافت پیام بین کاربران سامانه" />

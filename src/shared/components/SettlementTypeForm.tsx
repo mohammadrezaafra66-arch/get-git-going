@@ -92,9 +92,7 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
         <div>
           <Label>کد یکتا</Label>
           <Input dir="ltr" value={values.code} disabled />
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            کد به‌صورت خودکار تولید شده و قابل ویرایش نیست.
-          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">کد به‌صورت خودکار تولید شده و قابل ویرایش نیست.</p>
         </div>
       )}
       <div>

@@ -41,89 +41,54 @@ export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
 
 /** ماتریس دسترسی نقش-محور. */
 export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
-  dashboard: { view: ALL_ROLES, create: [], update: [], delete: [] },
-  products: {
-    view: ALL_ROLES,
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin"],
-  },
-  pricing: {
-    view: ["admin", "manager", "accountant"],
-    create: ["admin", "manager", "accountant"],
-    update: ["admin", "manager", "accountant"],
-    delete: ["admin"],
-  },
-  purchases: {
-    view: ["admin", "manager", "accountant", "viewer"],
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin"],
-  },
-  sales: {
-    view: ALL_ROLES,
-    create: ["admin", "manager", "sales"],
-    update: ["admin", "manager", "sales"],
-    delete: ["admin"],
-  },
-  invoices: {
-    view: ALL_ROLES,
-    create: ["admin", "manager", "sales"],
-    update: ["admin", "manager", "sales"],
-    delete: ["admin"],
-  },
-  "price-lists": {
-    view: ALL_ROLES,
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin"],
-  },
-  users: { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },
-  roles: { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },
-  reports: { view: ALL_ROLES, create: [], update: [], delete: [] },
-  knowledge: {
-    view: ALL_ROLES,
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin"],
-  },
-  feedback: { view: ALL_ROLES, create: ALL_ROLES, update: ["admin", "manager"], delete: ["admin"] },
-  messages: { view: ALL_ROLES, create: ALL_ROLES, update: ALL_ROLES, delete: ["admin"] },
+  dashboard:    { view: ALL_ROLES, create: [], update: [], delete: [] },
+  products:     { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
+  pricing:      { view: ["admin","manager","accountant"], create: ["admin","manager","accountant"], update: ["admin","manager","accountant"], delete: ["admin"] },
+  purchases:    { view: ["admin","manager","accountant","viewer"], create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
+  sales:        { view: ALL_ROLES, create: ["admin","manager","sales"], update: ["admin","manager","sales"], delete: ["admin"] },
+  invoices:     { view: ALL_ROLES, create: ["admin","manager","sales"], update: ["admin","manager","sales"], delete: ["admin"] },
+  "price-lists":{ view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
+  users:        { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },
+  roles:        { view: ["admin"], create: ["admin"], update: ["admin"], delete: ["admin"] },
+  reports:      { view: ALL_ROLES, create: [], update: [], delete: [] },
+  knowledge:    { view: ALL_ROLES, create: ["admin","manager"], update: ["admin","manager"], delete: ["admin"] },
+  feedback:     { view: ALL_ROLES, create: ALL_ROLES, update: ["admin","manager"], delete: ["admin"] },
+  messages:     { view: ALL_ROLES, create: ALL_ROLES, update: ALL_ROLES, delete: ["admin"] },
   "audit-logs": { view: ["admin"], create: [], update: [], delete: [] },
   "data-tables": {
-    view: ["admin", "manager", "accountant", "viewer"],
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
+    view: ["admin","manager","accountant","viewer"],
+    create: ["admin","manager"],
+    update: ["admin","manager"],
     delete: ["admin"],
   },
   "bot-api-keys": {
-    view: ["admin", "manager"],
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin", "manager"],
+    view: ["admin","manager"],
+    create: ["admin","manager"],
+    update: ["admin","manager"],
+    delete: ["admin","manager"],
   },
   suppliers: {
-    view: ["admin", "manager", "accountant"],
-    create: ["admin", "accountant"],
-    update: ["admin", "accountant"],
+    view: ["admin","manager","accountant"],
+    create: ["admin","accountant"],
+    update: ["admin","accountant"],
     delete: ["admin"],
   },
   academy: {
     view: ALL_ROLES,
-    create: ["admin", "manager"],
-    update: ["admin", "manager"],
-    delete: ["admin", "manager"],
+    create: ["admin","manager"],
+    update: ["admin","manager"],
+    delete: ["admin","manager"],
   },
   hr: {
-    view: ["admin", "manager"],
+    view: ["admin","manager"],
     create: ALL_ROLES,
-    update: ["admin", "manager"],
+    update: ["admin","manager"],
     delete: ["admin"],
   },
   "market-rates": {
-    view: ["admin", "manager", "accountant", "sales"],
-    create: ["admin", "manager", "accountant"],
-    update: ["admin", "manager", "accountant"],
+    view: ["admin","manager","accountant","sales"],
+    create: ["admin","manager","accountant"],
+    update: ["admin","manager","accountant"],
     delete: ["admin"],
   },
   // S15 — ماژول «اشخاص» (پرونده‌ی یکپارچه شخص حقیقی/حقوقی).
@@ -139,9 +104,9 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
   // فروشنده/بیننده دسترسی پیش‌فرض ندارند تا منوهای مالی برایشان پنهان شود.
   // route guard های مربوطه از قبل با requireAnyRole(["admin","manager","accountant"]) محدود شده‌اند.
   accounting: {
-    view: ["admin", "manager", "accountant"],
-    create: ["admin", "manager", "accountant"],
-    update: ["admin", "manager", "accountant"],
+    view: ["admin","manager","accountant"],
+    create: ["admin","manager","accountant"],
+    update: ["admin","manager","accountant"],
     delete: ["admin"],
   },
 };
@@ -168,39 +133,22 @@ export function hasPermissionEx(
 ): boolean {
   if ((roles as string[]).includes("admin")) return true;
   const rows = getCachedRolePermissions();
-  const matched = rows.filter(
-    (r) => (roles as string[]).includes(r.role_name) && r.module === module,
-  );
+  const matched = rows.filter((r) => (roles as string[]).includes(r.role_name) && r.module === module);
   if (matched.length > 0) {
     const col =
-      action === "view"
-        ? "can_view"
-        : action === "create"
-          ? "can_create"
-          : action === "update"
-            ? "can_update"
-            : action === "delete"
-              ? "can_delete"
-              : action === "approve"
-                ? "can_approve"
-                : action === "export"
-                  ? "can_export"
-                  : "can_view_sensitive";
+      action === "view" ? "can_view" :
+      action === "create" ? "can_create" :
+      action === "update" ? "can_update" :
+      action === "delete" ? "can_delete" :
+      action === "approve" ? "can_approve" :
+      action === "export" ? "can_export" : "can_view_sensitive";
     return matched.some((r) => Boolean((r as any)[col]));
   }
   // Fallback to static
   if (action === "view" || action === "create" || action === "update" || action === "delete") {
-    return (
-      PERMISSIONS[module as ModuleKey]?.[action]?.some((r) => (roles as string[]).includes(r)) ??
-      false
-    );
+    return PERMISSIONS[module as ModuleKey]?.[action]?.some((r) => (roles as string[]).includes(r)) ?? false;
   }
-  const fb =
-    action === "approve"
-      ? APPROVE_FALLBACK
-      : action === "export"
-        ? EXPORT_FALLBACK
-        : SENSITIVE_FALLBACK;
+  const fb = action === "approve" ? APPROVE_FALLBACK : action === "export" ? EXPORT_FALLBACK : SENSITIVE_FALLBACK;
   return fb.some((r) => (roles as string[]).includes(r));
 }
 

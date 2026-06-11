@@ -42,9 +42,7 @@ export function EmergingProductsCard({ days }: { days: RangeDays }) {
                     {p.brand?.name && <span>{p.brand.name}</span>}
                     {p.category?.name && <span>· {p.category.name}</span>}
                     {STOCK_LABEL[p.stock_status] && (
-                      <Badge variant="outline" className="h-4 px-1 text-[10px]">
-                        {STOCK_LABEL[p.stock_status]}
-                      </Badge>
+                      <Badge variant="outline" className="h-4 px-1 text-[10px]">{STOCK_LABEL[p.stock_status]}</Badge>
                     )}
                   </div>
                 </div>

@@ -1,25 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Calculator,
-  Copy,
-  Loader2,
-  Minus,
-  PackageX,
-  Tag,
-  Truck,
-  UserRound,
-} from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Calculator, Copy, Loader2, Minus, PackageX, Tag, Truck, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,16 +30,10 @@ interface Props {
 }
 
 const STOCK_LABEL: Record<string, string> = {
-  available: "موجود",
-  unavailable: "ناموجود",
-  limited: "محدود",
-  unknown: "نامشخص",
+  available: "موجود", unavailable: "ناموجود", limited: "محدود", unknown: "نامشخص",
 };
 const STOCK_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  available: "default",
-  limited: "secondary",
-  unavailable: "destructive",
-  unknown: "outline",
+  available: "default", limited: "secondary", unavailable: "destructive", unknown: "outline",
 };
 
 interface HistoryRow {
@@ -86,9 +63,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_sale_price_history")
-        .select(
-          "id, sale_price_type_id, new_sale_price, old_sale_price, change_percent, created_at",
-        )
+        .select("id, sale_price_type_id, new_sale_price, old_sale_price, change_percent, created_at")
         .eq("product_id", productId!)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -200,10 +175,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[92vh] overflow-y-auto sm:max-w-2xl sm:mx-auto rounded-t-2xl"
-      >
+      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto sm:max-w-2xl sm:mx-auto rounded-t-2xl">
         {!product ? null : (
           <>
             <SheetHeader className="text-right">
@@ -226,9 +198,7 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
             {visibleLabels.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {visibleLabels.map((l: any) => (
-                  <Badge key={l.id} variant="outline" className="text-[11px]">
-                    {l.title}
-                  </Badge>
+                  <Badge key={l.id} variant="outline" className="text-[11px]">{l.title}</Badge>
                 ))}
               </div>
             )}
@@ -237,21 +207,16 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">قیمت‌های فروش معتبر</h3>
-                {historyQuery.isLoading && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+                {historyQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
 
               {historyQuery.isLoading ? (
                 <div className="space-y-2">
-                  {[0, 1, 2].map((i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-md" />
-                  ))}
+                  {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 w-full rounded-md" />)}
                 </div>
               ) : !isPrivileged ? (
                 <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                  مشاهده تاریخچه قیمت برای نقش شما فعال نیست. لطفاً از کارت محصول قیمت معتبر را
-                  ببینید.
+                  مشاهده تاریخچه قیمت برای نقش شما فعال نیست. لطفاً از کارت محصول قیمت معتبر را ببینید.
                 </div>
               ) : priceMap.size === 0 ? (
                 <div className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
@@ -274,23 +239,14 @@ export function ProductPriceCard({ product, open, onOpenChange }: Props) {
                 <h3 className="text-sm font-semibold text-foreground">تأمین‌کنندگان</h3>
                 <div className="space-y-1.5">
                   {suppliersQuery.data!.map((row: any) => (
-                    <div
-                      key={row.id}
-                      className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
-                    >
+                    <div key={row.id} className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
                       <div className="flex items-center gap-2 min-w-0">
                         <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="font-medium truncate">{row.supplier?.name ?? "—"}</span>
-                        {row.is_primary && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            اصلی
-                          </Badge>
-                        )}
+                        {row.is_primary && <Badge variant="secondary" className="text-[10px]">اصلی</Badge>}
                       </div>
                       {canSeeContact && row.supplier?.phone && (
-                        <span className="font-mono text-xs text-muted-foreground" dir="ltr">
-                          {row.supplier.phone}
-                        </span>
+                        <span className="font-mono text-xs text-muted-foreground" dir="ltr">{row.supplier.phone}</span>
                       )}
                     </div>
                   ))}
@@ -334,13 +290,10 @@ function PriceRow({ title, history }: { title: string; history: HistoryRow | und
     );
   }
   const change = Number(history.change_percent ?? 0);
-  const dir: "up" | "down" | "flat" = change > 0.01 ? "up" : change < -0.01 ? "down" : "flat";
+  const dir: "up" | "down" | "flat" =
+    change > 0.01 ? "up" : change < -0.01 ? "down" : "flat";
   const colorCls =
-    dir === "up"
-      ? "text-destructive"
-      : dir === "down"
-        ? "text-emerald-600 dark:text-emerald-500"
-        : "text-muted-foreground";
+    dir === "up" ? "text-destructive" : dir === "down" ? "text-emerald-600 dark:text-emerald-500" : "text-muted-foreground";
   const Icon = dir === "up" ? ArrowUpRight : dir === "down" ? ArrowDownRight : Minus;
 
   return (

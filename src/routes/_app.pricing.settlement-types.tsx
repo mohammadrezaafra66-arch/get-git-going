@@ -10,7 +10,12 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/i18n/formatters";
 import {
@@ -163,7 +168,11 @@ function SettlementTypesPage() {
                           {r.code}
                         </div>
                       </div>
-                      {r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
+                      {r.is_active ? (
+                        <Badge>فعال</Badge>
+                      ) : (
+                        <Badge variant="outline">غیرفعال</Badge>
+                      )}
                     </div>
                     {r.description && (
                       <p className="text-xs text-muted-foreground">{r.description}</p>
@@ -277,7 +286,9 @@ function SettlementTypesPage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "ویرایش نوع تسویه" : "نوع تسویه جدید"}</DialogTitle>
+            <DialogTitle>
+              {editing ? "ویرایش نوع تسویه" : "نوع تسویه جدید"}
+            </DialogTitle>
           </DialogHeader>
           <SettlementTypeForm
             initial={editing ?? undefined}

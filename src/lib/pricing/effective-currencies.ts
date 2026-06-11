@@ -158,14 +158,24 @@ export async function saveCurrencyRateAndRecompute(opts: {
 
   // 5) Bulk-prefetch — یک‌بار همه داده‌های لازم را می‌گیریم تا N×M کوئری حذف شود.
   const nowIso = new Date().toISOString();
-  const [productsRes, sptsRes, rulesRes, shippingRes, ratesRes] = await Promise.all([
+  const [
+    productsRes,
+    sptsRes,
+    rulesRes,
+    shippingRes,
+    ratesRes,
+  ] = await Promise.all([
     supabase
       .from("products")
       .select("id, name, sku, product_type, base_currency, brand_id, category_id")
       .eq("base_currency", currency)
       .eq("status", "active")
       .in("stock_status", ["available", "limited"]),
-    supabase.from("sale_price_types").select("id, title").eq("is_active", true).order("sort_order"),
+    supabase
+      .from("sale_price_types")
+      .select("id, title")
+      .eq("is_active", true)
+      .order("sort_order"),
     supabase
       .from("pricing_rules")
       .select(
@@ -264,7 +274,8 @@ export async function saveCurrencyRateAndRecompute(opts: {
         }
         const inputPrice = Number(purchase.purchase_price);
         const baseCurrency = String(purchase.currency) as CurrencyCode;
-        const currency_rate = baseCurrency === "toman" ? 1 : (rateMap.get(baseCurrency) ?? 0);
+        const currency_rate =
+          baseCurrency === "toman" ? 1 : rateMap.get(baseCurrency) ?? 0;
         if (baseCurrency !== "toman" && (!currency_rate || currency_rate <= 0)) {
           throw new Error(`نرخ ارز ${baseCurrency} موجود نیست.`);
         }
@@ -276,16 +287,8 @@ export async function saveCurrencyRateAndRecompute(opts: {
           if (r.product_type && r.product_type !== p.product_type) return false;
           if (r.category_id && r.category_id !== p.category_id) return false;
           if (r.brand_id && r.brand_id !== p.brand_id) return false;
-          if (
-            r.min_purchase_price_toman != null &&
-            purchase_price_toman < Number(r.min_purchase_price_toman)
-          )
-            return false;
-          if (
-            r.max_purchase_price_toman != null &&
-            purchase_price_toman > Number(r.max_purchase_price_toman)
-          )
-            return false;
+          if (r.min_purchase_price_toman != null && purchase_price_toman < Number(r.min_purchase_price_toman)) return false;
+          if (r.max_purchase_price_toman != null && purchase_price_toman > Number(r.max_purchase_price_toman)) return false;
           if (!r.margin_type || r.margin_value == null) return false;
           return true;
         });
@@ -297,23 +300,18 @@ export async function saveCurrencyRateAndRecompute(opts: {
           if (s.category_id && s.category_id !== p.category_id) return false;
           if (s.brand_id && s.brand_id !== p.brand_id) return false;
           if (s.product_type && s.product_type !== p.product_type) return false;
-          if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
-            return false;
-          if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
-            return false;
+          if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price)) return false;
+          if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price)) return false;
           return true;
         });
         const specificity = (s: any) =>
-          (s.product_id ? 1000 : 0) +
-          (s.category_id ? 100 : 0) +
-          (s.brand_id ? 10 : 0) +
-          (s.product_type ? 1 : 0);
+          (s.product_id ? 1000 : 0) + (s.category_id ? 100 : 0) + (s.brand_id ? 10 : 0) + (s.product_type ? 1 : 0);
         candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
         const sRule = candidates[0];
         let shipping_cost = 0;
         if (sRule) {
           if (sRule.cost_type === "percent") {
-            shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
+            shipping_cost = Math.round(purchase_price_toman * Number(sRule.cost_value) / 100);
           } else if (sRule.cost_type === "currency") {
             const code = String(sRule.cost_currency ?? "").toLowerCase();
             const rate = rateMap.get(code) ?? 0;
@@ -327,18 +325,14 @@ export async function saveCurrencyRateAndRecompute(opts: {
         // سود
         const margin_value = Number((matched as any).margin_value);
         const fixed_margin_value =
-          (matched as any).fixed_margin_value == null
-            ? null
-            : Number((matched as any).fixed_margin_value);
+          (matched as any).fixed_margin_value == null ? null : Number((matched as any).fixed_margin_value);
         let margin_amount = 0;
         if ((matched as any).margin_type === "fixed") {
           margin_amount = Math.round(margin_value);
         } else if ((matched as any).margin_type === "percent") {
           margin_amount = Math.round((purchase_price_toman * margin_value) / 100);
         } else {
-          margin_amount = Math.round(
-            (purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0),
-          );
+          margin_amount = Math.round((purchase_price_toman * margin_value) / 100 + (fixed_margin_value ?? 0));
         }
 
         const final_sale_price = purchase_price_toman + shipping_cost + margin_amount;
@@ -404,10 +398,7 @@ export async function saveCurrencyRateAndRecompute(opts: {
       // علامت‌گذاری خطا روی این chunk
       for (const row of chunk) {
         const idx = results.findIndex(
-          (r) =>
-            r.product_id === row.product_id &&
-            r.sale_price_type_id === row.sale_price_type_id &&
-            !r.error,
+          (r) => r.product_id === row.product_id && r.sale_price_type_id === row.sale_price_type_id && !r.error,
         );
         if (idx >= 0) {
           results[idx] = {

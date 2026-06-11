@@ -35,8 +35,8 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
     enabled: ids.length > 0,
     queryKey: ["sales-recs-prices", ids],
     queryFn: async (): Promise<Record<string, PriceRow[]>> => {
-      const { data, error } = await supabase
-        .from("product_computed_prices")
+      const { data, error } = await (supabase as any)
+        .from("product_computed_prices_public")
         .select("product_id, rounded_sale_price, sale_price_type_id, sale_price_types!inner(title)")
         .in("product_id", ids);
       if (error) throw error;
@@ -91,7 +91,10 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
         {recs.map((rec) => {
           const ps = pricesMap[rec.product_id] ?? [];
           return (
-            <li key={rec.product_id} className="rounded border bg-background/70 p-2 text-xs">
+            <li
+              key={rec.product_id}
+              className="rounded border bg-background/70 p-2 text-xs"
+            >
               <div className="flex flex-wrap items-center gap-1.5">
                 <Package className="h-3 w-3 text-muted-foreground" />
                 <span className="font-medium truncate">{rec.name}</span>
