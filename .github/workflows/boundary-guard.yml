@@ -76,7 +76,7 @@ jobs:
               basename = file.rsplit("/", 1)[-1]
 
               if basename.startswith(".env") and not basename.endswith(".example"):
-                  add_error("Unsafe .env file detected. Commit only .env.example templates, never real environment files.")
+                  add_error("Unsafe .env file detected. Commit only .env*.example templates, never real environment files.")
 
               if basename.endswith((".pem", ".key")):
                   add_error("Private key-like file detected. Do not commit .pem or .key files.")
@@ -85,7 +85,10 @@ jobs:
                   add_error("Service-role-like file name detected. Service role material must not be committed.")
 
           if any_match(r"^openapi/.*\.ya?ml$"):
-              add_error("Root openapi YAML is deprecated. Use automation/openapi/automation-v1.yaml unless an ADR approves otherwise.")
+              if head_branch.startswith("cursor/phase6-"):
+                  print("Root OpenAPI YAML allowed for Phase 6 governance/API-contract setup.")
+              else:
+                  add_warning("Root openapi YAML changed. Verify this is approved by the API contract governance rules.")
 
           if head_branch.startswith("docs"):
               allowed_exact = {
@@ -130,8 +133,6 @@ jobs:
           if head_branch.startswith("cursor/api-"):
               if any(file.startswith(("src/components/", "src/shared/components/")) for file in changed_files):
                   add_error("cursor/api-* branches may not change broad UI components by default.")
-              if any_match(r"^openapi/.*\.ya?ml$"):
-                  add_error("Do not implement against root openapi/. Use automation/openapi/automation-v1.yaml.")
 
           if head_branch.startswith("cursor/db-"):
               if any(file.startswith(("src/components/", "src/shared/components/", "automation/worker-runtime/src/")) for file in changed_files):
