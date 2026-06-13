@@ -700,7 +700,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     to: "/admin/automation",
-    label: "اتوماسیون فاز صفر",
+    label: "اتوماسیون و ربات‌ها",
     icon: Sparkles,
     module: "roles",
     group: "admin",
@@ -760,55 +760,4 @@ export const NAV_ITEMS: NavItem[] = [
     subgroup: "adm-gamification",
     adminOnly: true,
   },
-  {
-    to: "/gamification/admin/rewards",
-    label: "مدیریت پاداش‌ها",
-    icon: Trophy,
-    module: "roles",
-    group: "admin",
-    subgroup: "adm-gamification",
-    adminOnly: true,
-  },
-  {
-    to: "/gamification/admin/analytics",
-    label: "تحلیل گیمیفیکیشن",
-    icon: BarChart3,
-    module: "roles",
-    group: "admin",
-    subgroup: "adm-gamification",
-    adminOnly: true,
-  },
-  {
-    to: "/gamification/admin/purchase-settings",
-    label: "طلای زمان (خرید)",
-    icon: Coins,
-    module: "roles",
-    group: "admin",
-    subgroup: "adm-gamification",
-    adminOnly: true,
-  },
 ];
-
-export const GROUP_LABELS: Record<NavItem["group"], string> = {
-  main: "داشبورد",
-  "products-pricing": "محصولات و قیمت‌گذاری",
-  purchasing: "خرید و تأمین‌کنندگان",
-  "sales-customers": "فروش و مشتریان",
-  finance: "مالی و حسابداری",
-  operations: "عملیات داخلی",
-  reports: "گزارش‌ها",
-  "knowledge-comms": "دانش، آکادمی و ارتباطات",
-  admin: "مدیریت سیستم",
-};
-
-export const SUBGROUP_LABELS: Record<SubgroupKey, string> = {
-  "pp-catalog": "اطلاعات کالا",
-  "pp-pricing": "قیمت‌گذاری",
-  "pp-publish": "انتشار و لیست‌ها",
-  "sc-sales": "فروش",
-  "sc-customers": "مشتریان و اعتبار",
-  "adm-users": "کاربران و دسترسی‌ها",
-  "adm-settings": "تنظیمات",
-  "adm-gamification": "مدیریت گیمیفیکیشن",
-  "adm-tools": "ابزارها و یکپارچه‌سازی",
-};
