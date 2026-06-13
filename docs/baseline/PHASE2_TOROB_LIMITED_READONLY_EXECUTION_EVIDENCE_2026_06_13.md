@@ -1,54 +1,66 @@
 # Phase 2 Torob Limited Read-Only Execution Evidence — 2026-06-13
 
-**Status:** PRE-EXECUTION READINESS RECORDED — live Torob run **NOT PERFORMED** in this PR  
+**Status:** GUARDED READINESS VERIFIED — placeholder live probe exposed HTTP-error handling fix  
 **Track:** Phase 2 / Torob limited read-only  
 **Packet:** `TPC-2-004-torob-limited-readonly-execution-evidence-packet.md`
 
 ## 1. PR
 
-Pending PR for guarded live-readiness implementation.
+PR #139 — `feat(worker): add TPC-2-004 guarded Torob readiness`
+
+Follow-up fix PR: pending — HTTP 500 must abort the guarded run instead of being counted as completed.
 
 ## 2. Commit hash
 
-To be filled from the final PR head commit after review.
+PR #139 merge commit:
+
+`6f31e388c0f3f33c7e14ad0d802306f61d38db82`
+
+Follow-up fix commit: pending final PR head.
 
 ## 3. Operator
 
-Not applicable for live run; no live run was performed in this PR.
+Local operator verification was performed from the AfraKala Windows PowerShell workspace.
 
 ## 4. Environment
 
-No live environment was used.
+Local Windows PowerShell workspace:
 
-## 5. Command used
+`C:\Users\AFRA\AfraKala\get-git-going`
 
-No live command was run.
+Branch verified before the manual probe:
 
-Expected local test command before merge:
+`main`
 
-```bash
+## 5. Commands used
+
+Local verification command:
+
+```powershell
+cd C:\Users\AFRA\AfraKala\get-git-going
+
+git checkout main
+git pull origin main
+
 cd automation/worker-runtime
 python -m pytest -q
 ```
 
+Manual guarded probe command was run through PowerShell stdin using the `TorobLimitedReadOnlyDriver` and `MockSupabaseClient` only.
+
 ## 6. Test result
 
-Pending reviewer/operator verification.
+Recorded local result before the manual probe:
 
-The PR adds guarded tests for:
+```text
+114 passed in 0.24s
+```
 
-- explicit TPC-2-004 acknowledgement,
-- maximum 3 live products,
-- Torob-only public HTTPS URLs,
-- minimum live delay of 3000 ms,
-- maximum total request guard,
-- no browser automation confirmation,
-- patchable fetch path,
-- abort on HTTP 403 without bypass.
+The suite includes guarded tests for explicit acknowledgement, max live product count, Torob-only public HTTPS URLs, minimum delay, request limit, no browser automation confirmation, patchable fetch path, and HTTP-error abort behavior.
 
 ## 7. Product count
 
-No live products were requested.
+Manual guarded probe product count: `1`
 
 Configured future live limit:
 
@@ -58,21 +70,63 @@ Configured future live limit:
 
 ## 8. Request count
 
-Actual live request count in this PR: `0`
+Manual guarded probe actual request count: `1`
 
 Configured future live maximum: `10`
 
 ## 9. Timing / delay configuration
 
-Future live-readiness guard requires:
+Guard configuration:
 
 - `max_concurrency = 1`
 - `min_delay_ms_between_requests >= 3000`
 - `max_total_run_seconds <= 300`
+- `max_total_requests <= 10`
 
-## 10. Read-only behavior confirmation
+## 10. Manual guarded probe output
 
-Confirmed for this PR:
+The probe was run with a placeholder Torob path:
+
+```text
+https://torob.com/p/REPLACE_WITH_REAL_PRODUCT/
+```
+
+Observed output before the HTTP-error fix:
+
+```json
+{
+  "status": "COMPLETED",
+  "errors": [],
+  "network_calls": 1,
+  "abort_reason": null,
+  "items_completed": 1,
+  "http_status": 500,
+  "live_execution": true,
+  "browser_automation": false,
+  "read_only_confirmed": true
+}
+```
+
+This result is **not accepted as successful live product evidence** because:
+
+1. the URL was a placeholder path,
+2. Torob returned HTTP 500,
+3. HTTP 500 was incorrectly treated as completed.
+
+## 11. Fix recorded in follow-up
+
+The guarded driver is updated so:
+
+- HTTP 401/403 still abort as `blocked_http_401` / `blocked_http_403`,
+- any other HTTP status `>= 400` aborts as `http_error_<status_code>`,
+- HTTP 500 now returns `SKIPPED` with `abort_reason = http_error_500`,
+- no normalized item is accepted for HTTP 500.
+
+A regression test is added for HTTP 500 guarded abort.
+
+## 12. Read-only behavior confirmation
+
+Confirmed for this readiness/probe step:
 
 - no product writeback,
 - no price update,
@@ -81,11 +135,11 @@ Confirmed for this PR:
 - no UI exposure,
 - no API exposure.
 
-The guarded live path records response metadata only and does not parse or write prices.
+The guarded path records response metadata only and does not parse or write prices.
 
-## 11. No login / session / cookie
+## 13. No login / session / cookie
 
-Confirmed for this PR:
+Confirmed:
 
 - no login,
 - no session,
@@ -93,18 +147,18 @@ Confirmed for this PR:
 - no credentials,
 - no secrets.
 
-## 12. No browser automation
+## 14. No browser automation
 
-Confirmed for this PR:
+Confirmed:
 
 - no Playwright,
 - no Selenium,
 - no browser profile,
 - no browser automation.
 
-## 13. No scheduler / bulk crawl
+## 15. No scheduler / bulk crawl
 
-Confirmed for this PR:
+Confirmed:
 
 - no scheduler,
 - no cron,
@@ -112,35 +166,23 @@ Confirmed for this PR:
 - no bulk crawl,
 - no catalog-wide discovery.
 
-## 14. Output summary
-
-The guarded live-readiness implementation keeps the deterministic skeleton path as default:
-
-- `live_execution = false`
-- `browser_automation = false`
-- `network_calls = 0`
-
-Only when explicitly requested with TPC-2-004 acknowledgement and preflight confirmations can the guarded manual read-only path be reached.
-
-## 15. Abort status / completion status
-
-No live run was performed.
-
-The implementation aborts/skips on blocked or unsafe conditions, including:
-
-- HTTP 401/403,
-- login redirect indicators,
-- CAPTCHA/anti-bot indicators,
-- unexpected redirect host,
-- configured limit violations.
-
 ## 16. Errors encountered
 
-None recorded because no live run was performed.
+Observed error condition:
+
+```text
+HTTP 500 from placeholder Torob path
+```
+
+Resolution:
+
+```text
+Guard updated to abort all HTTP >= 400 responses.
+```
 
 ## 17. No business data changed
 
-Confirmed for this PR:
+Confirmed:
 
 - no AfraKala price changed,
 - no product changed,
@@ -148,19 +190,14 @@ Confirmed for this PR:
 - no supplier changed,
 - no production data changed.
 
-## 18. Required next action before any actual live Torob request
+## 18. Required next action
 
-Before any real Torob request is performed, an operator must run the test suite locally and update this evidence with:
+Before any accepted live Torob product evidence, run again with a real public Torob product URL after the HTTP-error fix is merged and local tests pass.
 
-1. PR number,
-2. final commit hash,
-3. operator,
-4. local/staging environment,
-5. exact command,
-6. exact pytest result,
-7. product URLs or IDs,
-8. actual request count,
-9. completion or abort result,
-10. confirmation that no secrets/cookies/tokens were used.
+The next accepted evidence must include:
 
-Until then, this evidence is readiness-only and not live execution evidence.
+1. real product URL or ID,
+2. actual request count,
+3. completion or abort result,
+4. output summary,
+5. confirmation that no prices/products/customers were changed.
