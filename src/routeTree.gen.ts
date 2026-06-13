@@ -151,6 +151,7 @@ import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_ap
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as ApiPublicBotProductsProductIdRouteImport } from './routes/api.public.bot.products.$productId'
 import { Route as ApiPublicBotMarketMatchesResolveRouteImport } from './routes/api.public.bot.market-matches.resolve'
+import { Route as ApiAdminAutomationTorobEnqueueRouteImport } from './routes/api.admin.automation.torob.enqueue'
 import { Route as AppSalesInvoicesInvoiceIdWaybillRouteImport } from './routes/_app.sales_.invoices_.$invoiceId.waybill'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
@@ -913,6 +914,12 @@ const ApiPublicBotMarketMatchesResolveRoute =
     path: '/api/public/bot/market-matches/resolve',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAdminAutomationTorobEnqueueRoute =
+  ApiAdminAutomationTorobEnqueueRouteImport.update({
+    id: '/api/admin/automation/torob/enqueue',
+    path: '/api/admin/automation/torob/enqueue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesInvoicesInvoiceIdWaybillRoute =
   AppSalesInvoicesInvoiceIdWaybillRouteImport.update({
     id: '/waybill',
@@ -1125,6 +1132,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
@@ -1276,6 +1284,7 @@ export interface FileRoutesByTo {
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/sales/invoices/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/sales/invoices/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
@@ -1432,6 +1441,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/_app/sales_/invoices_/$invoiceId/waybill': typeof AppSalesInvoicesInvoiceIdWaybillRouteWithChildren
+  '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
   '/api/public/bot/products/$productId': typeof ApiPublicBotProductsProductIdRoute
   '/_app/sales_/invoices_/$invoiceId/waybill/create': typeof AppSalesInvoicesInvoiceIdWaybillCreateRoute
@@ -1588,6 +1598,7 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
@@ -1739,6 +1750,7 @@ export interface FileRouteTypes {
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
     | '/sales/invoices/$invoiceId/waybill'
+    | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/sales/invoices/$invoiceId/waybill/create'
@@ -1894,6 +1906,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/_app/sales_/invoices_/$invoiceId/waybill'
+    | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
     | '/api/public/bot/products/$productId'
     | '/_app/sales_/invoices_/$invoiceId/waybill/create'
@@ -1918,6 +1931,7 @@ export interface RootRouteChildren {
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
+  ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
   ApiPublicBotMarketMatchesResolveRoute: typeof ApiPublicBotMarketMatchesResolveRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
   ApiPublicBotDynamicTablesBySlugSlugRoute: typeof ApiPublicBotDynamicTablesBySlugSlugRoute
@@ -2920,6 +2934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotMarketMatchesResolveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/automation/torob/enqueue': {
+      id: '/api/admin/automation/torob/enqueue'
+      path: '/api/admin/automation/torob/enqueue'
+      fullPath: '/api/admin/automation/torob/enqueue'
+      preLoaderRoute: typeof ApiAdminAutomationTorobEnqueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sales_/invoices_/$invoiceId/waybill': {
       id: '/_app/sales_/invoices_/$invoiceId/waybill'
       path: '/waybill'
@@ -3443,6 +3464,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
+  ApiAdminAutomationTorobEnqueueRoute: ApiAdminAutomationTorobEnqueueRoute,
   ApiPublicBotMarketMatchesResolveRoute: ApiPublicBotMarketMatchesResolveRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
     ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren,
@@ -3454,3 +3476,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueDummyAutomationJobFn } from "@/lib/automation/enqueue-dummy-job.functions";
-import { enqueueTorobReadonlyAutomationJobFn } from "@/lib/automation/enqueue-torob-readonly-job.functions";
 import type { EnqueueDummyJobResult } from "@/lib/automation/enqueue-dummy-job.server";
 import type { EnqueueTorobReadonlyJobResult } from "@/lib/automation/enqueue-torob-readonly-job.server";
 
@@ -140,7 +139,6 @@ async function fetchLatestTorobJob(): Promise<TorobResultView | null> {
 
 function AdminAutomationPage() {
   const enqueueFn = useServerFn(enqueueDummyAutomationJobFn);
-  const enqueueTorobFn = useServerFn(enqueueTorobReadonlyAutomationJobFn);
   const [loading, setLoading] = useState(false);
   const [torobLoading, setTorobLoading] = useState(false);
   const [productUrl, setProductUrl] = useState("");
@@ -180,7 +178,33 @@ function AdminAutomationPage() {
     }
     setTorobLoading(true);
     try {
-      const result = await enqueueTorobFn({ data: { productUrl: productUrl.trim() } });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
+      }
+
+      const response = await fetch("/api/admin/automation/torob/enqueue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ productUrl: productUrl.trim() }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message =
+          result && typeof result === "object" && "message" in result
+            ? String((result as { message?: unknown }).message)
+            : "خطا در ثبت دستور ترب.";
+        throw new Error(message);
+      }
+
       const normalized = normalizeTorobResult(result);
       if (normalized) {
         setLastTorobResult(normalized);
@@ -376,4 +400,5 @@ function AdminAutomationPage() {
     </div>
   );
 }
+
 
