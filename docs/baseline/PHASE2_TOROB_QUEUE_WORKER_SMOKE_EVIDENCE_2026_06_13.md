@@ -1,12 +1,12 @@
 # Phase 2 Torob Queue Worker Smoke Evidence — 2026-06-13
 
-**Status:** IMPLEMENTATION PR OPEN — local verification pending  
+**Status:** ACCEPTED — local queue-to-worker smoke verified  
 **Track:** Phase 2 / Torob limited read-only  
 **Scope:** Queue-to-worker smoke path only; **no live Torob request**.
 
 ## Purpose
 
-This evidence stub records the next safe step after the admin panel successfully enqueued a `TOROB_LIMITED_READONLY` job.
+This evidence records the safe worker step after the admin panel successfully enqueued `TOROB_LIMITED_READONLY` jobs.
 
 The worker smoke runner proves this path:
 
@@ -20,7 +20,7 @@ PENDING automation_jobs row
 
 ## Guardrails
 
-Confirmed by design for this PR:
+Confirmed by implementation and local verification:
 
 - no browser automation,
 - no login,
@@ -53,6 +53,12 @@ cd automation/worker-runtime
 python -m pytest -q tests/test_torob_queue_smoke.py
 ```
 
+Observed result:
+
+```text
+4 passed in 0.11s
+```
+
 ## Manual local smoke command
 
 After a `TOROB_LIMITED_READONLY` job is visible as `PENDING` in local Supabase:
@@ -66,19 +72,23 @@ $env:SUPABASE_SERVICE_ROLE_KEY="<local service role key from running container>"
 python src\torob_queue_smoke.py
 ```
 
-Expected JSON shape:
+## Observed local database result
 
-```json
-{
-  "processed": true,
-  "job_id": "...",
-  "run_id": "...",
-  "status": "COMPLETED",
-  "network_calls": 0,
-  "live_execution": false
-}
+Local query after two smoke runs:
+
+```text
+job_id                                | job_status | run_id                               | run_status | network_calls | live_execution | created_at                  | completed_at
+--------------------------------------+------------+--------------------------------------+------------+---------------+----------------+-----------------------------+----------------------------
+03114ffd-ebc1-4829-bf97-d2ca66269cd5 | CLAIMED    | d4583f9d-e00a-4c18-a302-db916d318f32 | COMPLETED  | 0             | false          | 2026-06-13 11:19:11.429958 | 2026-06-13 11:19:12.563169
+e48bbcfb-4d03-408b-af4c-2e7ff98ff2ee | CLAIMED    | 093e87fc-9342-4699-9120-f8a484ddb0ff | COMPLETED  | 0             | false          | 2026-06-13 11:16:25.033602 | 2026-06-13 11:16:26.140423
 ```
 
 ## Acceptance notes
 
-This PR is acceptable only as a safe worker smoke step. It must not be treated as live Torob product evidence.
+This evidence accepts the worker smoke step only.
+
+It confirms that queued Phase 2 Torob jobs can be claimed and completed by the worker pipeline without live network calls. It must not be treated as live Torob product evidence.
+
+## Next approved step
+
+Open a separate controlled live-readonly evidence run for a real public Torob product URL, using explicit TPC-2-004 acknowledgement and preserving all no-login/no-browser/no-scheduler/no-bulk guardrails.
