@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from drivers.base import DriverContext, DriverResult
+from torob_live_abort_evidence import build_abort_evidence
 
 DRIVER_NAME = "torob_limited_readonly"
 JOB_TYPE = "TOROB_LIMITED_READONLY"
@@ -128,6 +129,15 @@ def _find_forbidden_flags(job: dict[str, Any]) -> list[str]:
 
 def _live_requested(job: dict[str, Any]) -> bool:
     return _truthy(job.get("live_execution_requested")) or _truthy(job.get("live_readonly_execution"))
+
+
+def _consecutive_same_abort_reason_count(job: dict[str, Any]) -> int:
+    raw = job.get("consecutive_same_abort_reason_count", 1)
+    try:
+        count = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, count)
 
 
 def _validate_item(item: Any, index: int) -> None:
@@ -417,6 +427,16 @@ class TorobLimitedReadOnlyDriver:
             "abort_reason": abort_reason,
         }
         errors = [] if completed else [str(abort_reason)]
+        if not completed:
+            abort_evidence = build_abort_evidence(
+                driver_status="SKIPPED",
+                output=output,
+                errors=errors,
+                consecutive_same_reason_count=_consecutive_same_abort_reason_count(job),
+            ).as_dict()
+            output["abort_evidence"] = abort_evidence
+            output["retry_decision"] = abort_evidence["retry_decision"]
+            checkpoint["retry_decision"] = abort_evidence["retry_decision"]
         result = DriverResult(status="COMPLETED" if completed else "SKIPPED", output=output, checkpoint=checkpoint, errors=errors)
         result.validate()
         return result
