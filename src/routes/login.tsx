@@ -42,6 +42,27 @@ export const Route = createFileRoute("/login")({
     }
   },
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "ورود به افراکالا" },
+      {
+        name: "description",
+        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:title", content: "ورود به افراکالا" },
+      {
+        property: "og:description",
+        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+      { property: "og:url", content: "https://get-git-going.lovable.app/login" },
+      { name: "twitter:title", content: "ورود به افراکالا" },
+      {
+        name: "twitter:description",
+        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://get-git-going.lovable.app/login" }],
+  }),
 });
 
 function LoginPage() {
@@ -252,7 +273,7 @@ function LoginPage() {
   };
 
   return (
-    <div
+    <main
       dir="rtl"
       className="flex min-h-screen items-center justify-center bg-gradient-to-bl from-primary/5 via-background to-accent/10 px-4 py-8"
     >
@@ -487,6 +508,6 @@ function LoginPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -8,6 +8,7 @@ export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   toman: "تومان",
   usd: "دلار",
   aed: "درهم",
+  usd_us: "دلار آمریکا",
 };
 
 export const MARGIN_TYPE_LABELS: Record<MarginType, string> = {

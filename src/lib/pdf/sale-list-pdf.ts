@@ -144,7 +144,7 @@ export function brandLabel(k: string): string {
 /** Extract first numeric run from a string (e.g. "کولر گازی 12000" -> 12000). */
 function firstNumber(s: string | null | undefined): number {
   if (!s) return Number.POSITIVE_INFINITY;
-  const m = String(s).match(/\d+(?:[.,]\d+)?/);
+  const m = String(s).match(/\d+(?:[\.,]\d+)?/);
   if (!m) return Number.POSITIVE_INFINITY;
   const n = Number(m[0].replace(",", "."));
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;

@@ -79,6 +79,18 @@ tmpfs:
 
 جزئیات update/rollback/migration: `docs/SELF_HOST_UPDATE_RUNBOOK.md`.
 
+### Build target — Cloudflare Workers vs Node SSR (vite.config.ts)
+
+در نسخه‌های قبلی `@lovable.dev/vite-tanstack-config` یک گزینهٔ `cloudflare: false` در `vite.config.ts` وجود داشت که با مقدار `SELF_HOST_NODE=1`، خروجی را از Cloudflare Workers به Node SSR تغییر می‌داد. این گزینه در نسخهٔ فعلی پکیج حذف شده و دیگر در `vite.config.ts` قابل تنظیم نیست.
+
+**نتیجه عملیاتی:**
+- خروجی build توسط متغیر محیطی `SELF_HOST_NODE=1` در **Dockerfile** کنترل می‌شود (ست شده در stage `builder`).
+- در Dockerfile اپ، `SELF_HOST_NODE=1` همیشه فعال است؛ بنابراین image ساخته‌شده همواره برای Node SSR (self-host) بهینه است.
+- build داخل Lovable (preview / published) همچنان روی Cloudflare Workers اجرا می‌شود، زیرا آنجا Dockerfile دخیل نیست و sandbox خود Lovable target را مدیریت می‌کند.
+- برای build دستی self-host خارج از Docker، متغیر `SELF_HOST_NODE=1` را قبل از `bun run build` export کنید.
+
+**مهم:** اگر در آینده نسخهٔ جدید `@lovable.dev/vite-tanstack-config` رفتار build target را تغییر دهد، تنظیم آن فقط در Dockerfile یا مستندات runtime انجام شود، نه در `vite.config.ts`.
+
 ---
 
 # Local / Staging build

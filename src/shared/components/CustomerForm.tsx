@@ -157,11 +157,48 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
     onSuccess: () => {
       toast.success(customerId ? "مشتری ویرایش شد" : "مشتری ثبت شد");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers", "search"] });
+      queryClient.invalidateQueries({ queryKey: ["persons"] });
+      if (!customerId) form.reset();
       navigate({ to: "/sales/customers" });
     },
     onError: (err: unknown) => {
-      const raw = err instanceof Error ? err.message : "خطای ناشناخته";
-      toast.error(`عملیات ناموفق بود: ${raw}`);
+      const raw = err instanceof Error ? err.message : "";
+      const lower = raw.toLowerCase();
+
+      if (
+        err instanceof TypeError ||
+        lower.includes("failed to fetch") ||
+        lower.includes("networkerror") ||
+        lower.includes("load failed")
+      ) {
+        toast.error("ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.");
+        return;
+      }
+      if (raw.includes("کد حسابداری تکراری") || lower.includes("accounting_code")) {
+        form.setError("accounting_code", { message: "کد حسابداری تکراری است" });
+        toast.error("کد حسابداری تکراری است؛ یک کد یکتای دیگر انتخاب کنید.");
+        return;
+      }
+      if (raw.includes("نشست کاربری") || lower.includes("unauthorized") || lower.includes("401")) {
+        toast.error("نشست شما منقضی شده است. لطفاً دوباره وارد شوید.");
+        return;
+      }
+      if (
+        raw.includes("دسترسی") ||
+        lower.includes("forbidden") ||
+        lower.includes("403") ||
+        lower.includes("rls")
+      ) {
+        toast.error("دسترسی لازم برای این عملیات را ندارید.");
+        return;
+      }
+      if (raw.includes("موبایل") || lower.includes("phone")) {
+        form.setError("phone", { message: "شماره موبایل نامعتبر است" });
+        toast.error("شماره موبایل نامعتبر است.");
+        return;
+      }
+      toast.error(raw ? `عملیات ناموفق بود: ${raw}` : "عملیات ناموفق بود. لطفاً دوباره تلاش کنید.");
     },
   });
 

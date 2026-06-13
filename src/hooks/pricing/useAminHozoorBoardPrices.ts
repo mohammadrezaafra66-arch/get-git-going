@@ -94,13 +94,19 @@ export function useAminHozoorBoardPrices(opts: FetchOptions) {
     enabled: enabled && productIds.length > 0,
     queryKey: ["amin-board-computed", productIds, opts.salePriceTypeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_computed_prices")
+      const { data, error } = await (supabase as any)
+        .from("product_computed_prices_public")
         .select("product_id, sale_price_type_id, rounded_sale_price, final_sale_price, computed_at")
         .in("product_id", productIds)
         .eq("sale_price_type_id", opts.salePriceTypeId!);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Array<{
+        product_id: string;
+        sale_price_type_id: string;
+        rounded_sale_price: number | string | null;
+        final_sale_price: number | string | null;
+        computed_at: string;
+      }>;
     },
     staleTime: 10_000,
     refetchInterval: opts.refetchInterval,

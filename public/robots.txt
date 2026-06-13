@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /admin
+
+Sitemap: https://get-git-going.lovable.app/sitemap.xml

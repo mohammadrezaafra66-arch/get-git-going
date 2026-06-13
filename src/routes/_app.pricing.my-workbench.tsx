@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import {
   Check,
   CircleDot,
   Tag,
+  LifeBuoy,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -100,6 +101,7 @@ function WorkbenchPage() {
   const [filters, setFilters] = useState<WorkbenchFilters>(DEFAULT_WORKBENCH_FILTERS);
   const [showAll, setShowAll] = useState(false);
   const [page, setPage] = useState(0);
+  const [showAllInOnePage, setShowAllInOnePage] = useState(false);
   const [stepPct, setStepPct] = useState<number>(1);
   const [dirty, setDirty] = useState<Record<string, Dirty>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -132,15 +134,17 @@ function WorkbenchPage() {
     [filters, dSearch],
   );
 
+  const effectivePageSize = showAllInOnePage ? 10_000 : PAGE_SIZE;
+
   const listQ = useQuery({
-    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page],
+    queryKey: ["workbench-rows-v2", user?.id, filtersWithSearch, showAll, page, effectivePageSize],
     enabled: !!user?.id,
     queryFn: () =>
       fetchWorkbenchRowsV2({
         filters: filtersWithSearch,
         ownedOnly: showAll && isPrivileged ? null : { userId: user!.id },
         page,
-        pageSize: PAGE_SIZE,
+        pageSize: effectivePageSize,
       }),
     staleTime: 15_000,
   });
@@ -148,16 +152,16 @@ function WorkbenchPage() {
   // reset dirty وقتی فیلتر/صفحه عوض میشه
   useEffect(() => {
     setDirty({});
-  }, [filtersWithSearch, showAll, page]);
+  }, [filtersWithSearch, showAll, page, showAllInOnePage]);
 
   // reset page وقتی فیلتر تغییر کند
   useEffect(() => {
     setPage(0);
-  }, [filtersWithSearch, showAll]);
+  }, [filtersWithSearch, showAll, showAllInOnePage]);
 
   const rows: WorkbenchRowV2[] = listQ.data?.rows ?? [];
   const total = listQ.data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
   const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
   // Map English engine errors → Persian row-level messages.
@@ -322,6 +326,12 @@ function WorkbenchPage() {
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
       <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm" className="me-2">
+          <Link to="/pricing/attention">
+            <LifeBuoy className="ms-1 h-4 w-4" />
+            فرصت جبران
+          </Link>
+        </Button>
         <QuickAddCustomerDialog />
       </div>
 
@@ -386,6 +396,19 @@ function WorkbenchPage() {
                   </Label>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={showAllInOnePage}
+                  onCheckedChange={(v) => {
+                    setShowAllInOnePage(v);
+                    setPage(0);
+                  }}
+                  id="show-all-one-page"
+                />
+                <Label htmlFor="show-all-one-page" className="text-sm">
+                  نمایش همه در یک صفحه
+                </Label>
+              </div>
             </CardContent>
           </Card>
 
@@ -403,9 +426,10 @@ function WorkbenchPage() {
             </Card>
           ) : isMobile ? (
             <div className="space-y-3">
-              {rows.map((row) => (
+              {rows.map((row, index) => (
                 <MobileCard
                   key={row.id}
+                  rowIndex={page * effectivePageSize + index + 1}
                   row={row}
                   dirty={dirty[row.id]}
                   stepPct={stepPct}
@@ -428,6 +452,7 @@ function WorkbenchPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="text-right w-12">ردیف</TableHead>
                       <TableHead className="text-right">محصول</TableHead>
                       <TableHead className="text-right">برند</TableHead>
                       <TableHead className="text-right">دسته</TableHead>
@@ -441,9 +466,10 @@ function WorkbenchPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rows.map((row) => (
+                    {rows.map((row, index) => (
                       <DesktopRow
                         key={row.id}
+                        rowIndex={page * effectivePageSize + index + 1}
                         row={row}
                         dirty={dirty[row.id]}
                         stepPct={stepPct}
@@ -465,7 +491,7 @@ function WorkbenchPage() {
           )}
 
           {/* صفحه‌بندی */}
-          {total > PAGE_SIZE && (
+          {total > effectivePageSize && (
             <div className="flex items-center justify-between text-sm">
               <Button
                 variant="outline"
@@ -534,6 +560,7 @@ function WorkbenchPage() {
 /* ============================================================ */
 function DesktopRow({
   row,
+  rowIndex,
   dirty,
   stepPct,
   saving,
@@ -547,6 +574,7 @@ function DesktopRow({
   onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -571,6 +599,9 @@ function DesktopRow({
 
   return (
     <TableRow className={isDirty ? "bg-amber-50 dark:bg-amber-950/20" : undefined}>
+      <TableCell className="text-center text-sm text-muted-foreground">
+        {formatNumber(rowIndex)}
+      </TableCell>
       <TableCell className="font-medium">
         <div>{row.name}</div>
         <div className="text-xs text-muted-foreground" dir="ltr">
@@ -735,6 +766,7 @@ function DesktopRow({
 /* ============================================================ */
 function MobileCard({
   row,
+  rowIndex,
   dirty,
   stepPct,
   saving,
@@ -749,6 +781,7 @@ function MobileCard({
   onSave,
 }: {
   row: WorkbenchRowV2;
+  rowIndex: number;
   dirty?: Dirty;
   stepPct: number;
   saving: boolean;
@@ -844,7 +877,10 @@ function MobileCard({
       <CardContent className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{row.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">#{formatNumber(rowIndex)}</span>
+              <span className="truncate font-medium">{row.name}</span>
+            </div>
             <div className="truncate text-xs text-muted-foreground" dir="ltr">
               {row.sku ?? "—"} {row.brand_name ? `· ${row.brand_name}` : ""}
             </div>

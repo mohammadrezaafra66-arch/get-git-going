@@ -48,7 +48,7 @@ function RecomputePricesPage() {
   const { data: counts } = useQuery({
     queryKey: ["recompute-eligible-count", onlyAvailable],
     queryFn: async () => {
-      const qAll = supabase.from("products").select("id", { count: "exact", head: true });
+      let qAll = supabase.from("products").select("id", { count: "exact", head: true });
       let qElig = supabase.from("products").select("id", { count: "exact", head: true });
       if (onlyAvailable) {
         qElig = qElig.eq("status", "active").in("stock_status", ["available", "limited"]);

@@ -63,7 +63,7 @@ export function jalaliToGregorian(
 export function parseDateToGregorianIso(input: string | null | undefined): string | null {
   if (!input) return null;
   const s = String(input).trim();
-  const m = /^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})$/.exec(s);
+  const m = /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s);
   if (!m) return null;
   const y = Number(m[1]);
   const mo = Number(m[2]);

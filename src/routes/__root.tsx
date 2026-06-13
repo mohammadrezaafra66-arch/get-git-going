@@ -103,7 +103,17 @@ class AuthErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
         <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
           <div className="max-w-md space-y-3 text-center">
             <h1 className="text-lg font-semibold text-foreground">خطا در سیستم احراز هویت</h1>
-            <p className="text-sm text-muted-foreground">{this.state.error.message}</p>
+            <p className="text-sm text-muted-foreground">
+              خطا در بارگذاری سیستم احراز هویت. لطفاً صفحه را رفرش کنید.
+            </p>
+            {import.meta.env.DEV && (
+              <pre
+                className="text-xs text-muted-foreground/70 whitespace-pre-wrap text-left"
+                dir="ltr"
+              >
+                {this.state.error.message}
+              </pre>
+            )}
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={() => {
@@ -152,6 +162,8 @@ export const Route = createRootRoute({
         content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "افراکالا" },
+      { property: "og:locale", content: "fa_IR" },
       { name: "twitter:title", content: "دستیار هوشمند افراکالا" },
       {
         name: "twitter:description",
@@ -194,6 +206,28 @@ export const Route = createRootRoute({
         as: "font",
         type: "font/woff2",
         crossOrigin: "anonymous",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "افراکالا",
+          url: "https://get-git-going.lovable.app",
+          description: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "افراکالا",
+          url: "https://get-git-going.lovable.app",
+          inLanguage: "fa-IR",
+        }),
       },
     ],
   }),
@@ -263,10 +297,7 @@ function EnvironmentSafetyBanner() {
 
   const bannerText = suspiciousProductionRuntime
     ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
-    : configuredBannerText ||
-      (isStaging
-        ? "محیط تست افراکالا - اطلاعات این بخش واقعی نیست"
-        : `محیط غیرعملیاتی افراکالا${appEnv ? ` - ${appEnv}` : ""}`);
+    : configuredBannerText || "«محیط تست افراکالا — اطلاعات این بخش واقعی نیست»";
 
   const className = suspiciousProductionRuntime
     ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"

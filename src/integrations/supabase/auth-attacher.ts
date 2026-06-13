@@ -10,6 +10,7 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
     const token = data.session?.access_token;
     // Diagnostic (no token contents) — confirms middleware is wired and whether a session exists.
     if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
       console.debug("[attachSupabaseAuth] ran, hasSession=", Boolean(token));
     }
     return next({

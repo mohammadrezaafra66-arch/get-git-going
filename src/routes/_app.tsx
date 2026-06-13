@@ -32,8 +32,20 @@ export const Route = createFileRoute("/_app")({
       // (e.g. SIGNED_IN handler hasn't finished applySession yet), force a
       // fresh resolve before deciding to redirect. Prevents bouncing the
       // user back to /login right after a successful sign-in.
-      if (!auth.user && (auth.loading || !auth.initialized)) {
+      if (!auth.user && (auth.loading || !auth.initialized) && !auth.authError) {
         auth = await ensureAuthReady(true);
+      }
+      if (!auth.user && auth.authError) {
+        logAuthDiagnostic(
+          "_app.beforeLoad.authTransient",
+          "auth unavailable; showing retry screen",
+          {
+            initialized: auth.initialized,
+            loading: auth.loading,
+            authError: auth.authError,
+          },
+        );
+        return;
       }
       if (!auth.user) {
         logAuthDiagnostic("redirect.login", "_app.beforeLoad: no user", {
@@ -71,25 +83,36 @@ export const Route = createFileRoute("/_app")({
       logAuthDiagnostic("_app.beforeLoad", "auth check failed", err);
     }
   },
-  pendingMs: 0,
+  pendingMs: 300,
   pendingComponent: AuthLoadingScreen,
   component: AppLayout,
 });
 
 function AppLayout() {
-  const { loading, profileLoading, rolesLoading, authError, profileError, rolesError, retryAuth } =
-    useAuth();
+  const {
+    user,
+    initialized,
+    loading,
+    profileLoading,
+    rolesLoading,
+    authError,
+    profileError,
+    rolesError,
+    retryAuth,
+  } = useAuth();
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
 
+  const isRefreshing = loading || profileLoading || rolesLoading;
+
   useEffect(() => {
-    if (!(loading || profileLoading || rolesLoading)) {
+    if (!isRefreshing) {
       setStuckLoading(false);
       return;
     }
-    const id = window.setTimeout(() => setStuckLoading(true), 12_000);
+    const id = window.setTimeout(() => setStuckLoading(true), 6_000);
     return () => window.clearTimeout(id);
-  }, [loading, profileLoading, rolesLoading]);
+  }, [isRefreshing]);
 
   const copyDiagnostics = async () => {
     const diag = getAuthDiagnostics();
@@ -102,7 +125,13 @@ function AppLayout() {
     }
   };
 
-  if (loading || profileLoading || rolesLoading) {
+  // Only block the entire app with the full-screen loading state when we truly
+  // have no user yet (initial bootstrap). For subsequent refreshes (HMR
+  // re-mount, token refresh, re-fetch of profile/roles) the cached user is
+  // already in the snapshot, so we keep the page mounted and show a thin
+  // top progress bar instead — otherwise the user perceives every module
+  // switch as being kicked out to «در حال بررسی جلسه کاربری…».
+  if (!user && (isRefreshing || !initialized)) {
     if (stuckLoading) {
       return (
         <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -119,7 +148,7 @@ function AppLayout() {
     return <AuthLoadingScreen />;
   }
 
-  if (authError) {
+  if (!user && authError) {
     const diag = getAuthDiagnostics();
     return (
       <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -165,6 +194,15 @@ function AppLayout() {
 
   return (
     <AppShell>
+      {user && isRefreshing && (
+        <div
+          dir="rtl"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-1 overflow-hidden bg-primary/15"
+        >
+          <div className="h-full w-1/3 animate-pulse bg-primary/60" />
+        </div>
+      )}
       <Outlet />
     </AppShell>
   );

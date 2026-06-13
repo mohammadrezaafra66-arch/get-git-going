@@ -20,7 +20,7 @@ export const purchasePriceSchema = z.object({
   product_id: z.string().uuid("محصول الزامی است"),
   supplier_id: z.string().uuid().nullable().optional(),
   purchase_price: z.coerce.number().nonnegative("قیمت نمی‌تواند منفی باشد"),
-  currency: z.enum(["toman", "usd", "aed"]),
+  currency: z.enum(["toman", "usd", "aed", "usd_us"]),
   reason_id: z.string().uuid().nullable().optional(),
   private_note: z.string().trim().max(1000).optional().or(z.literal("")),
   effective_at: z.string().optional(),

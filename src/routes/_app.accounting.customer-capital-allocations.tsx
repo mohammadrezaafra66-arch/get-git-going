@@ -70,7 +70,7 @@ function errMsg(e: unknown, fallback: string) {
   return isForbidden(e) ? "شما دسترسی این عملیات را ندارید." : fallback;
 }
 function toNum(s: string): number {
-  const n = Number(String(s).replace(/[^\d.-]/g, ""));
+  const n = Number(String(s).replace(/[^\d.\-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 function shortId(id: string) {

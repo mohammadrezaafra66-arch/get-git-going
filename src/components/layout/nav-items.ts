@@ -43,6 +43,7 @@ import {
   Receipt,
   CreditCard,
   BadgeCheck,
+  LifeBuoy,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -85,6 +86,7 @@ export const NAV_ITEMS: NavItem[] = [
   // ۱) داشبورد
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
+  { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   {
@@ -179,6 +181,14 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/pricing/my-workbench",
     label: "کارگاه قیمت من",
     icon: Edit3,
+    module: "pricing",
+    group: "products-pricing",
+    subgroup: "pp-pricing",
+  },
+  {
+    to: "/pricing/attention",
+    label: "فرصت جبران",
+    icon: LifeBuoy,
     module: "pricing",
     group: "products-pricing",
     subgroup: "pp-pricing",

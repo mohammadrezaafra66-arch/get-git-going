@@ -191,7 +191,7 @@ const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
 
 function normalizeGregorianDate(s: string): string | null {
   // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
-  const m = /^((?:19|20)\d{2})[/.-](\d{1,2})[/.-](\d{1,2})$/.exec(s.trim());
+  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
   if (!m) return null;
   const yyyy = m[1];
   const mm = m[2].padStart(2, "0");
