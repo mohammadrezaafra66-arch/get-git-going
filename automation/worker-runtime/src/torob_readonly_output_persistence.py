@@ -69,6 +69,15 @@ FORBIDDEN_KEY_FRAGMENTS = {
     "bypass",
 }
 
+SAFE_GUARDRAIL_KEYS = {
+    "no_bypass",
+    "no_login",
+    "no_cookie",
+    "no_browser_automation",
+    "no_scheduler",
+    "no_bulk_retry",
+}
+
 REQUIRED_ROW_KEYS = {
     "job_id",
     "run_id",
@@ -220,9 +229,10 @@ def _reject_forbidden_keys(value: Any) -> None:
     if isinstance(value, dict):
         for key, nested in value.items():
             lowered = str(key).lower()
-            for fragment in FORBIDDEN_KEY_FRAGMENTS:
-                if fragment in lowered:
-                    raise ValueError(f"Forbidden payload key: {key}")
+            if lowered not in SAFE_GUARDRAIL_KEYS:
+                for fragment in FORBIDDEN_KEY_FRAGMENTS:
+                    if fragment in lowered:
+                        raise ValueError(f"Forbidden payload key: {key}")
             _reject_forbidden_keys(nested)
     elif isinstance(value, list):
         for item in value:
