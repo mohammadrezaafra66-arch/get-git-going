@@ -1,22 +1,24 @@
 # Phase 2 Torob Limited Read-Only Execution Evidence — 2026-06-13
 
-**Status:** GUARDED READINESS VERIFIED — placeholder live probe exposed HTTP-error handling fix  
+**Status:** ACCEPTED — controlled live-readonly probe completed successfully  
 **Track:** Phase 2 / Torob limited read-only  
 **Packet:** `TPC-2-004-torob-limited-readonly-execution-evidence-packet.md`
 
-## 1. PR
+## 1. PR / branch context
 
-PR #139 — `feat(worker): add TPC-2-004 guarded Torob readiness`
+Evidence run was executed locally from `main` after Phase 2 queue/API/smoke guardrails were merged.
 
-Follow-up fix PR: pending — HTTP 500 must abort the guarded run instead of being counted as completed.
+Relevant prior merges:
+
+- Queue/API path: PR #147
+- Worker smoke runner: PR #148
+- Worker smoke evidence: PR #149
 
 ## 2. Commit hash
 
-PR #139 merge commit:
+Evidence run commit:
 
-`6f31e388c0f3f33c7e14ad0d802306f61d38db82`
-
-Follow-up fix commit: pending final PR head.
+`1bb1c8ccb0be0a1388b35856a804243bcb8fc478`
 
 ## 3. Operator
 
@@ -32,49 +34,37 @@ Branch verified before the manual probe:
 
 `main`
 
-## 5. Commands used
+## 5. Command shape
 
-Local verification command:
+Manual controlled probe used the Python `TorobLimitedReadOnlyDriver` directly from the worker runtime.
 
-```powershell
-cd C:\Users\AFRA\AfraKala\get-git-going
+The run was explicitly configured with:
 
-git checkout main
-git pull origin main
+- `execution_packet = TPC-2-004`
+- `manual_execution_ack = TPC-2-004_MANUAL_TOROB_READONLY_ACK`
+- `live_execution_requested = true`
+- `max_concurrency = 1`
+- `max_total_requests = 10`
+- `min_delay_ms_between_requests = 3000`
+- one operator-supplied public Torob product URL
 
-cd automation/worker-runtime
-python -m pytest -q
-```
+## 6. Product count
 
-Manual guarded probe command was run through PowerShell stdin using the `TorobLimitedReadOnlyDriver` and `MockSupabaseClient` only.
+Product count: `1`
 
-## 6. Test result
-
-Recorded local result before the manual probe:
-
-```text
-114 passed in 0.24s
-```
-
-The suite includes guarded tests for explicit acknowledgement, max live product count, Torob-only public HTTPS URLs, minimum delay, request limit, no browser automation confirmation, patchable fetch path, and HTTP-error abort behavior.
-
-## 7. Product count
-
-Manual guarded probe product count: `1`
-
-Configured future live limit:
+Configured first live-readonly limits:
 
 - minimum: 1
 - target: 3
 - maximum: 3
 
-## 8. Request count
+## 7. Request count
 
-Manual guarded probe actual request count: `1`
+Actual request count: `1`
 
-Configured future live maximum: `10`
+Configured maximum: `10`
 
-## 9. Timing / delay configuration
+## 8. Timing / delay configuration
 
 Guard configuration:
 
@@ -83,59 +73,76 @@ Guard configuration:
 - `max_total_run_seconds <= 300`
 - `max_total_requests <= 10`
 
-## 10. Manual guarded probe output
+No second request was made, so no inter-request delay was required in this one-product probe.
 
-The probe was run with a placeholder Torob path:
+## 9. Product URL
+
+Public Torob product URL used:
 
 ```text
-https://torob.com/p/REPLACE_WITH_REAL_PRODUCT/
+https://torob.com/p/4e47d29c-f134-4ca3-8ef2-04374ab3845b/%D8%AC%D8%A7%D8%B1%D9%88%D8%A8%D8%B1%D9%82%DB%8C-%D8%A8%D9%88%D8%B4-%D9%85%D8%AF%D9%84-bgl8pro5/
 ```
 
-Observed output before the HTTP-error fix:
+Product label recorded in the probe:
+
+```text
+جاروبرقی بوش مدل BGL8PRO5
+```
+
+## 10. Controlled live-readonly output summary
+
+Observed output:
 
 ```json
 {
-  "status": "COMPLETED",
-  "errors": [],
-  "network_calls": 1,
-  "abort_reason": null,
+  "driver_status": "COMPLETED",
+  "job_id": "phase2-live-readonly-manual-001",
+  "run_id": "phase2-live-readonly-20260613112634",
+  "items_requested": 1,
   "items_completed": 1,
-  "http_status": 500,
+  "network_calls": 1,
+  "max_total_requests": 10,
+  "abort_reason": null,
   "live_execution": true,
   "browser_automation": false,
-  "read_only_confirmed": true
+  "read_only_confirmed": true,
+  "http_status": 200,
+  "final_url": "https://torob.com/p/4e47d29c-f134-4ca3-8ef2-04374ab3845b/%D8%AC%D8%A7%D8%B1%D9%88%D8%A8%D8%B1%D9%82%DB%8C-%D8%A8%D9%88%D8%B4-%D9%85%D8%AF%D9%84-bgl8pro5/",
+  "availability_status": "fetched_read_only",
+  "body_preview_length": 1000,
+  "errors": []
 }
 ```
 
-This result is **not accepted as successful live product evidence** because:
+## 11. Checkpoint
 
-1. the URL was a placeholder path,
-2. Torob returned HTTP 500,
-3. HTTP 500 was incorrectly treated as completed.
+Observed checkpoint:
 
-## 11. Fix recorded in follow-up
-
-The guarded driver is updated so:
-
-- HTTP 401/403 still abort as `blocked_http_401` / `blocked_http_403`,
-- any other HTTP status `>= 400` aborts as `http_error_<status_code>`,
-- HTTP 500 now returns `SKIPPED` with `abort_reason = http_error_500`,
-- no normalized item is accepted for HTTP 500.
-
-A regression test is added for HTTP 500 guarded abort.
+```json
+{
+  "driver": "torob_limited_readonly",
+  "step": "torob_limited_readonly_guarded_live_completed",
+  "progress": 100,
+  "items_requested": 1,
+  "items_completed": 1,
+  "live_execution": true,
+  "network_calls": 1,
+  "abort_reason": null
+}
+```
 
 ## 12. Read-only behavior confirmation
 
-Confirmed for this readiness/probe step:
+Confirmed:
 
 - no product writeback,
 - no price update,
 - no customer update,
+- no supplier update,
 - no production sync,
-- no UI exposure,
-- no API exposure.
+- no business data mutation.
 
-The guarded path records response metadata only and does not parse or write prices.
+The guarded path records public response metadata only. It does not parse or write prices.
 
 ## 13. No login / session / cookie
 
@@ -166,18 +173,24 @@ Confirmed:
 - no bulk crawl,
 - no catalog-wide discovery.
 
-## 16. Errors encountered
+## 16. Abort / completion status
 
-Observed error condition:
+Completion status:
 
 ```text
-HTTP 500 from placeholder Torob path
+COMPLETED
 ```
 
-Resolution:
+Abort reason:
 
 ```text
-Guard updated to abort all HTTP >= 400 responses.
+null
+```
+
+Errors:
+
+```text
+[]
 ```
 
 ## 17. No business data changed
@@ -190,14 +203,23 @@ Confirmed:
 - no supplier changed,
 - no production data changed.
 
-## 18. Required next action
+## 18. Acceptance decision
 
-Before any accepted live Torob product evidence, run again with a real public Torob product URL after the HTTP-error fix is merged and local tests pass.
+This evidence accepts the first controlled Torob live-readonly probe for one public product URL.
 
-The next accepted evidence must include:
+This acceptance does **not** authorize:
 
-1. real product URL or ID,
-2. actual request count,
-3. completion or abort result,
-4. output summary,
-5. confirmation that no prices/products/customers were changed.
+- scheduler/cron,
+- bulk crawl,
+- browser automation,
+- login/session/cookie,
+- automatic product discovery,
+- price/product/customer writeback,
+- expansion to non-Torob sources.
+
+## 19. Next action
+
+Next Phase 2 work should either:
+
+1. extend evidence to the target 3-product controlled run under the same guardrails, or
+2. wire accepted live-readonly outputs into the database-backed worker evidence path with no business writeback.
