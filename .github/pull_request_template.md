@@ -1,71 +1,384 @@
-## Summary
+# AfraKala Pull Request Template
 
-<!-- What does this PR change and why? Keep scope small and incremental. -->
+## 1. PR Identity
 
-## Task Packet
+PR title:
 
-- Task ID:
-- Phase Label: BASELINE / PHASE-0 / PHASE-1 / FUTURE
-- Related ADR/docs:
+-
 
-## Baseline / ADR alignment
+Tool/source of change:
 
-- [ ] This PR does **not** introduce a parallel backend, database, API, or control plane.
-- [ ] This PR does **not** implement Divar, Torob real extraction, WhatsApp, Instagram, OCR, STT, or AI bots in Phase 0.
-- [ ] Supabase/PostgreSQL remains the source of truth for persistent state.
-- [ ] GitHub remains the source of truth for code/docs; Drive is mirror only.
-- [ ] Lovable/React/TanStack changes are UI-only unless explicitly approved by ADR.
-- [ ] Python Worker Runtime concerns are not implemented inside UI components.
-- [ ] External integrations, if any, are optional, feature-flagged, and server-side secret safe.
+- [ ] Cursor
+- [ ] Lovable
+- [ ] Human manual edit
+- [ ] Other:
 
-## Change type
+Branch family:
 
-- [ ] Feature
-- [ ] Bug fix
-- [ ] Docs / baseline / ADR
-- [ ] Automation contract (OpenAPI / JSON Schema)
-- [ ] Migration / RLS / RBAC
-- [ ] Deploy / ops
+- [ ] `lovable/ui-*`
+- [ ] `cursor/api-*`
+- [ ] `cursor/worker-*`
+- [ ] `cursor/db-*`
+- [ ] `cursor/docs-*`
+- [ ] `cursor/phase6-*`
+- [ ] `hotfix/*`
+- [ ] Other:
 
-## Files intentionally changed
+Source branch:
 
-<!-- List changed files or directories and why each was changed. -->
+-
 
-## Migration impact
+Target branch:
 
-<!-- None, or link to `supabase/migrations/<timestamp>_*.sql` -->
+- [ ] `staging`
+- [ ] `main`
+- [ ] Other:
 
-## RLS / RBAC impact
+---
 
-<!-- None, or describe policy / permission changes -->
+## 2. Governance Confirmation
 
-## Audit log impact
+I confirm this PR follows:
 
-<!-- None, or describe new audited actions -->
+- [ ] `docs/governance/LOVABLE_CURSOR_BOUNDARY.md`
+- [ ] `docs/governance/BRANCH_STRATEGY.md`
+- [ ] `docs/governance/LOVABLE_PROMPT_RULES.md` if Lovable is involved
+- [ ] `.cursor/rules/**` if Cursor is involved
 
-## Secret / sensitive data impact
+This PR must not bypass the approved branch flow.
 
-- [ ] No real secrets were added.
-- [ ] No service role key is exposed to browser/client code.
-- [ ] Sensitive data is not logged in raw form.
+Approved normal flow:
 
-## Self-host acceptance check
+feature branch  
+→ PR to `staging`  
+→ automated checks  
+→ human staging test  
+→ PR from `staging` to `main`  
+→ production release
 
-- [ ] No critical dependency on CDN, online fonts, or non-self-hostable cloud APIs
-- [ ] No `VITE_` server secrets
-- [ ] Large queries use limit, pagination, indexes, and debounced search/filter (if applicable)
-- [ ] UI remains Persian, RTL, mobile-first (if UI changed)
+---
 
-## Test plan
+## 3. Summary
 
-<!-- Manual steps and/or automated tests run -->
+What changed?
 
-## Build / lint / typecheck
+-
 
-- [ ] `npm run build`
-- [ ] `npm run lint`
-- [ ] typecheck (if script exists)
+Why was this change needed?
 
-## Remaining risks
+-
 
-<!-- Known gaps, follow-ups, or rollback notes -->
+What problem does it solve?
+
+-
+
+What is intentionally not included in this PR?
+
+-
+
+---
+
+## 4. Scope Classification
+
+Primary scope:
+
+- [ ] UI only
+- [ ] API/OpenAPI
+- [ ] Backend/domain logic
+- [ ] Worker/multi-robot
+- [ ] Database/migration/RLS
+- [ ] GitHub Actions/CI
+- [ ] Governance/docs
+- [ ] Deployment/self-hosting
+- [ ] Hotfix
+
+Risk level:
+
+- [ ] Low
+- [ ] Medium
+- [ ] High
+- [ ] Production-critical
+
+---
+
+## 5. Lovable Boundary Check
+
+Complete this section if Lovable created or modified this PR.
+
+Lovable work must be UI-only.
+
+- [ ] This is Lovable UI work.
+- [ ] Lovable worked only on the approved Lovable UI branch.
+- [ ] Lovable did not work directly on `main`.
+- [ ] Lovable did not work directly on `staging`.
+- [ ] Lovable did not edit forbidden backend/worker/database/governance paths.
+- [ ] Lovable did not invent API endpoints.
+- [ ] Lovable used only approved API contracts.
+- [ ] Lovable did not create database migrations.
+- [ ] Lovable did not create Worker logic.
+- [ ] Lovable did not change GitHub Actions.
+- [ ] Lovable did not change deployment or production configuration.
+- [ ] Lovable did not commit secrets or `.env` files.
+
+If backend/API/database/Worker support is needed, describe it here:
+
+-
+
+---
+
+## 6. Cursor Boundary Check
+
+Complete this section if Cursor created or modified this PR.
+
+- [ ] Cursor did not work directly on `main`.
+- [ ] Cursor did not push directly to `main`.
+- [ ] Cursor did not push directly to `staging` unless explicitly instructed.
+- [ ] Cursor changes match the branch family.
+- [ ] Cursor did not mix unrelated UI/backend/database/worker/governance work.
+- [ ] Cursor did not create API behavior without OpenAPI update.
+- [ ] Cursor did not expose unsafe Worker execution.
+- [ ] Cursor did not commit secrets or `.env` files.
+
+If Cursor touched UI, explain why it was required:
+
+-
+
+---
+
+## 7. Changed Areas
+
+Check every area touched by this PR.
+
+UI:
+
+- [ ] `src/components/**`
+- [ ] `src/routes/**`
+- [ ] `src/shared/components/**`
+- [ ] `src/hooks/**`
+- [ ] UI helper files
+
+API / backend:
+
+- [ ] `server/**`
+- [ ] API route files
+- [ ] backend/domain logic
+- [ ] `src/lib/**` domain logic
+
+OpenAPI:
+
+- [ ] `automation/openapi/**`
+- [ ] `openapi/**`
+
+Worker / automation:
+
+- [ ] `automation/**`
+- [ ] `automation/worker-runtime/**`
+- [ ] `docs/automation/**`
+
+Database:
+
+- [ ] `supabase/migrations/**`
+- [ ] RLS policies
+- [ ] database schema
+- [ ] seed/sample data
+
+Governance / CI / deployment:
+
+- [ ] `.github/**`
+- [ ] `.cursor/**`
+- [ ] `docs/governance/**`
+- [ ] `deploy/**`
+- [ ] environment examples
+
+Security-sensitive:
+
+- [ ] auth/session/security logic
+- [ ] secrets handling
+- [ ] production config
+- [ ] database credentials
+- [ ] none of the above
+
+---
+
+## 8. API and OpenAPI Check
+
+Does this PR change API behavior?
+
+- [ ] No
+- [ ] Yes
+
+If yes:
+
+- [ ] OpenAPI contract was updated before implementation.
+- [ ] Request payload shape is documented.
+- [ ] Response payload shape is documented.
+- [ ] Error responses are documented.
+- [ ] UI usage matches the approved contract.
+- [ ] Breaking changes are clearly explained.
+
+OpenAPI files changed:
+
+-
+
+Affected endpoints:
+
+-
+
+Compatibility notes:
+
+-
+
+---
+
+## 9. Database and Migration Check
+
+Does this PR touch database structure, RLS, migrations, or seed data?
+
+- [ ] No
+- [ ] Yes
+
+If yes:
+
+- [ ] Migration files are included.
+- [ ] Migration purpose is explained.
+- [ ] RLS/security implications are explained.
+- [ ] Staging database target is confirmed.
+- [ ] Production database was not used for testing.
+- [ ] Rollback or recovery notes are included.
+- [ ] Lovable did not create the migration.
+
+Migration files:
+
+-
+
+Rollback/recovery notes:
+
+-
+
+---
+
+## 10. Worker and Multi-Robot Check
+
+Does this PR touch Worker, automation, drivers, jobs, checkpoints, or bot execution?
+
+- [ ] No
+- [ ] Yes
+
+If yes:
+
+- [ ] Worker safety boundary is documented.
+- [ ] Real bot execution is not enabled without approval.
+- [ ] No production scraping is enabled without approval.
+- [ ] No production messaging is enabled without approval.
+- [ ] No direct production database access is introduced.
+- [ ] Output persistence/checkpoint behavior is documented.
+- [ ] Tests or review evidence are included.
+
+Affected Worker areas:
+
+-
+
+Safety notes:
+
+-
+
+---
+
+## 11. Staging Test Checklist
+
+Before merging to `staging`, confirm:
+
+- [ ] App starts successfully.
+- [ ] Login works.
+- [ ] Target URL is staging/test URL, not production.
+- [ ] Staging warning banner is visible when applicable.
+- [ ] Staging database is used.
+- [ ] Production database is not used.
+- [ ] Main user flow still works.
+- [ ] Browser console has no critical errors.
+- [ ] API calls match approved contracts.
+- [ ] No real company data is entered into staging unless explicitly approved and anonymized.
+
+Manual test notes:
+
+-
+
+---
+
+## 12. Production Risk Check
+
+Does this PR affect production behavior after release?
+
+- [ ] No
+- [ ] Yes
+- [ ] Unsure
+
+If yes or unsure:
+
+- [ ] Production risk is explained.
+- [ ] Rollback plan is known.
+- [ ] Environment variables are documented.
+- [ ] Database impact is documented.
+- [ ] User-facing impact is documented.
+- [ ] Release timing is considered.
+
+Production impact:
+
+-
+
+Rollback plan:
+
+-
+
+---
+
+## 13. Secrets and Environment Safety
+
+Confirm:
+
+- [ ] No `.env` file was committed.
+- [ ] No `.env.production` file was committed.
+- [ ] No `.env.staging` file was committed.
+- [ ] No API keys were committed.
+- [ ] No database credentials were committed.
+- [ ] No tokens or passwords were committed.
+- [ ] Only safe `.env.example` files were changed, if any.
+
+Environment files changed:
+
+-
+
+---
+
+## 14. Review Decision Gate
+
+This PR must be rejected if any of these are true:
+
+- [ ] Lovable touched `supabase/migrations/**`.
+- [ ] Lovable touched `automation/worker-runtime/**`.
+- [ ] Lovable touched backend/domain logic without explicit approval.
+- [ ] API behavior changed without OpenAPI update.
+- [ ] Database changed without migration/review.
+- [ ] Worker execution was enabled without safety gate.
+- [ ] Secrets or real `.env` files were committed.
+- [ ] Staging connects to production database.
+- [ ] PR mixes unrelated work.
+- [ ] PR cannot be tested.
+
+If any item above is checked, explain why this PR should not be rejected:
+
+-
+
+---
+
+## 15. Final Checklist
+
+- [ ] Branch name matches the work type.
+- [ ] Target branch is correct.
+- [ ] Scope is clear.
+- [ ] Changed files match the declared scope.
+- [ ] Governance documents were followed.
+- [ ] Tests/checks were run where applicable.
+- [ ] Staging test notes are included where applicable.
+- [ ] Production risk is understood.
+- [ ] This PR is ready for review.
