@@ -56,13 +56,14 @@ def test_build_safe_abort_row_preserves_retry_decision() -> None:
     assert row["output"]["abort_reason"] == "http_error_490"
     assert row["output"]["retry_decision"]["retry_allowed_now"] is False
     assert row["output"]["retry_decision"]["next_action"] == "pause_live_retries"
+    assert row["output"]["retry_decision"]["no_bypass"] is True
 
 
 def test_rejects_forbidden_secret_like_keys() -> None:
     output = _completed_output()
     output["normalized_items"][0]["cookie_value"] = "not allowed"
 
-    with pytest.raises(ValueError, match="Unexpected normalized item keys"):
+    with pytest.raises(ValueError, match="Forbidden payload key: cookie_value"):
         build_torob_readonly_output_row(
             job_id="job-3",
             run_id="run-3",
