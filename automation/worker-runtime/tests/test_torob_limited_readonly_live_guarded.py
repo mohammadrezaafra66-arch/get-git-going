@@ -89,7 +89,7 @@ def test_guarded_live_run_uses_patchable_fetch_and_records_network_count(monkeyp
     assert output["normalized_items"][0]["availability_status"] == "fetched_read_only"
 
 
-def test_guarded_live_run_aborts_on_403_without_bypass(monkeypatch):
+def test_guarded_live_run_aborts_on_403(monkeypatch):
     driver = TorobLimitedReadOnlyDriver()
     job = live_job(item_count=1)
 
@@ -105,6 +105,25 @@ def test_guarded_live_run_aborts_on_403_without_bypass(monkeypatch):
     assert result.errors == ["blocked_http_403"]
     assert output["network_calls"] == 1
     assert output["abort_reason"] == "blocked_http_403"
+    assert output["normalized_items"] == []
+
+
+def test_guarded_live_run_aborts_on_500(monkeypatch):
+    driver = TorobLimitedReadOnlyDriver()
+    job = live_job(item_count=1)
+
+    def fake_fetch(url: str) -> torob.PublicFetchResponse:
+        return torob.PublicFetchResponse(status_code=500, final_url=url, body_preview="server error")
+
+    monkeypatch.setattr(torob, "_fetch_public_url", fake_fetch)
+
+    result = driver.run(job, build_context())
+    output = result.output
+
+    assert result.status == "SKIPPED"
+    assert result.errors == ["http_error_500"]
+    assert output["network_calls"] == 1
+    assert output["abort_reason"] == "http_error_500"
     assert output["normalized_items"] == []
 
 

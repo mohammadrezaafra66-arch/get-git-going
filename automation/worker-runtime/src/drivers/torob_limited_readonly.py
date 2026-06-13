@@ -153,6 +153,8 @@ def _looks_like_block_or_login(response: PublicFetchResponse) -> str | None:
     body_lower = response.body_preview.lower()
     if response.status_code in {401, 403}:
         return f"blocked_http_{response.status_code}"
+    if response.status_code >= 400:
+        return f"http_error_{response.status_code}"
     if "captcha" in body_lower or "recaptcha" in body_lower:
         return "captcha_or_antibot_detected"
     if "login" in final_url_lower or "signin" in final_url_lower or "account" in final_url_lower:
