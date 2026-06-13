@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Info, Loader2, Lock, PlayCircle, ShieldCheck, Sparkles } from "lucide-react";
@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 import { enqueueDummyAutomationJobFn } from "@/lib/automation/enqueue-dummy-job.functions";
 import { enqueueTorobReadonlyAutomationJobFn } from "@/lib/automation/enqueue-torob-readonly-job.functions";
 import type { EnqueueDummyJobResult } from "@/lib/automation/enqueue-dummy-job.server";
@@ -45,12 +46,41 @@ type TorobResultView = {
   directUiExecution: boolean;
 };
 
+type TorobTableRow = {
+  id: string;
+  status: string;
+  job_type: string;
+  phase_label: string;
+  created_at: string;
+};
+
+function unwrapResultEnvelope(result: unknown): unknown {
+  let current = result;
+
+  for (let i = 0; i < 4; i += 1) {
+    if (!current || typeof current !== "object") return current;
+
+    const value = current as Record<string, unknown>;
+    const next = value.result ?? value.data ?? value.value ?? value.payload;
+
+    if (!next || next === current) return current;
+
+    current = next;
+  }
+
+  return current;
+}
+
 function normalizeTorobResult(result: unknown): TorobResultView | null {
-  if (!result || typeof result !== "object") return null;
-  const value = result as Partial<EnqueueTorobReadonlyJobResult> & {
+  const unwrapped = unwrapResultEnvelope(result);
+
+  if (!unwrapped || typeof unwrapped !== "object") return null;
+
+  const value = unwrapped as Partial<EnqueueTorobReadonlyJobResult> & {
     id?: unknown;
     status?: unknown;
     job_type?: unknown;
+    job_id?: unknown;
   };
   const job = value.job;
   if (job && typeof job === "object") {
@@ -67,15 +97,45 @@ function normalizeTorobResult(result: unknown): TorobResultView | null {
       };
     }
   }
-  if (typeof value.id === "string" && typeof value.status === "string" && typeof value.job_type === "string") {
+  const id = value.job_id ?? value.id;
+
+  if (typeof id === "string" && typeof value.status === "string" && typeof value.job_type === "string") {
     return {
-      jobId: value.id,
+      jobId: id,
       status: value.status,
       jobType: value.job_type,
       directUiExecution: value.direct_ui_execution === true,
     };
   }
+
   return null;
+}
+
+function normalizeTorobTableRow(row: TorobTableRow): TorobResultView {
+  return {
+    jobId: row.id,
+    status: row.status,
+    jobType: row.job_type,
+    directUiExecution: false,
+  };
+}
+
+async function fetchLatestTorobJob(): Promise<TorobResultView | null> {
+  const { data, error } = await supabase
+    .from("automation_jobs")
+    .select("id, status, job_type, phase_label, created_at")
+    .eq("job_type", "TOROB_LIMITED_READONLY")
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn("[automation] latest job lookup failed", error.message);
+    return null;
+  }
+
+  const row = (data?.[0] ?? null) as TorobTableRow | null;
+
+  return row ? normalizeTorobTableRow(row) : null;
 }
 
 function AdminAutomationPage() {
@@ -122,13 +182,22 @@ function AdminAutomationPage() {
     try {
       const result = await enqueueTorobFn({ data: { productUrl: productUrl.trim() } });
       const normalized = normalizeTorobResult(result);
-      if (!normalized) {
-        setLastTorobResult(null);
-        toast.warning("دستور ترب ثبت شد، اما پاسخ قابل نمایش نبود. جدول automation_jobs را بررسی کنید.");
+      if (normalized) {
+        setLastTorobResult(normalized);
+        toast.success("دستور ترب در صف کنترل‌شده ثبت شد.");
         return;
       }
-      setLastTorobResult(normalized);
-      toast.success("دستور ترب در صف کنترل‌شده ثبت شد.");
+
+      const latest = await fetchLatestTorobJob();
+
+      if (latest) {
+        setLastTorobResult(latest);
+        toast.success("دستور ترب ثبت شد و از جدول صف بازیابی شد.");
+        return;
+      }
+
+      setLastTorobResult(null);
+      toast.warning("پاسخ قابل نمایش نبود و job جدیدی هم در جدول صف پیدا نشد.");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "خطا در ثبت دستور ترب.";
       toast.error(msg);
@@ -307,3 +376,4 @@ function AdminAutomationPage() {
     </div>
   );
 }
+
