@@ -15,7 +15,6 @@ on:
     branches:
       - staging
       - main
-      - 'cursor/phase6-boundary-governance'
 
   workflow_dispatch:
 
@@ -82,9 +81,7 @@ jobs:
 
           forbidden_files="$(find . -type f \
             \( -name '.env' -o -name '.env.*' \) \
-            ! -name '.env.example' \
-            ! -name '.env.production.example' \
-            ! -name '.env.staging.example' \
+            ! -name '.env*.example' \
             -print)"
 
           if [ -n "$forbidden_files" ]; then
