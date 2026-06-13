@@ -1,4 +1,6 @@
-name: Phase 6 Boundary Guard
+name: Boundary Guard
+
+# Phase 6 Boundary Guard
 
 on:
   pull_request:
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   boundary-guard:
-    name: Enforce Lovable / Cursor boundaries
+    name: Boundary Guard
     runs-on: ubuntu-latest
 
     steps:
