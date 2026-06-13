@@ -5,7 +5,17 @@ on:
     branches:
       - staging
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+  push:
+    branches:
+      - staging
+      - main
+
   workflow_dispatch:
 
 permissions:
@@ -16,23 +26,94 @@ jobs:
     name: Staging Check
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            "docs/governance/LOVABLE_CURSOR_BOUNDARY.md"
+            "docs/governance/BRANCH_STRATEGY.md"
+            "docs/governance/LOVABLE_PROMPT_RULES.md"
+            "docs/governance/API_CONTRACT_RULES.md"
+            "docs/governance/STAGING_PRODUCTION_RUNBOOK.md"
+            "docs/governance/LOVABLE_BRANCH_SETUP.md"
+            "docs/governance/RELEASE_TO_MAIN_RULES.md"
+            "docs/governance/PHASE6_FINAL_ACCEPTANCE.md"
+            "docs/testing/STAGING_HUMAN_TEST_CHECKLIST.md"
+            ".github/pull_request_template.md"
+            ".github/CODEOWNERS"
+            ".cursor/rules/phase6-boundary.mdc"
+            ".cursor/rules/branch-discipline.mdc"
+            ".cursor/rules/openapi-contract.mdc"
+            ".cursor/rules/worker-boundary.mdc"
+            "openapi/openapi.yaml"
+            ".env.example"
+            ".env.staging.example"
+            ".env.production.example"
+          )
+
+          missing=0
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              missing=1
+            else
+              echo "OK: $file"
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Required Phase 6 governance files are missing."
+            exit 1
+          fi
+
+      - name: Check forbidden environment files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden_files="$(find . -type f \
+            \( -name '.env' -o -name '.env.*' \) \
+            ! -name '.env*.example' \
+            -print)"
+
+          if [ -n "$forbidden_files" ]; then
+            echo "Forbidden environment files found:"
+            echo "$forbidden_files"
+            exit 1
+          fi
+
+          echo "No forbidden environment files found."
+
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
 
       - name: Lint legacy baseline
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
         run: |
-          npm run lint || echo "::warning::Lint currently fails on the legacy baseline during phase6a staging realignment; build remains required."
+          npm run lint || echo "::warning::Lint currently fails on the legacy baseline during phase6/staging realignment; build remains required."
 
       - name: Build
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
         run: npm run build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
