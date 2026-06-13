@@ -38,6 +38,46 @@ const GUARDRAILS = [
 
 const PRODUCT_URL_PATTERN = /^https:\/\/(www\.)?torob\.com\/p\//;
 
+type TorobResultView = {
+  jobId: string;
+  status: string;
+  jobType: string;
+  directUiExecution: boolean;
+};
+
+function normalizeTorobResult(result: unknown): TorobResultView | null {
+  if (!result || typeof result !== "object") return null;
+  const value = result as Partial<EnqueueTorobReadonlyJobResult> & {
+    id?: unknown;
+    status?: unknown;
+    job_type?: unknown;
+  };
+  const job = value.job;
+  if (job && typeof job === "object") {
+    const row = job as Record<string, unknown>;
+    const id = row.id;
+    const status = row.status;
+    const jobType = row.job_type;
+    if (typeof id === "string" && typeof status === "string" && typeof jobType === "string") {
+      return {
+        jobId: id,
+        status,
+        jobType,
+        directUiExecution: value.direct_ui_execution === true,
+      };
+    }
+  }
+  if (typeof value.id === "string" && typeof value.status === "string" && typeof value.job_type === "string") {
+    return {
+      jobId: value.id,
+      status: value.status,
+      jobType: value.job_type,
+      directUiExecution: value.direct_ui_execution === true,
+    };
+  }
+  return null;
+}
+
 function AdminAutomationPage() {
   const enqueueFn = useServerFn(enqueueDummyAutomationJobFn);
   const enqueueTorobFn = useServerFn(enqueueTorobReadonlyAutomationJobFn);
@@ -45,7 +85,7 @@ function AdminAutomationPage() {
   const [torobLoading, setTorobLoading] = useState(false);
   const [productUrl, setProductUrl] = useState("");
   const [lastResult, setLastResult] = useState<EnqueueDummyJobResult | null>(null);
-  const [lastTorobResult, setLastTorobResult] = useState<EnqueueTorobReadonlyJobResult | null>(null);
+  const [lastTorobResult, setLastTorobResult] = useState<TorobResultView | null>(null);
 
   const productUrlState = useMemo(() => {
     const value = productUrl.trim();
@@ -81,7 +121,13 @@ function AdminAutomationPage() {
     setTorobLoading(true);
     try {
       const result = await enqueueTorobFn({ data: { productUrl: productUrl.trim() } });
-      setLastTorobResult(result);
+      const normalized = normalizeTorobResult(result);
+      if (!normalized) {
+        setLastTorobResult(null);
+        toast.warning("دستور ترب ثبت شد، اما پاسخ قابل نمایش نبود. جدول automation_jobs را بررسی کنید.");
+        return;
+      }
+      setLastTorobResult(normalized);
       toast.success("دستور ترب در صف کنترل‌شده ثبت شد.");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "خطا در ثبت دستور ترب.";
@@ -167,19 +213,19 @@ function AdminAutomationPage() {
                   <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
                       <dt className="text-muted-foreground">شناسه job</dt>
-                      <dd className="font-mono text-xs break-all">{lastTorobResult.job.id}</dd>
+                      <dd className="font-mono text-xs break-all">{lastTorobResult.jobId}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">وضعیت</dt>
-                      <dd>{lastTorobResult.job.status}</dd>
+                      <dd>{lastTorobResult.status}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">نوع job</dt>
-                      <dd>{lastTorobResult.job.job_type}</dd>
+                      <dd>{lastTorobResult.jobType}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">اجرای مستقیم UI</dt>
-                      <dd>{lastTorobResult.direct_ui_execution ? "بله" : "خیر"}</dd>
+                      <dd>{lastTorobResult.directUiExecution ? "بله" : "خیر"}</dd>
                     </div>
                   </dl>
                 </div>
