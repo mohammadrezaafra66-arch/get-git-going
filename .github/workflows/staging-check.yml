@@ -5,33 +5,156 @@ on:
     branches:
       - staging
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+  push:
+    branches:
+      - staging
+      - main
+      - 'cursor/phase6-boundary-governance'
+
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  staging-check:
-    name: Staging Check
+  repository-sanity:
+    name: Repository sanity and governance checks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Validate required governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            "docs/governance/LOVABLE_CURSOR_BOUNDARY.md"
+            "docs/governance/BRANCH_STRATEGY.md"
+            "docs/governance/LOVABLE_PROMPT_RULES.md"
+            ".github/pull_request_template.md"
+            ".github/CODEOWNERS"
+            ".cursor/rules/phase6-boundary.mdc"
+            ".cursor/rules/branch-discipline.mdc"
+            ".cursor/rules/openapi-contract.mdc"
+            ".cursor/rules/worker-boundary.mdc"
+          )
+
+          missing=0
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              missing=1
+            else
+              echo "OK: $file"
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Required governance files are missing."
+            exit 1
+          fi
+
+      - name: Check forbidden environment files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden_files="$(find . -type f \
+            \( -name '.env' -o -name '.env.*' \) \
+            ! -name '.env.example' \
+            ! -name '.env.production.example' \
+            ! -name '.env.staging.example' \
+            -print)"
+
+          if [ -n "$forbidden_files" ]; then
+            echo "Forbidden environment files found:"
+            echo "$forbidden_files"
+            exit 1
+          fi
+
+          echo "No forbidden environment files found."
+
+      - name: Set up Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '20'
+
+      - name: Set up Bun
+        if: ${{ hashFiles('bun.lock') != '' }}
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Lint
-        run: npm run lint
+          if [ -f "bun.lock" ]; then
+            echo "Using Bun because bun.lock exists."
+            bun install --frozen-lockfile
+          elif [ -f "package-lock.json" ]; then
+            echo "Using npm ci because package-lock.json exists."
+            npm ci
+          else
+            echo "Using npm install because no lockfile was detected."
+            npm install
+          fi
 
-      - name: Build
-        run: npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
+      - name: Run lint if available
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)"; then
+            if [ -f "bun.lock" ]; then
+              bun run lint
+            else
+              npm run lint
+            fi
+          else
+            echo "No lint script found. Skipping lint."
+          fi
+
+      - name: Run typecheck if available
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1)"; then
+            if [ -f "bun.lock" ]; then
+              bun run typecheck
+            else
+              npm run typecheck
+            fi
+          else
+            echo "No typecheck script found. Skipping typecheck."
+          fi
+
+      - name: Run build if available
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts.build ? 0 : 1)"; then
+            if [ -f "bun.lock" ]; then
+              bun run build
+            else
+              npm run build
+            fi
+          else
+            echo "No build script found. Skipping build."
+          fi
