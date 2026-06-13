@@ -1,64 +1,74 @@
-# AfraKala Worker Runtime — Minimal Skeleton
+# AfraKala Worker Runtime
 
-**Phase:** PHASE-1-IMPLEMENTATION  
-**Packets:** TPC-I-001 + TPC-I-002 + TPC-I-004 + TPC-I-005 + TPC-I-007-IMPLEMENTATION + TPC-I-009-IMPLEMENTATION + TPC-I-011-IMPLEMENTATION + TPC-I-012-IMPLEMENTATION + TPC-I-013-IMPLEMENTATION  
-**Status:** Minimal skeleton with mock-only driver contract, mock output persistence, controlled output insert contract, controlled bridge contract, live bridge contract guard, guarded insert contract, controlled worker boundary, and controlled worker next-step boundary
+**Phase:** PHASE-1 foundation + PHASE-2 controlled read-only path  
+**Status:** Controlled worker foundation with mock contracts, guarded read-only evidence helpers, deterministic read-only pipeline, runner route, and no production scheduler.
 
-This package contains the minimal Python Worker Runtime skeleton for AfraKala Automation.
+This package contains the Python Worker Runtime skeleton for AfraKala Automation.
 
-It is intentionally small. It does **not** implement any real source integration, browser automation, migration, API route, or UI work.
+The runtime is still intentionally controlled. It is not a general crawler, not a scheduler, and not a production automation daemon. Phase 2 adds a limited read-only path for evidence-oriented outputs while preserving strict guardrails.
 
 ## Purpose
 
-The goal is to create a controlled worker foundation before any real driver is built.
+The goal is to create a controlled worker foundation before any broad automation is enabled.
 
-The worker skeleton provides:
+The worker currently provides:
 
-- environment-based config loading
-- structured logging
-- data client wrapper shape
-- job claim skeleton
-- heartbeat skeleton
-- checkpoint save/load skeleton
-- job runner skeleton
-- graceful shutdown hooks
-- mock/test mode
-- mock-only driver contract
-- mock driver registry
-- mock output persistence
-- controlled output insert contract
-- controlled bridge contract
-- live bridge contract guard
-- guarded insert contract
-- controlled worker boundary
-- controlled worker next-step boundary
+- environment-based config loading,
+- structured logging,
+- data client wrapper shape,
+- job claim skeleton,
+- heartbeat skeleton,
+- checkpoint save/load skeleton,
+- job runner skeleton,
+- graceful shutdown hooks,
+- mock/test mode,
+- mock-only driver contract,
+- mock driver registry,
+- mock output persistence,
+- controlled output insert contract,
+- controlled bridge contract,
+- live bridge contract guard,
+- guarded insert contract,
+- controlled worker boundary,
+- controlled worker next-step boundary,
+- Phase 2 Torob limited read-only driver,
+- retry/backoff policy for guarded aborts,
+- abort evidence builder,
+- read-only output row builder,
+- worker-side read-only output adapter,
+- deterministic read-only worker pipeline,
+- JobRunner route for deterministic `TOROB_LIMITED_READONLY` jobs.
 
 ## Out of scope
 
-The following are forbidden in this packet:
+The following remain forbidden unless a later packet explicitly authorizes them:
 
 ```text
-Real source integrations
+Production scheduler
+Bulk crawl
 Browser automation
-External website calls
-Redis
-RabbitMQ
-Supabase migration
-UI implementation
-New API route
-Parallel Core
+Login/session/cookie use
+CAPTCHA solving or bypass
+Stealth or anti-bot evasion
+Automatic live retry
+Automatic product discovery
+Business writeback
+Product price mutation
+Customer mutation
+Supplier mutation
+Sales-list mutation
+Messaging or status posting
 Parallel database
 Parallel admin panel
 Hardcoded secret
-Production schedule
 ```
 
 ## Local setup
 
 ```powershell
-1. cd automation/worker-runtime
-2. python -m pip install -e .[dev]
-3. python -m pytest -q
+cd automation/worker-runtime
+python -m pip install -e .[dev]
+python -m pytest -q
 ```
 
 If `pytest` is not available in your environment, install it through the dev extra.
@@ -66,10 +76,10 @@ If `pytest` is not available in your environment, install it through the dev ext
 ## Run in mock mode
 
 ```powershell
-1. cd automation/worker-runtime
-2. $env:WORKER_MODE="mock"
-3. $env:WORKER_ID="local-worker-001"
-4. python -m main
+cd automation/worker-runtime
+$env:WORKER_MODE="mock"
+$env:WORKER_ID="local-worker-001"
+python -m main
 ```
 
 No real secrets are required for mock mode.
@@ -129,7 +139,7 @@ DRIVER_OUTPUT_SAVED
 
 TPC-I-005 adds a controlled output insert contract.
 
-The contract only accepts:
+The legacy controlled contract only accepts:
 
 ```text
 driver_name = mock
@@ -141,63 +151,82 @@ phase_label = PHASE-1
 
 Non-mock driver names, non-mock source kinds, invalid statuses, non-object output payloads, and non-array errors are rejected by tests.
 
-## Controlled bridge contract
+## Controlled bridge contracts
 
-TPC-I-007-IMPLEMENTATION adds a controlled bridge contract.
-
-The bridge accepts only rows already shaped and validated by:
+The bridge and guard contracts store validated mock rows in mock-only boundaries:
 
 ```text
-build_controlled_driver_output_row(...)
+inserted_driver_outputs
+live_inserted_driver_outputs
+credentialed_driver_outputs
+worker_integrated_outputs
+worker_next_step_outputs
+worker_follow_up_outputs
 ```
 
-The mock bridge stores accepted rows in `inserted_driver_outputs` and rejects malformed or non-mock rows.
+These still do not implement a production database write path or production scheduling.
 
-## Live bridge contract guard
+## Phase 2 read-only path
 
-TPC-I-009-IMPLEMENTATION adds a live bridge guard in mock mode.
+Phase 2 adds a controlled read-only path for `TOROB_LIMITED_READONLY` evidence outputs.
 
-The live bridge guard accepts only validated mock rows and stores them in `live_inserted_driver_outputs` with:
+The deterministic path must have:
 
 ```text
-bridge_mode = mock_verified
+job_type = TOROB_LIMITED_READONLY
+driver_name = torob_limited_readonly
+source_kind = external_read_only
+phase_label = PHASE-2
+live_execution = false
+network_calls = 0
 ```
 
-## Guarded insert contract
-
-TPC-I-011-IMPLEMENTATION adds a guarded insert contract in mock mode.
-
-The guard accepts only validated mock rows and stores them in `credentialed_driver_outputs` with:
+The worker-side read-only path is split into small testable parts:
 
 ```text
-credential_boundary = worker_runtime_mock_only
+torob_limited_readonly driver
+readonly_worker_pipeline
+readonly output adapter
+read-only output row builder
+worker-side persistence boundary
 ```
 
-This still does not implement real source execution or a credentialed database path.
+The deterministic pipeline is exposed through `JobRunner` for non-live `TOROB_LIMITED_READONLY` jobs only.
 
-## Controlled worker boundary
+If a job includes live flags, the deterministic runner path rejects it.
 
-TPC-I-012-IMPLEMENTATION adds a controlled worker boundary in mock mode.
+## Phase 2 live-readonly evidence status
 
-The boundary accepts only validated mock rows and stores them in `worker_integrated_outputs` with:
+Controlled live-readonly evidence has been treated as an operator-approved evidence activity only, not as a scheduler or crawler.
+
+Current posture:
 
 ```text
-worker_boundary = controlled_mock_only
+rapid live retries = paused
+retry_allowed_now = false after repeated HTTP abort evidence
+future live attempt = cooldown + review + fresh explicit approval
 ```
 
-This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
+No future live attempt is authorized by this README.
 
-## Controlled worker next-step boundary
+## Verification commands
 
-TPC-I-013-IMPLEMENTATION adds a controlled worker next-step boundary in mock mode.
+Targeted tests:
 
-The next-step boundary accepts only validated mock rows and stores them in `worker_next_step_outputs` with:
-
-```text
-next_step_boundary = controlled_mock_only
+```powershell
+cd automation/worker-runtime
+python -m pytest -q tests/test_torob_readonly_output_persistence.py
+python -m pytest -q tests/test_torob_worker_output_path.py
+python -m pytest -q tests/test_readonly_worker_pipeline.py
+python -m pytest -q tests/test_job_runner_readonly_route.py
 ```
 
-This still does not implement real source execution, a database write path, UI writes, API routes, migrations, or production scheduling.
+Full worker test suite:
+
+```powershell
+cd automation/worker-runtime
+python -m pytest -q
+```
 
 ## Environment variables
 
@@ -207,4 +236,4 @@ Important rule: never commit real secrets.
 
 ## Notes
 
-This runtime is not production-ready yet. It is only a minimal contract skeleton with controlled mock output validation, bridge validation, live bridge guarding, guarded insert validation, controlled worker boundary validation, and controlled next-step validation so the next packet can add the next approved step safely.
+This runtime is not production-ready yet. It is a controlled foundation with mock contracts and Phase 2 read-only evidence paths. It must not be treated as authorization for production scheduling, bulk crawling, browser automation, login/session/cookie use, or business writeback.
