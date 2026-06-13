@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from config import RuntimeConfig
+from torob_readonly_output_persistence import validate_torob_readonly_output_row
 
 
 ALLOWED_OUTPUT_STATUSES = {"COMPLETED", "FAILED", "SKIPPED"}
@@ -39,6 +40,7 @@ class MockSupabaseClient:
     worker_integrated_outputs: list[dict[str, Any]] = field(default_factory=list)
     worker_next_step_outputs: list[dict[str, Any]] = field(default_factory=list)
     worker_follow_up_outputs: list[dict[str, Any]] = field(default_factory=list)
+    torob_readonly_outputs: list[dict[str, Any]] = field(default_factory=list)
 
     def claim_job(self, worker_id: str) -> dict[str, Any] | None:
         for job in self.jobs:
@@ -133,6 +135,12 @@ class MockSupabaseClient:
         self.worker_follow_up_outputs.append(follow_up)
         return follow_up
 
+    def persist_torob_readonly_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        safe_row = validate_torob_readonly_output_row(row)
+        persisted = {**safe_row, "worker_persisted_at": _now(), "worker_boundary": "controlled_torob_readonly_mock"}
+        self.torob_readonly_outputs.append(persisted)
+        return persisted
+
 
 class SupabaseClientWrapper:
     def __init__(self, config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> None:
@@ -202,6 +210,9 @@ class SupabaseClientWrapper:
 
     def run_controlled_worker_follow_up(self, row: dict[str, Any]) -> dict[str, Any]:
         return self._mock_client.run_controlled_worker_follow_up(row)
+
+    def persist_torob_readonly_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        return self._mock_client.persist_torob_readonly_output(row)
 
 
 def build_controlled_driver_output_row(
