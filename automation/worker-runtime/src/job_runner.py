@@ -9,7 +9,10 @@ from checkpoint import save_checkpoint
 from driver_registry import DriverRegistry, build_default_registry
 from drivers.base import DriverContext
 from logger import log_event
+from readonly_worker_pipeline import run_readonly_pipeline
 from supabase_client import SupabaseClientWrapper
+
+READONLY_JOB_TYPE = "TOROB_LIMITED_READONLY"
 
 
 class JobRunner:
@@ -29,10 +32,13 @@ class JobRunner:
         self.registry = registry or build_default_registry()
 
     def run(self, job: dict[str, Any]) -> dict[str, Any]:
-        job_type = str(job.get("type", "MOCK_RUN"))
+        job_type = str(job.get("type", job.get("job_type", "MOCK_RUN")))
 
         if job_type == "MOCK_DRIVER_RUN":
             return self._run_mock_driver_job(job)
+
+        if job_type == READONLY_JOB_TYPE:
+            return run_readonly_pipeline(store=self.store, worker_id=self.worker_id, job=job)
 
         return self._run_legacy_mock_job(job)
 
