@@ -576,6 +576,76 @@ staging باید محل تست کنترل‌شده باشد، نه مسیر آز
 
 ---
 
-## 16. وضعیت فعلی
+## 17. معیار موفقیت نهایی فاز 3.9
+
+فاز 3.9 فقط وقتی قابل بستن است که حداقل یک Guard واقعی در GitHub فعال شده باشد.
+
+این شرط فقط یک توصیه نیست؛ شرط خروج فاز است.
+
+بدون حداقل یک Guard واقعی، فاز 3.9 کامل محسوب نمی‌شود، حتی اگر همه سندهای governance نوشته شده باشند.
+
+---
+
+### 17.1 حداقل Guard قابل قبول
+
+حداقل حالت قابل قبول برای بستن فاز:
+
+- PR Template فعال شده باشد.
+- PR Template از کاربر نوع تغییر، مسیرهای تغییرکرده، evidence، test plan، migration impact، RLS/RBAC impact و secret impact را بخواهد.
+- PR Template در یک PR واقعی استفاده شده باشد.
+- evidence اجرای آن ثبت شده باشد.
+
+---
+
+### 17.2 حالت بهتر
+
+حالت بهتر برای بستن فاز:
+
+- CODEOWNERS فعال باشد.
+- مسیرهای حساس مثل `supabase/**`, `openapi/**`, `automation/**`, `.github/**`, `deploy/**`, `server/**`, `src/lib/**`, `src/integrations/**` و `src/server/**` reviewer مناسب داشته باشند.
+- حداقل یک PR آزمایشی نشان دهد review مسیر حساس فعال است.
+
+---
+
+### 17.3 حالت بهترتر
+
+حالت بهترتر برای بستن فاز:
+
+- Boundary Guard ساده فعال باشد.
+- اگر branch با `lovable/` شروع شد و مسیرهای ممنوع مثل `supabase/**`, `openapi/**`, `automation/**`, `.github/**`, `server/**`, `src/lib/**` یا `src/integrations/**` را تغییر داد، workflow هشدار یا fail بدهد.
+- نتیجه یک PR آزمایشی در evidence ثبت شده باشد.
+
+---
+
+### 17.4 Evidence لازم برای بستن فاز
+
+برای بستن فاز 3.9 باید حداقل یکی از این evidenceها وجود داشته باشد:
+
+| Guard فعال | Evidence لازم |
+|---|---|
+| PR Template | diff فایل `.github/pull_request_template.md` و لینک PR استفاده‌کننده |
+| CODEOWNERS | diff فایل `.github/CODEOWNERS` و نمونه PR با reviewer |
+| Boundary Guard | workflow file و نتیجه PR آزمایشی |
+| Staging Check | workflow file و نتیجه PR آزمایشی |
+
+---
+
+### 17.5 تصمیم نهایی
+
+تا وقتی حداقل یک Guard واقعی فعال نشده، وضعیت فاز باید این باشد:
+
+Status: Not complete
+
+وقتی حداقل یک Guard واقعی فعال شد و evidence آن ثبت شد، وضعیت فاز می‌تواند این باشد:
+
+Status: Complete with minimum enforcement
+
+اگر PR Template، CODEOWNERS و Boundary Guard هر سه فعال شدند، وضعیت بهتر این است:
+
+Status: Complete with strong enforcement
+
+---
+
+## 18. وضعیت فعلی
 
 Status: Ready for review.
