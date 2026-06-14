@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "node server/node-entry.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
   },
   "dependencies": {
