@@ -69,3 +69,24 @@
 ## Remaining risks
 
 <!-- Known gaps, follow-ups, or rollback notes -->
+
+## Evidence
+
+<!-- Attach screenshots, logs, sample input/output, test results, workflow links, or other proof that this PR works and stays inside scope. -->
+
+- [ ] Screenshot attached if UI changed
+- [ ] Logs attached if backend/worker/process changed
+- [ ] Test output attached or pasted
+- [ ] Boundary Guard result checked
+- [ ] Evidence is enough for reviewer to verify without guessing
+
+## Rollback Plan
+
+<!-- Explain exactly how to revert this PR if it causes a problem. -->
+
+- Rollback method:
+- Files/changes to revert:
+- Data/migration rollback needed: yes/no
+- Local/self-host rollback needed: yes/no
+- Risk after rollback:
+
