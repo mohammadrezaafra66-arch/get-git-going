@@ -19,9 +19,7 @@ export function MarketingTopCheckedTodayCard() {
           <Eye className="h-4 w-4 text-blue-600" />
           محصولات بیشتر بررسی‌شده امروز
         </CardTitle>
-        <CardDescription>
-          محصولاتی که امروز بیشترین تعداد بررسی قیمت را داشته‌اند
-        </CardDescription>
+        <CardDescription>محصولاتی که امروز بیشترین تعداد بررسی قیمت را داشته‌اند</CardDescription>
       </CardHeader>
       <CardContent>
         {q.isLoading ? (
