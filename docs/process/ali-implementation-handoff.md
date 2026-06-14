@@ -299,6 +299,283 @@ Lovable فقط باید در محدوده UI کار کند.
 
 ---
 
+## 16. ترتیب اجرای Enforcement توسط علی
+
+این بخش ترتیب اجرای فنی علی را دقیق و بدون ابهام مشخص می‌کند.
+
+هدف این مرحله این است که علی بداند enforcement را از کجا شروع کند، چه چیزی را بعد از چه چیزی اجرا کند، و برای هر قدم چه evidence لازم است.
+
+---
+
+### 16.1 اصل اجرای مرحله‌ای
+
+علی نباید همه guardها را یک‌باره و بدون تست فعال کند.
+
+اجرای درست باید مرحله‌ای باشد:
+
+1. اول کنترل‌های سبک و انسانی.
+2. بعد کنترل‌های review.
+3. بعد guardهای warning.
+4. بعد guardهای fail/block.
+5. بعد branch protection.
+6. بعد PR آزمایشی.
+7. بعد evidence.
+8. بعد بستن فاز.
+
+---
+
+### 16.2 ترتیب قطعی اجرا
+
+ترتیب اجرای علی باید این باشد:
+
+| ترتیب | کار علی | خروجی مورد انتظار | فایل یا ابزار احتمالی |
+|---|---|---|---|
+| 1 | اصلاح یا ساخت PR Template | PRها اطلاعات لازم را بخواهند | `.github/pull_request_template.md` |
+| 2 | اصلاح یا ساخت CODEOWNERS | مسیرهای حساس reviewer داشته باشند | `.github/CODEOWNERS` |
+| 3 | ساخت labelهای لازم | PRها قابل دسته‌بندی شوند | GitHub Labels |
+| 4 | ساخت Boundary Guard | مسیرهای ممنوع Lovable کنترل شوند | `.github/workflows/boundary-guard.yml` |
+| 5 | ساخت Staging Check | تست‌های اولیه و scope check اجرا شود | `.github/workflows/staging-check.yml` |
+| 6 | فعال‌سازی Branch Protection برای `main` | کار مستقیم روی main محدود شود | GitHub Branch Protection |
+| 7 | فعال‌سازی Branch Protection برای `staging` | merge به staging کنترل شود | GitHub Branch Protection |
+| 8 | تست یک PR آزمایشی | guardها واقعاً تست شوند | Test PR |
+| 9 | ثبت evidence برای PR آزمایشی | اجرای enforcement قابل اثبات شود | `docs/evidence/WPC-3.9-xxx-enforcement.md` |
+| 10 | بستن فاز 3.9 | تکمیل فاز با حداقل یک guard واقعی | Final phase evidence |
+
+---
+
+### 16.3 قدم اول: PR Template
+
+اولین کار علی باید PR Template باشد.
+
+PR Template باید حداقل این موارد را بخواهد:
+
+- Task ID / Phase
+- Branch type
+- Change type
+- Files intentionally changed
+- Forbidden paths check
+- Migration impact
+- RLS/RBAC impact
+- Secret impact
+- Handoff required?
+- Handoff location
+- Evidence location
+- Local test result
+- Server deploy impact
+- Remaining risks
+- Stop-The-Line reviewed?
+
+دلیل اولویت:
+
+PR Template سریع‌ترین guard انسانی است و قبل از workflowهای پیچیده، رفتار تیم را اصلاح می‌کند.
+
+---
+
+### 16.4 قدم دوم: CODEOWNERS
+
+بعد از PR Template، علی باید CODEOWNERS را تنظیم کند.
+
+CODEOWNERS باید حداقل این مسیرها را پوشش دهد:
+
+- `supabase/**`
+- `supabase/migrations/**`
+- `openapi/**`
+- `automation/**`
+- `.github/**`
+- `deploy/**`
+- `server/**`
+- `src/lib/**`
+- `src/integrations/**`
+- `src/server/**`
+- `docs/adr/**`
+- `docs/security/**`
+
+دلیل اولویت:
+
+مسیرهای حساس نباید بدون review مناسب merge شوند.
+
+---
+
+### 16.5 قدم سوم: labelها
+
+علی باید این labelها را بسازد:
+
+- `lovable-ui`
+- `cursor-core`
+- `contract`
+- `migration`
+- `evidence-required`
+- `stop-the-line`
+- `needs-afra-approval`
+- `needs-ali-review`
+- `server-impact`
+- `docs-governance`
+
+دلیل اولویت:
+
+labelها هم برای انسان‌ها مفیدند هم بعداً برای workflowها و گزارش‌گیری.
+
+---
+
+### 16.6 قدم چهارم: Boundary Guard
+
+بعد از PR Template، CODEOWNERS و labelها، علی باید Boundary Guard بسازد.
+
+حداقل قانون قابل قبول:
+
+اگر branch با `lovable/` شروع شد و یکی از مسیرهای زیر تغییر کرد، workflow باید حداقل warning بدهد و ترجیحاً fail کند:
+
+- `supabase/**`
+- `openapi/**`
+- `automation/**`
+- `server/**`
+- `src/lib/**`
+- `src/integrations/**`
+- `src/server/**`
+- `.github/**`
+- `deploy/**`
+- `.env*`
+
+دلیل اولویت:
+
+این guard مستقیماً مرز Lovable و Cursor را enforce می‌کند.
+
+---
+
+### 16.7 قدم پنجم: Staging Check
+
+علی باید `staging-check.yml` را با چک‌های سبک شروع کند.
+
+حداقل چک‌های پیشنهادی:
+
+- branch و base branch بررسی شود.
+- فایل‌های تغییرکرده لیست شوند.
+- PRهای docs فقط docs را تغییر دهند.
+- PRهای Lovable مسیر ممنوع تغییر نداده باشند.
+- نبودن `.env*` در diff بررسی شود.
+- اگر scriptها موجود هستند، typecheck/lint/build اجرا شوند یا دلیل نبودنشان ثبت شود.
+
+دلیل اولویت:
+
+staging باید محل تست کنترل‌شده باشد، نه مسیر آزاد برای تغییرات مبهم.
+
+---
+
+### 16.8 قدم ششم: Branch Protection برای main
+
+بعد از اینکه PR Template و حداقل یک check آماده شد، علی باید Branch Protection برای `main` را فعال کند.
+
+حداقل انتظار:
+
+- direct push به `main` محدود شود.
+- merge فقط از PR انجام شود.
+- review لازم باشد.
+- status checkهای لازم مشخص شوند.
+- مسیرهای حساس بدون approval merge نشوند.
+
+---
+
+### 16.9 قدم هفتم: Branch Protection برای staging
+
+بعد از `main`، علی باید `staging` را هم محافظت کند.
+
+حداقل انتظار:
+
+- direct push به `staging` محدود شود.
+- PR به `staging` لازم باشد.
+- حداقل checkهای سبک اجرا شوند.
+- PRهای سندی و UI/Core از مسیر درست بیایند.
+
+---
+
+### 16.10 قدم هشتم: PR آزمایشی
+
+علی باید یک PR آزمایشی بسازد تا guardها واقعاً تست شوند.
+
+سناریوهای پیشنهادی:
+
+1. PR مجاز docs که فقط `docs/**` را تغییر می‌دهد.
+2. PR غیرمجاز Lovable که فرضاً `supabase/**` را تغییر می‌دهد.
+3. PR دارای `.env` تستی که باید block شود.
+4. PR دارای تغییر mixed بین `supabase/**` و `src/routes/**` که باید warning بگیرد.
+
+هدف:
+
+ثابت شود guard فقط روی کاغذ نیست و واقعاً کار می‌کند.
+
+---
+
+### 16.11 قدم نهم: Evidence اجرای Enforcement
+
+علی باید برای اجرای enforcement evidence ثبت کند.
+
+مسیر پیشنهادی:
+
+`docs/evidence/WPC-3.9-enforcement.md`
+
+حداقل evidence:
+
+- لینک PR Template یا diff آن
+- diff CODEOWNERS
+- لیست labelها یا screenshot
+- workflow fileها
+- نتیجه PR آزمایشی
+- وضعیت Branch Protection
+- خطاها یا محدودیت‌های باقی‌مانده
+
+---
+
+### 16.12 قدم دهم: بستن فاز 3.9
+
+فاز 3.9 فقط وقتی قابل بستن است که حداقل یک guard واقعی فعال شده باشد.
+
+حداقل guard قابل قبول:
+
+- PR Template فعال شده باشد و اطلاعات لازم را بخواهد.
+
+بهتر:
+
+- CODEOWNERS مسیرهای حساس را پوشش دهد.
+
+بهترتر:
+
+- Boundary Guard ساده فعال باشد و مسیرهای ممنوع Lovable را تشخیص دهد.
+
+بدون حداقل یک guard واقعی، فاز 3.9 نباید بسته شود.
+
+---
+
+### 16.13 مواردی که علی نباید در این مرحله انجام دهد
+
+در اجرای enforcement، علی نباید این کارها را همزمان با این فاز انجام دهد:
+
+- ساخت ربات واقعی
+- اتصال واقعی به دیوار، واتساپ، روبیکا، اینستاگرام یا ترب
+- تغییر production
+- تغییر Supabase بدون approval
+- تغییر UI
+- تغییر backend feature
+- اضافه‌کردن secret در workflow
+- اجرای workflow بدون تست PR آزمایشی
+
+---
+
+### 16.14 معیار پذیرش مرحله 3.9.13
+
+مرحله 3.9.13 وقتی قبول است که:
+
+1. ترتیب اجرای علی روشن باشد.
+2. PR Template اولین قدم باشد.
+3. CODEOWNERS بعد از PR Template آمده باشد.
+4. labelها مشخص باشند.
+5. Boundary Guard و Staging Check مشخص باشند.
+6. Branch Protection برای `main` و `staging` در ترتیب آمده باشد.
+7. PR آزمایشی و evidence اجباری شده باشد.
+8. شرط حداقل یک guard واقعی برای بستن فاز ذکر شده باشد.
+9. علی بدون جلسه طولانی بتواند ترتیب اجرا را دنبال کند.
+
+---
+
 ## 16. وضعیت فعلی
 
 Status: Ready for review.
