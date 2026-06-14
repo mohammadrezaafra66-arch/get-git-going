@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from config import RuntimeConfig
+from readonly_output_bridge import ReadonlyOutputBridge
 from torob_readonly_output_persistence import validate_torob_readonly_output_row
 
 
@@ -41,6 +42,7 @@ class MockSupabaseClient:
     worker_next_step_outputs: list[dict[str, Any]] = field(default_factory=list)
     worker_follow_up_outputs: list[dict[str, Any]] = field(default_factory=list)
     torob_readonly_outputs: list[dict[str, Any]] = field(default_factory=list)
+    readonly_bridge_outputs: list[dict[str, Any]] = field(default_factory=list)
 
     def claim_job(self, worker_id: str) -> dict[str, Any] | None:
         for job in self.jobs:
@@ -141,6 +143,13 @@ class MockSupabaseClient:
         self.torob_readonly_outputs.append(persisted)
         return persisted
 
+    def bridge_readonly_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        bridge = ReadonlyOutputBridge()
+        record = bridge.write(row)
+        bridged = {**record, "bridged_at": _now(), "worker_boundary": "controlled_readonly_bridge_mock"}
+        self.readonly_bridge_outputs.append(bridged)
+        return bridged
+
 
 class SupabaseClientWrapper:
     def __init__(self, config: RuntimeConfig, mock_client: MockSupabaseClient | None = None) -> None:
@@ -213,6 +222,9 @@ class SupabaseClientWrapper:
 
     def persist_torob_readonly_output(self, row: dict[str, Any]) -> dict[str, Any]:
         return self._mock_client.persist_torob_readonly_output(row)
+
+    def bridge_readonly_output(self, row: dict[str, Any]) -> dict[str, Any]:
+        return self._mock_client.bridge_readonly_output(row)
 
 
 def build_controlled_driver_output_row(
