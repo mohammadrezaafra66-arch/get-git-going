@@ -3,36 +3,38 @@ from __future__ import annotations
 import pytest
 
 from config import RuntimeConfig
-from readonly_worker_pipeline import run_readonly_pipeline
+from phase3_readonly_chain import run_phase3_readonly_chain
 from supabase_client import MockSupabaseClient, SupabaseClientWrapper
 
 
-def test_pipeline_runs_persists_and_bridges_deterministic_result() -> None:
+def test_phase3_chain_returns_safe_summary() -> None:
     mock_client = MockSupabaseClient()
     store = SupabaseClientWrapper(config=RuntimeConfig(worker_mode="mock"), mock_client=mock_client)
 
-    result = run_readonly_pipeline(store=store, worker_id="worker-1", job=_job())
+    result = run_phase3_readonly_chain(store=store, worker_id="worker-1", job=_job())
 
     assert result["status"] == "COMPLETED"
-    assert result["output"]["live_execution"] is False
-    assert result["output"]["network_calls"] == 0
-    assert result["persisted_output"]["source_kind"] == "external_read_only"
     assert result["persisted_output"]["phase_label"] == "PHASE-2"
     assert result["bridged_output"]["bridge_mode"] == "controlled_mock_verified"
-    assert result["bridged_output"]["target_table"] == "automation_driver_outputs"
-    assert result["bridged_output"]["phase_label"] == "PHASE-2"
-    assert result["bridged_output"]["network_calls"] == 0
+    assert result["evidence_dry_run_output"]["bridge_mode"] == "controlled_evidence_dry_run"
+    assert result["evidence_dry_run_output"]["dry_run"] is True
+    assert result["evidence_dry_run_output"]["target_table"] == "automation_driver_outputs"
+    assert result["evidence_dry_run_output"]["network_calls"] == 0
     assert len(mock_client.torob_readonly_outputs) == 1
     assert len(mock_client.readonly_bridge_outputs) == 1
+    assert len(mock_client.evidence_dry_run_outputs) == 1
 
 
-def test_pipeline_rejects_live_flag() -> None:
-    store = SupabaseClientWrapper(config=RuntimeConfig(worker_mode="mock"), mock_client=MockSupabaseClient())
+def test_phase3_chain_rejects_live_flag() -> None:
+    mock_client = MockSupabaseClient()
+    store = SupabaseClientWrapper(config=RuntimeConfig(worker_mode="mock"), mock_client=mock_client)
     job = _job()
     job["live_execution_requested"] = True
 
     with pytest.raises(ValueError, match="non-live"):
-        run_readonly_pipeline(store=store, worker_id="worker-1", job=job)
+        run_phase3_readonly_chain(store=store, worker_id="worker-1", job=job)
+
+    assert not hasattr(mock_client, "evidence_dry_run_outputs")
 
 
 def _job() -> dict[str, object]:
