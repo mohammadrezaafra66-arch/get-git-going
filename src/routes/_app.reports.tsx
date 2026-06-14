@@ -24,10 +24,7 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="گزارش‌ها"
-        description="گزارش‌های فروش، مالی و عملیاتی"
-      />
+      <PageHeader title="گزارش‌ها" description="گزارش‌های فروش، مالی و عملیاتی" />
 
       <Tabs defaultValue="marketing" dir="rtl" className="space-y-4">
         <TabsList>
@@ -37,10 +34,7 @@ function ReportsPage() {
         <TabsContent value="marketing" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">بازه زمانی</span>
-            <Select
-              value={String(range)}
-              onValueChange={(v) => setRange(Number(v) as RangeDays)}
-            >
+            <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as RangeDays)}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
