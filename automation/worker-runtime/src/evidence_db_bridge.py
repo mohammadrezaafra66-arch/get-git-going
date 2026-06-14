@@ -36,9 +36,8 @@ class EvidenceDbBridge:
 
 
 def validate_evidence_db_row(row: dict[str, Any]) -> dict[str, Any]:
-    safe_row = validate_bridge_row(row)
-    _reject_forbidden_keys(safe_row)
-    return safe_row
+    _reject_forbidden_keys(row)
+    return validate_bridge_row(row)
 
 
 def build_safe_insert_summary(row: dict[str, Any]) -> dict[str, Any]:
