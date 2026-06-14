@@ -55,9 +55,7 @@ export function MarketingActiveChannelsCard() {
             خطا در بارگذاری داده‌ها. لطفاً دوباره تلاش کنید.
           </p>
         ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            کانالی تعریف نشده است.
-          </p>
+          <p className="py-6 text-center text-sm text-muted-foreground">کانالی تعریف نشده است.</p>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
