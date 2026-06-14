@@ -13,6 +13,7 @@ import {
 import { MarketingTrendingCard } from "@/components/reports/MarketingTrendingCard";
 import { MarketingTopCheckedTodayCard } from "@/components/reports/MarketingTopCheckedTodayCard";
 import { MarketingEmergingProductsCard } from "@/components/reports/MarketingEmergingProductsCard";
+import { MarketingPromotionSuggestionsUsedCard } from "@/components/reports/MarketingPromotionSuggestionsUsedCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 
 const RANGE_OPTIONS: { value: RangeDays; label: string }[] = [
@@ -54,6 +55,7 @@ function ReportsPage() {
             <MarketingTrendingCard range={range} />
             <MarketingTopCheckedTodayCard />
             <MarketingEmergingProductsCard range={range} />
+            <MarketingPromotionSuggestionsUsedCard range={range} />
           </div>
         </TabsContent>
       </Tabs>
