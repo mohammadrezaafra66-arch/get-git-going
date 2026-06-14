@@ -8,7 +8,7 @@ from logger import get_logger
 from supabase_client import MockSupabaseClient, build_supabase_wrapper
 
 
-def test_runner_routes_readonly_job_to_pipeline() -> None:
+def test_runner_routes_readonly_job_to_full_pipeline() -> None:
     config = RuntimeConfig(worker_id="test-worker")
     client = MockSupabaseClient()
     store = build_supabase_wrapper(config, mock_client=client)
@@ -21,7 +21,12 @@ def test_runner_routes_readonly_job_to_pipeline() -> None:
     assert result["output"]["network_calls"] == 0
     assert result["persisted_output"]["source_kind"] == "external_read_only"
     assert result["persisted_output"]["phase_label"] == "PHASE-2"
+    assert result["bridged_output"]["bridge_mode"] == "controlled_mock_verified"
+    assert result["bridged_output"]["target_table"] == "automation_driver_outputs"
+    assert result["bridged_output"]["phase_label"] == "PHASE-2"
+    assert result["bridged_output"]["network_calls"] == 0
     assert len(client.torob_readonly_outputs) == 1
+    assert len(client.readonly_bridge_outputs) == 1
 
 
 def test_runner_rejects_readonly_job_with_live_flag() -> None:
@@ -36,6 +41,7 @@ def test_runner_rejects_readonly_job_with_live_flag() -> None:
         runner.run(job)
 
     assert client.torob_readonly_outputs == []
+    assert client.readonly_bridge_outputs == []
 
 
 def _job() -> dict[str, object]:
