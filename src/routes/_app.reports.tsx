@@ -57,6 +57,7 @@ function ReportsPage() {
             <MarketingTopCheckedTodayCard />
             <MarketingEmergingProductsCard range={range} />
             <MarketingPromotionSuggestionsUsedCard range={range} />
+            <MarketingActiveChannelsCard />
           </div>
         </TabsContent>
       </Tabs>
