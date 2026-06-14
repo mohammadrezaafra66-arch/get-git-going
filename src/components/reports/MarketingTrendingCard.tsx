@@ -1,17 +1,8 @@
 import { Flame, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  fetchTrendingProducts,
-  type RangeDays,
-} from "@/lib/management/market-intelligence";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchTrendingProducts, type RangeDays } from "@/lib/management/market-intelligence";
 import { formatNumber } from "@/lib/i18n/formatters";
 
 const STOCK_LABEL: Record<string, string> = {
@@ -20,10 +11,7 @@ const STOCK_LABEL: Record<string, string> = {
   limited: "محدود",
   unknown: "نامشخص",
 };
-const STOCK_VARIANT: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
+const STOCK_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   available: "default",
   limited: "secondary",
   unavailable: "destructive",
@@ -86,10 +74,7 @@ export function MarketingTrendingCard({ range }: Props) {
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge
-                      variant={STOCK_VARIANT[stock] ?? "outline"}
-                      className="text-[10px]"
-                    >
+                    <Badge variant={STOCK_VARIANT[stock] ?? "outline"} className="text-[10px]">
                       {STOCK_LABEL[stock] ?? stock}
                     </Badge>
                     <span className="text-xs font-bold tabular-nums">
