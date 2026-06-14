@@ -168,9 +168,7 @@ export function MarketingPromotionSuggestionsUsedCard({ range }: Props) {
             ) : null}
 
             {rows.length >= RECENT_LIMIT ? (
-              <p className="text-center text-xs text-muted-foreground">
-                نمایش نمونه ۵۰۰ مورد اخیر
-              </p>
+              <p className="text-center text-xs text-muted-foreground">نمایش نمونه ۵۰۰ مورد اخیر</p>
             ) : null}
           </div>
         )}
