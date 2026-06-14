@@ -1,6 +1,6 @@
 name: Boundary Guard
 
-# Phase 6 Boundary Guard
+# Phase 3.9 / WPC Boundary Guard
 
 on:
   pull_request:
@@ -87,7 +87,11 @@ jobs:
           changed_file = pathlib.Path("changed-files.txt")
           files = []
           if changed_file.exists():
-              files = [line.strip().replace("\\", "/") for line in changed_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+              files = [
+                  line.strip().replace("\\", "/")
+                  for line in changed_file.read_text(encoding="utf-8").splitlines()
+                  if line.strip()
+              ]
 
           violations = []
           warnings = []
@@ -100,6 +104,41 @@ jobs:
 
           integration_branches = {"main", "staging"}
           is_integration_branch = branch in integration_branches
+
+          def is_lovable_ui_branch(name):
+              return name.startswith("lovable/ui/WPC-") or name.startswith("lovable/")
+
+          def is_cursor_core_branch(name):
+              return name.startswith("cursor/core/WPC-")
+
+          def is_cursor_automation_branch(name):
+              return name.startswith("cursor/automation/WPC-")
+
+          def is_cursor_contract_branch(name):
+              return name.startswith("cursor/contract/WPC-")
+
+          def is_cursor_docs_branch(name):
+              return name.startswith("cursor/docs/WPC-") or name.startswith("docs/WPC-")
+
+          def is_hotfix_branch(name):
+              return name.startswith("hotfix/WPC-") or name.startswith("hotfix/")
+
+          allowed_branch_families = (
+              is_lovable_ui_branch(branch)
+              or is_cursor_core_branch(branch)
+              or is_cursor_automation_branch(branch)
+              or is_cursor_contract_branch(branch)
+              or is_cursor_docs_branch(branch)
+              or is_hotfix_branch(branch)
+              or is_integration_branch
+          )
+
+          if event_name == "pull_request" and not allowed_branch_families:
+              warnings.append(
+                  f"Branch naming warning: `{branch}` does not match the preferred WPC branch families. "
+                  "Preferred families: lovable/ui/WPC-*, cursor/core/WPC-*, cursor/automation/WPC-*, "
+                  "cursor/contract/WPC-*, cursor/docs/WPC-*, docs/WPC-*, hotfix/WPC-*."
+              )
 
           for path in files:
               name = pathlib.PurePosixPath(path).name
@@ -118,20 +157,28 @@ jobs:
 
           lovable_forbidden_patterns = [
               "automation/**",
-              "automation/worker-runtime/**",
-              "automation/openapi/**",
               "openapi/**",
-              "supabase/migrations/**",
               "server/**",
+              "src/lib/**",
+              "src/integrations/**",
+              "src/server/**",
+              "supabase/**",
               ".github/**",
               ".cursor/**",
               "deploy/**",
-              "docs/governance/**",
+              "docs/adr/**",
+              "docs/security/**",
+              "docs/ops/**",
               ".env",
               ".env.*",
+              "package.json",
+              "package-lock.json",
+              "bun.lock",
+              "pnpm-lock.yaml",
+              "yarn.lock",
           ]
 
-          if branch.startswith("lovable/") and not is_integration_branch:
+          if is_lovable_ui_branch(branch) and not is_integration_branch:
               for path in files:
                   if any_match(path, lovable_forbidden_patterns):
                       violations.append(
@@ -139,59 +186,78 @@ jobs:
                           f"but it changed forbidden path `{path}`."
                       )
 
-          phase6_allowed_patterns = [
-              "docs/governance/**",
-              "docs/testing/**",
+          docs_governance_allowed_patterns = [
+              "docs/process/**",
+              "docs/handoffs/**",
+              "docs/evidence/**",
+              ".github/CODEOWNERS",
+              ".github/pull_request_template.md",
+              ".github/workflows/**",
               ".cursor/rules/**",
-              ".github/**",
-              "openapi/**",
-              "automation/openapi/**",
-              ".env.example",
-              ".env.production.example",
-              ".env.staging.example",
+              "README.md",
+              "AGENTS.md",
           ]
 
-          if branch.startswith("cursor/phase6-") and not is_integration_branch:
+          if is_cursor_docs_branch(branch) and not is_integration_branch:
               for path in files:
-                  if not any_match(path, phase6_allowed_patterns):
-                      violations.append(
-                          f"Phase 6 scope violation: branch `{branch}` is for governance only, "
-                          f"but it changed `{path}`."
-                      )
-
-          if branch.startswith("cursor/worker-") and not is_integration_branch:
-              broad_ui_patterns = [
-                  "src/components/**",
-                  "src/routes/**",
-                  "src/shared/components/**",
-              ]
-              for path in files:
-                  if any_match(path, broad_ui_patterns):
+                  if not any_match(path, docs_governance_allowed_patterns):
                       warnings.append(
-                          f"Worker branch warning: `{branch}` changed UI path `{path}`. "
-                          "This may be valid only if explicitly required and reviewed."
-                      )
-
-          migration_changed = [path for path in files if matches(path, "supabase/migrations/**")]
-          if migration_changed and not is_integration_branch:
-              if branch.startswith("lovable/"):
-                  for path in migration_changed:
-                      violations.append(
-                          f"Database boundary violation: Lovable branch `{branch}` changed migration `{path}`."
-                      )
-              elif not (branch.startswith("cursor/db-") or branch.startswith("hotfix/")):
-                  for path in migration_changed:
-                      violations.append(
-                          f"Database branch violation: migration `{path}` should be changed from `cursor/db-*` or approved `hotfix/*`, not `{branch}`."
+                          f"Docs/governance branch warning: `{branch}` changed `{path}`. "
+                          "This may be valid only if the PR explains why it belongs in a docs/governance branch."
                       )
 
           workflow_changed = [path for path in files if matches(path, ".github/workflows/**")]
           if workflow_changed and not is_integration_branch:
-              if not (branch.startswith("cursor/phase6-") or branch.startswith("cursor/docs-") or branch.startswith("hotfix/")):
+              if not (is_cursor_docs_branch(branch) or is_hotfix_branch(branch)):
                   for path in workflow_changed:
                       violations.append(
                           f"Workflow governance violation: `{path}` changed from branch `{branch}`. "
-                          "Workflow changes must come from governance/docs/hotfix branches."
+                          "Workflow changes must come from cursor/docs/WPC-*, docs/WPC-*, or approved hotfix branches."
+                      )
+
+          migration_changed = [path for path in files if matches(path, "supabase/migrations/**")]
+          if migration_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in migration_changed:
+                      violations.append(
+                          f"Database boundary violation: Lovable branch `{branch}` changed migration `{path}`."
+                      )
+              elif not (is_cursor_core_branch(branch) or is_hotfix_branch(branch)):
+                  for path in migration_changed:
+                      violations.append(
+                          f"Database branch violation: migration `{path}` should be changed from "
+                          f"`cursor/core/WPC-*` or approved `hotfix/WPC-*`, not `{branch}`."
+                      )
+
+          automation_changed = [path for path in files if matches(path, "automation/**")]
+          if automation_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in automation_changed:
+                      violations.append(
+                          f"Automation boundary violation: Lovable branch `{branch}` changed automation path `{path}`."
+                      )
+              elif not (is_cursor_automation_branch(branch) or is_cursor_contract_branch(branch) or is_hotfix_branch(branch)):
+                  for path in automation_changed:
+                      warnings.append(
+                          f"Automation branch warning: `{path}` changed from `{branch}`. "
+                          "Expected cursor/automation/WPC-* or cursor/contract/WPC-* unless explicitly justified."
+                      )
+
+          contract_changed = [
+              path for path in files
+              if any_match(path, ["openapi/**", "automation/openapi/**", "automation/schemas/**"])
+          ]
+          if contract_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in contract_changed:
+                      violations.append(
+                          f"Contract boundary violation: Lovable branch `{branch}` changed contract path `{path}`."
+                      )
+              elif not (is_cursor_contract_branch(branch) or is_cursor_automation_branch(branch) or is_hotfix_branch(branch)):
+                  for path in contract_changed:
+                      warnings.append(
+                          f"Contract branch warning: `{path}` changed from `{branch}`. "
+                          "Expected cursor/contract/WPC-* or cursor/automation/WPC-* unless explicitly justified."
                       )
 
           api_surface_patterns = [
@@ -202,6 +268,7 @@ jobs:
           ]
           api_contract_patterns = [
               "automation/openapi/**",
+              "automation/schemas/**",
               "openapi/**",
           ]
 
@@ -211,19 +278,36 @@ jobs:
           if api_surface_changed and not api_contract_changed and not is_integration_branch:
               for path in api_surface_changed:
                   warnings.append(
-                      f"API contract warning: `{path}` changed without an OpenAPI file in the same PR. "
-                      "If API behavior changed, update OpenAPI before merge."
+                      f"API contract warning: `{path}` changed without an OpenAPI/schema file in the same PR. "
+                      "If API behavior changed, update the contract before merge."
                   )
 
-          if branch.startswith("lovable/") and api_surface_changed:
+          if is_lovable_ui_branch(branch) and api_surface_changed:
               for path in api_surface_changed:
                   violations.append(
                       f"Lovable API violation: Lovable branch `{branch}` changed API/backend path `{path}`."
                   )
 
-          if target_branch == "main" and branch != "staging" and not branch.startswith("hotfix/") and event_name == "pull_request":
+          broad_ui_patterns = [
+              "src/components/**",
+              "src/routes/**",
+              "src/shared/**",
+          ]
+
+          if (
+              (is_cursor_core_branch(branch) or is_cursor_automation_branch(branch) or is_cursor_contract_branch(branch))
+              and not is_integration_branch
+          ):
+              for path in files:
+                  if any_match(path, broad_ui_patterns):
+                      warnings.append(
+                          f"Cursor core/automation/contract branch warning: `{branch}` changed UI path `{path}`. "
+                          "This may be valid only with a handoff."
+                      )
+
+          if target_branch == "main" and branch != "staging" and not is_hotfix_branch(branch) and event_name == "pull_request":
               violations.append(
-                  f"Release flow violation: PRs to `main` must normally come from `staging` or approved `hotfix/*`, not `{branch}`."
+                  f"Release flow violation: PRs to `main` must normally come from `staging` or approved `hotfix/WPC-*`, not `{branch}`."
               )
 
           print("Boundary Guard Report")
