@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchEmergingProducts, type RangeDays } from "@/lib/management/market-intelligence";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { useAuth } from "@/lib/auth/AuthProvider";
+
+const PRIVILEGED_ROLES = ["admin", "manager", "accountant"] as const;
 
 const STOCK_LABEL: Record<string, string> = {
   available: "موجود",
@@ -23,10 +26,14 @@ interface Props {
 }
 
 export function MarketingEmergingProductsCard({ range }: Props) {
+  const { roles } = useAuth();
+  const isPrivileged = roles.some((r) => (PRIVILEGED_ROLES as readonly string[]).includes(r));
+
   const q = useQuery({
     queryKey: ["reports", "marketing", "emerging-products", range] as const,
     queryFn: () => fetchEmergingProducts(range, 10),
     staleTime: 60_000,
+    enabled: isPrivileged,
   });
 
   return (
@@ -41,7 +48,11 @@ export function MarketingEmergingProductsCard({ range }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {q.isLoading ? (
+        {!isPrivileged ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            این کارت فقط برای مدیران قابل مشاهده است.
+          </p>
+        ) : q.isLoading ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             <Loader2 className="ml-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
           </div>
