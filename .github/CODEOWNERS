@@ -1,25 +1,27 @@
 # AfraKala CODEOWNERS
 #
-# Phase: 6
+# Phase: 3.9 / WPC Enforcement
 # Purpose:
-# Define review ownership for sensitive project areas so Lovable, Cursor,
-# GitHub, staging, production, OpenAPI, Worker, database, and deployment changes
-# remain reviewable and controlled.
+# Define review ownership for sensitive repository paths so Lovable UI work,
+# Cursor core/backend work, automation, contracts, Supabase, CI, governance,
+# deployment, and security changes remain reviewable and controlled.
 #
 # Source of truth:
-# GitHub repository
-#
-# Primary owner:
-# @mohammadrezaafra66-arch
+# - docs/process/path-ownership-matrix.md
+# - docs/process/lovable-cursor-boundary.md
+# - docs/process/branch-policy.md
+# - docs/process/stop-the-line.md
 #
 # Important:
-# This file defines ownership, but enforcement requires branch protection settings:
+# This file defines ownership.
+# Full enforcement also depends on GitHub Branch Protection settings:
 # - Require a pull request before merging
+# - Require approvals
 # - Require review from Code Owners
-# - Require status checks where applicable
+# - Require required status checks where applicable
 #
-# Until branch protection is enabled, this file is a governance map.
-# After branch protection is enabled, this becomes part of the technical gate.
+# Until Branch Protection is fully verified, this file is ownership alignment.
+# After Branch Protection is verified, it becomes part of the technical gate.
 
 # ------------------------------------------------------------
 # Default ownership
@@ -34,20 +36,41 @@
 .github/ @mohammadrezaafra66-arch
 .github/CODEOWNERS @mohammadrezaafra66-arch
 .github/pull_request_template.md @mohammadrezaafra66-arch
-.github/pull_request_template.before-phase6.md @mohammadrezaafra66-arch
 .github/workflows/ @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Phase 6 governance documents
+# WPC / Phase 3.9 process documents
 # ------------------------------------------------------------
 
-docs/governance/ @mohammadrezaafra66-arch
-docs/governance/LOVABLE_CURSOR_BOUNDARY.md @mohammadrezaafra66-arch
-docs/governance/BRANCH_STRATEGY.md @mohammadrezaafra66-arch
-docs/governance/LOVABLE_PROMPT_RULES.md @mohammadrezaafra66-arch
-docs/governance/API_CONTRACT_RULES.md @mohammadrezaafra66-arch
-docs/governance/STAGING_PRODUCTION_RUNBOOK.md @mohammadrezaafra66-arch
-docs/governance/RELEASE_TO_MAIN_RULES.md @mohammadrezaafra66-arch
+docs/process/ @mohammadrezaafra66-arch
+docs/process/path-ownership-matrix.md @mohammadrezaafra66-arch
+docs/process/lovable-cursor-boundary.md @mohammadrezaafra66-arch
+docs/process/branch-policy.md @mohammadrezaafra66-arch
+docs/process/two-pr-policy.md @mohammadrezaafra66-arch
+docs/process/handoff-policy.md @mohammadrezaafra66-arch
+docs/process/evidence-policy.md @mohammadrezaafra66-arch
+docs/process/definition-of-ready.md @mohammadrezaafra66-arch
+docs/process/definition-of-done.md @mohammadrezaafra66-arch
+docs/process/definition-of-success.md @mohammadrezaafra66-arch
+docs/process/stop-the-line.md @mohammadrezaafra66-arch
+docs/process/local-test-checklist.md @mohammadrezaafra66-arch
+docs/process/server-deployment-checklist.md @mohammadrezaafra66-arch
+docs/process/ali-implementation-handoff.md @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Handoff and evidence
+# ------------------------------------------------------------
+
+docs/handoffs/ @mohammadrezaafra66-arch
+docs/evidence/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Architecture, security, and ops
+# ------------------------------------------------------------
+
+docs/adr/ @mohammadrezaafra66-arch
+docs/security/ @mohammadrezaafra66-arch
+docs/ops/ @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
 # Cursor rules
@@ -55,90 +78,67 @@ docs/governance/RELEASE_TO_MAIN_RULES.md @mohammadrezaafra66-arch
 
 .cursor/ @mohammadrezaafra66-arch
 .cursor/rules/ @mohammadrezaafra66-arch
-.cursor/rules/phase6-boundary.mdc @mohammadrezaafra66-arch
-.cursor/rules/branch-discipline.mdc @mohammadrezaafra66-arch
-.cursor/rules/openapi-contract.mdc @mohammadrezaafra66-arch
-.cursor/rules/worker-boundary.mdc @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Lovable metadata and UI generation area
+# Lovable UI configuration and UI change reports
 # ------------------------------------------------------------
 
 .lovable/ @mohammadrezaafra66-arch
+docs/lovable-change-reports/ @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# OpenAPI and API contracts
+# UI / Lovable allowed areas
+# ------------------------------------------------------------
+
+src/routes/ @mohammadrezaafra66-arch
+src/components/ @mohammadrezaafra66-arch
+src/components/ui/ @mohammadrezaafra66-arch
+src/shared/ @mohammadrezaafra66-arch
+src/assets/ @mohammadrezaafra66-arch
+public/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Core frontend/server logic
+# ------------------------------------------------------------
+
+src/lib/ @mohammadrezaafra66-arch
+src/integrations/ @mohammadrezaafra66-arch
+src/server/ @mohammadrezaafra66-arch
+server/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# API contracts and automation schemas
 # ------------------------------------------------------------
 
 openapi/ @mohammadrezaafra66-arch
 automation/openapi/ @mohammadrezaafra66-arch
-automation/openapi/automation-v1.yaml @mohammadrezaafra66-arch
+automation/schemas/ @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Worker, automation, and multi-robot architecture
+# Worker / automation
 # ------------------------------------------------------------
 
 automation/ @mohammadrezaafra66-arch
+automation/worker-dummy/ @mohammadrezaafra66-arch
 automation/worker-runtime/ @mohammadrezaafra66-arch
-automation/worker-runtime/src/ @mohammadrezaafra66-arch
-automation/worker-runtime/tests/ @mohammadrezaafra66-arch
-docs/automation/ @mohammadrezaafra66-arch
-docs/automation/task-packets/ @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Database, migrations, RLS, and Supabase-generated types
+# Supabase / Database / Source of truth
 # ------------------------------------------------------------
 
 supabase/ @mohammadrezaafra66-arch
 supabase/migrations/ @mohammadrezaafra66-arch
-src/integrations/supabase/ @mohammadrezaafra66-arch
-src/integrations/supabase/types.ts @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Backend, server, API routes, and bot API surfaces
-# ------------------------------------------------------------
-
-server/ @mohammadrezaafra66-arch
-src/server/ @mohammadrezaafra66-arch
-src/routes/api.* @mohammadrezaafra66-arch
-src/routes/api/ @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# Pricing, business logic, and domain-sensitive logic
-# ------------------------------------------------------------
-
-src/lib/pricing/ @mohammadrezaafra66-arch
-src/lib/products/ @mohammadrezaafra66-arch
-src/lib/sales/ @mohammadrezaafra66-arch
-src/lib/accounting/ @mohammadrezaafra66-arch
-src/lib/rbac/ @mohammadrezaafra66-arch
-src/lib/auth/ @mohammadrezaafra66-arch
-src/lib/security/ @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# Authentication and access-control sensitive UI/routes
-# ------------------------------------------------------------
-
-src/routes/login.tsx @mohammadrezaafra66-arch
-src/routes/register.tsx @mohammadrezaafra66-arch
-src/routes/reset-password.tsx @mohammadrezaafra66-arch
-src/routes/pending-approval.tsx @mohammadrezaafra66-arch
-src/routes/unauthorized.tsx @mohammadrezaafra66-arch
-src/routes/_app.admin.* @mohammadrezaafra66-arch
-src/routes/_app.roles.tsx @mohammadrezaafra66-arch
-src/routes/_app.users.tsx @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# Deployment, self-hosting, Docker, and ops
+# Deployment and self-hosting
 # ------------------------------------------------------------
 
 deploy/ @mohammadrezaafra66-arch
 Dockerfile @mohammadrezaafra66-arch
 docker-compose.yml @mohammadrezaafra66-arch
-docs/SELF_HOSTING.md @mohammadrezaafra66-arch
+vite.config.ts @mohammadrezaafra66-arch
 src/start.ts @mohammadrezaafra66-arch
 server/node-entry.mjs @mohammadrezaafra66-arch
-vite.config.ts @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
 # Package management, build, lint, and lock files
@@ -152,51 +152,28 @@ tsconfig.json @mohammadrezaafra66-arch
 tsconfig.*.json @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Environment examples are reviewable.
-# Real environment files must not be committed.
+# Environment examples only
+# Real environment files must never be committed.
 # ------------------------------------------------------------
 
 .env.example @mohammadrezaafra66-arch
-.env.production.example @mohammadrezaafra66-arch
 .env.staging.example @mohammadrezaafra66-arch
+.env.production.example @mohammadrezaafra66-arch
 
 # ------------------------------------------------------------
-# Human staging test docs
+# Explicit sensitive route/config surfaces
 # ------------------------------------------------------------
 
-docs/testing/ @mohammadrezaafra66-arch
-docs/testing/STAGING_HUMAN_TEST_CHECKLIST.md @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# Public/static files that can affect SEO, indexing, or app shell behavior
-# ------------------------------------------------------------
-
-public/robots.txt @mohammadrezaafra66-arch
-src/routeTree.gen.ts @mohammadrezaafra66-arch
-src/routes/sitemap[.]xml.ts @mohammadrezaafra66-arch
+src/routes/login.tsx @mohammadrezaafra66-arch
+src/routes/register.tsx @mohammadrezaafra66-arch
+src/routes/reset-password.tsx @mohammadrezaafra66-arch
+src/routes/pending-approval.tsx @mohammadrezaafra66-arch
+src/routes/unauthorized.tsx @mohammadrezaafra66-arch
+src/routes/_app.admin.* @mohammadrezaafra66-arch
+src/routes/_app.roles.tsx @mohammadrezaafra66-arch
+src/routes/_app.users.tsx @mohammadrezaafra66-arch
 src/routes/__root.tsx @mohammadrezaafra66-arch
 src/routes/_app.tsx @mohammadrezaafra66-arch
-src/components/layout/ @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# UI areas are owned by the primary owner for now.
-# This can later be delegated to a UI team or Lovable review group.
-# ------------------------------------------------------------
-
-src/components/ @mohammadrezaafra66-arch
-src/routes/ @mohammadrezaafra66-arch
-src/shared/components/ @mohammadrezaafra66-arch
-src/hooks/ @mohammadrezaafra66-arch
-
-# ------------------------------------------------------------
-# Explicit forbidden-by-policy review areas for Lovable-created PRs
-# These are not technically blocked here, but they require owner review.
-# Boundary Guard in Phase 8 will convert key violations into CI failures.
-# ------------------------------------------------------------
-
-automation/worker-runtime/ @mohammadrezaafra66-arch
-supabase/migrations/ @mohammadrezaafra66-arch
-.github/workflows/ @mohammadrezaafra66-arch
-docs/governance/ @mohammadrezaafra66-arch
-.cursor/ @mohammadrezaafra66-arch
-deploy/ @mohammadrezaafra66-arch
+src/routeTree.gen.ts @mohammadrezaafra66-arch
+src/routes/sitemap[.]xml.ts @mohammadrezaafra66-arch
+public/robots.txt @mohammadrezaafra66-arch
