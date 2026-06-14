@@ -26,6 +26,7 @@ def run_readonly_pipeline(*, store: SupabaseClientWrapper, worker_id: str, job: 
         driver.cleanup(job)
 
     persisted = persist_torob_driver_result(store=store, job_id=job_id, run_id=run_id, driver_result=result)
+    bridged = store.bridge_readonly_output(persisted)
     return {
         "job_id": job_id,
         "run_id": run_id,
@@ -34,6 +35,7 @@ def run_readonly_pipeline(*, store: SupabaseClientWrapper, worker_id: str, job: 
         "checkpoint": result.checkpoint,
         "errors": result.errors,
         "persisted_output": persisted,
+        "bridged_output": bridged,
     }
 
 

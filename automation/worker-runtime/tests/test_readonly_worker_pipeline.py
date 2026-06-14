@@ -7,7 +7,7 @@ from readonly_worker_pipeline import run_readonly_pipeline
 from supabase_client import MockSupabaseClient, SupabaseClientWrapper
 
 
-def test_pipeline_runs_and_persists_deterministic_result() -> None:
+def test_pipeline_runs_persists_and_bridges_deterministic_result() -> None:
     mock_client = MockSupabaseClient()
     store = SupabaseClientWrapper(config=RuntimeConfig(worker_mode="mock"), mock_client=mock_client)
 
@@ -18,7 +18,12 @@ def test_pipeline_runs_and_persists_deterministic_result() -> None:
     assert result["output"]["network_calls"] == 0
     assert result["persisted_output"]["source_kind"] == "external_read_only"
     assert result["persisted_output"]["phase_label"] == "PHASE-2"
+    assert result["bridged_output"]["bridge_mode"] == "controlled_mock_verified"
+    assert result["bridged_output"]["target_table"] == "automation_driver_outputs"
+    assert result["bridged_output"]["phase_label"] == "PHASE-2"
+    assert result["bridged_output"]["network_calls"] == 0
     assert len(mock_client.torob_readonly_outputs) == 1
+    assert len(mock_client.readonly_bridge_outputs) == 1
 
 
 def test_pipeline_rejects_live_flag() -> None:
