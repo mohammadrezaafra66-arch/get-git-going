@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MarketingTrendingCard } from "@/components/reports/MarketingTrendingCard";
+import { MarketingTopCheckedTodayCard } from "@/components/reports/MarketingTopCheckedTodayCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 
 const RANGE_OPTIONS: { value: RangeDays; label: string }[] = [
@@ -50,6 +51,7 @@ function ReportsPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <MarketingTrendingCard range={range} />
+            <MarketingTopCheckedTodayCard />
           </div>
         </TabsContent>
       </Tabs>
