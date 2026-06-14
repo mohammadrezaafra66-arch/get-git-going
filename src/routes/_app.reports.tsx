@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MarketingActiveChannelsCard } from "@/components/reports/MarketingActiveChannelsCard";
 import { MarketingTrendingCard } from "@/components/reports/MarketingTrendingCard";
 import { MarketingTopCheckedTodayCard } from "@/components/reports/MarketingTopCheckedTodayCard";
 import { MarketingEmergingProductsCard } from "@/components/reports/MarketingEmergingProductsCard";
@@ -56,6 +57,7 @@ function ReportsPage() {
             <MarketingTopCheckedTodayCard />
             <MarketingEmergingProductsCard range={range} />
             <MarketingPromotionSuggestionsUsedCard range={range} />
+            <MarketingActiveChannelsCard />
           </div>
         </TabsContent>
       </Tabs>
