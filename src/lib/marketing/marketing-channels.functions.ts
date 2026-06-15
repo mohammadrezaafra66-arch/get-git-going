@@ -2,6 +2,9 @@
  * MKT-2.2.a — Move marketing channel UPDATE and TOGGLE writes from the browser
  * to server functions.
  *
+ * MKT-2.2.b — Add CREATE channel server function with the same pattern:
+ * server-side role check, user-scoped RLS insert, server-shaped audit log.
+ *
  * Why:
  *  - The browser previously called `marketing_channels.update(...)` directly
  *    and then inserted a client-shaped row into `audit_logs`. The audit
@@ -49,6 +52,22 @@ const UpdateInputSchema = z.object({
 const ToggleInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه کانال نامعتبر است" }),
   is_active: z.boolean(),
+});
+
+const CreateInputSchema = z.object({
+  name: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(
+      z
+        .string()
+        .min(2, { message: "نام باید حداقل ۲ کاراکتر باشد" })
+        .max(100, { message: "نام حداکثر ۱۰۰ کاراکتر است" }),
+    ),
+  weight: z.coerce.number().finite().min(0).max(100),
+  sort_order: z.coerce.number().int().min(0).max(100_000),
+  is_active: z.boolean(),
+  daily_quota: z.union([z.coerce.number().int().min(0).max(100_000), z.null()]).nullable(),
 });
 
 type ChannelRow = {
@@ -119,6 +138,52 @@ export const updateMarketingChannel = createServerFn({ method: "POST" })
     if (insErr) throw new Error("خطا در ثبت رویداد");
 
     return { ok: true };
+  });
+
+export const createMarketingChannel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => CreateInputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true; id: string }> => {
+    const { supabase, userId } = context;
+
+    // Server-side role check (defence in depth on top of mc_write RLS).
+    const { data: roleRows, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (roleErr) throw new Error("خطا در بررسی دسترسی");
+    if (!(roleRows ?? []).some((r: { role: string }) => ALLOWED_ROLES.has(r.role))) {
+      throw new Error("برای انجام این عملیات دسترسی لازم را ندارید");
+    }
+
+    const payload = {
+      name: data.name,
+      weight: Number(data.weight),
+      sort_order: Number(data.sort_order),
+      is_active: data.is_active,
+      daily_quota: data.daily_quota === null ? null : Number(data.daily_quota),
+    };
+
+    // Insert under the user's RLS context.
+    const { data: inserted, error: insErr } = await supabase
+      .from("marketing_channels")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (insErr) throw new Error("خطا در ایجاد کانال");
+    const newId = (inserted as { id: string }).id;
+
+    // Server-shaped audit log.
+    const { error: auditErr } = await supabase.from("audit_logs").insert({
+      actor_id: userId,
+      entity_type: "marketing_channel",
+      entity_id: newId,
+      action: "marketing_channel_created",
+      diff: { created: payload } as never,
+    });
+    if (auditErr) throw new Error("خطا در ثبت رویداد");
+
+    return { ok: true, id: newId };
   });
 
 export const toggleMarketingChannelActive = createServerFn({ method: "POST" })
