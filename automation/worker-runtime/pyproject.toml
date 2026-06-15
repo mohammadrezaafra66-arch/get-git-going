@@ -26,6 +26,7 @@ py-modules = [
   "shutdown",
   "phase3_controlled_evidence_insert",
   "phase3_guarded_db_evidence_contract",
+  "phase3_single_row_evidence_step",
 ]
 
 [tool.pytest.ini_options]
