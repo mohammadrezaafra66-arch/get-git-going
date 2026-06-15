@@ -75,6 +75,20 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
+const normalizeDynamicValues = (values: DynamicAttrValues) =>
+  Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b)));
+
+const normalizeProductFormValues = (values: ProductFormValues): ProductFormValues => ({
+  ...values,
+  label_ids: [...values.label_ids].sort(),
+});
+
+const serializeFormState = (values: ProductFormValues, dynamicValues: DynamicAttrValues) =>
+  JSON.stringify({
+    values: normalizeProductFormValues(values),
+    dynamicValues: normalizeDynamicValues(dynamicValues),
+  });
+
 export function ProductForm({
   initial,
   existingSku,
@@ -87,13 +101,17 @@ export function ProductForm({
   onSubmit,
   onCancel,
 }: Props) {
-  const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
+  const initialValues = { ...DEFAULTS, ...initial };
+  const initialDynamic = initialDynamicValues ?? {};
+  const [values, setValues] = useState<ProductFormValues>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
   const lastAutoNameRef = useRef<string>("");
-  const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamicValues ?? {});
+  const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamic);
   const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
   const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
+  const initialSnapshotRef = useRef(serializeFormState(initialValues, initialDynamic));
+  const submittingRef = useRef(false);
 
   // ---------- بررسی زنده تکراری بودن محصول ----------
   const dupKey = useMemo(
@@ -125,13 +143,35 @@ export function ProductForm({
   const dupChecking = dupQ.isFetching;
 
   useEffect(() => {
-    setValues({ ...DEFAULTS, ...initial });
+    const nextValues = { ...DEFAULTS, ...initial };
+    const nextDynamic = initialDynamicValues ?? {};
+    setValues(nextValues);
     setAutoName(!isEdit && !initial?.name);
     lastAutoNameRef.current = "";
-    setDynValues(initialDynamicValues ?? {});
+    setDynValues(nextDynamic);
     setDynErrors({});
     initialCatRef.current = initialCategoryId ?? initial?.category_id ?? null;
+    initialSnapshotRef.current = serializeFormState(nextValues, nextDynamic);
   }, [initial, isEdit, initialDynamicValues, initialCategoryId]);
+
+  const currentSnapshot = useMemo(
+    () => serializeFormState(values, dynValues),
+    [dynValues, values],
+  );
+  const hasUnsavedChanges = isEdit === true && currentSnapshot !== initialSnapshotRef.current;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (submittingRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
@@ -349,6 +389,17 @@ export function ProductForm({
     }));
   };
 
+  const handleCancel = () => {
+    if (
+      hasUnsavedChanges &&
+      !window.confirm("تغییرات ذخیره‌نشده از بین می‌رود. بدون ذخیره خارج می‌شوید؟")
+    ) {
+      return;
+    }
+
+    onCancel?.();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (duplicate) {
@@ -379,11 +430,16 @@ export function ProductForm({
     setDynErrors({});
     const categoryChanged =
       isEdit === true && (values.category_id ?? null) !== initialCatRef.current;
-    await onSubmit(parsed.success ? parsed.data : (valuesForSubmit as ProductFormValues), {
-      values: dynValues,
-      defs: dynDefs,
-      categoryChanged,
-    });
+    submittingRef.current = true;
+    try {
+      await onSubmit(parsed.success ? parsed.data : (valuesForSubmit as ProductFormValues), {
+        values: dynValues,
+        defs: dynDefs,
+        categoryChanged,
+      });
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   return (
@@ -751,7 +807,7 @@ export function ProductForm({
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             <X className="ms-1 h-4 w-4" />
             انصراف
           </Button>
