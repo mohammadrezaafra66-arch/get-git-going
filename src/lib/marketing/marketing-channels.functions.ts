@@ -43,9 +43,7 @@ const UpdateInputSchema = z.object({
   weight: z.coerce.number().finite().min(0).max(100),
   sort_order: z.coerce.number().int().min(0).max(100_000),
   is_active: z.boolean(),
-  daily_quota: z
-    .union([z.coerce.number().int().min(0).max(100_000), z.null()])
-    .nullable(),
+  daily_quota: z.union([z.coerce.number().int().min(0).max(100_000), z.null()]).nullable(),
 });
 
 const ToggleInputSchema = z.object({
