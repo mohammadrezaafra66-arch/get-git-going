@@ -2,6 +2,9 @@
  * MKT-2.2.a — Move marketing channel UPDATE and TOGGLE writes from the browser
  * to server functions.
  *
+ * MKT-2.2.b — Add CREATE channel server function with the same pattern:
+ * server-side role check, user-scoped RLS insert, server-shaped audit log.
+ *
  * Why:
  *  - The browser previously called `marketing_channels.update(...)` directly
  *    and then inserted a client-shaped row into `audit_logs`. The audit
@@ -49,6 +52,22 @@ const UpdateInputSchema = z.object({
 const ToggleInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه کانال نامعتبر است" }),
   is_active: z.boolean(),
+});
+
+const CreateInputSchema = z.object({
+  name: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(
+      z
+        .string()
+        .min(2, { message: "نام باید حداقل ۲ کاراکتر باشد" })
+        .max(100, { message: "نام حداکثر ۱۰۰ کاراکتر است" }),
+    ),
+  weight: z.coerce.number().finite().min(0).max(100),
+  sort_order: z.coerce.number().int().min(0).max(100_000),
+  is_active: z.boolean(),
+  daily_quota: z.union([z.coerce.number().int().min(0).max(100_000), z.null()]).nullable(),
 });
 
 type ChannelRow = {
