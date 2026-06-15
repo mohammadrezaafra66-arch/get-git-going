@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  updateMarketingChannel,
+  toggleMarketingChannelActive,
+} from "@/lib/marketing/marketing-channels.functions";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +46,8 @@ type Channel = {
 function MarketingChannelsPage() {
   const { roles, user } = useAuth();
   const allowed = roles.includes("admin") || roles.includes("accountant");
+  const updateChannelFn = useServerFn(updateMarketingChannel);
+  const toggleChannelFn = useServerFn(toggleMarketingChannelActive);
 
   const [items, setItems] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -145,20 +152,15 @@ function MarketingChannelsPage() {
     setSaving(true);
     try {
       if (editing) {
-        const { error } = await supabase
-          .from("marketing_channels")
-          .update({ name, weight, sort_order, is_active: form.is_active, daily_quota })
-          .eq("id", editing.id);
-        if (error) throw error;
-        await audit("marketing_channel_updated", editing.id, {
-          before: {
-            name: editing.name,
-            weight: editing.weight,
-            sort_order: editing.sort_order,
-            is_active: editing.is_active,
-            daily_quota: editing.daily_quota,
+        await updateChannelFn({
+          data: {
+            id: editing.id,
+            name,
+            weight,
+            sort_order,
+            is_active: form.is_active,
+            daily_quota,
           },
-          after: { name, weight, sort_order, is_active: form.is_active, daily_quota },
         });
         toast.success("به‌روزرسانی شد");
       } else {
@@ -188,17 +190,13 @@ function MarketingChannelsPage() {
 
   const toggleActive = async (c: Channel) => {
     const next = !c.is_active;
-    const { error } = await supabase
-      .from("marketing_channels")
-      .update({ is_active: next })
-      .eq("id", c.id);
-    if (error) {
-      toast.error("خطا در تغییر وضعیت");
-      return;
+    try {
+      await toggleChannelFn({ data: { id: c.id, is_active: next } });
+      toast.success(next ? "فعال شد" : "غیرفعال شد");
+      void load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در تغییر وضعیت");
     }
-    await audit("marketing_channel_status_changed", c.id, { from: c.is_active, to: next });
-    toast.success(next ? "فعال شد" : "غیرفعال شد");
-    void load();
   };
 
   return (
