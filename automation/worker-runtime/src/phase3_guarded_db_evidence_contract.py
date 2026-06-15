@@ -1,10 +1,3 @@
-"""PHASE-3 guarded evidence insert contract.
-
-This module builds a safe insert plan for `automation_driver_outputs`.
-It intentionally does not open a database connection and does not execute the
-plan. Execution is reserved for a later explicitly reviewed step.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,10 +48,8 @@ def build_guarded_evidence_insert_plan(
     manual_invocation: bool,
     allow_execution: bool = False,
 ) -> GuardedEvidenceInsertPlan:
-    """Build a non-executing plan for a future guarded evidence insert."""
-
     if allow_execution is not False:
-        raise ValueError("TPC-3-007 does not allow database execution")
+        raise ValueError("TPC-3-007 does not allow execution")
     if manual_invocation is not True:
         raise ValueError("manual_invocation must be true")
 
@@ -77,8 +68,6 @@ def build_guarded_evidence_insert_plan(
 
 
 def validate_guarded_evidence_insert_plan(plan: GuardedEvidenceInsertPlan | dict[str, Any]) -> dict[str, Any]:
-    """Validate a plan object and return its dictionary form."""
-
     plan_dict = plan.as_dict() if isinstance(plan, GuardedEvidenceInsertPlan) else dict(plan)
 
     if plan_dict.get("contract_id") != CONTRACT_ID:
@@ -103,10 +92,11 @@ def validate_guarded_evidence_insert_plan(plan: GuardedEvidenceInsertPlan | dict
 def _reject_commercial_table_references(value: Any, *, path: str = "row") -> None:
     if isinstance(value, dict):
         for key, nested in value.items():
-            _reject_key_text(str(key), path=f"{path}.{key}")
+            next_path = f"{path}.{key}"
             if isinstance(nested, str):
-                _reject_key_text(nested, path=f"{path}.{key}")
-            _reject_commercial_table_references(nested, path=f"{path}.{key}")
+                _reject_key_text(nested, path=next_path)
+            else:
+                _reject_commercial_table_references(nested, path=next_path)
     elif isinstance(value, list):
         for index, item in enumerate(value):
             _reject_commercial_table_references(item, path=f"{path}[{index}]")
