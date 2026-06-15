@@ -122,12 +122,32 @@ export const updateMarketingChannel = createServerFn({ method: "POST" })
       daily_quota: data.daily_quota === null ? null : Number(data.daily_quota),
     };
 
+    // MKT-2.3.a — Duplicate-name pre-check on rename (excluding self).
+    // Only relevant when the normalized name actually changes.
+    const normBefore = normalizeChannelName(before.name);
+    const normAfter = normalizeChannelName(after.name);
+    if (normBefore !== normAfter) {
+      const { data: existing, error: existErr } = await supabase
+        .from("marketing_channels")
+        .select("id, name")
+        .neq("id", data.id);
+      if (existErr) throw new Error("خطا در بررسی نام کانال");
+      if (
+        (existing ?? []).some((c: { name: string }) => normalizeChannelName(c.name) === normAfter)
+      ) {
+        throw new Error(DUPLICATE_NAME_MESSAGE);
+      }
+    }
+
     // 2) Apply update under the user's RLS context.
     const { error: updErr } = await supabase
       .from("marketing_channels")
       .update(after)
       .eq("id", data.id);
-    if (updErr) throw new Error("خطا در به‌روزرسانی کانال");
+    if (updErr) {
+      if (isUniqueViolation(updErr)) throw new Error(DUPLICATE_NAME_MESSAGE);
+      throw new Error("خطا در به‌روزرسانی کانال");
+    }
 
     // 3) Server-shaped diff with only changed fields.
     const changed: Record<string, { from: unknown; to: unknown }> = {};
