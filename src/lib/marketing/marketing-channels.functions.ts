@@ -32,6 +32,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
 
+// MKT-2.3.a — Channel name normalization for uniqueness checks.
+// Matches the DB index expression `lower(btrim(name))`. Intentionally does
+// NOT apply Persian/Arabic character normalization (ي↔ی, ك↔ک, ZWNJ,
+// Arabic-Indic digits) — that is deferred to MKT-2.3.b.
+const normalizeChannelName = (name: string): string => name.trim().toLowerCase();
+const DUPLICATE_NAME_MESSAGE = "کانالی با این نام از قبل وجود دارد";
+const isUniqueViolation = (err: unknown): boolean =>
+  typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
+
 const UpdateInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه کانال نامعتبر است" }),
   name: z
@@ -113,12 +122,32 @@ export const updateMarketingChannel = createServerFn({ method: "POST" })
       daily_quota: data.daily_quota === null ? null : Number(data.daily_quota),
     };
 
+    // MKT-2.3.a — Duplicate-name pre-check on rename (excluding self).
+    // Only relevant when the normalized name actually changes.
+    const normBefore = normalizeChannelName(before.name);
+    const normAfter = normalizeChannelName(after.name);
+    if (normBefore !== normAfter) {
+      const { data: existing, error: existErr } = await supabase
+        .from("marketing_channels")
+        .select("id, name")
+        .neq("id", data.id);
+      if (existErr) throw new Error("خطا در بررسی نام کانال");
+      if (
+        (existing ?? []).some((c: { name: string }) => normalizeChannelName(c.name) === normAfter)
+      ) {
+        throw new Error(DUPLICATE_NAME_MESSAGE);
+      }
+    }
+
     // 2) Apply update under the user's RLS context.
     const { error: updErr } = await supabase
       .from("marketing_channels")
       .update(after)
       .eq("id", data.id);
-    if (updErr) throw new Error("خطا در به‌روزرسانی کانال");
+    if (updErr) {
+      if (isUniqueViolation(updErr)) throw new Error(DUPLICATE_NAME_MESSAGE);
+      throw new Error("خطا در به‌روزرسانی کانال");
+    }
 
     // 3) Server-shaped diff with only changed fields.
     const changed: Record<string, { from: unknown; to: unknown }> = {};
@@ -164,13 +193,32 @@ export const createMarketingChannel = createServerFn({ method: "POST" })
       daily_quota: data.daily_quota === null ? null : Number(data.daily_quota),
     };
 
+    // MKT-2.3.a — Duplicate-name pre-check (case-insensitive, trim-normalized,
+    // across active and inactive channels). The DB unique index
+    // `marketing_channels_name_norm_uq` is the authoritative guard; this
+    // pre-check gives a friendly Persian message in the common case.
+    const normNew = normalizeChannelName(data.name);
+    const { data: existing, error: existErr } = await supabase
+      .from("marketing_channels")
+      .select("id, name");
+    if (existErr) throw new Error("خطا در بررسی نام کانال");
+    if ((existing ?? []).some((c: { name: string }) => normalizeChannelName(c.name) === normNew)) {
+      throw new Error(DUPLICATE_NAME_MESSAGE);
+    }
+
     // Insert under the user's RLS context.
     const { data: inserted, error: insErr } = await supabase
       .from("marketing_channels")
       .insert(payload)
       .select("id")
       .single();
-    if (insErr) throw new Error("خطا در ایجاد کانال");
+    if (insErr) {
+      // Race-safety: another concurrent insert may have won between the
+      // pre-check and our insert. Map the unique-violation to the same
+      // Persian message.
+      if (isUniqueViolation(insErr)) throw new Error(DUPLICATE_NAME_MESSAGE);
+      throw new Error("خطا در ایجاد کانال");
+    }
     const newId = (inserted as { id: string }).id;
 
     // Server-shaped audit log.
