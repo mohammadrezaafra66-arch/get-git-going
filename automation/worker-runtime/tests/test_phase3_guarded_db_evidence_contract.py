@@ -23,7 +23,7 @@ def test_guarded_plan_accepts_safe_phase3_evidence_row() -> None:
 
 
 def test_guarded_plan_rejects_execution_flag() -> None:
-    with pytest.raises(ValueError, match="does not allow database execution"):
+    with pytest.raises(ValueError, match="does not allow execution"):
         build_guarded_evidence_insert_plan(row=_row(), manual_invocation=True, allow_execution=True)
 
 
