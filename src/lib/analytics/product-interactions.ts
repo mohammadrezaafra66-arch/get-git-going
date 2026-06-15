@@ -6,8 +6,14 @@
  * Tracking is best-effort: failures are swallowed silently so they
  * never block UX. Calls are de-duplicated within a short time window
  * to avoid spamming the database when a user clicks rapidly.
+ *
+ * MKT-2.4.a — The actual insert is performed by an authenticated
+ * serverFn (`trackProductInteractionFn`) which validates inputs,
+ * sets `user_id` server-side, and rejects forged or spam events.
+ * The browser utility is a thin fire-and-forget wrapper that
+ * preserves the 30-second dedup window and never throws.
  */
-import { supabase } from "@/integrations/supabase/client";
+import { trackProductInteractionFn } from "./product-interactions.functions";
 
 export type InteractionEventType =
   | "search_result_viewed"
@@ -56,14 +62,13 @@ export function trackProductInteraction(args: TrackArgs): void {
   // Fire and forget — never await, never throw.
   void (async () => {
     try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const user_id = userRes?.user?.id ?? null;
-      await supabase.from("product_interaction_events").insert({
-        user_id,
-        product_id: args.productId,
-        event_type: args.eventType,
-        source: args.source,
-        sale_price_type_id: args.salePriceTypeId ?? null,
+      await trackProductInteractionFn({
+        data: {
+          product_id: args.productId,
+          event_type: args.eventType,
+          source: args.source,
+          sale_price_type_id: args.salePriceTypeId ?? null,
+        },
       });
     } catch {
       // Tracking failures must never affect the user experience.
