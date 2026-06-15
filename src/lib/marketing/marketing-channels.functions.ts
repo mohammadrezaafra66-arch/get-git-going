@@ -32,6 +32,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
 
+// MKT-2.3.a — Channel name normalization for uniqueness checks.
+// Matches the DB index expression `lower(btrim(name))`. Intentionally does
+// NOT apply Persian/Arabic character normalization (ي↔ی, ك↔ک, ZWNJ,
+// Arabic-Indic digits) — that is deferred to MKT-2.3.b.
+const normalizeChannelName = (name: string): string => name.trim().toLowerCase();
+const DUPLICATE_NAME_MESSAGE = "کانالی با این نام از قبل وجود دارد";
+const isUniqueViolation = (err: unknown): boolean =>
+  typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
+
 const UpdateInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه کانال نامعتبر است" }),
   name: z
