@@ -53,6 +53,10 @@ const ToggleInputSchema = z.object({
   is_active: z.boolean(),
 });
 
+type SupabaseCtx = Parameters<
+  Parameters<typeof updateMarketingChannelImpl>[0]["handler"]
+>;
+
 type ChannelRow = {
   id: string;
   name: string;
@@ -62,29 +66,6 @@ type ChannelRow = {
   daily_quota: number | null;
 };
 
-async function assertAllowedRole(
-  supabase: { from: (t: string) => unknown },
-  userId: string,
-) {
-  // Using a narrow inline call to keep this helper free of any/cast leaks.
-  const { data, error } = await (
-    supabase.from("user_roles") as {
-      select: (cols: string) => {
-        eq: (col: string, val: string) => Promise<{
-          data: { role: string }[] | null;
-          error: unknown;
-        }>;
-      };
-    }
-  )
-    .select("role")
-    .eq("user_id", userId);
-  if (error) throw new Error("خطا در بررسی دسترسی");
-  const roles = (data ?? []).map((r) => r.role);
-  if (!roles.some((r) => ALLOWED_ROLES.has(r))) {
-    throw new Error("برای انجام این عملیات دسترسی لازم را ندارید");
-  }
-}
 
 export const updateMarketingChannel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
