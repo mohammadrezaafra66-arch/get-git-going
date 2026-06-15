@@ -126,6 +126,7 @@ constraint فعلی ستون `phase_label` فقط این مقدارها را ق�
 این سند migration نمی‌سازد، اما شکل migration آینده را محدود می‌کند.
 
 migration آینده فقط باید کاری شبیه این انجام دهد:
+بازبینی نهایی این packet باید قبل از هر migration اجرایی انجام شود.
 
 ```sql
 BEGIN;
