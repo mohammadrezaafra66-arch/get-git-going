@@ -15,7 +15,7 @@
 --   - This migration is stacked on top of the unmerged TPC-3-003 packet.
 --   - It must not be accepted or merged unless TPC-3-003 is accepted/merged first.
 --
--- Rollback (manual — repo has no down migrations):
+-- Rollback:
 --   ALTER TABLE public.automation_driver_outputs
 --     DROP CONSTRAINT IF EXISTS automation_driver_outputs_phase_label_check;
 --   ALTER TABLE public.automation_driver_outputs
