@@ -53,10 +53,6 @@ const ToggleInputSchema = z.object({
   is_active: z.boolean(),
 });
 
-type SupabaseCtx = Parameters<
-  Parameters<typeof updateMarketingChannelImpl>[0]["handler"]
->;
-
 type ChannelRow = {
   id: string;
   name: string;
@@ -66,14 +62,21 @@ type ChannelRow = {
   daily_quota: number | null;
 };
 
-
 export const updateMarketingChannel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => UpdateInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { supabase, userId } = context;
 
-    await assertAllowedRole(supabase, userId);
+    // Server-side role check (defence in depth on top of mc_write RLS).
+    const { data: roleRows, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (roleErr) throw new Error("خطا در بررسی دسترسی");
+    if (!(roleRows ?? []).some((r: { role: string }) => ALLOWED_ROLES.has(r.role))) {
+      throw new Error("برای انجام این عملیات دسترسی لازم را ندارید");
+    }
 
     // 1) Fetch previous row server-side. Never trust browser-provided "before".
     const { data: prev, error: prevErr } = await supabase
@@ -126,7 +129,14 @@ export const toggleMarketingChannelActive = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { supabase, userId } = context;
 
-    await assertAllowedRole(supabase, userId);
+    const { data: roleRows, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (roleErr) throw new Error("خطا در بررسی دسترسی");
+    if (!(roleRows ?? []).some((r: { role: string }) => ALLOWED_ROLES.has(r.role))) {
+      throw new Error("برای انجام این عملیات دسترسی لازم را ندارید");
+    }
 
     // 1) Fetch previous is_active server-side.
     const { data: prev, error: prevErr } = await supabase
