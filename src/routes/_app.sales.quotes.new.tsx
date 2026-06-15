@@ -46,10 +46,36 @@ function NewQuotePage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerNote, setCustomerNote] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
 
   const totals = useMemo(() => computeTotals(items), [items]);
+  const debouncedCustomerSearch = useDebounce(customerSearch, 350);
+  const customerSearchTerm = debouncedCustomerSearch.trim();
+
+  const customersQuery = useQuery({
+    enabled: customerSearchTerm.length >= 2,
+    queryKey: ["sales-quote-customer-search", customerSearchTerm],
+    queryFn: async () => {
+      const safe = customerSearchTerm.replace(/[%_]/g, "");
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .or(`name.ilike.%${safe}%,phone.ilike.%${safe}%`)
+        .order("name", { ascending: true })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; name: string; phone: string | null }>;
+    },
+    staleTime: 30_000,
+  });
+
+  const selectCustomer = (customer: { name: string; phone: string | null }) => {
+    setCustomerName(customer.name);
+    setCustomerPhone(customer.phone ?? "");
+    setCustomerSearch("");
+  };
 
   // sale price types (cached)
   const { data: priceTypes = [] } = useQuery({
@@ -143,13 +169,55 @@ function NewQuotePage() {
       {/* header */}
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="flex justify-end">
-            <QuickAddCustomerDialog
-              onCreated={(c) => {
-                setCustomerName(c.name);
-                setCustomerPhone(c.phone);
-              }}
-            />
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="existing_customer_search">انتخاب مشتری موجود</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="existing_customer_search"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="نام یا شماره تماس مشتری را جست‌وجو کنید..."
+                  className="pr-9"
+                />
+              </div>
+              {customerSearchTerm.length >= 2 &&
+                (customersQuery.isLoading ? (
+                  <div className="text-xs text-muted-foreground">در حال جست‌وجوی مشتری...</div>
+                ) : (customersQuery.data ?? []).length === 0 ? (
+                  <div className="text-xs text-muted-foreground">
+                    مشتری‌ای با این جست‌وجو پیدا نشد.
+                  </div>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                    {(customersQuery.data ?? []).map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        onClick={() => selectCustomer(customer)}
+                        className="flex w-full items-center justify-between gap-3 p-2 text-right hover:bg-muted/40"
+                      >
+                        <span className="font-medium">{customer.name}</span>
+                        {customer.phone && (
+                          <span className="text-xs text-muted-foreground" dir="ltr">
+                            {customer.phone}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+            </div>
+            <div className="flex justify-end md:pt-7">
+              <QuickAddCustomerDialog
+                onCreated={(c) => {
+                  setCustomerName(c.name);
+                  setCustomerPhone(c.phone ?? "");
+                  setCustomerSearch("");
+                }}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
