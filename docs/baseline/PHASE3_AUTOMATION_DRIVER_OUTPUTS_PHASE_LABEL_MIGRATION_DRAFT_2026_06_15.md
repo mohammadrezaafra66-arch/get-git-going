@@ -51,7 +51,7 @@
 5. هیچ policy جدید INSERT/UPDATE/DELETE برای authenticated clients ایجاد نشده باشد.
 6. هیچ جدول تجاری تغییر نکرده باشد.
 7. فقط migration و evidence doc تغییر کرده باشند.
-
+بازبینی نهایی migration باید قبل از هر پیاده‌سازی insert واقعی انجام شود.
 ## Rollback
 
 Rollback دستی:
