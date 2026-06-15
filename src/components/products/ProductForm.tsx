@@ -156,10 +156,7 @@ export function ProductForm({
     initialSnapshotRef.current = serializeFormState(nextValues, nextDynamic);
   }, [initial, isEdit, initialDynamicValues, initialCategoryId]);
 
-  const currentSnapshot = useMemo(
-    () => serializeFormState(values, dynValues),
-    [dynValues, values],
-  );
+  const currentSnapshot = useMemo(() => serializeFormState(values, dynValues), [dynValues, values]);
   const hasUnsavedChanges = isEdit === true && currentSnapshot !== initialSnapshotRef.current;
 
   useEffect(() => {
