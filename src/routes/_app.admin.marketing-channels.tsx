@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
+  createMarketingChannel,
   updateMarketingChannel,
   toggleMarketingChannelActive,
 } from "@/lib/marketing/marketing-channels.functions";
@@ -44,8 +45,9 @@ type Channel = {
 };
 
 function MarketingChannelsPage() {
-  const { roles, user } = useAuth();
+  const { roles } = useAuth();
   const allowed = roles.includes("admin") || roles.includes("accountant");
+  const createChannelFn = useServerFn(createMarketingChannel);
   const updateChannelFn = useServerFn(updateMarketingChannel);
   const toggleChannelFn = useServerFn(toggleMarketingChannelActive);
 
@@ -125,18 +127,6 @@ function MarketingChannelsPage() {
     setOpen(true);
   };
 
-  const audit = async (action: string, entity_id: string, diff: Record<string, unknown>) => {
-    if (!user?.id) return;
-    const row = {
-      actor_id: user.id,
-      entity_type: "marketing_channel",
-      entity_id,
-      action,
-      diff: diff as never,
-    };
-    await supabase.from("audit_logs").insert(row);
-  };
-
   const save = async () => {
     const name = form.name.trim();
     if (name.length < 2 || name.length > 100) {
@@ -164,18 +154,14 @@ function MarketingChannelsPage() {
         });
         toast.success("به‌روزرسانی شد");
       } else {
-        const { data, error } = await supabase
-          .from("marketing_channels")
-          .insert({ name, weight, sort_order, is_active: form.is_active, daily_quota })
-          .select("id")
-          .single();
-        if (error) throw error;
-        await audit("marketing_channel_created", data!.id, {
-          name,
-          weight,
-          sort_order,
-          is_active: form.is_active,
-          daily_quota,
+        await createChannelFn({
+          data: {
+            name,
+            weight,
+            sort_order,
+            is_active: form.is_active,
+            daily_quota,
+          },
         });
         toast.success("کانال افزوده شد");
       }
