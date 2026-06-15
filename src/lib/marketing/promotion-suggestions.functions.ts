@@ -28,11 +28,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ALLOWED_ROLES = new Set(["admin", "manager", "accountant"]);
 
-const FiniteNum = z.coerce
-  .number()
-  .finite()
-  .min(0)
-  .max(1_000_000);
+const FiniteNum = z.coerce.number().finite().min(0).max(1_000_000);
 
 const InputSchema = z.object({
   product_id: z.string().uuid({ message: "شناسه محصول نامعتبر است" }),
@@ -45,9 +41,7 @@ const InputSchema = z.object({
   qty_90d: FiniteNum,
 });
 
-export type MarkPromotionUsedResult =
-  | { ok: true }
-  | { ok: false; reason: "quota_exhausted" };
+export type MarkPromotionUsedResult = { ok: true } | { ok: false; reason: "quota_exhausted" };
 
 /**
  * Compute the start of "today" in Asia/Tehran (UTC+3:30, no DST since 2022)
@@ -82,11 +76,7 @@ export const markPromotionSuggestionUsed = createServerFn({ method: "POST" })
 
     // 2) Re-fetch product + channel from DB. Never trust client display names.
     const [productRes, channelRes] = await Promise.all([
-      supabase
-        .from("products")
-        .select("id, name")
-        .eq("id", data.product_id)
-        .maybeSingle(),
+      supabase.from("products").select("id, name").eq("id", data.product_id).maybeSingle(),
       supabase
         .from("marketing_channels")
         .select("id, name, is_active, daily_quota")
