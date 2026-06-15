@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Plus, ArrowRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -52,6 +52,27 @@ interface Lbl {
 }
 
 const VISIBILITY_LABEL: Record<Lbl["visibility"], string> = { public: "عمومی", internal: "داخلی" };
+
+const DEFAULT_LABEL_VALUES: LabelFormValues = {
+  title: "",
+  color: "#0ea5e9",
+  description: "",
+  is_active: true,
+  weight: 0,
+  visibility: "public",
+};
+
+const labelToFormValues = (label: Lbl | null): LabelFormValues =>
+  label
+    ? {
+        title: label.title,
+        color: label.color,
+        description: label.description ?? "",
+        is_active: label.is_active,
+        weight: label.weight ?? 0,
+        visibility: label.visibility ?? "public",
+      }
+    : DEFAULT_LABEL_VALUES;
 
 function LabelsPage() {
   const { roles } = useAuth();
@@ -203,37 +224,28 @@ function LabelDialog({
   onSaved: () => void;
 }) {
   const { user } = useAuth();
-  const defaults: LabelFormValues = {
-    title: "",
-    color: "#0ea5e9",
-    description: "",
-    is_active: true,
-    weight: 0,
-    visibility: "public",
-  };
-  const [values, setValues] = useState<LabelFormValues>(defaults);
+  const [values, setValues] = useState<LabelFormValues>(DEFAULT_LABEL_VALUES);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const reset = () => {
-    setValues(
-      editing
-        ? {
-            title: editing.title,
-            color: editing.color,
-            description: editing.description ?? "",
-            is_active: editing.is_active,
-            weight: editing.weight ?? 0,
-            visibility: editing.visibility ?? "public",
-          }
-        : defaults,
-    );
+  useEffect(() => {
+    if (!open) {
+      setConfirmOpen(false);
+      setErrors({});
+      return;
+    }
+
+    setValues(labelToFormValues(editing));
     setErrors({});
-  };
+    setConfirmOpen(false);
+  }, [editing, open]);
 
   const handleOpenChange = (v: boolean) => {
-    if (v) reset();
+    if (!v) {
+      setConfirmOpen(false);
+      setErrors({});
+    }
     onOpenChange(v);
   };
 
