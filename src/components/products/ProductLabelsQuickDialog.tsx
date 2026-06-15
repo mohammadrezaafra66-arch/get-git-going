@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,12 +11,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
 interface LabelRow {
   id: string;
   title: string;
   color: string;
+  description: string | null;
 }
 
 interface Props {
@@ -30,13 +33,14 @@ export function ProductLabelsQuickDialog({ productId, productName, open, onOpenC
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
 
   const { data: allLabels, isLoading: loadingAll } = useQuery({
     queryKey: ["product-labels-all"],
     queryFn: async (): Promise<LabelRow[]> => {
       const { data, error } = await supabase
         .from("product_labels")
-        .select("id, title, color")
+        .select("id, title, color, description")
         .order("title", { ascending: true })
         .limit(500);
       if (error) throw error;
@@ -65,6 +69,7 @@ export function ProductLabelsQuickDialog({ productId, productName, open, onOpenC
     }
     if (!open) {
       setSelected(new Set());
+      setQuery("");
     }
   }, [open, currentIds]);
 
@@ -116,6 +121,15 @@ export function ProductLabelsQuickDialog({ productId, productName, open, onOpenC
   };
 
   const loading = loadingAll || loadingCurrent;
+  const normalizedQuery = normalizeSearchText(query).toLowerCase();
+  const filteredLabels = useMemo(() => {
+    if (!normalizedQuery) return allLabels ?? [];
+    return (allLabels ?? []).filter((label) =>
+      normalizeSearchText(`${label.title} ${label.description ?? ""}`)
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [allLabels, normalizedQuery]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -125,6 +139,15 @@ export function ProductLabelsQuickDialog({ productId, productName, open, onOpenC
           <DialogDescription className="truncate">{productName}</DialogDescription>
         </DialogHeader>
 
+        <div>
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="جستجو در برچسب‌ها..."
+            className="mb-2"
+          />
+        </div>
+
         <div className="max-h-80 overflow-y-auto rounded-md border border-border p-2">
           {loading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
@@ -132,9 +155,13 @@ export function ProductLabelsQuickDialog({ productId, productName, open, onOpenC
             <div className="py-6 text-center text-sm text-muted-foreground">
               هنوز برچسبی تعریف نشده است.
             </div>
+          ) : filteredLabels.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              برچسبی با این جست‌وجو پیدا نشد.
+            </div>
           ) : (
             <ul className="space-y-1">
-              {(allLabels ?? []).map((l) => {
+              {filteredLabels.map((l) => {
                 const checked = selected.has(l.id);
                 return (
                   <li key={l.id}>

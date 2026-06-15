@@ -11,6 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
 export interface SearchableSelectOption {
   value: string;
@@ -31,6 +32,8 @@ interface Props {
   createLabel?: (query: string) => string;
   className?: string;
 }
+
+const normalizeForSearch = (value: string) => normalizeSearchText(value).toLowerCase();
 
 /**
  * RTL-friendly searchable select built on shadcn Command + Popover.
@@ -57,11 +60,11 @@ export function SearchableSelect({
     [options, value],
   );
 
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = normalizeForSearch(query.trim());
   const exactMatch = React.useMemo(
     () =>
       normalizedQuery.length > 0 &&
-      options.some((o) => o.label.trim().toLowerCase() === normalizedQuery),
+      options.some((o) => normalizeForSearch(o.label) === normalizedQuery),
     [options, normalizedQuery],
   );
 
@@ -83,7 +86,14 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command shouldFilter={true}>
+        <Command
+          shouldFilter={true}
+          filter={(itemValue, search) => {
+            const normalizedItem = normalizeForSearch(itemValue);
+            const normalizedSearch = normalizeForSearch(search);
+            return normalizedItem.includes(normalizedSearch) ? 1 : 0;
+          }}
+        >
           <CommandInput placeholder={searchPlaceholder} value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
