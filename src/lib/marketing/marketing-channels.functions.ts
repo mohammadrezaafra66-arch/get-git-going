@@ -173,13 +173,32 @@ export const createMarketingChannel = createServerFn({ method: "POST" })
       daily_quota: data.daily_quota === null ? null : Number(data.daily_quota),
     };
 
+    // MKT-2.3.a — Duplicate-name pre-check (case-insensitive, trim-normalized,
+    // across active and inactive channels). The DB unique index
+    // `marketing_channels_name_norm_uq` is the authoritative guard; this
+    // pre-check gives a friendly Persian message in the common case.
+    const normNew = normalizeChannelName(data.name);
+    const { data: existing, error: existErr } = await supabase
+      .from("marketing_channels")
+      .select("id, name");
+    if (existErr) throw new Error("خطا در بررسی نام کانال");
+    if ((existing ?? []).some((c: { name: string }) => normalizeChannelName(c.name) === normNew)) {
+      throw new Error(DUPLICATE_NAME_MESSAGE);
+    }
+
     // Insert under the user's RLS context.
     const { data: inserted, error: insErr } = await supabase
       .from("marketing_channels")
       .insert(payload)
       .select("id")
       .single();
-    if (insErr) throw new Error("خطا در ایجاد کانال");
+    if (insErr) {
+      // Race-safety: another concurrent insert may have won between the
+      // pre-check and our insert. Map the unique-violation to the same
+      // Persian message.
+      if (isUniqueViolation(insErr)) throw new Error(DUPLICATE_NAME_MESSAGE);
+      throw new Error("خطا در ایجاد کانال");
+    }
     const newId = (inserted as { id: string }).id;
 
     // Server-shaped audit log.
