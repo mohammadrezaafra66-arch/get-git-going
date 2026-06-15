@@ -1,8 +1,10 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { markPromotionSuggestionUsed } from "@/lib/marketing/promotion-suggestions.functions";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +71,7 @@ function fmt(n: number, digits = 2) {
 function PromotionSuggestionsPage() {
   const { user, roles, initialized, loading, profile, profileLoading, rolesLoading, authError } =
     useAuth();
+  const markUsedFn = useServerFn(markPromotionSuggestionUsed);
   const authPending =
     !initialized || loading || profileLoading || rolesLoading || (!!user && !profile && !authError);
   const authReady = initialized && !loading && !profileLoading && !rolesLoading && !!user;
@@ -147,32 +150,35 @@ function PromotionSuggestionsPage() {
       return;
     }
     setBusyKey(key);
-    const { error } = await supabase.from("audit_logs").insert({
-      actor_id: user.id,
-      entity_type: "promotion_suggestion",
-      entity_id: key,
-      action: "promotion_suggestion_used",
-      diff: {
-        product_id: s.product_id,
-        product_name: s.product_name,
-        channel_id: s.channel_id,
-        channel_name: s.channel_name,
-        score: Number(s.score),
-        label_weight_sum: Number(s.label_weight_sum),
-        channel_weight: Number(s.channel_weight),
-        stock_factor: Number(s.stock_factor),
-        recency_factor: Number(s.recency_factor),
-        qty_90d: Number(s.qty_90d),
-      } as never,
-    });
-    setBusyKey(null);
-    if (error) {
-      toast.error("خطا در ثبت");
-      return;
+    try {
+      const result = await markUsedFn({
+        data: {
+          product_id: s.product_id,
+          channel_id: s.channel_id,
+          score: Number(s.score),
+          label_weight_sum: Number(s.label_weight_sum),
+          channel_weight: Number(s.channel_weight),
+          stock_factor: Number(s.stock_factor),
+          recency_factor: Number(s.recency_factor),
+          qty_90d: Number(s.qty_90d),
+        },
+      });
+      if (!result.ok) {
+        if (result.reason === "quota_exhausted") {
+          toast.error("سهمیه روزانه این کانال تمام شده است");
+        } else {
+          toast.error("خطا در ثبت");
+        }
+        return;
+      }
+      setUsedKeys((m) => ({ ...m, [key]: true }));
+      toast.success("به‌عنوان استفاده‌شده ثبت شد");
+      void queryClient.invalidateQueries({ queryKey: ["promotion-suggestions"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ثبت");
+    } finally {
+      setBusyKey(null);
     }
-    setUsedKeys((m) => ({ ...m, [key]: true }));
-    toast.success("به‌عنوان استفاده‌شده ثبت شد");
-    void queryClient.invalidateQueries({ queryKey: ["promotion-suggestions"] });
   };
 
   const rows = suggestionsQuery.data ?? [];
