@@ -75,6 +75,8 @@ const DEFAULTS: ProductFormValues = {
   label_ids: [],
 };
 
+const UNSAVED_CHANGES_MESSAGE = "تغییرات ذخیره‌نشده از بین می‌رود. بدون ذخیره خارج می‌شوید؟";
+
 const normalizeDynamicValues = (values: DynamicAttrValues) =>
   Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b)));
 
@@ -163,14 +165,31 @@ export function ProductForm({
   useEffect(() => {
     if (!hasUnsavedChanges) return;
 
+    const confirmLeaving = () => window.confirm(UNSAVED_CHANGES_MESSAGE);
+
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
       if (submittingRef.current) return;
       event.preventDefault();
       event.returnValue = "";
     };
 
+    const warnOnLinkClick = (event: MouseEvent) => {
+      if (submittingRef.current) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("a[href]");
+      if (!link) return;
+      if (confirmLeaving()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
     window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+    document.addEventListener("click", warnOnLinkClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      document.removeEventListener("click", warnOnLinkClick, true);
+    };
   }, [hasUnsavedChanges]);
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
@@ -390,10 +409,7 @@ export function ProductForm({
   };
 
   const handleCancel = () => {
-    if (
-      hasUnsavedChanges &&
-      !window.confirm("تغییرات ذخیره‌نشده از بین می‌رود. بدون ذخیره خارج می‌شوید؟")
-    ) {
+    if (hasUnsavedChanges && !window.confirm(UNSAVED_CHANGES_MESSAGE)) {
       return;
     }
 
