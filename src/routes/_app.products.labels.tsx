@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, ArrowRight, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, ArrowRight, Loader2, Pencil, Trash2, Search } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { labelSchema, type LabelFormValues } from "@/lib/products/schemas";
+import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
 export const Route = createFileRoute("/_app/products/labels")({
   beforeLoad: async () => {
@@ -80,6 +81,7 @@ function LabelsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Lbl | null>(null);
+  const [labelSearch, setLabelSearch] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["labels-full"],
@@ -92,6 +94,18 @@ function LabelsPage() {
       return (data ?? []) as Lbl[];
     },
   });
+
+  const normalizedLabelSearch = normalizeSearchText(labelSearch).toLowerCase();
+  const filteredData = useMemo(() => {
+    if (!normalizedLabelSearch) return data ?? [];
+    return (data ?? []).filter((label) =>
+      normalizeSearchText(
+        `${label.title} ${label.description ?? ""} ${VISIBILITY_LABEL[label.visibility]}`,
+      )
+        .toLowerCase()
+        .includes(normalizedLabelSearch),
+    );
+  }, [data, normalizedLabelSearch]);
 
   const onSaved = () => {
     qc.invalidateQueries({ queryKey: ["labels-full"] });
@@ -138,14 +152,32 @@ function LabelsPage() {
       />
 
       <Card>
+        <CardContent className="p-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={labelSearch}
+              onChange={(e) => setLabelSearch(e.target.value)}
+              placeholder="جستجو در عنوان یا توضیحات برچسب..."
+              className="pe-9"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
           ) : (data ?? []).length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">برچسبی ثبت نشده.</div>
+          ) : filteredData.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              برچسبی با این جست‌وجو پیدا نشد.
+            </div>
           ) : (
             <ul className="divide-y divide-border">
-              {(data ?? []).map((l) => (
+              {filteredData.map((l) => (
                 <li key={l.id} className="flex items-center justify-between gap-2 p-3">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     <span
