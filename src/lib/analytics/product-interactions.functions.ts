@@ -13,8 +13,12 @@
  *    forces `user_id` from the authenticated session.
  *
  * RLS / RBAC:
- *  - Uses the user-scoped `context.supabase` from `requireSupabaseAuth`.
- *    No RLS or grant change in this slice.
+ *  - MKT-2.4.b: direct authenticated INSERT on
+ *    `product_interaction_events` is revoked. The user-scoped
+ *    `context.supabase` is still used for authorization (auth check) and
+ *    for read-only existence checks, but the final insert is performed
+ *    with the service-role `supabaseAdmin` client. `user_id` is set
+ *    from the authenticated context — never accepted from client input.
  *  - Open to any authenticated user — interaction tracking is not
  *    role-restricted.
  *
