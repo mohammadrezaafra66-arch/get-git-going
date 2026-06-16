@@ -91,22 +91,22 @@ export const updateQuoteStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<UpdateQuoteStatusResult> => {
     try {
       const { supabase } = context;
-      // Strict whitelist: only `status` (and `cancel_reason` when canceling)
-      // are ever sent. Mirrors the prior browser code exactly: on cancel we
-      // write both fields, on every other transition we write only `status`
-      // and leave `cancel_reason` untouched.
-      const patch: { status: string; cancel_reason?: string | null } =
-        data.next === "canceled"
-          ? { status: data.next, cancel_reason: data.reason ?? null }
-          : { status: data.next };
-
-      const { data: row, error } = await supabase
-        .from("sales_quotes")
-        .update(patch as never)
-        .eq("id", data.id)
-        .select("id, status, cancel_reason")
-        .single();
+      // SF-1.c3: route the status transition through the SECURITY DEFINER
+      // RPC `public.update_sales_quote_status`. This preserves the
+      // authenticated session (so `auth.uid()` is available to the audit
+      // and validate-status triggers) while enabling a future revoke of
+      // direct UPDATE on `public.sales_quotes` from the `authenticated`
+      // role. Authorization, cancel-reason requirement, and the
+      // sales-owner target-status whitelist are enforced inside the RPC
+      // and mirror the existing RLS policies. Transition validity and
+      // audit logging stay in the existing DB triggers.
+      const { data: rows, error } = await supabase.rpc("update_sales_quote_status", {
+        p_quote_id: data.id,
+        p_next: data.next,
+        p_reason: data.next === "canceled" ? (data.reason ?? undefined) : undefined,
+      });
       if (error) throw mapPgError(error.code, error.message);
+      const row = Array.isArray(rows) ? rows[0] : rows;
       if (!row) throw new Error("پیش‌فاکتور یافت نشد یا دسترسی به آن ندارید");
       return row as UpdateQuoteStatusResult;
     } catch (e) {
