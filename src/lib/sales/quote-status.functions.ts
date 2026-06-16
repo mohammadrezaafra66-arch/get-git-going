@@ -94,15 +94,14 @@ export const updateQuoteStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<UpdateQuoteStatusResult> => {
     try {
       const { supabase } = context;
-      // Strict whitelist: only `status` and `cancel_reason` are ever sent.
-      // For non-cancel transitions, clear `cancel_reason` — mirrors prior
-      // browser code which wrote both fields only on cancel and otherwise
-      // wrote only status (leaving stale reasons; we explicitly null it to
-      // keep the row consistent without changing any other behavior).
-      const patch: { status: string; cancel_reason: string | null } =
+      // Strict whitelist: only `status` (and `cancel_reason` when canceling)
+      // are ever sent. Mirrors the prior browser code exactly: on cancel we
+      // write both fields, on every other transition we write only `status`
+      // and leave `cancel_reason` untouched.
+      const patch: { status: string; cancel_reason?: string | null } =
         data.next === "canceled"
           ? { status: data.next, cancel_reason: data.reason ?? null }
-          : { status: data.next, cancel_reason: null };
+          : { status: data.next };
 
       const { data: row, error } = await supabase
         .from("sales_quotes")
