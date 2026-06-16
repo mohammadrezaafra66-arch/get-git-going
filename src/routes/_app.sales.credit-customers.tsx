@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ChevronsUpDown, Filter, Loader2, Search, ShieldCheck, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronsUpDown,
+  Filter,
+  Loader2,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -373,7 +381,9 @@ function CreditCustomersPage() {
                       {r.has_active_overdue && (
                         <div className="mt-1 text-destructive">
                           معوق: {formatNumber(Number(r.overdue_amount ?? 0))}
-                          {r.oldest_due_date ? `، قدیمی‌ترین سررسید: ${toFaDigits(r.oldest_due_date)}` : ""}
+                          {r.oldest_due_date
+                            ? `، قدیمی‌ترین سررسید: ${toFaDigits(r.oldest_due_date)}`
+                            : ""}
                         </div>
                       )}
                     </TableCell>
