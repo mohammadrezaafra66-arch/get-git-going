@@ -29,11 +29,7 @@ export const UpdateQuoteStatusInputSchema = z
           (SALES_QUOTE_STATUS_VALUES as readonly string[]).includes(v),
         { message: "وضعیت نامعتبر است" },
       ),
-    reason: z
-      .string()
-      .trim()
-      .max(500, "دلیل لغو حداکثر ۵۰۰ کاراکتر")
-      .optional(),
+    reason: z.string().trim().max(500, "دلیل لغو حداکثر ۵۰۰ کاراکتر").optional(),
   })
   .refine((v) => v.next !== "canceled" || (v.reason && v.reason.length > 0), {
     message: "برای لغو پیش‌فاکتور، دلیل لغو الزامی است",

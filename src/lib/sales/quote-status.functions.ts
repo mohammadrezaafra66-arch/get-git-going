@@ -20,10 +20,7 @@
 
 import { createServerFn, createMiddleware } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  UpdateQuoteStatusInputSchema,
-  type UpdateQuoteStatusResult,
-} from "./quote-status.schemas";
+import { UpdateQuoteStatusInputSchema, type UpdateQuoteStatusResult } from "./quote-status.schemas";
 
 /* ---------- error envelope (same pattern as customers.functions.ts) ---------- */
 
