@@ -77,6 +77,7 @@ DECLARE
   v_user uuid := auth.uid();
   v_inv record;
   v_created integer := 0;
+  v_delta integer := 0;
   v_customer_name text;
   v_invoice_label text;
   v_effective_proof text;
@@ -139,7 +140,8 @@ BEGIN
         AND t.title = 'تکمیل اطلاعات ارسال و مدرک پیش‌فاکتور'
         AND t.status <> 'canceled'
     );
-    GET DIAGNOSTICS v_created = ROW_COUNT;
+    GET DIAGNOSTICS v_delta = ROW_COUNT;
+    v_created := v_created + v_delta;
   END IF;
 
   IF COALESCE(v_inv.product_video_required, false) = true THEN
@@ -159,7 +161,8 @@ BEGIN
         AND t.title = 'تهیه فیلم محصول برای پیش‌فاکتور'
         AND t.status <> 'canceled'
     );
-    GET DIAGNOSTICS v_created = v_created + ROW_COUNT;
+    GET DIAGNOSTICS v_delta = ROW_COUNT;
+    v_created := v_created + v_delta;
   END IF;
 
   IF v_inv.collection_due_date IS NOT NULL THEN
@@ -180,7 +183,8 @@ BEGIN
         AND t.title = 'جمع‌آوری کالا برای پیش‌فاکتور'
         AND t.status <> 'canceled'
     );
-    GET DIAGNOSTICS v_created = v_created + ROW_COUNT;
+    GET DIAGNOSTICS v_delta = ROW_COUNT;
+    v_created := v_created + v_delta;
   END IF;
 
   IF v_effective_proof = 'receipt' THEN
@@ -201,7 +205,8 @@ BEGIN
         AND t.title = 'ثبت رسید ارسال تهران'
         AND t.status <> 'canceled'
     );
-    GET DIAGNOSTICS v_created = v_created + ROW_COUNT;
+    GET DIAGNOSTICS v_delta = ROW_COUNT;
+    v_created := v_created + v_delta;
   ELSIF v_effective_proof = 'carrier_waybill_photo' THEN
     INSERT INTO public.tasks (
       title, description, assigned_queue, status, priority,
@@ -220,7 +225,8 @@ BEGIN
         AND t.title = 'ثبت عکس بیجک باربری'
         AND t.status <> 'canceled'
     );
-    GET DIAGNOSTICS v_created = v_created + ROW_COUNT;
+    GET DIAGNOSTICS v_delta = ROW_COUNT;
+    v_created := v_created + v_delta;
   END IF;
 
   IF v_created > 0 THEN
