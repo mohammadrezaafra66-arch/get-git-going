@@ -78,6 +78,10 @@ interface NumRange {
 
 type RpcError = { message?: string } | null;
 type RpcResult<T> = Promise<{ data: T | null; error: RpcError }>;
+type TrustedCustomersRpc = (
+  fn: "list_trusted_credit_customers",
+  args: Record<string, unknown>,
+) => RpcResult<TrustedCreditCustomerRow[]>;
 
 const EMPTY_RANGE: NumRange = { from: "", to: "" };
 
@@ -153,26 +157,24 @@ function CreditCustomersPage() {
     enabled: !hasRangeError,
     staleTime: 30_000,
     queryFn: async () => {
-      const rpc = supabase.rpc as unknown as (
-        fn: "list_trusted_credit_customers",
-        args: Record<string, unknown>,
-      ) => RpcResult<TrustedCreditCustomerRow[]>;
-
-      const { data, error } = await rpc("list_trusted_credit_customers", {
-        p_search: dName.trim() || null,
-        p_phone: dPhone.trim() || null,
-        p_min_total_purchases: toNullableNumber(dPurchases.from),
-        p_max_total_purchases: toNullableNumber(dPurchases.to),
-        p_min_allowed_credit: toNullableNumber(dAllowedCredit.from),
-        p_max_allowed_credit: toNullableNumber(dAllowedCredit.to),
-        p_min_outstanding_balance: toNullableNumber(dDebt.from),
-        p_max_outstanding_balance: toNullableNumber(dDebt.to),
-        p_min_credit_score: toNullableNumber(dScore.from),
-        p_max_credit_score: toNullableNumber(dScore.to),
-        p_only_trusted: onlyTrusted,
-        p_limit: PAGE_SIZE,
-        p_offset: page * PAGE_SIZE,
-      });
+      const { data, error } = await (supabase.rpc as unknown as TrustedCustomersRpc)(
+        "list_trusted_credit_customers",
+        {
+          p_search: dName.trim() || null,
+          p_phone: dPhone.trim() || null,
+          p_min_total_purchases: toNullableNumber(dPurchases.from),
+          p_max_total_purchases: toNullableNumber(dPurchases.to),
+          p_min_allowed_credit: toNullableNumber(dAllowedCredit.from),
+          p_max_allowed_credit: toNullableNumber(dAllowedCredit.to),
+          p_min_outstanding_balance: toNullableNumber(dDebt.from),
+          p_max_outstanding_balance: toNullableNumber(dDebt.to),
+          p_min_credit_score: toNullableNumber(dScore.from),
+          p_max_credit_score: toNullableNumber(dScore.to),
+          p_only_trusted: onlyTrusted,
+          p_limit: PAGE_SIZE,
+          p_offset: page * PAGE_SIZE,
+        },
+      );
 
       if (error) throw new Error(error.message || "خطا در دریافت مشتریان معتبر");
       const rows = data ?? [];
@@ -571,32 +573,32 @@ function NumberRange({
 }: {
   label: string;
   range: NumRange;
-  onChange: (v: NumRange) => void;
+  onChange: (r: NumRange) => void;
   error: string | null;
-  hint?: string;
+  hint: string;
 }) {
   return (
-    <div className="space-y-1">
-      <Label className="inline-flex items-center gap-1 text-xs">
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
         {label}
-        {hint && <HelpHint text={hint} size={12} />}
-      </Label>
+        <HelpHint text={hint} />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="از"
           value={range.from}
           onChange={(e) => onChange({ ...range, from: e.target.value })}
+          placeholder="از"
+          inputMode="numeric"
+          dir="ltr"
+          className="text-right"
         />
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="تا"
           value={range.to}
           onChange={(e) => onChange({ ...range, to: e.target.value })}
+          placeholder="تا"
+          inputMode="numeric"
+          dir="ltr"
+          className="text-right"
         />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
