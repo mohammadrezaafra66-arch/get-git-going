@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { formatDateFa } from "@/lib/i18n/formatters";
 
 const PAGE_SIZE = 20;
 
@@ -23,6 +24,9 @@ type Task = {
   description: string | null;
   status: string;
   priority: string;
+  assigned_queue: string | null;
+  proof_requirement: string | null;
+  due_date: string | null;
   reference_type: string | null;
   reference_id: string | null;
   created_at: string;
@@ -46,6 +50,40 @@ function statusLabel(s: string) {
   }
 }
 
+function queueLabel(q: string | null) {
+  switch (q) {
+    case "sales":
+      return "فروش";
+    case "shipping":
+      return "ارسال";
+    case "store":
+      return "فروشگاه/انبار";
+    case "accounting":
+      return "حسابداری";
+    default:
+      return "—";
+  }
+}
+
+function proofLabel(p: string | null) {
+  switch (p) {
+    case "receipt":
+      return "رسید تهران";
+    case "carrier_waybill_photo":
+      return "عکس بیجک باربری";
+    case "product_video":
+      return "فیلم محصول";
+    case "none":
+      return "بدون مدرک";
+    default:
+      return null;
+  }
+}
+
+function isInvoiceLinkTask(t: Task) {
+  return (t.reference_type === "invoice" || t.reference_type === "invoice_workflow") && !!t.reference_id;
+}
+
 function TasksBoardPage() {
   const { roles } = useAuth();
   const canTick = roles.includes("admin") || roles.includes("accountant");
@@ -61,7 +99,7 @@ function TasksBoardPage() {
     let q = supabase
       .from("tasks")
       .select(
-        "id,title,description,status,priority,reference_type,reference_id,created_at,completed_at",
+        "id,title,description,status,priority,assigned_queue,proof_requirement,due_date,reference_type,reference_id,created_at,completed_at",
         { count: "exact" },
       )
       .order("created_at", { ascending: false })
@@ -124,7 +162,10 @@ function TasksBoardPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <PageHeader title="برد وظایف" description="وظایف اختصاص‌یافته (شامل بررسی پیش‌فاکتورها)" />
+      <PageHeader
+        title="برد وظایف"
+        description="وظایف اختصاص‌یافته، بررسی پیش‌فاکتورها و کارهای عملیاتی ارسال/مدرک"
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Select
@@ -153,54 +194,60 @@ function TasksBoardPage() {
         ) : items.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">وظیفه‌ای یافت نشد</div>
         ) : (
-          items.map((t) => (
-            <div key={t.id} className="border-b p-4 last:border-b-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{t.title}</span>
-                    <Badge variant={t.status === "done" ? "secondary" : "outline"}>
-                      {statusLabel(t.status)}
-                    </Badge>
-                  </div>
-                  {t.description && (
-                    <p className="text-xs text-muted-foreground whitespace-pre-line">
-                      {t.description}
-                    </p>
-                  )}
-                  {t.reference_type === "invoice" && t.reference_id && (
-                    <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                      <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: t.reference_id }}>
-                        <ExternalLink className="ml-1 h-3 w-3" /> مشاهده پیش‌فاکتور
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-                {canTick && t.status !== "done" && t.status !== "canceled" && (
-                  <div className="flex flex-col gap-2">
-                    {t.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startTask(t.id)}
-                        disabled={acting === t.id}
-                      >
-                        شروع
+          items.map((t) => {
+            const proof = proofLabel(t.proof_requirement);
+            return (
+              <div key={t.id} className="border-b p-4 last:border-b-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-sm">{t.title}</span>
+                      <Badge variant={t.status === "done" ? "secondary" : "outline"}>
+                        {statusLabel(t.status)}
+                      </Badge>
+                      {t.assigned_queue && <Badge variant="outline">صف: {queueLabel(t.assigned_queue)}</Badge>}
+                      {proof && <Badge variant="secondary">مدرک: {proof}</Badge>}
+                      {t.due_date && <Badge variant="outline">مهلت: {formatDateFa(t.due_date)}</Badge>}
+                    </div>
+                    {t.description && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-line">
+                        {t.description}
+                      </p>
+                    )}
+                    {isInvoiceLinkTask(t) && (
+                      <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+                        <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: t.reference_id! }}>
+                          <ExternalLink className="ml-1 h-3 w-3" /> مشاهده پیش‌فاکتور
+                        </Link>
                       </Button>
                     )}
-                    <Button size="sm" onClick={() => completeTask(t)} disabled={acting === t.id}>
-                      {acting === t.id ? (
-                        <Loader2 className="ml-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="ml-1 h-3 w-3" />
-                      )}
-                      تکمیل
-                    </Button>
                   </div>
-                )}
+                  {canTick && t.status !== "done" && t.status !== "canceled" && (
+                    <div className="flex flex-col gap-2">
+                      {t.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startTask(t.id)}
+                          disabled={acting === t.id}
+                        >
+                          شروع
+                        </Button>
+                      )}
+                      <Button size="sm" onClick={() => completeTask(t)} disabled={acting === t.id}>
+                        {acting === t.id ? (
+                          <Loader2 className="ml-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="ml-1 h-3 w-3" />
+                        )}
+                        تکمیل
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
