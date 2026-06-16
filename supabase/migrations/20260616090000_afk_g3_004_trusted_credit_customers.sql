@@ -79,7 +79,11 @@ AS $function$
       COALESCE(ccp.total_purchases, 0)::numeric AS total_purchases,
       COALESCE(ccp.credit_score, 0)::int AS credit_score,
       COALESCE(ccp.credit_limit, 0)::numeric AS credit_limit,
-      COALESCE(ccb.available_credit, ccp.credit_limit, 0)::numeric AS available_credit,
+      COALESCE(
+        ccb.available_credit,
+        GREATEST(COALESCE(ccp.credit_limit, 0) - COALESCE(ccp.outstanding_balance, 0), 0),
+        0
+      )::numeric AS available_credit,
       COALESCE(ccb.held_credit, 0)::numeric AS held_credit,
       COALESCE(ccp.outstanding_balance, 0)::numeric AS outstanding_balance,
       COALESCE(o.overdue_amount, 0)::numeric AS overdue_amount,
