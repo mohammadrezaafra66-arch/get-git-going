@@ -54,6 +54,8 @@ import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import { SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
+import { useServerFn } from "@tanstack/react-start";
+import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -339,16 +341,12 @@ interface RowProps {
 
 function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean) {
   const qc = useQueryClient();
+  const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
-      const { error } =
-        payload.next === "canceled"
-          ? await supabase
-              .from("sales_quotes")
-              .update({ status: payload.next, cancel_reason: payload.reason ?? null })
-              .eq("id", row.id)
-          : await supabase.from("sales_quotes").update({ status: payload.next }).eq("id", row.id);
-      if (error) throw error;
+      await updateQuoteStatusFn({
+        data: { id: row.id, next: payload.next, reason: payload.reason },
+      });
     },
     onSuccess: () => {
       toast.success("وضعیت پیش‌فاکتور به‌روزرسانی شد.");
