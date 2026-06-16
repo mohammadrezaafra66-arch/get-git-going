@@ -103,7 +103,7 @@ export const updateQuoteStatus = createServerFn({ method: "POST" })
       const { data: rows, error } = await supabase.rpc("update_sales_quote_status", {
         p_quote_id: data.id,
         p_next: data.next,
-        p_reason: data.next === "canceled" ? (data.reason ?? null) : null,
+        p_reason: data.next === "canceled" ? (data.reason ?? undefined) : undefined,
       });
       if (error) throw mapPgError(error.code, error.message);
       const row = Array.isArray(rows) ? rows[0] : rows;
