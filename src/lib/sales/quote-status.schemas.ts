@@ -22,9 +22,13 @@ export const SALES_QUOTE_STATUS_VALUES = [
 export const UpdateQuoteStatusInputSchema = z
   .object({
     id: z.string().uuid({ message: "شناسه پیش‌فاکتور نامعتبر است" }),
-    next: z.enum(SALES_QUOTE_STATUS_VALUES, {
-      errorMap: () => ({ message: "وضعیت نامعتبر است" }),
-    }),
+    next: z
+      .string()
+      .refine(
+        (v): v is (typeof SALES_QUOTE_STATUS_VALUES)[number] =>
+          (SALES_QUOTE_STATUS_VALUES as readonly string[]).includes(v),
+        { message: "وضعیت نامعتبر است" },
+      ),
     reason: z
       .string()
       .trim()
