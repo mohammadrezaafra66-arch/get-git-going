@@ -38,6 +38,8 @@ import {
 } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
+import { useServerFn } from "@tanstack/react-start";
+import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -366,16 +368,12 @@ function QuoteActionButtons({
   const [pdfLoading, setPdfLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
+  const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
     mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
-      const { error } =
-        payload.next === "canceled"
-          ? await supabase
-              .from("sales_quotes")
-              .update({ status: payload.next, cancel_reason: payload.reason ?? null })
-              .eq("id", quote.id)
-          : await supabase.from("sales_quotes").update({ status: payload.next }).eq("id", quote.id);
-      if (error) throw error;
+      await updateQuoteStatusFn({
+        data: { id: quote.id, next: payload.next, reason: payload.reason },
+      });
     },
     onSuccess: () => {
       toast.success("وضعیت پیش‌فاکتور به‌روزرسانی شد.");
