@@ -18,6 +18,8 @@ import { formatDateFa } from "@/lib/i18n/formatters";
 
 const PAGE_SIZE = 20;
 
+const tasksTable = () => (supabase as any).from("tasks");
+
 type Task = {
   id: string;
   title: string;
@@ -98,8 +100,7 @@ function TasksBoardPage() {
 
   const load = async () => {
     setLoading(true);
-    let q = supabase
-      .from("tasks")
+    let q = tasksTable()
       .select(
         "id,title,description,status,priority,assigned_queue,proof_requirement,due_date,reference_type,reference_id,created_at,completed_at",
         { count: "exact" },
@@ -123,8 +124,7 @@ function TasksBoardPage() {
 
   const startTask = async (id: string) => {
     setActing(id);
-    const { error } = await supabase
-      .from("tasks")
+    const { error } = await tasksTable()
       .update({ status: "in_progress", updated_at: new Date().toISOString() })
       .eq("id", id);
     setActing(null);
@@ -142,8 +142,7 @@ function TasksBoardPage() {
     if (t.reference_type === "invoice") {
       ({ error } = await supabase.rpc("complete_invoice_task", { p_task_id: t.id }));
     } else {
-      ({ error } = await supabase
-        .from("tasks")
+      ({ error } = await tasksTable()
         .update({
           status: "done",
           completed_at: new Date().toISOString(),
