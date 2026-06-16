@@ -84,13 +84,19 @@ export const trackProductInteractionFn = createServerFn({ method: "POST" })
       if (!spt) return { ok: false, reason: "sale_price_type_not_found" };
     }
 
-    const { error: insErr } = await supabase.from("product_interaction_events").insert({
-      user_id: userId, // server-set; never trust client
-      product_id: data.product_id,
-      event_type: data.event_type,
-      source: data.source,
-      sale_price_type_id: data.sale_price_type_id ?? null,
-    });
+    // MKT-2.4.b: direct client INSERT is revoked at the RLS/grant level.
+    // Load the service-role admin client INSIDE the handler so it never
+    // leaks into the client bundle graph (see tanstack-supabase-import-graph).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: insErr } = await supabaseAdmin
+      .from("product_interaction_events")
+      .insert({
+        user_id: userId, // server-set from authenticated context; never trust client
+        product_id: data.product_id,
+        event_type: data.event_type,
+        source: data.source,
+        sale_price_type_id: data.sale_price_type_id ?? null,
+      });
     if (insErr) throw new Error("خطا در ثبت رویداد تعامل");
 
     return { ok: true };
