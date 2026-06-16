@@ -81,7 +81,9 @@ function proofLabel(p: string | null) {
 }
 
 function isInvoiceLinkTask(t: Task) {
-  return (t.reference_type === "invoice" || t.reference_type === "invoice_workflow") && !!t.reference_id;
+  return (
+    (t.reference_type === "invoice" || t.reference_type === "invoice_workflow") && !!t.reference_id
+  );
 }
 
 function TasksBoardPage() {
@@ -205,9 +207,13 @@ function TasksBoardPage() {
                       <Badge variant={t.status === "done" ? "secondary" : "outline"}>
                         {statusLabel(t.status)}
                       </Badge>
-                      {t.assigned_queue && <Badge variant="outline">صف: {queueLabel(t.assigned_queue)}</Badge>}
+                      {t.assigned_queue && (
+                        <Badge variant="outline">صف: {queueLabel(t.assigned_queue)}</Badge>
+                      )}
                       {proof && <Badge variant="secondary">مدرک: {proof}</Badge>}
-                      {t.due_date && <Badge variant="outline">مهلت: {formatDateFa(t.due_date)}</Badge>}
+                      {t.due_date && (
+                        <Badge variant="outline">مهلت: {formatDateFa(t.due_date)}</Badge>
+                      )}
                     </div>
                     {t.description && (
                       <p className="text-xs text-muted-foreground whitespace-pre-line">
@@ -216,7 +222,10 @@ function TasksBoardPage() {
                     )}
                     {isInvoiceLinkTask(t) && (
                       <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                        <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: t.reference_id! }}>
+                        <Link
+                          to="/sales/invoices/$invoiceId"
+                          params={{ invoiceId: t.reference_id! }}
+                        >
                           <ExternalLink className="ml-1 h-3 w-3" /> مشاهده پیش‌فاکتور
                         </Link>
                       </Button>
