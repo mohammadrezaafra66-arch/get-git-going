@@ -28,6 +28,7 @@ py-modules = [
   "phase3_guarded_db_evidence_contract",
   "phase3_single_row_evidence_step",
   "phase3_row_summary",
+  "phase3_resource_boundary",
 ]
 
 [tool.pytest.ini_options]
