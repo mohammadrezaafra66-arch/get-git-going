@@ -67,6 +67,12 @@ COMMENT ON COLUMN public.tasks.assigned_queue IS
 COMMENT ON COLUMN public.tasks.proof_requirement IS
 'AFK-G3-013: نوع مدرک لازم برای task عملیاتی پیش‌فاکتور/ارسال.';
 
+DROP POLICY IF EXISTS tasks_self_update ON public.tasks;
+CREATE POLICY tasks_self_update ON public.tasks
+  FOR UPDATE TO authenticated
+  USING (assigned_to = auth.uid() OR created_by = auth.uid())
+  WITH CHECK (assigned_to = auth.uid() OR created_by = auth.uid());
+
 CREATE OR REPLACE FUNCTION public.create_preinvoice_workflow_tasks(p_invoice_id uuid)
 RETURNS integer
 LANGUAGE plpgsql
