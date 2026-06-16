@@ -1,0 +1,93 @@
+/**
+ * MKT-2.4.a — Move `product_interaction_events` insert from the browser
+ * to a server function.
+ *
+ * Why:
+ *  - The previous browser-side insert accepted client-shaped
+ *    `user_id`, `event_type`, `source`, `product_id`, and
+ *    `sale_price_type_id`. A crafted client could spam or forge analytics
+ *    rows, which would skew marketing reports and any future
+ *    promotion/recommendation signal built on this table.
+ *  - This server function validates inputs against fixed enums, verifies
+ *    `product_id` (and `sale_price_type_id` when provided) exist, and
+ *    forces `user_id` from the authenticated session.
+ *
+ * RLS / RBAC:
+ *  - Uses the user-scoped `context.supabase` from `requireSupabaseAuth`.
+ *    No RLS or grant change in this slice.
+ *  - Open to any authenticated user — interaction tracking is not
+ *    role-restricted.
+ *
+ * Self-host:
+ *  - No new dependency, no external service, no secret. Pure TanStack
+ *    Start serverFn, Linux/Docker compatible.
+ */
+
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const EventTypeEnum = z.enum([
+  "search_result_viewed",
+  "price_checked",
+  "chart_opened",
+  "product_details_opened",
+  "board_price_viewed",
+]);
+
+const SourceEnum = z.enum([
+  "sales_search",
+  "live_price_list",
+  "amin_hozoor_board",
+  "product_details",
+  "management_dashboard",
+]);
+
+const InputSchema = z.object({
+  product_id: z.string().uuid(),
+  event_type: EventTypeEnum,
+  source: SourceEnum,
+  sale_price_type_id: z.string().uuid().nullable().optional(),
+});
+
+export type TrackProductInteractionResult =
+  | { ok: true }
+  | { ok: false; reason: "product_not_found" | "sale_price_type_not_found" };
+
+export const trackProductInteractionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => InputSchema.parse(input))
+  .handler(async ({ data, context }): Promise<TrackProductInteractionResult> => {
+    const { supabase, userId } = context;
+
+    // Server-side existence check for product_id.
+    const { data: product, error: productErr } = await supabase
+      .from("products")
+      .select("id")
+      .eq("id", data.product_id)
+      .maybeSingle();
+    if (productErr) throw new Error("خطا در بررسی محصول");
+    if (!product) return { ok: false, reason: "product_not_found" };
+
+    // Existence check for sale_price_type_id when provided.
+    if (data.sale_price_type_id) {
+      const { data: spt, error: sptErr } = await supabase
+        .from("sale_price_types")
+        .select("id")
+        .eq("id", data.sale_price_type_id)
+        .maybeSingle();
+      if (sptErr) throw new Error("خطا در بررسی نوع قیمت");
+      if (!spt) return { ok: false, reason: "sale_price_type_not_found" };
+    }
+
+    const { error: insErr } = await supabase.from("product_interaction_events").insert({
+      user_id: userId, // server-set; never trust client
+      product_id: data.product_id,
+      event_type: data.event_type,
+      source: data.source,
+      sale_price_type_id: data.sale_price_type_id ?? null,
+    });
+    if (insErr) throw new Error("خطا در ثبت رویداد تعامل");
+
+    return { ok: true };
+  });
