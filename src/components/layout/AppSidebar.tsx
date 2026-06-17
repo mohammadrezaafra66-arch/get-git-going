@@ -270,6 +270,32 @@ export function AppSidebar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (!isSearching) {
+                    if (e.key === "Escape") setSearchQuery("");
+                    return;
+                  }
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setHighlightedIndex((i) =>
+                      searchResults.length === 0
+                        ? 0
+                        : Math.min(i + 1, searchResults.length - 1),
+                    );
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setHighlightedIndex((i) => Math.max(i - 1, 0));
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    const target = searchResults[highlightedIndex];
+                    if (target) {
+                      navigate({ to: target.to });
+                      setSearchQuery("");
+                    }
+                  } else if (e.key === "Escape") {
+                    setSearchQuery("");
+                  }
+                }}
                 placeholder="جستجوی سریع..."
                 aria-label="جستجوی سریع"
                 className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
