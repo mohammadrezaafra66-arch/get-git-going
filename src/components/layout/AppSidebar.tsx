@@ -53,6 +53,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [activeModule, setActiveModule] = useState<PrimaryModuleKey>(() =>
     resolveActiveModule(location.pathname),
   );
@@ -122,6 +123,10 @@ export function AppSidebar() {
       normalizeSearchText(i.label).toLowerCase().includes(normalizedQuery),
     );
   }, [isSearching, normalizedQuery, visible]);
+  // KBD-NAV — reset highlight when query or results change.
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [searchQuery, searchResults.length]);
   const { data: pendingCount } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
@@ -178,8 +183,10 @@ export function AppSidebar() {
   const isItemActive = (to: string) =>
     location.pathname === to || location.pathname.startsWith(to + "/");
 
-  const renderItem = (item: NavItem) => {
+  const renderItem = (item: NavItem, index?: number) => {
     const active = isItemActive(item.to);
+    const isHighlighted =
+      isSearching && typeof index === "number" && index === highlightedIndex;
     const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
       item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
@@ -188,12 +195,17 @@ export function AppSidebar() {
         key={item.to}
         to={item.to}
         aria-current={active ? "page" : undefined}
+        onMouseEnter={
+          isSearching && typeof index === "number"
+            ? () => setHighlightedIndex(index)
+            : undefined
+        }
         className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors
           ${
             active
               ? "bg-sidebar-accent/70 font-semibold text-sidebar-primary shadow-sm"
               : "text-sidebar-foreground/85 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-          }`}
+          } ${isHighlighted ? "ring-1 ring-sidebar-primary/60 bg-sidebar-accent/50" : ""}`}
       >
         {active && (
           <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
