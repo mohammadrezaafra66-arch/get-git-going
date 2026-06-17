@@ -142,3 +142,5 @@ COMMENT ON CONSTRAINT automation_driver_outputs_phase_label_check
   'Allows BASELINE/PHASE-0/PHASE-1/PHASE-2/PHASE-3/FUTURE evidence rows. PHASE-3 is limited to approved controlled evidence-table workflows and does not authorize business writeback.';
 
 COMMIT;
+
+<!-- این packet فقط مانع فعلی را مستند می‌کند و اجازه هیچ‌گونه insert یا migration مستقیم نمی‌دهد. -->
