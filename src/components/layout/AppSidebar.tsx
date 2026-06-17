@@ -359,7 +359,7 @@ export function AppSidebar() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   {searchResults.length > 0 ? (
-                    searchResults.map(renderItem)
+                    searchResults.map((it, idx) => renderItem(it, idx))
                   ) : (
                     <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
                       موردی یافت نشد
