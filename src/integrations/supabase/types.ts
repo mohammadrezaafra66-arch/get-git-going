@@ -9431,6 +9431,18 @@ export type Database = {
         Args: { _permissions: Json; _role_name: string }
         Returns: undefined
       }
+      update_sales_quote_status: {
+        Args: {
+          p_next: Database["public"]["Enums"]["sales_quote_status"]
+          p_quote_id: string
+          p_reason?: string
+        }
+        Returns: {
+          cancel_reason: string
+          id: string
+          status: Database["public"]["Enums"]["sales_quote_status"]
+        }[]
+      }
       update_waybill_status: {
         Args: { p_new_status: string; p_waybill_id: string }
         Returns: undefined

@@ -126,6 +126,10 @@ constraint فعلی ستون `phase_label` فقط این مقدارها را ق�
 این سند migration نمی‌سازد، اما شکل migration آینده را محدود می‌کند.
 
 migration آینده فقط باید کاری شبیه این انجام دهد:
+<<<<<<< HEAD
+=======
+بازبینی نهایی این packet باید قبل از هر migration اجرایی انجام شود.
+>>>>>>> 626ea988f0536e426c65dabc756d047ac8e027d3
 
 ```sql
 BEGIN;
@@ -142,5 +146,8 @@ COMMENT ON CONSTRAINT automation_driver_outputs_phase_label_check
   'Allows BASELINE/PHASE-0/PHASE-1/PHASE-2/PHASE-3/FUTURE evidence rows. PHASE-3 is limited to approved controlled evidence-table workflows and does not authorize business writeback.';
 
 COMMIT;
+<<<<<<< HEAD
 
 <!-- این packet فقط مانع فعلی را مستند می‌کند و اجازه هیچ‌گونه insert یا migration مستقیم نمی‌دهد. -->
+=======
+>>>>>>> 626ea988f0536e426c65dabc756d047ac8e027d3
