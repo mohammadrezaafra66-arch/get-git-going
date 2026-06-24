@@ -1,207 +1,149 @@
-
 ## Task ID
 
-MKT-2-write-security-review-plan
+messenger-core-db-migration
 
 ## Classification
 
-READ-ONLY REVIEW + PLAN ONLY — no file edits, no migrations, no DB changes.
+PLAN ONLY — single database migration (no code, no UI, no edge function).
+
+## File edits allowed
+
+No (plan mode). On approval: one new file under `supabase/migrations/` only.
 
 ## Goal
 
-Identify all marketing-area browser → DB write paths, assess their security/audit reliability, and define a phased, minimal serverFn migration with the smallest safe first slice.
+ایجاد ۵ جدول پایه‌ی پیام‌رسان داخلی AfraKala با RLS امن و بدون recursion.
 
-## Current state — marketing write paths
+## Current state
 
-Three direct browser → DB write paths exist; no marketing serverFn layer yet.
+- جدول `public.messages` فعلی یک inbox ساده‌ی recipient-based است (sender_id, recipient_id, subject, body, is_read). با مدل گروهی درخواست‌شده تداخل ندارد و دست‌نخورده باقی می‌ماند.
+- route `/_app/messages` فقط Placeholder است (هیچ کوئری روی جداول جدید ندارد).
+- هیچ جدول `messenger_*` وجود ندارد.
 
-### 1. `src/routes/_app.admin.marketing-channels.tsx` — `marketing_channels` CRUD
-- `supabase.from("marketing_channels").insert/update(...)` from the browser.
-- Followed by `supabase.from("audit_logs").insert({...})` from the browser (best-effort, awaited but not transactional with the write).
-- Role check is client-side only: `roles.includes("admin") || roles.includes("accountant")`.
-- RLS (migration `20260430105647`): `mc_select_authed` (any authed) + `mc_write_admin_accountant` (admin/accountant) — DB enforces role. ✅
-- CHECK constraints on `weight`, `daily_quota` ≥ 0 exist (migration `20260608074437`). ✅
-- Audit reliability: ⚠️ weak. If the CRUD succeeds and the audit insert fails (RLS, network, tab close), the change is silently un-audited. There is no DB trigger writing audit_logs.
+## Scope
 
-### 2. `src/routes/_app.marketing.suggestions.tsx` — "mark as used" → `audit_logs` insert
-- Browser inserts directly into `audit_logs` with `action='promotion_suggestion_used'`, `actor_id=user.id`, free-form `diff` JSON.
-- RLS (migration `20260424144837`): insert allowed when `auth.uid() = actor_id`; only admins can read. ✅ insert is gated to "self-acted".
-- ⚠️ Risks:
-  - Any authed user can fabricate any `entity_type`/`entity_id`/`action` as themselves, polluting the audit table (no server-side action allow-list).
-  - `diff` payload is fully client-supplied; the suggestions reporting in `_app.marketing.suggestions-history.tsx` and the `daily_quota` "used_today" counter (view in `20260608074437`) read those values — a malicious client can skew quotas/reports.
-  - No de-dup: rapid double-click can create multiple "used" rows for the same `(product_id, channel_id, day)`.
-  - Daily quota enforcement is advisory (UI-disables button); a crafted client request can bypass it.
+یک migration واحد timestamped که فقط شامل:
 
-### 3. `src/lib/analytics/product-interactions.ts` — `product_interaction_events` insert
-- Fire-and-forget browser insert, in-memory 30s dedup.
-- RLS (migration `20260430185634`): `pie_insert_authed` allows any authenticated insert; `pie_select_privileged` restricts reads. ✅
-- Used purely for analytics; low business impact, but values are 100% client-supplied (`event_type`, `source`, `product_id`).
-
-## Scope (MKT-2 overall)
-
-Move marketing write paths behind authenticated serverFns with server-side role check, input validation (zod), and reliable audit logging — incrementally, one path per slice.
+1. ساخت ۵ جدول دقیقاً با ستون‌های درخواست‌شده.
+2. GRANTهای لازم (authenticated + service_role) چون همه policyها به `auth.uid()` متصل‌اند → بدون `anon`.
+3. تابع SECURITY DEFINER کمکی `public.is_messenger_group_member(_group_id uuid, _user_id uuid)` برای جلوگیری از RLS recursion.
+4. فعال‌سازی RLS روی هر ۵ جدول.
+5. Policyهای حداقلی طبق درخواست + پوشش insert/delete امن.
+6. ایندکس‌های ضروری برای کوئری‌های متداول.
 
 ## Out of scope
 
-- Campaign/ROI work
-- MKT-3 work
-- Changing RLS on `marketing_channels`, `audit_logs`, or `product_interaction_events` (current RLS is sound; we'll layer serverFns on top)
-- Refactoring suggestions UI/UX
-- Touching unrelated audit_logs call sites elsewhere in the repo
-- External integrations
+- هیچ تغییری در `public.messages` موجود.
+- هیچ Storage bucket یا policy روی storage (پیوست‌ها فعلاً فقط متادیتا).
+- هیچ realtime publication، trigger، یا audit trigger.
+- هیچ RPC، serverFn، route، یا UI.
+- هیچ seed data.
+- هیچ تغییر در `user_roles` یا RBAC.
 
-## Recommendation summary
+## Files likely to change
 
-| Write path | Move to serverFn? | When | Why |
-|---|---|---|---|
-| `audit_logs` insert for `promotion_suggestion_used` | **YES** — first slice | Phase 1 | Highest impact: skews quotas/reports; smallest blast radius (single call site, ~30 LOC change). |
-| `marketing_channels` CRUD | YES | Phase 2 | Larger surface (insert/update/toggle, 3 call sites), but RLS already enforces role — defer until Phase 1 pattern is proven. |
-| `product_interaction_events` fire-and-forget | **NO for now** | Defer (Phase 3 / optional) | High volume, low value, no business decisions read from it. ServerFn would add latency/cost without proportional security gain. Re-evaluate only if data is used for KPIs. |
+- `supabase/migrations/<timestamp>_messenger_core_tables.sql` (جدید، تنها فایل).
 
-## Phases
+## Database / migration impact
 
-**Phase 1 (smallest safe slice — this PR):** Add `markPromotionSuggestionUsed` serverFn; replace the single browser audit insert in `_app.marketing.suggestions.tsx`. No DB changes. No RLS changes.
+- ۵ جدول جدید در `public`.
+- ۱ تابع SECURITY DEFINER جدید با `search_path=public`.
+- Reversible: drop function + drop tables (CASCADE روی foreign keys داخلی خودشان).
+- Idempotent: همه با `IF NOT EXISTS` / `CREATE OR REPLACE` / `DROP POLICY IF EXISTS` قبل از CREATE POLICY.
+- Destructive نیست → نیازی به backup خاص ندارد، اما طبق `MIGRATION_SAFETY_POLICY` در staging قبل از production تست شود.
 
-**Phase 2 (separate task MKT-2.2):** Add serverFns for `createMarketingChannel`, `updateMarketingChannel`, `toggleMarketingChannelActive`; replace the three call sites in `_app.admin.marketing-channels.tsx`. Keep audit insert co-located in the serverFn handler so CRUD + audit succeed/fail together.
+## RLS / RBAC / audit impact
 
-**Phase 3 (separate task MKT-2.3, optional):** Decide whether `product_interaction_events` stays browser-side or moves to a batched serverFn. Out of scope for MKT-2 unless the data starts driving business decisions.
+- RLS روی هر ۵ جدول فعال.
+- دسترسی فقط برای اعضای گروه از طریق `is_messenger_group_member()` (SECURITY DEFINER) — جلوگیری از infinite recursion در policy روی `messenger_group_members`.
+- ویرایش/حذف پیام فقط توسط `sender_id = auth.uid()`.
+- RBAC موجود (`has_role`) دست‌نخورده؛ admin override در این فاز اضافه نمی‌شود (می‌تواند فاز بعد).
+- Audit log: در این migration اضافه نمی‌شود؛ در صورت نیاز در فاز جداگانه با trigger روی INSERT/UPDATE/DELETE اضافه می‌شود (یادداشت ریسک).
 
-## Phase 1 — smallest safe first slice (detailed)
+## Performance impact
 
-### Files likely to change (Phase 1 only)
-- **Create:** `src/lib/marketing/promotion-suggestions.functions.ts` — single serverFn `markPromotionSuggestionUsed`.
-- **Edit:** `src/routes/_app.marketing.suggestions.tsx` — replace `supabase.from("audit_logs").insert(...)` with `useServerFn(markPromotionSuggestionUsed)` call inside `markAsUsed`. Keep all UI behaviour identical (toast, busy state, invalidation).
-- No other files.
+- ایندکس‌ها: `(group_id, created_at DESC)` روی `messenger_messages`، `(user_id)` روی `messenger_group_members`، `(message_id)` روی `messenger_attachments` و `messenger_read_receipts`.
+- کوئری list پیام‌ها همیشه باید با `LIMIT` و pagination در UI/سرور آینده مصرف شود (خارج از این migration).
 
-### ServerFn contract (Phase 1)
-- `createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(zod).handler(...)`.
-- Input (zod-validated): `product_id: uuid`, `channel_id: uuid`, `score`, `label_weight_sum`, `channel_weight`, `stock_factor`, `recency_factor`, `qty_90d` — all numeric, finite, bounded (e.g. `0 <= score <= 1e6`).
-- Server reads `product_name`, `channel_name`, and current daily_quota on the server to avoid trusting client-supplied display strings (uses `context.supabase`, RLS applies as the user).
-- Inserts into `audit_logs` via `context.supabase` (RLS `auth.uid()=actor_id` is satisfied because middleware injects the user's bearer).
-- Enforces `daily_quota` server-side: if exhausted, returns `{ ok: false, reason: "quota_exhausted" }` (UI already disables the button; this is defense-in-depth).
-- Returns `{ ok: true }` on success.
+## UI/UX impact
 
-### Database / migration impact
-- **None.** No schema, RLS, trigger, function, or grant changes.
+هیچ. صفحه‌ی `/messages` همچنان Placeholder می‌ماند.
 
-### RLS / RBAC / audit impact
-- RLS unchanged. Insert still passes existing `auth.uid() = actor_id` policy via the user-scoped server client.
-- Audit reliability **improves**: payload is server-validated and server-shaped.
-- RBAC: serverFn middleware enforces authenticated session; route-level role check (`admin|manager|accountant`) is duplicated server-side via `has_role` RPC to prevent any non-marketing user from minting `promotion_suggestion_used` rows.
+## Implementation phases
 
-### Security and self-host check
-- No new dependency, no external service, no new secret.
-- No `VITE_` server secret introduced.
-- Self-host safe (TanStack Start serverFn — Linux/Docker compatible).
-- `src/start.ts` must already register `attachSupabaseAuth` (used by other serverFns in `src/lib/...`); verify in implementation slice, do not modify if already wired.
+Phase 1 (این پلن): migration پایه + RLS + ایندکس.
+Phase 2 (بعداً، جداگانه): Storage bucket برای پیوست‌ها + policy.
+Phase 3 (بعداً): RPC/serverFn ارسال پیام + audit trigger + realtime + UI.
 
-### Performance impact
-- One extra round-trip per "mark as used" click (rare action, low volume). Negligible.
+## Acceptance criteria
 
-### UI/UX impact
-- No visible change. Persian copy, RTL, toasts, busy state preserved.
+- migration روی Lovable Cloud بدون خطا اعمال شود.
+- `supabase--linter` هیچ ERROR جدیدی روی این ۵ جدول گزارش نکند (WARNINGها بررسی و در گزارش ذکر شوند).
+- کاربر غیرعضو با `SELECT` روی پیام‌های یک گروه هیچ ردیفی نبیند.
+- عضو گروه فقط پیام‌های همان گروه را ببیند.
+- فقط `sender_id` بتواند `UPDATE`/`soft delete` روی پیام خودش انجام دهد.
+- INSERT پیام/عضویت/پیوست/read receipt فقط در گروه‌هایی که کاربر عضو است.
+- `messenger_groups` INSERT فقط با `created_by = auth.uid()`.
 
-### Manual test path
-1. Login as admin → `/marketing/suggestions` → click "ثبت به‌عنوان استفاده‌شده" on a row → toast success, row marks used, suggestion list invalidates.
-2. Login as non-allowed role → button hidden (page redirects), serverFn rejects if called.
-3. Click twice quickly → second click no-ops via existing `busyKey` + `used` state.
-4. Force `quota_exhausted` by lowering `daily_quota` on a channel → server rejects with Persian error toast.
-5. Check `audit_logs` row exists with expected `diff`.
+## Manual test path (با psql/Supabase به‌عنوان دو کاربر تستی)
 
-### Commands to run (Phase 1)
-- `npm run build`
-- `npm run lint`
-- typecheck via build (no standalone script)
-- No tests for this surface — report NOT RUN.
+1. user A یک گروه می‌سازد → خودش به‌عنوان admin در `messenger_group_members` اضافه می‌شود (در این فاز به‌صورت دستی، چون trigger نداریم؛ این محدودیت در گزارش ذکر می‌شود).
+2. user A پیام می‌فرستد → user B (غیرعضو) نباید ببیند.
+3. user A عضو می‌کند B را → B می‌بیند.
+4. user B تلاش به UPDATE پیام A → reject.
+5. user A پیام خود را edit/soft-delete می‌کند → OK.
 
-### Acceptance criteria (Phase 1)
-- No browser `supabase.from("audit_logs").insert(...)` remains in `_app.marketing.suggestions.tsx`.
-- All "mark as used" writes go through `markPromotionSuggestionUsed` serverFn.
-- Zod validates all inputs server-side.
-- Role re-checked server-side.
-- Existing RLS, schema, and UI behavior unchanged.
-- Build + lint pass.
+## Commands to run
 
-### Risks
-- Forgetting to verify `attachSupabaseAuth` is registered → 401s on the new serverFn.
-- Zod schema too strict and rejecting legitimate numbers (e.g. integer vs float) — mitigated by `z.coerce.number().finite()`.
+- پس از apply: `supabase--linter`.
+- `npm run build` و `npm run lint` (تأثیر صفر روی کد، فقط برای اطمینان از regenerate شدن `src/integrations/supabase/types.ts`).
 
-### Stop conditions
-- If `attachSupabaseAuth` is missing from `src/start.ts` → stop, raise as a separate setup task, do not edit `start.ts` in this slice without explicit approval.
-- If `has_role` RPC is unavailable or behaves differently than expected → stop and plan a thin role-check helper separately.
-- If implementation requires touching RLS, schemas, or any other route → stop, this slice is over scope.
+## Risks
 
-## Self-host acceptance check (Phase 1)
+- **Self-bootstrap گروه**: بدون trigger، سازنده‌ی گروه باید جداگانه خودش را به اعضا اضافه کند. در فاز RPC حل می‌شود. ریسک کوتاه‌مدت: گروه‌های یتیم در صورت خطای client.
+- **عدم audit log**: مغایر با اصل ۱۰ AGENTS.md برای «sensitive actions». در پلن Phase 3 پوشش داده می‌شود؛ تا آن زمان به‌عنوان ریسک شناخته‌شده.
+- **عدم moderation**: حذف/ویرایش توسط admin گروه در این فاز نیست.
+- **پیوست‌ها بدون bucket**: درج ردیف در `messenger_attachments` بدون فایل واقعی ممکن است؛ تا فاز Storage نباید از UI استفاده شود.
+- **Realtime**: publication اضافه نمی‌شود؛ subscribe در UI آینده نیازمند migration کوچک جدا.
 
-- External critical dependency added? no
-- CDN / Google Fonts / external scripts added? no
-- Real secrets added? no
-- New `VITE_` secret? no
-- Client bundle secret-safe? yes
-- Docker/Linux compatibility affected? no
-- Supabase/RLS/RBAC affected? no (serverFn re-uses existing RLS)
-- Audit log required? yes
-- Audit handled? yes (server-side insert via user-scoped client)
-- Database migration added? no
-- Backup/restore affected? no
-- Performance risk introduced? no
-- Persian RTL UI preserved? yes
-- Mobile usability preserved? yes
+## Stop conditions
 
-## Recommended SAFE AGENT CHANGE prompt (first slice only)
+- اگر کاربر بخواهد جدول `messages` موجود حذف/merge شود → توقف و پلن جداگانه.
+- اگر linter ERROR روی جدول‌های جدید بدهد → اصلاح در همان migration قبل از تأیید نهایی.
+- اگر کاربر admin-override یا audit را در همین فاز بخواهد → پلن گسترش یابد.
 
-```
-Use afrakala-master-guardrails.
-Use afrakala-safe-code-agent.
-Use afrakala-delivery-reporter.
+## Smallest safe next implementation slice
 
-SAFE AGENT CHANGE.
-Task ID: MKT-2.1-promotion-suggestion-used-serverfn
-Approved plan: MKT-2-write-security-review-plan (Phase 1 only)
+همین یک migration. هیچ کد TS/UI تغییر نمی‌کند.
 
-Scope (do only this):
-1. Create src/lib/marketing/promotion-suggestions.functions.ts exporting
-   markPromotionSuggestionUsed as createServerFn({method:"POST"})
-     .middleware([requireSupabaseAuth])
-     .inputValidator using zod (product_id/channel_id uuid; numeric metrics
-      finite and bounded)
-     .handler:
-       - server-side role check: has_role(userId,'admin'|'manager'|'accountant')
-         via context.supabase.rpc; throw on fail
-       - re-fetch product_name, channel_name from DB (do not trust client)
-       - check daily_quota using same logic as v_promotion_suggestions; if
-         exhausted return {ok:false, reason:"quota_exhausted"}
-       - insert audit_logs row (entity_type='promotion_suggestion',
-         entity_id=`${product_id}:${channel_id}`, action='promotion_suggestion_used',
-         diff = server-built JSON)
-       - return {ok:true}
-2. Edit src/routes/_app.marketing.suggestions.tsx markAsUsed() to call the
-   serverFn via useServerFn; preserve all existing toasts, busyKey, usedKeys,
-   and queryClient.invalidateQueries behavior. Show Persian error toast when
-   ok:false (e.g. "سهمیه روزانه این کانال تمام شده است").
+## Technical detail — SQL skeleton (برای مرور قبل از apply)
 
-Out of scope:
-- No DB migration, no RLS change, no grants change.
-- Do not touch marketing_channels CRUD, product_interaction_events,
-  suggestions-history, or any other route.
-- Do not modify src/start.ts unless attachSupabaseAuth is missing; if missing,
-  STOP and report.
+```sql
+-- 1) helper (SECURITY DEFINER → no RLS recursion)
+CREATE OR REPLACE FUNCTION public.is_messenger_group_member(_group_id uuid, _user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.messenger_group_members
+    WHERE group_id = _group_id AND user_id = _user_id
+  );
+$$;
 
-Verification:
-- npm run build
-- npm run lint
-- Manual test path from the plan.
-
-Stop conditions:
-- attachSupabaseAuth not registered → stop.
-- has_role RPC missing or different signature → stop.
-- Any urge to edit RLS, schema, or other files → stop.
-
-Produce a delivery report per afrakala-delivery-reporter.
+-- 2) tables (هر کدام دقیقاً با ستون‌های درخواست‌شده) + GRANTs + ENABLE RLS + POLICY
+--    ترتیب: CREATE TABLE → GRANT → ENABLE RLS → POLICY (مطابق راهنمای Lovable Cloud)
 ```
 
-## Next step
+Policy خلاصه:
 
-Approve this plan, then run the SAFE AGENT CHANGE prompt above for Phase 1 only. Phase 2 (`marketing_channels` CRUD) and Phase 3 (`product_interaction_events`) will be planned as separate tasks after Phase 1 ships and is verified on main.
-
-Used afrakala-master-guardrails, afrakala-repo-inventory-reviewer, afrakala-change-planner.
+- `messenger_groups`: SELECT اگر `is_messenger_group_member(id, auth.uid())`؛ INSERT اگر `created_by = auth.uid()`؛ UPDATE/DELETE فقط `created_by`.
+- `messenger_group_members`: SELECT اگر عضو همان گروه؛ INSERT/DELETE اگر `created_by` گروه = auth.uid() (مدیریت توسط سازنده در این فاز).
+- `messenger_messages`: SELECT اگر عضو گروه و `deleted_at IS NULL`؛ INSERT اگر `sender_id = auth.uid()` و عضو؛ UPDATE/DELETE اگر `sender_id = auth.uid()`.
+- `messenger_attachments`: SELECT/INSERT/DELETE بر اساس عضویت در گروه پیام مادر (subquery به `messenger_messages`).
+- `messenger_read_receipts`: SELECT اگر عضو گروه پیام؛ INSERT اگر `user_id = auth.uid()` و عضو؛ بدون UPDATE/DELETE.  
+  
+لطفاً فقط یک migration جدید ایجاد کن در مسیر:
+  supabase/migrations/<timestamp>_messenger_core_tables.sql
+  محتوای migration دقیقاً طبق plan زیر باشد — هیچ کد TS، UI، یا route تغییر نکند.
+  [محتوای Task 0.1 از سند را اینجا paste کن]
+  بعد از apply:
+  1. supabase linter را اجرا کن و نتیجه را گزارش بده
+  2. npm run build را اجرا کن تا types.ts regenerate شود

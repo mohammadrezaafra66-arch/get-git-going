@@ -3687,6 +3687,180 @@ export type Database = {
         }
         Relationships: []
       }
+      messenger_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          message_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          message_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messenger_group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messenger_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      messenger_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          group_id: string
+          id: string
+          reply_to: string | null
+          sender_id: string | null
+          type: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          group_id: string
+          id?: string
+          reply_to?: string | null
+          sender_id?: string | null
+          type?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          group_id?: string
+          id?: string
+          reply_to?: string | null
+          sender_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messenger_messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "messenger_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messenger_read_receipts: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messenger_read_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           condition_event_key: string | null
@@ -8767,6 +8941,10 @@ export type Database = {
       }
       is_board_manager: { Args: { _user_id: string }; Returns: boolean }
       is_hr_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_messenger_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_product_owner: {
         Args: { _product_id: string; _user_id: string }
         Returns: boolean
