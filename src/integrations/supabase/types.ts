@@ -7872,6 +7872,10 @@ export type Database = {
         Args: { _employee_id: string; _xp: number }
         Returns: Json
       }
+      add_messenger_group_member: {
+        Args: { p_group_id: string; p_role?: string; p_user_id: string }
+        Returns: string
+      }
       admin_gamification_overview: { Args: never; Returns: Json }
       api_dynamic_table_query_rows: {
         Args: {
@@ -8270,6 +8274,10 @@ export type Database = {
       }
       create_dynamic_table_row: {
         Args: { p_table_id: string; p_values: Json }
+        Returns: string
+      }
+      create_messenger_group: {
+        Args: { p_name: string; p_type: string }
         Returns: string
       }
       create_sales_quote_with_items: {
@@ -9516,6 +9524,60 @@ export type Database = {
       send_invoice_to_accountant: {
         Args: { p_invoice_id: string }
         Returns: string
+      }
+      send_messenger_message: {
+        Args: {
+          p_content: string
+          p_group_id: string
+          p_reply_to?: string
+          p_type?: string
+        }
+        Returns: {
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          group_id: string
+          id: string
+          reply_to: string | null
+          sender_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "messenger_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      send_messenger_message_with_attachment: {
+        Args: {
+          p_content: string
+          p_file_name: string
+          p_file_path: string
+          p_file_size: number
+          p_file_type: string
+          p_group_id: string
+          p_reply_to: string
+          p_type: string
+        }
+        Returns: {
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          edited_at: string | null
+          group_id: string
+          id: string
+          reply_to: string | null
+          sender_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "messenger_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       set_bot_api_key_active: {
         Args: { p_is_active: boolean; p_key_id: string }
