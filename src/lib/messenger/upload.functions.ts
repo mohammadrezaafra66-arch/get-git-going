@@ -8,6 +8,7 @@ import {
   ABSOLUTE_MAX_BYTES,
   getExt,
   getRuleByExt,
+  getRuleByExtAndMime,
   mimeMatchesRule,
 } from "@/lib/messenger/attachment-rules";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -37,7 +38,10 @@ export const preCheckMessengerAttachment = createServerFn({ method: "POST" })
     // 2) ext در allow-list
     const ext = getExt(data.file_name);
     if (!ext) throw new Error("فایل بدون پسوند مجاز نیست");
-    const rule = getRuleByExt(ext);
+    // برای audio (mime با audio/ شروع می‌شود) قانون صوتی انتخاب شود
+    const rule = data.mime_type.toLowerCase().startsWith("audio/")
+      ? getRuleByExtAndMime(ext, data.mime_type)
+      : getRuleByExt(ext);
     if (!rule) throw new Error("نوع فایل مجاز نیست");
 
     // 3) mime ↔ ext match

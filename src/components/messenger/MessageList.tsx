@@ -8,6 +8,8 @@ import { formatJalaliTime, formatJalaliDateTime } from "@/lib/messenger/format";
 import type { MessengerMessage } from "@/hooks/messenger/useMessengerMessages";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { AttachmentBubble } from "./AttachmentBubble";
+import { AudioPlayer } from "./AudioPlayer";
+import { getExt, getRuleByExtAndMime } from "@/lib/messenger/attachment-rules";
 
 function useSenderProfiles(ids: string[]) {
   return useQuery({
@@ -59,9 +61,13 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
                 {!mine && <div className="px-1 text-xs text-muted-foreground">{name}</div>}
                 {attachments.length > 0 && (
                   <div className="space-y-1">
-                    {attachments.map((a) => (
-                      <AttachmentBubble key={a.id} attachment={a} />
-                    ))}
+                    {attachments.map((a) => {
+                      const rule = getRuleByExtAndMime(getExt(a.file_name), a.file_type ?? "");
+                      if (rule?.kind === "audio") {
+                        return <AudioPlayer key={a.id} attachment={a} />;
+                      }
+                      return <AttachmentBubble key={a.id} attachment={a} />;
+                    })}
                   </div>
                 )}
                 {hasText && (
@@ -73,7 +79,14 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
                         : "bg-muted text-foreground rounded-tl-sm",
                     )}
                   >
-                    {textContent}
+                    {attachments.some((a) => {
+                      const r = getRuleByExtAndMime(getExt(a.file_name), a.file_type ?? "");
+                      return r?.kind === "audio";
+                    }) ? (
+                      <span>📝 رونویسی: {textContent}</span>
+                    ) : (
+                      textContent
+                    )}
                   </div>
                 )}
                 <div

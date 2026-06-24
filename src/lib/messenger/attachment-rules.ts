@@ -1,7 +1,7 @@
 // Phase 4 — قوانین مشترک پیوست پیام‌رسان (UI + serverFn pre-check)
 // سقف‌ها باید با messenger_attachment_size_ok در migration Phase 2 یکسان بمانند.
 
-export type AttachmentKind = "image" | "video" | "pdf" | "word" | "excel" | "zip";
+export type AttachmentKind = "image" | "video" | "audio" | "pdf" | "word" | "excel" | "zip";
 
 export type AttachmentRule = {
   kind: AttachmentKind;
@@ -27,6 +27,15 @@ export const ATTACHMENT_RULES: readonly AttachmentRule[] = [
     mimes: [/^video\/(mp4|webm|quicktime)$/i],
     maxBytes: 50 * MB,
     label: "ویدئو",
+  },
+  {
+    kind: "audio",
+    // توجه: webm/mp4/ogg با video هم‌پسوند هستند؛ تفکیک نهایی بر اساس MIME
+    // در getRuleByExtAndMime انجام می‌شود.
+    exts: ["webm", "mp4", "ogg", "oga", "m4a", "mp3"],
+    mimes: [/^audio\/(webm|mp4|ogg|mpeg|x-m4a|aac|opus).*/i],
+    maxBytes: 25 * MB,
+    label: "صوت",
   },
   {
     kind: "pdf",
@@ -72,7 +81,20 @@ export function getExt(fileName: string): string {
 
 export function getRuleByExt(ext: string): AttachmentRule | null {
   const e = ext.toLowerCase();
-  return ATTACHMENT_RULES.find((r) => r.exts.includes(e)) ?? null;
+  // برای پسوندهای مشترک audio/video (webm, mp4, ogg) بدون mime، رفتار پیشین حفظ شود (video)
+  return (
+    ATTACHMENT_RULES.find((r) => r.kind !== "audio" && r.exts.includes(e)) ??
+    ATTACHMENT_RULES.find((r) => r.exts.includes(e)) ??
+    null
+  );
+}
+
+export function getRuleByExtAndMime(ext: string, mime: string): AttachmentRule | null {
+  const m = (mime || "").toLowerCase();
+  if (m.startsWith("audio/")) {
+    return ATTACHMENT_RULES.find((r) => r.kind === "audio") ?? null;
+  }
+  return getRuleByExt(ext);
 }
 
 export function mimeMatchesRule(rule: AttachmentRule, mime: string): boolean {
