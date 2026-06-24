@@ -53,7 +53,11 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
           const textContent = (m.content ?? "").trim();
           const hasText = textContent.length > 0;
           return (
-            <div key={m.id} className={cn("flex gap-2", mine ? "flex-row-reverse" : "flex-row")}>
+            <div
+              key={m.id}
+              data-message-id={m.id}
+              className={cn("flex gap-2", mine ? "flex-row-reverse" : "flex-row")}
+            >
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback className="text-xs">{initial}</AvatarFallback>
               </Avatar>
