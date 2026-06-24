@@ -16,6 +16,7 @@ import {
 } from "@/lib/messenger/attachment-rules";
 import { preCheckMessengerAttachment } from "@/lib/messenger/upload.functions";
 import { transcribeMessengerAudio } from "@/lib/messenger/transcribe.functions";
+import { generateMessageEmbedding } from "@/lib/messenger/embeddings.functions";
 
 export function MessageComposer({ groupId }: { groupId: string }) {
   const qc = useQueryClient();
@@ -25,6 +26,7 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const preCheck = useServerFn(preCheckMessengerAttachment);
   const transcribe = useServerFn(transcribeMessengerAudio);
+  const embed = useServerFn(generateMessageEmbedding);
 
   const reset = () => {
     setValue("");
@@ -38,12 +40,19 @@ export function MessageComposer({ groupId }: { groupId: string }) {
       const activeFile = override?.audioFile ?? file;
       if (!activeFile) {
         // مسیر متن خالص (بدون تغییر نسبت به قبل)
-        const { error } = await supabase.rpc("send_messenger_message", {
+        const { data: row, error } = await supabase.rpc("send_messenger_message", {
           p_group_id: groupId,
           p_content: trimmed,
           p_type: "text",
         });
         if (error) throw error;
+        // Phase 6: embedding در پس‌زمینه برای جست‌وجوی معنایی (graceful)
+        const messageId = (row as { id?: string } | null)?.id;
+        if (messageId) {
+          void embed({ data: { message_id: messageId } }).catch((e) => {
+            console.warn("[messenger] embedding failed:", (e as Error)?.message);
+          });
+        }
         return;
       }
 
