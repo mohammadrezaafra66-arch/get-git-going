@@ -10,6 +10,8 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { AttachmentBubble } from "./AttachmentBubble";
 import { AudioPlayer } from "./AudioPlayer";
 import { getExt, getRuleByExtAndMime } from "@/lib/messenger/attachment-rules";
+import { useInquiries } from "@/hooks/messenger/useInquiries";
+import { InquiryCard } from "./InquiryCard";
 
 function useSenderProfiles(ids: string[]) {
   return useQuery({
@@ -28,6 +30,15 @@ function useSenderProfiles(ids: string[]) {
 export function MessageList({ messages }: { messages: MessengerMessage[] }) {
   const { user } = useAuth();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const groupId = messages[0]?.group_id ?? null;
+  const { data: inquiries } = useInquiries(groupId);
+  const inquiryByMessageId = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof inquiries>[number]>();
+    for (const i of inquiries ?? []) {
+      if (i.message_id) map.set(i.message_id, i);
+    }
+    return map;
+  }, [inquiries]);
 
   const senderIds = useMemo(
     () => Array.from(new Set(messages.map((m) => m.sender_id).filter((x): x is string => !!x))),
@@ -52,6 +63,26 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
           const attachments = m.attachments ?? [];
           const textContent = (m.content ?? "").trim();
           const hasText = textContent.length > 0;
+          if (m.type === "inquiry") {
+            const inquiry = inquiryByMessageId.get(m.id);
+            return (
+              <div
+                key={m.id}
+                data-message-id={m.id}
+                className="flex justify-center"
+              >
+                <div className="w-full max-w-[85%]">
+                  {inquiry ? (
+                    <InquiryCard inquiry={inquiry} currentUserId={user?.id ?? null} />
+                  ) : (
+                    <div className="rounded-md border bg-muted/40 p-3 text-center text-xs text-muted-foreground">
+                      در حال بارگذاری کارت استعلام…
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
           return (
             <div
               key={m.id}
