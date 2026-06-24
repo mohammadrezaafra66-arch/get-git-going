@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentPreview } from "./AttachmentPreview";
+import { AudioRecorder } from "./AudioRecorder";
 import {
   ABSOLUTE_MAX_BYTES,
   acceptAttribute,
@@ -14,13 +15,16 @@ import {
   getRuleByExt,
 } from "@/lib/messenger/attachment-rules";
 import { preCheckMessengerAttachment } from "@/lib/messenger/upload.functions";
+import { transcribeMessengerAudio } from "@/lib/messenger/transcribe.functions";
 
 export function MessageComposer({ groupId }: { groupId: string }) {
   const qc = useQueryClient();
   const [value, setValue] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const preCheck = useServerFn(preCheckMessengerAttachment);
+  const transcribe = useServerFn(transcribeMessengerAudio);
 
   const reset = () => {
     setValue("");
@@ -29,9 +33,10 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   };
 
   const send = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (override?: { audioFile?: File }) => {
       const trimmed = value.trim();
-      if (!file) {
+      const activeFile = override?.audioFile ?? file;
+      if (!activeFile) {
         // مسیر متن خالص (بدون تغییر نسبت به قبل)
         const { error } = await supabase.rpc("send_messenger_message", {
           p_group_id: groupId,
@@ -44,10 +49,13 @@ export function MessageComposer({ groupId }: { groupId: string }) {
 
       // مسیر پیوست
       // 1) اعتبارسنجی کلاینت (سریع)
-      const ext = getExt(file.name);
-      const rule = getRuleByExt(ext);
+      const isAudio = (activeFile.type || "").toLowerCase().startsWith("audio/");
+      const ext = getExt(activeFile.name);
+      const rule = isAudio
+        ? { kind: "audio" as const, maxBytes: 25 * 1024 * 1024, label: "صوت" }
+        : getRuleByExt(ext);
       if (!rule) throw new Error("نوع فایل مجاز نیست");
-      if (file.size > rule.maxBytes) {
+      if (activeFile.size > rule.maxBytes) {
         const mb = Math.round(rule.maxBytes / (1024 * 1024));
         throw new Error(`حجم بیش از سقف مجاز برای ${rule.label} است (حداکثر ${mb} مگابایت)`);
       }
@@ -56,35 +64,42 @@ export function MessageComposer({ groupId }: { groupId: string }) {
       const pre = await preCheck({
         data: {
           group_id: groupId,
-          file_name: file.name,
-          mime_type: file.type || "application/octet-stream",
-          file_size: file.size,
+          file_name: activeFile.name,
+          mime_type: activeFile.type || "application/octet-stream",
+          file_size: activeFile.size,
         },
       });
 
       // 3) آپلود به Storage
       const { error: upErr } = await supabase.storage
         .from("messenger-attachments")
-        .upload(pre.path, file, {
-          contentType: file.type || "application/octet-stream",
+        .upload(pre.path, activeFile, {
+          contentType: activeFile.type || "application/octet-stream",
           upsert: false,
         });
       if (upErr) throw new Error(upErr.message);
 
       // 4) ثبت پیام + رکورد attachment (تراکنشی)
       const p_type =
-        pre.kind === "image" ? "image" : pre.kind === "video" ? "file" : "file";
-      const { error: rpcErr } = await supabase.rpc(
+        pre.kind === "image"
+          ? "image"
+          : pre.kind === "audio"
+            ? "audio"
+            : pre.kind === "video"
+              ? "video"
+              : "file";
+      const initialContent = pre.kind === "audio" ? " " : trimmed || " ";
+      const { data: rpcData, error: rpcErr } = await supabase.rpc(
         "send_messenger_message_with_attachment",
         {
           p_group_id: groupId,
-          p_content: trimmed || " ",
+          p_content: initialContent,
           p_type,
           p_reply_to: null as unknown as string,
           p_file_path: pre.path,
-          p_file_name: file.name,
-          p_file_type: file.type || "application/octet-stream",
-          p_file_size: file.size,
+          p_file_name: activeFile.name,
+          p_file_type: activeFile.type || "application/octet-stream",
+          p_file_size: activeFile.size,
         },
       );
       if (rpcErr) {
@@ -92,9 +107,20 @@ export function MessageComposer({ groupId }: { groupId: string }) {
         await supabase.storage.from("messenger-attachments").remove([pre.path]);
         throw new Error(rpcErr.message);
       }
+
+      // 5) STT در پس‌زمینه (fire-and-forget، graceful)
+      if (pre.kind === "audio") {
+        const messageId = typeof rpcData === "string" ? rpcData : (rpcData as { id?: string } | null)?.id;
+        if (messageId) {
+          void transcribe({ data: { message_id: messageId } }).catch((e) => {
+            console.warn("[messenger] STT failed:", (e as Error)?.message);
+          });
+        }
+      }
     },
     onSuccess: () => {
       reset();
+      setRecording(false);
       qc.invalidateQueries({ queryKey: ["messenger-messages", groupId] });
       qc.invalidateQueries({ queryKey: ["messenger-groups"] });
     },
@@ -137,6 +163,10 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   const disabled = send.isPending;
   const canSend = !disabled && (!!file || !!value.trim());
 
+  const handleSendAudio = async (audioFile: File) => {
+    await send.mutateAsync({ audioFile });
+  };
+
   return (
     <div className="border-t bg-card p-3">
       {file && (
@@ -158,29 +188,46 @@ export function MessageComposer({ groupId }: { groupId: string }) {
           className="hidden"
           aria-hidden
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          disabled={disabled}
-          onClick={() => fileInputRef.current?.click()}
-          aria-label="پیوست فایل"
-        >
-          <Paperclip className="h-4 w-4" />
-        </Button>
-        <Textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          rows={1}
-          maxLength={4000}
-          disabled={disabled}
-          placeholder="پیام خود را بنویسید… (Enter ارسال، Shift+Enter خط جدید)"
-          className="min-h-10 resize-none"
-        />
-        <Button onClick={submit} disabled={!canSend} size="icon">
-          {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
+        {recording ? (
+          <AudioRecorder
+            disabled={disabled}
+            sending={send.isPending}
+            onSend={handleSendAudio}
+            onCancel={() => setRecording(false)}
+          />
+        ) : (
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              disabled={disabled}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="پیوست فایل"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <AudioRecorder
+              disabled={disabled || !!file || !!value.trim()}
+              sending={send.isPending}
+              onSend={handleSendAudio}
+              onCancel={() => setRecording(false)}
+            />
+            <Textarea
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              maxLength={4000}
+              disabled={disabled}
+              placeholder="پیام خود را بنویسید… (Enter ارسال، Shift+Enter خط جدید)"
+              className="min-h-10 resize-none"
+            />
+            <Button onClick={submit} disabled={!canSend} size="icon">
+              {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
