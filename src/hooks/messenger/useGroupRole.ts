@@ -31,14 +31,23 @@ export function useGroupPurchasers(groupId: string | null) {
       if (!groupId) return [] as Array<{ user_id: string; full_name: string | null }>;
       const { data, error } = await supabase
         .from("messenger_group_members")
-        .select("user_id, profile:profiles(full_name)")
+        .select("user_id")
         .eq("group_id", groupId)
         .eq("role", "purchaser");
       if (error) return [];
-      type Row = { user_id: string; profile: { full_name: string | null } | null };
-      return ((data ?? []) as unknown as Row[]).map((r) => ({
+      const rows = (data ?? []) as Array<{ user_id: string }>;
+      const ids = Array.from(new Set(rows.map((r) => r.user_id)));
+      if (ids.length === 0) return [];
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      const names = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? null]));
+
+      return rows.map((r) => ({
         user_id: r.user_id,
-        full_name: r.profile?.full_name ?? null,
+        full_name: names.get(r.user_id) ?? null,
       }));
     },
   });
