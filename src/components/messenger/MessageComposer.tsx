@@ -80,7 +80,7 @@ export function MessageComposer({ groupId }: { groupId: string }) {
           p_group_id: groupId,
           p_content: trimmed || " ",
           p_type,
-          p_reply_to: null,
+          p_reply_to: null as unknown as string,
           p_file_path: pre.path,
           p_file_name: file.name,
           p_file_type: file.type || "application/octet-stream",
