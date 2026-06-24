@@ -9001,6 +9001,18 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      messenger_attachment_path_owner: {
+        Args: { _name: string }
+        Returns: boolean
+      }
+      messenger_attachment_size_ok: {
+        Args: { _name: string; _size: number }
+        Returns: boolean
+      }
+      messenger_attachment_visible: {
+        Args: { _name: string; _uid: string }
+        Returns: boolean
+      }
       mi_get_demand_growth: {
         Args: { p_days?: number }
         Returns: {
