@@ -338,6 +338,50 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversations: {
+        Row: {
+          content: string
+          created_at: string
+          group_id: string | null
+          id: string
+          model: string | null
+          role: string
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          model?: string | null
+          role: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          model?: string | null
+          role?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -3656,6 +3700,45 @@ export type Database = {
           weight?: number
         }
         Relationships: []
+      }
+      message_embeddings: {
+        Row: {
+          content_excerpt: string | null
+          created_at: string
+          embedding: string
+          group_id: string
+          message_id: string
+        }
+        Insert: {
+          content_excerpt?: string | null
+          created_at?: string
+          embedding: string
+          group_id: string
+          message_id: string
+        }
+        Update: {
+          content_excerpt?: string | null
+          created_at?: string
+          embedding?: string
+          group_id?: string
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_embeddings_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_embeddings_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "messenger_messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -9514,6 +9597,20 @@ export type Database = {
       save_salesperson_capital_allocations: {
         Args: { p_allocations: Json; p_capital_snapshot_id: string }
         Returns: number
+      }
+      search_messenger_messages_semantic: {
+        Args: {
+          p_group_id: string
+          p_limit?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          message_id: string
+          sender_id: string
+          similarity: number
+        }[]
       }
       search_product_ids: {
         Args: { p_limit?: number; p_term: string }
