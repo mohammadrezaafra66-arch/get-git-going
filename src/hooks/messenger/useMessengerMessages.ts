@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import type { MessengerAttachment } from "@/components/messenger/AttachmentBubble";
 
 export type MessengerMessage = {
   id: string;
@@ -13,6 +14,7 @@ export type MessengerMessage = {
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
+  attachments?: MessengerAttachment[] | null;
 };
 
 export function useMessengerMessages(groupId: string | null) {
@@ -28,7 +30,9 @@ export function useMessengerMessages(groupId: string | null) {
       if (!groupId) return [];
       const { data, error } = await supabase
         .from("messenger_messages")
-        .select("id,group_id,sender_id,content,type,reply_to,created_at,edited_at,deleted_at")
+        .select(
+          "id,group_id,sender_id,content,type,reply_to,created_at,edited_at,deleted_at,attachments:messenger_attachments(id,file_path,file_name,file_type,file_size)",
+        )
         .eq("group_id", groupId)
         .is("deleted_at", null)
         .order("created_at", { ascending: true })
@@ -51,6 +55,8 @@ export function useMessengerMessages(groupId: string | null) {
           qc.setQueryData<MessengerMessage[]>(queryKey, (old) => {
             if (!old) return [incoming];
             if (old.some((m) => m.id === incoming.id)) return old;
+            // پیام جدید بدون attachments می‌آید؛ refetch تا join مجدد شود
+            qc.invalidateQueries({ queryKey });
             return [...old, incoming];
           });
           qc.invalidateQueries({ queryKey: ["messenger-groups"] });

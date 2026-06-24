@@ -1,26 +1,100 @@
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
+import { AttachmentPreview } from "./AttachmentPreview";
+import {
+  ABSOLUTE_MAX_BYTES,
+  acceptAttribute,
+  getExt,
+  getRuleByExt,
+} from "@/lib/messenger/attachment-rules";
+import { preCheckMessengerAttachment } from "@/lib/messenger/upload.functions";
 
 export function MessageComposer({ groupId }: { groupId: string }) {
   const qc = useQueryClient();
   const [value, setValue] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const preCheck = useServerFn(preCheckMessengerAttachment);
+
+  const reset = () => {
+    setValue("");
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const send = useMutation({
-    mutationFn: async (content: string) => {
-      const { error } = await supabase.rpc("send_messenger_message", {
-        p_group_id: groupId,
-        p_content: content,
-        p_type: "text",
+    mutationFn: async () => {
+      const trimmed = value.trim();
+      if (!file) {
+        // مسیر متن خالص (بدون تغییر نسبت به قبل)
+        const { error } = await supabase.rpc("send_messenger_message", {
+          p_group_id: groupId,
+          p_content: trimmed,
+          p_type: "text",
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // مسیر پیوست
+      // 1) اعتبارسنجی کلاینت (سریع)
+      const ext = getExt(file.name);
+      const rule = getRuleByExt(ext);
+      if (!rule) throw new Error("نوع فایل مجاز نیست");
+      if (file.size > rule.maxBytes) {
+        const mb = Math.round(rule.maxBytes / (1024 * 1024));
+        throw new Error(`حجم بیش از سقف مجاز برای ${rule.label} است (حداکثر ${mb} مگابایت)`);
+      }
+
+      // 2) pre-check سرور-ساید (mime↔ext، عضویت، تولید path امن)
+      const pre = await preCheck({
+        data: {
+          group_id: groupId,
+          file_name: file.name,
+          mime_type: file.type || "application/octet-stream",
+          file_size: file.size,
+        },
       });
-      if (error) throw error;
+
+      // 3) آپلود به Storage
+      const { error: upErr } = await supabase.storage
+        .from("messenger-attachments")
+        .upload(pre.path, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (upErr) throw new Error(upErr.message);
+
+      // 4) ثبت پیام + رکورد attachment (تراکنشی)
+      const p_type =
+        pre.kind === "image" ? "image" : pre.kind === "video" ? "file" : "file";
+      const { error: rpcErr } = await supabase.rpc(
+        "send_messenger_message_with_attachment",
+        {
+          p_group_id: groupId,
+          p_content: trimmed || " ",
+          p_type,
+          p_reply_to: null as unknown as string,
+          p_file_path: pre.path,
+          p_file_name: file.name,
+          p_file_type: file.type || "application/octet-stream",
+          p_file_size: file.size,
+        },
+      );
+      if (rpcErr) {
+        // cleanup: جلوگیری از orphan
+        await supabase.storage.from("messenger-attachments").remove([pre.path]);
+        throw new Error(rpcErr.message);
+      }
     },
     onSuccess: () => {
-      setValue("");
+      reset();
       qc.invalidateQueries({ queryKey: ["messenger-messages", groupId] });
       qc.invalidateQueries({ queryKey: ["messenger-groups"] });
     },
@@ -31,9 +105,9 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   });
 
   const submit = () => {
-    const trimmed = value.trim();
-    if (!trimmed || send.isPending) return;
-    send.mutate(trimmed);
+    if (send.isPending) return;
+    if (!file && !value.trim()) return;
+    send.mutate();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -43,19 +117,68 @@ export function MessageComposer({ groupId }: { groupId: string }) {
     }
   };
 
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > ABSOLUTE_MAX_BYTES) {
+      toast.error("حجم فایل بیش از سقف کلی (۵۰ مگابایت) است");
+      e.target.value = "";
+      return;
+    }
+    const rule = getRuleByExt(getExt(f.name));
+    if (!rule) {
+      toast.error("نوع فایل مجاز نیست");
+      e.target.value = "";
+      return;
+    }
+    setFile(f);
+  };
+
+  const disabled = send.isPending;
+  const canSend = !disabled && (!!file || !!value.trim());
+
   return (
     <div className="border-t bg-card p-3">
+      {file && (
+        <AttachmentPreview
+          file={file}
+          onRemove={() => {
+            setFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+          uploading={send.isPending}
+        />
+      )}
       <div className="flex items-end gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={acceptAttribute()}
+          onChange={onFileChange}
+          className="hidden"
+          aria-hidden
+        />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          disabled={disabled}
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="پیوست فایل"
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
         <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
           maxLength={4000}
+          disabled={disabled}
           placeholder="پیام خود را بنویسید… (Enter ارسال، Shift+Enter خط جدید)"
           className="min-h-10 resize-none"
         />
-        <Button onClick={submit} disabled={!value.trim() || send.isPending} size="icon">
+        <Button onClick={submit} disabled={!canSend} size="icon">
           {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
