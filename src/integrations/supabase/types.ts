@@ -2797,6 +2797,224 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiries: {
+        Row: {
+          answered_at: string | null
+          assigned_to: string
+          closed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          message_id: string | null
+          product_id: string
+          requested_by: string
+          status: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Insert: {
+          answered_at?: string | null
+          assigned_to: string
+          closed_at?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          message_id?: string | null
+          product_id: string
+          requested_by: string
+          status?: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Update: {
+          answered_at?: string | null
+          assigned_to?: string
+          closed_at?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          message_id?: string | null
+          product_id?: string
+          requested_by?: string
+          status?: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messenger_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      inquiry_price_cache: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          price: number
+          product_id: string
+          valid_until: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          price: number
+          product_id: string
+          valid_until: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          price?: number
+          product_id?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_price_cache_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiry_price_cache_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      inquiry_replies: {
+        Row: {
+          created_at: string
+          id: string
+          inquiry_id: string
+          is_valid: boolean
+          note: string | null
+          price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inquiry_id: string
+          is_valid?: boolean
+          note?: string | null
+          price: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inquiry_id?: string
+          is_valid?: boolean
+          note?: string | null
+          price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_replies_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inquiry_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_status: Database["public"]["Enums"]["inquiry_status"] | null
+          id: string
+          inquiry_id: string
+          reason: string | null
+          to_status: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: Database["public"]["Enums"]["inquiry_status"] | null
+          id?: string
+          inquiry_id: string
+          reason?: string | null
+          to_status: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: Database["public"]["Enums"]["inquiry_status"] | null
+          id?: string
+          inquiry_id?: string
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["inquiry_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_status_history_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inquiry_transfers: {
+        Row: {
+          from_user: string
+          id: string
+          inquiry_id: string
+          to_user: string
+          transferred_at: string
+        }
+        Insert: {
+          from_user: string
+          id?: string
+          inquiry_id: string
+          to_user: string
+          transferred_at?: string
+        }
+        Update: {
+          from_user?: string
+          id?: string
+          inquiry_id?: string
+          to_user?: string
+          transferred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inquiry_transfers_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           discount: number
@@ -8359,6 +8577,14 @@ export type Database = {
         Args: { p_table_id: string; p_values: Json }
         Returns: string
       }
+      create_inquiry: {
+        Args: {
+          p_assigned_to: string
+          p_group_id: string
+          p_product_id: string
+        }
+        Returns: string
+      }
       create_messenger_group: {
         Args: { p_name: string; p_type: string }
         Returns: string
@@ -9417,6 +9643,10 @@ export type Database = {
         Args: { p_ordered_ids: string[]; p_table_id: string }
         Returns: undefined
       }
+      reply_inquiry: {
+        Args: { p_inquiry_id: string; p_note?: string; p_price: number }
+        Returns: undefined
+      }
       requeue_failed_quote_send_item: {
         Args: { p_queue_id: string }
         Returns: {
@@ -9732,8 +9962,13 @@ export type Database = {
           updated_rows: number
         }[]
       }
+      tick_inquiries: { Args: never; Returns: undefined }
       toggle_custom_role_status: {
         Args: { _is_active: boolean; _role_id: string }
+        Returns: undefined
+      }
+      transfer_inquiry: {
+        Args: { p_inquiry_id: string; p_to_user: string }
         Returns: undefined
       }
       update_dynamic_table_cell: {
@@ -9747,6 +9982,13 @@ export type Database = {
           p_is_filterable: boolean
           p_is_required: boolean
           p_label: string
+        }
+        Returns: undefined
+      }
+      update_inquiry_status: {
+        Args: {
+          p_inquiry_id: string
+          p_new_status: Database["public"]["Enums"]["inquiry_status"]
         }
         Returns: undefined
       }
@@ -9877,6 +10119,20 @@ export type Database = {
         | "phone"
         | "tag"
         | "status"
+      inquiry_status:
+        | "draft"
+        | "pending"
+        | "warning_5min"
+        | "danger_8min"
+        | "critical_10min"
+        | "transfer_available"
+        | "transferred"
+        | "answered"
+        | "completed_on_time"
+        | "completed_late"
+        | "expired"
+        | "cancelled"
+        | "rejected"
       league_tier:
         | "Bronze"
         | "Silver"
@@ -10065,6 +10321,21 @@ export const Constants = {
         "phone",
         "tag",
         "status",
+      ],
+      inquiry_status: [
+        "draft",
+        "pending",
+        "warning_5min",
+        "danger_8min",
+        "critical_10min",
+        "transfer_available",
+        "transferred",
+        "answered",
+        "completed_on_time",
+        "completed_late",
+        "expired",
+        "cancelled",
+        "rejected",
       ],
       league_tier: [
         "Bronze",
