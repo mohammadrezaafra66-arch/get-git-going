@@ -88,13 +88,16 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           }
         }
 
-        const { data: aiHist } = await supabase
+        let aiHistQuery = supabase
           .from("ai_conversations")
           .select("role, content, created_at")
           .eq("user_id", userId)
-          .filter("group_id", groupId ? "eq" : "is", groupId ?? null)
           .order("created_at", { ascending: false })
           .limit(10);
+        aiHistQuery = groupId
+          ? aiHistQuery.eq("group_id", groupId)
+          : aiHistQuery.is("group_id", null);
+        const { data: aiHist } = await aiHistQuery;
         const aiOrdered = [...(aiHist ?? [])].reverse();
         for (const h of aiOrdered) {
           if (h.role === "user" || h.role === "assistant") {
