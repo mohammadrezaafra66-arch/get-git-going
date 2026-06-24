@@ -94,15 +94,19 @@ export function GroupMembersDialog({
 
   const searchQuery = useQuery({
     queryKey: ["messenger-add-member-search", groupId, debounced],
-    enabled: open && isAdmin && debounced.trim().length >= 2,
+    enabled: open && isAdmin,
     queryFn: async (): Promise<ProfileRow[]> => {
       const term = debounced.trim();
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
         .select("id, full_name")
         .eq("status", "active")
-        .ilike("full_name", `%${term}%`)
-        .limit(10);
+        .order("full_name", { ascending: true })
+        .limit(50);
+      if (term.length >= 2) {
+        query = query.ilike("full_name", `%${term}%`);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       const existingIds = new Set((membersQuery.data ?? []).map((m) => m.user_id));
       return (data ?? []).filter((p) => !existingIds.has(p.id));
@@ -268,11 +272,7 @@ export function GroupMembersDialog({
                 </Select>
               </div>
               <div className="max-h-48 overflow-y-auto rounded-md border">
-                {debounced.trim().length < 2 ? (
-                  <p className="p-3 text-center text-xs text-muted-foreground">
-                    حداقل ۲ حرف برای جست‌وجو وارد کنید
-                  </p>
-                ) : searchQuery.isLoading ? (
+                {searchQuery.isLoading ? (
                   <div className="flex justify-center py-4">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
