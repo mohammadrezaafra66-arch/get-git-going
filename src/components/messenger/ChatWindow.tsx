@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useMessengerMessages } from "@/hooks/messenger/useMessengerMessages";
 import { useMessengerGroups } from "@/hooks/messenger/useMessengerGroups";
+import { useGroupRole } from "@/hooks/messenger/useGroupRole";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 import { SemanticSearchBar } from "./SemanticSearchBar";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
+import { GroupMembersDialog } from "./GroupMembersDialog";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, MessageSquare, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, MessageSquare, Sparkles, Users } from "lucide-react";
 
 export function ChatWindow({
   groupId,
@@ -19,6 +22,10 @@ export function ChatWindow({
   const { data: messages, isLoading } = useMessengerMessages(groupId);
   const group = groups?.find((g) => g.id === groupId) ?? null;
   const [aiOpen, setAiOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const { user } = useAuth();
+  const { data: myRole } = useGroupRole(groupId, user?.id ?? null);
+  const isAdmin = myRole === "admin";
 
   if (!groupId || !group) {
     return (
@@ -50,6 +57,17 @@ export function ChatWindow({
         >
           <Sparkles className="h-4 w-4 text-primary" />
         </Button>
+        {isAdmin && (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setMembersOpen(true)}
+            aria-label="مدیریت اعضا"
+            title="مدیریت اعضا"
+          >
+            <Users className="h-4 w-4" />
+          </Button>
+        )}
       </header>
       <SemanticSearchBar groupId={groupId} />
       {isLoading ? (
@@ -61,6 +79,15 @@ export function ChatWindow({
       )}
       <MessageComposer groupId={groupId} />
       <AiAssistantDrawer open={aiOpen} onOpenChange={setAiOpen} groupId={groupId} />
+      {groupId && (
+        <GroupMembersDialog
+          open={membersOpen}
+          onOpenChange={setMembersOpen}
+          groupId={groupId}
+          currentUserId={user?.id ?? null}
+          isAdmin={isAdmin}
+        />
+      )}
     </section>
   );
 }
