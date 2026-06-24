@@ -1,149 +1,386 @@
 ## Task ID
 
-messenger-core-db-migration
+messenger-storage-bucket-phase-2
 
 ## Classification
 
-PLAN ONLY — single database migration (no code, no UI, no edge function).
+PLAN ONLY — یک bucket جدید + یک migration برای policyهای `storage.objects`. هیچ تغییر کد.
 
 ## File edits allowed
 
-No (plan mode). On approval: one new file under `supabase/migrations/` only.
+No (plan mode). در صورت تأیید:
+
+- ساخت bucket از طریق tool رسمی `supabase--storage_create_bucket` (نه SQL).
+- یک فایل جدید `supabase/migrations/<ts>_messenger_attachments_storage_policies.sql` فقط برای policyهای `storage.objects` و یک helper function در `public`.
 
 ## Goal
 
-ایجاد ۵ جدول پایه‌ی پیام‌رسان داخلی AfraKala با RLS امن و بدون recursion.
+آماده‌سازی محل امن آپلود/دانلود/حذف پیوست‌های پیام‌رسان، با دسترسی محدود به اعضای گروه و سقف حجم تفکیک‌شده بر اساس نوع فایل.
 
 ## Current state
 
-- جدول `public.messages` فعلی یک inbox ساده‌ی recipient-based است (sender_id, recipient_id, subject, body, is_read). با مدل گروهی درخواست‌شده تداخل ندارد و دست‌نخورده باقی می‌ماند.
-- route `/_app/messages` فقط Placeholder است (هیچ کوئری روی جداول جدید ندارد).
-- هیچ جدول `messenger_*` وجود ندارد.
+- جدول `public.messenger_attachments` با ستون‌های `message_id, file_path, file_name, file_type, file_size` فعال است.
+- جدول `public.messenger_messages` با `sender_id, group_id`.
+- helper `public.is_messenger_group_member(_group_id, _user_id)` (SECURITY DEFINER) موجود.
+- هیچ bucket یا policy روی `storage.objects` برای پیام‌رسان نیست.
+- جدول قدیمی `public.messages` (inbox) دست‌نخورده.
 
-## Scope
+## Scope (این فاز)
 
-یک migration واحد timestamped که فقط شامل:
-
-1. ساخت ۵ جدول دقیقاً با ستون‌های درخواست‌شده.
-2. GRANTهای لازم (authenticated + service_role) چون همه policyها به `auth.uid()` متصل‌اند → بدون `anon`.
-3. تابع SECURITY DEFINER کمکی `public.is_messenger_group_member(_group_id uuid, _user_id uuid)` برای جلوگیری از RLS recursion.
-4. فعال‌سازی RLS روی هر ۵ جدول.
-5. Policyهای حداقلی طبق درخواست + پوشش insert/delete امن.
-6. ایندکس‌های ضروری برای کوئری‌های متداول.
+1. ساخت bucket `messenger-attachments` به‌صورت **private** با `supabase--storage_create_bucket`.
+2. در migration:
+  - تنظیم محدودیت سراسری bucket: `file_size_limit = 52428800` (۵۰MB، سقف بزرگ‌ترین نوع) و `allowed_mime_types` به مجموعه‌ی mimeهای مجاز (jpg/jpeg/png/webp, mp4/webm, pdf, doc/docx, zip, xlsx). این کار با `UPDATE storage.buckets SET ... WHERE id='messenger-attachments'` انجام می‌شود (مجاز برای ستون‌های پیکربندی).
+  - تابع کمکی `public.messenger_attachment_size_ok(_name text, _size bigint)` در schema `public` (SECURITY INVOKER، `STABLE`، `search_path=public`) که سقف per-extension را به‌صورت زیر اعمال می‌کند:
+    - jpg/jpeg/png/webp → 5MB
+    - mp4/webm → 50MB
+    - pdf → 20MB
+    - doc/docx → 10MB
+    - zip/xlsx → 5MB
+    - هر چیز دیگری → false
+  - تابع `public.messenger_attachment_path_owner(_name text)` برای استخراج segment اول مسیر و مقایسه با `auth.uid()`.
+  - تابع `public.messenger_attachment_visible(_name text, _uid uuid)` (SECURITY DEFINER، `search_path=public`) که یک LEFT JOIN بین `messenger_attachments` و `messenger_messages` انجام می‌دهد و `is_messenger_group_member(m.group_id, _uid)` را بررسی می‌کند.
+3. سه policy روی `storage.objects` با `bucket_id = 'messenger-attachments'`:
+  - **INSERT (authenticated)**: `auth.uid() IS NOT NULL` و `messenger_attachment_path_owner(name)` و `messenger_attachment_size_ok(name, (metadata->>'size')::bigint)`.
+  - **SELECT (authenticated)**: `messenger_attachment_visible(name, auth.uid())` یا `owner = auth.uid()` (uploader همیشه فایل خودش را می‌بیند).
+  - **DELETE (authenticated)**: `owner = auth.uid()` و `messenger_attachment_path_owner(name)` (اطمینان مضاعف: فقط uploader حذف می‌کند).
+  - **UPDATE**: ممنوع (هیچ policy، طبق RLS deny-by-default).
+4. ساختار مسیر: `{auth.uid()}/{uuid}.{ext}` — کنترل با تابع `messenger_attachment_path_owner`.
 
 ## Out of scope
 
-- هیچ تغییری در `public.messages` موجود.
-- هیچ Storage bucket یا policy روی storage (پیوست‌ها فعلاً فقط متادیتا).
-- هیچ realtime publication، trigger، یا audit trigger.
-- هیچ RPC، serverFn، route، یا UI.
-- هیچ seed data.
-- هیچ تغییر در `user_roles` یا RBAC.
+- هیچ تغییر در `messenger_attachments` یا سایر جداول `public`.
+- هیچ thumbnail، resize، یا EXIF strip.
+- هیچ RPC، serverFn، edge function، یا UI.
+- هیچ تغییر روی bucketهای موجود دیگر.
+- هیچ admin override برای دیدن فایل‌های سایر گروه‌ها.
+- هیچ پشتیبانی از mimeهای خارج از لیست (مثل audio/wav یا svg).
 
 ## Files likely to change
 
-- `supabase/migrations/<timestamp>_messenger_core_tables.sql` (جدید، تنها فایل).
+- `supabase/migrations/<ts>_messenger_attachments_storage_policies.sql` (تنها فایل، policy + helper functions + UPDATE روی `storage.buckets`).
+- ایجاد bucket فقط از طریق tool — هیچ تغییر فایل دیگری.
 
 ## Database / migration impact
 
-- ۵ جدول جدید در `public`.
-- ۱ تابع SECURITY DEFINER جدید با `search_path=public`.
-- Reversible: drop function + drop tables (CASCADE روی foreign keys داخلی خودشان).
-- Idempotent: همه با `IF NOT EXISTS` / `CREATE OR REPLACE` / `DROP POLICY IF EXISTS` قبل از CREATE POLICY.
-- Destructive نیست → نیازی به backup خاص ندارد، اما طبق `MIGRATION_SAFETY_POLICY` در staging قبل از production تست شود.
+- ۳ تابع جدید در `public` (size_ok, path_owner, visible).
+- ۳ policy جدید روی `storage.objects` با فیلتر `bucket_id = 'messenger-attachments'`.
+- ۱ ردیف جدید در `storage.buckets` (از طریق tool).
+- ۱ UPDATE روی همان ردیف برای ست کردن `file_size_limit` و `allowed_mime_types`.
+- Reversible: drop policies + drop functions + delete bucket row + delete objects.
+- Idempotent: `DROP POLICY IF EXISTS` و `CREATE OR REPLACE FUNCTION`.
 
 ## RLS / RBAC / audit impact
 
-- RLS روی هر ۵ جدول فعال.
-- دسترسی فقط برای اعضای گروه از طریق `is_messenger_group_member()` (SECURITY DEFINER) — جلوگیری از infinite recursion در policy روی `messenger_group_members`.
-- ویرایش/حذف پیام فقط توسط `sender_id = auth.uid()`.
-- RBAC موجود (`has_role`) دست‌نخورده؛ admin override در این فاز اضافه نمی‌شود (می‌تواند فاز بعد).
-- Audit log: در این migration اضافه نمی‌شود؛ در صورت نیاز در فاز جداگانه با trigger روی INSERT/UPDATE/DELETE اضافه می‌شود (یادداشت ریسک).
+- `storage.objects` همان RLS داخلی Supabase را دارد؛ policyهای ما فقط برای bucket مورد نظر اضافه می‌شوند و سایر bucketها را تحت تأثیر قرار نمی‌دهند.
+- دسترسی download از طریق `messenger_attachment_visible` به جدول `messenger_attachments` و `messenger_messages` متصل است → اعضای گروه می‌بینند.
+- audit log در این فاز اضافه نمی‌شود (Phase 3 با trigger).
 
 ## Performance impact
 
-- ایندکس‌ها: `(group_id, created_at DESC)` روی `messenger_messages`، `(user_id)` روی `messenger_group_members`، `(message_id)` روی `messenger_attachments` و `messenger_read_receipts`.
-- کوئری list پیام‌ها همیشه باید با `LIMIT` و pagination در UI/سرور آینده مصرف شود (خارج از این migration).
+- هر دانلود یک lookup روی `messenger_attachments.file_path` انجام می‌دهد → نیاز به index یکتا روی `messenger_attachments(file_path)` در همین migration (هم‌اکنون وجود ندارد).
+- `messenger_attachment_visible` در hot-path دانلود فایل صدا می‌شود؛ با index بالا O(log n).
+- بدون realtime/پیمایش عمومی.
 
 ## UI/UX impact
 
-هیچ. صفحه‌ی `/messages` همچنان Placeholder می‌ماند.
+هیچ. صفحه‌ی `/messages` همچنان Placeholder. هیچ کامپوننت آپلودی اضافه نمی‌شود.
 
 ## Implementation phases
 
-Phase 1 (این پلن): migration پایه + RLS + ایندکس.
-Phase 2 (بعداً، جداگانه): Storage bucket برای پیوست‌ها + policy.
-Phase 3 (بعداً): RPC/serverFn ارسال پیام + audit trigger + realtime + UI.
+این فاز فقط Storage. فاز ۳ بعداً: RPC ارسال پیام + UI آپلود + audit + realtime.
 
 ## Acceptance criteria
 
-- migration روی Lovable Cloud بدون خطا اعمال شود.
-- `supabase--linter` هیچ ERROR جدیدی روی این ۵ جدول گزارش نکند (WARNINGها بررسی و در گزارش ذکر شوند).
-- کاربر غیرعضو با `SELECT` روی پیام‌های یک گروه هیچ ردیفی نبیند.
-- عضو گروه فقط پیام‌های همان گروه را ببیند.
-- فقط `sender_id` بتواند `UPDATE`/`soft delete` روی پیام خودش انجام دهد.
-- INSERT پیام/عضویت/پیوست/read receipt فقط در گروه‌هایی که کاربر عضو است.
-- `messenger_groups` INSERT فقط با `created_by = auth.uid()`.
+- bucket `messenger-attachments` در لیست buckets موجود است و `public = false`.
+- `file_size_limit = 52428800`، `allowed_mime_types` شامل تمام mimeهای ذکرشده.
+- linter پس از migration: هیچ ERROR جدید. WARNهای `Function Search Path Mutable` مربوط به توابع جدید نباشد (همه `SET search_path` دارند).
+- کاربر غیرعضو با دانستن `name` فایل، نمی‌تواند آن را دانلود کند.
+- عضو گروه مرجع می‌تواند دانلود کند.
+- آپلود با `name` شروع‌شده با UUID متفاوت از `auth.uid()` رد می‌شود.
+- آپلود jpg با حجم > 5MB یا mp4 با حجم > 50MB در policy رد می‌شود.
+- آپلود mime خارج از لیست (مثل text/plain) توسط `allowed_mime_types` bucket رد می‌شود.
+- حذف توسط کاربری غیر از uploader رد می‌شود.
+- UPDATE روی object همیشه رد می‌شود.
 
-## Manual test path (با psql/Supabase به‌عنوان دو کاربر تستی)
+## Manual test path (با Supabase JS از دو کاربر تستی A و B)
 
-1. user A یک گروه می‌سازد → خودش به‌عنوان admin در `messenger_group_members` اضافه می‌شود (در این فاز به‌صورت دستی، چون trigger نداریم؛ این محدودیت در گزارش ذکر می‌شود).
-2. user A پیام می‌فرستد → user B (غیرعضو) نباید ببیند.
-3. user A عضو می‌کند B را → B می‌بیند.
-4. user B تلاش به UPDATE پیام A → reject.
-5. user A پیام خود را edit/soft-delete می‌کند → OK.
+1. A یک گروه می‌سازد و B را عضو می‌کند، یک پیام می‌فرستد و یک ردیف در `messenger_attachments` با `file_path = '<A.uid>/test.pdf'` ثبت می‌کند.
+2. A فایل `<A.uid>/test.pdf` (PDF ≤ 20MB) را آپلود می‌کند → OK.
+3. A تلاش به آپلود `<B.uid>/x.pdf` → reject.
+4. A آپلود `<A.uid>/big.mp4` با 60MB → reject.
+5. A آپلود `<A.uid>/x.txt` → reject (mime).
+6. B (عضو) دانلود `<A.uid>/test.pdf` → OK.
+7. کاربر C (غیرعضو) دانلود همان فایل → reject.
+8. B تلاش به DELETE فایل → reject. A حذف → OK.
+9. UPDATE روی object → reject.
 
 ## Commands to run
 
-- پس از apply: `supabase--linter`.
-- `npm run build` و `npm run lint` (تأثیر صفر روی کد، فقط برای اطمینان از regenerate شدن `src/integrations/supabase/types.ts`).
+- پس از تأیید پلن: `supabase--storage_create_bucket(name='messenger-attachments', public=false)` → سپس `supabase--migration` با محتوای زیر.
+- پس از apply: مرور `supabase--linter`.
+- در صورت ساخت کد بعداً: `npm run build` برای regenerate types.
 
 ## Risks
 
-- **Self-bootstrap گروه**: بدون trigger، سازنده‌ی گروه باید جداگانه خودش را به اعضا اضافه کند. در فاز RPC حل می‌شود. ریسک کوتاه‌مدت: گروه‌های یتیم در صورت خطای client.
-- **عدم audit log**: مغایر با اصل ۱۰ AGENTS.md برای «sensitive actions». در پلن Phase 3 پوشش داده می‌شود؛ تا آن زمان به‌عنوان ریسک شناخته‌شده.
-- **عدم moderation**: حذف/ویرایش توسط admin گروه در این فاز نیست.
-- **پیوست‌ها بدون bucket**: درج ردیف در `messenger_attachments` بدون فایل واقعی ممکن است؛ تا فاز Storage نباید از UI استفاده شود.
-- **Realtime**: publication اضافه نمی‌شود؛ subscribe در UI آینده نیازمند migration کوچک جدا.
+- **سقف per-type با policy، نه با bucket-native**: bucket-level `file_size_limit` فقط یک عدد است (50MB). محدودیت 5/10/20MB در policyی RLS بررسی می‌شود؛ اگر کلاینت با streaming/multipart تلاش به دور زدن کند، Supabase Storage قبل از commit حجم را در metadata می‌نویسد و policy آن را می‌بیند، اما بهتر است در فاز ۳ سرور-ساید (createServerFn) نیز یک pre-check اضافه شود.
+- **race condition آپلود/متادیتا**: ابتدا فایل آپلود می‌شود (مسیر `{user_id}/{uuid}.ext`) سپس ردیف `messenger_attachments` ثبت می‌شود. تا قبل از ثبت ردیف، `messenger_attachment_visible` همان فایل را برای کسی غیر از uploader قابل دید نمی‌کند (که درست است). اگر ردیف هرگز ثبت نشد → orphan file. در Phase 3 با cleanup job یا تراکنشی کردن در RPC حل می‌شود.
+- **mime sniffing کلاینت**: `allowed_mime_types` بر اساس Content-Type کلاینت بررسی می‌شود؛ کاربر بدخواه می‌تواند mime جعلی بفرستد. در فاز ۳ سرور باید magic-bytes بررسی کند.
+- **SECURITY DEFINER**: تابع `messenger_attachment_visible` با SECURITY DEFINER دسترسی به جدول‌های private می‌گیرد؛ EXECUTE فقط به `authenticated` و `service_role` داده می‌شود.
+- **عدم audit**: حذف/آپلود فایل لاگ نمی‌شود (Phase 3).
+- **self-host migration**: همین migration روی نسخه‌ی self-host هم باید قابل اجرا باشد؛ به‌دلیل وابستگی به schema `storage`، اگر آنجا schema تفاوت داشته باشد ممکن است نیاز به adapter باشد. باید روی self-host قبل از production تست شود (طبق `MIGRATION_SAFETY_POLICY`).
 
 ## Stop conditions
 
-- اگر کاربر بخواهد جدول `messages` موجود حذف/merge شود → توقف و پلن جداگانه.
-- اگر linter ERROR روی جدول‌های جدید بدهد → اصلاح در همان migration قبل از تأیید نهایی.
-- اگر کاربر admin-override یا audit را در همین فاز بخواهد → پلن گسترش یابد.
+- اگر workspace policy `cloud_block_public_buckets` با ساخت private bucket مشکلی نداشته باشد (انتظار می‌رود نه). اگر هر خطای ایجاد bucket رخ داد → توقف و اطلاع به کاربر.
+- اگر linter ERROR جدید روی توابع/policyهای این فاز گزارش کرد → اصلاح در همان migration.
+- اگر کاربر بخواهد ساختار مسیر یا سقف‌ها را تغییر دهد → re-plan.
 
 ## Smallest safe next implementation slice
 
-همین یک migration. هیچ کد TS/UI تغییر نمی‌کند.
+همین یک bucket + یک migration. هیچ کد TS تغییر نمی‌کند.
 
 ## Technical detail — SQL skeleton (برای مرور قبل از apply)
 
 ```sql
--- 1) helper (SECURITY DEFINER → no RLS recursion)
-CREATE OR REPLACE FUNCTION public.is_messenger_group_member(_group_id uuid, _user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.messenger_group_members
-    WHERE group_id = _group_id AND user_id = _user_id
-  );
+-- 0) bucket created via tool, then:
+UPDATE storage.buckets
+   SET file_size_limit  = 52428800,
+       allowed_mime_types = ARRAY[
+         'image/jpeg','image/png','image/webp',
+         'video/mp4','video/webm',
+         'application/pdf',
+         'application/msword',
+         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+         'application/zip',
+         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+       ]
+ WHERE id = 'messenger-attachments';
+
+-- 1) unique index for fast lookup
+CREATE UNIQUE INDEX IF NOT EXISTS ux_messenger_attachments_file_path
+  ON public.messenger_attachments(file_path);
+
+-- 2) helper functions in public (SET search_path = public)
+CREATE OR REPLACE FUNCTION public.messenger_attachment_path_owner(_name text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
+  SELECT split_part(_name, '/', 1) = auth.uid()::text
 $$;
 
--- 2) tables (هر کدام دقیقاً با ستون‌های درخواست‌شده) + GRANTs + ENABLE RLS + POLICY
---    ترتیب: CREATE TABLE → GRANT → ENABLE RLS → POLICY (مطابق راهنمای Lovable Cloud)
+CREATE OR REPLACE FUNCTION public.messenger_attachment_size_ok(_name text, _size bigint)
+RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+  SELECT CASE lower(regexp_replace(_name, '^.*\.', ''))
+    WHEN 'jpg'  THEN _size <= 5*1024*1024
+    WHEN 'jpeg' THEN _size <= 5*1024*1024
+    WHEN 'png'  THEN _size <= 5*1024*1024
+    WHEN 'webp' THEN _size <= 5*1024*1024
+    WHEN 'mp4'  THEN _size <= 50*1024*1024
+    WHEN 'webm' THEN _size <= 50*1024*1024
+    WHEN 'pdf'  THEN _size <= 20*1024*1024
+    WHEN 'doc'  THEN _size <= 10*1024*1024
+    WHEN 'docx' THEN _size <= 10*1024*1024
+    WHEN 'zip'  THEN _size <= 5*1024*1024
+    WHEN 'xlsx' THEN _size <= 5*1024*1024
+    ELSE false
+  END
+$$;
+
+CREATE OR REPLACE FUNCTION public.messenger_attachment_visible(_name text, _uid uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.messenger_attachments a
+    JOIN public.messenger_messages m ON m.id = a.message_id
+    WHERE a.file_path = _name
+      AND public.is_messenger_group_member(m.group_id, _uid)
+  )
+$$;
+REVOKE EXECUTE ON FUNCTION public.messenger_attachment_visible(text, uuid) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.messenger_attachment_visible(text, uuid) TO authenticated, service_role;
+
+-- 3) policies on storage.objects scoped to bucket
+CREATE POLICY "msg_att_insert" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'messenger-attachments'
+    AND public.messenger_attachment_path_owner(name)
+    AND public.messenger_attachment_size_ok(name, COALESCE((metadata->>'size')::bigint, 0))
+  );
+
+CREATE POLICY "msg_att_select" ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'messenger-attachments'
+    AND ( owner = auth.uid()
+       OR public.messenger_attachment_visible(name, auth.uid()) )
+  );
+
+CREATE POLICY "msg_att_delete" ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'messenger-attachments'
+    AND owner = auth.uid()
+    AND public.messenger_attachment_path_owner(name)
+  );
+-- (no UPDATE policy → updates are denied)
 ```
 
-Policy خلاصه:
-
-- `messenger_groups`: SELECT اگر `is_messenger_group_member(id, auth.uid())`؛ INSERT اگر `created_by = auth.uid()`؛ UPDATE/DELETE فقط `created_by`.
-- `messenger_group_members`: SELECT اگر عضو همان گروه؛ INSERT/DELETE اگر `created_by` گروه = auth.uid() (مدیریت توسط سازنده در این فاز).
-- `messenger_messages`: SELECT اگر عضو گروه و `deleted_at IS NULL`؛ INSERT اگر `sender_id = auth.uid()` و عضو؛ UPDATE/DELETE اگر `sender_id = auth.uid()`.
-- `messenger_attachments`: SELECT/INSERT/DELETE بر اساس عضویت در گروه پیام مادر (subquery به `messenger_messages`).
-- `messenger_read_receipts`: SELECT اگر عضو گروه پیام؛ INSERT اگر `user_id = auth.uid()` و عضو؛ بدون UPDATE/DELETE.  
   
-لطفاً فقط یک migration جدید ایجاد کن در مسیر:
-  supabase/migrations/<timestamp>_messenger_core_tables.sql
-  محتوای migration دقیقاً طبق plan زیر باشد — هیچ کد TS، UI، یا route تغییر نکند.
-  [محتوای Task 0.1 از سند را اینجا paste کن]
-  بعد از apply:
-  1. supabase linter را اجرا کن و نتیجه را گزارش بده
-  2. npm run build را اجرا کن تا types.ts regenerate شود
+لطفاً Phase 2 پیوست‌های پیام‌رسان را اجرا کن — دقیقاً طبق پلن زیر، هیچ کد TS/UI تغییر نکند:
+
+مرحله ۱: bucket ایجاد کن
+
+- نام: messenger-attachments
+
+- نوع: private (public = false)
+
+مرحله ۲: migration جدید بساز در supabase/migrations/<timestamp>_messenger_attachments_storage_policies.sql
+
+با این محتوا (دقیقاً):
+
+-- UPDATE bucket config
+
+UPDATE storage.buckets
+
+   SET file_size_limit = 52428800,
+
+       allowed_mime_types = ARRAY[
+
+         'image/jpeg','image/png','image/webp',
+
+         'video/mp4','video/webm',
+
+         'application/pdf',
+
+         'application/msword',
+
+         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+
+         'application/zip',
+
+         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+       ]
+
+ WHERE id = 'messenger-attachments';
+
+-- unique index
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_messenger_attachments_file_path
+
+  ON public.messenger_attachments(file_path);
+
+-- helper functions
+
+CREATE OR REPLACE FUNCTION public.messenger_attachment_path_owner(_name text)
+
+RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER SET search_path=public AS $$
+
+  SELECT split_part(_name, '/', 1) = auth.uid()::text
+
+$$;
+
+CREATE OR REPLACE FUNCTION public.messenger_attachment_size_ok(_name text, _size bigint)
+
+RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+
+  SELECT CASE lower(regexp_replace(_name, '^.*\.', ''))
+
+    WHEN 'jpg'  THEN _size <= 5242880
+
+    WHEN 'jpeg' THEN _size <= 5242880
+
+    WHEN 'png'  THEN _size <= 5242880
+
+    WHEN 'webp' THEN _size <= 5242880
+
+    WHEN 'mp4'  THEN _size <= 52428800
+
+    WHEN 'webm' THEN _size <= 52428800
+
+    WHEN 'pdf'  THEN _size <= 20971520
+
+    WHEN 'doc'  THEN _size <= 10485760
+
+    WHEN 'docx' THEN _size <= 10485760
+
+    WHEN 'zip'  THEN _size <= 5242880
+
+    WHEN 'xlsx' THEN _size <= 5242880
+
+    ELSE false
+
+  END
+
+$$;
+
+CREATE OR REPLACE FUNCTION public.messenger_attachment_visible(_name text, _uid uuid)
+
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+
+  SELECT EXISTS (
+
+    SELECT 1 FROM public.messenger_attachments a
+
+    JOIN public.messenger_messages m ON [m.id](http://m.id) = a.message_id
+
+    WHERE a.file_path = _name
+
+      AND [public.is](http://public.is)_messenger_group_member([m.group](http://m.group)_id, _uid)
+
+  )
+
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.messenger_attachment_visible(text, uuid) FROM PUBLIC, anon;
+
+GRANT  EXECUTE ON FUNCTION public.messenger_attachment_visible(text, uuid) TO authenticated, service_role;
+
+-- DROP old policies if exist
+
+DROP POLICY IF EXISTS "msg_att_insert" ON storage.objects;
+
+DROP POLICY IF EXISTS "msg_att_select" ON storage.objects;
+
+DROP POLICY IF EXISTS "msg_att_delete" ON storage.objects;
+
+-- policies
+
+CREATE POLICY "msg_att_insert" ON storage.objects FOR INSERT TO authenticated
+
+  WITH CHECK (
+
+    bucket_id = 'messenger-attachments'
+
+    AND public.messenger_attachment_path_owner(name)
+
+    AND public.messenger_attachment_size_ok(name, COALESCE((metadata->>'size')::bigint, 0))
+
+  );
+
+CREATE POLICY "msg_att_select" ON storage.objects FOR SELECT TO authenticated
+
+  USING (
+
+    bucket_id = 'messenger-attachments'
+
+    AND ( owner = auth.uid()
+
+       OR public.messenger_attachment_visible(name, auth.uid()) )
+
+  );
+
+CREATE POLICY "msg_att_delete" ON storage.objects FOR DELETE TO authenticated
+
+  USING (
+
+    bucket_id = 'messenger-attachments'
+
+    AND owner = auth.uid()
+
+    AND public.messenger_attachment_path_owner(name)
+
+  );
+
+بعد از apply:
+
+1. linter را اجرا کن و نتیجه گزارش بده
+
+2. تأیید کن bucket در لیست buckets با public=false موجود است
+
+3. npm run build اجرا کن
