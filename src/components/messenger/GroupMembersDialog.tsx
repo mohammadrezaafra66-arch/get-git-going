@@ -80,14 +80,23 @@ export function GroupMembersDialog({
     queryFn: async (): Promise<MemberRow[]> => {
       const { data, error } = await supabase
         .from("messenger_group_members")
-        .select("user_id, role, profile:profiles(full_name)")
+        .select("user_id, role")
         .eq("group_id", groupId);
       if (error) throw error;
-      type Row = { user_id: string; role: MemberRole; profile: { full_name: string | null } | null };
-      return ((data ?? []) as unknown as Row[]).map((r) => ({
+      const rows = (data ?? []) as Array<{ user_id: string; role: MemberRole }>;
+      const ids = Array.from(new Set(rows.map((r) => r.user_id)));
+      let names = new Map<string, string | null>();
+      if (ids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", ids);
+        names = new Map((profs ?? []).map((p) => [p.id, p.full_name ?? null]));
+      }
+      return rows.map((r) => ({
         user_id: r.user_id,
         role: r.role,
-        full_name: r.profile?.full_name ?? null,
+        full_name: names.get(r.user_id) ?? null,
       }));
     },
   });
