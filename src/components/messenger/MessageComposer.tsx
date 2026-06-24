@@ -16,7 +16,6 @@ export function MessageComposer({ groupId }: { groupId: string }) {
         p_group_id: groupId,
         p_content: content,
         p_type: "text",
-        p_reply_to: null,
       });
       if (error) throw error;
     },
