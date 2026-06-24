@@ -62,6 +62,17 @@ export function useMessengerMessages(groupId: string | null) {
           qc.invalidateQueries({ queryKey: ["messenger-groups"] });
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messenger_messages", filter: `group_id=eq.${groupId}` },
+        (payload) => {
+          const updated = payload.new as MessengerMessage;
+          qc.setQueryData<MessengerMessage[]>(queryKey, (old) => {
+            if (!old) return old;
+            return old.map((m) => (m.id === updated.id ? { ...m, ...updated } : m));
+          });
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
