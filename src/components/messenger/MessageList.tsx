@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatJalaliTime, formatJalaliDateTime } from "@/lib/messenger/format";
 import type { MessengerMessage } from "@/hooks/messenger/useMessengerMessages";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { AttachmentBubble } from "./AttachmentBubble";
 
 function useSenderProfiles(ids: string[]) {
   return useQuery({
@@ -46,6 +47,9 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
           const mine = m.sender_id === user?.id;
           const name = (m.sender_id && nameMap?.get(m.sender_id)) || "کاربر";
           const initial = name?.charAt(0) || "؟";
+          const attachments = m.attachments ?? [];
+          const textContent = (m.content ?? "").trim();
+          const hasText = textContent.length > 0;
           return (
             <div key={m.id} className={cn("flex gap-2", mine ? "flex-row-reverse" : "flex-row")}>
               <Avatar className="h-8 w-8 shrink-0">
@@ -53,16 +57,25 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
               </Avatar>
               <div className={cn("max-w-[75%] space-y-1", mine ? "items-start" : "items-end")}>
                 {!mine && <div className="px-1 text-xs text-muted-foreground">{name}</div>}
-                <div
-                  className={cn(
-                    "rounded-2xl px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words",
-                    mine
-                      ? "bg-primary text-primary-foreground rounded-tr-sm"
-                      : "bg-muted text-foreground rounded-tl-sm",
-                  )}
-                >
-                  {m.content}
-                </div>
+                {attachments.length > 0 && (
+                  <div className="space-y-1">
+                    {attachments.map((a) => (
+                      <AttachmentBubble key={a.id} attachment={a} />
+                    ))}
+                  </div>
+                )}
+                {hasText && (
+                  <div
+                    className={cn(
+                      "rounded-2xl px-3 py-2 text-sm leading-6 whitespace-pre-wrap break-words",
+                      mine
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                        : "bg-muted text-foreground rounded-tl-sm",
+                    )}
+                  >
+                    {textContent}
+                  </div>
+                )}
                 <div
                   className="px-1 text-[10px] text-muted-foreground"
                   dir="ltr"
