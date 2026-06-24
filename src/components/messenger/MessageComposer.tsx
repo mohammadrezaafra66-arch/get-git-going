@@ -33,7 +33,7 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   };
 
   const send = useMutation({
-    mutationFn: async (override?: { audioFile?: File }) => {
+    mutationFn: async (override: { audioFile?: File } = {}) => {
       const trimmed = value.trim();
       const activeFile = override?.audioFile ?? file;
       if (!activeFile) {
@@ -133,7 +133,7 @@ export function MessageComposer({ groupId }: { groupId: string }) {
   const submit = () => {
     if (send.isPending) return;
     if (!file && !value.trim()) return;
-    send.mutate();
+    send.mutate({});
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
