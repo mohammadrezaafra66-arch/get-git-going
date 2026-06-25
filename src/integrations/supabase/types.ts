@@ -1937,6 +1937,123 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_receipt_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          from_status: string | null
+          id: string
+          note: string | null
+          receipt_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          receipt_id: string
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          receipt_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_receipt_status_history_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_receipts: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          invoice_id: string | null
+          mime_type: string | null
+          notes: string | null
+          review_deadline: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          storage_path: string
+          type: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          invoice_id?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          review_deadline: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path: string
+          type: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          invoice_id?: string | null
+          mime_type?: string | null
+          notes?: string | null
+          review_deadline?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path?: string
+          type?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_receipts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "vw_customer_receivables"
+            referencedColumns: ["invoice_id"]
+          },
+        ]
+      }
       document_status_history: {
         Row: {
           changed_at: string
@@ -9001,6 +9118,19 @@ export type Database = {
         Args: { _description?: string; _display_name?: string; _name: string }
         Returns: string
       }
+      create_delivery_receipt: {
+        Args: {
+          p_customer_id?: string
+          p_file_name: string
+          p_file_size: number
+          p_invoice_id?: string
+          p_mime_type: string
+          p_notes?: string
+          p_storage_path: string
+          p_type: string
+        }
+        Returns: string
+      }
       create_document: {
         Args: {
           p_file_name: string
@@ -9111,6 +9241,7 @@ export type Database = {
         }
         Returns: number
       }
+      expire_pending_delivery_receipts: { Args: never; Returns: undefined }
       expire_pending_documents: { Args: never; Returns: undefined }
       export_dynamic_table_rows: {
         Args: {
@@ -9302,6 +9433,33 @@ export type Database = {
           held_credit: number
           outstanding_balance: number
           total_purchases: number
+        }[]
+      }
+      get_delivery_receipts: {
+        Args: {
+          p_invoice_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+          p_type?: string
+        }
+        Returns: {
+          created_at: string
+          customer_id: string
+          file_name: string
+          file_size: number
+          id: string
+          invoice_id: string
+          notes: string
+          review_deadline: string
+          reviewed_at: string
+          reviewed_by: string
+          reviewer_name: string
+          status: string
+          storage_path: string
+          type: string
+          uploaded_by: string
+          uploader_name: string
         }[]
       }
       get_documents: {
@@ -10251,6 +10409,10 @@ export type Database = {
           match_id: string
           match_status: Database["public"]["Enums"]["market_match_status"]
         }[]
+      }
+      review_delivery_receipt: {
+        Args: { p_decision: string; p_note?: string; p_receipt_id: string }
+        Returns: undefined
       }
       review_document: {
         Args: { p_decision: string; p_document_id: string; p_note?: string }
