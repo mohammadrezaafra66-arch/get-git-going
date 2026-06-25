@@ -244,6 +244,12 @@ function BotApiKeysPage() {
                         <span className="text-xs font-mono text-muted-foreground" dir="ltr">
                           {k.key_prefix ?? "—"}…
                         </span>
+                        <span
+                          className="text-[10px] text-muted-foreground border border-dashed border-muted-foreground/40 rounded px-1 py-0.5 cursor-help"
+                          title="کلید کامل فقط هنگام ساخت قابل مشاهده بود و دیگر قابل بازیابی نیست"
+                        >
+                          غیرقابل بازیابی
+                        </span>
                         {!k.is_active && <Badge variant="secondary">غیرفعال</Badge>}
                         {expired && <Badge variant="destructive">منقضی</Badge>}
                         <Badge variant="outline" className="text-xs">
