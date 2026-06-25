@@ -3,7 +3,10 @@
  * مقدار داخلی همیشه ISO Gregorian (YYYY-MM-DD) ذخیره می‌شود تا با دیتابیس سازگار بماند.
  * نمایش به کاربر شمسی با اعداد فارسی است.
  */
-import DatePicker, { DateObject } from "react-multi-date-picker";
+import DatePickerPkg from "react-multi-date-picker";
+const DatePicker = (DatePickerPkg as unknown as { default?: typeof DatePickerPkg }).default ?? DatePickerPkg;
+const DateObject = (DatePickerPkg as unknown as { DateObject: typeof import("react-multi-date-picker").DateObject }).DateObject
+  ?? ((DatePickerPkg as unknown as { default: { DateObject: typeof import("react-multi-date-picker").DateObject } }).default?.DateObject);
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { cn } from "@/lib/utils";
