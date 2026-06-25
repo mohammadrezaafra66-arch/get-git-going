@@ -99,6 +99,7 @@ import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marke
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppGamificationLeaderboardRouteImport } from './routes/_app.gamification.leaderboard'
+import { Route as AppGamificationAchievementsRouteImport } from './routes/_app.gamification.achievements'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
 import { Route as AppFeedbackFeedbackIdRouteImport } from './routes/_app.feedback_.$feedbackId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
@@ -637,6 +638,12 @@ const AppGamificationLeaderboardRoute =
     path: '/leaderboard',
     getParentRoute: () => AppGamificationRoute,
   } as any)
+const AppGamificationAchievementsRoute =
+  AppGamificationAchievementsRouteImport.update({
+    id: '/achievements',
+    path: '/achievements',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const AppFeedbackCreateRoute = AppFeedbackCreateRouteImport.update({
   id: '/feedback_/create',
   path: '/feedback/create',
@@ -1124,6 +1131,7 @@ export interface FileRoutesByFullPath {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -1288,6 +1296,7 @@ export interface FileRoutesByTo {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -1455,6 +1464,7 @@ export interface FileRoutesById {
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/feedback_/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
+  '/_app/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/_app/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
@@ -1623,6 +1633,7 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/achievements'
     | '/gamification/leaderboard'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -1787,6 +1798,7 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/achievements'
     | '/gamification/leaderboard'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -1953,6 +1965,7 @@ export interface FileRouteTypes {
     | '/_app/data-tables/new'
     | '/_app/feedback_/$feedbackId'
     | '/_app/feedback_/create'
+    | '/_app/gamification/achievements'
     | '/_app/gamification/leaderboard'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
@@ -2703,6 +2716,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGamificationLeaderboardRouteImport
       parentRoute: typeof AppGamificationRoute
     }
+    '/_app/gamification/achievements': {
+      id: '/_app/gamification/achievements'
+      path: '/achievements'
+      fullPath: '/gamification/achievements'
+      preLoaderRoute: typeof AppGamificationAchievementsRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/feedback_/create': {
       id: '/_app/feedback_/create'
       path: '/feedback/create'
@@ -3250,6 +3270,7 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
 )
 
 interface AppGamificationRouteChildren {
+  AppGamificationAchievementsRoute: typeof AppGamificationAchievementsRoute
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
   AppGamificationAdminAchievementsRoute: typeof AppGamificationAdminAchievementsRoute
   AppGamificationAdminAnalyticsRoute: typeof AppGamificationAdminAnalyticsRoute
@@ -3262,6 +3283,7 @@ interface AppGamificationRouteChildren {
 }
 
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
+  AppGamificationAchievementsRoute: AppGamificationAchievementsRoute,
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
   AppGamificationAdminAchievementsRoute: AppGamificationAdminAchievementsRoute,
   AppGamificationAdminAnalyticsRoute: AppGamificationAdminAnalyticsRoute,
