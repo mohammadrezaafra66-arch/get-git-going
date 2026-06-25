@@ -37,8 +37,8 @@ function GamificationRoutePage() {
 }
 
 interface ScoreEvent {
-  score_value: number;
-  created_at: string;
+  daily_score: number;
+  captured_at: string;
 }
 
 function useWeeklyScoreSeries(employeeId: string) {
@@ -50,10 +50,10 @@ function useWeeklyScoreSeries(employeeId: string) {
       since.setDate(since.getDate() - 6);
       since.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
-        .from("employee_score_events")
-        .select("score_value, created_at")
+        .from("score_snapshots")
+        .select("daily_score, captured_at")
         .eq("employee_id", employeeId)
-        .gte("created_at", since.toISOString());
+        .gte("captured_at", since.toISOString());
       if (error) throw error;
       const rows = (data ?? []) as ScoreEvent[];
 
@@ -65,9 +65,9 @@ function useWeeklyScoreSeries(employeeId: string) {
         buckets.set(d.toISOString().slice(0, 10), 0);
       }
       for (const r of rows) {
-        const key = r.created_at.slice(0, 10);
+        const key = r.captured_at.slice(0, 10);
         if (buckets.has(key)) {
-          buckets.set(key, (buckets.get(key) ?? 0) + Number(r.score_value || 0));
+          buckets.set(key, Math.max(buckets.get(key) ?? 0, Number(r.daily_score || 0)));
         }
       }
       return Array.from(buckets.entries()).map(([date, score]) => ({
