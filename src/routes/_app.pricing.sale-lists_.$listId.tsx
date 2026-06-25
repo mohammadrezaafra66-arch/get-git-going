@@ -284,7 +284,7 @@ function SaleListDetailPage() {
       const formatted: Record<string, string> = {};
       for (const [pid, arr] of byProduct) {
         arr.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label, "fa"));
-        formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
+        formatted[pid] = arr.map((a) => a.value).join(" - ");
       }
       return formatted;
     },
