@@ -37,6 +37,7 @@ import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppGamificationRouteImport } from './routes/_app.gamification'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppDeliveryReceiptsRouteImport } from './routes/_app.delivery-receipts'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
@@ -308,6 +309,11 @@ const AppFeedbackRoute = AppFeedbackRouteImport.update({
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDeliveryReceiptsRoute = AppDeliveryReceiptsRouteImport.update({
+  id: '/delivery-receipts',
+  path: '/delivery-receipts',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -1041,6 +1047,7 @@ export interface FileRoutesByFullPath {
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
@@ -1202,6 +1209,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
@@ -1364,6 +1372,7 @@ export interface FileRoutesById {
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/gamification': typeof AppGamificationRouteWithChildren
@@ -1528,6 +1537,7 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/bot-api-keys'
     | '/dashboard'
+    | '/delivery-receipts'
     | '/documents'
     | '/feedback'
     | '/gamification'
@@ -1689,6 +1699,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/audit-logs'
     | '/dashboard'
+    | '/delivery-receipts'
     | '/documents'
     | '/feedback'
     | '/gamification'
@@ -1850,6 +1861,7 @@ export interface FileRouteTypes {
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
     | '/_app/dashboard'
+    | '/_app/delivery-receipts'
     | '/_app/documents'
     | '/_app/feedback'
     | '/_app/gamification'
@@ -2218,6 +2230,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/delivery-receipts': {
+      id: '/_app/delivery-receipts'
+      path: '/delivery-receipts'
+      fullPath: '/delivery-receipts'
+      preLoaderRoute: typeof AppDeliveryReceiptsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -3347,6 +3366,7 @@ interface AppRouteChildren {
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDeliveryReceiptsRoute: typeof AppDeliveryReceiptsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppGamificationRoute: typeof AppGamificationRouteWithChildren
@@ -3457,6 +3477,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
+  AppDeliveryReceiptsRoute: AppDeliveryReceiptsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppGamificationRoute: AppGamificationRouteWithChildren,
