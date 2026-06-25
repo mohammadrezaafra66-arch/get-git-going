@@ -9739,6 +9739,20 @@ export type Database = {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
       }
+      get_product_stats: { Args: { p_product_id: string }; Returns: Json }
+      get_product_timeline: {
+        Args: { p_limit?: number; p_offset?: number; p_product_id: string }
+        Returns: {
+          actor_id: string
+          actor_name: string
+          amount: number
+          description: string
+          event_time: string
+          event_type: string
+          reference_id: string
+          reference_type: string
+        }[]
+      }
       get_purchase_requests: {
         Args: {
           p_limit?: number
