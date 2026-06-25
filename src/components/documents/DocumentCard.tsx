@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
   documentTypeLabel,
@@ -105,7 +104,12 @@ export function DocumentCard({ document }: { document: DocumentRow }) {
               </span>
               <span className="font-mono">{formatRemaining(remaining)}</span>
             </div>
-            <Progress value={percentLeft} indicatorClassName={barClass} />
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full transition-all ${barClass}`}
+                style={{ width: `${percentLeft}%` }}
+              />
+            </div>
           </div>
         )}
 
