@@ -606,6 +606,15 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: true,
   },
   {
+    to: "/admin/workflow-settings",
+    label: "تنظیمات گردش‌کار",
+    icon: Settings,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
     to: "/admin/marketing-channels",
     label: "کانال‌های تبلیغاتی",
     icon: Megaphone,
