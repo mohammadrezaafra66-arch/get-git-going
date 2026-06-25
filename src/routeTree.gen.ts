@@ -28,6 +28,7 @@ import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppMyPenaltiesRouteImport } from './routes/_app.my-penalties'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMarketMatchesRouteImport } from './routes/_app.market-matches'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
@@ -256,6 +257,11 @@ const AppPersonsRoute = AppPersonsRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyPenaltiesRoute = AppMyPenaltiesRouteImport.update({
+  id: '/my-penalties',
+  path: '/my-penalties',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -1004,6 +1010,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1158,6 +1165,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1313,6 +1321,7 @@ export interface FileRoutesById {
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/market-matches': typeof AppMarketMatchesRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/my-penalties': typeof AppMyPenaltiesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
@@ -1470,6 +1479,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -1624,6 +1634,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -1778,6 +1789,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge'
     | '/_app/market-matches'
     | '/_app/messages'
+    | '/_app/my-penalties'
     | '/_app/notifications'
     | '/_app/persons'
     | '/_app/popup-center'
@@ -2070,6 +2082,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/my-penalties': {
+      id: '/_app/my-penalties'
+      path: '/my-penalties'
+      fullPath: '/my-penalties'
+      preLoaderRoute: typeof AppMyPenaltiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -3219,6 +3238,7 @@ interface AppRouteChildren {
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMarketMatchesRoute: typeof AppMarketMatchesRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppMyPenaltiesRoute: typeof AppMyPenaltiesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
@@ -3322,6 +3342,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMarketMatchesRoute: AppMarketMatchesRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppMyPenaltiesRoute: AppMyPenaltiesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
