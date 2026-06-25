@@ -8879,8 +8879,8 @@ export type Database = {
         }[]
       }
       calculate_employee_score: {
-        Args: { _employee_id: string }
-        Returns: Json
+        Args: { _employee_id?: string }
+        Returns: undefined
       }
       calculate_salesperson_collected_sales: {
         Args: { p_employee_id: string; p_window_months?: number }
@@ -9490,7 +9490,7 @@ export type Database = {
       }
       get_employee_progress: { Args: { _employee_id: string }; Returns: Json }
       get_employee_rank: {
-        Args: { _employee_id: string }
+        Args: { _employee_id?: string }
         Returns: {
           all_time_rank: number
           daily_rank: number
