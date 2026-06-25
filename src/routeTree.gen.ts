@@ -28,6 +28,7 @@ import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppMyPenaltiesRouteImport } from './routes/_app.my-penalties'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMarketMatchesRouteImport } from './routes/_app.market-matches'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
@@ -109,6 +110,7 @@ import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
@@ -256,6 +258,11 @@ const AppPersonsRoute = AppPersonsRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyPenaltiesRoute = AppMyPenaltiesRouteImport.update({
+  id: '/my-penalties',
+  path: '/my-penalties',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -677,6 +684,11 @@ const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   path: '/admin/profile-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
+  id: '/admin/penalties',
+  path: '/admin/penalties',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPaymentTermsRoute = AppAdminPaymentTermsRouteImport.update({
   id: '/admin/payment-terms',
   path: '/admin/payment-terms',
@@ -1004,6 +1016,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1030,6 +1043,7 @@ export interface FileRoutesByFullPath {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1158,6 +1172,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1183,6 +1198,7 @@ export interface FileRoutesByTo {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1313,6 +1329,7 @@ export interface FileRoutesById {
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/market-matches': typeof AppMarketMatchesRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/my-penalties': typeof AppMyPenaltiesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
@@ -1339,6 +1356,7 @@ export interface FileRoutesById {
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1470,6 +1488,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -1496,6 +1515,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
@@ -1624,6 +1644,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -1649,6 +1670,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
@@ -1778,6 +1800,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge'
     | '/_app/market-matches'
     | '/_app/messages'
+    | '/_app/my-penalties'
     | '/_app/notifications'
     | '/_app/persons'
     | '/_app/popup-center'
@@ -1804,6 +1827,7 @@ export interface FileRouteTypes {
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/payment-terms'
+    | '/_app/admin/penalties'
     | '/_app/admin/profile-fields'
     | '/_app/admin/receipt-fields'
     | '/_app/admin/recent-purchase-settings'
@@ -2070,6 +2094,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/my-penalties': {
+      id: '/_app/my-penalties'
+      path: '/my-penalties'
+      fullPath: '/my-penalties'
+      preLoaderRoute: typeof AppMyPenaltiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -2637,6 +2668,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/profile-fields'
       fullPath: '/admin/profile-fields'
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/penalties': {
+      id: '/_app/admin/penalties'
+      path: '/admin/penalties'
+      fullPath: '/admin/penalties'
+      preLoaderRoute: typeof AppAdminPenaltiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/payment-terms': {
@@ -3219,6 +3257,7 @@ interface AppRouteChildren {
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMarketMatchesRoute: typeof AppMarketMatchesRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppMyPenaltiesRoute: typeof AppMyPenaltiesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
@@ -3244,6 +3283,7 @@ interface AppRouteChildren {
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
+  AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
@@ -3322,6 +3362,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMarketMatchesRoute: AppMarketMatchesRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppMyPenaltiesRoute: AppMyPenaltiesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
@@ -3349,6 +3390,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
+  AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
