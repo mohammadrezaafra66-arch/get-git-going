@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ShoppingCart, ArrowRightLeft, Loader2 } from "lucide-react";
+import { ShoppingCart, ArrowRightLeft, Loader2, Clock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { formatJalaliFromNow, formatJalaliDateTime } from "@/lib/messenger/format";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { transferInquiry } from "@/lib/messenger/inquiries.functions";
 import { useGroupRole, useGroupPurchasers } from "@/hooks/messenger/useGroupRole";
 import type { InquiryRow, InquiryStatus } from "@/hooks/messenger/useInquiries";
@@ -29,6 +29,43 @@ const STATUS_STYLE: Record<InquiryStatus, { bg: string; label: string }> = {
   rejected:            { bg: "#6B7280", label: "رد شد" },
 };
 
+// مهلت پیش‌فرض پاسخ به استعلام: ۱۰ دقیقه از زمان ایجاد
+const DEADLINE_MINUTES = 10;
+
+const ACTIVE_TIMER_STATUSES: ReadonlySet<InquiryStatus> = new Set<InquiryStatus>([
+  "pending",
+  "warning_5min",
+  "danger_8min",
+  "critical_10min",
+  "transfer_available",
+]);
+
+function toPersianDigits(input: string | number): string {
+  const map = ["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+  return String(input).replace(/\d/g, (d) => map[Number(d)]);
+}
+
+function formatRemaining(createdAt: string, nowMs: number): { text: string; expired: boolean } {
+  const deadlineMs = new Date(createdAt).getTime() + DEADLINE_MINUTES * 60_000;
+  const diffMs = deadlineMs - nowMs;
+  if (diffMs <= 0) {
+    const overdueMin = Math.floor(-diffMs / 60_000);
+    return {
+      text: overdueMin > 0
+        ? `مهلت گذشت (${toPersianDigits(overdueMin)} دقیقه)`
+        : "مهلت تمام شد",
+      expired: true,
+    };
+  }
+  const totalSec = Math.floor(diffMs / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (min >= 1) {
+    return { text: `مهلت: ${toPersianDigits(min)} دقیقه مانده`, expired: false };
+  }
+  return { text: `مهلت: ${toPersianDigits(sec)} ثانیه مانده`, expired: false };
+}
+
 export function InquiryCard({
   inquiry,
   currentUserId,
@@ -39,6 +76,29 @@ export function InquiryCard({
   const style = STATUS_STYLE[inquiry.status] ?? { bg: "#374151", label: inquiry.status };
   const [replyOpen, setReplyOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+
+  const isTimerActive = ACTIVE_TIMER_STATUSES.has(inquiry.status);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isTimerActive) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, [isTimerActive]);
+
+  const remaining = useMemo(
+    () => (isTimerActive ? formatRemaining(inquiry.created_at, nowMs) : null),
+    [isTimerActive, inquiry.created_at, nowMs],
+  );
+
+  const timerBg = remaining?.expired
+    ? "#B42318"
+    : inquiry.status === "warning_5min"
+      ? "#8A5A00"
+      : inquiry.status === "danger_8min"
+        ? "#B54708"
+        : inquiry.status === "critical_10min" || inquiry.status === "transfer_available"
+          ? "#B42318"
+          : "#0F766E";
 
   const { data: role } = useGroupRole(inquiry.group_id, currentUserId);
   const isAssignee = currentUserId === inquiry.assigned_to;
@@ -68,13 +128,24 @@ export function InquiryCard({
           <ShoppingCart className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">استعلام قیمت</span>
         </div>
-        <span
-          className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
-          style={{ backgroundColor: style.bg }}
-          title={style.label}
-        >
-          {style.label}
-        </span>
+        {remaining ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+            style={{ backgroundColor: timerBg }}
+            title={`وضعیت: ${style.label}`}
+          >
+            <Clock className="h-3 w-3" />
+            {remaining.text}
+          </span>
+        ) : (
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+            style={{ backgroundColor: style.bg }}
+            title={style.label}
+          >
+            {style.label}
+          </span>
+        )}
       </div>
 
       <div className="mt-2 space-y-1">
@@ -86,12 +157,18 @@ export function InquiryCard({
         )}
       </div>
 
-      <div
-        className="mt-2 text-[11px] text-muted-foreground"
-        title={formatJalaliDateTime(inquiry.created_at)}
-      >
-        {formatJalaliFromNow(inquiry.created_at)}
+      <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+        <CalendarDays className="h-3 w-3" />
+        <span>ایجاد: {formatJalaliDateTime(inquiry.created_at)}</span>
       </div>
+      {remaining && (
+        <div
+          className="mt-1 text-[11px] text-muted-foreground"
+          title="وضعیت فعلی استعلام"
+        >
+          وضعیت: {style.label}
+        </div>
+      )}
 
       {(canReply || canTransfer) && (
         <div className="mt-3 flex flex-wrap gap-2">
