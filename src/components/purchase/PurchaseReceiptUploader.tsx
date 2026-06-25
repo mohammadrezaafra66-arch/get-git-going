@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Upload, Loader2, Download, FileText, Trash2 } from "lucide-react";
+import { Upload, Loader2, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -128,10 +128,6 @@ export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
         )}
       </div>
 
-      {/* placeholder to keep Trash2 import meaningful in future delete UI */}
-      <span className="sr-only">
-        <Trash2 className="h-4 w-4" />
-      </span>
     </div>
   );
 }
