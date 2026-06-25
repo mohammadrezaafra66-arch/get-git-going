@@ -78,25 +78,29 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
     queryFn: async () => {
       const term = debouncedRefSearch.trim();
       if (refKind === "inquiry") {
-        let q = supabase
+        const { data, error } = await supabase
           .from("inquiries")
-          .select("id, product_name, customer_name, created_at")
+          .select("id, created_at, products(name)")
           .order("created_at", { ascending: false })
           .limit(20);
-        if (term) q = q.or(`product_name.ilike.%${term}%,customer_name.ilike.%${term}%`);
-        const { data, error } = await q;
         if (error) throw error;
-        return (data ?? []).map((r) => ({
+        const rows = (data ?? []).filter((r) => {
+          if (!term) return true;
+          const name = (r as { products?: { name?: string } }).products?.name ?? "";
+          return name.toLowerCase().includes(term.toLowerCase());
+        });
+        return rows.map((r) => ({
           id: r.id as string,
-          label: `${(r as { product_name?: string }).product_name ?? "—"} • ${(r as { customer_name?: string }).customer_name ?? "—"}`,
+          label:
+            (r as { products?: { name?: string } }).products?.name ??
+            `استعلام ${String(r.id).slice(0, 8)}`,
         }));
       }
-      let q = supabase
+      const { data, error } = await supabase
         .from("purchase_requests")
         .select("id, created_at, product_id, products(name)")
         .order("created_at", { ascending: false })
         .limit(20);
-      const { data, error } = await q;
       if (error) throw error;
       const filtered = (data ?? []).filter((r) => {
         if (!term) return true;
