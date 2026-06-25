@@ -42,8 +42,8 @@ type ListFilters = {
 
 async function fetchPurchaseRequests(f: ListFilters): Promise<PurchaseRequestRow[]> {
   const { data, error } = await supabase.rpc("get_purchase_requests", {
-    p_status: f.status ?? null,
-    p_product_id: f.productId ?? null,
+    p_status: f.status ?? undefined,
+    p_product_id: f.productId ?? undefined,
     p_limit: f.limit ?? 50,
     p_offset: f.offset ?? 0,
   });
@@ -87,37 +87,31 @@ export function usePurchaseStats() {
     queryKey: ["purchase-requests", "stats"],
     queryFn: async () => {
       const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const countFor = async (q: ReturnType<typeof supabase.from>) => {
-        const { count, error } = (await q) as { count: number | null; error: Error | null };
-        if (error) throw new Error(error.message);
-        return count ?? 0;
-      };
-      const [pending, approved, purchased, week] = await Promise.all([
-        countFor(
-          supabase
-            .from("purchase_requests")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "pending") as unknown as ReturnType<typeof supabase.from>,
-        ),
-        countFor(
-          supabase
-            .from("purchase_requests")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "approved") as unknown as ReturnType<typeof supabase.from>,
-        ),
-        countFor(
-          supabase
-            .from("purchase_requests")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "purchased") as unknown as ReturnType<typeof supabase.from>,
-        ),
-        countFor(
-          supabase
-            .from("purchase_requests")
-            .select("id", { count: "exact", head: true })
-            .gte("created_at", oneWeekAgo) as unknown as ReturnType<typeof supabase.from>,
-        ),
+      const [pendingR, approvedR, purchasedR, weekR] = await Promise.all([
+        supabase
+          .from("purchase_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending"),
+        supabase
+          .from("purchase_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "approved"),
+        supabase
+          .from("purchase_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "purchased"),
+        supabase
+          .from("purchase_requests")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", oneWeekAgo),
       ]);
+      for (const r of [pendingR, approvedR, purchasedR, weekR]) {
+        if (r.error) throw new Error(r.error.message);
+      }
+      const pending = pendingR.count ?? 0;
+      const approved = approvedR.count ?? 0;
+      const purchased = purchasedR.count ?? 0;
+      const week = weekR.count ?? 0;
       return { pending, approved, purchased, week };
     },
     staleTime: 60_000,
@@ -161,9 +155,9 @@ export function useCreatePurchaseRequest() {
         p_product_id: input.product_id,
         p_quantity: input.quantity,
         p_unit: input.unit,
-        p_inquiry_id: input.inquiry_id ?? null,
-        p_notes: input.notes ?? null,
-        p_expected_price: input.expected_price ?? null,
+        p_inquiry_id: input.inquiry_id ?? undefined,
+        p_notes: input.notes ?? undefined,
+        p_expected_price: input.expected_price ?? undefined,
       });
       if (error) throw new Error(error.message);
       return data as string;
@@ -188,8 +182,8 @@ export function useUpdatePurchaseStatus() {
       const { error } = await supabase.rpc("update_purchase_status", {
         p_request_id: input.request_id,
         p_new_status: input.new_status,
-        p_note: input.note ?? null,
-        p_final_price: input.final_price ?? null,
+        p_note: input.note ?? undefined,
+        p_final_price: input.final_price ?? undefined,
       });
       if (error) throw new Error(error.message);
     },
