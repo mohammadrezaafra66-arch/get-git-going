@@ -110,6 +110,7 @@ import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
@@ -683,6 +684,11 @@ const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   path: '/admin/profile-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
+  id: '/admin/penalties',
+  path: '/admin/penalties',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPaymentTermsRoute = AppAdminPaymentTermsRouteImport.update({
   id: '/admin/payment-terms',
   path: '/admin/payment-terms',
@@ -1037,6 +1043,7 @@ export interface FileRoutesByFullPath {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1191,6 +1198,7 @@ export interface FileRoutesByTo {
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1348,6 +1356,7 @@ export interface FileRoutesById {
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
@@ -1506,6 +1515,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
@@ -1660,6 +1670,7 @@ export interface FileRouteTypes {
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
@@ -1816,6 +1827,7 @@ export interface FileRouteTypes {
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/payment-terms'
+    | '/_app/admin/penalties'
     | '/_app/admin/profile-fields'
     | '/_app/admin/receipt-fields'
     | '/_app/admin/recent-purchase-settings'
@@ -2658,6 +2670,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/penalties': {
+      id: '/_app/admin/penalties'
+      path: '/admin/penalties'
+      fullPath: '/admin/penalties'
+      preLoaderRoute: typeof AppAdminPenaltiesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/payment-terms': {
       id: '/_app/admin/payment-terms'
       path: '/admin/payment-terms'
@@ -3264,6 +3283,7 @@ interface AppRouteChildren {
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
+  AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
@@ -3370,6 +3390,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
+  AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
