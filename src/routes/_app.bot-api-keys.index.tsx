@@ -356,6 +356,7 @@ function RevealKeyDialog({
 }) {
   const [shown, setShown] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const open = !!revealed;
 
   const copy = async () => {
