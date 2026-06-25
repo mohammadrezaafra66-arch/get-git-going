@@ -11,16 +11,27 @@ export function useUnreadMessagesCount(): number {
   return data.reduce((sum, g) => sum + (g.unread_count ?? 0), 0);
 }
 
+type AnySupabase = {
+  from: (t: string) => {
+    select: (
+      cols: string,
+      opts: { count: "exact"; head: true },
+    ) => {
+      eq: (k: string, v: unknown) => unknown;
+    };
+  };
+};
+
 async function safeCount(
-  table: string,
-  build: (q: ReturnType<typeof supabase.from>) => unknown,
+  builder: (db: AnySupabase) => Promise<{ count: number | null; error: unknown }> | unknown,
 ): Promise<number> {
   try {
-    const q = supabase.from(table).select("id", { count: "exact", head: true });
-    const filtered = build(q) as { count: number | null; error: unknown };
-    const { count, error } = (await filtered) as { count: number | null; error: unknown };
-    if (error) return 0;
-    return count ?? 0;
+    const res = (await builder(supabase as unknown as AnySupabase)) as {
+      count: number | null;
+      error: unknown;
+    };
+    if (res?.error) return 0;
+    return res?.count ?? 0;
   } catch {
     return 0;
   }
@@ -31,8 +42,8 @@ export function usePendingPurchaseCount() {
     ...COMMON,
     queryKey: ["hub-count", "purchase-pending"],
     queryFn: () =>
-      safeCount("purchase_requests", (q) =>
-        (q as unknown as { eq: (k: string, v: string) => unknown }).eq("status", "pending"),
+      safeCount((db) =>
+        db.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
       ),
   });
 }
@@ -44,11 +55,15 @@ export function useActivePenaltyCount() {
     enabled: !!user?.id,
     queryKey: ["hub-count", "penalties-active", user?.id],
     queryFn: () =>
-      safeCount("performance_penalties", (q) =>
-        (q as unknown as { eq: (k: string, v: unknown) => { eq: (k: string, v: unknown) => unknown } })
-          .eq("is_active", true)
-          .eq("user_id", user!.id),
-      ),
+      safeCount((db) => {
+        const q = db
+          .from("performance_penalties")
+          .select("id", { count: "exact", head: true })
+          .eq("is_active", true) as unknown as {
+          eq: (k: string, v: unknown) => unknown;
+        };
+        return q.eq("user_id", user!.id);
+      }),
   });
 }
 
@@ -59,11 +74,15 @@ export function usePendingReceiptCount() {
     enabled: !!user?.id,
     queryKey: ["hub-count", "receipts-pending", user?.id],
     queryFn: () =>
-      safeCount("delivery_receipts", (q) =>
-        (q as unknown as { eq: (k: string, v: unknown) => { eq: (k: string, v: unknown) => unknown } })
-          .eq("status", "pending_review")
-          .eq("uploaded_by", user!.id),
-      ),
+      safeCount((db) => {
+        const q = db
+          .from("delivery_receipts")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending_review") as unknown as {
+          eq: (k: string, v: unknown) => unknown;
+        };
+        return q.eq("uploaded_by", user!.id);
+      }),
   });
 }
 
@@ -74,10 +93,14 @@ export function usePendingDocCount() {
     enabled: !!user?.id,
     queryKey: ["hub-count", "docs-pending", user?.id],
     queryFn: () =>
-      safeCount("documents", (q) =>
-        (q as unknown as { eq: (k: string, v: unknown) => { eq: (k: string, v: unknown) => unknown } })
-          .eq("status", "pending_review")
-          .eq("uploaded_by", user!.id),
-      ),
+      safeCount((db) => {
+        const q = db
+          .from("documents")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending_review") as unknown as {
+          eq: (k: string, v: unknown) => unknown;
+        };
+        return q.eq("uploaded_by", user!.id);
+      }),
   });
 }
