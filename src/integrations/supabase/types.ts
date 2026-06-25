@@ -9503,6 +9503,10 @@ export type Database = {
           weekly_score: number
         }[]
       }
+      get_kpi_xp: {
+        Args: { p_default: number; p_event_key: string }
+        Returns: number
+      }
       get_leaderboard: {
         Args: {
           _department?: string
