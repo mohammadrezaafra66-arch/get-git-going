@@ -6601,6 +6601,155 @@ export type Database = {
           },
         ]
       }
+      purchase_receipts: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          request_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          request_id?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_receipts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_request_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          from_status: string | null
+          id: string
+          note: string | null
+          request_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          request_id: string
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          request_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_request_status_history_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requests: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          expected_price: number | null
+          final_price: number | null
+          id: string
+          inquiry_id: string | null
+          notes: string | null
+          product_id: string
+          quantity: number
+          requested_by: string
+          status: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          expected_price?: number | null
+          final_price?: number | null
+          id?: string
+          inquiry_id?: string | null
+          notes?: string | null
+          product_id: string
+          quantity: number
+          requested_by: string
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          expected_price?: number | null
+          final_price?: number | null
+          id?: string
+          inquiry_id?: string | null
+          notes?: string | null
+          product_id?: string
+          quantity?: number
+          requested_by?: string
+          status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_requests_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       purchases: {
         Row: {
           cash_price: number | null
@@ -8731,6 +8880,17 @@ export type Database = {
         Args: { p_name: string; p_type: string }
         Returns: string
       }
+      create_purchase_request: {
+        Args: {
+          p_expected_price?: number
+          p_inquiry_id?: string
+          p_notes?: string
+          p_product_id: string
+          p_quantity: number
+          p_unit: string
+        }
+        Returns: string
+      }
       create_sales_quote_with_items: {
         Args: {
           p_customer_name: string
@@ -9232,6 +9392,32 @@ export type Database = {
       get_product_sale_price: {
         Args: { _product_id: string; _sale_price_type_id?: string }
         Returns: number
+      }
+      get_purchase_requests: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_product_id?: string
+          p_status?: string
+        }
+        Returns: {
+          assigned_to: string
+          assignee_name: string
+          created_at: string
+          expected_price: number
+          final_price: number
+          id: string
+          inquiry_id: string
+          notes: string
+          product_id: string
+          product_name: string
+          quantity: number
+          receipt_count: number
+          requested_by: string
+          requester_name: string
+          status: string
+          unit: string
+        }[]
       }
       get_rank_neighbors: {
         Args: { _employee_id: string; _period?: string; _window?: number }
@@ -10178,6 +10364,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      update_purchase_status: {
+        Args: {
+          p_final_price?: number
+          p_new_status: string
+          p_note?: string
+          p_request_id: string
+        }
+        Returns: undefined
       }
       update_role_permissions: {
         Args: { _permissions: Json; _role_name: string }
