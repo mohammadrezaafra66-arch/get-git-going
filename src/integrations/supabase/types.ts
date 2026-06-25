@@ -1937,6 +1937,101 @@ export type Database = {
         }
         Relationships: []
       }
+      document_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          document_id: string
+          from_status: string | null
+          id: string
+          note: string | null
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          document_id: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          document_id?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_status_history_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          notes: string | null
+          reference_id: string | null
+          reference_type: string | null
+          review_deadline: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          storage_path: string
+          type: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          review_deadline?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path: string
+          type: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          review_deadline?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path?: string
+          type?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       dynamic_table_cells: {
         Row: {
           column_id: string
@@ -8864,6 +8959,19 @@ export type Database = {
         Args: { _description?: string; _display_name?: string; _name: string }
         Returns: string
       }
+      create_document: {
+        Args: {
+          p_file_name: string
+          p_file_size: number
+          p_mime_type: string
+          p_notes?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_storage_path: string
+          p_type: string
+        }
+        Returns: string
+      }
       create_dynamic_table_row: {
         Args: { p_table_id: string; p_values: Json }
         Returns: string
@@ -8961,6 +9069,7 @@ export type Database = {
         }
         Returns: number
       }
+      expire_pending_documents: { Args: never; Returns: undefined }
       export_dynamic_table_rows: {
         Args: {
           p_filters?: Json
@@ -9151,6 +9260,32 @@ export type Database = {
           held_credit: number
           outstanding_balance: number
           total_purchases: number
+        }[]
+      }
+      get_documents: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+          p_type?: string
+        }
+        Returns: {
+          created_at: string
+          file_name: string
+          file_size: number
+          id: string
+          notes: string
+          reference_id: string
+          reference_type: string
+          review_deadline: string
+          reviewed_at: string
+          reviewed_by: string
+          reviewer_name: string
+          status: string
+          storage_path: string
+          type: string
+          uploaded_by: string
+          uploader_name: string
         }[]
       }
       get_employee_progress: { Args: { _employee_id: string }; Returns: Json }
@@ -10030,6 +10165,10 @@ export type Database = {
           match_id: string
           match_status: Database["public"]["Enums"]["market_match_status"]
         }[]
+      }
+      review_document: {
+        Args: { p_decision: string; p_document_id: string; p_note?: string }
+        Returns: undefined
       }
       review_market_product_match_approve: {
         Args: {

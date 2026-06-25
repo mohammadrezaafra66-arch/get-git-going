@@ -1,100 +1,55 @@
-## Slice 9 — مرحله ۲ (UI فضای خرید)
+## Slice 10 — مرحله ۱: دیتابیس فضای بیجک و فاکتور
 
-بدون migration. بدون وابستگی جدید. کاملاً RTL و mobile-first. الگو مطابق Slice 8 (penalties) و کنوانسیون‌های موجود (`useDebounce`, `formatJalaliDateTime`, `RoleGuard`, `requirePermission`, `JalaliDateInput`، sonner toast).
+ایجاد migration غیرمخرب برای سیستم اسناد (بیجک/فاکتور/حواله) با چرخه تأیید ۱۰ دقیقه‌ای.
 
-> توجه: مسیر `/purchases` از قبل برای ثبت خرید واقعی استفاده می‌شود (`_app.purchases.tsx`). مسیر جدید `**/purchase**` برای «درخواست خرید» (purchase request) جداست و تداخلی ندارد.
+### قبل از اجرا — بررسی‌های لازم
 
-### فایل‌های جدید
+1. تأیید وجود `auto_submit_penalty` (Slice 8) و `update_updated_at_column` (Slice 9) با امضای انتظاری.
+2. تأیید وجود `tick_inquiries` برای الحاق `expire_pending_documents` (در صورت نبود → cron job مستقل).
+3. تأیید فیلدهای واقعی `notification_events` (`event_type`, `user_id`, `channel`, `payload`, `status`) و `audit_logs` (`entity_type`, `entity_id`, `action`, `actor_id`, `diff`) و `profiles.full_name`/`is_active` — همان‌طور که در Slice 9 استفاده شد.
+4. تأیید نقش `accountant` در enum `app_role` — در صورت نبود، افزودن آن لازم است (سؤال از کاربر).
 
-**۱. `src/lib/purchase/labels.ts**`
+### فایل‌های migration
 
-- `PURCHASE_STATUS_FA: Record<status, string>`
-- `PURCHASE_STATUS_BADGE: Record<status, string>` (کلاس‌های tailwind سمنتیک: amber/blue/violet/green/muted)
-- `PURCHASE_UNIT_OPTIONS = ['عدد','کیلوگرم','متر','بسته']`
-- `nextStatuses(status)` → helper برای تعیین گذارهای مجاز
+`**supabase/migrations/<ts>_slice10_documents.sql**` — تنها schema/RLS/RPC:
 
-**۲. `src/hooks/purchase/usePurchase.ts**` — همگی client-side با `supabase` browser client + React Query:
+1. جدول `public.documents` با چک‌های `type` (bijak/invoice/havale) و `status` (pending_review/confirmed/rejected/expired)، FK انعطاف‌پذیر `reference_id`+`reference_type`، `review_deadline` پیش‌فرض `now() + 10 min`.
+2. جدول `public.document_status_history`.
+3. ایندکس‌ها: `type`, `status`, `uploaded_by`, `reference_id`, و partial index روی `review_deadline` where `status='pending_review'`.
+4. تریگر `set_documents_updated_at` با استفاده از `update_updated_at_column`.
+5. GRANTها روی هر دو جدول (authenticated + service_role).
+6. ENABLE RLS + همه policyهای ذکرشده در پرامپت.
+7. RPCها:
+  - `create_document(...)` — security definer، چک نقش accountant/manager/admin، insert سند + history + notification به اولین manager فعال + audit log.
+  - `review_document(p_document_id, p_decision, p_note)` — چک نقش manager/admin، چک `pending_review`، update + history + notification به uploader + audit log.
+  - `expire_pending_documents()` — حلقه روی pending‌های منقضی، تغییر به `expired` + history + `auto_submit_penalty` برای manager + notification به uploader.
+  - `get_documents(p_type, p_status, p_limit, p_offset)` — security definer با join به profiles برای نام‌ها.
+8. GRANT EXECUTE روی RPCها (authenticated؛ `expire_pending_documents` فقط service_role).
+9. الحاق `perform public.expire_pending_documents();` به انتهای `tick_inquiries` (با CREATE OR REPLACE تابع موجود — نیاز به خواندن نسخه فعلی قبل از patch).
 
-- `useMyPurchaseRequests(status?)` → RPC `get_purchase_requests({p_status})` (RLS خودش کاربر را به own محدود می‌کند) — `staleTime: 30_000`
-- `useAllPurchaseRequests({status?, search?, limit, offset})` → همان RPC (manager/admin همه را می‌بیند طبق RLS). جست‌وجوی متن روی `product_name` در client.
-- `usePurchaseStats()` → چهار `select count` ساده روی `purchase_requests` (در انتظار / تأیید / خرید / این هفته)
-- `usePurchaseReceipts(requestId)` → `from('purchase_receipts').select(...).eq('request_id', id)`
-- `useCreatePurchaseRequest()` → mutation RPC + `invalidateQueries(['purchase-requests'])` + toast سبز
-- `useUpdatePurchaseStatus()` → mutation RPC + invalidate لیست‌ها/stats + toast
-- `useUploadPurchaseReceipt()` → mutation:
-  1. validate (jpg/jpeg/png/pdf, ≤10MB)
-  2. `supabase.storage.from('purchase-receipts').upload('${request_id}/${crypto.randomUUID()}.${ext}', file)`
-  3. `from('purchase_receipts').insert({request_id, uploaded_by, storage_path, file_name, file_size, mime_type})`
-  4. invalidate receipt query
-- `getSignedReceiptUrl(path)` helper (1h)
+`**supabase/migrations/<ts+1>_slice10_documents_storage_rls.sql**` — فقط policyهای `storage.objects` برای bucket `documents` (insert: accountant/manager/admin، select: authenticated).
 
-**۳. کامپوننت‌ها زیر `src/components/purchase/**`
+### Storage bucket
 
-- `**PurchaseRequestForm.tsx**` (در Dialog یا standalone)
-  - props: `{ inquiryId?: string, defaultProductId?: string, onSuccess?: () => void }`
-  - فیلدها: محصول (Popover + Command با debounce روی `products` مثل `PurchaseForm` موجود)، تعداد (number, >0)، واحد (Select با چهار گزینه + پیش‌فرض «عدد»)، قیمت تخمینی (اختیاری)، توضیحات (textarea, max 500)
-  - اگر `inquiryId` پاس شد: یک `Card` کوچک با خلاصه استعلام (یک select از `inquiries` بر اساس id)
-  - validation با `zod` + `react-hook-form` (الگوی `PurchaseForm` موجود)
-  - submit → `useCreatePurchaseRequest`
-- `**PurchaseRequestCard.tsx**`
-  - props: `{ request: PurchaseRequest, onAction?: () => void }`
-  - badge وضعیت با `PURCHASE_STATUS_BADGE`
-  - نمایش: نام محصول، تعداد + واحد، تاریخ شمسی (`formatJalaliDateTime(created_at)`)، درخواست‌دهنده، مسئول، قیمت تخمینی/نهایی
-  - اگر `inquiry_id`: لینک به `/messages` (یا inquiry route موجود — fallback اگر وجود نداشت: عدم نمایش لینک)
-  - اگر `status === 'purchased'` و `assigned_to === current user` → دکمه «آپلود رسید» (باز کردن Dialog با `PurchaseReceiptUploader`)
-  - تعداد رسید (`receipt_count`)
-- `**PurchaseStatusActions.tsx**`
-  - props: `{ request: PurchaseRequest }`
-  - فقط اگر کاربر admin/manager (`useUserRoles`) یا `assignee` — در غیر این صورت null
-  - بر اساس `nextStatuses(status)` دکمه‌ها:
-    - `pending` → «تأیید» (approved, آبی) + «رد» (cancelled, قرمز outline)
-    - `approved` → «خرید انجام شد» (purchased) با فیلد `final_price` (number input لازم) + یادداشت اختیاری
-    - `purchased` → «تحویل داده شد» (delivered)
-  - هر دکمه → AlertDialog تأیید با Textarea یادداشت اختیاری → `useUpdatePurchaseStatus`
-- `**PurchaseReceiptUploader.tsx**`
-  - props: `{ requestId: string }`
-  - drag&drop + input file (accept=`.jpg,.jpeg,.png,.pdf`)
-  - اعتبارسنجی کلاینت، progress bar (state-based: idle/uploading/done/error)
-  - زیر آن: لیست `usePurchaseReceipts(requestId)` — هر آیتم: نام فایل، اندازه، تاریخ، دکمه «دانلود» که با `getSignedReceiptUrl` لینک می‌سازد و `window.open` می‌کند
+ساخت bucket `documents` (private) با ابزار `supabase--storage_create_bucket` — جدا از migration.
 
-**۴. صفحات**
+### خارج از scope این مرحله
 
-- `**src/routes/_app.purchase.tsx**` (`/purchase`)
-  - `beforeLoad: requirePermission('purchases','view')` (همان ماژول موجود؛ تأیید می‌کنم در roles موجود است وگرنه fallback به guard ساده auth-only)
-  - `PageHeader` با عنوان «فضای خرید»
-  - Tabs: «درخواست‌های من» / «ارسال درخواست جدید»
-    - تب اول: Select فیلتر وضعیت + لیست `PurchaseRequestCard` (grid mobile-first)، حالت‌های loading/empty/error فارسی
-    - تب دوم: `PurchaseRequestForm` inline
-- `**src/routes/_app.admin.purchase.tsx**` (`/admin/purchase`)
-  - `beforeLoad: requireAnyRole(['admin','manager'])` (همان الگوی `_app.admin.penalties.tsx`)
-  - بالا: ۴ کارت آماری (`usePurchaseStats`)
-  - فیلترها: Select وضعیت + Input جست‌وجو با `useDebounce(300)`
-  - جدول shadcn `Table` با ستون‌ها: محصول، تعداد، درخواست‌دهنده، مسئول، وضعیت (badge)، تاریخ، اقدامات
-  - دکمه «مشاهده و اقدام» → Dialog شامل `PurchaseStatusActions` + `PurchaseReceiptUploader`
-  - pagination ساده دستی (دکمه قبلی/بعدی، limit=20)
+- بدون تغییر UI، بدون هوک، بدون route.
+- بدون cron job جدید (اتکا به `tick_inquiries`).
 
-**۵. لینک سایدبار** — ویرایش `src/components/layout/nav-items.ts`
+### ریسک‌ها
 
-- `{ to: '/purchase', label: 'فضای خرید', icon: ShoppingCart, module: 'purchases', group: 'purchasing' }`
-- `{ to: '/admin/purchase', label: 'مدیریت خرید', icon: ShoppingCart, module: 'purchases', group: 'admin', adminOnly: true }`
-(دقت: آیکن‌های موجود؛ نیاز به import جدید نیست.)
+- اگر نقش `accountant` در `app_role` نیست → policy و RPC شکست می‌خورند. باید قبل از اجرا روشن شود.
+- اگر امضای `auto_submit_penalty` متفاوت است → `expire_pending_documents` نیاز به تطبیق.
+- `CREATE OR REPLACE FUNCTION tick_inquiries` نیازمند خواندن نسخه فعلی است؛ در صورت نبود، fallback به cron job مستقل (`select cron.schedule('expire-documents','* * * * *', ...)`).
 
-### تأیید پیش از پیاده‌سازی
+### تأیید پس از اجرا
 
-- ماژول `purchases` در `ModuleKey` و در `requirePermission` کفایت می‌کند یا یک ماژول جدید `purchase_requests` لازم است؟ پیش‌فرض: استفاده از `purchases` موجود.
-- groupهای سایدبار: `purchasing` و `admin` موجودند ✓.
-
-### تأیید Build/Type
-
-پس از پیاده‌سازی: `tsgo --noEmit` + `npm run build` اجرا و نتیجه گزارش می‌شود.
-
-### بدون تغییر
-
-- migrationها
-- دیتابیس
-- اسکیمای موجود
-- UI/routeهای دیگر  
-ماژول `purchases` موجود کافیه — نیازی به ماژول جدید `purchase_requests` نیست. همان را استفاده کن.
-  بقیه موارد تأیید است. build کن.
-  
-  
+- `supabase--linter` و رفع warningهای مرتبط.
+- چک حضور دو جدول، چهار RPC، policyها، و bucket.  
+نقش `accountant` در enum `app_role` موجود است — بررسی کردیم:
+  ```
+  admin, manager, sales, accountant, viewer
+  ```
+  نیازی به افزودن نیست. migration را اجرا کن.
