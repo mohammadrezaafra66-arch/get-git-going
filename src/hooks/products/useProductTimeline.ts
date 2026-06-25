@@ -53,14 +53,14 @@ export function useProductStats(productId: string | null | undefined) {
         p_product_id: productId!,
       });
       if (error) throw error;
-      return (data ?? {
+      return ((data ?? {
         inquiry_count_month: 0,
         inquiry_count_total: 0,
         avg_price: null,
         last_price: null,
         purchase_count: 0,
         last_purchase_date: null,
-      }) as ProductStats;
+      }) as unknown) as ProductStats;
     },
     staleTime: 60_000,
   });
