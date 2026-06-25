@@ -275,6 +275,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: "purchases",
     group: "purchasing",
   },
+  {
+    to: "/documents",
+    label: "اسناد (بیجک و فاکتور)",
+    icon: FileText,
+    module: "dashboard",
+    group: "purchasing",
+  },
 
   // ۴) فروش و مشتریان
   {
@@ -584,6 +591,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/purchase",
     label: "مدیریت خرید",
     icon: ShoppingCart,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/documents",
+    label: "مدیریت اسناد",
+    icon: FileText,
     module: "roles",
     group: "admin",
     subgroup: "adm-tools",
