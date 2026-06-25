@@ -376,9 +376,11 @@ function RevealKeyDialog({
       open={open}
       onOpenChange={(v) => {
         if (!v) {
+          if (!copied || !confirmed) return;
           onClose();
           setShown(false);
           setCopied(false);
+          setConfirmed(false);
         }
       }}
     >
