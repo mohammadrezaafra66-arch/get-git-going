@@ -411,9 +411,9 @@ function SaleListDetailPage() {
     ): string | null => {
       const d = (desc ?? "").trim();
       const a = (attrs ?? "").trim();
-      if (d && a) return `${d}\nویژگی‌ها: ${a}`;
+      if (d && a) return `${d}\n${a}`;
       if (d) return d;
-      if (a) return `ویژگی‌ها: ${a}`;
+      if (a) return a;
       return null;
     };
     return {
