@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useMessengerMessages } from "@/hooks/messenger/useMessengerMessages";
 import { useMessengerGroups } from "@/hooks/messenger/useMessengerGroups";
 import { useGroupRole } from "@/hooks/messenger/useGroupRole";
+import { useInquiries } from "@/hooks/messenger/useInquiries";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 import { SemanticSearchBar } from "./SemanticSearchBar";
 import { AiAssistantDrawer } from "./AiAssistantDrawer";
 import { GroupMembersDialog } from "./GroupMembersDialog";
+import { InquiryBoard, URGENT_STATUSES, inquiryBoardToPersianDigits } from "./InquiryBoard";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2, MessageSquare, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Loader2, MessageSquare, ShoppingCart, Sparkles, Users } from "lucide-react";
 
 export function ChatWindow({
   groupId,
@@ -23,9 +26,12 @@ export function ChatWindow({
   const group = groups?.find((g) => g.id === groupId) ?? null;
   const [aiOpen, setAiOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "inquiries">("chat");
   const { user } = useAuth();
   const { data: myRole } = useGroupRole(groupId, user?.id ?? null);
   const isAdmin = myRole === "admin";
+  const { data: inquiries } = useInquiries(groupId);
+  const urgentCount = (inquiries ?? []).filter((i) => URGENT_STATUSES.has(i.status)).length;
 
   if (!groupId || !group) {
     return (
@@ -69,15 +75,54 @@ export function ChatWindow({
           </Button>
         )}
       </header>
-      <SemanticSearchBar groupId={groupId} />
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <MessageList messages={messages ?? []} />
-      )}
-      <MessageComposer groupId={groupId} />
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "chat" | "inquiries")}
+        dir="rtl"
+        className="flex flex-1 flex-col overflow-hidden"
+      >
+        <TabsList className="sticky top-0 z-10 grid w-full grid-cols-2 rounded-none border-b bg-background">
+          <TabsTrigger value="chat" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            گفتگو
+          </TabsTrigger>
+          <TabsTrigger value="inquiries" className="gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            استعلام‌ها
+            {urgentCount > 0 && (
+              <span className="min-w-[1.25rem] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-xs text-white">
+                {inquiryBoardToPersianDigits(urgentCount)}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent
+          value="chat"
+          className="mt-0 flex flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
+          forceMount
+        >
+          <SemanticSearchBar groupId={groupId} />
+          {isLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <MessageList messages={messages ?? []} />
+          )}
+          <MessageComposer groupId={groupId} />
+        </TabsContent>
+        <TabsContent
+          value="inquiries"
+          className="mt-0 flex-1 overflow-y-auto data-[state=inactive]:hidden"
+          forceMount
+        >
+          <InquiryBoard
+            groupId={groupId}
+            currentUserId={user?.id ?? null}
+            active={activeTab === "inquiries"}
+          />
+        </TabsContent>
+      </Tabs>
       <AiAssistantDrawer open={aiOpen} onOpenChange={setAiOpen} groupId={groupId} />
       {groupId && (
         <GroupMembersDialog
