@@ -44,6 +44,7 @@ import {
   BadgeCheck,
   LifeBuoy,
   FileCheck,
+  ClipboardList,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
