@@ -1,5 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from "react";
-import { Loader2, AlertCircle, LineChart as LineChartIcon } from "lucide-react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
+import { Loader2, AlertCircle, LineChart as LineChartIcon, Download, Share2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/pricing/price-history";
 import { useLatestUsdRate, useProductPriceHistory } from "@/hooks/pricing/useProductPriceHistory";
 import { useProductPriceHistoryRealtime } from "@/hooks/pricing/useProductPriceHistoryRealtime";
+import { useChartExport } from "@/hooks/pricing/useChartExport";
 
 const ProductPriceChart = lazy(() => import("./ProductPriceChart"));
 
@@ -44,6 +45,13 @@ export function ProductPriceHistoryDrawer({
 }: Props) {
   const [range, setRange] = useState<PriceRangeKey>("30d");
   const [mode, setMode] = useState<"toman" | "usd">("toman");
+
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { isCapturing, downloadPng, copyToClipboard } = useChartExport({
+    filename: productName ? `chart-${productName}` : "chart-price",
+    scale: 2,
+    backgroundColor: "#ffffff",
+  });
 
   const historyQuery = useProductPriceHistory({
     productId,
@@ -214,7 +222,7 @@ export function ProductPriceHistoryDrawer({
                     </div>
                   }
                 >
-                  <ProductPriceChart data={data} mode={mode} usdRate={usdRate} />
+                  <ProductPriceChart ref={chartRef} data={data} mode={mode} usdRate={usdRate} />
                 </Suspense>
               )}
               {mode === "usd" && usdRate && (
@@ -226,6 +234,34 @@ export function ProductPriceHistoryDrawer({
                 </div>
               )}
             </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isCapturing || data.length === 0}
+                onClick={() => downloadPng(chartRef.current)}
+                className="gap-1.5 text-xs"
+              >
+                {isCapturing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                دانلود PNG
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isCapturing || data.length === 0}
+                onClick={() => copyToClipboard(chartRef.current)}
+                className="gap-1.5 text-xs"
+              >
+                {isCapturing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+                کپی برای ارسال
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-left pt-0.5">
+              پس از کپی، در واتساپ یا تلگرام Paste کنید (Ctrl+V)
+            </p>
 
             {/* تاریخچه کوتاه */}
             {data.length > 0 && (
