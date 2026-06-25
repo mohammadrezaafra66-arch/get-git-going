@@ -268,6 +268,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: "purchases",
     group: "purchasing",
   },
+  {
+    to: "/purchase",
+    label: "فضای خرید (درخواست‌ها)",
+    icon: ShoppingCart,
+    module: "purchases",
+    group: "purchasing",
+  },
 
   // ۴) فروش و مشتریان
   {
@@ -568,6 +575,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/penalties",
     label: "کارت‌های قرمز",
     icon: AlertTriangle,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/purchase",
+    label: "مدیریت خرید",
+    icon: ShoppingCart,
     module: "roles",
     group: "admin",
     subgroup: "adm-tools",
