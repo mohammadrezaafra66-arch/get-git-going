@@ -365,7 +365,6 @@ function RevealKeyDialog({
       await navigator.clipboard.writeText(revealed.raw);
       setCopied(true);
       toast.success("کلید کپی شد.");
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("کپی ناموفق بود؛ لطفاً دستی انتخاب و کپی کنید.");
     }
