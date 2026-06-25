@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Activity, Target, Coins, Flag, Award, Gift, Crown, Info, ChevronLeft } from "lucide-react";
+import { Activity, Target, Coins, Flag, Award, Gift, Crown, Info, ChevronLeft, Users, CalendarClock, Trophy, ShieldAlert, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { useAdminGamificationOverview } from "@/hooks/gamification/useGamification";
+import { toPersianDigits } from "@/lib/dashboard/utils";
 
 export const Route = createFileRoute("/_app/gamification/admin/")({
   beforeLoad: async () => {
@@ -66,12 +69,56 @@ const CARDS: HubCard[] = [
 ];
 
 function GamificationAdminHub() {
+  const overview = useAdminGamificationOverview();
+  const d = overview.data;
+  const num = (n: number | undefined | null) =>
+    overview.isLoading ? null : toPersianDigits(Number(n ?? 0).toLocaleString("en-US"));
+
+  const stats: { label: string; value: string | null; icon: React.ComponentType<{ className?: string }>; hint?: string }[] = [
+    { label: "کل کارمندان", value: num(d?.total_employees), icon: Users },
+    { label: "رویدادهای امروز", value: num(d?.total_events_today), icon: CalendarClock },
+    {
+      label: "برترین امتیازدهنده امروز",
+      value: overview.isLoading ? null : d?.top_scorer_today?.full_name ?? "—",
+      icon: Trophy,
+      hint: d?.top_scorer_today ? `${toPersianDigits(Math.round(d.top_scorer_today.score))} امتیاز` : undefined,
+    },
+    { label: "کارت قرمز امروز", value: num(d?.total_penalties_today), icon: ShieldAlert },
+    { label: "XP داده‌شده امروز", value: num(d?.total_xp_awarded_today), icon: Sparkles },
+  ];
+
   return (
     <div className="space-y-6" dir="rtl">
       <PageHeader
         title="مرکز مدیریت گیمیفیکیشن"
         description="دسترسی متمرکز به همه‌ی بخش‌های مدیریت گیمیفیکیشن."
       />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.label}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-xs">{s.label}</span>
+                  <Icon className="h-4 w-4" />
+                </div>
+                {s.value === null ? (
+                  <Skeleton className="h-6 w-20" />
+                ) : (
+                  <div className="text-lg font-bold tabular-nums truncate" title={s.value}>
+                    {s.value}
+                  </div>
+                )}
+                {s.hint && (
+                  <div className="text-[11px] text-muted-foreground">{s.hint}</div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       <Alert>
         <Info className="h-4 w-4" />

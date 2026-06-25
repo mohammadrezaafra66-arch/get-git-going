@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { MessageSquare, ShoppingCart, ShieldAlert, FileCheck, FileText, type LucideIcon } from "lucide-react";
+import { MessageSquare, ShoppingCart, ShieldAlert, FileCheck, FileText, Trophy, type LucideIcon } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
@@ -80,6 +80,14 @@ function CollaborationPage() {
       icon: FileText,
       gradient: "from-amber-500 to-amber-600",
       badge: docs,
+    },
+    {
+      to: "/gamification",
+      label: "امتیازها",
+      description: "رتبه‌بندی و نشان‌های تیم",
+      icon: Trophy,
+      gradient: "from-yellow-500 to-amber-600",
+      badge: 0,
     },
   ];
 
