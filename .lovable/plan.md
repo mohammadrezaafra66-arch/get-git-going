@@ -1,82 +1,100 @@
-## Slice 9 — فضای خرید (مرحله ۱: فقط دیتابیس)
+## Slice 9 — مرحله ۲ (UI فضای خرید)
 
-### اسکیمای واقعی پروژه (بررسی شد)
+بدون migration. بدون وابستگی جدید. کاملاً RTL و mobile-first. الگو مطابق Slice 8 (penalties) و کنوانسیون‌های موجود (`useDebounce`, `formatJalaliDateTime`, `RoleGuard`, `requirePermission`, `JalaliDateInput`، sonner toast).
 
-- `profiles`: دارای `full_name` و `is_active` ✓
-- `app_role`: `admin, manager, sales, accountant, viewer` ✓ (`sales` معتبر است)
-- `audit_logs(entity_type, entity_id, action, actor_id, diff)` ✓ — مطابق پرامپت
-- `**notification_events` متفاوت است**: ستون‌های واقعی `event_type, user_id, channel, payload, status, processed_at` — هیچ ستون `title/body/type/reference_type/reference_id` ندارد. اعلان‌ها باید با `event_type` + `payload jsonb` ساخته شوند.
-- **Bucket Storage** نمی‌تواند از داخل migration ساخته شود — باید با ابزار `supabase--storage_create_bucket` ساخته شود.
+> توجه: مسیر `/purchases` از قبل برای ثبت خرید واقعی استفاده می‌شود (`_app.purchases.tsx`). مسیر جدید `**/purchase**` برای «درخواست خرید» (purchase request) جداست و تداخلی ندارد.
 
-### تغییرات (یک migration + ساخت bucket)
+### فایل‌های جدید
 
-**۱. Migration:** `supabase/migrations/<ts>_slice9_purchase_requests.sql`
+**۱. `src/lib/purchase/labels.ts**`
 
-سه جدول جدید مطابق پرامپت، با چهار مرحله الزامی (CREATE → GRANT → ENABLE RLS → POLICY):
+- `PURCHASE_STATUS_FA: Record<status, string>`
+- `PURCHASE_STATUS_BADGE: Record<status, string>` (کلاس‌های tailwind سمنتیک: amber/blue/violet/green/muted)
+- `PURCHASE_UNIT_OPTIONS = ['عدد','کیلوگرم','متر','بسته']`
+- `nextStatuses(status)` → helper برای تعیین گذارهای مجاز
 
-- `purchase_requests` (با CHECK status, FK به inquiries/products/auth.users)
-- `purchase_request_status_history`
-- `purchase_receipts`
+**۲. `src/hooks/purchase/usePurchase.ts**` — همگی client-side با `supabase` browser client + React Query:
 
-ایندکس‌ها، GRANTها، و RLS policies دقیقاً مطابق پرامپت.
+- `useMyPurchaseRequests(status?)` → RPC `get_purchase_requests({p_status})` (RLS خودش کاربر را به own محدود می‌کند) — `staleTime: 30_000`
+- `useAllPurchaseRequests({status?, search?, limit, offset})` → همان RPC (manager/admin همه را می‌بیند طبق RLS). جست‌وجوی متن روی `product_name` در client.
+- `usePurchaseStats()` → چهار `select count` ساده روی `purchase_requests` (در انتظار / تأیید / خرید / این هفته)
+- `usePurchaseReceipts(requestId)` → `from('purchase_receipts').select(...).eq('request_id', id)`
+- `useCreatePurchaseRequest()` → mutation RPC + `invalidateQueries(['purchase-requests'])` + toast سبز
+- `useUpdatePurchaseStatus()` → mutation RPC + invalidate لیست‌ها/stats + toast
+- `useUploadPurchaseReceipt()` → mutation:
+  1. validate (jpg/jpeg/png/pdf, ≤10MB)
+  2. `supabase.storage.from('purchase-receipts').upload('${request_id}/${crypto.randomUUID()}.${ext}', file)`
+  3. `from('purchase_receipts').insert({request_id, uploaded_by, storage_path, file_name, file_size, mime_type})`
+  4. invalidate receipt query
+- `getSignedReceiptUrl(path)` helper (1h)
 
-تریگر `update_updated_at_column` روی `purchase_requests` برای نگهداری `updated_at`.
+**۳. کامپوننت‌ها زیر `src/components/purchase/**`
 
-**RPCها** با تطبیق برای schema واقعی:
+- `**PurchaseRequestForm.tsx**` (در Dialog یا standalone)
+  - props: `{ inquiryId?: string, defaultProductId?: string, onSuccess?: () => void }`
+  - فیلدها: محصول (Popover + Command با debounce روی `products` مثل `PurchaseForm` موجود)، تعداد (number, >0)، واحد (Select با چهار گزینه + پیش‌فرض «عدد»)، قیمت تخمینی (اختیاری)، توضیحات (textarea, max 500)
+  - اگر `inquiryId` پاس شد: یک `Card` کوچک با خلاصه استعلام (یک select از `inquiries` بر اساس id)
+  - validation با `zod` + `react-hook-form` (الگوی `PurchaseForm` موجود)
+  - submit → `useCreatePurchaseRequest`
+- `**PurchaseRequestCard.tsx**`
+  - props: `{ request: PurchaseRequest, onAction?: () => void }`
+  - badge وضعیت با `PURCHASE_STATUS_BADGE`
+  - نمایش: نام محصول، تعداد + واحد، تاریخ شمسی (`formatJalaliDateTime(created_at)`)، درخواست‌دهنده، مسئول، قیمت تخمینی/نهایی
+  - اگر `inquiry_id`: لینک به `/messages` (یا inquiry route موجود — fallback اگر وجود نداشت: عدم نمایش لینک)
+  - اگر `status === 'purchased'` و `assigned_to === current user` → دکمه «آپلود رسید» (باز کردن Dialog با `PurchaseReceiptUploader`)
+  - تعداد رسید (`receipt_count`)
+- `**PurchaseStatusActions.tsx**`
+  - props: `{ request: PurchaseRequest }`
+  - فقط اگر کاربر admin/manager (`useUserRoles`) یا `assignee` — در غیر این صورت null
+  - بر اساس `nextStatuses(status)` دکمه‌ها:
+    - `pending` → «تأیید» (approved, آبی) + «رد» (cancelled, قرمز outline)
+    - `approved` → «خرید انجام شد» (purchased) با فیلد `final_price` (number input لازم) + یادداشت اختیاری
+    - `purchased` → «تحویل داده شد» (delivered)
+  - هر دکمه → AlertDialog تأیید با Textarea یادداشت اختیاری → `useUpdatePurchaseStatus`
+- `**PurchaseReceiptUploader.tsx**`
+  - props: `{ requestId: string }`
+  - drag&drop + input file (accept=`.jpg,.jpeg,.png,.pdf`)
+  - اعتبارسنجی کلاینت، progress bar (state-based: idle/uploading/done/error)
+  - زیر آن: لیست `usePurchaseReceipts(requestId)` — هر آیتم: نام فایل، اندازه، تاریخ، دکمه «دانلود» که با `getSignedReceiptUrl` لینک می‌سازد و `window.open` می‌کند
 
-- `create_purchase_request(...)` — مطابق پرامپت، اما اعلان به‌صورت:
-  ```sql
-  insert into notification_events (event_type, user_id, channel, payload, status)
-  values (
-    'purchase_request_new', v_assigned_to, 'in_app',
-    jsonb_build_object(
-      'title','درخواست خرید جدید',
-      'body','یک درخواست خرید جدید برای بررسی ثبت شده است.',
-      'reference_type','purchase_request',
-      'reference_id', v_request_id
-    ),
-    'pending'
-  );
-  ```
-- `update_purchase_status(...)` — همان الگوی اعلان با `event_type='purchase_status_changed'` و ترجمه فارسی وضعیت در body.
-- `get_purchase_requests(...)` — دقیقاً مطابق پرامپت (با `profiles.full_name`).
+**۴. صفحات**
 
-پیدا کردن مسئول خرید: چون `has_role` نیاز به subquery دارد و در `WHERE` با `profiles` join لازم است، از:
+- `**src/routes/_app.purchase.tsx**` (`/purchase`)
+  - `beforeLoad: requirePermission('purchases','view')` (همان ماژول موجود؛ تأیید می‌کنم در roles موجود است وگرنه fallback به guard ساده auth-only)
+  - `PageHeader` با عنوان «فضای خرید»
+  - Tabs: «درخواست‌های من» / «ارسال درخواست جدید»
+    - تب اول: Select فیلتر وضعیت + لیست `PurchaseRequestCard` (grid mobile-first)، حالت‌های loading/empty/error فارسی
+    - تب دوم: `PurchaseRequestForm` inline
+- `**src/routes/_app.admin.purchase.tsx**` (`/admin/purchase`)
+  - `beforeLoad: requireAnyRole(['admin','manager'])` (همان الگوی `_app.admin.penalties.tsx`)
+  - بالا: ۴ کارت آماری (`usePurchaseStats`)
+  - فیلترها: Select وضعیت + Input جست‌وجو با `useDebounce(300)`
+  - جدول shadcn `Table` با ستون‌ها: محصول، تعداد، درخواست‌دهنده، مسئول، وضعیت (badge)، تاریخ، اقدامات
+  - دکمه «مشاهده و اقدام» → Dialog شامل `PurchaseStatusActions` + `PurchaseReceiptUploader`
+  - pagination ساده دستی (دکمه قبلی/بعدی، limit=20)
 
-```sql
-select p.id into v_assigned_to
-from profiles p
-join user_roles ur on ur.user_id = p.id
-where p.is_active = true and ur.role = 'manager'
-order by p.created_at asc
-limit 1;
-```
+**۵. لینک سایدبار** — ویرایش `src/components/layout/nav-items.ts`
 
-GRANT EXECUTE فقط به `authenticated` برای هر سه RPC.
+- `{ to: '/purchase', label: 'فضای خرید', icon: ShoppingCart, module: 'purchases', group: 'purchasing' }`
+- `{ to: '/admin/purchase', label: 'مدیریت خرید', icon: ShoppingCart, module: 'purchases', group: 'admin', adminOnly: true }`
+(دقت: آیکن‌های موجود؛ نیاز به import جدید نیست.)
 
-**۲. Storage bucket** — با ابزار `supabase--storage_create_bucket(name='purchase-receipts', public=false)` پس از تأیید migration.
+### تأیید پیش از پیاده‌سازی
 
-سپس یک migration کوچک دوم برای RLS policies روی `storage.objects` با محدودسازی به اعضای درخواست (نه فقط `auth.role()='authenticated'` که خیلی باز است):
+- ماژول `purchases` در `ModuleKey` و در `requirePermission` کفایت می‌کند یا یک ماژول جدید `purchase_requests` لازم است؟ پیش‌فرض: استفاده از `purchases` موجود.
+- groupهای سایدبار: `purchasing` و `admin` موجودند ✓.
 
-- INSERT: فقط `assigned_to` درخواست مرتبط بتواند آپلود کند (path الگو: `<request_id>/...`).
-- SELECT: requester / assignee / admin / manager.
+### تأیید Build/Type
 
-### فایل‌های تغییریافته
+پس از پیاده‌سازی: `tsgo --noEmit` + `npm run build` اجرا و نتیجه گزارش می‌شود.
 
-- ایجاد: `supabase/migrations/<ts>_slice9_purchase_requests.sql`
-- ایجاد bucket: `purchase-receipts` (private)
-- ایجاد: `supabase/migrations/<ts2>_slice9_purchase_receipts_storage_rls.sql`
+### بدون تغییر
 
-### بدون تغییر UI
-
-هیچ فایل frontend در این مرحله تغییر نمی‌کند. types.ts پس از اجرای migration به‌صورت خودکار بازتولید می‌شود.
-
-### ریسک‌ها
-
-- اگر در پروژه شما الگوی متفاوتی برای ساخت اعلان (مثلاً تابع helper) وجود دارد، بفرمایید تا از آن استفاده کنم.
-- `inquiries.id` فرض شده موجود است (طبق لیست جداول هست) ✓.
-
-تأیید کنید تا migration و bucket را اجرا کنم.  
-تأیید می‌کنم. migration و bucket را اجرا کن.
-
-برای الگوی اعلان همان روشی که نوشتی (`event_type` + `payload jsonb`) درست است — تابع helper جداگانه‌ای نداریم.
+- migrationها
+- دیتابیس
+- اسکیمای موجود
+- UI/routeهای دیگر  
+ماژول `purchases` موجود کافیه — نیازی به ماژول جدید `purchase_requests` نیست. همان را استفاده کن.
+  بقیه موارد تأیید است. build کن.
+  
+  
