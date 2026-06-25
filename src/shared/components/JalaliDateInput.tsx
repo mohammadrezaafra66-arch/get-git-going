@@ -26,7 +26,7 @@ interface Props {
   invalid?: boolean;
 }
 
-function isoToDateObject(iso: string | null | undefined): DateObject | null {
+function isoToDateObject(iso: string | null | undefined): DateObjectType | null {
   if (!iso) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return null;
@@ -51,7 +51,7 @@ export function JalaliDateInput({
   return (
     <DatePicker
       value={isoToDateObject(value)}
-      onChange={(d) => {
+      onChange={(d: DateObjectType | DateObjectType[] | null) => {
         if (!d) {
           onChange("");
           return;
