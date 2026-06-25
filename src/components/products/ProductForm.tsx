@@ -95,6 +95,68 @@ export function ProductForm({
   const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
   const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
 
+  // ---------- پیش‌نویس ذخیره‌نشده در localStorage ----------
+  const draftKey = productId ? `afrakala_product_draft_${productId}` : null;
+  const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
+  const draftHydratedRef = useRef(false);
+
+  // Restore draft on mount (once)
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(draftKey) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          values?: ProductFormValues;
+          dynValues?: DynamicAttrValues;
+        };
+        if (parsed?.values) setValues((s) => ({ ...s, ...parsed.values }));
+        if (parsed?.dynValues) setDynValues(parsed.dynValues);
+        setDraftRestoredBanner(true);
+        setAutoName(false);
+      }
+    } catch {
+      /* ignore corrupt draft */
+    } finally {
+      draftHydratedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced save of draft (500ms) whenever values/dynValues change
+  useEffect(() => {
+    if (!draftKey) return;
+    if (!draftHydratedRef.current) return;
+    const t = setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          draftKey,
+          JSON.stringify({ values, dynValues }),
+        );
+      } catch {
+        /* quota or unavailable */
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [draftKey, values, dynValues]);
+
+  const dismissDraftBanner = () => setDraftRestoredBanner(false);
+  const resetDraft = () => {
+    if (draftKey) {
+      try {
+        window.localStorage.removeItem(draftKey);
+      } catch {
+        /* ignore */
+      }
+    }
+    setValues({ ...DEFAULTS, ...initial });
+    setDynValues(initialDynamicValues ?? {});
+    setErrors({});
+    setDynErrors({});
+    setAutoName(!isEdit && !initial?.name);
+    setDraftRestoredBanner(false);
+  };
+
   // ---------- بررسی زنده تکراری بودن محصول ----------
   const dupKey = useMemo(
     () => ({
@@ -388,6 +450,22 @@ export function ProductForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {draftRestoredBanner && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-yellow-400/60 bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-100"
+          role="status"
+        >
+          <span>شما تغییرات ذخیره‌نشده دارید.</span>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={dismissDraftBanner}>
+              ادامه ویرایش
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={resetDraft}>
+              شروع مجدد
+            </Button>
+          </div>
+        </div>
+      )}
       {duplicate && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />

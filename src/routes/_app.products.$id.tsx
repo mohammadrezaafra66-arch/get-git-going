@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -72,6 +72,23 @@ function ProductDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [editMode, setEditMode] = useState(!!search.edit && canUpdate);
   const [saving, setSaving] = useState(false);
+
+  // Warn before tab close/reload while editing if an unsaved draft exists.
+  useEffect(() => {
+    if (!editMode) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      try {
+        const raw = window.localStorage.getItem(`afrakala_product_draft_${id}`);
+        if (!raw) return;
+      } catch {
+        return;
+      }
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editMode, id]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["product", id],
@@ -325,6 +342,11 @@ function ProductDetailPage() {
       }
 
       toast.success("تغییرات ذخیره شد");
+      try {
+        window.localStorage.removeItem(`afrakala_product_draft_${id}`);
+      } catch {
+        /* ignore */
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
