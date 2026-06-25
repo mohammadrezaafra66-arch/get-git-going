@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
@@ -22,6 +22,7 @@ export function useMessengerGroups() {
       const { data: groups, error } = await supabase
         .from("messenger_groups")
         .select("id,name,type,created_at")
+        .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -75,6 +76,22 @@ export function useMessengerGroups() {
         last_message: lastByGroup.get(g.id) ?? null,
         unread_count: unreadByGroup.get(g.id) ?? 0,
       }));
+    },
+  });
+}
+
+export function useDeactivateMessengerGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      const { error } = await supabase.rpc(
+        "deactivate_messenger_group" as never,
+        { p_group_id: groupId } as never,
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messenger-groups"] });
     },
   });
 }
