@@ -11,7 +11,6 @@ import {
   BarChart3,
   BookOpen,
   MessageSquare,
-  Mail,
   ScrollText,
   Database,
   KeyRound,
@@ -88,8 +87,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
   { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
-  { to: "/my-penalties", label: "کارت‌های قرمز من", icon: AlertTriangle, module: "dashboard", group: "main" },
-  { to: "/delivery-receipts", label: "رسیدهای تحویل", icon: FileCheck, module: "dashboard", group: "main" },
+  { to: "/collaboration", label: "ارتباطات همکاری", icon: MessageSquare, module: "messages", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   {
@@ -270,20 +268,6 @@ export const NAV_ITEMS: NavItem[] = [
     module: "purchases",
     group: "purchasing",
   },
-  {
-    to: "/purchase",
-    label: "فضای خرید (درخواست‌ها)",
-    icon: ShoppingCart,
-    module: "purchases",
-    group: "purchasing",
-  },
-  {
-    to: "/documents",
-    label: "اسناد (بیجک و فاکتور)",
-    icon: FileText,
-    module: "dashboard",
-    group: "purchasing",
-  },
 
   // ۴) فروش و مشتریان
   {
@@ -448,7 +432,6 @@ export const NAV_ITEMS: NavItem[] = [
     group: "operations",
     adminOnly: true,
   },
-  { to: "/messages", label: "پیام‌ها", icon: Mail, module: "messages", group: "operations" },
   {
     to: "/feedback",
     label: "بازخورد",
@@ -586,7 +569,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: AlertTriangle,
     module: "roles",
     group: "admin",
-    subgroup: "adm-tools",
+    subgroup: "adm-settings",
     adminOnly: true,
   },
   {

@@ -1,103 +1,75 @@
-## Slice 11-B — مرحله ۲: UI رسید تحویل و بیجک باربری
+# بازطراحی Navigation + Hub ارتباطات همکاری
 
-فقط لایه فرانت. ساختار به‌صورت مستقیم از الگوی Slice 10 (`documents/`) کپی می‌شود، با تفاوت‌های RPC/bucket. هیچ migration یا تغییر RPC در این مرحله نیست.
+بدون migration، بدون تغییر RPC. فقط ۴ تغییر فرانت.
 
-### فایل‌های جدید
+## ۱) ویرایش `src/components/layout/nav-items.ts`
 
-1. **`src/lib/delivery-receipts/labels.ts`**
-   - `DELIVERY_RECEIPT_TYPE_FA`، `DELIVERY_RECEIPT_STATUS_FA`، `DELIVERY_RECEIPT_STATUS_BADGE` با کلیدهای دقیقاً مطابق پرامپت.
-   - helperهای `deliveryReceiptTypeLabel`، `deliveryReceiptStatusLabel`، `deliveryReceiptStatusBadgeClass`.
-   - استفاده از `toPersianDigits` و `formatFileSize` موجود در `@/lib/documents/labels` (re-export یا import) — برای جلوگیری از تکرار.
+- آیتم `/messages` (پیام‌ها): label به «ارتباطات همکاری»، `to: "/collaboration"`، آیکن `MessageSquare`. ماژول `messages` بدون تغییر.
+- حذف از سایدبار: `/purchase`، `/my-penalties`، `/delivery-receipts`، `/documents` (route فایل‌هایشان دست‌نخورده باقی می‌ماند → از داخل hub قابل دسترسی).
+- آیتم «کارت‌های قرمز» (`/admin/penalties`) از قبل در `group: "admin"` با `subgroup: "adm-tools"` است → فقط `subgroup` را به `"adm-settings"` تغییر می‌دهیم (طبق درخواست). label و سایر مشخصات دست‌نخورده.
 
-2. **`src/hooks/delivery-receipts/useDeliveryReceipts.ts`**
-   - تایپ `DeliveryReceiptRow` با همان شکل خروجی RPC `get_delivery_receipts`.
-   - `useMyDeliveryReceipts(type?, status?)` → فیلتر `uploaded_by=auth.uid()` (سمت RLS لحاظ می‌شود)، `staleTime: 30_000`.
-   - `useAllDeliveryReceipts({ type, status, invoice_id, limit, offset })` → همان RPC.
-   - `usePendingDeliveryReceipts()` → `status='pending_review'`، `refetchInterval: 30_000`.
-   - `useCreateDeliveryReceipt()` → mutation:
-     - validate: mime ∈ {jpg, jpeg, png, pdf}، size ≤ 20MB، پیام خطای فارسی.
-     - upload: `supabase.storage.from('delivery-receipts').upload('<type>/<uuid>.<ext>', file, { upsert: false })`.
-     - فراخوانی RPC `create_delivery_receipt` با `storage_path`، `file_name`، `file_size`، `mime_type`، `invoice_id?`، `customer_id?`، `notes?`.
-     - onSuccess: invalidate queryهای `['delivery-receipts', ...]` + toast سبز «رسید با موفقیت آپلود شد».
-     - onError: toast فارسی، بدون نمایش raw error.
-   - `useReviewDeliveryReceipt()` → mutation با RPC `review_delivery_receipt(p_receipt_id, p_decision, p_note)` + invalidate + toast.
-   - `getSignedDeliveryReceiptUrl(path)`: `createSignedUrl(path, 3600)`، خطای فارسی.
+## ۲) فایل جدید `src/routes/_app.collaboration.tsx`
 
-3. **`src/components/delivery-receipts/DeliveryReceiptUploadForm.tsx`**
-   - props: `{ onSuccess?: () => void; defaultInvoiceId?: string; defaultCustomerId?: string }`.
-   - فیلدها: Select نوع، input فایل (drag&drop + click)، Popover جست‌وجوی فاکتور (روی `invoices`، فیلد `number` و `id`)، Popover جست‌وجوی مشتری (روی `customers`، فیلد `name`)، textarea توضیحات.
-   - progress bar داخلی برای حالت‌های idle/uploading/done/error.
-   - نمایش تایمر مجاز با خواندن از `useWorkflowSettings()` (موجود از Slice 11-A) و `formatMinutes`: «مهلت تأیید: …».
-   - گارد UI: فقط برای admin/manager/sales — استفاده از `useAuth` و `hasAnyRole`. غیر از این، پیام «دسترسی ندارید».
-   - submit → `useCreateDeliveryReceipt`.
+route guard: `requirePermission("messages", "view")` (همان gate صفحه `/messages` تا دسترسی یکسان بماند).
 
-4. **`src/components/delivery-receipts/DeliveryReceiptCard.tsx`**
-   - نمایش: نوع فارسی، نام فایل، حجم با `formatFileSize`، تاریخ شمسی آپلود با `formatJalaliDateTime`، badge وضعیت.
-   - اگر `pending_review`: نوار countdown با `Math.max(0, deadline - now)`، re-render هر ۳۰ ثانیه با `setInterval`؛ رنگ‌بندی سبز → کهربایی (≤۳۰ دقیقه) → قرمز (≤۱۰ دقیقه).
-   - دکمه دانلود → `getSignedDeliveryReceiptUrl` + `window.open(url, '_blank', 'noopener')`.
-   - اگر `invoice_id`: واکشی شماره فاکتور با React Query کوچک (queryKey مبتنی بر id، staleTime بالا) از `invoices.number`.
-   - اگر `customer_id`: واکشی نام مشتری از `customers.name` به همین شیوه.
-   - وضعیت‌ها: confirmed = آیکن تیک سبز + نام `reviewer_name` + تاریخ شمسی؛ rejected = آیکن ضربدر قرمز + `notes`.
+ساختار:
 
-5. **`src/components/delivery-receipts/DeliveryReceiptReviewActions.tsx`**
-   - گارد UI روی admin/manager/sales، نمایش فقط در `pending_review`.
-   - دو دکمه «تأیید ✓» (سبز) و «رد ✗» (قرمز outline)، هر کدام `AlertDialog` با Textarea یادداشت اختیاری → `useReviewDeliveryReceipt`.
+- پس‌زمینه گرادیان ملایم با inline style از پالت پروژه:
+  `background: linear-gradient(135deg, rgba(18,50,86,0.06), rgba(15,118,110,0.06))`
+- هدر: «سلام، {full_name یا email}» + تاریخ شمسی امروز با `formatJalaliDateTime(new Date().toISOString())` (همان helper موجود در `@/lib/messenger/format`).
+- گرید کارت‌ها: `grid grid-cols-2 lg:grid-cols-3 gap-4`.
 
-6. **`src/components/delivery-receipts/PendingDeliveryReceiptsPanel.tsx`**
-   - `usePendingDeliveryReceipts()` + مرتب‌سازی صعودی بر اساس `review_deadline` در کلاینت.
-   - رندر `DeliveryReceiptCard` + `DeliveryReceiptReviewActions`.
-   - حالت‌های loading (skeleton)، empty («هیچ رسیدی در انتظار تأیید نیست»)، error (پیام فارسی).
+برای دریافت نام کاربر: `supabase.auth.getUser()` در یک `useQuery` با key `['me-display']` (یا اگر hook موجود `useCurrentProfile` وجود داشت از همان استفاده می‌کنیم — در زمان build بررسی می‌شود).
 
-### Routeها
+### کارت‌ها
 
-7. **`src/routes/_app.delivery-receipts.tsx`** → `/delivery-receipts`
-   - بدون gate نقش (فقط authentication از `_app`).
-   - `PageHeader` «رسیدهای تحویل».
-   - `Tabs`:
-     - «رسیدهای من»: Select نوع + Select وضعیت + لیست `DeliveryReceiptCard` با `useMyDeliveryReceipts`.
-     - «آپلود رسید جدید»: فقط برای admin/manager/sales؛ در غیر این صورت پیام «دسترسی ندارید».
-     - «در انتظار تأیید»: فقط برای admin/manager/sales (تب با شرط نمایش)، شامل `PendingDeliveryReceiptsPanel`.
+آرایه `hubItems` مطابق پرامپت با ۵ مورد. هر کارت:
 
-8. **`src/routes/_app.admin.delivery-receipts.tsx`** → `/admin/delivery-receipts`
-   - `beforeLoad: requireAnyRole(['admin','manager'])`.
-   - `PageHeader` «مدیریت رسیدهای تحویل».
-   - ۴ کارت آمار بالا با یک hook کوچک محلی که از همان `get_delivery_receipts` می‌خواند یا با شمارش روی نتیجهٔ صفحهٔ جاری: «در انتظار / تأیید شده امروز / رد شده / منقضی شده». (برای سادگی: ۴ کوئری مستقل با `count: 'exact', head: true` روی جدول `delivery_receipts` با فیلتر مناسب — تحت RLS مدیر کل را می‌بیند.)
-   - فیلترها: Select نوع، Select وضعیت، Input جست‌وجوی نام فایل با `useDebounce(300)` — جست‌وجوی فعلی RPC پارامتر search ندارد، بنابراین فیلتر نام فایل سمت کلاینت روی صفحهٔ جاری انجام می‌شود (با توضیح در inline comment، بدون تغییر RPC).
-   - جدول دسکتاپ + کارت موبایل با همان `DeliveryReceiptCard` (variant compact از طریق prop ساده اگر لازم بود؛ در غیر این صورت همان کارت).
-   - دکمه «بررسی» → `Dialog` با کارت کامل + `DeliveryReceiptReviewActions`.
-   - pagination ساده (`limit=20`, دکمه‌های قبلی/بعدی).
+- `Link` به `to` مربوطه با `params={{}}` (مسیرهای ثابت).
+- پس‌زمینه: `bg-gradient-to-br ${color}/10` (Tailwind opacity modifier) + `border border-border/50`.
+- آیکن ۴۸px در یک دایره با `bg-gradient-to-br ${color} text-white`.
+- عنوان `text-lg font-bold` + توضیح `text-sm text-muted-foreground`.
+- Badge عدد در گوشه بالا-چپ (RTL → سمت چپ بصری = `left-3 top-3`) فقط اگر `> 0`، با `Badge variant="destructive"` و اعداد فارسی (`toPersianDigits`).
+- hover: `transition hover:-translate-y-1 hover:shadow-lg`.
 
-### فایل ویرایش‌شده
+### Hookهای شمارش (همه `staleTime: 60_000`, `refetchInterval: 60_000`)
 
-9. **`src/components/layout/nav-items.ts`**
-   - افزودن آیتم در `group: 'main'`:
-     ```
-     { to: '/delivery-receipts', label: 'رسیدهای تحویل', icon: FileCheck,
-       module: 'dashboard', group: 'main' }
-     ```
-   - افزودن آیتم در `group: 'admin'`, `subgroup: 'adm-tools'`:
-     ```
-     { to: '/admin/delivery-receipts', label: 'مدیریت رسیدها', icon: FileCheck,
-       module: 'roles', group: 'admin', subgroup: 'adm-tools', adminOnly: true }
-     ```
-   - اضافه‌کردن `FileCheck` به فهرست importهای lucide.
+فایل جدید `src/hooks/collaboration/useHubCounts.ts` که این کوئری‌ها را export می‌کند:
 
-### رعایت قواعد پروژه
+| name | منبع |
+|---|---|
+| `useUnreadMessagesCount` | جمع `unread_count` از `useMessengerGroups()` موجود (بدون کوئری اضافه) |
+| `usePendingPurchaseCount` | `supabase.from('purchase_requests').select('id', { count:'exact', head:true }).eq('status','pending')` |
+| `useActivePenaltyCount` | `select count` روی `performance_penalties` با `is_active=true` و `user_id=auth.uid()` |
+| `usePendingReceiptCount` | `select count` روی `delivery_receipts` با `status='pending_review'` و `uploaded_by=auth.uid()` |
+| `usePendingDocCount` | `select count` روی `documents` با `status='pending_review'` و `uploaded_by=auth.uid()` |
 
-- RTL، mobile-first، فارسی، بدون متن خام انگلیسی.
-- TypeScript strict، بدون `any` (تایپ explicit برای خروجی RPC و فیلترها).
-- بدون وابستگی جدید (همه از shadcn موجود + sonner + lucide).
-- بدون CDN/فونت آنلاین.
-- RBAC دفاع لایه‌ای: route با `requireAnyRole`، گاردهای UI، و RLS/RPC در DB.
-- ممیزی: `create_delivery_receipt` و `review_delivery_receipt` در Slice 11-B Phase 1 خودشان به `audit_logs` می‌نویسند — کاری لازم نیست.
-- بدون migration، بدون تغییر RPC، بدون تغییر سایر hookها/صفحات.
+نکته: اگر ستون/جدول هر کدام موجود نبود یا کاربر دسترسی RLS نداشت، خطا را silent کن و badge را پنهان (count=0). با `useQuery` `retry: false`.
 
-### وارسی پایان کار
+## ۳) `/messages` بدون تغییر باقی می‌ماند
 
-- `tsgo --noEmit`
-- `npm run build`
-- اگر `lint` در پروژه موجود نبود، صراحتاً گزارش می‌شود.
-- مسیر تست دستی:
-  1. لاگین به‌عنوان sales → `/delivery-receipts` → تب «آپلود رسید جدید» → آپلود یک PDF کوچک با نوع «بیجک باربری» → toast سبز.
-  2. لاگین به‌عنوان admin → `/admin/delivery-receipts` → دیدن آیتم بالا → دکمه «بررسی» → «تأیید» → toast + تغییر وضعیت + ثبت در `audit_logs` و `delivery_receipt_status_history`.
-  3. آپلود رسید دیگر و عدم بررسی → پس از انقضای deadline و اجرای `tick_inquiries` → وضعیت `expired` + اعلان + (در صورت `penalty_enabled`) کارت قرمز.
+فایل `_app.messages.tsx` و route آن دست‌نخورده — فقط از سایدبار حذف می‌شود. لینک‌های داخلی و کارت hub همچنان کار می‌کنند.
+
+## ۴) date picker شمسی در `_app.admin.penalties.tsx`
+
+- import: `JalaliDateInput` از `@/shared/components/JalaliDateInput`.
+- دو `<Input type="date">` با مقدارهای `fromDate`/`toDate` → `<JalaliDateInput value={fromDate} onChange={(iso)=>{ setFromDate(iso); setPage(0); }} placeholder="انتخاب تاریخ" />` (و معادل برای `toDate`).
+- نوع state همان `string` (ISO YYYY-MM-DD) باقی می‌ماند → `filters.fromIso`/`toIso` با `new Date(fromDate).toISOString()` بدون تغییر کار می‌کند.
+
+## فایل‌های تغییریافته/جدید
+
+- ویرایش: `src/components/layout/nav-items.ts`
+- ویرایش: `src/routes/_app.admin.penalties.tsx`
+- جدید: `src/routes/_app.collaboration.tsx`
+- جدید: `src/hooks/collaboration/useHubCounts.ts`
+
+## محدودیت‌ها
+
+- بدون migration، بدون RPC جدید، بدون وابستگی npm جدید.
+- همه آیکن‌ها از `lucide-react`. TypeScript strict، بدون `any`.
+- RTL و mobile-first. اعداد فارسی برای badgeها و تاریخ.
+- بعد از پیاده‌سازی: `tsgo --noEmit` و `npm run build` اجرا و گزارش می‌شود.
+
+## ریسک‌ها
+
+- ستون `is_active` در `performance_penalties` یا `status='pending_review'` در `documents`/`delivery_receipts` ممکن است نام دیگری داشته باشد. در صورت ۴۰۰، fallback به count=0 (silent) — badge مخفی می‌شود؛ اعداد دقیق در فاز بعد قابل اصلاح.

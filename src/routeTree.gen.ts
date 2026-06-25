@@ -39,6 +39,7 @@ import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppDeliveryReceiptsRouteImport } from './routes/_app.delivery-receipts'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppCollaborationRouteImport } from './routes/_app.collaboration'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
 import { Route as AppAcademyRouteImport } from './routes/_app.academy'
@@ -320,6 +321,11 @@ const AppDeliveryReceiptsRoute = AppDeliveryReceiptsRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCollaborationRoute = AppCollaborationRouteImport.update({
+  id: '/collaboration',
+  path: '/collaboration',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
@@ -1053,6 +1059,7 @@ export interface FileRoutesByFullPath {
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
+  '/collaboration': typeof AppCollaborationRoute
   '/dashboard': typeof AppDashboardRoute
   '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
@@ -1216,6 +1223,7 @@ export interface FileRoutesByTo {
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
+  '/collaboration': typeof AppCollaborationRoute
   '/dashboard': typeof AppDashboardRoute
   '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
@@ -1380,6 +1388,7 @@ export interface FileRoutesById {
   '/_app/academy': typeof AppAcademyRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
+  '/_app/collaboration': typeof AppCollaborationRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/_app/documents': typeof AppDocumentsRoute
@@ -1546,6 +1555,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/audit-logs'
     | '/bot-api-keys'
+    | '/collaboration'
     | '/dashboard'
     | '/delivery-receipts'
     | '/documents'
@@ -1709,6 +1719,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/academy'
     | '/audit-logs'
+    | '/collaboration'
     | '/dashboard'
     | '/delivery-receipts'
     | '/documents'
@@ -1872,6 +1883,7 @@ export interface FileRouteTypes {
     | '/_app/academy'
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
+    | '/_app/collaboration'
     | '/_app/dashboard'
     | '/_app/delivery-receipts'
     | '/_app/documents'
@@ -2257,6 +2269,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/collaboration': {
+      id: '/_app/collaboration'
+      path: '/collaboration'
+      fullPath: '/collaboration'
+      preLoaderRoute: typeof AppCollaborationRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/bot-api-keys': {
@@ -3385,6 +3404,7 @@ interface AppRouteChildren {
   AppAcademyRoute: typeof AppAcademyRoute
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
+  AppCollaborationRoute: typeof AppCollaborationRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDeliveryReceiptsRoute: typeof AppDeliveryReceiptsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
@@ -3497,6 +3517,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyRoute: AppAcademyRoute,
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
+  AppCollaborationRoute: AppCollaborationRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDeliveryReceiptsRoute: AppDeliveryReceiptsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
