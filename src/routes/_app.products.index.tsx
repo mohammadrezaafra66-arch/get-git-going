@@ -2,7 +2,16 @@ import { useMemo, useState } from "react";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye, Tag } from "lucide-react";
+import {
+  Plus,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Eye,
+  Tag,
+  History,
+} from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -31,6 +40,7 @@ import {
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
+import { ProductTimelineDialog } from "@/components/products/ProductTimelineDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 
@@ -69,6 +79,7 @@ function ProductsPage() {
   );
   const [page, setPage] = useSessionStorageState<number>("products:list:page", 0);
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<{ id: string; name: string } | null>(null);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
@@ -316,6 +327,20 @@ function ProductsPage() {
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="تاریخچه"
+                              title="تاریخچه"
+                              onClick={() =>
+                                setTimelineTarget({
+                                  id: p.id,
+                                  name: formatProductDisplayNameWithFallback(p),
+                                })
+                              }
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
                             {canUpdate && (
                               <Button asChild variant="ghost" size="icon" aria-label="ویرایش">
                                 <Link to="/products/$id" params={{ id: p.id }} search={{ edit: 1 }}>
@@ -396,6 +421,19 @@ function ProductsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
+                            setTimelineTarget({
+                              id: p.id,
+                              name: formatProductDisplayNameWithFallback(p),
+                            })
+                          }
+                        >
+                          <History className="ms-1 h-3.5 w-3.5" />
+                          تاریخچه
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
                             setLabelTarget({
                               id: p.id,
                               name: formatProductDisplayNameWithFallback(p),
@@ -459,6 +497,15 @@ function ProductsPage() {
         open={!!labelTarget}
         onOpenChange={(o) => {
           if (!o) setLabelTarget(null);
+        }}
+      />
+
+      <ProductTimelineDialog
+        productId={timelineTarget?.id ?? null}
+        productName={timelineTarget?.name ?? ""}
+        open={!!timelineTarget}
+        onOpenChange={(o) => {
+          if (!o) setTimelineTarget(null);
         }}
       />
     </div>
