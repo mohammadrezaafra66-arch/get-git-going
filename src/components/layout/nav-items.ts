@@ -87,6 +87,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
   { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
+  { to: "/my-penalties", label: "کارت‌های قرمز من", icon: AlertTriangle, module: "dashboard", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   {
