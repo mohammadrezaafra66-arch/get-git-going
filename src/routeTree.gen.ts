@@ -24,6 +24,7 @@ import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
+import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
@@ -109,6 +110,7 @@ import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settin
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
+import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purchase'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
@@ -238,6 +240,11 @@ const AppReportsRoute = AppReportsRouteImport.update({
 const AppPurchasesRoute = AppPurchasesRouteImport.update({
   id: '/purchases',
   path: '/purchases',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPurchaseRoute = AppPurchaseRouteImport.update({
+  id: '/purchase',
+  path: '/purchase',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
@@ -679,6 +686,11 @@ const AppAdminReceiptFieldsRoute = AppAdminReceiptFieldsRouteImport.update({
   path: '/admin/receipt-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPurchaseRoute = AppAdminPurchaseRouteImport.update({
+  id: '/admin/purchase',
+  path: '/admin/purchase',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   id: '/admin/profile-fields',
   path: '/admin/profile-fields',
@@ -1021,6 +1033,7 @@ export interface FileRoutesByFullPath {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
+  '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
@@ -1045,6 +1058,7 @@ export interface FileRoutesByFullPath {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
@@ -1177,6 +1191,7 @@ export interface FileRoutesByTo {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
+  '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
@@ -1200,6 +1215,7 @@ export interface FileRoutesByTo {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
@@ -1334,6 +1350,7 @@ export interface FileRoutesById {
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
   '/_app/price-lists': typeof AppPriceListsRoute
+  '/_app/purchase': typeof AppPurchaseRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
@@ -1358,6 +1375,7 @@ export interface FileRoutesById {
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/_app/admin/purchase': typeof AppAdminPurchaseRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
@@ -1493,6 +1511,7 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/price-lists'
+    | '/purchase'
     | '/purchases'
     | '/reports'
     | '/roles'
@@ -1517,6 +1536,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/profile-fields'
+    | '/admin/purchase'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
@@ -1649,6 +1669,7 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/price-lists'
+    | '/purchase'
     | '/purchases'
     | '/reports'
     | '/roles'
@@ -1672,6 +1693,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/profile-fields'
+    | '/admin/purchase'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
@@ -1805,6 +1827,7 @@ export interface FileRouteTypes {
     | '/_app/persons'
     | '/_app/popup-center'
     | '/_app/price-lists'
+    | '/_app/purchase'
     | '/_app/purchases'
     | '/_app/reports'
     | '/_app/roles'
@@ -1829,6 +1852,7 @@ export interface FileRouteTypes {
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
     | '/_app/admin/profile-fields'
+    | '/_app/admin/purchase'
     | '/_app/admin/receipt-fields'
     | '/_app/admin/recent-purchase-settings'
     | '/_app/admin/roles'
@@ -2066,6 +2090,13 @@ declare module '@tanstack/react-router' {
       path: '/purchases'
       fullPath: '/purchases'
       preLoaderRoute: typeof AppPurchasesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/purchase': {
+      id: '/_app/purchase'
+      path: '/purchase'
+      fullPath: '/purchase'
+      preLoaderRoute: typeof AppPurchaseRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/price-lists': {
@@ -2661,6 +2692,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/receipt-fields'
       fullPath: '/admin/receipt-fields'
       preLoaderRoute: typeof AppAdminReceiptFieldsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/purchase': {
+      id: '/_app/admin/purchase'
+      path: '/admin/purchase'
+      fullPath: '/admin/purchase'
+      preLoaderRoute: typeof AppAdminPurchaseRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/profile-fields': {
@@ -3262,6 +3300,7 @@ interface AppRouteChildren {
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
+  AppPurchaseRoute: typeof AppPurchaseRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
@@ -3285,6 +3324,7 @@ interface AppRouteChildren {
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
+  AppAdminPurchaseRoute: typeof AppAdminPurchaseRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
@@ -3367,6 +3407,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
   AppPriceListsRoute: AppPriceListsRoute,
+  AppPurchaseRoute: AppPurchaseRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
@@ -3392,6 +3433,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
+  AppAdminPurchaseRoute: AppAdminPurchaseRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
