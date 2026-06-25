@@ -3,7 +3,13 @@
  * مقدار داخلی همیشه ISO Gregorian (YYYY-MM-DD) ذخیره می‌شود تا با دیتابیس سازگار بماند.
  * نمایش به کاربر شمسی با اعداد فارسی است.
  */
-import DatePicker, { DateObject } from "react-multi-date-picker";
+import * as RMDP from "react-multi-date-picker";
+import type { DateObject as DateObjectType } from "react-multi-date-picker";
+const RMDPAny = RMDP as unknown as Record<string, unknown> & { default?: Record<string, unknown> };
+const DatePicker = (RMDPAny.default ?? RMDPAny) as unknown as React.ComponentType<Record<string, unknown>>;
+const DateObject = (RMDPAny.DateObject ?? (RMDPAny.default as Record<string, unknown> | undefined)?.DateObject) as {
+  new (opts: { date: Date; calendar: unknown; locale: unknown }): DateObjectType;
+};
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { cn } from "@/lib/utils";
@@ -20,7 +26,7 @@ interface Props {
   invalid?: boolean;
 }
 
-function isoToDateObject(iso: string | null | undefined): DateObject | null {
+function isoToDateObject(iso: string | null | undefined): DateObjectType | null {
   if (!iso) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return null;
@@ -45,7 +51,7 @@ export function JalaliDateInput({
   return (
     <DatePicker
       value={isoToDateObject(value)}
-      onChange={(d) => {
+      onChange={(d: DateObjectType | DateObjectType[] | null) => {
         if (!d) {
           onChange("");
           return;
