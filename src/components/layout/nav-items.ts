@@ -565,6 +565,15 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: true,
   },
   {
+    to: "/admin/penalties",
+    label: "کارت‌های قرمز",
+    icon: AlertTriangle,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
     to: "/admin/marketing-channels",
     label: "کانال‌های تبلیغاتی",
     icon: Megaphone,
