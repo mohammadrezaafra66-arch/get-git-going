@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -325,6 +325,11 @@ function ProductDetailPage() {
       }
 
       toast.success("تغییرات ذخیره شد");
+      try {
+        window.localStorage.removeItem(`afrakala_product_draft_${id}`);
+      } catch {
+        /* ignore */
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
