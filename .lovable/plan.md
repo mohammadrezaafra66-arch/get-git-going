@@ -1,43 +1,30 @@
-## Slice 10 — مرحله ۲: UI فضای بیجک و فاکتور
+## Slice 11-A — مرحله ۱: جدول `workflow_settings` (فقط دیتابیس)
 
-پیاده‌سازی فقط فرانت برای سیستم اسناد، با تکیه بر RPCها و bucket آماده در مرحله ۱ و الگوهای Slice 9.
+یک migration غیرمخرب برای ایجاد جدول تنظیمات گردش‌کار + RPCها + داده‌های پیش‌فرض. بدون تغییر UI/hook/route.
 
-### فایل‌های جدید
+### اقدامات
 
-1. **`src/lib/documents/labels.ts`** — `DOCUMENT_TYPE_FA`, `DOCUMENT_STATUS_FA`, `DOCUMENT_STATUS_BADGE`, `toPersianDigits`.
+1. **migration جدید** شامل:
+   - `CREATE TABLE public.workflow_settings` با ستون‌های: `process_key` (unique)، `process_name_fa`، `uploader_role`، `reviewer_role`، `timer_minutes` (default 10)، `penalty_enabled`، `penalty_for` (check: uploader/reviewer/both)، `is_active`، `updated_by` (FK → auth.users)، `updated_at`.
+   - ایندکس روی `process_key`.
+   - تریگر `set_workflow_settings_updated_at` با تابع موجود `public.set_updated_at`.
+   - GRANTها: `select, update` به authenticated و `all` به service_role.
+   - فعال‌سازی RLS + دو policy: «خواندن برای authenticated» و «update فقط admin/manager» با `has_role`.
+   - INSERT داده‌های پیش‌فرض برای ۵ فرایند: `inquiry_response`, `bijak_invoice_print`, `shipping_receipt`, `delivery_receipt`, `purchase_request`.
 
-2. **`src/hooks/documents/useDocuments.ts`** — React Query هوک‌ها:
-   - `DocumentRow` type با همه فیلدهای RPC `get_documents`
-   - `useMyDocuments(type?, status?)`, `useAllDocuments({type,status,search,limit,offset})`, `usePendingDocuments()` با `refetchInterval: 30_000`
-   - `useCreateDocument()`: validate (jpg/jpeg/png/pdf، ≤ ۲۰MB) → upload `<type>/<crypto.randomUUID()>.<ext>` → RPC `create_document` → cleanup در صورت خطا
-   - `useReviewDocument()`: RPC `review_document(p_document_id, p_decision, p_note)`
-   - `getSignedDocumentUrl(path)` helper (۱ ساعت)
+2. **RPCها** (`SECURITY DEFINER`, `search_path = public`):
+   - `get_workflow_settings()` → همه ردیف‌ها (authenticated).
+   - `update_workflow_setting(...)` → فقط admin/manager، با `COALESCE` برای merge، نوشتن در `audit_logs` با schema واقعی (`entity_type, entity_id, action, actor_id, diff`).
+   - `get_workflow_setting(p_process_key)` → یک ردیف (authenticated + service_role).
 
-3. **`src/components/documents/`**:
-   - **`DocumentUploadForm.tsx`** — نوع سند (Select)، Drag&drop + click file input، reference اختیاری (Popover با جست‌وجوی استعلام/درخواست خرید — استفاده از `useInquiries`/`useAllPurchaseRequests` موجود)، notes textarea، progress state، فقط برای accountant/admin/manager (با `useAuth().roles`)
-   - **`DocumentCard.tsx`** — نوع/نام/حجم/تاریخ شمسی، badge وضعیت، countdown bar برای `pending_review` با interval ۳۰s (سبز→کهربایی @5min→قرمز @2min)، دکمه دانلود (signed URL در window.open)، اطلاعات تأیید/رد
-   - **`DocumentReviewActions.tsx`** — فقط admin/manager، دو دکمه «آمد ✓»/«نیامد ✗» با AlertDialog + Textarea یادداشت
-   - **`PendingDocumentsPanel.tsx`** — لیست با `usePendingDocuments` مرتب صعودی بر `review_deadline`، skeleton/empty فارسی
-
-4. **`src/routes/_app.documents.tsx`** (`/documents`):
-   - `beforeLoad: requireAnyRole(ALL_ROLES)` — فقط احراز هویت
-   - Tabs: «اسناد من» (فیلتر نوع + وضعیت + DocumentCard grid)، «آپلود سند جدید» (شرطی بر نقش)، و در صورت admin/manager تب «در انتظار تأیید» با `PendingDocumentsPanel`
-
-5. **`src/routes/_app.admin.documents.tsx`** (`/admin/documents`):
-   - `beforeLoad: requireAnyRole(['admin','manager'])`
-   - ۴ کارت آمار (pending/confirmed امروز/rejected/expired) با `select count head:true`
-   - فیلترهای Select نوع + Select وضعیت + Input جست‌وجو با `useDebounce(300)`
-   - shadcn `Table` با ستون‌ها، pagination ساده (limit 20)
-   - Dialog «بررسی»: `DocumentCard` + `DocumentReviewActions`
-
-6. **ویرایش `src/components/layout/nav-items.ts`** — دو آیتم `/documents` (icon `FileText`, group `main`) و `/admin/documents` (group `admin`, `adminOnly: true`). الگوی دقیق مطابق آیتم‌های Slice 9.
-
-### نکات فنی
-- تاریخ شمسی با `formatJalaliDateTime` از `@/lib/messenger/format`
-- countdown: `Math.max(0, new Date(review_deadline).getTime() - Date.now())` + `setInterval(..., 30_000)` و cleanup
-- بدون وابستگی جدید، TypeScript strict، RTL، mobile-first
-- toast فارسی با `sonner`
-- بعد از پیاده‌سازی: `tsgo --noEmit` و `npm run build`
+3. **تأیید سازگاری قبل از اجرا**:
+   - وجود تابع `public.set_updated_at` و `public.has_role`.
+   - schema جدول `audit_logs` مطابق چیزی است که RPC می‌نویسد.
 
 ### خارج از scope
-- بدون migration، بدون تغییر RPC، بدون تغییر hookهای Slice 9.
+- بدون UI/hook/route.
+- بدون تغییر جداول دیگر.
+- بدون drop/rename.
+
+### ریسک
+کم — فقط CREATE + INSERT. policy update به نقش‌های admin/manager محدود است. در صورت عدم تطابق نام تابع/شِما، migration fail می‌شود و قبل از اجرا اصلاح می‌گردد.
