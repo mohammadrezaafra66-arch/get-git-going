@@ -382,6 +382,47 @@ export type Database = {
           },
         ]
       }
+      appeal_reviewers: {
+        Row: {
+          appeal_id: string
+          assigned_at: string
+          id: string
+          reviewer_id: string
+          role: string
+          vote: string | null
+          vote_note: string | null
+          voted_at: string | null
+        }
+        Insert: {
+          appeal_id: string
+          assigned_at?: string
+          id?: string
+          reviewer_id: string
+          role: string
+          vote?: string | null
+          vote_note?: string | null
+          voted_at?: string | null
+        }
+        Update: {
+          appeal_id?: string
+          assigned_at?: string
+          id?: string
+          reviewer_id?: string
+          role?: string
+          vote?: string | null
+          vote_note?: string | null
+          voted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appeal_reviewers_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_appeals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -4641,6 +4682,97 @@ export type Database = {
         }
         Relationships: []
       }
+      penalty_appeals: {
+        Row: {
+          appellant_id: string
+          created_at: string
+          deadline: string
+          id: string
+          penalty_id: string
+          reason: string
+          review_deadline: string
+          review_note: string | null
+          reviewed_at: string | null
+          status: string
+        }
+        Insert: {
+          appellant_id: string
+          created_at?: string
+          deadline?: string
+          id?: string
+          penalty_id: string
+          reason: string
+          review_deadline?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          status?: string
+        }
+        Update: {
+          appellant_id?: string
+          created_at?: string
+          deadline?: string
+          id?: string
+          penalty_id?: string
+          reason?: string
+          review_deadline?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "penalty_appeals_penalty_id_fkey"
+            columns: ["penalty_id"]
+            isOneToOne: true
+            referencedRelation: "performance_penalties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_penalties: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          inquiry_id: string | null
+          is_active: boolean
+          severity: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          inquiry_id?: string | null
+          is_active?: boolean
+          severity: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          inquiry_id?: string | null
+          is_active?: boolean
+          severity?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_penalties_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_context_links: {
         Row: {
           context_kind: string
@@ -8215,6 +8347,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      auto_submit_penalty: {
+        Args: {
+          p_description: string
+          p_inquiry_id: string
+          p_severity: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       award_xp_from_score: { Args: { _employee_id: string }; Returns: Json }
       bot_authenticate_key: {
         Args: { p_raw_key: string }
@@ -9203,6 +9345,21 @@ export type Database = {
           stock_status: string
         }[]
       }
+      get_user_penalties: {
+        Args: { p_user_id?: string }
+        Returns: {
+          appeal_status: string
+          can_appeal: boolean
+          created_at: string
+          description: string
+          has_appeal: boolean
+          id: string
+          inquiry_id: string
+          is_active: boolean
+          severity: string
+          type: string
+        }[]
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -9947,6 +10104,10 @@ export type Database = {
         Args: { p_source_code: string }
         Returns: string
       }
+      submit_appeal: {
+        Args: { p_penalty_id: string; p_reason: string }
+        Returns: string
+      }
       submit_quiz_attempt: {
         Args: { _answers: Json; _quiz_id: string }
         Returns: {
@@ -10104,6 +10265,10 @@ export type Database = {
           total_credit: number
           total_debit: number
         }[]
+      }
+      vote_on_appeal: {
+        Args: { p_appeal_id: string; p_note?: string; p_vote: string }
+        Returns: Json
       }
     }
     Enums: {
