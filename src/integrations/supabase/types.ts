@@ -8215,6 +8215,48 @@ export type Database = {
           },
         ]
       }
+      workflow_settings: {
+        Row: {
+          id: string
+          is_active: boolean
+          penalty_enabled: boolean
+          penalty_for: string | null
+          process_key: string
+          process_name_fa: string
+          reviewer_role: string | null
+          timer_minutes: number
+          updated_at: string
+          updated_by: string | null
+          uploader_role: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          penalty_enabled?: boolean
+          penalty_for?: string | null
+          process_key: string
+          process_name_fa: string
+          reviewer_role?: string | null
+          timer_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          uploader_role?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          penalty_enabled?: boolean
+          penalty_for?: string | null
+          process_key?: string
+          process_name_fa?: string
+          reviewer_role?: string | null
+          timer_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+          uploader_role?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       academy_quiz_questions_public: {
@@ -9681,6 +9723,50 @@ export type Database = {
           type: string
         }[]
       }
+      get_workflow_setting: {
+        Args: { p_process_key: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          penalty_enabled: boolean
+          penalty_for: string | null
+          process_key: string
+          process_name_fa: string
+          reviewer_role: string | null
+          timer_minutes: number
+          updated_at: string
+          updated_by: string | null
+          uploader_role: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "workflow_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_workflow_settings: {
+        Args: never
+        Returns: {
+          id: string
+          is_active: boolean
+          penalty_enabled: boolean
+          penalty_for: string | null
+          process_key: string
+          process_name_fa: string
+          reviewer_role: string | null
+          timer_minutes: number
+          updated_at: string
+          updated_by: string | null
+          uploader_role: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "workflow_settings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
@@ -10531,6 +10617,18 @@ export type Database = {
       }
       update_waybill_status: {
         Args: { p_new_status: string; p_waybill_id: string }
+        Returns: undefined
+      }
+      update_workflow_setting: {
+        Args: {
+          p_is_active?: boolean
+          p_penalty_enabled?: boolean
+          p_penalty_for?: string
+          p_process_key: string
+          p_reviewer_role?: string
+          p_timer_minutes?: number
+          p_uploader_role?: string
+        }
         Returns: undefined
       }
       upsert_daily_capital_input: {
