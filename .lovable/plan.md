@@ -1,74 +1,103 @@
-## Slice 11-B — مرحله ۱: دیتابیس رسید تحویل و بیجک باربری
+## Slice 11-B — مرحله ۲: UI رسید تحویل و بیجک باربری
 
-فقط migration و bucket. بدون تغییر UI.
+فقط لایه فرانت. ساختار به‌صورت مستقیم از الگوی Slice 10 (`documents/`) کپی می‌شود، با تفاوت‌های RPC/bucket. هیچ migration یا تغییر RPC در این مرحله نیست.
 
-### بررسی‌های انجام‌شده
+### فایل‌های جدید
 
-- `invoices(id)` و `customers(id)` وجود دارند → FKها معتبر.
-- `profiles` دارای ستون `full_name` و `is_active` است → سازگار با `get_delivery_receipts` و انتخاب reviewer.
-- توابع `public.set_updated_at`، `public.has_role`، `public.auto_submit_penalty(p_inquiry_id, p_user_id, p_type, p_severity, p_description)`، و `public.tick_inquiries()` موجودند.
-- `tick_inquiries` در انتها از قبل `perform public.expire_pending_documents();` را صدا می‌زند — یک خط `perform public.expire_pending_delivery_receipts();` بعد از آن اضافه می‌شود.
-- جدول `workflow_settings` با سطرهای `shipping_receipt` (۳۶۰دق) و `delivery_receipt` (۱۸۰دق) از قبل وجود دارد.
-- `audit_logs(entity_type, entity_id, action, actor_id, diff)` و `notification_events(event_type, user_id, channel, payload, status)` همان شکلی است که RPCها انتظار دارند (با Slice 9/10 تأیید شد).
+1. **`src/lib/delivery-receipts/labels.ts`**
+   - `DELIVERY_RECEIPT_TYPE_FA`، `DELIVERY_RECEIPT_STATUS_FA`، `DELIVERY_RECEIPT_STATUS_BADGE` با کلیدهای دقیقاً مطابق پرامپت.
+   - helperهای `deliveryReceiptTypeLabel`، `deliveryReceiptStatusLabel`، `deliveryReceiptStatusBadgeClass`.
+   - استفاده از `toPersianDigits` و `formatFileSize` موجود در `@/lib/documents/labels` (re-export یا import) — برای جلوگیری از تکرار.
 
-### Migration (یک فایل، غیرمخرب)
+2. **`src/hooks/delivery-receipts/useDeliveryReceipts.ts`**
+   - تایپ `DeliveryReceiptRow` با همان شکل خروجی RPC `get_delivery_receipts`.
+   - `useMyDeliveryReceipts(type?, status?)` → فیلتر `uploaded_by=auth.uid()` (سمت RLS لحاظ می‌شود)، `staleTime: 30_000`.
+   - `useAllDeliveryReceipts({ type, status, invoice_id, limit, offset })` → همان RPC.
+   - `usePendingDeliveryReceipts()` → `status='pending_review'`، `refetchInterval: 30_000`.
+   - `useCreateDeliveryReceipt()` → mutation:
+     - validate: mime ∈ {jpg, jpeg, png, pdf}، size ≤ 20MB، پیام خطای فارسی.
+     - upload: `supabase.storage.from('delivery-receipts').upload('<type>/<uuid>.<ext>', file, { upsert: false })`.
+     - فراخوانی RPC `create_delivery_receipt` با `storage_path`، `file_name`، `file_size`، `mime_type`، `invoice_id?`، `customer_id?`، `notes?`.
+     - onSuccess: invalidate queryهای `['delivery-receipts', ...]` + toast سبز «رسید با موفقیت آپلود شد».
+     - onError: toast فارسی، بدون نمایش raw error.
+   - `useReviewDeliveryReceipt()` → mutation با RPC `review_delivery_receipt(p_receipt_id, p_decision, p_note)` + invalidate + toast.
+   - `getSignedDeliveryReceiptUrl(path)`: `createSignedUrl(path, 3600)`، خطای فارسی.
 
-1. **CREATE TABLE `public.delivery_receipts`** با ستون‌های ذکرشده، CHECKهای `type` و `status`، FK به `invoices`/`customers`/`auth.users`، و defaults روی `status`/`created_at`/`updated_at`.
-2. **CREATE TABLE `public.delivery_receipt_status_history`** با FK به `delivery_receipts(id)` و `auth.users(id)`.
-3. **ایندکس‌ها** روی `type`، `status`، `uploaded_by`، `invoice_id`، `customer_id`، ایندکس جزئی روی `review_deadline WHERE status='pending_review'`، و `receipt_id` در تاریخچه.
-4. **Trigger** `set_delivery_receipts_updated_at BEFORE UPDATE` با `public.set_updated_at()`.
-5. **GRANT**:
-   - `delivery_receipts`: `select, insert, update` به `authenticated`، `all` به `service_role`.
-   - `delivery_receipt_status_history`: `select, insert` به `authenticated`، `all` به `service_role`.
-6. **ENABLE RLS** روی هر دو جدول.
-7. **Policies** (دقیقاً مطابق پرامپت):
-   - SELECT روی `delivery_receipts`: مالک، admin/manager، و sales فقط برای `pending_review`.
-   - INSERT: manager/admin/sales.
-   - UPDATE: manager/admin/sales (همراه با `WITH CHECK` همان عبارت برای جلوگیری از escalation).
-   - SELECT روی history: مالک رسید، admin/manager/sales.
-   - INSERT روی history: `changed_by = auth.uid() OR changed_by IS NULL`.
+3. **`src/components/delivery-receipts/DeliveryReceiptUploadForm.tsx`**
+   - props: `{ onSuccess?: () => void; defaultInvoiceId?: string; defaultCustomerId?: string }`.
+   - فیلدها: Select نوع، input فایل (drag&drop + click)، Popover جست‌وجوی فاکتور (روی `invoices`، فیلد `number` و `id`)، Popover جست‌وجوی مشتری (روی `customers`، فیلد `name`)، textarea توضیحات.
+   - progress bar داخلی برای حالت‌های idle/uploading/done/error.
+   - نمایش تایمر مجاز با خواندن از `useWorkflowSettings()` (موجود از Slice 11-A) و `formatMinutes`: «مهلت تأیید: …».
+   - گارد UI: فقط برای admin/manager/sales — استفاده از `useAuth` و `hasAnyRole`. غیر از این، پیام «دسترسی ندارید».
+   - submit → `useCreateDeliveryReceipt`.
 
-### RPCها (`SECURITY DEFINER`, `set search_path = public`)
+4. **`src/components/delivery-receipts/DeliveryReceiptCard.tsx`**
+   - نمایش: نوع فارسی، نام فایل، حجم با `formatFileSize`، تاریخ شمسی آپلود با `formatJalaliDateTime`، badge وضعیت.
+   - اگر `pending_review`: نوار countdown با `Math.max(0, deadline - now)`، re-render هر ۳۰ ثانیه با `setInterval`؛ رنگ‌بندی سبز → کهربایی (≤۳۰ دقیقه) → قرمز (≤۱۰ دقیقه).
+   - دکمه دانلود → `getSignedDeliveryReceiptUrl` + `window.open(url, '_blank', 'noopener')`.
+   - اگر `invoice_id`: واکشی شماره فاکتور با React Query کوچک (queryKey مبتنی بر id، staleTime بالا) از `invoices.number`.
+   - اگر `customer_id`: واکشی نام مشتری از `customers.name` به همین شیوه.
+   - وضعیت‌ها: confirmed = آیکن تیک سبز + نام `reviewer_name` + تاریخ شمسی؛ rejected = آیکن ضربدر قرمز + `notes`.
 
-8. `create_delivery_receipt(p_type, p_storage_path, p_file_name, p_file_size, p_mime_type, p_invoice_id default null, p_customer_id default null, p_notes default null) returns uuid`:
-   - گارد نقش‌ها، خواندن `timer_minutes` از `workflow_settings` (fallback 180)، محاسبهٔ `review_deadline`.
-   - درج رسید + تاریخچه `null→pending_review`.
-   - انتخاب اولین `sales` فعال از `profiles ⋈ user_roles` و درج `notification_events`.
-   - درج در `audit_logs` با `entity_type='delivery_receipt'`, `action='created'`.
-   - GRANT EXECUTE به `authenticated`.
+5. **`src/components/delivery-receipts/DeliveryReceiptReviewActions.tsx`**
+   - گارد UI روی admin/manager/sales، نمایش فقط در `pending_review`.
+   - دو دکمه «تأیید ✓» (سبز) و «رد ✗» (قرمز outline)، هر کدام `AlertDialog` با Textarea یادداشت اختیاری → `useReviewDeliveryReceipt`.
 
-9. `review_delivery_receipt(p_receipt_id, p_decision, p_note default null) returns void`:
-   - گارد نقش‌ها، تنها از `pending_review` به `confirmed/rejected` (به‌علاوه CHECK سمت تابع که `p_decision IN ('confirmed','rejected')`).
-   - به‌روزرسانی رسید + درج تاریخچه + اعلان به آپلودکننده + audit_log.
-   - GRANT EXECUTE به `authenticated`.
+6. **`src/components/delivery-receipts/PendingDeliveryReceiptsPanel.tsx`**
+   - `usePendingDeliveryReceipts()` + مرتب‌سازی صعودی بر اساس `review_deadline` در کلاینت.
+   - رندر `DeliveryReceiptCard` + `DeliveryReceiptReviewActions`.
+   - حالت‌های loading (skeleton)، empty («هیچ رسیدی در انتظار تأیید نیست»)، error (پیام فارسی).
 
-10. `expire_pending_delivery_receipts() returns void`:
-    - حلقه روی رسیدهای `pending_review` با `review_deadline < now()`: تغییر به `expired` + تاریخچه + (در صورت `penalty_enabled` در workflow_settings برای آن `type`) فراخوانی `auto_submit_penalty(null, uploaded_by, 'no_confirm_store', 'low', ...)` + notification.
-    - GRANT EXECUTE به `service_role`.
+### Routeها
 
-11. `get_delivery_receipts(p_type, p_status, p_invoice_id, p_limit default 20, p_offset default 0) returns table(...)`:
-    - JOIN با `profiles` برای نام آپلودکننده و بازبین، با همان فیلتر دسترسی (مالک یا admin/manager/sales).
-    - GRANT EXECUTE به `authenticated`.
+7. **`src/routes/_app.delivery-receipts.tsx`** → `/delivery-receipts`
+   - بدون gate نقش (فقط authentication از `_app`).
+   - `PageHeader` «رسیدهای تحویل».
+   - `Tabs`:
+     - «رسیدهای من»: Select نوع + Select وضعیت + لیست `DeliveryReceiptCard` با `useMyDeliveryReceipts`.
+     - «آپلود رسید جدید»: فقط برای admin/manager/sales؛ در غیر این صورت پیام «دسترسی ندارید».
+     - «در انتظار تأیید»: فقط برای admin/manager/sales (تب با شرط نمایش)، شامل `PendingDeliveryReceiptsPanel`.
 
-12. **به‌روزرسانی `tick_inquiries`**: `CREATE OR REPLACE` همان بدنهٔ فعلی + افزودن خط `perform public.expire_pending_delivery_receipts();` بعد از فراخوانی `expire_pending_documents()`. بدون cron جدید.
+8. **`src/routes/_app.admin.delivery-receipts.tsx`** → `/admin/delivery-receipts`
+   - `beforeLoad: requireAnyRole(['admin','manager'])`.
+   - `PageHeader` «مدیریت رسیدهای تحویل».
+   - ۴ کارت آمار بالا با یک hook کوچک محلی که از همان `get_delivery_receipts` می‌خواند یا با شمارش روی نتیجهٔ صفحهٔ جاری: «در انتظار / تأیید شده امروز / رد شده / منقضی شده». (برای سادگی: ۴ کوئری مستقل با `count: 'exact', head: true` روی جدول `delivery_receipts` با فیلتر مناسب — تحت RLS مدیر کل را می‌بیند.)
+   - فیلترها: Select نوع، Select وضعیت، Input جست‌وجوی نام فایل با `useDebounce(300)` — جست‌وجوی فعلی RPC پارامتر search ندارد، بنابراین فیلتر نام فایل سمت کلاینت روی صفحهٔ جاری انجام می‌شود (با توضیح در inline comment، بدون تغییر RPC).
+   - جدول دسکتاپ + کارت موبایل با همان `DeliveryReceiptCard` (variant compact از طریق prop ساده اگر لازم بود؛ در غیر این صورت همان کارت).
+   - دکمه «بررسی» → `Dialog` با کارت کامل + `DeliveryReceiptReviewActions`.
+   - pagination ساده (`limit=20`, دکمه‌های قبلی/بعدی).
 
-### Storage bucket (با ابزار storage، نه SQL)
+### فایل ویرایش‌شده
 
-13. ساخت bucket `delivery-receipts` به‌صورت **private**.
-14. سیاست‌های `storage.objects` در همان migration (سیاست روی `storage.objects` مجاز است):
-    - INSERT: `bucket_id='delivery-receipts'` و کاربر دارای نقش manager/admin/sales.
-    - SELECT: `bucket_id='delivery-receipts'` و `auth.role()='authenticated'`.
-    - (UPDATE/DELETE فعلاً لازم نیست؛ افزوده نمی‌شود.)
-    - الگوی مسیر فایل (در UI/RPC مرحله ۲ رعایت می‌شود): `<type>/<receipt_id>/<uuid>.<ext>`.
+9. **`src/components/layout/nav-items.ts`**
+   - افزودن آیتم در `group: 'main'`:
+     ```
+     { to: '/delivery-receipts', label: 'رسیدهای تحویل', icon: FileCheck,
+       module: 'dashboard', group: 'main' }
+     ```
+   - افزودن آیتم در `group: 'admin'`, `subgroup: 'adm-tools'`:
+     ```
+     { to: '/admin/delivery-receipts', label: 'مدیریت رسیدها', icon: FileCheck,
+       module: 'roles', group: 'admin', subgroup: 'adm-tools', adminOnly: true }
+     ```
+   - اضافه‌کردن `FileCheck` به فهرست importهای lucide.
 
 ### رعایت قواعد پروژه
 
-- migration غیرمخرب: فقط CREATE/ALTER (اضافی) و CREATE OR REPLACE روی توابع.
-- RLS فعال + GRANT کامل + audit_log + اعلان + RBAC هم در RPC هم در policy (دفاع لایه‌ای).
-- ایندکس جزئی برای جلوگیری از scan کل جدول هنگام انقضا.
-- بدون cron مستقل (روی tick_inquiries سوار می‌شود).
-- بدون CDN/سرویس خارجی؛ خودمیزبان‌سازگار.
+- RTL، mobile-first، فارسی، بدون متن خام انگلیسی.
+- TypeScript strict، بدون `any` (تایپ explicit برای خروجی RPC و فیلترها).
+- بدون وابستگی جدید (همه از shadcn موجود + sonner + lucide).
+- بدون CDN/فونت آنلاین.
+- RBAC دفاع لایه‌ای: route با `requireAnyRole`، گاردهای UI، و RLS/RPC در DB.
+- ممیزی: `create_delivery_receipt` و `review_delivery_receipt` در Slice 11-B Phase 1 خودشان به `audit_logs` می‌نویسند — کاری لازم نیست.
+- بدون migration، بدون تغییر RPC، بدون تغییر سایر hookها/صفحات.
 
-### خارج از scope این مرحله
+### وارسی پایان کار
 
-- UI، hook، routeها، تغییرات سایر RPCها/جدول‌ها، migration دیگر.
+- `tsgo --noEmit`
+- `npm run build`
+- اگر `lint` در پروژه موجود نبود، صراحتاً گزارش می‌شود.
+- مسیر تست دستی:
+  1. لاگین به‌عنوان sales → `/delivery-receipts` → تب «آپلود رسید جدید» → آپلود یک PDF کوچک با نوع «بیجک باربری» → toast سبز.
+  2. لاگین به‌عنوان admin → `/admin/delivery-receipts` → دیدن آیتم بالا → دکمه «بررسی» → «تأیید» → toast + تغییر وضعیت + ثبت در `audit_logs` و `delivery_receipt_status_history`.
+  3. آپلود رسید دیگر و عدم بررسی → پس از انقضای deadline و اجرای `tick_inquiries` → وضعیت `expired` + اعلان + (در صورت `penalty_enabled`) کارت قرمز.
