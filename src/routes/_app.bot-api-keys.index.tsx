@@ -415,7 +415,9 @@ function RevealKeyDialog({
               onClose();
               setShown(false);
               setCopied(false);
+              setConfirmed(false);
             }}
+            disabled={!copied || !confirmed}
           >
             متوجه شدم، بستن
           </Button>
