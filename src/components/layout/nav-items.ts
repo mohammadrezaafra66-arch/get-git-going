@@ -574,6 +574,15 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: true,
   },
   {
+    to: "/admin/audit",
+    label: "لاگ فعالیت‌ها",
+    icon: ClipboardList,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
     to: "/admin/purchase",
     label: "مدیریت خرید",
     icon: ShoppingCart,
