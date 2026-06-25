@@ -4316,6 +4316,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_active: boolean
           name: string
           type: string
         }
@@ -4323,6 +4324,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_active?: boolean
           name: string
           type: string
         }
@@ -4330,6 +4332,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           type?: string
         }
@@ -9211,6 +9214,10 @@ export type Database = {
       customer_set_person: {
         Args: { p_customer_id: string; p_note?: string; p_person_id: string }
         Returns: string
+      }
+      deactivate_messenger_group: {
+        Args: { p_group_id: string }
+        Returns: undefined
       }
       deactivate_user: { Args: { _user_id: string }; Returns: undefined }
       delete_bot_api_key_table_access: {

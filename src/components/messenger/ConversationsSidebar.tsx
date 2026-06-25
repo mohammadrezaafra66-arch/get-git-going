@@ -2,9 +2,15 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { NewGroupDialog } from "./NewGroupDialog";
-import { useMessengerGroups, type MessengerGroup } from "@/hooks/messenger/useMessengerGroups";
+import {
+  useMessengerGroups,
+  useDeactivateMessengerGroup,
+  type MessengerGroup,
+} from "@/hooks/messenger/useMessengerGroups";
 import { formatJalaliRelative } from "@/lib/messenger/format";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { MessageSquare, Loader2, Trash2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { toast } from "sonner";
 
 const typeLabel: Record<string, string> = {
   private: "خصوصی",
@@ -20,6 +26,18 @@ export function ConversationsSidebar({
   onSelect: (id: string) => void;
 }) {
   const { data: groups, isLoading } = useMessengerGroups();
+  const { roles } = useAuth();
+  const isAdmin = roles.includes("admin");
+  const deactivate = useDeactivateMessengerGroup();
+
+  const handleDeactivate = (e: React.MouseEvent, groupId: string) => {
+    e.stopPropagation();
+    deactivate.mutate(groupId, {
+      onSuccess: () => toast.success("گروه غیرفعال شد"),
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "خطا در غیرفعال‌سازی گروه"),
+    });
+  };
 
   return (
     <aside className="flex h-full w-full flex-col border-l bg-card md:max-w-sm">
@@ -44,14 +62,17 @@ export function ConversationsSidebar({
               const active = g.id === activeGroupId;
               return (
                 <li key={g.id}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(g.id)}
+                  <div
                     className={cn(
-                      "flex w-full flex-col gap-1 p-3 text-right transition-colors hover:bg-accent/50",
+                      "flex items-stretch transition-colors hover:bg-accent/50",
                       active && "bg-accent",
                     )}
                   >
+                    <button
+                      type="button"
+                      onClick={() => onSelect(g.id)}
+                      className="flex flex-1 flex-col gap-1 p-3 text-right"
+                    >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-medium">{g.name}</span>
                       <div className="flex items-center gap-1">
@@ -71,7 +92,20 @@ export function ConversationsSidebar({
                         {g.last_message?.created_at ? formatJalaliRelative(g.last_message.created_at) : ""}
                       </span>
                     </div>
-                  </button>
+                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeactivate(e, g.id)}
+                        disabled={deactivate.isPending}
+                        title="غیرفعال‌سازی گروه"
+                        aria-label="غیرفعال‌سازی گروه"
+                        className="flex items-center justify-center px-3 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}
