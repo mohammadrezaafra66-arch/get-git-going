@@ -11,7 +11,6 @@ import {
   BarChart3,
   BookOpen,
   MessageSquare,
-  Mail,
   ScrollText,
   Database,
   KeyRound,
