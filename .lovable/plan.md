@@ -1,112 +1,56 @@
-## Slice 8 — سیستم کارت قرمز (فقط دیتابیس)
+## Slice 8 — مرحله ۲: UI سیستم کارت قرمز
 
-پیاده‌سازی فقط در یک migration جدید زیر `supabase/migrations/`. هیچ تغییری در UI/کلاینت در این Slice. SQL پیشنهادی کاربر باید با اسکیمای واقعی پروژه تطبیق داده شود — موارد زیر در پلن اعمال شده‌اند.
+فقط لایه فرانت. هیچ migration یا تغییر RPC. از اسکیمای موجود استفاده می‌شود.
 
-### تطبیق با اسکیمای واقعی (مهم — فرق با SQL ارسالی)
+### فایل‌های جدید
 
-- جدول `audit_events` و `notifications` وجود ندارد. به‌جای آن‌ها از موارد موجود استفاده می‌شود:
-  - audit → `public.audit_logs(entity_type text, entity_id text, action text, actor_id uuid, diff jsonb)`
-  - notification داخل‌اپ → `public.notification_events(user_id, title, body, type, reference_type, reference_id)`
-- `profiles` ستون `role` و `active` ندارد. نقش‌ها در `public.user_roles` با enum `app_role` نگهداری می‌شوند و از تابع موجود `public.has_role(_user_id, _role)` استفاده می‌کنیم. فعال‌بودن از `profiles.is_active` خوانده می‌شود.
-- `inquiries.user_id` وجود ندارد؛ کاربر مرتبط با تخلف از `inquiries.assigned_to`/`requested_by` گرفته می‌شود (در منطق صدور خودکار).
-- نام نقش‌های ارسالی (`system_admin`, `company_manager`, `purchase_manager`) باید با enum واقعی `app_role` تطبیق پیدا کند → نیازمند تایید شما (سؤال پایین).
+1. `**src/lib/penalties/labels.ts**` — mapping فارسی متمرکز
+  - `PENALTY_TYPE_FA`, `PENALTY_SEVERITY_FA`, `APPEAL_STATUS_FA` با همان متن‌های ارسالی شما.
+  - tailwind class برای هر شدت (low=amber, medium=orange, high=red) و وضعیت اعتراض.
+  - تابع `remainingAppealMs(createdAt)` و `formatRemaining(ms)` (به فارسی: «X ساعت و Y دقیقه باقی‌مانده»).
+2. `**src/lib/penalties/penalties.functions.ts**` — wrapper سرور برای RPCها
+  - فقط `createServerFn` + `requireSupabaseAuth` (تا header attach شود)؛ داخل handler `context.supabase.rpc(...)` صدا زده می‌شود و خطاهای فارسی RPC عیناً throw می‌شوند.
+  - چهار تابع: `getUserPenalties({ userId? })`, `submitAppealFn({ penaltyId, reason })`, `voteOnAppealFn({ appealId, vote, note? })`, `getReviewerAppeals()` (لیست اعتراض‌های pending که کاربر در `appeal_reviewers` با `vote IS NULL` دارد؛ شامل join با `penalty_appeals` + `performance_penalties`).
+  - `getAllPenaltiesAdmin({ filters })` برای صفحه ادمین (یک select با RLS — مدیر/ادمین همه را می‌بیند) شامل join با profiles برای نام کاربر.
+  - شمارش هفتگی/ماهانه: `getPenaltyStats()`.
+3. `**src/hooks/penalties/usePenalties.ts**` — React Query hooks
+  - `useMyPenalties()`, `useUserPenaltyCount(userId)`, `useReviewerAppeals()`, `useAdminPenalties(filters)`, `usePenaltyStats()`.
+  - mutationها: `useSubmitAppeal()`, `useVoteOnAppeal()` با invalidate صحیح + `toast` فارسی.
+4. **کامپوننت‌ها زیر `src/components/penalties/**`
+  - `PenaltyBadge.tsx` — props: `userId: string`, `size?: 'sm'|'md'|'lg'`. از `useUserPenaltyCount` می‌خواند؛ فقط اگر `count>0` نمایش می‌دهد. آیکن `ShieldAlert`/`AlertOctagon` lucide قرمز + عدد فارسی، tooltip «کارت قرمز فعال».
+  - `MyPenaltiesPanel.tsx` — لیست کارت‌ها (Card)؛ هر کارت: نوع فارسی، badge شدت، تاریخ شمسی، badge فعال/غیرفعال، badge وضعیت اعتراض، دکمه «اعتراض» اگر `can_appeal`، یا «وضعیت اعتراض» اگر `has_appeal`. حالت‌های loading/empty/error فارسی.
+  - `AppealForm.tsx` — Dialog؛ خلاصه تخلف بالا، textarea با `minLength={50}` و شمارنده کاراکتر، نوار مهلت ۲۴h (re-render هر دقیقه با `setInterval`)، اگر منقضی: دکمه disable + پیام. دکمه ارسال → `useSubmitAppeal`.
+  - `AppealReviewPanel.tsx` — لیست `useReviewerAppeals()`. هر مورد: دلیل کاربر، خلاصه تخلف، شمارنده آراء فعلی (accept/reject/pending)، فیلد یادداشت اختیاری، دکمه «پذیرفتن» (سبز) و «رد کردن» (قرمز) → `useVoteOnAppeal`. پس از رأی toast + invalidate.
+  - `PenaltyTypeBadge.tsx`, `SeverityBadge.tsx`, `AppealStatusBadge.tsx` — wrapper کوچک روی `Badge` shadcn برای استفادهٔ مشترک.
+5. `**src/routes/_app.admin.penalties.tsx**` — صفحه ادمین
+  - `beforeLoad: await requireAnyRole(['admin','manager'])`.
+  - PageHeader «مدیریت کارت‌های قرمز».
+  - ۳ کارت آماری بالا: «کارت قرمز این هفته»، «کارت قرمز این ماه»، «اعتراض‌های در انتظار».
+  - فیلترها (state محلی + debounce): سرچ کاربر (نام)، select نوع، select شدت، JalaliDateInput بازه از/تا.
+  - Table با ستون‌های: نام کاربر، نوع، شدت (badge)، تاریخ شمسی، وضعیت فعال، وضعیت اعتراض. pagination ساده (limit/offset).
+  - بخش پایین: `<AppealReviewPanel />` (همان کامپوننت قابل استفاده مجدد، فقط برای hierarchy نمایشی).
 
-### ۱) Migration: سه جدول + ایندکس + GRANT + RLS
+### اتصال‌های کوچک (preserve UI موجود)
 
-فایل: `supabase/migrations/<timestamp>_red_card_system.sql`
+- در `MyPenaltiesPanel` هیچ‌جا auto-mount نمی‌شود؛ این Slice فقط route ادمین را به اپ اضافه می‌کند. اضافه‌کردن لینک به سایدبار/menu **خارج از این Slice** است (در صورت نیاز در همان turn یک خط به منوی admin اضافه می‌کنیم).
+- برای نمایش `PenaltyBadge` در پروفایل کاربر، کامپوننت آماده می‌شود ولی فقط export. embedding در صفحات دیگر در slice بعدی.
 
-جدول‌ها مطابق ارسال شما، با این اصلاحات:
+### نکات فنی
 
-- `performance_penalties`: بدون تغییر ساختار. `created_by NULL` = صدور خودکار.
-- `penalty_appeals`: بدون تغییر (با `unique(penalty_id)`).
-- `appeal_reviewers`: بدون تغییر.
-- ایندکس‌ها مطابق ارسالی شما.
-- پس از هر `CREATE TABLE` بلوک `GRANT` استاندارد (طبق قانون پروژه):
-  ```sql
-  GRANT SELECT, INSERT, UPDATE, DELETE ON public.<t> TO authenticated;
-  GRANT ALL ON public.<t> TO service_role;
-  ```
-- `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` روی هر سه.
+- تاریخ شمسی: استفاده از helper موجود `formatJalaliDateTime` در `src/lib/messenger/format.ts` (moment-jalaali) — وابستگی جدید نصب نمی‌شود.
+- خطاهای RPC فارسی: `error.message` که از Postgres می‌آید همان متن فارسی است → مستقیم به `toast.error` پاس می‌شود.
+- TypeScript strict؛ بدون `any`. تایپ ردیف‌های RPC به‌صورت لوکال تعریف می‌شود (تا generate دوبارهٔ types لازم نباشد).
+- بدون realtime/polling سنگین؛ refetch با invalidate بعد از mutation و `staleTime: 30s` برای لیست‌ها.
+- RTL, mobile-first, کاملاً responsive.
 
-### ۲) RLS Policies (بازنویسی‌شده با `has_role`)
+### تست
 
-- `performance_penalties`
-  - SELECT: کاربر صاحب (`user_id = auth.uid()`)، یا `has_role(auth.uid(),'admin'|'manager'|...)` بر اساس نقش‌های واقعی پروژه.
-  - INSERT/UPDATE: فقط `service_role` (تخلف فقط از طریق RPC با SECURITY DEFINER ثبت/غیرفعال می‌شود).
-- `penalty_appeals`
-  - SELECT: appellant خودش + اعضای هیئت (`EXISTS appeal_reviewers`) + مدیران.
-  - INSERT/UPDATE: فقط service_role (همه‌چیز از طریق RPC).
-- `appeal_reviewers`
-  - SELECT: خود reviewer + appellant مربوطه + مدیران.
-  - INSERT/UPDATE: فقط service_role.
+- `npm run build`
+- `npx tsgo --noEmit`
+- مسیر دستی: ورود ادمین → `/admin/penalties` → دیدن لیست و فیلترها → ورود کاربر دارای کارت قرمز → `MyPenaltiesPanel` (در همان صفحه ادمین به‌عنوان دموی موقت یا route جدا اگر تأیید کنید).
 
-### ۳) چهار RPC (همگی `SECURITY DEFINER` + `SET search_path = public`)
+### سؤال (لطفاً قبل از build تأیید)
 
-1. `auto_submit_penalty(p_inquiry_id, p_user_id, p_type, p_severity, p_description) RETURNS uuid`
-  - منطق ضد تکرار طبق ارسالی.
-  - audit به `audit_logs(entity_type='penalty', entity_id=v_penalty_id::text, action='auto_created', actor_id=p_user_id, diff=jsonb_build_object(...))`.
-  - notification به `notification_events(user_id, title='کارت قرمز جدید', body='...', type='red_card_issued', reference_type='penalty', reference_id=v_penalty_id)`.
-  - `REVOKE EXECUTE FROM public, anon, authenticated; GRANT EXECUTE TO service_role` — فقط cron/سرور صدا بزند.
-2. `submit_appeal(p_penalty_id, p_reason) RETURNS uuid`
-  - چک مالکیت، مهلت ۲۴h، عدم تکرار.
-  - انتخاب هیئت ۳نفره با `has_role` + `profiles.is_active = true`؛ نقش‌ها بعد از پاسخ شما به سؤال نقش‌ها قطعی می‌شود.
-  - notification به هیئت از طریق `notification_events`.
-  - `GRANT EXECUTE TO authenticated` (کاربر برای خودش صدا می‌زند).
-3. `vote_on_appeal(p_appeal_id, p_vote, p_note) RETURNS jsonb`
-  - چک عضویت + رأی‌نداده، ثبت رأی، شمارش ۲از۳، آپدیت `penalty_appeals.status`، در صورت `accepted` → `performance_penalties.is_active=false`.
-  - notification به appellant.
-  - `GRANT EXECUTE TO authenticated`.
-4. `get_user_penalties(p_user_id uuid default null) RETURNS TABLE(...)`
-  - اگر `p_user_id` پاس شد و فراخوان کاربر دیگری است → فقط برای مدیران مجاز (`has_role`).
-  - `GRANT EXECUTE TO authenticated`.
-
-### ۴) اتصال به pg_cron برای صدور خودکار بعد از ۱۰ دقیقه
-
-تابع `public.tick_inquiries()` (cron `inquiries-tick` هر دقیقه) همین حالا گذار به `critical_10min`/`transfer_available` را انجام می‌دهد. به‌جای ساخت cron job جدید، **همان تابع را extend می‌کنیم**: داخل گذار `danger_8min → critical_10min` (یا بلافاصله پس از آن) برای هر inquiry که تازه به ۱۰دقیقه رسیده، یک‌بار `auto_submit_penalty(...)` با:
-
-- `p_user_id = inquiries.assigned_to` (اگر null → `requested_by`)
-- `p_type = 'no_response_primary'`
-- `p_severity = 'medium'`
-- `p_description = 'عدم پاسخ مسئول اول طی ۱۰ دقیقه'`
-صدا زده شود. به‌خاطر unique-guard داخل RPC، صدور دوباره برای همان (inquiry,user,type) رخ نمی‌دهد.
-
-این تغییر کوچک و in-place در `tick_inquiries` انجام می‌شود و هیچ cron job جدیدی اضافه نمی‌کنیم (طبق قانون «از موارد موجود استفاده کن»).
-
-### ریسک‌ها و ملاحظات
-
-- نام‌های نقش (`system_admin`/`company_manager`/`purchase_manager`) باید با enum `app_role` پروژه match شوند؛ در غیر این صورت migration fail می‌شود.
-- چون RLS فقط service_role را برای INSERT/UPDATE روی این جدول‌ها مجاز می‌کند، تمام نوشتن‌ها باید از طریق RPC های SECURITY DEFINER انجام شود (الگوی استاندارد پروژه).
-- migration غیرمخرب است (فقط CREATE + CREATE OR REPLACE روی `tick_inquiries`). rollback: drop سه جدول + restore نسخه قبلی `tick_inquiries`.
-- بدون UI/کلاینت — فقط دیتابیس (طبق درخواست).
-
-### قبل از build، یک سؤال لازم
-
-نقش‌های واقعی enum `app_role` پروژه چیست؟ تا policy ها و انتخاب هیئت در `submit_appeal` با نام‌های دقیق نوشته شود. اگر می‌خواهید همان مقادیر ارسالی (`system_admin`,`company_manager`,`purchase_manager`) به enum اضافه شوند، در همین migration اضافه‌شان می‌کنم.  
-
-
----
-
-نقش‌های enum `app_role` پروژه:
-
-```
-admin, manager, sales, accountant, viewer
-
-```
-
-تطبیق با سیستم کارت قرمز:
-
-- `system_admin` → `admin`
-- `company_manager` → `manager`
-- `purchase_manager` → `manager`
-- مسئول خرید (که تخلف بهش ثبت می‌شه) → هر نقشی می‌تونه باشه، `user_id` از `inquiries.assigned_to` گرفته می‌شه
-
-برای هیئت ۳ نفره در `submit_appeal`:
-
-- نقش `manager`: عضو اول و دوم هیئت
-- نقش `admin`: عضو خنثی (neutral)
-
-لطفاً migration را با این نقش‌ها build کن. نیازی به اضافه کردن مقدار جدید به enum نیست.
-
----
-
+- `MyPenaltiesPanel` در کدام صفحه mount شود؟ پیشنهاد: یک route جدید `_app.my-penalties.tsx` («کارت‌های قرمز من») با `beforeLoad: requirePermission('messages','view')` یا فقط authentication ساده. تأیید می‌کنید این route ساخته شود، یا فعلاً فقط کامپوننت export شود و mount در slice بعدی؟  
   
+بله، route جدید `_app.my-penalties.tsx` بساز با authentication ساده (فقط login). همه نقش‌ها می‌توانند کارت‌های قرمز خودشان را ببینند. لینک سایدبار را هم همین الان اضافه کن — نیازی نیست به slice بعدی موکول شود.
