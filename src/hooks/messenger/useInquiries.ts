@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,6 +24,14 @@ export type InquiryRow = {
 export function useInquiries(groupId: string | null) {
   const qc = useQueryClient();
   const queryKey = ["inquiries", groupId];
+  // Unique per-hook-instance suffix so multiple subscribers (e.g. ChatWindow + MessageList)
+  // don't collide on the same realtime channel name and trigger
+  // "cannot add `postgres_changes` callbacks ... after `subscribe()`".
+  const instanceIdRef = useRef<string>(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2),
+  );
 
   const query = useQuery({
     queryKey,
@@ -47,7 +55,7 @@ export function useInquiries(groupId: string | null) {
   useEffect(() => {
     if (!groupId) return;
     const channel = supabase
-      .channel(`messenger:inquiries:${groupId}`)
+      .channel(`messenger:inquiries:${groupId}:${instanceIdRef.current}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inquiries", filter: `group_id=eq.${groupId}` },
