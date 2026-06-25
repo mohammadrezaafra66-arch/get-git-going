@@ -44,6 +44,7 @@ import {
   BadgeCheck,
   LifeBuoy,
   FileCheck,
+  ClipboardList,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -567,6 +568,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/penalties",
     label: "کارت‌های قرمز",
     icon: AlertTriangle,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/audit",
+    label: "لاگ فعالیت‌ها",
+    icon: ClipboardList,
     module: "roles",
     group: "admin",
     subgroup: "adm-settings",
