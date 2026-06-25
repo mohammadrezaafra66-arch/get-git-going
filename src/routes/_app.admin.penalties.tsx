@@ -40,6 +40,7 @@ import {
 } from "@/lib/penalties/labels";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { AppealReviewPanel } from "@/components/penalties/AppealReviewPanel";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 const ALL = "__all__";
 const PAGE_SIZE = 25;
@@ -175,24 +176,24 @@ function AdminPenaltiesPage() {
           </div>
           <div className="space-y-1">
             <Label>از تاریخ</Label>
-            <Input
-              type="date"
+            <JalaliDateInput
               value={fromDate}
-              onChange={(e) => {
-                setFromDate(e.target.value);
+              onChange={(iso) => {
+                setFromDate(iso);
                 setPage(0);
               }}
+              placeholder="انتخاب تاریخ"
             />
           </div>
           <div className="space-y-1">
             <Label>تا تاریخ</Label>
-            <Input
-              type="date"
+            <JalaliDateInput
               value={toDate}
-              onChange={(e) => {
-                setToDate(e.target.value);
+              onChange={(iso) => {
+                setToDate(iso);
                 setPage(0);
               }}
+              placeholder="انتخاب تاریخ"
             />
           </div>
         </CardContent>
