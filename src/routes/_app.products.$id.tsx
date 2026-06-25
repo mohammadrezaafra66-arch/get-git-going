@@ -73,6 +73,23 @@ function ProductDetailPage() {
   const [editMode, setEditMode] = useState(!!search.edit && canUpdate);
   const [saving, setSaving] = useState(false);
 
+  // Warn before tab close/reload while editing if an unsaved draft exists.
+  useEffect(() => {
+    if (!editMode) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      try {
+        const raw = window.localStorage.getItem(`afrakala_product_draft_${id}`);
+        if (!raw) return;
+      } catch {
+        return;
+      }
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editMode, id]);
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
