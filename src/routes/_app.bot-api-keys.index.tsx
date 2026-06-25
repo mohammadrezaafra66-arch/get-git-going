@@ -409,6 +409,26 @@ function RevealKeyDialog({
                 کپی
               </Button>
             </div>
+            {!copied && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                ⚠️ ابتدا کلید را کپی کنید، سپس می‌توانید پنجره را ببندید.
+              </p>
+            )}
+            {copied && !confirmed && (
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                ✓ کلید کپی شد — تیک تأیید را بزنید تا بتوانید ببندید.
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <Checkbox
+                checked={confirmed}
+                onCheckedChange={(v) => setConfirmed(!!v)}
+                disabled={!copied}
+              />
+              <span className={!copied ? "text-muted-foreground" : ""}>
+                کلید را در محل امن ذخیره کردم
+              </span>
+            </label>
           </div>
         )}
         <DialogFooter>
