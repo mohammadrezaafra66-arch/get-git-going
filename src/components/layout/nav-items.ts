@@ -44,6 +44,7 @@ import {
   CreditCard,
   BadgeCheck,
   LifeBuoy,
+  FileCheck,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -88,6 +89,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
   { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
   { to: "/my-penalties", label: "کارت‌های قرمز من", icon: AlertTriangle, module: "dashboard", group: "main" },
+  { to: "/delivery-receipts", label: "رسیدهای تحویل", icon: FileCheck, module: "dashboard", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   {
@@ -600,6 +602,15 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/admin/documents",
     label: "مدیریت اسناد",
     icon: FileText,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/delivery-receipts",
+    label: "مدیریت رسیدها",
+    icon: FileCheck,
     module: "roles",
     group: "admin",
     subgroup: "adm-tools",

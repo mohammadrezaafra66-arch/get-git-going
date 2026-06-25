@@ -37,6 +37,7 @@ import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppGamificationRouteImport } from './routes/_app.gamification'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppDeliveryReceiptsRouteImport } from './routes/_app.delivery-receipts'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
@@ -119,6 +120,7 @@ import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.pa
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.documents'
+import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAccountingSalespersonCapitalAllocationsRouteImport } from './routes/_app.accounting.salesperson-capital-allocations'
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
@@ -308,6 +310,11 @@ const AppFeedbackRoute = AppFeedbackRouteImport.update({
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDeliveryReceiptsRoute = AppDeliveryReceiptsRouteImport.update({
+  id: '/delivery-receipts',
+  path: '/delivery-receipts',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -736,6 +743,12 @@ const AppAdminDocumentsRoute = AppAdminDocumentsRouteImport.update({
   path: '/admin/documents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminDeliveryReceiptsRoute =
+  AppAdminDeliveryReceiptsRouteImport.update({
+    id: '/admin/delivery-receipts',
+    path: '/admin/delivery-receipts',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminAutomationRoute = AppAdminAutomationRouteImport.update({
   id: '/admin/automation',
   path: '/admin/automation',
@@ -1041,6 +1054,7 @@ export interface FileRoutesByFullPath {
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
@@ -1073,6 +1087,7 @@ export interface FileRoutesByFullPath {
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1202,6 +1217,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AppAcademyRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
@@ -1233,6 +1249,7 @@ export interface FileRoutesByTo {
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1364,6 +1381,7 @@ export interface FileRoutesById {
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/delivery-receipts': typeof AppDeliveryReceiptsRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/gamification': typeof AppGamificationRouteWithChildren
@@ -1396,6 +1414,7 @@ export interface FileRoutesById {
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/_app/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
+  '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/_app/admin/documents': typeof AppAdminDocumentsRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1528,6 +1547,7 @@ export interface FileRouteTypes {
     | '/audit-logs'
     | '/bot-api-keys'
     | '/dashboard'
+    | '/delivery-receipts'
     | '/documents'
     | '/feedback'
     | '/gamification'
@@ -1560,6 +1580,7 @@ export interface FileRouteTypes {
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
     | '/admin/automation'
+    | '/admin/delivery-receipts'
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -1689,6 +1710,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/audit-logs'
     | '/dashboard'
+    | '/delivery-receipts'
     | '/documents'
     | '/feedback'
     | '/gamification'
@@ -1720,6 +1742,7 @@ export interface FileRouteTypes {
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
     | '/admin/automation'
+    | '/admin/delivery-receipts'
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -1850,6 +1873,7 @@ export interface FileRouteTypes {
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
     | '/_app/dashboard'
+    | '/_app/delivery-receipts'
     | '/_app/documents'
     | '/_app/feedback'
     | '/_app/gamification'
@@ -1882,6 +1906,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receivables'
     | '/_app/accounting/salesperson-capital-allocations'
     | '/_app/admin/automation'
+    | '/_app/admin/delivery-receipts'
     | '/_app/admin/documents'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
@@ -2218,6 +2243,13 @@ declare module '@tanstack/react-router' {
       path: '/documents'
       fullPath: '/documents'
       preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/delivery-receipts': {
+      id: '/_app/delivery-receipts'
+      path: '/delivery-receipts'
+      fullPath: '/delivery-receipts'
+      preLoaderRoute: typeof AppDeliveryReceiptsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -2794,6 +2826,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/delivery-receipts': {
+      id: '/_app/admin/delivery-receipts'
+      path: '/admin/delivery-receipts'
+      fullPath: '/admin/delivery-receipts'
+      preLoaderRoute: typeof AppAdminDeliveryReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/automation': {
       id: '/_app/admin/automation'
       path: '/admin/automation'
@@ -3347,6 +3386,7 @@ interface AppRouteChildren {
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDeliveryReceiptsRoute: typeof AppDeliveryReceiptsRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppGamificationRoute: typeof AppGamificationRouteWithChildren
@@ -3378,6 +3418,7 @@ interface AppRouteChildren {
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
   AppAccountingSalespersonCapitalAllocationsRoute: typeof AppAccountingSalespersonCapitalAllocationsRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
+  AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
   AppAdminDocumentsRoute: typeof AppAdminDocumentsRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
@@ -3457,6 +3498,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
+  AppDeliveryReceiptsRoute: AppDeliveryReceiptsRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppGamificationRoute: AppGamificationRouteWithChildren,
@@ -3490,6 +3532,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingSalespersonCapitalAllocationsRoute:
     AppAccountingSalespersonCapitalAllocationsRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,
+  AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,
   AppAdminDocumentsRoute: AppAdminDocumentsRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
