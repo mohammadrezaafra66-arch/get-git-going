@@ -460,6 +460,22 @@ function ProductDetailPage() {
         )
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-3 border-primary/30 bg-primary/5">
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div className="text-sm text-muted-foreground">
+                قیمت پیشنهادی بر اساس مدت نگهداری
+              </div>
+              <div className="text-base font-semibold tabular-nums">
+                {adjustedPriceQ.isLoading ? (
+                  <Skeleton className="h-5 w-28" />
+                ) : adjustedPriceQ.data && adjustedPriceQ.data > 0 ? (
+                  `${formatNumber(adjustedPriceQ.data)} تومان`
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           <Card className="lg:col-span-2">
             <CardContent className="grid gap-3 p-4 md:grid-cols-2">
               <Info label="برند" value={p.brand?.name ?? "—"} />
