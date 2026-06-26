@@ -427,6 +427,9 @@ function LivePriceListPage() {
         />
       </div>
 
+      {/* share */}
+      <PriceListShareSection merged={merged} />
+
       {/* filters */}
       <Card>
         <CardContent className="p-4 space-y-3">
