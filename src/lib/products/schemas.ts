@@ -20,6 +20,7 @@ export const productSchema = z.object({
   primary_spec: z.string().trim().max(100, "حداکثر ۱۰۰ کاراکتر").optional().or(z.literal("")),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   technical_notes: z.string().trim().max(4000).optional().or(z.literal("")),
+  barcode: z.string().trim().max(64, "حداکثر ۶۴ کاراکتر").optional().or(z.literal("")),
   label_ids: z.array(z.string().uuid()).default([]),
 });
 

@@ -36,6 +36,7 @@ import {
 } from "@/lib/products/category-attrs";
 import { findDuplicateProduct, type DuplicateProduct } from "@/lib/products/duplicate-check";
 import { useDebounce } from "@/hooks/use-debounce";
+import { ProductImagesSection } from "@/components/products/ProductImagesSection";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -72,6 +73,7 @@ const DEFAULTS: ProductFormValues = {
   primary_spec: "",
   description: "",
   technical_notes: "",
+  barcode: "",
   label_ids: [],
 };
 
@@ -536,6 +538,15 @@ export function ProductForm({
               </p>
             )}
           </Field>
+          <Field label="بارکد" error={errors.barcode}>
+            <Input
+              value={values.barcode ?? ""}
+              onChange={(e) => set("barcode", e.target.value)}
+              dir="ltr"
+              placeholder="بارکد محصول (اختیاری)"
+              maxLength={64}
+            />
+          </Field>
 
           <Field label="برند">
             <SearchableSelect
@@ -824,6 +835,12 @@ export function ProductForm({
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <ProductImagesSection productId={productId ?? null} />
         </CardContent>
       </Card>
 
