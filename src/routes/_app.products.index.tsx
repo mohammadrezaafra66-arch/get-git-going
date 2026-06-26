@@ -11,6 +11,7 @@ import {
   Eye,
   Tag,
   History,
+  ImageIcon,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
