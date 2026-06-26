@@ -582,6 +582,27 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
               </AlertDescription>
             </Alert>
           )}
+          {selectedCustomer && hasOverdue && (
+            <Alert className="border-destructive bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive font-medium">
+                ⛔ این مشتری مانده معوق دارد — صدور فاکتور غیرمجاز است
+                {overdueSince && (
+                  <span className="block text-xs mt-1 font-normal">
+                    معوق از: {toFaDigits(overdueSince)}
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          {selectedCustomer && !hasOverdue && settlementScore < -20 && (
+            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900 dark:text-amber-200">
+                ⚠️ امتیاز تسویه این مشتری منفی است ({toFaDigits(settlementScore)})
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* نوع قیمت */}
           <div className="space-y-2">
