@@ -45,6 +45,15 @@ import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { toast } from "sonner";
+import { Clipboard } from "lucide-react";
+import {
+  formatForPlainText,
+  formatForTelegram,
+  formatForWhatsApp,
+  type PriceListCanonicalModel,
+  type PriceListRow,
+} from "@/lib/price-list/canonical";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => {
@@ -417,6 +426,22 @@ function LivePriceListPage() {
           variant={(summaryQuery.data?.withoutPrice ?? 0) > 0 ? "warning" : "default"}
         />
       </div>
+
+      {/* share */}
+      <PriceListShareSection
+        rows={merged
+          .filter((m) => m.hasPrice && m.histories[0])
+          .map<PriceListRow>((m) => ({
+            productId: m.product.id,
+            productName: formatProductDisplayNameWithFallback(m.product as any),
+            productCode: m.product.sku ?? "",
+            basePrice: Number(m.histories[0]?.new_sale_price ?? 0),
+            priceMode: m.histories[0]?.sale_price_type_title ?? "—",
+            unit: "",
+            priority: 0,
+            categoryName: m.product.category?.name ?? "",
+          }))}
+      />
 
       {/* filters */}
       <Card>
@@ -1006,6 +1031,73 @@ function SummaryCard({
           <span>{label}</span>
         </div>
         <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PriceListShareSection({ rows }: { rows: PriceListRow[] }) {
+  const buildModel = (): PriceListCanonicalModel => ({
+    id: "live-price-list",
+    title: "لیست قیمت زنده",
+    generatedAt: new Date(),
+    rows,
+    currency: "تومان",
+    companyName: "افراکالا",
+  });
+
+  const copy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} در کلیپ‌بورد کپی شد`);
+    } catch {
+      toast.error("کپی در کلیپ‌بورد ناموفق بود");
+    }
+  };
+
+  const disabled = rows.length === 0;
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div className="text-sm font-medium text-foreground">
+          اشتراک‌گذاری
+          <span className="ms-2 text-xs text-muted-foreground">
+            ({toFaDigits(String(rows.length))} ردیف)
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => copy(formatForPlainText(buildModel()), "متن لیست قیمت")}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            📋 کپی متن
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => {
+              const parts = formatForTelegram(buildModel());
+              copy(parts[0] ?? "", "متن تلگرام");
+            }}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            📱 تلگرام
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => copy(formatForWhatsApp(buildModel()), "متن واتساپ")}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            💬 واتساپ
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
