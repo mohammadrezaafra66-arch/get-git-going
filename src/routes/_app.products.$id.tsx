@@ -30,6 +30,8 @@ import {
   PRODUCT_STATUS_VARIANTS,
 } from "@/lib/products/constants";
 import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatNumber } from "@/lib/i18n/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
 import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
@@ -168,6 +170,18 @@ function ProductDetailPage() {
         .filter((r) => r.value !== "");
       rows.sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label, "fa"));
       return rows;
+    },
+  });
+
+  const adjustedPriceQ = useQuery({
+    queryKey: ["product-adjusted-price", id],
+    enabled: !editMode,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("calculate_adjusted_price", {
+        _product_id: id,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
     },
   });
 
