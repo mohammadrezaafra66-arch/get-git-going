@@ -45,6 +45,7 @@ import {
   LifeBuoy,
   FileCheck,
   ClipboardList,
+  Plug,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
