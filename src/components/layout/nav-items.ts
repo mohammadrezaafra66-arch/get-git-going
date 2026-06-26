@@ -45,6 +45,7 @@ import {
   LifeBuoy,
   FileCheck,
   ClipboardList,
+  Plug,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -769,6 +770,15 @@ export const NAV_ITEMS: NavItem[] = [
     module: "bot-api-keys",
     group: "admin",
     subgroup: "adm-tools",
+  },
+  {
+    to: "/integrations/didar",
+    label: "یکپارچه‌سازی دیدار",
+    icon: Plug,
+    module: "bot-api-keys",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
   },
   {
     to: "/market-matches",
