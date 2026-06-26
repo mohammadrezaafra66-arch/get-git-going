@@ -307,14 +307,18 @@ function ProductsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data?.rows ?? []).map((p) => (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                    {(data?.rows ?? []).map((p, index) => (
+                      <tr
+                        key={p.id}
+                        className="border-b last:border-0 hover:bg-muted/30 opacity-0 animate-in fade-in slide-in-from-bottom-1 duration-300"
+                        style={{ animationDelay: `${index * 30}ms`, animationFillMode: "forwards" }}
+                      >
                         <td className="p-2">
                           {thumbnailFor(p.id) ? (
                             <img
                               src={thumbnailFor(p.id)}
                               alt=""
-                              className="h-10 w-10 rounded-md object-cover border border-border"
+                              className="h-10 w-10 rounded-md object-cover border border-border transition-transform duration-200 hover:scale-110"
                               loading="lazy"
                             />
                           ) : (
