@@ -566,7 +566,7 @@ function LivePriceListPage() {
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/40 text-xs text-muted-foreground">
+                    <thead className="sticky top-0 z-10 bg-background shadow-sm text-xs text-muted-foreground">
                       <tr>
                         <th className="p-3 text-right font-medium">محصول</th>
                         <th className="p-3 text-right font-medium">برند / دسته</th>
@@ -1064,6 +1064,9 @@ function PriceListShareSection({ rows }: { rows: PriceListRow[] }) {
           اشتراک‌گذاری
           <span className="ms-2 text-xs text-muted-foreground">
             ({toFaDigits(String(rows.length))} ردیف)
+          </span>
+          <span className="ms-2 text-xs text-muted-foreground">
+            • آخرین بروزرسانی: {formatDateTimeFa(new Date().toISOString())}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
