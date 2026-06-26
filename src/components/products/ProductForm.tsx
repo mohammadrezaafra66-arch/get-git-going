@@ -36,6 +36,7 @@ import {
 } from "@/lib/products/category-attrs";
 import { findDuplicateProduct, type DuplicateProduct } from "@/lib/products/duplicate-check";
 import { useDebounce } from "@/hooks/use-debounce";
+import { ProductImagesSection } from "@/components/products/ProductImagesSection";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -536,6 +537,15 @@ export function ProductForm({
                 کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.
               </p>
             )}
+          </Field>
+          <Field label="بارکد" error={errors.barcode}>
+            <Input
+              value={values.barcode ?? ""}
+              onChange={(e) => set("barcode", e.target.value)}
+              dir="ltr"
+              placeholder="بارکد محصول (اختیاری)"
+              maxLength={64}
+            />
           </Field>
 
           <Field label="برند">
