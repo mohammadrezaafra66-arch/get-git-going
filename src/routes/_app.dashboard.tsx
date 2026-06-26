@@ -27,6 +27,8 @@ import { KpiCard } from "@/components/dashboard/KpiCard";
 import { KpiGrid } from "@/components/dashboard/KpiGrid";
 import { SalesChart } from "@/components/dashboard/SalesChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { NewsTicker } from "@/components/dashboard/NewsTicker";
+import { MyScoreCard } from "@/components/dashboard/MyScoreCard";
 import {
   useTodayInquiryStats,
   useTodaySalesStats,
@@ -69,6 +71,7 @@ function DashboardPage() {
 
   return (
     <div dir="rtl" className="space-y-5">
+      <NewsTicker />
       <DashboardHeader />
 
       {canRunBirthdays && (
@@ -94,6 +97,12 @@ function DashboardPage() {
       {isAdminish && <AdminKpis />}
       {isSales && !isAdminish && <SalesKpis />}
       {isAccountant && !isAdminish && <AccountantKpis />}
+
+      {!isAdminish && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <MyScoreCard />
+        </div>
+      )}
 
       {isAdminish && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

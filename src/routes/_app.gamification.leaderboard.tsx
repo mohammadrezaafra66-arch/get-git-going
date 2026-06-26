@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { LeaderboardPeriod } from "@/lib/operations/gamification";
 import { useLeaderboard, useMyRankNeighbors } from "@/hooks/gamification/useGamification";
+import { useRankTrends } from "@/hooks/gamification/useRankTrends";
 import { LeaderboardRow } from "@/components/gamification/LeaderboardRow";
 
 export const Route = createFileRoute("/_app/gamification/leaderboard")({
@@ -43,6 +44,13 @@ function LeaderboardPage() {
   const topScore = rows[0]?.score ?? 0;
   const neighborRows = neighbors.data ?? [];
   const neighborTop = neighborRows.reduce((m, r) => (r.score > m ? r.score : m), 0);
+
+  const trendIds = [
+    ...rows.map((r) => r.employee_id),
+    ...neighborRows.map((r) => r.employee_id),
+  ];
+  const trends = useRankTrends(trendIds);
+  const trendMap = trends.data ?? {};
 
   return (
     <div dir="rtl" className="space-y-6">
@@ -92,6 +100,7 @@ function LeaderboardPage() {
                 period={period}
                 topScore={neighborTop}
                 index={i}
+                previousRank={trendMap[n.employee_id]?.previous_rank ?? null}
               />
             ))}
           </CardContent>
@@ -124,6 +133,7 @@ function LeaderboardPage() {
                   period={period}
                   topScore={topScore}
                   index={i}
+                  previousRank={trendMap[row.employee_id]?.previous_rank ?? null}
                 />
               ))}
             </div>
