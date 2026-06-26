@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ROLE_LABELS, useAllRoles } from "@/lib/rbac/roles";
+import { useAllRoles } from "@/lib/rbac/roles";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
 
@@ -101,8 +101,8 @@ function RolesPage() {
                   <tr>
                     <th className="p-3 font-medium">کاربر</th>
                     {allRoles.map((r) => (
-                      <th key={r} className="p-3 text-center font-medium">
-                        {ROLE_LABELS[r as keyof typeof ROLE_LABELS] ?? r}
+                      <th key={r.name} className="p-3 text-center font-medium">
+                        {r.label}
                       </th>
                     ))}
                   </tr>
@@ -112,14 +112,14 @@ function RolesPage() {
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-medium">{u.full_name ?? "—"}</td>
                       {allRoles.map((r) => {
-                        const checked = u.roles.includes(r);
+                        const checked = u.roles.includes(r.name);
                         return (
-                          <td key={r} className="p-3 text-center">
+                          <td key={r.name} className="p-3 text-center">
                             <Checkbox
                               checked={checked}
                               disabled={toggle.isPending}
                               onCheckedChange={(v) =>
-                                toggle.mutate({ userId: u.id, role: r, enabled: Boolean(v) })
+                                toggle.mutate({ userId: u.id, role: r.name, enabled: Boolean(v) })
                               }
                             />
                           </td>
