@@ -10312,6 +10312,10 @@ export type Database = {
         Returns: undefined
       }
       reactivate_user: { Args: { _user_id: string }; Returns: undefined }
+      recalculate_settlement_score: {
+        Args: { _customer_id: string }
+        Returns: undefined
+      }
       recompute_all_employee_scores: { Args: never; Returns: number }
       recompute_customer_credit_scores: {
         Args: { p_limit?: number; p_offset?: number }
@@ -10761,6 +10765,10 @@ export type Database = {
       }
       transfer_inquiry: {
         Args: { p_inquiry_id: string; p_to_user: string }
+        Returns: undefined
+      }
+      update_customer_overdue_status: {
+        Args: { _customer_id: string }
         Returns: undefined
       }
       update_dynamic_table_cell: {
