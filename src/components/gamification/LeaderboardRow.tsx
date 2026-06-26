@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { toPersianDigits } from "@/lib/dashboard/utils";
 import { cn } from "@/lib/utils";
 import type { LeaderboardPeriod } from "@/lib/operations/gamification";
@@ -13,6 +14,7 @@ interface LeaderboardRowProps {
   period: LeaderboardPeriod;
   topScore?: number;
   index?: number;
+  previousRank?: number | null;
 }
 
 function rankDisplay(rank: number): string {
@@ -22,9 +24,19 @@ function rankDisplay(rank: number): string {
   return toPersianDigits(rank);
 }
 
-export function LeaderboardRow({ row, isCurrentUser, topScore, index = 0 }: LeaderboardRowProps) {
+export function LeaderboardRow({
+  row,
+  isCurrentUser,
+  topScore,
+  index = 0,
+  previousRank,
+}: LeaderboardRowProps) {
   const max = topScore && topScore > 0 ? topScore : row.score || 1;
   const percent = Math.max(0, Math.min(100, (row.score / max) * 100));
+  const trendDelta =
+    previousRank != null && Number.isFinite(previousRank) && previousRank !== row.rank
+      ? previousRank - row.rank // positive = moved up
+      : null;
   return (
     <div
       dir="rtl"
@@ -34,8 +46,26 @@ export function LeaderboardRow({ row, isCurrentUser, topScore, index = 0 }: Lead
       )}
       style={{ animationDelay: `${index * 40}ms` }}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-lg font-bold">
-        {rankDisplay(row.rank)}
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-bold">
+          {rankDisplay(row.rank)}
+        </div>
+        {trendDelta != null && (
+          <span
+            className={cn(
+              "flex items-center gap-0.5 text-[10px] font-semibold",
+              trendDelta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
+            )}
+            title={trendDelta > 0 ? "صعود رتبه" : "نزول رتبه"}
+          >
+            {trendDelta > 0 ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            )}
+            {toPersianDigits(Math.abs(trendDelta))}
+          </span>
+        )}
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center justify-between gap-2">
