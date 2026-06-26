@@ -838,6 +838,12 @@ export function ProductForm({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="p-4">
+          <ProductImagesSection productId={productId ?? null} />
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
