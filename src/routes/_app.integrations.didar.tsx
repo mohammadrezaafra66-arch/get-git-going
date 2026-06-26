@@ -269,8 +269,8 @@ function DidarIntegrationPage() {
                           </TableCell>
                           <TableCell className="font-mono text-xs">{row.didar_id}</TableCell>
                           <TableCell>
-                            <Badge variant={ACTION_VARIANTS[row.action] ?? "outline"}>
-                              {ACTION_LABELS[row.action] ?? row.action}
+                            <Badge variant={(row.action && ACTION_VARIANTS[row.action]) ?? "outline"}>
+                              {(row.action && ACTION_LABELS[row.action]) ?? row.action ?? "—"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
