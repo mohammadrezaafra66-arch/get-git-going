@@ -172,6 +172,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
   const outstanding = Number(
     (creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0,
   );
+  const hasOverdue = Boolean(
+    (creditInfo as { has_overdue?: boolean } | null)?.has_overdue ?? false,
+  );
+  const overdueSince =
+    (creditInfo as { overdue_since?: string | null } | null)?.overdue_since ?? null;
+  const settlementScore = Number(
+    (creditInfo as { settlement_score?: number } | null)?.settlement_score ?? 0,
+  );
   const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
 
