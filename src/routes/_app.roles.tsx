@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAllRoles } from "@/lib/rbac/roles";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
+import { OnlineDot } from "@/components/presence/OnlineDot";
 
 export const Route = createFileRoute("/_app/roles")({
   beforeLoad: async () => {
@@ -110,7 +111,14 @@ function RolesPage() {
                 <tbody>
                   {data.map((u) => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-medium">{u.full_name ?? "—"}</td>
+                      <td className="p-3 font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="relative inline-block h-2.5 w-2.5">
+                            <OnlineDot userId={u.id} />
+                          </span>
+                          {u.full_name ?? "—"}
+                        </span>
+                      </td>
                       {allRoles.map((r) => {
                         const checked = u.roles.includes(r.name);
                         return (
