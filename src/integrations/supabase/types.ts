@@ -498,6 +498,54 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_api_key_audit_log: {
+        Row: {
+          action: string
+          id: string
+          key_id: string | null
+          key_name: string | null
+          metadata: Json | null
+          performed_at: string
+          performed_by: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          id?: string
+          key_id?: string | null
+          key_name?: string | null
+          metadata?: Json | null
+          performed_at?: string
+          performed_by: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          id?: string
+          key_id?: string | null
+          key_name?: string | null
+          metadata?: Json | null
+          performed_at?: string
+          performed_by?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_api_key_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bot_api_key_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bot_api_key_label_access: {
         Row: {
           api_key_id: string
@@ -590,6 +638,7 @@ export type Database = {
           key_hash: string
           key_prefix: string | null
           last_used_at: string | null
+          managed_by_role: string | null
           name: string
         }
         Insert: {
@@ -602,6 +651,7 @@ export type Database = {
           key_hash: string
           key_prefix?: string | null
           last_used_at?: string | null
+          managed_by_role?: string | null
           name: string
         }
         Update: {
@@ -614,6 +664,7 @@ export type Database = {
           key_hash?: string
           key_prefix?: string | null
           last_used_at?: string | null
+          managed_by_role?: string | null
           name?: string
         }
         Relationships: []
@@ -9485,6 +9536,10 @@ export type Database = {
         Returns: undefined
       }
       deactivate_user: { Args: { _user_id: string }; Returns: undefined }
+      delete_bot_api_key_secure: {
+        Args: { _key_id: string; _reason: string }
+        Returns: boolean
+      }
       delete_bot_api_key_table_access: {
         Args: { p_key_id: string; p_table_id: string }
         Returns: undefined
