@@ -8753,6 +8753,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      assign_user_role_txt: {
+        Args: { _role: string; _target_user: string }
+        Returns: undefined
+      }
       auto_submit_penalty: {
         Args: {
           p_description: string
@@ -9950,24 +9954,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      has_any_role: {
-        Args: {
-          _roles: Database["public"]["Enums"]["app_role"][]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      has_any_role:
+        | {
+            Args: {
+              _roles: Database["public"]["Enums"]["app_role"][]
+              _user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { _roles: string[]; _user_id: string }; Returns: boolean }
       has_dynamic_permission: {
         Args: { _action: string; _module: string; _user_id: string }
         Returns: boolean
       }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      has_role:
+        | {
+            Args: {
+              _role: Database["public"]["Enums"]["app_role"]
+              _user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { _role: string; _user_id: string }; Returns: boolean }
       hold_capital_allocation: {
         Args: {
           p_amount: number
@@ -10539,6 +10547,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _target_user: string
         }
+        Returns: undefined
+      }
+      revoke_user_role_txt: {
+        Args: { _role: string; _target_user: string }
         Returns: undefined
       }
       save_customer_capital_allocations: {
