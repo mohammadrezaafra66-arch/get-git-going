@@ -105,6 +105,20 @@ function CustomerCreditPage() {
   const outstanding = Number(profile?.outstanding_balance ?? 0);
   const totalPurchases = Number(profile?.total_purchases ?? 0);
   const totalPaid = Number(profile?.total_paid ?? 0);
+  const settlementScore = Number(
+    (profile as { settlement_score?: number } | null)?.settlement_score ?? 0,
+  );
+  const hasOverdue = Boolean(
+    (profile as { has_overdue?: boolean } | null)?.has_overdue ?? false,
+  );
+  const overdueSince =
+    (profile as { overdue_since?: string | null } | null)?.overdue_since ?? null;
+  const settlementColor =
+    settlementScore > 0
+      ? "text-emerald-600"
+      : settlementScore < 0
+        ? "text-destructive"
+        : "text-muted-foreground";
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -194,6 +208,37 @@ function CustomerCreditPage() {
               hintText={"مجموع تمام خریدهای ثبت‌شدهٔ این مشتری از ابتدای همکاری."}
               value={<span className="text-xl font-bold">{formatNumber(totalPurchases)}</span>}
               hint="ریال"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MetricCard
+              icon={<TrendingUp className="h-5 w-5" />}
+              label="امتیاز تسویه"
+              hintText={
+                "امتیاز سرعت تسویه بر اساس تاریخ تسویه واقعی نسبت به تاریخ مورد انتظار. مثبت=خوش‌حساب، منفی=بدحساب."
+              }
+              value={
+                <span className={`text-2xl font-bold ${settlementColor}`}>
+                  {toFaDigits(settlementScore)}
+                </span>
+              }
+            />
+            <MetricCard
+              icon={<ShieldCheck className="h-5 w-5" />}
+              label="وضعیت معوق"
+              hintText={"در صورت داشتن مانده معوق، صدور هرگونه فاکتور برای این مشتری مسدود می‌شود."}
+              value={
+                hasOverdue ? (
+                  <Badge className="bg-destructive text-destructive-foreground text-base px-3 py-1">
+                    ⛔ معوق{overdueSince ? ` - از ${toFaDigits(overdueSince)}` : ""}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-600 text-white text-base px-3 py-1">
+                    ✓ بدون معوق
+                  </Badge>
+                )
+              }
             />
           </div>
 
