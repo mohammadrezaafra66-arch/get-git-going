@@ -91,16 +91,18 @@ ${data.description ? `توضیحات: ${data.description}` : ""}
       throw new Error("هیچ نسخه‌ای تولید نشد. دوباره تلاش کنید.");
     }
 
-    const { error: insertErr } = await context.supabase.from("ai_generated_content").insert({
-      tool_type: "ad_copy",
-      input_data: {
-        product_id: data.productId,
-        product_name: data.productName,
-        audience: data.audience,
+    const { error: insertErr } = await context.supabase.from("ai_generated_content").insert([
+      {
+        tool_type: "ad_copy",
+        input_data: {
+          product_id: data.productId,
+          product_name: data.productName,
+          audience: data.audience,
+        },
+        generated_variations: variations as unknown as Record<string, unknown>,
+        created_by: context.userId,
       },
-      generated_variations: variations as unknown as Record<string, unknown>,
-      created_by: context.userId,
-    });
+    ]);
     if (insertErr) {
       console.error("ai_generated_content insert failed", insertErr);
     }
