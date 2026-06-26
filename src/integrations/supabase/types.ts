@@ -382,6 +382,77 @@ export type Database = {
           },
         ]
       }
+      ai_generated_content: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string
+          edited_content: string | null
+          generated_variations: Json
+          id: string
+          input_data: Json
+          selected_variation_index: number | null
+          tool_type: string
+          used_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by: string
+          edited_content?: string | null
+          generated_variations?: Json
+          id?: string
+          input_data?: Json
+          selected_variation_index?: number | null
+          tool_type: string
+          used_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string
+          edited_content?: string | null
+          generated_variations?: Json
+          id?: string
+          input_data?: Json
+          selected_variation_index?: number | null
+          tool_type?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generated_content_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generated_content_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generated_content_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_generated_content_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appeal_reviewers: {
         Row: {
           appeal_id: string
