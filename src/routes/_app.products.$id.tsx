@@ -29,8 +29,7 @@ import {
   PRODUCT_STATUS_LABELS,
   PRODUCT_STATUS_VARIANTS,
 } from "@/lib/products/constants";
-import { formatDateFa } from "@/lib/i18n/formatters";
-import { formatNumber } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
