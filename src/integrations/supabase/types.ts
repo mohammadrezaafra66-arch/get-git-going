@@ -793,6 +793,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          base_margin_percent: number | null
           created_at: string
           description: string | null
           id: string
@@ -805,6 +806,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          base_margin_percent?: number | null
           created_at?: string
           description?: string | null
           id?: string
@@ -817,6 +819,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          base_margin_percent?: number | null
           created_at?: string
           description?: string | null
           id?: string
@@ -3791,6 +3794,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          rate_type: string | null
           sort_order: number
           title_en: string | null
           title_fa: string
@@ -3803,6 +3807,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          rate_type?: string | null
           sort_order?: number
           title_en?: string | null
           title_fa: string
@@ -3815,6 +3820,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          rate_type?: string | null
           sort_order?: number
           title_en?: string | null
           title_fa?: string
@@ -6532,6 +6538,7 @@ export type Database = {
           name: string
           primary_spec: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          received_at: string | null
           sku: string | null
           status: Database["public"]["Enums"]["product_status"]
           stock_status: Database["public"]["Enums"]["stock_status"]
@@ -6558,6 +6565,7 @@ export type Database = {
           name: string
           primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          received_at?: string | null
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]
           stock_status?: Database["public"]["Enums"]["stock_status"]
@@ -6584,6 +6592,7 @@ export type Database = {
           name?: string
           primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          received_at?: string | null
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]
           stock_status?: Database["public"]["Enums"]["stock_status"]
@@ -8946,6 +8955,10 @@ export type Database = {
         }[]
       }
       calc_xp_for_level: { Args: { _level: number }; Returns: number }
+      calculate_adjusted_price: {
+        Args: { _product_id: string }
+        Returns: number
+      }
       calculate_credit_score: {
         Args: { _customer_id: string }
         Returns: {
