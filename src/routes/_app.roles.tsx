@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ROLE_LABELS, ALL_ROLES, type AppRole } from "@/lib/rbac/roles";
+import { ROLE_LABELS, useAllRoles } from "@/lib/rbac/roles";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
 
@@ -18,11 +18,12 @@ export const Route = createFileRoute("/_app/roles")({
 interface UserWithRoles {
   id: string;
   full_name: string | null;
-  roles: AppRole[];
+  roles: string[];
 }
 
 function RolesPage() {
   const qc = useQueryClient();
+  const { data: allRoles, isLoading: rolesLoading } = useAllRoles();
 
   const { data, isLoading } = useQuery({
     queryKey: ["roles-matrix"],
@@ -32,10 +33,10 @@ function RolesPage() {
         .select("id, full_name")
         .order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
-      const map = new Map<string, AppRole[]>();
+      const map = new Map<string, string[]>();
       for (const r of roles ?? []) {
         const arr = map.get(r.user_id) ?? [];
-        arr.push(r.role as AppRole);
+        arr.push(r.role as string);
         map.set(r.user_id, arr);
       }
       return (profiles ?? []).map((p) => ({ ...p, roles: map.get(p.id) ?? [] }));
@@ -49,17 +50,17 @@ function RolesPage() {
       enabled,
     }: {
       userId: string;
-      role: AppRole;
+      role: string;
       enabled: boolean;
     }) => {
       if (enabled) {
-        const { error } = await supabase.rpc("assign_user_role", {
+        const { error } = await supabase.rpc("assign_user_role_txt", {
           _target_user: userId,
           _role: role,
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.rpc("revoke_user_role", {
+        const { error } = await supabase.rpc("revoke_user_role_txt", {
           _target_user: userId,
           _role: role,
         });
@@ -82,7 +83,7 @@ function RolesPage() {
       />
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoading || rolesLoading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               در حال بارگذاری...
             </div>
@@ -99,9 +100,9 @@ function RolesPage() {
                 <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                   <tr>
                     <th className="p-3 font-medium">کاربر</th>
-                    {ALL_ROLES.map((r) => (
+                    {allRoles.map((r) => (
                       <th key={r} className="p-3 text-center font-medium">
-                        {ROLE_LABELS[r]}
+                        {ROLE_LABELS[r as keyof typeof ROLE_LABELS] ?? r}
                       </th>
                     ))}
                   </tr>
@@ -110,7 +111,7 @@ function RolesPage() {
                   {data.map((u) => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-medium">{u.full_name ?? "—"}</td>
-                      {ALL_ROLES.map((r) => {
+                      {allRoles.map((r) => {
                         const checked = u.roles.includes(r);
                         return (
                           <td key={r} className="p-3 text-center">
