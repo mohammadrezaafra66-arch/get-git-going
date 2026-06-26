@@ -6098,6 +6098,51 @@ export type Database = {
           },
         ]
       }
+      product_images: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          id: string
+          is_primary: boolean
+          product_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          product_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_promotion_suggestions"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
       product_interaction_events: {
         Row: {
           created_at: string
@@ -6470,6 +6515,7 @@ export type Database = {
       }
       products: {
         Row: {
+          barcode: string | null
           base_currency: string
           brand_id: string | null
           capacity: string | null
@@ -6495,6 +6541,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          barcode?: string | null
           base_currency?: string
           brand_id?: string | null
           capacity?: string | null
@@ -6520,6 +6567,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          barcode?: string | null
           base_currency?: string
           brand_id?: string | null
           capacity?: string | null
