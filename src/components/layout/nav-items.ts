@@ -771,6 +771,15 @@ export const NAV_ITEMS: NavItem[] = [
     subgroup: "adm-tools",
   },
   {
+    to: "/integrations/didar",
+    label: "یکپارچه‌سازی دیدار",
+    icon: Plug,
+    module: "bot-api-keys",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
     to: "/market-matches",
     label: "بررسی تطبیق محصولات بازار",
     icon: BadgeCheck,
