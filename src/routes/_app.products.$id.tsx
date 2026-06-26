@@ -98,7 +98,7 @@ function ProductDetailPage() {
         .select(
           `
           id, name, sku, description, technical_notes, unit, color, capacity, model, primary_spec,
-          product_type, base_currency, stock_status, status,
+          product_type, base_currency, stock_status, status, barcode,
           created_at, updated_at,
           brand:brands(id,name), category:categories(id,name,primary_spec_label),
           product_label_links(label:product_labels(id,title,color))
@@ -219,6 +219,7 @@ function ProductDetailPage() {
           primary_spec: v.primary_spec || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
+          barcode: v.barcode?.trim() ? v.barcode.trim() : null,
         })
         .eq("id", id);
       if (error) throw error;
@@ -385,6 +386,7 @@ function ProductDetailPage() {
     primary_spec: p.primary_spec ?? "",
     description: p.description ?? "",
     technical_notes: p.technical_notes ?? "",
+    barcode: p.barcode ?? "",
     label_ids: editDataQ.data?.labelIds ?? labels.map((l: any) => l.id),
   };
 

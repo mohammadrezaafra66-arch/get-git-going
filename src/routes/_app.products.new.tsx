@@ -42,6 +42,7 @@ function NewProductPage() {
           primary_spec: v.primary_spec || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
+          barcode: v.barcode?.trim() ? v.barcode.trim() : null,
         })
         .select("id")
         .single();
