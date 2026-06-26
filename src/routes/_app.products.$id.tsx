@@ -606,6 +606,25 @@ function ProductDetailPage() {
 
       <ProductPublishPricesCard productId={id} />
 
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <h3 className="text-sm font-semibold">ابزارهای هوش مصنوعی</h3>
+            <p className="text-xs text-muted-foreground">
+              تولید سریع متن تبلیغاتی برای این محصول
+            </p>
+          </div>
+          <AdCopyGenerator
+            productId={id}
+            productName={p.name}
+            category={p.category?.name ?? null}
+            brand={p.brand?.name ?? null}
+            price={adjustedPriceQ.data ?? null}
+            description={p.description ?? null}
+          />
+        </CardContent>
+      </Card>
+
       <ProductHistoryCard productId={id} />
 
       <Card>
