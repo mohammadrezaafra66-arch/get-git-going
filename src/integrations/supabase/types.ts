@@ -1629,6 +1629,7 @@ export type Database = {
           birth_date: string | null
           city: string | null
           created_at: string
+          didar_contact_id: string | null
           email: string | null
           id: string
           is_active: boolean
@@ -1647,6 +1648,7 @@ export type Database = {
           birth_date?: string | null
           city?: string | null
           created_at?: string
+          didar_contact_id?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
@@ -1665,6 +1667,7 @@ export type Database = {
           birth_date?: string | null
           city?: string | null
           created_at?: string
+          didar_contact_id?: string | null
           email?: string | null
           id?: string
           is_active?: boolean
@@ -2158,6 +2161,83 @@ export type Database = {
             referencedColumns: ["invoice_id"]
           },
         ]
+      }
+      didar_activities: {
+        Row: {
+          activity_type: string | null
+          created_by_name: string | null
+          customer_id: string | null
+          description: string | null
+          didar_id: string
+          id: string
+          imported_at: string
+          occurred_at: string | null
+          raw_data: Json | null
+          subject: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          created_by_name?: string | null
+          customer_id?: string | null
+          description?: string | null
+          didar_id: string
+          id?: string
+          imported_at?: string
+          occurred_at?: string | null
+          raw_data?: Json | null
+          subject?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          created_by_name?: string | null
+          customer_id?: string | null
+          description?: string | null
+          didar_id?: string
+          id?: string
+          imported_at?: string
+          occurred_at?: string | null
+          raw_data?: Json | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "didar_activities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      didar_import_log: {
+        Row: {
+          action: string | null
+          didar_id: string
+          entity_type: string
+          error_message: string | null
+          id: string
+          imported_at: string
+          raw_data: Json | null
+        }
+        Insert: {
+          action?: string | null
+          didar_id: string
+          entity_type: string
+          error_message?: string | null
+          id?: string
+          imported_at?: string
+          raw_data?: Json | null
+        }
+        Update: {
+          action?: string | null
+          didar_id?: string
+          entity_type?: string
+          error_message?: string | null
+          id?: string
+          imported_at?: string
+          raw_data?: Json | null
+        }
+        Relationships: []
       }
       document_status_history: {
         Row: {
