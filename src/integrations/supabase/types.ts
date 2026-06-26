@@ -9462,8 +9462,11 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: {
           available_credit: number
+          has_overdue: boolean
           held_credit: number
           outstanding_balance: number
+          overdue_since: string
+          settlement_score: number
           total_purchases: number
         }[]
       }
