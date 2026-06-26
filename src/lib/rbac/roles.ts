@@ -19,21 +19,25 @@ export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "accountant", 
  * active rows from `custom_roles`. System roles always come first; custom
  * roles are de-duplicated against the fixed list.
  */
+export type RoleOption = { name: string; label: string };
+
 export function useAllRoles() {
   const query = useQuery({
     queryKey: ["all-roles-combined"],
-    queryFn: async (): Promise<string[]> => {
+    queryFn: async (): Promise<RoleOption[]> => {
       const { data, error } = await supabase
         .from("custom_roles" as never)
-        .select("name,is_active")
+        .select("name, display_name, is_active")
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
-      const fixed = ALL_ROLES as string[];
-      const fixedSet = new Set(fixed);
-      const custom = ((data ?? []) as unknown as { name: string }[])
-        .map((r) => r.name)
-        .filter((n) => !fixedSet.has(n));
+      const fixed: RoleOption[] = ALL_ROLES.map((n) => ({ name: n, label: ROLE_LABELS[n] }));
+      const fixedSet = new Set(ALL_ROLES as string[]);
+      const custom: RoleOption[] = (
+        (data ?? []) as unknown as { name: string; display_name: string | null }[]
+      )
+        .filter((r) => !fixedSet.has(r.name))
+        .map((r) => ({ name: r.name, label: r.display_name || r.name }));
       return [...fixed, ...custom];
     },
   });
