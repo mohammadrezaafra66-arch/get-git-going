@@ -99,7 +99,7 @@ ${data.description ? `توضیحات: ${data.description}` : ""}
           product_name: data.productName,
           audience: data.audience,
         },
-        generated_variations: variations as unknown as Record<string, unknown>,
+        generated_variations: variations as any,
         created_by: context.userId,
       },
     ]);
