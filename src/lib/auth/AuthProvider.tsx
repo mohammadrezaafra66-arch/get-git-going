@@ -51,6 +51,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [state.user, state.rolesLoading]);
 
+  // Heartbeat: keep profiles.last_seen_at fresh for online-status indicators.
+  useEffect(() => {
+    const uid = state.user?.id;
+    if (!uid) return;
+    const ping = () => {
+      void supabase
+        .from("profiles")
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq("id", uid);
+    };
+    ping();
+    const id = setInterval(ping, 60_000);
+    return () => clearInterval(id);
+  }, [state.user?.id]);
+
   const signIn: AuthContextValue["signIn"] = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error && data.user) {
