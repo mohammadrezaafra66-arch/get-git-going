@@ -36,6 +36,7 @@ import { ProductSupplierManager } from "@/shared/components/ProductSupplierManag
 import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
 import { ProductForm } from "@/components/products/ProductForm";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { AdCopyGenerator } from "@/components/products/AdCopyGenerator";
 import type { ProductFormValues } from "@/lib/products/schemas";
 import {
   fetchProductDynamicValues,
