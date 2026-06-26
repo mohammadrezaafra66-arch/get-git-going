@@ -1065,6 +1065,9 @@ function PriceListShareSection({ rows }: { rows: PriceListRow[] }) {
           <span className="ms-2 text-xs text-muted-foreground">
             ({toFaDigits(String(rows.length))} ردیف)
           </span>
+          <span className="ms-2 text-xs text-muted-foreground">
+            • آخرین بروزرسانی: {formatDateTimeFa(new Date().toISOString())}
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
