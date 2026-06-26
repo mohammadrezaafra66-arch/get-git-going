@@ -24,6 +24,8 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
+import { Badge } from "@/components/ui/badge";
+import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
@@ -423,7 +425,11 @@ function ProductTab(props: {
         p_term: safe,
         p_limit: 100,
       });
-      let q = supabase.from("products").select("id, name, sku").eq("is_active", true).limit(20);
+      let q = supabase
+        .from("products")
+        .select("id, name, sku, stock_status")
+        .eq("is_active", true)
+        .limit(20);
       if (idsErr) {
         q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
       } else {
@@ -537,7 +543,12 @@ function ProductTab(props: {
             ) : (
               <div className="max-h-80 overflow-y-auto rounded-md border border-border divide-y divide-border">
                 {(productsQuery.data ?? []).map(
-                  (p: { id: string; name: string; sku: string | null }) => {
+                  (p: {
+                    id: string;
+                    name: string;
+                    sku: string | null;
+                    stock_status: "available" | "unavailable" | "limited" | "unknown";
+                  }) => {
                     const prices = pricesByProductQuery.data?.get(p.id) ?? [];
                     return (
                       <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
@@ -547,9 +558,20 @@ function ProductTab(props: {
                           className="flex w-full items-center justify-between gap-2 text-right"
                         >
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{p.name}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">
-                              {p.sku ?? "—"}
+                            <div className="font-bold truncate">{p.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className="text-[11px] text-muted-foreground font-mono"
+                                dir="ltr"
+                              >
+                                {p.sku ?? "—"}
+                              </span>
+                              <Badge
+                                variant={STOCK_STATUS_VARIANTS[p.stock_status]}
+                                className="text-[10px] py-0 px-1.5"
+                              >
+                                {STOCK_STATUS_LABELS[p.stock_status]}
+                              </Badge>
                             </div>
                           </div>
                         </button>
