@@ -172,6 +172,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
   const outstanding = Number(
     (creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0,
   );
+  const hasOverdue = Boolean(
+    (creditInfo as { has_overdue?: boolean } | null)?.has_overdue ?? false,
+  );
+  const overdueSince =
+    (creditInfo as { overdue_since?: string | null } | null)?.overdue_since ?? null;
+  const settlementScore = Number(
+    (creditInfo as { settlement_score?: number } | null)?.settlement_score ?? 0,
+  );
   const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
 
@@ -454,7 +462,11 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : "خطای ناشناخته";
-      toast.error(`ثبت ناموفق بود: ${msg}`);
+      if (msg.includes("CUSTOMER_OVERDUE")) {
+        toast.error("این مشتری مانده معوق دارد. صدور فاکتور امکان‌پذیر نیست.");
+      } else {
+        toast.error(`ثبت ناموفق بود: ${msg}`);
+      }
     },
   });
 
@@ -571,6 +583,27 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
               <AlertDescription className="text-amber-900 dark:text-amber-200">
                 مبلغ فاکتور ({formatNumber(totalAmount)} ریال) به همراه بدهی جاری از سقف اعتبار
                 مشتری فراتر می‌رود.
+              </AlertDescription>
+            </Alert>
+          )}
+          {selectedCustomer && hasOverdue && (
+            <Alert className="border-destructive bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive font-medium">
+                ⛔ این مشتری مانده معوق دارد — صدور فاکتور غیرمجاز است
+                {overdueSince && (
+                  <span className="block text-xs mt-1 font-normal">
+                    معوق از: {toFaDigits(overdueSince)}
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          {selectedCustomer && !hasOverdue && settlementScore < -20 && (
+            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900 dark:text-amber-200">
+                ⚠️ امتیاز تسویه این مشتری منفی است ({toFaDigits(settlementScore)})
               </AlertDescription>
             </Alert>
           )}
@@ -731,7 +764,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending} className="flex-1">
+        <Button type="submit" disabled={mutation.isPending || hasOverdue} className="flex-1">
           {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           ذخیره پیش‌فاکتور
         </Button>
