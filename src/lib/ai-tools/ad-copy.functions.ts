@@ -98,7 +98,7 @@ ${data.description ? `توضیحات: ${data.description}` : ""}
         product_name: data.productName,
         audience: data.audience,
       },
-      output_data: { variations },
+      generated_variations: variations as unknown as Record<string, unknown>,
       created_by: context.userId,
     });
     if (insertErr) {
