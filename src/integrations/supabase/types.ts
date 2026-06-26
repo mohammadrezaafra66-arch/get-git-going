@@ -1952,6 +1952,45 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_ticker_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          message_fa: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          message_fa: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          message_fa?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_ticker_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_ticker_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_receipt_status_history: {
         Row: {
           changed_at: string
@@ -2771,6 +2810,8 @@ export type Database = {
           last_calculated_at: string
           monthly_score: number
           normalized_score: number
+          previous_rank: number | null
+          rank: number | null
           total_score: number
           updated_at: string
           weekly_score: number
@@ -2784,6 +2825,8 @@ export type Database = {
           last_calculated_at?: string
           monthly_score?: number
           normalized_score?: number
+          previous_rank?: number | null
+          rank?: number | null
           total_score?: number
           updated_at?: string
           weekly_score?: number
@@ -2797,6 +2840,8 @@ export type Database = {
           last_calculated_at?: string
           monthly_score?: number
           normalized_score?: number
+          previous_rank?: number | null
+          rank?: number | null
           total_score?: number
           updated_at?: string
           weekly_score?: number
