@@ -2618,6 +2618,68 @@ export type Database = {
           },
         ]
       }
+      employee_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          department: string | null
+          direct_manager_id: string | null
+          employment_start_date: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          department?: string | null
+          direct_manager_id?: string | null
+          employment_start_date?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          department?: string | null
+          direct_manager_id?: string | null
+          employment_start_date?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_profiles_direct_manager_id_fkey"
+            columns: ["direct_manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profiles_direct_manager_id_fkey"
+            columns: ["direct_manager_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_progress: {
         Row: {
           created_at: string
@@ -5250,6 +5312,51 @@ export type Database = {
         }
         Relationships: []
       }
+      presence_logs: {
+        Row: {
+          clock_in_at: string
+          clock_out_at: string | null
+          date: string
+          id: string
+          notes: string | null
+          total_minutes: number | null
+          user_id: string
+        }
+        Insert: {
+          clock_in_at?: string
+          clock_out_at?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          total_minutes?: number | null
+          user_id: string
+        }
+        Update: {
+          clock_in_at?: string
+          clock_out_at?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          total_minutes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presence_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presence_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_alert_notifications: {
         Row: {
           alert_rule_id: string
@@ -6720,6 +6827,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          last_seen_at: string | null
           phone: string | null
           position: string | null
           registered_at: string
@@ -6733,6 +6841,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean
+          last_seen_at?: string | null
           phone?: string | null
           position?: string | null
           registered_at?: string
@@ -6746,6 +6855,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          last_seen_at?: string | null
           phone?: string | null
           position?: string | null
           registered_at?: string
@@ -8499,6 +8609,30 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_monthly_hours: {
+        Row: {
+          days_present: number | null
+          month: string | null
+          total_minutes: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presence_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presence_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "publish_recipients_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_computed_prices_public: {
         Row: {
           computed_at: string | null
@@ -10106,6 +10240,7 @@ export type Database = {
         Args: { _product_id: string; _user_id: string }
         Returns: boolean
       }
+      is_user_online: { Args: { _user_id: string }; Returns: boolean }
       kd_role_can_view: {
         Args: { _access_level: string; _uid: string }
         Returns: boolean

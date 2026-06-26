@@ -1,0 +1,1 @@
+ALTER VIEW public.employee_monthly_hours SET (security_invoker = true);
