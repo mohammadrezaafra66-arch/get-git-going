@@ -72,6 +72,7 @@ const DEFAULTS: ProductFormValues = {
   primary_spec: "",
   description: "",
   technical_notes: "",
+  barcode: "",
   label_ids: [],
 };
 
