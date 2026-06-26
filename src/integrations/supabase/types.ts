@@ -1509,11 +1509,15 @@ export type Database = {
           credit_limit: number
           credit_score: number
           customer_id: string
+          has_overdue: boolean | null
           id: string
           is_active: boolean
+          last_overdue_check_at: string | null
           last_purchase_date: string | null
           late_payments_count: number
           outstanding_balance: number
+          overdue_since: string | null
+          settlement_score: number | null
           total_paid: number
           total_purchases: number
           updated_at: string
@@ -1523,11 +1527,15 @@ export type Database = {
           credit_limit?: number
           credit_score?: number
           customer_id: string
+          has_overdue?: boolean | null
           id?: string
           is_active?: boolean
+          last_overdue_check_at?: string | null
           last_purchase_date?: string | null
           late_payments_count?: number
           outstanding_balance?: number
+          overdue_since?: string | null
+          settlement_score?: number | null
           total_paid?: number
           total_purchases?: number
           updated_at?: string
@@ -1537,11 +1545,15 @@ export type Database = {
           credit_limit?: number
           credit_score?: number
           customer_id?: string
+          has_overdue?: boolean | null
           id?: string
           is_active?: boolean
+          last_overdue_check_at?: string | null
           last_purchase_date?: string | null
           late_payments_count?: number
           outstanding_balance?: number
+          overdue_since?: string | null
+          settlement_score?: number | null
           total_paid?: number
           total_purchases?: number
           updated_at?: string
@@ -3356,6 +3368,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          actual_settlement_date: string | null
           commitment_confirmed: boolean
           created_at: string
           created_by: string | null
@@ -3363,6 +3376,7 @@ export type Database = {
           deposit_amount: number | null
           discount_amount: number
           due_date: string | null
+          expected_settlement_date: string | null
           id: string
           invoice_type: string
           issue_date: string
@@ -3370,6 +3384,7 @@ export type Database = {
           notes: string | null
           number: string | null
           sale_price_type_id: string | null
+          settled_amount: number | null
           settlement_type_id: string | null
           status: string
           subtotal: number
@@ -3379,6 +3394,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_settlement_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
@@ -3386,6 +3402,7 @@ export type Database = {
           deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
+          expected_settlement_date?: string | null
           id?: string
           invoice_type?: string
           issue_date?: string
@@ -3393,6 +3410,7 @@ export type Database = {
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
+          settled_amount?: number | null
           settlement_type_id?: string | null
           status?: string
           subtotal?: number
@@ -3402,6 +3420,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_settlement_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
@@ -3409,6 +3428,7 @@ export type Database = {
           deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
+          expected_settlement_date?: string | null
           id?: string
           invoice_type?: string
           issue_date?: string
@@ -3416,6 +3436,7 @@ export type Database = {
           notes?: string | null
           number?: string | null
           sale_price_type_id?: string | null
+          settled_amount?: number | null
           settlement_type_id?: string | null
           status?: string
           subtotal?: number
