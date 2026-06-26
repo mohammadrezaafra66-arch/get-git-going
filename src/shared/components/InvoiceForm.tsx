@@ -462,7 +462,11 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : "خطای ناشناخته";
-      toast.error(`ثبت ناموفق بود: ${msg}`);
+      if (msg.includes("CUSTOMER_OVERDUE")) {
+        toast.error("این مشتری مانده معوق دارد. صدور فاکتور امکان‌پذیر نیست.");
+      } else {
+        toast.error(`ثبت ناموفق بود: ${msg}`);
+      }
     },
   });
 
