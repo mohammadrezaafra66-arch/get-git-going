@@ -45,6 +45,15 @@ import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { toast } from "sonner";
+import { Clipboard } from "lucide-react";
+import {
+  formatForPlainText,
+  formatForTelegram,
+  formatForWhatsApp,
+  type PriceListCanonicalModel,
+  type PriceListRow,
+} from "@/lib/price-list/canonical";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => {
