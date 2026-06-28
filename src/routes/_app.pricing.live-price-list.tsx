@@ -85,11 +85,16 @@ interface HistoryRow {
   product_id: string;
   sale_price_type_id: string | null;
   old_sale_price: number | null;
-  new_sale_price: number;
   change_amount: number | null;
   change_percent: number | null;
   created_at: string;
-  snapshot_id: string | null;
+}
+
+interface PriceRow {
+  product_id: string;
+  sale_price_type_id: string | null;
+  rounded_sale_price: number;
+  computed_at: string;
 }
 
 interface SnapshotLite {
@@ -243,15 +248,45 @@ function LivePriceListPage() {
     [productsQuery.data],
   );
 
-  // ---------- history (latest per product+sale_price_type) ----------
-  const historyQuery = useQuery({
+  // ---------- current prices (from product_computed_prices_public) ----------
+  const pricesQuery = useQuery({
     enabled: productIds.length > 0,
-    queryKey: ["live-price-history", productIds, salePriceTypeId],
+    queryKey: ["live-price-pcp", productIds, salePriceTypeId],
+    queryFn: async () => {
+      let q = supabase
+        .from("product_computed_prices_public")
+        .select(
+          "product_id, sale_price_type_id, rounded_sale_price, computed_at",
+        )
+        .in("product_id", productIds)
+        .order("computed_at", { ascending: false })
+        .limit(productIds.length * 50);
+      if (salePriceTypeId !== "__all") q = q.eq("sale_price_type_id", salePriceTypeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      // dedupe latest by (product_id, sale_price_type_id)
+      const seen = new Set<string>();
+      const latest: PriceRow[] = [];
+      for (const r of (data ?? []) as PriceRow[]) {
+        const k = `${r.product_id}::${r.sale_price_type_id ?? "_"}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        latest.push(r);
+      }
+      return latest;
+    },
+    staleTime: 30_000,
+  });
+
+  // ---------- last change info (from product_sale_price_history) ----------
+  const changeQuery = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["live-price-history-change", productIds, salePriceTypeId],
     queryFn: async () => {
       let q = supabase
         .from("product_sale_price_history")
         .select(
-          "id, product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at, snapshot_id",
+          "product_id, sale_price_type_id, old_sale_price, change_amount, change_percent, created_at",
         )
         .in("product_id", productIds)
         .order("created_at", { ascending: false })
@@ -259,10 +294,9 @@ function LivePriceListPage() {
       if (salePriceTypeId !== "__all") q = q.eq("sale_price_type_id", salePriceTypeId);
       const { data, error } = await q;
       if (error) throw error;
-      // dedupe latest by (product_id, sale_price_type_id)
       const seen = new Set<string>();
-      const latest: HistoryRow[] = [];
-      for (const r of (data ?? []) as HistoryRow[]) {
+      const latest: Array<Omit<HistoryRow, "id">> = [];
+      for (const r of (data ?? []) as Array<Omit<HistoryRow, "id">>) {
         const k = `${r.product_id}::${r.sale_price_type_id ?? "_"}`;
         if (seen.has(k)) continue;
         seen.add(k);
@@ -274,17 +308,8 @@ function LivePriceListPage() {
   });
 
   // ---------- snapshots (only for privileged users) ----------
-  const snapshotIds = useMemo(
-    () =>
-      isPrivileged
-        ? Array.from(
-            new Set(
-              (historyQuery.data ?? []).map((h) => h.snapshot_id).filter((x): x is string => !!x),
-            ),
-          )
-        : [],
-    [historyQuery.data, isPrivileged],
-  );
+  // PCP rows don't carry snapshot_id; keep query disabled to preserve type-shape.
+  const snapshotIds: string[] = useMemo(() => [], []);
   const snapshotsQuery = useQuery({
     enabled: isPrivileged && snapshotIds.length > 0,
     queryKey: ["live-price-snapshots", snapshotIds],
@@ -300,26 +325,48 @@ function LivePriceListPage() {
   });
 
   // ---------- merge ----------
+  type MergedHistory = {
+    id: string;
+    product_id: string;
+    sale_price_type_id: string | null;
+    rounded_sale_price: number;
+    computed_at: string;
+    old_sale_price: number | null;
+    change_amount: number | null;
+    change_percent: number | null;
+    snapshot?: SnapshotLite | null;
+    sale_price_type_title?: string;
+  };
   type MergedRow = {
     product: ProductRow;
-    histories: Array<
-      HistoryRow & { snapshot?: SnapshotLite | null; sale_price_type_title?: string }
-    >;
+    histories: MergedHistory[];
     hasPrice: boolean;
   };
   const merged: MergedRow[] = useMemo(() => {
     const byProduct = new Map<string, MergedRow>();
     const products = productsQuery.data?.rows ?? [];
     for (const p of products) byProduct.set(p.id, { product: p, histories: [], hasPrice: false });
-    const snapMap = new Map((snapshotsQuery.data ?? []).map((s) => [s.id, s]));
     const typeMap = new Map(salePriceTypes.map((t: any) => [t.id, t.title as string]));
-    for (const h of historyQuery.data ?? []) {
-      const m = byProduct.get(h.product_id);
+    const changeMap = new Map<string, Omit<HistoryRow, "id">>();
+    for (const c of changeQuery.data ?? []) {
+      changeMap.set(`${c.product_id}::${c.sale_price_type_id ?? "_"}`, c);
+    }
+    for (const p of pricesQuery.data ?? []) {
+      const m = byProduct.get(p.product_id);
       if (!m) continue;
+      const key = `${p.product_id}::${p.sale_price_type_id ?? "_"}`;
+      const ch = changeMap.get(key);
       m.histories.push({
-        ...h,
-        snapshot: h.snapshot_id ? (snapMap.get(h.snapshot_id) ?? null) : null,
-        sale_price_type_title: h.sale_price_type_id ? typeMap.get(h.sale_price_type_id) : "—",
+        id: key,
+        product_id: p.product_id,
+        sale_price_type_id: p.sale_price_type_id,
+        rounded_sale_price: Number(p.rounded_sale_price),
+        computed_at: p.computed_at,
+        old_sale_price: ch?.old_sale_price ?? null,
+        change_amount: ch?.change_amount ?? null,
+        change_percent: ch?.change_percent ?? null,
+        snapshot: null,
+        sale_price_type_title: p.sale_price_type_id ? typeMap.get(p.sale_price_type_id) : "—",
       });
       m.hasPrice = true;
     }
@@ -332,7 +379,7 @@ function LivePriceListPage() {
       result = result.filter((r) => {
         if (!r.hasPrice) return false;
         return r.histories.some((h) => {
-          const v = Number(h.new_sale_price);
+          const v = Number(h.rounded_sale_price);
           if (minNum !== null && v < minNum) return false;
           if (maxNum !== null && v > maxNum) return false;
           return true;
@@ -342,8 +389,8 @@ function LivePriceListPage() {
     return result;
   }, [
     productsQuery.data,
-    historyQuery.data,
-    snapshotsQuery.data,
+    pricesQuery.data,
+    changeQuery.data,
     salePriceTypes,
     priceFilter,
     minNum,
@@ -353,7 +400,7 @@ function LivePriceListPage() {
 
   const total = productsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const isLoading = productsQuery.isLoading || (productIds.length > 0 && historyQuery.isLoading);
+  const isLoading = productsQuery.isLoading || (productIds.length > 0 && pricesQuery.isLoading);
 
   // ---------- analytics: track price_checked for products whose price is shown ----------
   useEffect(() => {
@@ -435,7 +482,7 @@ function LivePriceListPage() {
             productId: m.product.id,
             productName: formatProductDisplayNameWithFallback(m.product as any),
             productCode: m.product.sku ?? "",
-            basePrice: Number(m.histories[0]?.new_sale_price ?? 0),
+            basePrice: Number(m.histories[0]?.rounded_sale_price ?? 0),
             priceMode: m.histories[0]?.sale_price_type_title ?? "—",
             unit: "",
             priority: 0,
