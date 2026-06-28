@@ -818,7 +818,7 @@ function renderProductRows(
       </td>
       <td className="p-3 align-top">
         <div className="text-base font-bold text-foreground">
-          {formatNumber(Number(h.new_sale_price))}{" "}
+          {formatNumber(Number(h.rounded_sale_price))}{" "}
           <span className="text-xs font-normal text-muted-foreground">ت</span>
         </div>
         {h.old_sale_price !== null && h.old_sale_price !== undefined && (
@@ -831,7 +831,7 @@ function renderProductRows(
         <ChangeCell h={h} />
       </td>
       <td className="p-3 align-top text-[11px] text-muted-foreground">
-        {formatDateTimeFa(h.created_at)}
+        {formatDateTimeFa(h.computed_at)}
       </td>
       {idx === 0 && (
         <td className="p-3 align-top" rowSpan={row.histories.length}>
@@ -934,13 +934,13 @@ function MobileProductCard({
                     {h.sale_price_type_title ?? "—"}
                   </Badge>
                   <span className="text-[10px] text-muted-foreground">
-                    {formatDateTimeFa(h.created_at)}
+                    {formatDateTimeFa(h.computed_at)}
                   </span>
                 </div>
                 <div className="mt-1 flex items-end justify-between">
                   <div>
                     <div className="text-base font-bold text-foreground">
-                      {formatNumber(Number(h.new_sale_price))}{" "}
+                      {formatNumber(Number(h.rounded_sale_price))}{" "}
                       <span className="text-xs font-normal text-muted-foreground">ت</span>
                     </div>
                     {h.old_sale_price !== null && h.old_sale_price !== undefined && (
@@ -1030,7 +1030,15 @@ function StockBadge({ s }: { s: string }) {
   );
 }
 
-function ChangeCell({ h }: { h: HistoryRow }) {
+function ChangeCell({
+  h,
+}: {
+  h: {
+    old_sale_price: number | null;
+    change_amount: number | null;
+    change_percent: number | null;
+  };
+}) {
   if (h.old_sale_price === null || h.old_sale_price === undefined) {
     return (
       <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary font-normal">
