@@ -10492,6 +10492,10 @@ export type Database = {
         Returns: boolean
       }
       is_user_online: { Args: { _user_id: string }; Returns: boolean }
+      is_valid_audit_entity_type: {
+        Args: { _entity_type: string }
+        Returns: boolean
+      }
       kd_role_can_view: {
         Args: { _access_level: string; _uid: string }
         Returns: boolean
