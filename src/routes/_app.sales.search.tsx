@@ -345,6 +345,10 @@ function SalesSearchPage() {
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
 
+  // Thumbnails for visible search results (shared pattern with /products admin list)
+  const visibleProductIds = useMemo(() => products.map((p) => p.id), [products]);
+  const { thumbnailFor } = useProductThumbnails(visibleProductIds);
+
   // ---------- DT.7H: Observatory snippets for current page of results ----------
   // Read-only sidecar query. Never blocks/replaces the main search.
   const productIdsForSnippets = useMemo(
@@ -781,6 +785,7 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
+                    thumbnailUrl={thumbnailFor(p.id)}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                       queryClient.invalidateQueries({
