@@ -23,6 +23,7 @@ import {
   ArrowUpDown,
   AlertTriangle,
   RefreshCw,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -94,6 +95,11 @@ import {
   fetchObservatoryPdfHintsForProducts,
   type ObservatoryPdfHintMap,
 } from "@/lib/sales/observatory-snippets";
+import { buildFromSaleList } from "@/lib/price-list/builders";
+import { formatForPlainText } from "@/lib/price-list/formatters/plain-text";
+import { formatForTelegram } from "@/lib/price-list/formatters/telegram";
+import { formatForWhatsApp } from "@/lib/price-list/formatters/whatsapp";
+import { formatForRubika } from "@/lib/price-list/formatters/rubika";
 
 const PAGE_SIZE = 20;
 
@@ -654,6 +660,32 @@ function SaleListDetailPage() {
   const handlePreview = () => openPdfOrderDialog();
   const handleDownload = () => openPdfOrderDialog();
 
+  const copyShareText = async (
+    channel: "plain" | "telegram" | "whatsapp" | "rubika",
+    label: string,
+  ) => {
+    if (items.length === 0) {
+      toast.error("لیست خالی است.");
+      return;
+    }
+    try {
+      const model = buildFromSaleList({
+        list,
+        items,
+        shop: shopSettingsQ.data ?? null,
+      });
+      let text = "";
+      if (channel === "plain") text = formatForPlainText(model);
+      else if (channel === "telegram") text = formatForTelegram(model)[0] ?? "";
+      else if (channel === "whatsapp") text = formatForWhatsApp(model);
+      else text = formatForRubika(model);
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} در کلیپ‌بورد کپی شد.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "کپی ناموفق بود.");
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -669,6 +701,38 @@ function SaleListDetailPage() {
             </Button>
             <Button variant="outline" size="sm" className="gap-1" onClick={handleDownload}>
               <Download className="h-4 w-4" /> دانلود PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("plain", "متن ساده")}
+            >
+              <Copy className="h-4 w-4" /> کپی متن ساده
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("telegram", "متن تلگرام")}
+            >
+              <Copy className="h-4 w-4" /> تلگرام
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("whatsapp", "متن واتساپ")}
+            >
+              <Copy className="h-4 w-4" /> واتساپ
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("rubika", "متن روبیکا")}
+            >
+              <Copy className="h-4 w-4" /> روبیکا
             </Button>
             {canPublish && (
               <Button asChild size="sm" className="gap-1">

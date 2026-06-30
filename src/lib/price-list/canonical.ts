@@ -1,5 +1,10 @@
-// Canonical price list model — single source of truth for all output formats
+// Canonical price list model — single source of truth for all output formats.
+//
+// Back-compat: legacy fields (basePrice/priceMode/unit/...) used by
+// live-price-list remain. New optional fields enrich the model so the same
+// shape can describe a sale-list snapshot (PDF + share text channels).
 export interface PriceListRow {
+  // Legacy fields (still used by live-price-list)
   productId: string;
   productName: string;
   productCode: string;
@@ -10,6 +15,31 @@ export interface PriceListRow {
   unit: string;
   priority: number;
   categoryName: string;
+
+  // Enriched optional fields (sale-list snapshot)
+  brandKey?: string;
+  brandName?: string | null;
+  model?: string | null;
+  currentPrice?: number;
+  previousPrice?: number | null;
+  changeAmount?: number | null;
+  changePercent?: number | null;
+  stockStatus?: string | null;
+  productType?: string | null;
+  labels?: string[];
+  description?: string | null;
+  observatoryHasPriceAdvantage?: boolean;
+}
+
+export interface PriceListShopInfo {
+  name?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  rubika?: string | null;
+  whatsapp?: string | null;
+  eitaa?: string | null;
+  baleh?: string | null;
 }
 
 export interface PriceListCanonicalModel {
@@ -22,49 +52,23 @@ export interface PriceListCanonicalModel {
   companyName: string;
   companyPhone?: string;
   notes?: string;
+
+  // Enriched optional fields (sale-list snapshot)
+  selectedColumns?: string[];
+  brandOrder?: string[];
+  productOrderByBrand?: Record<string, string[]>;
+  sellerInfo?: string | null;
+  termsText?: string | null;
+  shopInfo?: PriceListShopInfo | null;
+  salePriceTypeTitle?: string | null;
+  settlementTypeTitle?: string | null;
+  versionNumber?: number;
+  createdByName?: string | null;
 }
 
-const MAX_TELEGRAM_CHARS = 4096;
-
-export function formatForTelegram(model: PriceListCanonicalModel): string[] {
-  const header = `📋 ${model.title}\n📅 ${model.generatedAt.toLocaleDateString("fa-IR")}\n\n`;
-  const footer = `\n📞 ${model.companyPhone ?? ""}`;
-  const rows = model.rows.map(
-    (r) =>
-      `📦 ${r.productName} | ${r.basePrice.toLocaleString("fa-IR")} ${model.currency} | ${r.priceMode}`,
-  );
-  const parts: string[] = [];
-  let current = header;
-  for (const row of rows) {
-    if ((current + row + "\n" + footer).length > MAX_TELEGRAM_CHARS) {
-      parts.push(current + footer);
-      current = "";
-    }
-    current += row + "\n";
-  }
-  parts.push(current + footer);
-  return parts;
-}
-
-export function formatForWhatsApp(model: PriceListCanonicalModel): string {
-  const header = `*${model.title}*\n_${model.generatedAt.toLocaleDateString("fa-IR")}_\n\n`;
-  const rows = model.rows
-    .map(
-      (r) =>
-        `📦 *${r.productName}* | ${r.basePrice.toLocaleString("fa-IR")} ${model.currency} | ${r.priceMode}`,
-    )
-    .join("\n");
-  const footer = model.companyPhone ? `\n\n📞 ${model.companyPhone}` : "";
-  return header + rows + footer;
-}
-
-export function formatForPlainText(model: PriceListCanonicalModel): string {
-  const header = `${model.title}\n${model.generatedAt.toLocaleDateString("fa-IR")}\n\n`;
-  const rows = model.rows
-    .map(
-      (r) =>
-        `${r.productName} | ${r.basePrice.toLocaleString("fa-IR")} ${model.currency} | ${r.priceMode}`,
-    )
-    .join("\n");
-  return header + rows;
-}
+// Back-compat re-exports — live-price-list and any older callers continue to
+// import formatters from this module.
+export { formatForPlainText } from "./formatters/plain-text";
+export { formatForTelegram } from "./formatters/telegram";
+export { formatForWhatsApp } from "./formatters/whatsapp";
+export { formatForRubika } from "./formatters/rubika";
