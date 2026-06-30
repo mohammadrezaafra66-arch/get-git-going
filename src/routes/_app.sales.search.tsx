@@ -428,7 +428,7 @@ function SalesSearchPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="نام محصول، SKU، برند یا دسته (حداقل ۲ کاراکتر)"
+                placeholder="نام محصول، SKU، بارکد، برند یا دسته (حداقل ۲ کاراکتر)"
                 className="pr-10 h-12 text-base"
                 autoFocus
               />

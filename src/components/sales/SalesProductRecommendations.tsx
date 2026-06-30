@@ -3,6 +3,7 @@ import { Loader2, Sparkles, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import {
   fetchProductRecommendations,
   REASON_LABEL_FA,
@@ -30,6 +31,8 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
 
   const recs = (recsQuery.data ?? []).slice(0, max);
   const ids = recs.map((r) => r.product_id);
+
+  const { thumbnailFor } = useProductThumbnails(ids);
 
   const pricesQuery = useQuery({
     enabled: ids.length > 0,
@@ -90,10 +93,20 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
       <ul className="space-y-1.5">
         {recs.map((rec) => {
           const ps = pricesMap[rec.product_id] ?? [];
+          const thumb = thumbnailFor(rec.product_id);
           return (
             <li key={rec.product_id} className="rounded border bg-background/70 p-2 text-xs">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Package className="h-3 w-3 text-muted-foreground" />
+                {thumb ? (
+                  <img
+                    src={thumb}
+                    alt={rec.name}
+                    loading="lazy"
+                    className="h-8 w-8 flex-shrink-0 rounded border border-border object-cover bg-muted"
+                  />
+                ) : (
+                  <Package className="h-3 w-3 text-muted-foreground" />
+                )}
                 <span className="font-medium truncate">{rec.name}</span>
                 {rec.brand_name && (
                   <span className="text-muted-foreground">· {rec.brand_name}</span>

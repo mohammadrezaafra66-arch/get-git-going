@@ -533,7 +533,7 @@ function ProductTab(props: {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="جستجوی نام محصول یا SKU (حداقل ۲ حرف)"
+              placeholder="جستجوی نام محصول، SKU یا بارکد (حداقل ۲ حرف)"
               className="pr-9"
             />
           </div>
