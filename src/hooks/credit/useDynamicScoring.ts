@@ -221,3 +221,57 @@ export function useCustomerLatestAllocation(customerId: string | undefined) {
     },
   });
 }
+
+export interface SalespersonLatestAllocation {
+  id: string;
+  capital_setting_id: string;
+  salesperson_id: string;
+  weighted_score: number;
+  share_ratio: number;
+  allocated_capital: number;
+  created_at: string;
+  capital_date: string;
+}
+
+export function useSalespersonLatestAllocation(salespersonId: string | undefined) {
+  return useQuery({
+    queryKey: ["dyn-salesperson-latest-allocation", salespersonId],
+    enabled: Boolean(salespersonId),
+    queryFn: async (): Promise<SalespersonLatestAllocation | null> => {
+      const { data, error } = await supabase
+        .from("salesperson_capital_allocations_dynamic")
+        .select(
+          "id, capital_setting_id, salesperson_id, weighted_score, share_ratio, allocated_capital, created_at, daily_capital_settings!inner(capital_date)",
+        )
+        .eq("salesperson_id", salespersonId!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const row = data as unknown as {
+        id: string;
+        capital_setting_id: string;
+        salesperson_id: string;
+        weighted_score: number;
+        share_ratio: number;
+        allocated_capital: number;
+        created_at: string;
+        daily_capital_settings: { capital_date: string } | { capital_date: string }[];
+      };
+      const setting = Array.isArray(row.daily_capital_settings)
+        ? row.daily_capital_settings[0]
+        : row.daily_capital_settings;
+      return {
+        id: row.id,
+        capital_setting_id: row.capital_setting_id,
+        salesperson_id: row.salesperson_id,
+        weighted_score: Number(row.weighted_score),
+        share_ratio: Number(row.share_ratio),
+        allocated_capital: Number(row.allocated_capital),
+        created_at: row.created_at,
+        capital_date: setting?.capital_date ?? "",
+      };
+    },
+  });
+}
