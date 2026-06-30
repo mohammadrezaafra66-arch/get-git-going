@@ -165,12 +165,16 @@ function ChangeCell({ it }: { it: BoardPriceItem }) {
     );
   }
   const positive = (pct ?? amt ?? 0) > 0;
+  const pctText =
+    pct !== null
+      ? Math.abs(pct) > 999
+        ? `${positive ? "+" : "-"}۹۹۹٪+`
+        : `${positive ? "+" : ""}${formatNumber(pct)}٪`
+      : null;
   return (
     <Badge variant={positive ? "default" : "destructive"} className="gap-1">
       {positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-      {pct !== null
-        ? `${positive ? "+" : ""}${formatNumber(pct)}٪`
-        : `${positive ? "+" : ""}${formatNumber(amt!)}`}
+      {pctText !== null ? pctText : `${positive ? "+" : ""}${formatNumber(amt!)}`}
     </Badge>
   );
 }
