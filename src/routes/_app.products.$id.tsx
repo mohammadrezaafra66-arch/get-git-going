@@ -689,6 +689,48 @@ function ProductDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={blocker.status === "blocked"}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تغییرات ذخیره‌نشده دارید</AlertDialogTitle>
+            <AlertDialogDescription>
+              تغییراتی که در فرم محصول واردکرده‌اید هنوز ذخیره نشده است. می‌خواهید چه کاری انجام دهید؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => blocker.reset?.()}
+              disabled={saving}
+            >
+              بازگشت به ویرایش
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                // ذخیره و در ادامه navigation
+                pendingProceedRef.current = blocker.proceed ?? null;
+                formRef.current?.requestSubmit();
+              }}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+              ذخیره و خروج
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                clearDraft();
+                setIsDirty(false);
+                blocker.proceed?.();
+              }}
+              disabled={saving}
+            >
+              خروج بدون ذخیره
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
