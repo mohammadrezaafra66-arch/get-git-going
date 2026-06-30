@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Sparkles,
   UserPlus,
+  Minus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -824,12 +825,15 @@ function renderProductRows(
         </Badge>
       </td>
       <td className="p-3 align-top">
-        <div className="text-base font-bold text-foreground">
+        <div
+          key={`price-${h.rounded_sale_price}`}
+          className="price-flash inline-block text-lg font-bold tabular-nums text-foreground"
+        >
           {formatNumber(Number(h.rounded_sale_price))}{" "}
           <span className="text-xs font-normal text-muted-foreground">ت</span>
         </div>
         {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-          <div className="text-[11px] text-muted-foreground line-through">
+          <div className="text-xs text-muted-foreground/60 line-through">
             {formatNumber(Number(h.old_sale_price))}
           </div>
         )}
@@ -896,7 +900,7 @@ function MobileProductCard({
     <Card>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} />
+          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} size="md" />
           <StockBadge s={row.product.stock_status} />
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -937,7 +941,7 @@ function MobileProductCard({
         ) : (
           <div className="space-y-2">
             {row.histories.map((h) => (
-              <div key={h.id} className="rounded-md border border-border p-2">
+              <div key={h.id} className="rounded-lg border bg-card p-2.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="secondary" className="text-[10px] font-normal">
                     {h.sale_price_type_title ?? "—"}
@@ -948,12 +952,15 @@ function MobileProductCard({
                 </div>
                 <div className="mt-1 flex items-end justify-between">
                   <div>
-                    <div className="text-base font-bold text-foreground">
+                    <div
+                      key={`mprice-${h.rounded_sale_price}`}
+                      className="price-flash inline-block text-xl font-bold tabular-nums text-foreground"
+                    >
                       {formatNumber(Number(h.rounded_sale_price))}{" "}
                       <span className="text-xs font-normal text-muted-foreground">ت</span>
                     </div>
                     {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-                      <div className="text-[11px] text-muted-foreground line-through">
+                      <div className="text-xs text-muted-foreground/60 line-through">
                         {formatNumber(Number(h.old_sale_price))}
                       </div>
                     )}
@@ -998,10 +1005,13 @@ function MobileProductCard({
 function ProductCell({
   product,
   thumbnailUrl,
+  size = "sm",
 }: {
   product: ProductRow;
   thumbnailUrl?: string;
+  size?: "sm" | "md";
 }) {
+  const thumbCls = size === "md" ? "h-14 w-14 rounded-lg" : "h-12 w-12 rounded-md";
   return (
     <div className="flex min-w-0 items-start gap-2">
       {thumbnailUrl ? (
@@ -1009,10 +1019,10 @@ function ProductCell({
           src={thumbnailUrl}
           alt={product.name}
           loading="lazy"
-          className="h-12 w-12 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+          className={`${thumbCls} flex-shrink-0 border border-border object-cover bg-muted`}
         />
       ) : (
-        <div className="h-12 w-12 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+        <div className={`${thumbCls} flex-shrink-0 border border-dashed border-border bg-muted/40`} />
       )}
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-foreground">
@@ -1077,7 +1087,11 @@ function ChangeCell({
   const pct =
     h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
   if (amt === 0) {
-    return <span className="text-[11px] text-muted-foreground">بدون تغییر</span>;
+    return (
+      <Badge variant="outline" className="border-border text-muted-foreground font-normal">
+        <Minus className="ml-1 h-3 w-3" /> بدون تغییر
+      </Badge>
+    );
   }
   const up = amt > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
