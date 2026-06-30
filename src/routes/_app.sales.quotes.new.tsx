@@ -27,6 +27,7 @@ import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDial
 import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -451,6 +452,7 @@ function ProductTab(props: {
     () => (productsQuery.data ?? []).map((p: { id: string }) => p.id),
     [productsQuery.data],
   );
+  const { thumbnailFor } = useProductThumbnails(productIds);
   const pricesByProductQuery = useQuery({
     enabled: productIds.length > 0,
     queryKey: ["quote-product-search-prices", productIds],
@@ -547,31 +549,85 @@ function ProductTab(props: {
                     id: string;
                     name: string;
                     sku: string | null;
+                    barcode?: string | null;
                     stock_status: "available" | "unavailable" | "limited" | "unknown";
+                    labels?: Array<{
+                      label:
+                        | { id: string; title: string; color: string | null; visibility?: string | null }
+                        | Array<{ id: string; title: string; color: string | null; visibility?: string | null }>
+                        | null;
+                    }>;
                   }) => {
                     const prices = pricesByProductQuery.data?.get(p.id) ?? [];
+                    const thumb = thumbnailFor(p.id);
+                    const labelList = (p.labels ?? [])
+                      .map((row) => (Array.isArray(row.label) ? row.label[0] : row.label))
+                      .filter(
+                        (l): l is { id: string; title: string; color: string | null; visibility?: string | null } =>
+                          !!l,
+                      );
                     return (
                       <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
                         <button
                           type="button"
                           onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
-                          className="flex w-full items-center justify-between gap-2 text-right"
+                          className="flex w-full items-start justify-between gap-2 text-right"
                         >
-                          <div className="min-w-0">
-                            <div className="font-bold truncate">{p.name}</div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span
-                                className="text-[11px] text-muted-foreground font-mono"
-                                dir="ltr"
-                              >
-                                {p.sku ?? "—"}
-                              </span>
-                              <Badge
-                                variant={STOCK_STATUS_VARIANTS[p.stock_status]}
-                                className="text-[10px] py-0 px-1.5"
-                              >
-                                {STOCK_STATUS_LABELS[p.stock_status]}
-                              </Badge>
+                          <div className="flex min-w-0 items-start gap-2">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt={p.name}
+                                loading="lazy"
+                                className="h-10 w-10 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-bold truncate">{p.name}</div>
+                              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                <span
+                                  className="text-[11px] text-muted-foreground font-mono"
+                                  dir="ltr"
+                                >
+                                  {p.sku ?? "—"}
+                                </span>
+                                {p.barcode && (
+                                  <span
+                                    className="text-[11px] text-muted-foreground font-mono"
+                                    dir="ltr"
+                                    title="بارکد"
+                                  >
+                                    {p.barcode}
+                                  </span>
+                                )}
+                                <Badge
+                                  variant={STOCK_STATUS_VARIANTS[p.stock_status]}
+                                  className="text-[10px] py-0 px-1.5"
+                                >
+                                  {STOCK_STATUS_LABELS[p.stock_status]}
+                                </Badge>
+                              </div>
+                              {labelList.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {labelList.slice(0, 4).map((l) => (
+                                    <span
+                                      key={l.id}
+                                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                                      style={
+                                        l.color ? { borderColor: l.color, color: l.color } : undefined
+                                      }
+                                    >
+                                      <span
+                                        className="inline-block h-2 w-2 rounded-full"
+                                        style={l.color ? { backgroundColor: l.color } : undefined}
+                                      />
+                                      {l.title}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </button>
