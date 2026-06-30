@@ -173,22 +173,24 @@ export function DynamicScoringSection({
               آخرین تخصیص سرمایه
             </div>
             <div className="text-sm font-medium">
-              {alloc ? formatDateTimeFa(alloc.capital_date) : "—"}
+              {allocView ? formatDateTimeFa(allocView.capital_date) : "—"}
             </div>
             <div className="text-xs text-muted-foreground">
-              {alloc ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
+              {allocView ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
             </div>
           </div>
           <div className="rounded-md border p-3 space-y-1">
             <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
               <Wallet className="h-3.5 w-3.5" />
-              سقف نهایی آخرین snapshot
+              {allocView?.amountLabel ?? "تخصیص آخرین snapshot"}
             </div>
             <div className="text-sm font-bold">
-              {alloc ? `${formatNumber(alloc.final_limit)} ریال` : "—"}
+              {allocView ? `${formatNumber(allocView.amount)} ریال` : "—"}
             </div>
-            {binding && (
-              <Badge className={`text-[10px] ${binding.cls}`}>{binding.label}</Badge>
+            {allocView?.binding && (
+              <Badge className={`text-[10px] ${allocView.binding.cls}`}>
+                {allocView.binding.label}
+              </Badge>
             )}
           </div>
         </div>
