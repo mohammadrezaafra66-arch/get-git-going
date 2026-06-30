@@ -941,7 +941,7 @@ function MobileProductCard({
         ) : (
           <div className="space-y-2">
             {row.histories.map((h) => (
-              <div key={h.id} className="rounded-md border border-border p-2">
+              <div key={h.id} className="rounded-lg border bg-card p-2.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="secondary" className="text-[10px] font-normal">
                     {h.sale_price_type_title ?? "—"}
@@ -952,12 +952,15 @@ function MobileProductCard({
                 </div>
                 <div className="mt-1 flex items-end justify-between">
                   <div>
-                    <div className="text-base font-bold text-foreground">
+                    <div
+                      key={`mprice-${h.rounded_sale_price}`}
+                      className="price-flash inline-block text-xl font-bold tabular-nums text-foreground"
+                    >
                       {formatNumber(Number(h.rounded_sale_price))}{" "}
                       <span className="text-xs font-normal text-muted-foreground">ت</span>
                     </div>
                     {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-                      <div className="text-[11px] text-muted-foreground line-through">
+                      <div className="text-xs text-muted-foreground/60 line-through">
                         {formatNumber(Number(h.old_sale_price))}
                       </div>
                     )}
