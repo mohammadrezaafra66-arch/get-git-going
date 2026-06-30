@@ -45,6 +45,7 @@ import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { toast } from "sonner";
 import { Clipboard } from "lucide-react";
 import {
@@ -247,6 +248,9 @@ function LivePriceListPage() {
     () => (productsQuery.data?.rows ?? []).map((p) => p.id),
     [productsQuery.data],
   );
+
+  // Thumbnails for visible products (shared pattern with /products admin list)
+  const { thumbnailFor } = useProductThumbnails(productIds);
 
   // ---------- current prices (from product_computed_prices_public) ----------
   const pricesQuery = useQuery({
@@ -717,6 +721,7 @@ function renderProductRows(
   ctx: {
     isSalesOnly: boolean;
     isPrivileged: boolean;
+    thumbnailFor: (id: string) => string | undefined;
     onOpenChart: (args: {
       productId: string;
       productName: string;
@@ -731,7 +736,7 @@ function renderProductRows(
     return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
         </td>
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
@@ -759,7 +764,7 @@ function renderProductRows(
     return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
         </td>
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
@@ -793,7 +798,7 @@ function renderProductRows(
       {idx === 0 ? (
         <>
           <td className="p-3 align-top" rowSpan={row.histories.length}>
-            <ProductCell product={row.product} />
+            <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
           </td>
           <td
             className="p-3 align-top text-xs text-muted-foreground"
@@ -870,11 +875,13 @@ function MobileProductCard({
   row,
   isSalesOnly,
   isPrivileged,
+  thumbnailFor,
   onOpenChart,
 }: {
   row: { product: ProductRow; histories: any[]; hasPrice: boolean };
   isSalesOnly: boolean;
   isPrivileged: boolean;
+  thumbnailFor: (id: string) => string | undefined;
   onOpenChart: (args: {
     productId: string;
     productName: string;
@@ -887,7 +894,7 @@ function MobileProductCard({
     <Card>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} />
           <StockBadge s={row.product.stock_status} />
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -986,20 +993,38 @@ function MobileProductCard({
   );
 }
 
-function ProductCell({ product }: { product: ProductRow }) {
+function ProductCell({
+  product,
+  thumbnailUrl,
+}: {
+  product: ProductRow;
+  thumbnailUrl?: string;
+}) {
   return (
-    <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-foreground">
-        {formatProductDisplayNameWithFallback(product)}
-      </div>
-      <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
-      <div className="mt-1">
-        <StockAlertButton
-          productId={product.id}
-          productName={product.name}
-          productSku={product.sku}
-          stockStatus={product.stock_status}
+    <div className="flex min-w-0 items-start gap-2">
+      {thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt={product.name}
+          loading="lazy"
+          className="h-12 w-12 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
         />
+      ) : (
+        <div className="h-12 w-12 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+      )}
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium text-foreground">
+          {formatProductDisplayNameWithFallback(product)}
+        </div>
+        <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
+        <div className="mt-1">
+          <StockAlertButton
+            productId={product.id}
+            productName={product.name}
+            productSku={product.sku}
+            stockStatus={product.stock_status}
+          />
+        </div>
       </div>
     </div>
   );
