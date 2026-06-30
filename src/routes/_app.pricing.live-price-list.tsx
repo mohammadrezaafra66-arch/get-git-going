@@ -635,6 +635,7 @@ function LivePriceListPage() {
                         renderProductRows(row, {
                           isSalesOnly,
                           isPrivileged,
+                          thumbnailFor,
                           onOpenChart: (args) => {
                             trackProductInteraction({
                               productId: args.productId,
@@ -661,6 +662,7 @@ function LivePriceListPage() {
                 row={row}
                 isSalesOnly={isSalesOnly}
                 isPrivileged={isPrivileged}
+                thumbnailFor={thumbnailFor}
                 onOpenChart={(args) => {
                   trackProductInteraction({
                     productId: args.productId,
