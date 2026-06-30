@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/credit")({
   beforeLoad: async () => {
@@ -265,6 +266,8 @@ function CustomerCreditPage() {
               />
             </CardContent>
           </Card>
+
+          <DynamicScoringSection customerId={customerId} canEdit={canRecalc} />
 
           <Card>
             <CardHeader>
