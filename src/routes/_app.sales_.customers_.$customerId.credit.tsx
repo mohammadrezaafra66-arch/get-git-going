@@ -267,6 +267,8 @@ function CustomerCreditPage() {
             </CardContent>
           </Card>
 
+          <DynamicScoringSection customerId={customerId} canEdit={canRecalc} />
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base inline-flex items-center gap-2">
