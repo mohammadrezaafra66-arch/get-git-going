@@ -11292,6 +11292,14 @@ export type Database = {
         Args: { _role: string; _target_user: string }
         Returns: undefined
       }
+      run_daily_capital_allocation: {
+        Args: {
+          p_capital_date: string
+          p_notes?: string
+          p_total_capital: number
+        }
+        Returns: Json
+      }
       save_customer_capital_allocations: {
         Args: { p_allocations: Json; p_salesperson_allocation_id: string }
         Returns: Json
