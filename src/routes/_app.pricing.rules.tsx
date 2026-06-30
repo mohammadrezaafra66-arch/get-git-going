@@ -63,6 +63,7 @@ interface PRule {
   priority: number;
   is_active: boolean;
   created_at: string;
+  is_system_default: boolean;
 }
 
 type Filters = {
@@ -121,7 +122,7 @@ function PricingRulesPage() {
       let q = supabase
         .from("pricing_rules")
         .select(
-          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, priority, is_active, created_at",
+          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, priority, is_active, created_at, is_system_default",
           { count: "exact" },
         )
         .order("priority", { ascending: true })
