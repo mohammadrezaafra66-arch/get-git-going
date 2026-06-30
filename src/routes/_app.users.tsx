@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -312,6 +312,11 @@ function UsersManagementPage() {
                           <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="ghost" onClick={() => setDetailsTarget(u)}>
                               جزئیات
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                              <Link to="/users/$userId" params={{ userId: u.id }}>
+                                امتیاز پویا
+                              </Link>
                             </Button>
                             {u.status === "pending" && (
                               <>

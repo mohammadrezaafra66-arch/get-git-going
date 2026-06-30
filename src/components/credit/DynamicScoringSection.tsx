@@ -16,8 +16,10 @@ import {
   useUpsertEntityScore,
   useCalculatedScore,
   useCustomerLatestAllocation,
+  useSalespersonLatestAllocation,
   currentPeriodMonth,
   type CalculatedScoreBreakdownItem,
+  type EntityType,
 } from "@/hooks/credit/useDynamicScoring";
 
 function bindingLabel(c: string): { label: string; cls: string } {
@@ -35,19 +37,26 @@ function bindingLabel(c: string): { label: string; cls: string } {
 }
 
 export function DynamicScoringSection({
-  customerId,
+  entityType,
+  entityId,
   canEdit,
 }: {
-  customerId: string;
+  entityType: EntityType;
+  entityId: string;
   canEdit: boolean;
 }) {
   const period = currentPeriodMonth();
   const { user } = useAuth();
 
-  const paramsQ = useScoringParameters("customer");
-  const scoresQ = useEntityScores("customer", customerId, period);
-  const calcQ = useCalculatedScore("customer", customerId, period);
-  const allocQ = useCustomerLatestAllocation(customerId);
+  const paramsQ = useScoringParameters(entityType);
+  const scoresQ = useEntityScores(entityType, entityId, period);
+  const calcQ = useCalculatedScore(entityType, entityId, period);
+  const customerAllocQ = useCustomerLatestAllocation(
+    entityType === "customer" ? entityId : undefined,
+  );
+  const salespersonAllocQ = useSalespersonLatestAllocation(
+    entityType === "salesperson" ? entityId : undefined,
+  );
   const upsert = useUpsertEntityScore();
 
   // dirty state per parameter — local slider values
@@ -82,15 +91,34 @@ export function DynamicScoringSection({
   const weighted = Number(calcQ.data?.weighted_score ?? 0);
   const weightedPct = Math.max(0, Math.min(100, weighted * 100));
 
-  const alloc = allocQ.data;
-  const binding = alloc ? bindingLabel(alloc.binding_constraint) : null;
+  // Normalize allocation data across entity types
+  const allocView = (() => {
+    if (entityType === "customer") {
+      const a = customerAllocQ.data;
+      if (!a) return null;
+      return {
+        capital_date: a.capital_date,
+        amount: a.final_limit,
+        binding: bindingLabel(a.binding_constraint),
+        amountLabel: "سقف نهایی آخرین snapshot",
+      };
+    }
+    const a = salespersonAllocQ.data;
+    if (!a) return null;
+    return {
+      capital_date: a.capital_date,
+      amount: a.allocated_capital,
+      binding: null as ReturnType<typeof bindingLabel> | null,
+      amountLabel: "تخصیص آخرین snapshot",
+    };
+  })();
 
   const handleSave = (paramId: string) => {
     const value = draft[paramId] ?? 0;
     upsert.mutate(
       {
-        entity_type: "customer",
-        entity_id: customerId,
+        entity_type: entityType,
+        entity_id: entityId,
         parameter_id: paramId,
         period_month: period,
         raw_score: value,
@@ -145,22 +173,24 @@ export function DynamicScoringSection({
               آخرین تخصیص سرمایه
             </div>
             <div className="text-sm font-medium">
-              {alloc ? formatDateTimeFa(alloc.capital_date) : "—"}
+              {allocView ? formatDateTimeFa(allocView.capital_date) : "—"}
             </div>
             <div className="text-xs text-muted-foreground">
-              {alloc ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
+              {allocView ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
             </div>
           </div>
           <div className="rounded-md border p-3 space-y-1">
             <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
               <Wallet className="h-3.5 w-3.5" />
-              سقف نهایی آخرین snapshot
+              {allocView?.amountLabel ?? "تخصیص آخرین snapshot"}
             </div>
             <div className="text-sm font-bold">
-              {alloc ? `${formatNumber(alloc.final_limit)} ریال` : "—"}
+              {allocView ? `${formatNumber(allocView.amount)} ریال` : "—"}
             </div>
-            {binding && (
-              <Badge className={`text-[10px] ${binding.cls}`}>{binding.label}</Badge>
+            {allocView?.binding && (
+              <Badge className={`text-[10px] ${allocView.binding.cls}`}>
+                {allocView.binding.label}
+              </Badge>
             )}
           </div>
         </div>

@@ -51,6 +51,7 @@ import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-ke
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
+import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
 import { Route as AppSalesInvoicesRouteImport } from './routes/_app.sales_.invoices'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
@@ -385,6 +386,11 @@ const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
 const AppUsersPendingRoute = AppUsersPendingRouteImport.update({
   id: '/pending',
   path: '/pending',
+  getParentRoute: () => AppUsersRoute,
+} as any)
+const AppUsersUserIdRoute = AppUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
   getParentRoute: () => AppUsersRoute,
 } as any)
 const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
@@ -1195,6 +1201,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1361,6 +1368,7 @@ export interface FileRoutesByTo {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1532,6 +1540,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/sales_/invoices': typeof AppSalesInvoicesRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1703,6 +1712,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/$userId'
     | '/users/pending'
     | '/api/messenger/ai-chat'
     | '/public/sale-lists/$listId'
@@ -1869,6 +1879,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/$userId'
     | '/users/pending'
     | '/api/messenger/ai-chat'
     | '/public/sale-lists/$listId'
@@ -2039,6 +2050,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers'
     | '/_app/sales_/invoices'
     | '/_app/suppliers_/$supplierId'
+    | '/_app/users/$userId'
     | '/_app/users/pending'
     | '/api/messenger/ai-chat'
     | '/public/sale-lists/$listId'
@@ -2403,6 +2415,13 @@ declare module '@tanstack/react-router' {
       path: '/pending'
       fullPath: '/users/pending'
       preLoaderRoute: typeof AppUsersPendingRouteImport
+      parentRoute: typeof AppUsersRoute
+    }
+    '/_app/users/$userId': {
+      id: '/_app/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof AppUsersUserIdRouteImport
       parentRoute: typeof AppUsersRoute
     }
     '/_app/suppliers_/$supplierId': {
@@ -3384,10 +3403,12 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
 )
 
 interface AppUsersRouteChildren {
+  AppUsersUserIdRoute: typeof AppUsersUserIdRoute
   AppUsersPendingRoute: typeof AppUsersPendingRoute
 }
 
 const AppUsersRouteChildren: AppUsersRouteChildren = {
+  AppUsersUserIdRoute: AppUsersUserIdRoute,
   AppUsersPendingRoute: AppUsersPendingRoute,
 }
 
