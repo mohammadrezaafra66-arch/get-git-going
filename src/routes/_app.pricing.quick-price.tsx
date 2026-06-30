@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Calculator, Loader2, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
 import { ensureAuthReady } from "@/lib/auth/session";
@@ -364,7 +364,19 @@ function QuickPricePage() {
                       label="قیمت خرید"
                       value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`}
                     />
-                    <Row label="نرخ ارز" value={formatNumber(breakdown.currency_rate)} />
+                    <Row
+                      label="نرخ ارز"
+                      value={
+                        <>
+                          {formatNumber(breakdown.currency_rate)}
+                          {breakdown.currency_rate_source && (
+                            <span className="ms-1 text-xs text-muted-foreground">
+                              — {breakdown.currency_rate_source}
+                            </span>
+                          )}
+                        </>
+                      }
+                    />
                     <Row
                       label="قیمت خرید (تومان)"
                       value={`${formatNumber(breakdown.purchase_price_toman)} ت`}
@@ -425,7 +437,7 @@ function QuickPricePage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col">
       <span className="text-xs text-muted-foreground">{label}</span>
