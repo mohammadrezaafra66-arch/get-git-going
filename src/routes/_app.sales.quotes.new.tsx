@@ -427,11 +427,11 @@ function ProductTab(props: {
       });
       let q = supabase
         .from("products")
-        .select("id, name, sku, stock_status")
+        .select("id, name, sku, barcode, stock_status, labels:product_label_links(label:product_labels(id, title, color, visibility))")
         .eq("is_active", true)
         .limit(20);
       if (idsErr) {
-        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,barcode.ilike.%${safe}%`);
       } else {
         const ids = (idsData ?? []).map((r: { id: string }) => r.id);
         if (ids.length === 0) return [];
