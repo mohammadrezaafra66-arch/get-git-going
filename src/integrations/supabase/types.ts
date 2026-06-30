@@ -10607,6 +10607,7 @@ export type Database = {
           p_stock_status?: string
         }
         Returns: {
+          barcode: string
           brand: Json
           capacity: string
           category: Json
