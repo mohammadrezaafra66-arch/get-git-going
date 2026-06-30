@@ -2405,6 +2405,83 @@ export type Database = {
         }
         Relationships: []
       }
+      dynamic_parameter_weights: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          parameter_id: string
+          valid_from: string
+          valid_to: string | null
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          parameter_id: string
+          valid_from?: string
+          valid_to?: string | null
+          weight: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          parameter_id?: string
+          valid_from?: string
+          valid_to?: string | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_parameter_weights_parameter_id_fkey"
+            columns: ["parameter_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_scoring_parameters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dynamic_scoring_parameters: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          direction: string
+          display_order: number
+          entity_type: string
+          id: string
+          is_active: boolean
+          label_fa: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          display_order?: number
+          entity_type: string
+          id?: string
+          is_active?: boolean
+          label_fa: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          display_order?: number
+          entity_type?: string
+          id?: string
+          is_active?: boolean
+          label_fa?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dynamic_table_cells: {
         Row: {
           column_id: string
