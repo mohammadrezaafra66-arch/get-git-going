@@ -12,6 +12,13 @@ export const SHOP_SETTING_KEYS = [
   "default_seller_info",
   "alert_threshold_percent",
   "birthday_message_template",
+  "holding_tier1_days",
+  "holding_tier2_days",
+  "holding_tier3_days",
+  "holding_tier1_margin_add",
+  "holding_tier2_margin_add",
+  "holding_tier3_margin_add",
+  "holding_tier4_margin_add",
 ] as const;
 
 export type ShopSettingKey = (typeof SHOP_SETTING_KEYS)[number];
@@ -29,6 +36,13 @@ export const SHOP_SETTING_LABELS: Record<ShopSettingKey, string> = {
   default_seller_info: "اطلاعات پیش‌فرض فروشنده",
   alert_threshold_percent: "آستانه هشدار تغییر نرخ ارز (٪)",
   birthday_message_template: "متن پیام تولد",
+  holding_tier1_days: "مدت نگهداری — سطح ۱ (روز، بدون افزایش)",
+  holding_tier2_days: "مدت نگهداری — سطح ۲ (روز)",
+  holding_tier3_days: "مدت نگهداری — سطح ۳ (روز)",
+  holding_tier1_margin_add: "افزایش سود سطح ۱ (واحد درصد)",
+  holding_tier2_margin_add: "افزایش سود سطح ۲ (واحد درصد)",
+  holding_tier3_margin_add: "افزایش سود سطح ۳ (واحد درصد)",
+  holding_tier4_margin_add: "افزایش سود سطح ۴ — بیش از سطح ۳ (واحد درصد)",
 };
 
 export function emptyShopSettings(): ShopSettingsMap {
