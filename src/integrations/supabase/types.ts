@@ -2405,6 +2405,56 @@ export type Database = {
         }
         Relationships: []
       }
+      dynamic_entity_scores: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          note: string | null
+          parameter_id: string
+          period_month: string
+          raw_score: number
+          scored_at: string
+          scored_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          note?: string | null
+          parameter_id: string
+          period_month: string
+          raw_score: number
+          scored_at?: string
+          scored_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          note?: string | null
+          parameter_id?: string
+          period_month?: string
+          raw_score?: number
+          scored_at?: string
+          scored_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_entity_scores_parameter_id_fkey"
+            columns: ["parameter_id"]
+            isOneToOne: false
+            referencedRelation: "dynamic_scoring_parameters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dynamic_parameter_weights: {
         Row: {
           created_at: string
