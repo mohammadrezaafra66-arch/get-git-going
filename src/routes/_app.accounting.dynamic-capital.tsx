@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Coins, Loader2, PlayCircle, AlertTriangle, History } from "lucide-react";
+import { Loader2, PlayCircle, AlertTriangle, History } from "lucide-react";
 import { toast } from "sonner";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -142,7 +142,6 @@ function DynamicCapitalPage() {
       <PageHeader
         title="تخصیص سرمایه پویا"
         description="محاسبه تخصیص سرمایه روزانه بر اساس امتیازدهی پویا کارشناسان و مشتریان"
-        icon={Coins}
       />
 
       {/* فرم اجرا */}
