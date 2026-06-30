@@ -6374,6 +6374,7 @@ export type Database = {
           fixed_margin_value: number | null
           id: string
           is_active: boolean
+          is_system_default: boolean
           margin_type: Database["public"]["Enums"]["margin_type"] | null
           margin_value: number | null
           max_purchase_price_toman: number | null
@@ -6399,6 +6400,7 @@ export type Database = {
           fixed_margin_value?: number | null
           id?: string
           is_active?: boolean
+          is_system_default?: boolean
           margin_type?: Database["public"]["Enums"]["margin_type"] | null
           margin_value?: number | null
           max_purchase_price_toman?: number | null
@@ -6424,6 +6426,7 @@ export type Database = {
           fixed_margin_value?: number | null
           id?: string
           is_active?: boolean
+          is_system_default?: boolean
           margin_type?: Database["public"]["Enums"]["margin_type"] | null
           margin_value?: number | null
           max_purchase_price_toman?: number | null
