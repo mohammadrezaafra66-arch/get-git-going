@@ -883,6 +883,7 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
+  thumbnailUrl?: string;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
@@ -892,6 +893,7 @@ function ProductCard({
   primarySalePriceTypeId,
   canRecalcPrice,
   observatorySnippet,
+  thumbnailUrl,
   onRecalcDone,
   onOpenChart,
 }: ProductCardProps) {
@@ -996,7 +998,18 @@ function ProductCard({
     <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 items-start gap-3">
+            {thumbnailUrl ? (
+              <img
+                src={thumbnailUrl}
+                alt={product.name}
+                loading="lazy"
+                className="h-16 w-16 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+              />
+            ) : (
+              <div className="h-16 w-16 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+            )}
+            <div className="min-w-0 space-y-1">
             <h3 className="font-semibold text-foreground break-words">
               {formatProductDisplayNameWithFallback(product)}
             </h3>
@@ -1004,6 +1017,15 @@ function ProductCard({
               {product.sku && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
                   <Tag className="h-3 w-3" /> {product.sku}
+                </span>
+              )}
+              {product.barcode && (
+                <span
+                  className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono"
+                  dir="ltr"
+                  title="بارکد"
+                >
+                  <Tag className="h-3 w-3" /> {product.barcode}
                 </span>
               )}
               {product.brand?.name && <span>برند: {product.brand.name}</span>}
@@ -1039,6 +1061,7 @@ function ProductCard({
                 ))}
               </div>
             )}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant={STOCK_VARIANT[stockKey] ?? "outline"}>
