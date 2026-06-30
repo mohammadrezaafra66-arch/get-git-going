@@ -900,7 +900,7 @@ function MobileProductCard({
     <Card>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} />
+          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} size="md" />
           <StockBadge s={row.product.stock_status} />
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -1005,10 +1005,13 @@ function MobileProductCard({
 function ProductCell({
   product,
   thumbnailUrl,
+  size = "sm",
 }: {
   product: ProductRow;
   thumbnailUrl?: string;
+  size?: "sm" | "md";
 }) {
+  const thumbCls = size === "md" ? "h-14 w-14 rounded-lg" : "h-12 w-12 rounded-md";
   return (
     <div className="flex min-w-0 items-start gap-2">
       {thumbnailUrl ? (
@@ -1016,10 +1019,10 @@ function ProductCell({
           src={thumbnailUrl}
           alt={product.name}
           loading="lazy"
-          className="h-12 w-12 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+          className={`${thumbCls} flex-shrink-0 border border-border object-cover bg-muted`}
         />
       ) : (
-        <div className="h-12 w-12 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+        <div className={`${thumbCls} flex-shrink-0 border border-dashed border-border bg-muted/40`} />
       )}
       <div className="min-w-0">
         <div className="truncate text-sm font-medium text-foreground">
