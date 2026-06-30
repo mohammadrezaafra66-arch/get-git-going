@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   Sparkles,
   UserPlus,
+  Minus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -824,12 +825,15 @@ function renderProductRows(
         </Badge>
       </td>
       <td className="p-3 align-top">
-        <div className="text-base font-bold text-foreground">
+        <div
+          key={`price-${h.rounded_sale_price}`}
+          className="price-flash inline-block text-lg font-bold tabular-nums text-foreground"
+        >
           {formatNumber(Number(h.rounded_sale_price))}{" "}
           <span className="text-xs font-normal text-muted-foreground">ت</span>
         </div>
         {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-          <div className="text-[11px] text-muted-foreground line-through">
+          <div className="text-xs text-muted-foreground/60 line-through">
             {formatNumber(Number(h.old_sale_price))}
           </div>
         )}
