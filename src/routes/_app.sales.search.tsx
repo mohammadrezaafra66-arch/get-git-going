@@ -66,6 +66,7 @@ import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {
   fetchObservatorySnippetsForProducts,
@@ -98,6 +99,7 @@ interface ProductRow {
   id: string;
   name: string;
   sku: string | null;
+  barcode?: string | null;
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
   color?: string | null;
