@@ -9475,6 +9475,14 @@ export type Database = {
           score: number
         }[]
       }
+      calculate_dynamic_score: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_period_month?: string
+        }
+        Returns: Json
+      }
       calculate_employee_score: {
         Args: { _employee_id?: string }
         Returns: undefined
