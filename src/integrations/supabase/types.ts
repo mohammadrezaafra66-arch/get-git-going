@@ -1546,6 +1546,60 @@ export type Database = {
           },
         ]
       }
+      customer_capital_allocations_dynamic: {
+        Row: {
+          binding_constraint: string | null
+          capital_setting_id: string
+          created_at: string
+          customer_id: string
+          final_limit: number | null
+          id: string
+          raw_allocation: number | null
+          salesperson_id: string | null
+          share_ratio: number | null
+          weighted_score: number | null
+        }
+        Insert: {
+          binding_constraint?: string | null
+          capital_setting_id: string
+          created_at?: string
+          customer_id: string
+          final_limit?: number | null
+          id?: string
+          raw_allocation?: number | null
+          salesperson_id?: string | null
+          share_ratio?: number | null
+          weighted_score?: number | null
+        }
+        Update: {
+          binding_constraint?: string | null
+          capital_setting_id?: string
+          created_at?: string
+          customer_id?: string
+          final_limit?: number | null
+          id?: string
+          raw_allocation?: number | null
+          salesperson_id?: string | null
+          share_ratio?: number | null
+          weighted_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_capital_allocations_dynamic_capital_setting_id_fkey"
+            columns: ["capital_setting_id"]
+            isOneToOne: false
+            referencedRelation: "daily_capital_settings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_capital_allocations_dynamic_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credit_balance: {
         Row: {
           available_credit: number
@@ -1835,6 +1889,39 @@ export type Database = {
           risk_reserve?: number
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      daily_capital_settings: {
+        Row: {
+          capital_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          scoring_mode: string
+          total_capital: number
+          updated_at: string
+        }
+        Insert: {
+          capital_date: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          scoring_mode?: string
+          total_capital: number
+          updated_at?: string
+        }
+        Update: {
+          capital_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          scoring_mode?: string
+          total_capital?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -8257,6 +8344,44 @@ export type Database = {
             columns: ["capital_snapshot_id"]
             isOneToOne: false
             referencedRelation: "daily_capital_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesperson_capital_allocations_dynamic: {
+        Row: {
+          allocated_capital: number | null
+          capital_setting_id: string
+          created_at: string
+          id: string
+          salesperson_id: string
+          share_ratio: number | null
+          weighted_score: number | null
+        }
+        Insert: {
+          allocated_capital?: number | null
+          capital_setting_id: string
+          created_at?: string
+          id?: string
+          salesperson_id: string
+          share_ratio?: number | null
+          weighted_score?: number | null
+        }
+        Update: {
+          allocated_capital?: number | null
+          capital_setting_id?: string
+          created_at?: string
+          id?: string
+          salesperson_id?: string
+          share_ratio?: number | null
+          weighted_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesperson_capital_allocations_dynamic_capital_setting_id_fkey"
+            columns: ["capital_setting_id"]
+            isOneToOne: false
+            referencedRelation: "daily_capital_settings"
             referencedColumns: ["id"]
           },
         ]
