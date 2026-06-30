@@ -402,7 +402,19 @@ function CalculatorPage() {
                     label="قیمت خرید"
                     value={`${formatNumber(breakdown.input_purchase_price)} ${CURRENCY_LABELS[breakdown.input_currency]}`}
                   />
-                  <Row label="نرخ ارز" value={formatNumber(breakdown.currency_rate)} />
+                  <Row
+                    label="نرخ ارز"
+                    value={
+                      <>
+                        {formatNumber(breakdown.currency_rate)}
+                        {breakdown.currency_rate_source && (
+                          <span className="ms-1 text-xs text-muted-foreground">
+                            — {breakdown.currency_rate_source}
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
                   <Row
                     label="قیمت خرید (تومان)"
                     value={`${formatNumber(breakdown.purchase_price_toman)} ت`}
