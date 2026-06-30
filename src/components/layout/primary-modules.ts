@@ -116,6 +116,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/accounting/customer-capital-allocations",
       "/accounting/salesperson-capital-allocations",
       "/accounting/daily-capital",
+      "/accounting/dynamic-capital",
     ],
   },
   {

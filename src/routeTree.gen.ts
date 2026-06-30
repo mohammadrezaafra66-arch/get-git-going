@@ -132,6 +132,7 @@ import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.account
 import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app.accounting.purchase-payments'
 import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
+import { Route as AppAccountingDynamicCapitalRouteImport } from './routes/_app.accounting.dynamic-capital'
 import { Route as AppAccountingDailyCapitalRouteImport } from './routes/_app.accounting.daily-capital'
 import { Route as AppAccountingCustomerCapitalAllocationsRouteImport } from './routes/_app.accounting.customer-capital-allocations'
 import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
@@ -813,6 +814,12 @@ const AppAccountingExternalPartiesRoute =
     path: '/accounting/external-parties',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAccountingDynamicCapitalRoute =
+  AppAccountingDynamicCapitalRouteImport.update({
+    id: '/accounting/dynamic-capital',
+    path: '/accounting/dynamic-capital',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAccountingDailyCapitalRoute =
   AppAccountingDailyCapitalRouteImport.update({
     id: '/accounting/daily-capital',
@@ -1106,6 +1113,7 @@ export interface FileRoutesByFullPath {
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -1272,6 +1280,7 @@ export interface FileRoutesByTo {
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -1441,6 +1450,7 @@ export interface FileRoutesById {
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/_app/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/_app/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/_app/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/_app/accounting/payables': typeof AppAccountingPayablesRoute
   '/_app/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -1611,6 +1621,7 @@ export interface FileRouteTypes {
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
+    | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
     | '/accounting/purchase-payments'
@@ -1777,6 +1788,7 @@ export interface FileRouteTypes {
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
+    | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
     | '/accounting/purchase-payments'
@@ -1945,6 +1957,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/bank-accounts'
     | '/_app/accounting/customer-capital-allocations'
     | '/_app/accounting/daily-capital'
+    | '/_app/accounting/dynamic-capital'
     | '/_app/accounting/external-parties'
     | '/_app/accounting/payables'
     | '/_app/accounting/purchase-payments'
@@ -2959,6 +2972,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingExternalPartiesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/dynamic-capital': {
+      id: '/_app/accounting/dynamic-capital'
+      path: '/accounting/dynamic-capital'
+      fullPath: '/accounting/dynamic-capital'
+      preLoaderRoute: typeof AppAccountingDynamicCapitalRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/daily-capital': {
       id: '/_app/accounting/daily-capital'
       path: '/accounting/daily-capital'
@@ -3491,6 +3511,7 @@ interface AppRouteChildren {
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
   AppAccountingCustomerCapitalAllocationsRoute: typeof AppAccountingCustomerCapitalAllocationsRoute
   AppAccountingDailyCapitalRoute: typeof AppAccountingDailyCapitalRoute
+  AppAccountingDynamicCapitalRoute: typeof AppAccountingDynamicCapitalRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
   AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
   AppAccountingPurchasePaymentsRoute: typeof AppAccountingPurchasePaymentsRoute
@@ -3607,6 +3628,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingCustomerCapitalAllocationsRoute:
     AppAccountingCustomerCapitalAllocationsRoute,
   AppAccountingDailyCapitalRoute: AppAccountingDailyCapitalRoute,
+  AppAccountingDynamicCapitalRoute: AppAccountingDynamicCapitalRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
   AppAccountingPayablesRoute: AppAccountingPayablesRoute,
   AppAccountingPurchasePaymentsRoute: AppAccountingPurchasePaymentsRoute,
