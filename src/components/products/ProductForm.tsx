@@ -56,6 +56,10 @@ interface Props {
     dynamic: { values: DynamicAttrValues; defs: CategoryAttributeDef[]; categoryChanged: boolean },
   ) => Promise<void> | void;
   onCancel?: () => void;
+  /** Fired with `true` when the form gains unsaved changes after hydration; `false` after reset. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Imperative handle to the underlying <form> so parents can `.requestSubmit()`. */
+  formRef?: React.Ref<HTMLFormElement>;
 }
 
 const DEFAULTS: ProductFormValues = {
@@ -88,6 +92,8 @@ export function ProductForm({
   initialCategoryId,
   onSubmit,
   onCancel,
+  onDirtyChange,
+  formRef,
 }: Props) {
   const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,16 +103,19 @@ export function ProductForm({
   const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
   const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
 
-  // ---------- پیش‌نویس ذخیره‌نشده در localStorage ----------
+  // ---------- پیش‌نویس ذخیره‌نشده در sessionStorage ----------
+  // نکته: از sessionStorage استفاده می‌شود تا با بسته‌شدن تب مرورگر
+  // پیش‌نویس به‌صورت خودکار پاک شود و ریسک stale draft از بین برود.
   const draftKey = productId ? `afrakala_product_draft_${productId}` : null;
   const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
   const draftHydratedRef = useRef(false);
+  const draftRestoredRef = useRef(false);
 
   // Restore draft on mount (once)
   useEffect(() => {
     if (!draftKey) return;
     try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(draftKey) : null;
+      const raw = typeof window !== "undefined" ? window.sessionStorage.getItem(draftKey) : null;
       if (raw) {
         const parsed = JSON.parse(raw) as {
           values?: ProductFormValues;
@@ -116,6 +125,8 @@ export function ProductForm({
         if (parsed?.dynValues) setDynValues(parsed.dynValues);
         setDraftRestoredBanner(true);
         setAutoName(false);
+        draftRestoredRef.current = true;
+        onDirtyChange?.(true);
       }
     } catch {
       /* ignore corrupt draft */
@@ -131,22 +142,24 @@ export function ProductForm({
     if (!draftHydratedRef.current) return;
     const t = setTimeout(() => {
       try {
-        window.localStorage.setItem(
+        window.sessionStorage.setItem(
           draftKey,
           JSON.stringify({ values, dynValues }),
         );
+        draftRestoredRef.current = true;
+        onDirtyChange?.(true);
       } catch {
         /* quota or unavailable */
       }
     }, 500);
     return () => clearTimeout(t);
-  }, [draftKey, values, dynValues]);
+  }, [draftKey, values, dynValues, onDirtyChange]);
 
   const dismissDraftBanner = () => setDraftRestoredBanner(false);
   const resetDraft = () => {
     if (draftKey) {
       try {
-        window.localStorage.removeItem(draftKey);
+        window.sessionStorage.removeItem(draftKey);
       } catch {
         /* ignore */
       }
@@ -157,6 +170,8 @@ export function ProductForm({
     setDynErrors({});
     setAutoName(!isEdit && !initial?.name);
     setDraftRestoredBanner(false);
+    draftRestoredRef.current = false;
+    onDirtyChange?.(false);
   };
 
   // ---------- بررسی زنده تکراری بودن محصول ----------
@@ -189,6 +204,12 @@ export function ProductForm({
   const dupChecking = dupQ.isFetching;
 
   useEffect(() => {
+    // اگر پیش‌نویس بازیابی شده، props تازه از سرور نباید روی state کاربر بنویسد؛
+    // فقط شناسهٔ دستهٔ اولیه را برای تشخیص تغییر دسته به‌روزرسانی می‌کنیم.
+    if (draftRestoredRef.current) {
+      initialCatRef.current = initialCategoryId ?? initial?.category_id ?? initialCatRef.current;
+      return;
+    }
     setValues({ ...DEFAULTS, ...initial });
     setAutoName(!isEdit && !initial?.name);
     lastAutoNameRef.current = "";
@@ -451,7 +472,7 @@ export function ProductForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
       {draftRestoredBanner && (
         <div
           className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-yellow-400/60 bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-100"
