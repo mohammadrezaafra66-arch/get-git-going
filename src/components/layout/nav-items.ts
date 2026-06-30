@@ -410,6 +410,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: "accounting",
     group: "finance",
   },
+  {
+    to: "/accounting/dynamic-capital",
+    label: "تخصیص سرمایه پویا",
+    icon: Coins,
+    module: "accounting",
+    group: "finance",
+  },
 
   // ۶) عملیات داخلی
   {
