@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -74,13 +74,17 @@ function ProductDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [editMode, setEditMode] = useState(!!search.edit && canUpdate);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  // وقتی «ذخیره و خروج» انتخاب شود، بعد از پایان موفق ذخیره این callback اجرا می‌شود.
+  const pendingProceedRef = useRef<(() => void) | null>(null);
 
   // Warn before tab close/reload while editing if an unsaved draft exists.
   useEffect(() => {
     if (!editMode) return;
     const handler = (e: BeforeUnloadEvent) => {
       try {
-        const raw = window.localStorage.getItem(`afrakala_product_draft_${id}`);
+        const raw = window.sessionStorage.getItem(`afrakala_product_draft_${id}`);
         if (!raw) return;
       } catch {
         return;
@@ -91,6 +95,21 @@ function ProductDetailPage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [editMode, id]);
+
+  // SPA navigation guard: فقط در حالت ویرایش با تغییرات ذخیره‌نشده.
+  const blocker = useBlocker({
+    shouldBlockFn: () => editMode && isDirty,
+    withResolver: true,
+    enableBeforeUnload: false,
+  });
+
+  const clearDraft = () => {
+    try {
+      window.sessionStorage.removeItem(`afrakala_product_draft_${id}`);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["product", id],
@@ -357,11 +376,8 @@ function ProductDetailPage() {
       }
 
       toast.success("تغییرات ذخیره شد");
-      try {
-        window.localStorage.removeItem(`afrakala_product_draft_${id}`);
-      } catch {
-        /* ignore */
-      }
+      clearDraft();
+      setIsDirty(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
@@ -370,6 +386,12 @@ function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["product-history", id] }),
       ]);
       setEditMode(false);
+      // اگر navigation در حال انتظار بوده، بعد از ذخیره موفق ادامه بده.
+      if (pendingProceedRef.current) {
+        const proceed = pendingProceedRef.current;
+        pendingProceedRef.current = null;
+        proceed();
+      }
     } catch (e: any) {
       const code = e?.code ?? "";
       const msg = String(e?.message ?? "");
@@ -380,6 +402,8 @@ function ProductDetailPage() {
       } else {
         toast.error(msg || "خطا در ذخیره");
       }
+      // در صورت خطا، navigation در انتظار را لغو می‌کنیم تا کاربر در صفحه بماند.
+      pendingProceedRef.current = null;
     } finally {
       setSaving(false);
     }
@@ -454,7 +478,12 @@ function ProductDetailPage() {
                 onSubmit={handleSave}
                 loading={saving}
                 submitLabel="ذخیره تغییرات"
-                onCancel={() => setEditMode(false)}
+                onCancel={() => {
+                  setEditMode(false);
+                  setIsDirty(false);
+                }}
+                onDirtyChange={setIsDirty}
+                formRef={formRef}
               />
             </CardContent>
           </Card>
@@ -657,6 +686,48 @@ function ProductDetailPage() {
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
               {deleting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}حذف کن
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={blocker.status === "blocked"}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تغییرات ذخیره‌نشده دارید</AlertDialogTitle>
+            <AlertDialogDescription>
+              تغییراتی که در فرم محصول واردکرده‌اید هنوز ذخیره نشده است. می‌خواهید چه کاری انجام دهید؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => blocker.reset?.()}
+              disabled={saving}
+            >
+              بازگشت به ویرایش
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                // ذخیره و در ادامه navigation
+                pendingProceedRef.current = blocker.proceed ?? null;
+                formRef.current?.requestSubmit();
+              }}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+              ذخیره و خروج
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                clearDraft();
+                setIsDirty(false);
+                blocker.proceed?.();
+              }}
+              disabled={saving}
+            >
+              خروج بدون ذخیره
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
