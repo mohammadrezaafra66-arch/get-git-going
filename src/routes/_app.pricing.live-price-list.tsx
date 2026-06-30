@@ -1081,7 +1081,11 @@ function ChangeCell({
   const pct =
     h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
   if (amt === 0) {
-    return <span className="text-[11px] text-muted-foreground">بدون تغییر</span>;
+    return (
+      <Badge variant="outline" className="border-border text-muted-foreground font-normal">
+        <Minus className="ml-1 h-3 w-3" /> بدون تغییر
+      </Badge>
+    );
   }
   const up = amt > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
