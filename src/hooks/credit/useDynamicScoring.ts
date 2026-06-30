@@ -169,6 +169,9 @@ export function useUpsertEntityScore() {
       qc.invalidateQueries({
         queryKey: ["dyn-customer-latest-allocation", vars.entity_id],
       });
+      qc.invalidateQueries({
+        queryKey: ["dyn-salesperson-latest-allocation", vars.entity_id],
+      });
     },
   });
 }
