@@ -267,7 +267,7 @@ function CustomerCreditPage() {
             </CardContent>
           </Card>
 
-          <DynamicScoringSection customerId={customerId} canEdit={canRecalc} />
+          <DynamicScoringSection entityType="customer" entityId={customerId} canEdit={canRecalc} />
 
           <Card>
             <CardHeader>
