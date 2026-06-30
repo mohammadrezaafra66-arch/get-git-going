@@ -995,7 +995,7 @@ function ProductCard({
   };
 
   return (
-    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
+    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 focus-within:border-primary/50">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-3">
@@ -1088,7 +1088,10 @@ function ProductCard({
             <div className="flex items-end justify-between gap-2">
               <div>
                 <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
-                <div className="text-2xl font-bold text-primary">
+                <div
+                  key={`pcard-${cur}`}
+                  className="price-flash inline-block text-3xl font-bold tabular-nums tracking-tight text-primary"
+                >
                   {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
@@ -1144,7 +1147,7 @@ function ProductCard({
                   className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
                 >
                   <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
-                  <div className="text-sm font-semibold tabular-nums">
+                  <div className="text-base font-semibold tabular-nums">
                     {c !== null ? (
                       formatNumber(c)
                     ) : (
