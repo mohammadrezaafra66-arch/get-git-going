@@ -1,15 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -40,6 +58,8 @@ import {
   type GamificationKpi,
 } from "@/lib/operations/gamification";
 import { toPersianDigits } from "@/lib/dashboard/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { recordManualScoreAdjustment } from "@/lib/gamification/manual-score.functions";
 
 export const Route = createFileRoute("/_app/gamification/settings")({
   beforeLoad: async () => {
@@ -57,6 +77,7 @@ function GamificationSettingsPage() {
       />
       <KpiWeightsCard />
       <KpiRulesToggleCard />
+      <ManualAdjustmentCard />
       <RecalculateCard />
     </div>
   );
