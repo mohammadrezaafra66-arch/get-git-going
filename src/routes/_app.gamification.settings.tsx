@@ -246,6 +246,141 @@ function KpiRulesToggleCard() {
 }
 
 function RecalculateCard() {
+  return <RecalculateCardImpl />;
+}
+
+function ManualAdjustmentCard() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [employeeId, setEmployeeId] = useState<string>("");
+  const [amount, setAmount] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const recordFn = useServerFn(recordManualScoreAdjustment);
+
+  const usersQ = useQuery({
+    queryKey: ["active-profiles-for-manual-adj"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; full_name: string | null }>;
+    },
+    staleTime: 60_000,
+  });
+
+  function resetForm() {
+    setEmployeeId("");
+    setAmount("");
+    setReason("");
+  }
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const num = Number(amount);
+      if (!employeeId) throw new Error("لطفاً کارمند را انتخاب کنید");
+      if (!Number.isFinite(num) || num === 0) throw new Error("مقدار امتیاز باید عددی غیر صفر باشد");
+      if (reason.trim().length < 10) throw new Error("دلیل باید حداقل ۱۰ کاراکتر باشد");
+      await recordFn({ data: { employeeId, amount: num, reason: reason.trim() } });
+    },
+    onSuccess: () => {
+      toast.success("امتیاز دستی ثبت و امتیاز کارمند به‌روز شد");
+      qc.invalidateQueries({ queryKey: ["my-score-breakdown"] });
+      qc.invalidateQueries({ queryKey: ["settings-kpis"] });
+      setOpen(false);
+      resetForm();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">ثبت امتیاز دستی</CardTitle>
+        <Dialog
+          open={open}
+          onOpenChange={(v) => {
+            setOpen(v);
+            if (!v) resetForm();
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              ثبت امتیاز دستی
+            </Button>
+          </DialogTrigger>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle>ثبت امتیاز دستی (پاداش/جریمه)</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>کارمند *</Label>
+                <Select value={employeeId} onValueChange={setEmployeeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="کارمند را انتخاب کنید" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(usersQ.data ?? []).map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name ?? u.id.slice(0, 8)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>مقدار امتیاز * (مثبت = پاداش، منفی = جریمه)</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="مثلاً ۱۰ یا -۵"
+                  dir="ltr"
+                />
+              </div>
+              <div>
+                <Label>دلیل * (حداقل ۱۰ کاراکتر)</Label>
+                <Textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="توضیح دهید چرا این امتیاز اعمال می‌شود"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {toPersianDigits(reason.trim().length)} / ۵۰۰
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
+                انصراف
+              </Button>
+              <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
+                {mut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                ثبت
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          هر ثبت به صورت رویداد <code className="text-xs">manual_adjustment</code> در تاریخچه امتیاز
+          کارمند ذخیره می‌شود و در ویجت «این امتیاز از کجا آمد» با برچسب «تعدیل دستی» قابل مشاهده
+          است.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecalculateCardImpl() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [running, setRunning] = useState(false);
 
