@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Plug, Save, Download, Info, Link2, Users } from "lucide-react";
+import { Eye, EyeOff, Loader2, Plug, Save, Download, Info, Link2, Users, Trophy } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -386,6 +397,7 @@ function OperationsDidarPage() {
       </Card>
 
       <ContactLinkSection />
+      <GamificationEnrichmentSection />
     </div>
   );
 }
