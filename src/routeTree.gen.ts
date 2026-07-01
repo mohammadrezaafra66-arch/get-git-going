@@ -95,6 +95,7 @@ import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pri
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
+import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
 import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
@@ -622,6 +623,11 @@ const AppOperationsGamificationRoute =
     path: '/operations/gamification',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
+  id: '/operations/didar',
+  path: '/operations/didar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   id: '/operations/daily-mood',
   path: '/operations/daily-mood',
@@ -1180,6 +1186,7 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1351,6 +1358,7 @@ export interface FileRoutesByTo {
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1525,6 +1533,7 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/gamification': typeof AppOperationsGamificationRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
@@ -1700,6 +1709,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions-history'
     | '/operations/api-keys'
     | '/operations/daily-mood'
+    | '/operations/didar'
     | '/operations/gamification'
     | '/operations/tasks'
     | '/persons/create'
@@ -1871,6 +1881,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions-history'
     | '/operations/api-keys'
     | '/operations/daily-mood'
+    | '/operations/didar'
     | '/operations/gamification'
     | '/operations/tasks'
     | '/persons/create'
@@ -2044,6 +2055,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions-history'
     | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
+    | '/_app/operations/didar'
     | '/_app/operations/gamification'
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
@@ -2759,6 +2771,13 @@ declare module '@tanstack/react-router' {
       path: '/operations/gamification'
       fullPath: '/operations/gamification'
       preLoaderRoute: typeof AppOperationsGamificationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/didar': {
+      id: '/_app/operations/didar'
+      path: '/operations/didar'
+      fullPath: '/operations/didar'
+      preLoaderRoute: typeof AppOperationsDidarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/daily-mood': {
@@ -3628,6 +3647,7 @@ interface AppRouteChildren {
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
   AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
+  AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
@@ -3748,6 +3768,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
   AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
+  AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsGamificationRoute: AppOperationsGamificationRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
@@ -3857,13 +3878,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
