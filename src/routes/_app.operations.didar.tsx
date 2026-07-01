@@ -587,3 +587,232 @@ function extractContactPhone(raw: any): string {
   }
   return "";
 }
+
+function GamificationEnrichmentSection() {
+  const qc = useQueryClient();
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const statsQuery = useQuery({
+    queryKey: ["didar", "gamification-stats"],
+    queryFn: async () => {
+      const { count: totalCount, error: e1 } = await supabase
+        .from("didar_activities")
+        .select("id", { count: "exact", head: true });
+      if (e1) throw e1;
+      const { count: recordedCount, error: e2 } = await supabase
+        .from("employee_score_events")
+        .select("id", { count: "exact", head: true })
+        .eq("source_table", "didar_activities");
+      if (e2) throw e2;
+      const total = totalCount ?? 0;
+      const recorded = recordedCount ?? 0;
+      return { total, recorded, pending: Math.max(0, total - recorded) };
+    },
+  });
+
+  const handleRun = async () => {
+    setRunning(true);
+    setProgress({ done: 0, total: 0 });
+    try {
+      // 1) fetch existing recorded didar source_ids
+      const recordedIds = new Set<string>();
+      {
+        const pageSize = 1000;
+        let from = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("employee_score_events")
+            .select("source_id")
+            .eq("source_table", "didar_activities")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const rows = data ?? [];
+          for (const r of rows) {
+            if ((r as any).source_id) recordedIds.add(String((r as any).source_id));
+          }
+          if (rows.length < pageSize) break;
+          from += pageSize;
+          if (from > 500_000) break;
+        }
+      }
+
+      // 2) fetch all didar activities (paged)
+      type Activity = {
+        didar_id: string;
+        customer_id: string | null;
+        activity_type: string | null;
+        occurred_at: string | null;
+      };
+      const activities: Activity[] = [];
+      {
+        const pageSize = 1000;
+        let from = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("didar_activities")
+            .select("didar_id, customer_id, activity_type, occurred_at")
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const rows = (data ?? []) as any[];
+          for (const r of rows) {
+            activities.push({
+              didar_id: String(r.didar_id),
+              customer_id: r.customer_id ?? null,
+              activity_type: r.activity_type ?? null,
+              occurred_at: r.occurred_at ?? null,
+            });
+          }
+          if (rows.length < pageSize) break;
+          from += pageSize;
+          if (from > 500_000) break;
+        }
+      }
+
+      const pending = activities.filter((a) => !recordedIds.has(a.didar_id));
+      setProgress({ done: 0, total: pending.length });
+
+      if (pending.length === 0) {
+        toast.success("فعالیت جدیدی برای ثبت وجود ندارد");
+        return;
+      }
+
+      // 3) resolve responsible_id for unique customer_ids
+      const customerIds = Array.from(
+        new Set(pending.map((a) => a.customer_id).filter((v): v is string => !!v)),
+      );
+      const responsibleMap = new Map<string, string | null>();
+      if (customerIds.length > 0) {
+        const chunk = 500;
+        for (let i = 0; i < customerIds.length; i += chunk) {
+          const slice = customerIds.slice(i, i + chunk);
+          const { data, error } = await supabase
+            .from("customers")
+            .select("id, responsible_id")
+            .in("id", slice);
+          if (error) throw error;
+          for (const r of (data ?? []) as any[]) {
+            responsibleMap.set(String(r.id), r.responsible_id ?? null);
+          }
+        }
+      }
+
+      // 4) build insert rows (skip when no responsible)
+      const rows = pending
+        .map((a) => {
+          const emp = a.customer_id ? responsibleMap.get(a.customer_id) : null;
+          if (!emp) return null;
+          return {
+            employee_id: emp,
+            event_type: "didar_activity",
+            source_id: a.didar_id,
+            source_table: "didar_activities",
+            payload: {
+              activity_type: a.activity_type,
+              customer_id: a.customer_id,
+              occurred_at: a.occurred_at,
+            } as any,
+          };
+        })
+        .filter(Boolean) as Array<{
+          employee_id: string;
+          event_type: string;
+          source_id: string;
+          source_table: string;
+          payload: any;
+        }>;
+
+      // 5) insert in batches with progress
+      let inserted = 0;
+      const batch = 500;
+      for (let i = 0; i < rows.length; i += batch) {
+        const slice = rows.slice(i, i + batch);
+        const { error } = await supabase.from("employee_score_events").insert(slice);
+        if (error) throw error;
+        inserted += slice.length;
+        setProgress({ done: inserted, total: pending.length });
+      }
+
+      const skipped = pending.length - rows.length;
+      toast.success(
+        `${inserted.toLocaleString("fa-IR")} فعالیت ثبت شد` +
+          (skipped > 0 ? ` — ${skipped.toLocaleString("fa-IR")} مورد بدون کارشناس مسئول رد شد` : ""),
+      );
+      qc.invalidateQueries({ queryKey: ["didar", "gamification-stats"] });
+    } catch (e) {
+      toast.error(`ثبت ناموفق: ${(e as Error).message}`);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const s = statsQuery.data;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Trophy className="h-4 w-4" />
+          ثبت فعالیت‌های دیدار در گیمیفیکیشن
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">کل فعالیت‌های دیدار</p>
+            <p className="mt-1 text-2xl font-bold">
+              {statsQuery.isLoading ? "…" : (s?.total ?? 0).toLocaleString("fa-IR")}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">ثبت‌شده در گیمیفیکیشن</p>
+            <p className="mt-1 text-2xl font-bold">
+              {statsQuery.isLoading ? "…" : (s?.recorded ?? 0).toLocaleString("fa-IR")}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">ثبت‌نشده</p>
+            <p className="mt-1 text-2xl font-bold">
+              {statsQuery.isLoading ? "…" : (s?.pending ?? 0).toLocaleString("fa-IR")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button disabled={running || statsQuery.isLoading || (s?.pending ?? 0) === 0}>
+                {running ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trophy className="ml-2 h-4 w-4" />
+                )}
+                ثبت فعالیت‌های جدید در گیمیفیکیشن
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent dir="rtl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>تأیید ثبت فعالیت‌ها</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {`${(s?.pending ?? 0).toLocaleString("fa-IR")} فعالیت ثبت‌نشده به‌عنوان رویداد امتیازی برای کارشناس مسئول مشتری ثبت می‌شود. مواردی که مشتری آن‌ها بدون کارشناس مسئول است رد می‌شوند.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>انصراف</AlertDialogCancel>
+                <AlertDialogAction onClick={handleRun}>تأیید و اجرا</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {progress && progress.total > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {`${progress.done.toLocaleString("fa-IR")} از ${progress.total.toLocaleString("fa-IR")} فعالیت ثبت شد`}
+            </p>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
