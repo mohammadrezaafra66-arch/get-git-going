@@ -1,29 +1,52 @@
-## مشکل
+## تشخیص مشکل فعلی
 
-تابع `run_daily_capital_allocation` هنگام محاسبه، برای مشتریانی که پروفایل اعتباری ندارند مقدار `binding_constraint = 'no_profile'` می‌گذارد، اما CHECK constraint روی `customer_capital_allocations_dynamic.binding_constraint` فقط این چهار مقدار را می‌پذیرد:
+خطای فعلی از خود فرم یا مقدار سرمایه نیست. درخواست `run_daily_capital_allocation` هنوز با خطای دیتابیس برمی‌گردد:
 
+```text
+column "user_id" of relation "audit_logs" does not exist
 ```
-'formula' | 'credit_limit' | 'overdue' | 'floor'
+
+یعنی تابع بعد از محاسبه تخصیص‌ها، در مرحله ثبت audit log شکست می‌خورد و کل تراکنش rollback می‌شود؛ بنابراین snapshot و سرمایه هم ذخیره نمی‌شود.
+
+## علت دقیق
+
+ساختار واقعی جدول `audit_logs` این ستون‌ها را دارد:
+
+```text
+id, actor_id, entity_type, entity_id, action, diff, created_at
 ```
 
-نتیجه: هنگام INSERT، خطای check violation و کل تراکنش rollback می‌شود ⇒ «سرمایه ثبت نمی‌شود / ارور می‌دهد».
-
-## راه‌حل (Migration کوچک)
-
-اصلاح CASE داخل تابع: وقتی مشتری پروفایل اعتباری ندارد، عملاً از فرمول سهم استفاده می‌شود، پس مقدار درست همان `'formula'` است.
-
-تغییر تنها این بلاک در `run_daily_capital_allocation`:
+اما داخل تابع `run_daily_capital_allocation` هنوز این insert قدیمی وجود دارد:
 
 ```sql
-binding_constraint = CASE
-  WHEN has_overdue THEN 'overdue'
-  WHEN credit_limit IS NOT NULL AND raw_allocation > credit_limit THEN 'credit_limit'
-  ELSE 'formula'   -- شامل حالت NOT has_profile
-END
+INSERT INTO public.audit_logs(user_id, action, entity_type, entity_id, metadata)
 ```
 
-بقیهٔ منطق (محاسبه final_limit، تخصیص فروشنده، Hamilton rounding، audit log) دست‌نخورده می‌ماند.
+دو ستون `user_id` و `metadata` در جدول وجود ندارند. معادل درست آن‌ها در ساختار فعلی:
 
-## تأیید
+```text
+user_id  -> actor_id
+metadata -> diff
+```
 
-پس از migration، از UI `/accounting/dynamic-capital` مقدار سرمایه را وارد و «محاسبه و ذخیره» زده می‌شود؛ باید بدون خطا snapshot تولید کند.
+## پلن اصلاح
+
+1. یک migration کوچک و محدود برای بازنویسی تابع `run_daily_capital_allocation` اعمال شود.
+2. فقط بخش ثبت audit log اصلاح شود:
+   - `user_id` به `actor_id`
+   - `metadata` به `diff`
+3. منطق‌های قبلاً اصلاح‌شده دست‌نخورده بمانند:
+   - حذف ستون‌های ناموجود تخصیص مشتری
+   - `binding_constraint = 'formula'` برای حالت بدون پروفایل
+   - `WHERE true` برای bulk updateها
+   - ساخت temp table خارج از loop
+4. بعد از اجرای migration، همان RPC با مقدار تستی بررسی شود که دیگر به خطای audit log نخورد.
+5. اگر RPC بعد از این مرحله خطای بعدی بدهد، همان خطا را جداگانه بررسی می‌کنیم؛ ولی خطای فعلی مشخصاً مربوط به mismatch جدول `audit_logs` است.
+
+## اثر تغییر
+
+- UI جدید اضافه نمی‌شود.
+- جدول جدید ساخته نمی‌شود.
+- RLS/RBAC تغییر نمی‌کند.
+- فقط تابع موجود با schema واقعی audit log هماهنگ می‌شود.
+- audit log همچنان ثبت می‌شود، اما در ستون‌های صحیح جدول فعلی.
