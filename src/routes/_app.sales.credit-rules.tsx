@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Save } from "lucide-react";
@@ -45,6 +45,25 @@ function CreditRulesPage() {
   const { roles } = useAuth();
   const queryClient = useQueryClient();
   const canEdit = hasAnyRole(roles, ["admin", "accountant"]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("credit-rules-rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_parameter_weights" },
+        () => queryClient.invalidateQueries({ queryKey: ["credit-rules"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_scoring_parameters" },
+        () => queryClient.invalidateQueries({ queryKey: ["credit-rules"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: rules = [], isLoading } = useQuery<Rule[]>({
     queryKey: ["credit-rules"],
