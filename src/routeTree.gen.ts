@@ -96,6 +96,7 @@ import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.cre
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
+import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
@@ -624,6 +625,11 @@ const AppOperationsGamificationRoute =
 const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   id: '/operations/daily-mood',
   path: '/operations/daily-mood',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsApiKeysRoute = AppOperationsApiKeysRouteImport.update({
+  id: '/operations/api-keys',
+  path: '/operations/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMarketingSuggestionsHistoryRoute =
@@ -1172,6 +1178,7 @@ export interface FileRoutesByFullPath {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1342,6 +1349,7 @@ export interface FileRoutesByTo {
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1515,6 +1523,7 @@ export interface FileRoutesById {
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/gamification': typeof AppOperationsGamificationRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
@@ -1689,6 +1698,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/gamification'
     | '/operations/tasks'
@@ -1859,6 +1869,7 @@ export interface FileRouteTypes {
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/gamification'
     | '/operations/tasks'
@@ -2031,6 +2042,7 @@ export interface FileRouteTypes {
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
+    | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
     | '/_app/operations/gamification'
     | '/_app/operations/tasks'
@@ -2754,6 +2766,13 @@ declare module '@tanstack/react-router' {
       path: '/operations/daily-mood'
       fullPath: '/operations/daily-mood'
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/api-keys': {
+      id: '/_app/operations/api-keys'
+      path: '/operations/api-keys'
+      fullPath: '/operations/api-keys'
+      preLoaderRoute: typeof AppOperationsApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/marketing/suggestions-history': {
@@ -3607,6 +3626,7 @@ interface AppRouteChildren {
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
@@ -3726,6 +3746,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsGamificationRoute: AppOperationsGamificationRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
