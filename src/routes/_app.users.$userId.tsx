@@ -11,6 +11,7 @@ import { requireAdmin } from "@/lib/rbac/route-guards";
 import { ROLE_LABELS, type AppRole } from "@/lib/rbac/roles";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
+import { EmploymentStartDateBanner } from "@/components/users/EmploymentStartDateBanner";
 
 export const Route = createFileRoute("/_app/users/$userId")({
   beforeLoad: async () => {
@@ -132,6 +133,8 @@ function UserDetailPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <EmploymentStartDateBanner userId={userId} />
 
       <DynamicScoringSection entityType="salesperson" entityId={userId} canEdit={true} />
     </div>
