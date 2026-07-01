@@ -1,31 +1,39 @@
-## مشکل
-اجرای RPC `run_daily_capital_allocation` روی `/accounting/dynamic-capital` با خطای دیتابیس شکست می‌خورد:
+## مسئله
 
+در `/accounting/dynamic-capital` هنگام زدن «محاسبه و ذخیره» پیام **«خطا در محاسبه snapshot»** دیده می‌شود.
+
+## ریشه
+
+تابع `public.run_daily_capital_allocation` داخل یک حلقه `FOR v_sp IN _sp_alloc LOOP` این را انجام می‌دهد:
+
+```sql
+CREATE TEMP TABLE _sp_cust(...) ON COMMIT DROP;
 ```
-message: "UPDATE requires a WHERE clause"
-code: 21000
-```
 
-این خطا از تنظیم امنیتی `sql_safe_updates` در session نقش‌های Supabase می‌آید که هر `UPDATE` بدون `WHERE` را رد می‌کند — حتی روی جدول موقت (temp table).
+نکتهٔ کلیدی: `ON COMMIT DROP` فقط در **commit تراکنش** جدول را حذف می‌کند. کل تابع در یک تراکنش اجرا می‌شود، پس در **دومین تکرار حلقه** (وقتی بیش از یک کارشناس فروش با allocated_capital > 0 وجود دارد) با خطای `relation "_sp_cust" already exists` مواجه می‌شویم و کل RPC fail می‌کند. با یک کارشناس کار می‌کند و همین باعث می‌شد قبلاً fix `WHERE true` کافی به نظر برسد.
 
-در بدنه‌ی این تابع ۵ جای `UPDATE ... SET` بدون `WHERE` روی temp tableها وجود دارد:
-- خط ۵۷ روی `_sp_alloc` (محاسبه share_ratio/raw_amount/floor_amount/fractional)
-- خط ۶۵ روی `_sp_alloc` (allocated_capital = floor_amount)
-- خط ۱۲۴ روی `_sp_cust` (floor_amount/fractional)
-- خط ۱۳۰ روی `_sp_cust` (raw_allocation = floor_amount)
-- خط ۱۶۶ روی `_cust_alloc` (final_limit/binding_constraint)
+## راه‌حل (migration کوچک، فقط بازتعریف تابع)
 
-## راه‌حل (تغییر جراحی، بدون تغییر منطق)
+یک migration جدید که `run_daily_capital_allocation` را با همان امضا و همان منطق بازتعریف کند، فقط با این تغییرات محدود در بخش حلقه:
 
-یک migration که تابع `public.run_daily_capital_allocation` را با همان بدنه بازتعریف می‌کند، فقط با افزودن `WHERE true` به همان ۵ `UPDATE`. هیچ تغییری در امضا، RLS، مجوزها، ورودی/خروجی و منطق تخصیص Hamilton rounding داده نمی‌شود.
+1. جدول موقت `_sp_cust` را **یک بار قبل از حلقه** ایجاد کنیم (بدون `ON COMMIT DROP`).
+2. در ابتدای هر تکرار حلقه، `TRUNCATE _sp_cust;` بزنیم تا داده‌های تکرار قبلی پاک شود.
+3. بقیهٔ منطق دست‌نخورده باقی بماند: نقش‌ها، Hamilton rounding، `WHERE true` روی UPDATE ها، audit log، مقدار بازگشتی.
 
-## فایل‌ها
-- Migration جدید: `CREATE OR REPLACE FUNCTION public.run_daily_capital_allocation(...)` با ۵ UPDATE اصلاح‌شده.
+معادلاً می‌توان از `CREATE TEMP TABLE IF NOT EXISTS` + `TRUNCATE` استفاده کرد؛ نتیجه یکسان است.
 
-## تست دستی
-1. رفتن به `/accounting/dynamic-capital`
-2. انتخاب تاریخ جدید + مبلغ سرمایه + کلیک «محاسبه و ذخیره»
-3. بررسی: عدم خطای 21000، درج ردیف در `daily_capital_settings` و توزیع در جداول `salesperson_capital_allocations_dynamic` و `customer_capital_allocations_dynamic`.
+## دامنهٔ تغییر
 
-## ریسک
-پایین — فقط افزودن `WHERE true` است؛ رفتار روی temp table یکسان می‌ماند (همه ردیف‌ها به‌روزرسانی می‌شوند). هیچ تأثیری روی RLS/RBAC/audit ندارد.
+- **Migration**: بازتعریف `public.run_daily_capital_allocation(date, numeric, text)` — بدون تغییر schema، بدون تغییر جدول، بدون تغییر RLS/GRANT.
+- **بدون تغییر frontend**: `_app.accounting.dynamic-capital.tsx`، hook `useRunDailyAllocation` و پیام خطا دست‌نخورده.
+- **بدون تغییر audit log / نقش‌ها / امضای تابع** → قابل rollback با بازگشت به نسخه قبلی migration.
+
+## تأیید بعد از اجرا
+
+1. در `/accounting/dynamic-capital` روی یک تاریخ جدید «محاسبه و ذخیره» → باید موفق شود و تعداد کارشناسان و مشتریان را برگرداند.
+2. بررسی جدول `salesperson_capital_allocations_dynamic` و `customer_capital_allocations_dynamic` برای همان `setting_id`.
+3. تلاش دوباره برای همان تاریخ → باید همان خطای قبلی «capital allocation already exists for date …» را بدهد (تغییر نکرده).
+
+## ریسک‌ها
+
+- تنها تابع تغییر می‌کند؛ اگر جای دیگری هم `_sp_cust` را در session ساخته باشد، `IF NOT EXISTS` جلوی conflict را می‌گیرد. جستجو در codebase نشان می‌دهد فقط همین تابع از این نام استفاده می‌کند.
