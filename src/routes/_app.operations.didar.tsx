@@ -371,3 +371,26 @@ function OperationsDidarPage() {
     </div>
   );
 }
+
+function extractContactName(raw: any): string {
+  if (!raw || typeof raw !== "object") return "بدون نام";
+  const first = raw.FirstName ?? raw.firstName ?? raw.first_name ?? "";
+  const last = raw.LastName ?? raw.lastName ?? raw.last_name ?? "";
+  const full = `${first ?? ""} ${last ?? ""}`.trim();
+  if (full) return full;
+  return raw.name ?? raw.Name ?? raw.DisplayName ?? raw.displayName ?? raw.title ?? "بدون نام";
+}
+
+function extractContactPhone(raw: any): string {
+  if (!raw || typeof raw !== "object") return "";
+  const direct =
+    raw.Mobile ?? raw.mobile ?? raw.Phone ?? raw.phone ?? raw.PhoneNumber ?? raw.phoneNumber;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  const list = raw.Mobiles ?? raw.mobiles ?? raw.Phones ?? raw.phones;
+  if (Array.isArray(list) && list.length > 0) {
+    const v = list[0];
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object") return v.Number ?? v.number ?? v.value ?? "";
+  }
+  return "";
+}
