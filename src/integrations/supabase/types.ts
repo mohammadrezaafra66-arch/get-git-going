@@ -9877,6 +9877,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_dynamic_scoring_parameter: {
+        Args: {
+          _code: string
+          _direction?: string
+          _label_fa: string
+          _weight: number
+        }
+        Returns: string
+      }
       create_dynamic_table_row: {
         Args: { p_table_id: string; p_values: Json }
         Returns: string
@@ -11627,6 +11636,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_dynamic_parameter_weight: {
+        Args: {
+          _new_is_active: boolean
+          _new_weight: number
+          _parameter_id: string
+        }
+        Returns: undefined
       }
       upsert_market_product_match_candidate: {
         Args: {
