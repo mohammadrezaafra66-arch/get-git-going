@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { HelpHint } from "@/components/common/HelpHint";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useScoringParameters,
   useEntityScores,
@@ -47,6 +49,7 @@ export function DynamicScoringSection({
 }) {
   const period = currentPeriodMonth();
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   const paramsQ = useScoringParameters(entityType);
   const scoresQ = useEntityScores(entityType, entityId, period);
@@ -58,6 +61,41 @@ export function DynamicScoringSection({
     entityType === "salesperson" ? entityId : undefined,
   );
   const upsert = useUpsertEntityScore();
+
+  // Realtime: when weights or params change, or today's allocation is rewritten,
+  // refresh the calculated score and allocation for this entity.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`dyn-scoring-${entityType}-${entityId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_parameter_weights" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["dyn-calculated-score", entityType, entityId] });
+          qc.invalidateQueries({ queryKey: ["dyn-scoring-parameters", entityType] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_scoring_parameters" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["dyn-scoring-parameters", entityType] });
+          qc.invalidateQueries({ queryKey: ["dyn-calculated-score", entityType, entityId] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_capital_allocations_dynamic" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["dyn-customer-latest-allocation", entityId] });
+          qc.invalidateQueries({ queryKey: ["dyn-salesperson-latest-allocation", entityId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [entityType, entityId, qc]);
 
   // dirty state per parameter — local slider values
   const [draft, setDraft] = useState<Record<string, number>>({});
