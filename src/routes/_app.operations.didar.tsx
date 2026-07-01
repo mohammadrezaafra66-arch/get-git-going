@@ -2,13 +2,29 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Plug, Save, Download, Info } from "lucide-react";
+import { Eye, EyeOff, Loader2, Plug, Save, Download, Info, Link2, Users } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -368,6 +384,194 @@ function OperationsDidarPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ContactLinkSection />
     </div>
   );
+}
+
+function ContactLinkSection() {
+  const qc = useQueryClient();
+  const [selection, setSelection] = useState<Record<string, string>>({});
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const unlinkedQuery = useQuery({
+    queryKey: ["didar", "unlinked-contacts"],
+    queryFn: async () => {
+      const { data: linkedRows, error: linkedErr } = await supabase
+        .from("customers")
+        .select("didar_contact_id")
+        .not("didar_contact_id", "is", null);
+      if (linkedErr) throw linkedErr;
+      const linkedSet = new Set(
+        (linkedRows ?? []).map((r: any) => String(r.didar_contact_id)).filter(Boolean),
+      );
+
+      const { data, error } = await supabase
+        .from("didar_import_log")
+        .select("id, didar_id, raw_data, imported_at")
+        .eq("entity_type", "contact")
+        .order("imported_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []).filter((r: any) => !linkedSet.has(String(r.didar_id)));
+    },
+  });
+
+  const customersQuery = useQuery({
+    queryKey: ["didar", "customers-for-link"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, name, phone, didar_contact_id")
+        .order("name", { ascending: true })
+        .limit(2000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async ({ customerId, didarId }: { customerId: string; didarId: string }) => {
+      const { error } = await supabase
+        .from("customers")
+        .update({ didar_contact_id: didarId })
+        .eq("id", customerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("مخاطب لینک شد");
+      qc.invalidateQueries({ queryKey: ["didar", "unlinked-contacts"] });
+      qc.invalidateQueries({ queryKey: ["didar", "customers-for-link"] });
+    },
+    onError: (e: unknown) => toast.error(`لینک ناموفق: ${(e as Error).message}`),
+    onSettled: () => setPendingId(null),
+  });
+
+  const handleLink = (didarId: string) => {
+    const customerId = selection[didarId];
+    if (!customerId) {
+      toast.error("لطفاً یک مشتری انتخاب کنید");
+      return;
+    }
+    setPendingId(didarId);
+    linkMutation.mutate({ customerId, didarId });
+  };
+
+  const rows = unlinkedQuery.data ?? [];
+  const customers = customersQuery.data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Link2 className="h-4 w-4" />
+          اتصال مخاطبین دیدار به مشتریان
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {unlinkedQuery.isLoading || customersQuery.isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+            <Users className="h-4 w-4" />
+            همه مخاطبین لینک شده‌اند ✓
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>نام مخاطب دیدار</TableHead>
+                  <TableHead>تلفن</TableHead>
+                  <TableHead>وضعیت</TableHead>
+                  <TableHead>انتخاب مشتری</TableHead>
+                  <TableHead className="text-left">عملیات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row: any) => {
+                  const name = extractContactName(row.raw_data);
+                  const phone = extractContactPhone(row.raw_data);
+                  const didarId = String(row.didar_id);
+                  const isPending = pendingId === didarId && linkMutation.isPending;
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-medium">{name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground" dir="ltr">
+                        {phone || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">لینک نشده</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={selection[didarId] ?? ""}
+                          onValueChange={(v) =>
+                            setSelection((s) => ({ ...s, [didarId]: v }))
+                          }
+                          disabled={isPending}
+                        >
+                          <SelectTrigger className="w-64">
+                            <SelectValue placeholder="یک مشتری انتخاب کنید" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                                {c.phone ? ` — ${c.phone}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-left">
+                        <Button
+                          size="sm"
+                          onClick={() => handleLink(didarId)}
+                          disabled={isPending || !selection[didarId]}
+                        >
+                          {isPending ? (
+                            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Link2 className="ml-2 h-4 w-4" />
+                          )}
+                          لینک کن
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function extractContactName(raw: any): string {
+  if (!raw || typeof raw !== "object") return "بدون نام";
+  const first = raw.FirstName ?? raw.firstName ?? raw.first_name ?? "";
+  const last = raw.LastName ?? raw.lastName ?? raw.last_name ?? "";
+  const full = `${first ?? ""} ${last ?? ""}`.trim();
+  if (full) return full;
+  return raw.name ?? raw.Name ?? raw.DisplayName ?? raw.displayName ?? raw.title ?? "بدون نام";
+}
+
+function extractContactPhone(raw: any): string {
+  if (!raw || typeof raw !== "object") return "";
+  const direct =
+    raw.Mobile ?? raw.mobile ?? raw.Phone ?? raw.phone ?? raw.PhoneNumber ?? raw.phoneNumber;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  const list = raw.Mobiles ?? raw.mobiles ?? raw.Phones ?? raw.phones;
+  if (Array.isArray(list) && list.length > 0) {
+    const v = list[0];
+    if (typeof v === "string") return v;
+    if (v && typeof v === "object") return v.Number ?? v.number ?? v.value ?? "";
+  }
+  return "";
 }
