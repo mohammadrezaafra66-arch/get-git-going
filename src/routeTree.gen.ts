@@ -100,6 +100,7 @@ import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marke
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppIntegrationsDidarRouteImport } from './routes/_app.integrations.didar'
+import { Route as AppGamificationSettingsRouteImport } from './routes/_app.gamification.settings'
 import { Route as AppGamificationLeaderboardRouteImport } from './routes/_app.gamification.leaderboard'
 import { Route as AppGamificationAchievementsRouteImport } from './routes/_app.gamification.achievements'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
@@ -645,6 +646,11 @@ const AppIntegrationsDidarRoute = AppIntegrationsDidarRouteImport.update({
   path: '/integrations/didar',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGamificationSettingsRoute = AppGamificationSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppGamificationRoute,
+} as any)
 const AppGamificationLeaderboardRoute =
   AppGamificationLeaderboardRouteImport.update({
     id: '/leaderboard',
@@ -1153,6 +1159,7 @@ export interface FileRoutesByFullPath {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/settings': typeof AppGamificationSettingsRoute
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -1321,6 +1328,7 @@ export interface FileRoutesByTo {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/settings': typeof AppGamificationSettingsRoute
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
@@ -1492,6 +1500,7 @@ export interface FileRoutesById {
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/_app/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/_app/gamification/settings': typeof AppGamificationSettingsRoute
   '/_app/integrations/didar': typeof AppIntegrationsDidarRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
@@ -1664,6 +1673,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/settings'
     | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -1832,6 +1842,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/settings'
     | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
@@ -2002,6 +2013,7 @@ export interface FileRouteTypes {
     | '/_app/feedback_/create'
     | '/_app/gamification/achievements'
     | '/_app/gamification/leaderboard'
+    | '/_app/gamification/settings'
     | '/_app/integrations/didar'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
@@ -2760,6 +2772,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIntegrationsDidarRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/gamification/settings': {
+      id: '/_app/gamification/settings'
+      path: '/settings'
+      fullPath: '/gamification/settings'
+      preLoaderRoute: typeof AppGamificationSettingsRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/gamification/leaderboard': {
       id: '/_app/gamification/leaderboard'
       path: '/leaderboard'
@@ -3330,6 +3349,7 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
 interface AppGamificationRouteChildren {
   AppGamificationAchievementsRoute: typeof AppGamificationAchievementsRoute
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
+  AppGamificationSettingsRoute: typeof AppGamificationSettingsRoute
   AppGamificationAdminAchievementsRoute: typeof AppGamificationAdminAchievementsRoute
   AppGamificationAdminAnalyticsRoute: typeof AppGamificationAdminAnalyticsRoute
   AppGamificationAdminKpiRulesRoute: typeof AppGamificationAdminKpiRulesRoute
@@ -3343,6 +3363,7 @@ interface AppGamificationRouteChildren {
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationAchievementsRoute: AppGamificationAchievementsRoute,
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
+  AppGamificationSettingsRoute: AppGamificationSettingsRoute,
   AppGamificationAdminAchievementsRoute: AppGamificationAdminAchievementsRoute,
   AppGamificationAdminAnalyticsRoute: AppGamificationAdminAnalyticsRoute,
   AppGamificationAdminKpiRulesRoute: AppGamificationAdminKpiRulesRoute,

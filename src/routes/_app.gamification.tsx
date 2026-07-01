@@ -1,10 +1,12 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Target } from "lucide-react";
+import { Trophy, Target, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toPersianDigits } from "@/lib/dashboard/utils";
 import { LevelBadge } from "@/components/gamification/LevelBadge";
@@ -16,6 +18,8 @@ import {
   useMyRank,
   useMyAchievements,
 } from "@/hooks/gamification/useGamification";
+import { listKpis, type EmployeeScore } from "@/lib/operations/gamification";
+import { hasAnyRole } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/gamification")({
   beforeLoad: ({ context }) => {
@@ -81,6 +85,8 @@ function useWeeklyScoreSeries(employeeId: string) {
 
 function GamificationProfile() {
   const { user, profile } = useAuth();
+  const { roles } = useAuth();
+  const isAdminOrManager = hasAnyRole(roles, ["admin", "manager"]);
   const employeeId = user?.id ?? "";
   const fullName = profile?.full_name ?? "کاربر";
 
@@ -147,6 +153,9 @@ function GamificationProfile() {
         </CardContent>
       </Card>
 
+      {/* تفکیک امتیاز */}
+      <ScoreBreakdownCard employeeId={employeeId} />
+
       {/* بخش ۳: نشان‌های اخیر */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -209,6 +218,14 @@ function GamificationProfile() {
             همه نشان‌ها
           </Link>
         </Button>
+        {isAdminOrManager && (
+          <Button asChild size="lg" variant="secondary" className="h-16 gap-2 text-base md:col-span-2">
+            <Link to="/gamification/settings">
+              <Settings className="h-5 w-5" />
+              تنظیمات وزن KPIها (مدیر)
+            </Link>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -234,5 +251,87 @@ function EmptyEncouragement() {
         با پاسخ سریع به استعلام‌ها و انجام مأموریت‌ها، امتیاز و نشان کسب کن.
       </p>
     </div>
+  );
+}
+
+function periodLabel(p?: string) {
+  if (p === "daily") return "روز";
+  if (p === "weekly") return "هفته";
+  if (p === "monthly") return "ماه";
+  return "کل";
+}
+
+function ScoreBreakdownCard({ employeeId }: { employeeId: string }) {
+  const scoreQ = useQuery({
+    enabled: !!employeeId,
+    queryKey: ["my-score-breakdown", employeeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employee_scores")
+        .select("breakdown, total_score, monthly_score")
+        .eq("employee_id", employeeId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Pick<EmployeeScore, "breakdown" | "total_score" | "monthly_score"> | null;
+    },
+    staleTime: 60_000,
+  });
+
+  const kpisQ = useQuery({
+    queryKey: ["gamification-kpis-labels"],
+    queryFn: listKpis,
+    staleTime: 5 * 60_000,
+  });
+
+  const labelMap = new Map((kpisQ.data ?? []).map((k) => [k.key, k.label_fa]));
+
+  const breakdown = scoreQ.data?.breakdown ?? {};
+  const entries = Object.entries(breakdown).sort(
+    (a, b) => Math.abs(b[1]?.contribution ?? 0) - Math.abs(a[1]?.contribution ?? 0),
+  );
+  const totalAbs = entries.reduce((s, [, v]) => s + Math.abs(v?.contribution ?? 0), 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">این امتیاز از کجا آمد؟</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {scoreQ.isLoading || kpisQ.isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            هنوز امتیازی برای نمایش وجود ندارد
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {entries.map(([key, v]) => {
+              const contribution = Number(v?.contribution ?? 0);
+              const share = totalAbs > 0 ? (Math.abs(contribution) / totalAbs) * 100 : 0;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{labelMap.get(key) ?? key}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {periodLabel(v?.period)}
+                      </Badge>
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">
+                      {toPersianDigits(contribution.toFixed(2))}
+                    </span>
+                  </div>
+                  <Progress value={share} className="h-2" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
