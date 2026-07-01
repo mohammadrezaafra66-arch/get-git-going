@@ -94,6 +94,7 @@ import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.a
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
@@ -617,6 +618,12 @@ const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   path: '/operations/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsPurchaseAdvisorRoute =
+  AppOperationsPurchaseAdvisorRouteImport.update({
+    id: '/operations/purchase-advisor',
+    path: '/operations/purchase-advisor',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsGamificationRoute =
   AppOperationsGamificationRouteImport.update({
     id: '/operations/gamification',
@@ -1188,6 +1195,7 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
+  '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1360,6 +1368,7 @@ export interface FileRoutesByTo {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
+  '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1535,6 +1544,7 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/gamification': typeof AppOperationsGamificationRoute
+  '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1711,6 +1721,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/gamification'
+    | '/operations/purchase-advisor'
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
@@ -1883,6 +1894,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/gamification'
+    | '/operations/purchase-advisor'
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
@@ -2057,6 +2069,7 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/gamification'
+    | '/_app/operations/purchase-advisor'
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
     | '/_app/pricing/amin-hozoor-board'
@@ -2764,6 +2777,13 @@ declare module '@tanstack/react-router' {
       path: '/operations/tasks'
       fullPath: '/operations/tasks'
       preLoaderRoute: typeof AppOperationsTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/purchase-advisor': {
+      id: '/_app/operations/purchase-advisor'
+      path: '/operations/purchase-advisor'
+      fullPath: '/operations/purchase-advisor'
+      preLoaderRoute: typeof AppOperationsPurchaseAdvisorRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/gamification': {
@@ -3649,6 +3669,7 @@ interface AppRouteChildren {
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
+  AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
@@ -3770,6 +3791,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsGamificationRoute: AppOperationsGamificationRoute,
+  AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
