@@ -42,6 +42,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCollaborationRouteImport } from './routes/_app.collaboration'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppApiKeysRouteImport } from './routes/_app.api-keys'
 import { Route as AppAcademyRouteImport } from './routes/_app.academy'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
@@ -342,6 +343,11 @@ const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
 const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApiKeysRoute = AppApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAcademyRoute = AppAcademyRouteImport.update({
@@ -1095,6 +1101,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
+  '/api-keys': typeof AppApiKeysRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/collaboration': typeof AppCollaborationRoute
@@ -1266,6 +1273,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/academy': typeof AppAcademyRoute
+  '/api-keys': typeof AppApiKeysRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/collaboration': typeof AppCollaborationRoute
   '/dashboard': typeof AppDashboardRoute
@@ -1436,6 +1444,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/_app/academy': typeof AppAcademyRoute
+  '/_app/api-keys': typeof AppApiKeysRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
   '/_app/collaboration': typeof AppCollaborationRoute
@@ -1609,6 +1618,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
+    | '/api-keys'
     | '/audit-logs'
     | '/bot-api-keys'
     | '/collaboration'
@@ -1780,6 +1790,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/unauthorized'
     | '/academy'
+    | '/api-keys'
     | '/audit-logs'
     | '/collaboration'
     | '/dashboard'
@@ -1949,6 +1960,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/unauthorized'
     | '/_app/academy'
+    | '/_app/api-keys'
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
     | '/_app/collaboration'
@@ -2364,6 +2376,13 @@ declare module '@tanstack/react-router' {
       path: '/audit-logs'
       fullPath: '/audit-logs'
       preLoaderRoute: typeof AppAuditLogsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/api-keys': {
+      id: '/_app/api-keys'
+      path: '/api-keys'
+      fullPath: '/api-keys'
+      preLoaderRoute: typeof AppApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/academy': {
@@ -3524,6 +3543,7 @@ const AppSalesInvoicesInvoiceIdRouteWithChildren =
 
 interface AppRouteChildren {
   AppAcademyRoute: typeof AppAcademyRoute
+  AppApiKeysRoute: typeof AppApiKeysRoute
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
   AppCollaborationRoute: typeof AppCollaborationRoute
@@ -3640,6 +3660,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAcademyRoute: AppAcademyRoute,
+  AppApiKeysRoute: AppApiKeysRoute,
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
   AppCollaborationRoute: AppCollaborationRoute,
@@ -3815,13 +3836,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
