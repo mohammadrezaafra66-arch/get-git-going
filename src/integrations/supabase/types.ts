@@ -9880,7 +9880,7 @@ export type Database = {
       create_dynamic_scoring_parameter: {
         Args: {
           _code: string
-          _direction?: string
+          _direction: string
           _label_fa: string
           _weight: number
         }
