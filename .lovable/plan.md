@@ -1,39 +1,48 @@
-## مسئله
+## مشکل
+صفحه `/gamification/admin/kpi-rules` (و همه‌ی زیرمسیرهای `/gamification/*`) با پیام «Unauthorized» و errorComponent شکست می‌خورد.
 
-در `/accounting/dynamic-capital` هنگام زدن «محاسبه و ذخیره» پیام **«خطا در محاسبه snapshot»** دیده می‌شود.
+### علت ریشه‌ای
+در `src/routes/_app.gamification.tsx` (خطوط ۲۴–۳۳)، `beforeLoad` روت والد این چک را دارد:
 
-## ریشه
-
-تابع `public.run_daily_capital_allocation` داخل یک حلقه `FOR v_sp IN _sp_alloc LOOP` این را انجام می‌دهد:
-
-```sql
-CREATE TEMP TABLE _sp_cust(...) ON COMMIT DROP;
+```ts
+if (typeof window === "undefined") return;
+const ctx = context as { user?: { id: string } | null };
+if (!ctx?.user) {
+  throw new Error("Unauthorized");
+}
 ```
 
-نکتهٔ کلیدی: `ON COMMIT DROP` فقط در **commit تراکنش** جدول را حذف می‌کند. کل تابع در یک تراکنش اجرا می‌شود، پس در **دومین تکرار حلقه** (وقتی بیش از یک کارشناس فروش با allocated_capital > 0 وجود دارد) با خطای `relation "_sp_cust" already exists` مواجه می‌شویم و کل RPC fail می‌کند. با یک کارشناس کار می‌کند و همین باعث می‌شد قبلاً fix `WHERE true` کافی به نظر برسد.
+اما `context.user` هیچ‌جا در client-side router context ست نمی‌شود (auth از طریق `AuthProvider` / `ensureAuthReady` مدیریت می‌شود، نه router context). پس روی client `ctx.user` همیشه undefined است و همیشه throw می‌شود → errorComponent با متن "Unauthorized" نمایش داده می‌شود.
 
-## راه‌حل (migration کوچک، فقط بازتعریف تابع)
+این کد در تلاش قبلی برای رفع خطای SSR اضافه شده بود، اما درست کار نمی‌کند — auth واقعی already توسط:
+- `_app` (والد بالاتر با AuthProvider)
+- `requireAnyRole(["admin", "manager"])` در خود روت `kpi-rules`
 
-یک migration جدید که `run_daily_capital_allocation` را با همان امضا و همان منطق بازتعریف کند، فقط با این تغییرات محدود در بخش حلقه:
+انجام می‌شود، پس این گارد اضافی نه‌تنها لازم نیست بلکه صفحه را می‌شکند.
 
-1. جدول موقت `_sp_cust` را **یک بار قبل از حلقه** ایجاد کنیم (بدون `ON COMMIT DROP`).
-2. در ابتدای هر تکرار حلقه، `TRUNCATE _sp_cust;` بزنیم تا داده‌های تکرار قبلی پاک شود.
-3. بقیهٔ منطق دست‌نخورده باقی بماند: نقش‌ها، Hamilton rounding، `WHERE true` روی UPDATE ها، audit log، مقدار بازگشتی.
+## اصلاح
 
-معادلاً می‌توان از `CREATE TEMP TABLE IF NOT EXISTS` + `TRUNCATE` استفاده کرد؛ نتیجه یکسان است.
+فقط کل بلاک `beforeLoad` را از `src/routes/_app.gamification.tsx` حذف می‌کنم:
 
-## دامنهٔ تغییر
+```diff
+ export const Route = createFileRoute("/_app/gamification")({
+-  beforeLoad: ({ context }) => {
+-    if (typeof window === "undefined") return;
+-    const ctx = context as { user?: { id: string } | null };
+-    if (!ctx?.user) {
+-      throw new Error("Unauthorized");
+-    }
+-  },
+   component: GamificationRoutePage,
+ });
+```
 
-- **Migration**: بازتعریف `public.run_daily_capital_allocation(date, numeric, text)` — بدون تغییر schema، بدون تغییر جدول، بدون تغییر RLS/GRANT.
-- **بدون تغییر frontend**: `_app.accounting.dynamic-capital.tsx`، hook `useRunDailyAllocation` و پیام خطا دست‌نخورده.
-- **بدون تغییر audit log / نقش‌ها / امضای تابع** → قابل rollback با بازگشت به نسخه قبلی migration.
+## دامنه تغییرات
+- تنها فایل تغییر یافته: `src/routes/_app.gamification.tsx`
+- بدون migration، بدون تغییر RLS/RBAC، بدون تغییر UI
+- صفحات محافظت‌شده‌ی زیرمسیر (`admin/kpi-rules`, `admin/rewards`, ...) همچنان توسط `requireAnyRole` / `requireAdmin` در `beforeLoad` خودشان محافظت می‌شوند
 
-## تأیید بعد از اجرا
-
-1. در `/accounting/dynamic-capital` روی یک تاریخ جدید «محاسبه و ذخیره» → باید موفق شود و تعداد کارشناسان و مشتریان را برگرداند.
-2. بررسی جدول `salesperson_capital_allocations_dynamic` و `customer_capital_allocations_dynamic` برای همان `setting_id`.
-3. تلاش دوباره برای همان تاریخ → باید همان خطای قبلی «capital allocation already exists for date …» را بدهد (تغییر نکرده).
-
-## ریسک‌ها
-
-- تنها تابع تغییر می‌کند؛ اگر جای دیگری هم `_sp_cust` را در session ساخته باشد، `IF NOT EXISTS` جلوی conflict را می‌گیرد. جستجو در codebase نشان می‌دهد فقط همین تابع از این نام استفاده می‌کند.
+## تأیید
+- بارگذاری `/gamification/admin/kpi-rules` باید لیست قوانین را نشان دهد (نه errorComponent)
+- بارگذاری `/gamification` (پروفایل شخصی) باید کار کند
+- SSR اولیه‌ی این مسیرها همچنان بدون throw می‌ماند چون `requireAnyRole` روی SSR فقط `resolveAuthWithRetry` را در `typeof window === "undefined"` مسیر برمی‌گرداند null و اجازه‌ی prerender می‌دهد
