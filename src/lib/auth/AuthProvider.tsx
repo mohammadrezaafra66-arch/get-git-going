@@ -34,6 +34,13 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const parentContext = useContext(AuthContext);
+  if (parentContext) return <>{children}</>;
+
+  return <AuthProviderInner>{children}</AuthProviderInner>;
+}
+
+function AuthProviderInner({ children }: { children: ReactNode }) {
   const [state, setState] = useState(getAuthSnapshot());
 
   useEffect(() => {
