@@ -23,6 +23,9 @@ import { hasAnyRole } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/gamification")({
   beforeLoad: ({ context }) => {
+    // Skip during SSR — _app parent already handles auth on the client and
+    // context.user is not populated in the Worker.
+    if (typeof window === "undefined") return;
     const ctx = context as { user?: { id: string } | null };
     if (!ctx?.user) {
       throw new Error("Unauthorized");
