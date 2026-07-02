@@ -33,12 +33,29 @@ function ReportsPage() {
     <div className="space-y-6">
       <PageHeader title="گزارش‌ها" description="گزارش‌های فروش، مالی و عملیاتی" />
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">بازه زمانی</span>
+        <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as RangeDays)}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RANGE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={String(o.value)}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <Tabs defaultValue="marketing" dir="rtl" className="space-y-4">
         <TabsList>
           <TabsTrigger value="marketing">بازاریابی</TabsTrigger>
           <TabsTrigger value="sales">فروش</TabsTrigger>
           <TabsTrigger value="finance">مالی</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="marketing" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
