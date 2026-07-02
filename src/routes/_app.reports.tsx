@@ -103,7 +103,10 @@ function SalesReportTab({ range }: { range: number }) {
       const byCustomer: Record<string, { name: string; total: number }> = {};
       for (const r of rows) {
         const name = (r.customers as unknown as { full_name: string })?.full_name ?? "—";
-        byCustomer[name] = { name, total: (byCustomer[name]?.total ?? 0) + Number(r.total_amount ?? 0) };
+        byCustomer[name] = {
+          name,
+          total: (byCustomer[name]?.total ?? 0) + Number(r.total_amount ?? 0),
+        };
       }
       const topCustomers = Object.values(byCustomer)
         .sort((a, b) => b.total - a.total)
@@ -122,8 +125,12 @@ function SalesReportTab({ range }: { range: number }) {
   });
 
   const STATUS_FA: Record<string, string> = {
-    draft: "پیش‌نویس", pending_approval: "در انتظار تأیید", approved: "تأییدشده",
-    paid: "پرداخت‌شده", cancelled: "لغوشده", overdue: "معوق",
+    draft: "پیش‌نویس",
+    pending_approval: "در انتظار تأیید",
+    approved: "تأییدشده",
+    paid: "پرداخت‌شده",
+    cancelled: "لغوشده",
+    overdue: "معوق",
   };
 
   return (
@@ -163,7 +170,9 @@ function SalesReportTab({ range }: { range: number }) {
 
       {/* Status breakdown */}
       <Card>
-        <CardHeader><CardTitle className="text-sm">وضعیت فاکتورها</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-sm">وضعیت فاکتورها</CardTitle>
+        </CardHeader>
         <CardContent>
           {invoicesQ.isLoading ? (
             <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
@@ -185,7 +194,9 @@ function SalesReportTab({ range }: { range: number }) {
 
       {/* Top customers */}
       <Card>
-        <CardHeader><CardTitle className="text-sm">۵ مشتری برتر</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-sm">۵ مشتری برتر</CardTitle>
+        </CardHeader>
         <CardContent>
           {invoicesQ.isLoading ? (
             <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
@@ -229,7 +240,10 @@ function FinanceReportTab({ range }: { range: number }) {
       }>;
       const totalReceivables = rows.reduce((s, r) => s + Number(r.total_receivables ?? 0), 0);
       const overdueReceivables = rows.reduce((s, r) => s + Number(r.overdue_receivables ?? 0), 0);
-      const dueTodayReceivables = rows.reduce((s, r) => s + Number(r.due_today_receivables ?? 0), 0);
+      const dueTodayReceivables = rows.reduce(
+        (s, r) => s + Number(r.due_today_receivables ?? 0),
+        0,
+      );
       return { totalReceivables, overdueReceivables, dueTodayReceivables };
     },
   });
@@ -295,7 +309,9 @@ function FinanceReportTab({ range }: { range: number }) {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-sm">خلاصه دریافت‌ها ({range} روز اخیر)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-sm">خلاصه دریافت‌ها ({range} روز اخیر)</CardTitle>
+        </CardHeader>
         <CardContent>
           {paymentsQ.isLoading ? (
             <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
@@ -303,13 +319,17 @@ function FinanceReportTab({ range }: { range: number }) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">تعداد رسید پرداخت</span>
-                <span className="font-bold">{(paymentsQ.data?.count ?? 0).toLocaleString("fa-IR")}</span>
+                <span className="font-bold">
+                  {(paymentsQ.data?.count ?? 0).toLocaleString("fa-IR")}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">میانگین هر رسید</span>
                 <span className="font-bold">
                   {paymentsQ.data && paymentsQ.data.count > 0
-                    ? Math.round(paymentsQ.data.totalPayments / paymentsQ.data.count / 1_000).toLocaleString("fa-IR")
+                    ? Math.round(
+                        paymentsQ.data.totalPayments / paymentsQ.data.count / 1_000,
+                      ).toLocaleString("fa-IR")
                     : "—"}{" "}
                   هزار ت
                 </span>
