@@ -36,6 +36,8 @@ function ReportsPage() {
       <Tabs defaultValue="marketing" dir="rtl" className="space-y-4">
         <TabsList>
           <TabsTrigger value="marketing">بازاریابی</TabsTrigger>
+          <TabsTrigger value="sales">فروش</TabsTrigger>
+          <TabsTrigger value="finance">مالی</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketing" className="space-y-4">
@@ -62,6 +64,14 @@ function ReportsPage() {
             <MarketingPromotionSuggestionsUsedCard range={range} />
             <MarketingActiveChannelsCard />
           </div>
+        </TabsContent>
+
+        <TabsContent value="sales" className="space-y-4">
+          <SalesReportTab range={range} />
+        </TabsContent>
+
+        <TabsContent value="finance" className="space-y-4">
+          <FinanceReportTab range={range} />
         </TabsContent>
       </Tabs>
     </div>
