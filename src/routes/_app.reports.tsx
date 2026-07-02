@@ -56,7 +56,6 @@ function ReportsPage() {
           <TabsTrigger value="finance">مالی</TabsTrigger>
         </TabsList>
 
-
         <TabsContent value="marketing" className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <MarketingTrendingCard range={range} />
