@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, BarChart3 } from "lucide-react";
+import { RefreshCw, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,10 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingProductsCard } from "@/components/management/market-intelligence/TrendingProductsCard";
 import { PriceMoversCard } from "@/components/management/market-intelligence/PriceMoversCard";
 import { AfraMarketIndexCard } from "@/components/management/market-intelligence/AfraMarketIndexCard";
-import { PlaceholderCard } from "@/components/management/market-intelligence/PlaceholderCard";
 import { TopCheckedTodayCard } from "@/components/management/market-intelligence/TopCheckedTodayCard";
 import { DemandGrowthCard } from "@/components/management/market-intelligence/DemandGrowthCard";
 import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
