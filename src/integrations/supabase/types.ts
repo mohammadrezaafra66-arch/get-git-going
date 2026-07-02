@@ -10188,6 +10188,23 @@ export type Database = {
           total_purchases: number
         }[]
       }
+      get_customer_dynamic_credit: {
+        Args: { p_customer_id: string }
+        Returns: {
+          available_credit: number
+          binding_constraint: string
+          capital_date: string
+          final_limit: number
+          has_allocation: boolean
+          has_overdue: boolean
+          held_credit: number
+          is_today: boolean
+          outstanding_balance: number
+          overdue_since: string
+          settlement_score: number
+          total_purchases: number
+        }[]
+      }
       get_delivery_receipts: {
         Args: {
           p_invoice_id?: string
