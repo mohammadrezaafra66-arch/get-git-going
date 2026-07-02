@@ -106,15 +106,7 @@ function MarketIntelligencePage() {
       {/* Top section: market index */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AfraMarketIndexCard days={days} />
-        <Card className="border-dashed">
-          <CardContent className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <BarChart3 className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-semibold">گزارش روزانه بازار</p>
-            <p className="text-xs text-muted-foreground">
-              این بخش در فاز بعدی همین داشبورد فعال می‌شود.
-            </p>
-          </CardContent>
-        </Card>
+        <DailyMarketSummaryCard />
       </div>
 
       {/* Movers */}
