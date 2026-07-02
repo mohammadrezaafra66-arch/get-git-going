@@ -102,7 +102,7 @@ function SalesReportTab({ range }: { range: number }) {
       // Top 5 customers by total
       const byCustomer: Record<string, { name: string; total: number }> = {};
       for (const r of rows) {
-        const name = (r.customers as { full_name: string })?.full_name ?? "—";
+        const name = (r.customers as unknown as { full_name: string })?.full_name ?? "—";
         byCustomer[name] = { name, total: (byCustomer[name]?.total ?? 0) + Number(r.total_amount ?? 0) };
       }
       const topCustomers = Object.values(byCustomer)
