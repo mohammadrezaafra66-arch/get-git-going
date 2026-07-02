@@ -156,7 +156,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     enabled: !!customerId,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_customer_credit", {
+      const { data, error } = await supabase.rpc("get_customer_dynamic_credit", {
         p_customer_id: customerId,
       });
       if (error) throw error;
@@ -294,7 +294,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
       // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
-        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
+        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_dynamic_credit", {
           p_customer_id: values.customer_id,
         });
         if (ccErr) throw ccErr;
