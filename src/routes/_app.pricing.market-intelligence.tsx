@@ -248,7 +248,7 @@ function HighMarginOpportunitiesCard() {
         .limit(200);
       if (error) throw error;
       // Return top 5 by sale_price as proxy (real margin calc needs purchase price)
-      return (data ?? []).slice(0, 5) as Array<{
+      return (data ?? []).slice(0, 5) as unknown as Array<{
         product_id: string;
         sale_price: number;
         products: { id: string; name: string; sku: string | null };
