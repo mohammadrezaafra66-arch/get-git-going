@@ -147,14 +147,8 @@ function MarketIntelligencePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PlaceholderCard
-          title="فرصت‌های سود بالا"
-          description="بر اساس margin و قیمت خرید (فقط نقش‌های مالی)"
-        />
-        <PlaceholderCard
-          title="کالاهای پرریسک"
-          description="نوسان قیمت بالا، موجودی محدود یا قیمت خرید قدیمی"
-        />
+        <HighMarginOpportunitiesCard />
+        <HighRiskProductsCard />
       </div>
 
       <p className="pt-2 text-center text-[11px] text-muted-foreground">
