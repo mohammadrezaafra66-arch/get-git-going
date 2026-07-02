@@ -305,7 +305,7 @@ function HighRiskProductsCard() {
         .order("effective_from", { ascending: true })
         .limit(5);
       if (error) throw error;
-      return (data ?? []) as Array<{
+      return (data ?? []) as unknown as Array<{
         product_id: string;
         effective_from: string;
         products: { id: string; name: string; sku: string | null };
