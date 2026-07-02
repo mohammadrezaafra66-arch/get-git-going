@@ -221,7 +221,12 @@ function FinanceReportTab({ range }: { range: number }) {
         .select("total_receivables, overdue_receivables, due_today_receivables, future_receivables")
         .limit(500);
       if (error) throw error;
-      const rows = data ?? [];
+      const rows = (data ?? []) as unknown as Array<{
+        total_receivables: number | null;
+        overdue_receivables: number | null;
+        due_today_receivables: number | null;
+        future_receivables: number | null;
+      }>;
       const totalReceivables = rows.reduce((s, r) => s + Number(r.total_receivables ?? 0), 0);
       const overdueReceivables = rows.reduce((s, r) => s + Number(r.overdue_receivables ?? 0), 0);
       const dueTodayReceivables = rows.reduce((s, r) => s + Number(r.due_today_receivables ?? 0), 0);
