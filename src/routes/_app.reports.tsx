@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -10,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { MarketingActiveChannelsCard } from "@/components/reports/MarketingActiveChannelsCard";
 import { MarketingTrendingCard } from "@/components/reports/MarketingTrendingCard";
 import { MarketingTopCheckedTodayCard } from "@/components/reports/MarketingTopCheckedTodayCard";
