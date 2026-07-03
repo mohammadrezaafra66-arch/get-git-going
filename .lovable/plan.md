@@ -1,137 +1,81 @@
-# پلن: غیرفعال‌سازی Legacy در UI اعتبار مشتری و اتصال بلاک فاکتور به Dynamic
 
-## Task ID
-CREDIT-DYNAMIC-ONLY-UI
+# برنامه: گسترش پارامترهای امتیازدهی اعتباری با input_type و min/max
 
-## Classification
-PLAN ONLY — فایل تغییر نمی‌کند تا تأیید نگیرم.
+## وضعیت فعلی (بررسی شد)
 
-## هدف (یک جمله)
-UI اعتبار مشتری فقط سیستم Dynamic را نمایش دهد و بلاک اعتبار در `InvoiceForm` بر پایه `customer_capital_allocations_dynamic.final_limit` تصمیم بگیرد؛ جداول و RPCهای Legacy در دیتابیس دست‌نخورده می‌مانند.
+- `dynamic_scoring_parameters`: ۱۰ ردیف (۵ customer + ۵ salesperson). ندارد: `input_type`, `min_value`, `max_value`, `unit_label`, `input_hint`.
+- `dynamic_entity_scores`:
+  - `raw_score numeric(4,3)` با CHECK `>= 0 AND <= 1` — یعنی normalized ذخیره می‌شود.
+  - ۱۱ رکورد customer موجود است.
+  - trigger های `validate_dynamic_entity_score`, `audit_dynamic_entity_score`, `set_updated_at` فعال.
+- `dynamic_parameter_weights`: ۵ وزن customer فعال (هرکدام 0.2). با DELETE پارامترها، به علت `ON DELETE CASCADE` پاک می‌شوند.
+- `calculate_dynamic_score` مستقیماً `s.raw_score` را در محاسبه استفاده می‌کند (عدد ۰..۱).
+- پارامترهای salesperson: **دست‌نخورده باقی می‌مانند**.
 
----
+## پاسخ به سؤالات شما
 
-## ۱) وضعیت فعلی صفحه `/sales/customers/:id/credit`
+**۱) سازگاری با constraint فعلی `dynamic_entity_scores`؟**
+CHECK فعلی روی `raw_score` بین ۰ و ۱ است. اگر `actual_value` جدید را اضافه کنیم و `raw_score` را همچنان normalized (۰..۱) نگه داریم، سازگار است. نیازی به تغییر constraint نیست.
 
-فایل: `src/routes/_app.sales_.customers_.$customerId.credit.tsx`
+**۲) `raw_score` computed column یا trigger؟**
+پیشنهاد **trigger** (`BEFORE INSERT OR UPDATE`)، نه GENERATED column. دلایل:
+- GENERATED باید IMMUTABLE باشد و به جدول دیگری (`dynamic_scoring_parameters` برای min/max) نمی‌تواند JOIN بزند.
+- Trigger منعطف است، می‌تواند clipping اعمال کند و پیام خطای فارسی بدهد.
+- منطق: `NEW.raw_score := LEAST(1, GREATEST(0, (NEW.actual_value - p.min_value) / NULLIF(p.max_value - p.min_value, 0)))`
+- برای `direction='negative'` در آینده: `1 - normalized`. الان همه positive هستند.
+- کاربر می‌تواند `actual_value` بدهد و `raw_score` خودکار محاسبه شود. یا برای backward-compat اگر `actual_value` NULL باشد، `raw_score` مستقیم پذیرفته شود.
 
-بخش‌های Legacy که الان نمایش داده می‌شوند:
-- دکمه «محاسبه مجدد امتیاز» → RPC `calculate_credit_score` (Legacy)
-- ۴ کارت بالا: **امتیاز اعتباری (۰–۱۰۰)**، **سقف اعتبار**، **بدهی جاری**، **کل خرید** — همه از `customer_credit_profile`
-- ۲ کارت میانی: **امتیاز تسویه**، **وضعیت معوق** — از `customer_credit_profile`
-- کارت **سابقه پرداخت** — از `customer_credit_profile` (`total_paid`, `late_payments_count`, `last_purchase_date`)
-- کارت **تاریخچه محاسبات (۲۰ مورد)** — از `credit_score_snapshots`
+**۳) پارامترهای salesperson دست‌نخورده؟**
+بله. فقط پارامترهای customer پاک/جایگزین می‌شوند. برای پارامترهای salesperson موجود، ستون‌های جدید مقدار پیش‌فرض می‌گیرند (`input_type='score_100'`, `min=0`, `max=100`) که رفتار فعلی را حفظ می‌کند.
 
-بخش Dynamic که هست و باقی می‌ماند:
-- `<DynamicScoringSection entityType="customer" entityId={customerId} canEdit={canRecalc} />`
+## مراحل migration (یک migration واحد)
 
-Query‌های Legacy در همین فایل:
-- `queryKey ["credit-profile", customerId]` → `customer_credit_profile`
-- `queryKey ["credit-snapshots", customerId]` → `credit_score_snapshots`
-- `useMutation recalc` → `rpc("calculate_credit_score")`
+**گام ۱ — افزودن ستون‌ها به `dynamic_scoring_parameters`:**
+- `input_type text NOT NULL DEFAULT 'score_100'` + CHECK (`score_100`, `toman`, `months`, `boolean`)
+- `min_value numeric NOT NULL DEFAULT 0`
+- `max_value numeric NOT NULL DEFAULT 100`
+- `unit_label text` (nullable)
+- `input_hint text` (nullable)
+- CHECK: `max_value > min_value`
 
----
+**گام ۲ — افزودن `actual_value` به `dynamic_entity_scores`:**
+- `actual_value numeric` (nullable برای backward-compat با ۱۱ رکورد موجود)
+- `is_clipped boolean NOT NULL DEFAULT false` — نشانگر اینکه actual > max بوده
 
-## ۲) چه چیزی حذف/مخفی شود
+**گام ۳ — trigger جدید `compute_normalized_raw_score` (BEFORE INSERT/UPDATE):**
+- اگر `NEW.actual_value IS NOT NULL`: پارامتر را lookup کن، normalize کن، `raw_score` و `is_clipped` را set کن.
+- اگر NULL: `raw_score` را همان‌طور که کاربر داده بپذیر (backward-compat).
+- قبل از trigger فعلی `validate_dynamic_entity_score` اجرا شود (نام: `trg_a_compute_raw_score` برای الفبایی مقدم).
 
-**در فایل `src/routes/_app.sales_.customers_.$customerId.credit.tsx`:**
-- حذف: `useQuery(profile)`, `useQuery(snapshots)`, `useMutation(recalc)`
-- حذف: دکمه «محاسبه مجدد امتیاز» و «ایجاد و محاسبه امتیاز»
-- حذف: هر ۴ کارت بالا (MetricCard امتیاز/سقف/بدهی/کل خرید)
-- حذف: ۲ کارت میانی (امتیاز تسویه، وضعیت معوق)
-- حذف: کارت سابقه پرداخت
-- حذف: کارت تاریخچه محاسبات (۲۰ مورد)
-- حذف: helper `scoreColor` (بعد از حذف کارت‌ها بلااستفاده)
-- نگه‌داشتن: `PageHeader`, بازگشت به مشتریان، و `<DynamicScoringSection>`
-- افزودن (اختیاری، پیشنهادی): یک کارت جمع‌بندی کوچک از آخرین تخصیص پویا با استفاده از `useCustomerLatestAllocation` — نمایش `final_limit`, `weighted_score`, `binding_constraint`, `capital_date` تا کاربر ببیند «سقف مؤثر امروز» چقدر است. این کارت فقط از Dynamic می‌خواند.
+**گام ۴ — پاک‌سازی پارامترهای customer قدیمی:**
+- `DELETE FROM dynamic_scoring_parameters WHERE entity_type='customer'` (CASCADE → weights و entity_scores مربوطه پاک می‌شوند).
+- **ریسک:** ۱۱ رکورد `dynamic_entity_scores` مشتری از دست می‌رود. با توجه به اینکه در حال گسترش سیستم هستید و مقادیر جدید actual_value را ندارند، این پاک‌سازی منطقی است. اگر می‌خواهید حفظ شود، بگویید تا snapshot backup اضافه کنم.
 
-**هیچ کامپوننت/hook مشترک حذف نمی‌شود** — `DynamicScoringSection` و `useDynamicScoring` سالم می‌مانند. hookهای Legacy (`useCreditScoring` اگر جایی مصرف می‌شود) در این پلن دست‌نمی‌خورند.
+**گام ۵ — INSERT ۱۰ پارامتر جدید customer** با ستون‌های `input_type`, `min_value`, `max_value`, `unit_label`, `input_hint`, `display_order` و `direction='positive'`.
 
-خارج از این صفحه، **صفحه `/sales/credit-customers`** همچنان از Legacy می‌خواند. در این پلن به آن دست نمی‌زنیم (خارج از scope مشخص‌شده توسط کاربر). اگر بخواهید بعداً همان را هم Dynamic کنیم، فاز دوم جداگانه.
+**گام ۶ — INSERT وزن‌های جدید** در `dynamic_parameter_weights` با `valid_from = current_date` و `valid_to = NULL` (طبق جدول شما، مجموع = 1.00).
 
----
+**گام ۷ — به‌روزرسانی `calculate_dynamic_score`:**
+- فیلد `is_clipped` (از ستون جدید `dynamic_entity_scores.is_clipped`) و `actual_value` به breakdown اضافه شود.
+- منطق weighted_score تغییر نمی‌کند (همچنان از `raw_score` که ۰..۱ است).
 
-## ۳) منبع فعلی سقف اعتبار در `InvoiceForm`
+## تغییرات کد (بعد از migration)
 
-فایل: `src/shared/components/InvoiceForm.tsx`
-
-- بلاک از RPC `get_customer_credit(p_customer_id)` می‌خواند (خط ۱۵۹ و مجدداً خط ۲۹۷ در حین submit).
-- این RPC داخل خودش `_ensure_credit_balance` را صدا می‌زند که `customer_credit_balance.available_credit` را از `customer_credit_profile.credit_limit` مقداردهی اولیه می‌کند.
-- پس **منبع نهایی سقف اعتبار = `customer_credit_profile.credit_limit` (Legacy)**. `available_credit = credit_limit − held − outstanding` تقریباً.
-- علاوه بر آن، RPC `can_issue_customer_invoice` برای بلاک معوق (این متعلق به overdue است، نه سقف — جدا نگه می‌داریم).
-
----
-
-## ۴) اتصال بلاک فاکتور به Dynamic
-
-**آیا `final_limit` در جدول Dynamic هست؟** بله — `customer_capital_allocations_dynamic` ستون `final_limit numeric` دارد (تأیید شده در `useDynamicScoring.ts` و در RPC `run_daily_capital_allocation`). هر رکورد به `daily_capital_settings.capital_date` لینک می‌شود، پس «آخرین snapshot امروز» = آخرین ردیف با `capital_date = today`.
-
-**راهبرد پیشنهادی (کم‌ریسک، بدون شکستن held/outstanding):**
-
-RPC جدید (SECURITY DEFINER) به نام `get_customer_dynamic_credit(p_customer_id uuid)` که برمی‌گرداند:
-- `final_limit` — از آخرین `customer_capital_allocations_dynamic` امروز (اگر نبود → 0 و پرچم `has_allocation=false`)
-- `capital_date`
-- `binding_constraint`
-- `outstanding_balance` — از `customer_credit_profile` (این ستون فعلاً تنها منبع بدهی جاری است و در دیتابیس دست‌نمی‌خورد)
-- `held_credit` — از `customer_credit_balance` (برای احترام به holdهای فعال روی پیش‌فاکتورها)
-- `available_credit = max(final_limit − outstanding − held, 0)`
-- `has_overdue`, `overdue_since`, `settlement_score` — همچنان از `customer_credit_profile` (چون trigger معوق و RPC `can_issue_customer_invoice` روی همین جدول کار می‌کنند و در scope این تغییر نیست)
-
-**تغییر در `InvoiceForm.tsx`:**
-- جایگزینی هر دو فراخوانی `rpc("get_customer_credit", …)` (خطوط ۱۵۹ و ۲۹۷) با `rpc("get_customer_dynamic_credit", …)`.
-- شکل خروجی مصرفی (`available_credit`, `held_credit`, `outstanding_balance`, `has_overdue`, `overdue_since`, `settlement_score`) عمداً یکسان با RPC قبلی طراحی می‌شود تا **هیچ کد UI دیگری تغییر نکند**.
-- منطق `hold_credit` / `release_credit` / `settle_credit` که در سایر جریان‌ها روی `customer_credit_balance` می‌نویسند، دست‌نخورده می‌ماند. فقط منبع «سقف پایه» از Legacy به Dynamic منتقل می‌شود.
-- بلاک معوق (`can_issue_customer_invoice`, `log_invoice_issuance_blocked_overdue`) بدون تغییر باقی می‌ماند.
-
-**نکته حیاتی برای تأیید کاربر:**
-- اگر برای مشتری در «امروز» هیچ ردیف Dynamic ثبت نشده باشد، `final_limit = 0` → **هر پیش‌فاکتور اعتباری بلاک می‌شود**. باید تصمیم بگیرید:
-  - الف) رفتار همان: بلاک شود تا اپراتور ابتدا `run_daily_capital_allocation` بزند. (پیشنهاد من — امن‌تر)
-  - ب) fallback به آخرین `final_limit` قبلی (هر تاریخی).
-  - ج) fallback به `customer_credit_profile.credit_limit` (یعنی Legacy به‌عنوان safety net باقی بماند).
-  
-  لطفاً یکی را انتخاب کنید تا در RPC پیاده کنم.
-
----
-
-## ۵) تأثیر روی دیتابیس
-
-- **هیچ جدولی drop یا rename نمی‌شود.** `customer_credit_profile`, `credit_score_snapshots`, `credit_scoring_rules`, `customer_credit_balance`, `customer_credit_ledger`, `customer_capital_allocations`, `salesperson_capital_allocations`, `daily_capital_snapshots` همه دست‌نخورده می‌مانند.
-- RPCهای Legacy (`calculate_credit_score`, `compute_customer_capital_allocations`, …) drop نمی‌شوند — فقط UI دیگر آن‌ها را صدا نمی‌زند.
-- تنها تغییر SQL: **افزودن یک RPC جدید** `get_customer_dynamic_credit` (SECURITY DEFINER + role check مشابه `get_customer_credit`).
-- تریگرهای موجود روی invoices/payment_receipts که `customer_credit_profile` و `customer_credit_balance` را به‌روز می‌کنند، همچنان کار می‌کنند (پس `outstanding_balance` و `held_credit` معتبر می‌مانند).
-
----
-
-## فایل‌های تغییر (خلاصه)
-
-| فایل | تغییر |
-|---|---|
-| `src/routes/_app.sales_.customers_.$customerId.credit.tsx` | حذف queries/mutation/cardsی Legacy؛ نگه‌داشتن `DynamicScoringSection`؛ افزودن کارت خلاصه آخرین تخصیص |
-| `src/shared/components/InvoiceForm.tsx` | جایگزینی نام RPC از `get_customer_credit` به `get_customer_dynamic_credit` (۲ محل) — بدون تغییر فیلدهای مصرفی |
-| migration جدید | ایجاد `get_customer_dynamic_credit(uuid)` با role guard + fallback مطابق تصمیم بند ۴ |
-
----
-
-## Migration/RLS/RBAC/Audit
-- migration فقط CREATE FUNCTION + GRANT EXECUTE به `authenticated`؛ reversible با `DROP FUNCTION IF EXISTS`.
-- role guard داخل RPC: admin/manager/accountant/sales — همان مجموعه `get_customer_credit`.
-- بدون تغییر RLS جداول. بدون audit log جدید (رفتار موجود `credit_limit_blocked` در `InvoiceForm` حفظ می‌شود).
-
-## UI/UX
-- صفحه credit مشتری تمیزتر و فقط Dynamic.
-- در `InvoiceForm` هیچ تغییر بصری‌ای رخ نمی‌دهد؛ فقط عدد سقف از منبع جدید می‌آید.
-
-## مسیر تست دستی
-1. `/sales/customers/<id>/credit` — فقط بخش Dynamic + کارت خلاصه دیده شود؛ هیچ کارت Legacy نباشد.
-2. اجرای `run_daily_capital_allocation` برای امروز → صدور پیش‌فاکتور اعتباری زیر `final_limit` باید موفق شود؛ بالاتر → بلاک با پیام موجود.
-3. بدون تخصیص امروز → طبق تصمیم بند ۴ (پیش‌فرض: بلاک).
-4. مشتری معوق → همچنان توسط `can_issue_customer_invoice` بلاک شود.
-5. `bun run build && bun run lint`.
+فقط types خودکار regen می‌شوند. تغییرات کد UI (فرم امتیازدهی با input جدید بر اساس `input_type`) در **مرحله بعدی** انجام می‌شود — این migration فقط schema است. سؤال: آیا در همین turn UI را هم بسازم یا فقط migration؟
 
 ## ریسک‌ها
-- اگر گزینه (الف) انتخاب شود، تا وقتی allocation روز اجرا نشده باشد هیچ فاکتور اعتباری صادر نمی‌شود — نیاز به هماهنگی عملیاتی.
-- `outstanding_balance` و `held_credit` هنوز از مسیر Legacy می‌آیند؛ اگر روزی بخواهید کاملاً از `customer_credit_profile` مستقل شوید، فاز جداگانه لازم است.
-- صفحه `/sales/credit-customers` هنوز Legacy است و در این پلن پاکسازی نمی‌شود.
 
-## سؤال بلاک‌کننده قبل از اجرا
-لطفاً یکی از سه گزینه fallback در بند ۴ را انتخاب کنید: **(الف) بلاک وقتی allocation امروز نیست**، **(ب) آخرین final_limit تاریخی**، یا **(ج) fallback به `credit_limit` Legacy**.
+- **از دست رفتن ۱۱ رکورد امتیاز موجود** به دلیل CASCADE. تأیید شما لازم است.
+- Trigger جدید در همان BEFORE trigger chain نباید با `validate_dynamic_entity_score` تداخل کند — نام‌گذاری الفبایی رعایت می‌شود.
+- `direction='negative'` در آینده باید در trigger هندل شود؛ الان همه positive.
+
+## چک‌لیست خود-میزبانی
+- بدون CDN، بدون secret جدید، reversible با DROP COLUMN / DROP TRIGGER.
+- RLS دست‌نخورده. Audit trigger فعال باقی می‌ماند.
+
+---
+
+**منتظر تأیید شما هستم برای:**
+1. اجرای migration؟ (بله/خیر)
+2. حذف ۱۱ رکورد امتیاز مشتری موجود قابل قبول است؟ (بله/خیر)
+3. UI فرم امتیازدهی در همین turn ساخته شود یا فقط migration؟
