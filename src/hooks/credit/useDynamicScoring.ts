@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type EntityType = "customer" | "salesperson";
 
+export type ScoringInputType = "boolean" | "score_100" | "toman" | "months";
+
 export interface ScoringParameter {
   id: string;
   entity_type: EntityType;
@@ -11,6 +13,11 @@ export interface ScoringParameter {
   direction: string;
   is_active: boolean;
   display_order: number;
+  input_type: ScoringInputType;
+  min_value: number;
+  max_value: number;
+  unit_label: string | null;
+  input_hint: string | null;
 }
 
 export interface EntityScore {
@@ -19,6 +26,8 @@ export interface EntityScore {
   entity_id: string;
   parameter_id: string;
   raw_score: number;
+  actual_value: number | null;
+  is_clipped: boolean;
   note: string | null;
   scored_by: string | null;
   scored_at: string | null;
@@ -73,12 +82,18 @@ export function useScoringParameters(entityType: EntityType) {
     queryFn: async (): Promise<ScoringParameter[]> => {
       const { data, error } = await supabase
         .from("dynamic_scoring_parameters")
-        .select("id, entity_type, code, label_fa, direction, is_active, display_order")
+        .select(
+          "id, entity_type, code, label_fa, direction, is_active, display_order, input_type, min_value, max_value, unit_label, input_hint",
+        )
         .eq("entity_type", entityType)
         .eq("is_active", true)
         .order("display_order", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ScoringParameter[];
+      return (data ?? []).map((r) => ({
+        ...r,
+        min_value: Number((r as { min_value: number | string }).min_value ?? 0),
+        max_value: Number((r as { max_value: number | string }).max_value ?? 1),
+      })) as ScoringParameter[];
     },
   });
 }
@@ -130,6 +145,8 @@ export interface UpsertEntityScoreInput {
   entity_id: string;
   parameter_id: string;
   raw_score: number;
+  actual_value: number;
+  is_clipped?: boolean;
   period_month: string;
   note?: string | null;
   scored_by?: string | null;
@@ -147,6 +164,8 @@ export function useUpsertEntityScore() {
             entity_id: input.entity_id,
             parameter_id: input.parameter_id,
             raw_score: input.raw_score,
+            actual_value: input.actual_value,
+            is_clipped: input.is_clipped ?? false,
             period_month: input.period_month,
             note: input.note ?? null,
             scored_by: input.scored_by ?? null,
