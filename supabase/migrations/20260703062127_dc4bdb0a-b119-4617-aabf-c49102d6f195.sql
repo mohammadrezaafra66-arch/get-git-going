@@ -1,0 +1,1 @@
+GRANT SELECT ON public.product_computed_prices_public TO anon;
