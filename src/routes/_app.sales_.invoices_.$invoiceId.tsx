@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, XCircle, ArrowRight, Copy, Send, Truck } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Loader2,
+  XCircle,
+  ArrowRight,
+  Copy,
+  Send,
+  Truck,
+  Printer,
+  Pencil,
+  X,
+  Save,
+} from "lucide-react";
 import { WaybillStatusBadge } from "@/shared/components/WaybillStatusBadge";
 import { toast } from "sonner";
 
@@ -12,6 +23,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +43,15 @@ export const Route = createFileRoute("/_app/sales_/invoices_/$invoiceId")({
   },
   component: InvoiceDetailPage,
 });
+
+const PRINT_STYLE = `
+@media print {
+  @page { size: A4 portrait; margin: 1.5cm; }
+  body > * { display: none !important; }
+  #invoice-print-root { display: block !important; }
+}
+#invoice-print-root { display: none; }
+`;
 
 function statusLabel(s: string) {
   switch (s) {
@@ -60,6 +81,19 @@ function InvoiceDetailPage() {
   const [canceling, setCanceling] = useState(false);
   const [copying, setCopying] = useState(false);
   const [sending, setSending] = useState(false);
+  const qc = useQueryClient();
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+
+  useEffect(() => {
+    const el = document.createElement("style");
+    el.textContent = PRINT_STYLE;
+    el.id = "invoice-print-style";
+    document.head.appendChild(el);
+    return () => {
+      document.getElementById("invoice-print-style")?.remove();
+    };
+  }, []);
 
   const canManage = roles.includes("admin") || roles.includes("accountant");
   const canSendToAccountant =
@@ -118,6 +152,23 @@ function InvoiceDetailPage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const notesMutation = useMutation({
+    mutationFn: async (notes: string) => {
+      const { error } = await supabase
+        .from("invoices")
+        .update({ notes: notes || null })
+        .eq("id", invoiceId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("یادداشت ذخیره شد");
+      setEditingNotes(false);
+      refetch();
+      qc.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+    },
+    onError: () => toast.error("خطا در ذخیره یادداشت"),
   });
 
   const isDraftPreInvoice = invoice?.status === "draft" && invoice?.type === "pre_invoice";
@@ -263,6 +314,10 @@ function InvoiceDetailPage() {
                 <ArrowRight className="ml-2 h-4 w-4" /> بازگشت
               </Link>
             </Button>
+            <Button variant="outline" onClick={() => window.print()} className="gap-2">
+              <Printer className="h-4 w-4" />
+              چاپ / PDF
+            </Button>
             <Button variant="secondary" onClick={handleCopy} disabled={copying}>
               {copying ? (
                 <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -351,12 +406,70 @@ function InvoiceDetailPage() {
             <Field label="مالیات">{formatNumber(Number(invoice.tax_amount))}</Field>
             <Field label="جمع جزء">{formatNumber(Number(invoice.subtotal))}</Field>
           </div>
-          {invoice.notes && (
-            <div className="text-sm">
-              <div className="text-muted-foreground mb-1">یادداشت</div>
-              <div className="rounded-md border p-3 whitespace-pre-wrap">{invoice.notes}</div>
+          {/* Notes — always shown, editable */}
+          <div className="text-sm mt-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-muted-foreground font-medium">یادداشت</span>
+              {!editingNotes && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    setNotesValue(invoice.notes ?? "");
+                    setEditingNotes(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3 ml-1" />
+                  {invoice.notes ? "ویرایش" : "افزودن یادداشت"}
+                </Button>
+              )}
             </div>
-          )}
+            {editingNotes ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="یادداشت یا توضیحات..."
+                  className="text-sm"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => notesMutation.mutate(notesValue)}
+                    disabled={notesMutation.isPending}
+                  >
+                    {notesMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin ml-1" />
+                    ) : (
+                      <Save className="h-3 w-3 ml-1" />
+                    )}
+                    ذخیره
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEditingNotes(false)}
+                    disabled={notesMutation.isPending}
+                  >
+                    <X className="h-3 w-3 ml-1" />
+                    انصراف
+                  </Button>
+                </div>
+              </div>
+            ) : invoice.notes ? (
+              <div className="rounded-md border p-3 whitespace-pre-wrap text-sm bg-muted/30">
+                {invoice.notes}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground text-center">
+                یادداشتی ثبت نشده
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -399,6 +512,247 @@ function InvoiceDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Print layout — hidden in browser, shown only when printing */}
+      <div
+        id="invoice-print-root"
+        dir="rtl"
+        style={{ fontFamily: "Tahoma, sans-serif", fontSize: 13 }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            borderBottom: "2px solid #000",
+            paddingBottom: 12,
+            marginBottom: 16,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>دستیار هوشمند افراکالا</div>
+            <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>سیستم مدیریت فروش</div>
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>
+              پیش‌فاکتور شماره{" "}
+              {invoice?.number
+                ? toFaDigits(invoice.number)
+                : toFaDigits(invoice?.id?.slice(0, 8) ?? "")}
+            </div>
+            <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+              وضعیت: {statusLabel(invoice?.status ?? "")}
+            </div>
+          </div>
+        </div>
+
+        {/* Customer & Date info */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+            marginBottom: 16,
+            padding: "10px 14px",
+            border: "1px solid #ddd",
+            borderRadius: 6,
+            background: "#f9f9f9",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 11, color: "#777" }}>مشتری</div>
+            <div style={{ fontWeight: 700, marginTop: 2 }}>
+              {(invoice?.customer as { name?: string } | null)?.name ?? "—"}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#777" }}>نوع قیمت</div>
+            <div style={{ fontWeight: 700, marginTop: 2 }}>
+              {(invoice?.price_type as { title?: string } | null)?.title ?? "—"}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#777" }}>تاریخ صدور</div>
+            <div style={{ fontWeight: 700, marginTop: 2 }}>
+              {invoice?.issue_date ? formatDateFa(invoice.issue_date) : "—"}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#777" }}>سررسید</div>
+            <div style={{ fontWeight: 700, marginTop: 2 }}>
+              {invoice?.due_date ? formatDateFa(invoice.due_date) : "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Items table */}
+        <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
+          <thead>
+            <tr style={{ background: "#1e293b", color: "#fff" }}>
+              <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 12 }}>ردیف</th>
+              <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 12 }}>نام محصول</th>
+              <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 12 }}>تعداد</th>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontSize: 12 }}>قیمت واحد</th>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontSize: 12 }}>جمع ردیف</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(items ?? []).map((it, idx) => (
+              <tr
+                key={it.id}
+                style={{
+                  borderBottom: "1px solid #e2e8f0",
+                  background: idx % 2 === 0 ? "#fff" : "#f8fafc",
+                }}
+              >
+                <td style={{ padding: "7px 10px", fontSize: 12 }}>{toFaDigits(idx + 1)}</td>
+                <td style={{ padding: "7px 10px", fontSize: 12 }}>{it.product?.name ?? "—"}</td>
+                <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 12 }}>
+                  {toFaDigits(it.quantity)}
+                </td>
+                <td
+                  style={{
+                    padding: "7px 10px",
+                    textAlign: "left",
+                    fontSize: 12,
+                    direction: "ltr",
+                  }}
+                >
+                  {formatNumber(Number(it.unit_price))}
+                </td>
+                <td
+                  style={{
+                    padding: "7px 10px",
+                    textAlign: "left",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    direction: "ltr",
+                  }}
+                >
+                  {formatNumber(Number(it.line_total))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Totals */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+          <div
+            style={{
+              minWidth: 240,
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              overflow: "hidden",
+            }}
+          >
+            {invoice?.discount_amount && Number(invoice.discount_amount) > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "6px 12px",
+                  borderBottom: "1px solid #eee",
+                  fontSize: 12,
+                }}
+              >
+                <span style={{ color: "#777" }}>تخفیف</span>
+                <span style={{ direction: "ltr" }}>
+                  {formatNumber(Number(invoice.discount_amount))}
+                </span>
+              </div>
+            ) : null}
+            {invoice?.tax_amount && Number(invoice.tax_amount) > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "6px 12px",
+                  borderBottom: "1px solid #eee",
+                  fontSize: 12,
+                }}
+              >
+                <span style={{ color: "#777" }}>مالیات</span>
+                <span style={{ direction: "ltr" }}>
+                  {formatNumber(Number(invoice.tax_amount))}
+                </span>
+              </div>
+            ) : null}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "10px 12px",
+                background: "#1e293b",
+                color: "#fff",
+                fontWeight: 800,
+                fontSize: 14,
+              }}
+            >
+              <span>جمع کل</span>
+              <span style={{ direction: "ltr" }}>
+                {formatNumber(Number(invoice?.total_amount ?? 0))} ریال
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {invoice?.notes && (
+          <div
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              padding: "10px 12px",
+              marginBottom: 16,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ color: "#777", marginBottom: 4, fontWeight: 600 }}>یادداشت</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{invoice.notes}</div>
+          </div>
+        )}
+
+        {/* Signatures */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 20,
+            marginTop: 40,
+          }}
+        >
+          {["مهر و امضای فروشنده", "مهر و امضای مشتری", "تأیید حسابدار"].map((label) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  height: 70,
+                  border: "1px dashed #aaa",
+                  borderRadius: 6,
+                  marginBottom: 6,
+                }}
+              />
+              <div style={{ fontSize: 11, color: "#555" }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            borderTop: "1px solid #ddd",
+            marginTop: 24,
+            paddingTop: 8,
+            textAlign: "center",
+            fontSize: 10,
+            color: "#999",
+          }}
+        >
+          این سند توسط سیستم دستیار هوشمند افراکالا صادر شده است —{" "}
+          {new Date().toLocaleDateString("fa-IR")}
+        </div>
+      </div>
     </div>
   );
 }
