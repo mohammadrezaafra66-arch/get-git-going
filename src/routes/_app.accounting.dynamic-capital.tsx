@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Loader2, PlayCircle, AlertTriangle, History } from "lucide-react";
+import { Loader2, PlayCircle, History, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
@@ -80,6 +82,8 @@ function DynamicCapitalPage() {
   const existing = useSettingByDate(capitalDate);
   const history = useAllocationHistory(30);
   const runMutation = useRunDailyAllocation();
+  const qc = useQueryClient();
+  const [isOverwriting, setIsOverwriting] = useState(false);
   const salespersonRows = useSalespersonAllocations(activeSettingId);
   const customerRows = useCustomerAllocations(
     activeSettingId,
@@ -93,6 +97,41 @@ function DynamicCapitalPage() {
   }, [totalCapital]);
 
   const canRun = !alreadyExists && totalCapitalNum > 0 && !runMutation.isPending;
+
+  const canOverwrite = alreadyExists && totalCapitalNum > 0 && !runMutation.isPending && !isOverwriting;
+
+  const handleOverwrite = async () => {
+    if (!canOverwrite) return;
+    const ok = window.confirm(
+      "snapshot فعلی این تاریخ حذف و با سرمایه جدید بازنویسی می‌شود. ادامه می‌دهید؟",
+    );
+    if (!ok) return;
+    const toastId = toast.loading("در حال بازنویسی snapshot...");
+    setIsOverwriting(true);
+    try {
+      const { error: delErr } = await supabase
+        .from("daily_capital_settings")
+        .delete()
+        .eq("capital_date", capitalDate);
+      if (delErr) throw delErr;
+      const res = await runMutation.mutateAsync({
+        p_capital_date: capitalDate,
+        p_total_capital: totalCapitalNum,
+        p_notes: notes.trim() ? notes.trim() : null,
+      });
+      toast.success("سرمایه امروز بازنویسی شد", { id: toastId });
+      setActiveSettingId(res.setting_id);
+      qc.invalidateQueries({ queryKey: ["dyn-capital-setting-by-date", capitalDate] });
+      qc.invalidateQueries({ queryKey: ["dyn-capital-history"] });
+      qc.invalidateQueries({ queryKey: ["dyn-salesperson-allocations"] });
+      qc.invalidateQueries({ queryKey: ["dyn-customer-allocations"] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "خطا در بازنویسی snapshot";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsOverwriting(false);
+    }
+  };
 
   const handleRun = () => {
     if (!canRun) return;
@@ -200,25 +239,33 @@ function DynamicCapitalPage() {
           </div>
 
           {alreadyExists && existing.data && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 flex items-start gap-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-medium text-amber-900">
-                  برای این تاریخ قبلاً snapshot محاسبه شده است.
-                </p>
-                <p className="text-amber-800">
-                  سرمایه ثبت‌شده: {fmtMoney(Number(existing.data.total_capital))} ریال
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    handleHistoryClick(existing.data!.id, existing.data!.capital_date)
-                  }
-                >
-                  مشاهده نتیجه
-                </Button>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted-foreground">
+                snapshot موجود — سرمایه ثبت‌شده: {fmtMoney(Number(existing.data.total_capital))} ریال
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  handleHistoryClick(existing.data!.id, existing.data!.capital_date)
+                }
+              >
+                مشاهده نتیجه
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleOverwrite}
+                disabled={!canOverwrite}
+                className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+              >
+                {isOverwriting ? (
+                  <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 ml-1" />
+                )}
+                🔄 بازنویسی با سرمایه جدید
+              </Button>
             </div>
           )}
 
