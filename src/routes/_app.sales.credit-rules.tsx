@@ -380,8 +380,9 @@ function CreditRulesPage() {
               </div>
               <div className="flex items-end sm:col-span-3">
                 <Button
+                  type="button"
                   onClick={() => create.mutate()}
-                  disabled={create.isPending}
+                  disabled={create.isPending || !newCode.trim()}
                   className="w-full"
                 >
                   <Plus className="ml-1 h-4 w-4" /> افزودن
