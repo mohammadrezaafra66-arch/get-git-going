@@ -180,6 +180,8 @@ export function useCustomerLatestAllocation(customerId: string | undefined) {
   return useQuery({
     queryKey: ["dyn-customer-latest-allocation", customerId],
     enabled: Boolean(customerId),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
     queryFn: async (): Promise<CustomerLatestAllocation | null> => {
       const { data, error } = await supabase
         .from("customer_capital_allocations_dynamic")
