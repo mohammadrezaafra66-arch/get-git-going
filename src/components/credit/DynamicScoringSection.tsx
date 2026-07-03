@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Save, Sparkles, Calendar, Wallet } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Sparkles, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { HelpHint } from "@/components/common/HelpHint";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -22,6 +24,7 @@ import {
   currentPeriodMonth,
   type CalculatedScoreBreakdownItem,
   type EntityType,
+  type ScoringParameter,
 } from "@/hooks/credit/useDynamicScoring";
 
 function bindingLabel(c: string): { label: string; cls: string } {
@@ -36,6 +39,39 @@ function bindingLabel(c: string): { label: string; cls: string } {
     default:
       return { label: "فرمول", cls: "bg-emerald-600 text-white" };
   }
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function computeNormalized(p: ScoringParameter, actual: number): number {
+  if (p.input_type === "boolean") return actual >= 1 ? 1 : 0;
+  const min = Number(p.min_value ?? 0);
+  const max = Number(p.max_value ?? 1);
+  if (max <= min) return 0;
+  return clamp01((actual - min) / (max - min));
+}
+
+function isClippedFor(p: ScoringParameter, actual: number): boolean {
+  if (p.input_type === "boolean") return false;
+  return actual > Number(p.max_value ?? 1);
+}
+
+function initialActualFor(
+  p: ScoringParameter,
+  saved: { actual_value: number | null; raw_score: number } | undefined,
+): number {
+  if (!saved) return 0;
+  if (saved.actual_value !== null && saved.actual_value !== undefined) {
+    return Number(saved.actual_value);
+  }
+  // fallback: reverse from raw_score
+  if (p.input_type === "boolean") return saved.raw_score >= 0.5 ? 1 : 0;
+  const min = Number(p.min_value ?? 0);
+  const max = Number(p.max_value ?? 1);
+  return min + Number(saved.raw_score) * (max - min);
 }
 
 export function DynamicScoringSection({
@@ -97,13 +133,19 @@ export function DynamicScoringSection({
     };
   }, [entityType, entityId, qc]);
 
-  // dirty state per parameter — local slider values
-  const [draft, setDraft] = useState<Record<string, number>>({});
+  // dirty state per parameter — local actual values
+  const [draftActual, setDraftActual] = useState<Record<string, number>>({});
 
   const savedByParam = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<
+      string,
+      { raw_score: number; actual_value: number | null }
+    > = {};
     (scoresQ.data ?? []).forEach((s) => {
-      map[s.parameter_id] = Number(s.raw_score);
+      map[s.parameter_id] = {
+        raw_score: Number(s.raw_score),
+        actual_value: s.actual_value === null || s.actual_value === undefined ? null : Number(s.actual_value),
+      };
     });
     return map;
   }, [scoresQ.data]);
@@ -113,9 +155,9 @@ export function DynamicScoringSection({
     if (!paramsQ.data) return;
     const next: Record<string, number> = {};
     paramsQ.data.forEach((p) => {
-      next[p.id] = savedByParam[p.id] ?? 0;
+      next[p.id] = initialActualFor(p, savedByParam[p.id]);
     });
-    setDraft(next);
+    setDraftActual(next);
   }, [paramsQ.data, savedByParam]);
 
   const breakdownByParam = useMemo(() => {
@@ -151,15 +193,19 @@ export function DynamicScoringSection({
     };
   })();
 
-  const handleSave = (paramId: string) => {
-    const value = draft[paramId] ?? 0;
+  const handleSave = (p: ScoringParameter) => {
+    const actual = draftActual[p.id] ?? 0;
+    const normalized = computeNormalized(p, actual);
+    const clipped = isClippedFor(p, actual);
     upsert.mutate(
       {
         entity_type: entityType,
         entity_id: entityId,
-        parameter_id: paramId,
+        parameter_id: p.id,
         period_month: period,
-        raw_score: value,
+        raw_score: normalized,
+        actual_value: actual,
+        is_clipped: clipped,
         scored_by: user?.id ?? null,
       },
       {
@@ -248,63 +294,133 @@ export function DynamicScoringSection({
         ) : (
           <div className="space-y-3">
             {paramsQ.data!.map((p) => {
-              const current = draft[p.id] ?? 0;
+              const current = draftActual[p.id] ?? 0;
               const saved = savedByParam[p.id];
-              const dirty = saved === undefined || Math.abs(current - saved) > 1e-9;
+              const savedActual = saved ? initialActualFor(p, saved) : undefined;
+              const dirty =
+                savedActual === undefined || Math.abs(current - savedActual) > 1e-9;
               const bd = breakdownByParam[p.id];
+              const normalized = computeNormalized(p, current);
+              const clipped = isClippedFor(p, current);
+              const disabled = !canEdit || upsert.isPending;
+              const setVal = (v: number) =>
+                setDraftActual((d) => ({ ...d, [p.id]: Number.isFinite(v) ? v : 0 }));
+
               return (
                 <div
                   key={p.id}
-                  className="rounded-md border p-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                  className="rounded-md border p-3 flex flex-col gap-2"
                 >
-                  <div className="sm:w-56 min-w-0">
-                    <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
-                      <span className="truncate">{p.label_fa}</span>
-                      {saved === undefined && (
-                        <Badge variant="outline" className="text-[10px]">
-                          ثبت نشده
-                        </Badge>
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="sm:w-56 min-w-0">
+                      <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
+                        <span className="truncate">{p.label_fa}</span>
+                        {saved === undefined && (
+                          <Badge variant="outline" className="text-[10px]">
+                            ثبت نشده
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">{p.code}</div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {p.input_type === "boolean" && (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={current >= 1}
+                            disabled={disabled}
+                            onCheckedChange={(v) => setVal(v ? 1 : 0)}
+                          />
+                          <span className="text-sm">{current >= 1 ? "بله" : "خیر"}</span>
+                        </div>
+                      )}
+
+                      {p.input_type === "score_100" && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <Slider
+                              value={[Math.max(0, Math.min(100, current))]}
+                              min={0}
+                              max={100}
+                              step={1}
+                              disabled={disabled}
+                              onValueChange={(v) => setVal(v[0] ?? 0)}
+                            />
+                          </div>
+                          <div className="text-sm font-mono w-14 text-center">
+                            {toFaDigits(Math.round(current))}
+                          </div>
+                        </div>
+                      )}
+
+                      {(p.input_type === "toman" || p.input_type === "months") && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              dir="ltr"
+                              className="text-left font-mono"
+                              disabled={disabled}
+                              value={
+                                p.input_type === "toman"
+                                  ? current
+                                    ? current.toLocaleString("en-US")
+                                    : ""
+                                  : current
+                                    ? String(current)
+                                    : ""
+                              }
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^\d]/g, "");
+                                setVal(raw ? Number(raw) : 0);
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {p.unit_label ?? (p.input_type === "toman" ? "تومان" : "ماه")}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {p.input_hint ??
+                              `از ${toFaDigits(Number(p.min_value).toLocaleString("en-US"))} تا ${toFaDigits(Number(p.max_value).toLocaleString("en-US"))}`}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-[11px] text-muted-foreground">
+                        امتیاز نرمال‌شده: {toFaDigits(normalized.toFixed(2))}
+                      </div>
+
+                      {clipped && (
+                        <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          از سقف تعریف‌شده بیشتر است — مقدار در ۱ محدود می‌شود
+                        </div>
                       )}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">{p.code}</div>
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <Slider
-                      value={[current]}
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      disabled={!canEdit || upsert.isPending}
-                      onValueChange={(v) =>
-                        setDraft((d) => ({ ...d, [p.id]: v[0] ?? 0 }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 sm:w-44 justify-end">
-                    <div className="text-sm font-mono w-12 text-center">
-                      {toFaDigits(current.toFixed(2))}
+                    <div className="flex items-center gap-2 sm:w-40 justify-end">
+                      {bd && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          مشارکت {toFaDigits(Number(bd.contribution).toFixed(3))}
+                        </Badge>
+                      )}
+                      {canEdit && (
+                        <Button
+                          size="sm"
+                          variant={dirty ? "default" : "outline"}
+                          disabled={!dirty || upsert.isPending}
+                          onClick={() => handleSave(p)}
+                        >
+                          {upsert.isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Save className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      )}
                     </div>
-                    {bd && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        مشارکت {toFaDigits(Number(bd.contribution).toFixed(3))}
-                      </Badge>
-                    )}
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant={dirty ? "default" : "outline"}
-                        disabled={!dirty || upsert.isPending}
-                        onClick={() => handleSave(p.id)}
-                      >
-                        {upsert.isPending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Save className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    )}
                   </div>
                 </div>
               );
