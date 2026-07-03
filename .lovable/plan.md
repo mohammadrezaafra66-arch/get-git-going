@@ -1,81 +1,63 @@
+# برنامه: endpoint عمومی JSON برای محصولات
 
-# برنامه: گسترش پارامترهای امتیازدهی اعتباری با input_type و min/max
+## رویکرد
 
-## وضعیت فعلی (بررسی شد)
+طبق قوانین پروژه (TanStack Start) از **server route** استفاده می‌کنیم، نه Supabase Edge Function. مسیر `/api/public/*` روی سایت publish شده بدون احراز هویت قابل دسترسی است.
 
-- `dynamic_scoring_parameters`: ۱۰ ردیف (۵ customer + ۵ salesperson). ندارد: `input_type`, `min_value`, `max_value`, `unit_label`, `input_hint`.
-- `dynamic_entity_scores`:
-  - `raw_score numeric(4,3)` با CHECK `>= 0 AND <= 1` — یعنی normalized ذخیره می‌شود.
-  - ۱۱ رکورد customer موجود است.
-  - trigger های `validate_dynamic_entity_score`, `audit_dynamic_entity_score`, `set_updated_at` فعال.
-- `dynamic_parameter_weights`: ۵ وزن customer فعال (هرکدام 0.2). با DELETE پارامترها، به علت `ON DELETE CASCADE` پاک می‌شوند.
-- `calculate_dynamic_score` مستقیماً `s.raw_score` را در محاسبه استفاده می‌کند (عدد ۰..۱).
-- پارامترهای salesperson: **دست‌نخورده باقی می‌مانند**.
+## فایل جدید
 
-## پاسخ به سؤالات شما
+`**src/routes/api/public/products.ts**` — server route با handler های `GET` و `OPTIONS`:
 
-**۱) سازگاری با constraint فعلی `dynamic_entity_scores`؟**
-CHECK فعلی روی `raw_score` بین ۰ و ۱ است. اگر `actual_value` جدید را اضافه کنیم و `raw_score` را همچنان normalized (۰..۱) نگه داریم، سازگار است. نیازی به تغییر constraint نیست.
+- استفاده از server publishable client (نه `supabaseAdmin`) — یعنی از `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` با auth غیرفعال.
+- کوئری روی `products` با JOIN به view `product_computed_prices_public` (فیلترها: `is_active=true`, `stock_status<>'unavailable'`، ordered by name).
+- projection فقط ستون‌های امن: `id, name, model, capacity, stock_status, is_active, price`.
+- CORS headers: `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, OPTIONS`, `Allow-Headers: Content-Type`.
+- Response: `Content-Type: application/json`.
 
-**۲) `raw_score` computed column یا trigger؟**
-پیشنهاد **trigger** (`BEFORE INSERT OR UPDATE`)، نه GENERATED column. دلایل:
-- GENERATED باید IMMUTABLE باشد و به جدول دیگری (`dynamic_scoring_parameters` برای min/max) نمی‌تواند JOIN بزند.
-- Trigger منعطف است، می‌تواند clipping اعمال کند و پیام خطای فارسی بدهد.
-- منطق: `NEW.raw_score := LEAST(1, GREATEST(0, (NEW.actual_value - p.min_value) / NULLIF(p.max_value - p.min_value, 0)))`
-- برای `direction='negative'` در آینده: `1 - normalized`. الان همه positive هستند.
-- کاربر می‌تواند `actual_value` بدهد و `raw_score` خودکار محاسبه شود. یا برای backward-compat اگر `actual_value` NULL باشد، `raw_score` مستقیم پذیرفته شود.
+## RLS / دسترسی
 
-**۳) پارامترهای salesperson دست‌نخورده؟**
-بله. فقط پارامترهای customer پاک/جایگزین می‌شوند. برای پارامترهای salesperson موجود، ستون‌های جدید مقدار پیش‌فرض می‌گیرند (`input_type='score_100'`, `min=0`, `max=100`) که رفتار فعلی را حفظ می‌کند.
+برای اینکه با کلید publishable خوانده شود، به policy `TO anon SELECT` نیاز است:
 
-## مراحل migration (یک migration واحد)
+- بررسی سریع لازم: آیا `products` الان policy `anon SELECT` دارد؟ و آیا view `product_computed_prices_public` روی `GRANT SELECT ... TO anon` تنظیم است؟
+- اگر نه → **یک migration جداگانه** با محتوای زیر (فقط بعد از تأیید):
+  ```sql
+  GRANT SELECT ON public.product_computed_prices_public TO anon;
+  CREATE POLICY "public_products_read_active"
+    ON public.products FOR SELECT TO anon
+    USING (is_active = true AND stock_status <> 'unavailable');
+  ```
+  این policy فقط ردیف‌های active و in-stock را برای anon باز می‌کند — با فیلتر endpoint هم‌راستا است.
 
-**گام ۱ — افزودن ستون‌ها به `dynamic_scoring_parameters`:**
-- `input_type text NOT NULL DEFAULT 'score_100'` + CHECK (`score_100`, `toman`, `months`, `boolean`)
-- `min_value numeric NOT NULL DEFAULT 0`
-- `max_value numeric NOT NULL DEFAULT 100`
-- `unit_label text` (nullable)
-- `input_hint text` (nullable)
-- CHECK: `max_value > min_value`
+## URL نهایی
 
-**گام ۲ — افزودن `actual_value` به `dynamic_entity_scores`:**
-- `actual_value numeric` (nullable برای backward-compat با ۱۱ رکورد موجود)
-- `is_clipped boolean NOT NULL DEFAULT false` — نشانگر اینکه actual > max بوده
+بعد از publish:
 
-**گام ۳ — trigger جدید `compute_normalized_raw_score` (BEFORE INSERT/UPDATE):**
-- اگر `NEW.actual_value IS NOT NULL`: پارامتر را lookup کن، normalize کن، `raw_score` و `is_clipped` را set کن.
-- اگر NULL: `raw_score` را همان‌طور که کاربر داده بپذیر (backward-compat).
-- قبل از trigger فعلی `validate_dynamic_entity_score` اجرا شود (نام: `trg_a_compute_raw_score` برای الفبایی مقدم).
+- Production: `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app/api/public/products`
+- Custom domain (بعد از publish): `https://get-git-going.lovable.app/api/public/products`
+- Preview (dev): `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2-dev.lovable.app/api/public/products`
 
-**گام ۴ — پاک‌سازی پارامترهای customer قدیمی:**
-- `DELETE FROM dynamic_scoring_parameters WHERE entity_type='customer'` (CASCADE → weights و entity_scores مربوطه پاک می‌شوند).
-- **ریسک:** ۱۱ رکورد `dynamic_entity_scores` مشتری از دست می‌رود. با توجه به اینکه در حال گسترش سیستم هستید و مقادیر جدید actual_value را ندارند، این پاک‌سازی منطقی است. اگر می‌خواهید حفظ شود، بگویید تا snapshot backup اضافه کنم.
+**نکته:** تغییرات backend خودکار deploy می‌شوند اما URL production فقط بعد از کلیک روی **Publish/Update** فعال می‌شود. Preview URL بلافاصله در دسترس است.
 
-**گام ۵ — INSERT ۱۰ پارامتر جدید customer** با ستون‌های `input_type`, `min_value`, `max_value`, `unit_label`, `input_hint`, `display_order` و `direction='positive'`.
+## چرا edge function نه؟
 
-**گام ۶ — INSERT وزن‌های جدید** در `dynamic_parameter_weights` با `valid_from = current_date` و `valid_to = NULL` (طبق جدول شما، مجموع = 1.00).
+- قانون پروژه: منطق داخلی اپ روی TanStack (`createServerFn` یا server route)، نه Edge Function. Edge Functions فقط برای webhook از سرویس‌های خارجی که باید داخل شبکه Supabase بنشینند.
+- server route همان مزیت public URL + JSON را می‌دهد، با هم‌پوشانی کامل با محیط اپ.
 
-**گام ۷ — به‌روزرسانی `calculate_dynamic_score`:**
-- فیلد `is_clipped` (از ستون جدید `dynamic_entity_scores.is_clipped`) و `actual_value` به breakdown اضافه شود.
-- منطق weighted_score تغییر نمی‌کند (همچنان از `raw_score` که ۰..۱ است).
+## سؤالات قبل از build
 
-## تغییرات کد (بعد از migration)
-
-فقط types خودکار regen می‌شوند. تغییرات کد UI (فرم امتیازدهی با input جدید بر اساس `input_type`) در **مرحله بعدی** انجام می‌شود — این migration فقط schema است. سؤال: آیا در همین turn UI را هم بسازم یا فقط migration؟
+۱. آیا policy `anon SELECT` روی `products` را با migration اضافه کنم (نیاز است تا کلید publishable بتواند بخواند)؟
+۲. آیا نیاز به rate-limiting یا API key اختیاری دارید، یا کاملاً باز باشد؟
+۳. آیا فیلد اضافی دیگری (مثل `brand`, `category`, `image_url`) هم برگردانده شود، یا دقیقاً همان ۷ ستون فوق؟
 
 ## ریسک‌ها
 
-- **از دست رفتن ۱۱ رکورد امتیاز موجود** به دلیل CASCADE. تأیید شما لازم است.
-- Trigger جدید در همان BEFORE trigger chain نباید با `validate_dynamic_entity_score` تداخل کند — نام‌گذاری الفبایی رعایت می‌شود.
-- `direction='negative'` در آینده باید در trigger هندل شود؛ الان همه positive.
-
-## چک‌لیست خود-میزبانی
-- بدون CDN، بدون secret جدید، reversible با DROP COLUMN / DROP TRIGGER.
-- RLS دست‌نخورده. Audit trigger فعال باقی می‌ماند.
-
----
-
-**منتظر تأیید شما هستم برای:**
-1. اجرای migration؟ (بله/خیر)
-2. حذف ۱۱ رکورد امتیاز مشتری موجود قابل قبول است؟ (بله/خیر)
-3. UI فرم امتیازدهی در همین turn ساخته شود یا فقط migration؟
+- بدون policy anon → endpoint هیچ ردیفی برنمی‌گرداند (کلید publishable با RLS مواجه می‌شود).
+- اگر بعداً ستون حساسی به `products` اضافه شود، projection صریح از نشت جلوگیری می‌کند.
+- خود-میزبانی: کاملاً سازگار — بدون CDN، بدون secret جدید.  
+  
+  
+Yes, proceed with all three:
+  1. Add the anon SELECT policy migration for products table
+  2. Keep it completely open, no rate limiting or API key needed
+  3. Return exactly these 7 fields: id, name, model, capacity, stock_status, is_active, price
+  Build the server route and run the migration. Then tell me the exact working URL of the endpoint and show me a sample JSON response.
