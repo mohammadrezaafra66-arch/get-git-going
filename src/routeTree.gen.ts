@@ -50,6 +50,7 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
 import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
@@ -387,6 +388,11 @@ const AppBotApiKeysIndexRoute = AppBotApiKeysIndexRouteImport.update({
 const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
+  id: '/api/public/products',
+  path: '/api/public/products',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
@@ -1247,6 +1253,7 @@ export interface FileRoutesByFullPath {
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -1420,6 +1427,7 @@ export interface FileRoutesByTo {
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -1598,6 +1606,7 @@ export interface FileRoutesById {
   '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -1776,6 +1785,7 @@ export interface FileRouteTypes {
     | '/users/$userId'
     | '/users/pending'
     | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -1949,6 +1959,7 @@ export interface FileRouteTypes {
     | '/users/$userId'
     | '/users/pending'
     | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -2126,6 +2137,7 @@ export interface FileRouteTypes {
     | '/_app/users/$userId'
     | '/_app/users/pending'
     | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -2184,6 +2196,7 @@ export interface RootRouteChildren {
   UnauthorizedRoute: typeof UnauthorizedRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
+  ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
@@ -2481,6 +2494,13 @@ declare module '@tanstack/react-router' {
       path: '/public/sale-lists/$listId'
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/products': {
+      id: '/api/public/products'
+      path: '/api/public/products'
+      fullPath: '/api/public/products'
+      preLoaderRoute: typeof ApiPublicProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/messenger/ai-chat': {
@@ -3905,6 +3925,7 @@ const rootRouteChildren: RootRouteChildren = {
   UnauthorizedRoute: UnauthorizedRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
+  ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
