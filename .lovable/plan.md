@@ -1,63 +1,79 @@
-# برنامه: endpoint عمومی JSON برای محصولات
+## وضعیت فعلی
 
-## رویکرد
+- `DynamicScoringSection` برای همه پارامترها یک `Slider` ۰ تا ۱ نمایش می‌دهد و فقط `raw_score` را ذخیره می‌کند.
+- `dynamic_scoring_parameters` این ستون‌ها را دارد: `input_type` (`boolean`|`score_100`|`toman`|`months`)، `min_value`، `max_value`، `unit_label`، `input_hint`.
+- `dynamic_entity_scores` علاوه بر `raw_score` ستون‌های `actual_value` (numeric) و `is_clipped` (boolean) را دارد.
+- اما در `useScoringParameters` فقط 7 فیلد پایه select می‌شود و در `useEntityScores` با `select("*")` همه فیلدها می‌آیند ولی type‌ها این‌ها را شامل نمی‌شوند. `UpsertEntityScoreInput` نیز `actual_value`/`is_clipped` ندارد.
 
-طبق قوانین پروژه (TanStack Start) از **server route** استفاده می‌کنیم، نه Supabase Edge Function. مسیر `/api/public/*` روی سایت publish شده بدون احراز هویت قابل دسترسی است.
+بنابراین تغییرات فقط frontend است — نیاز به migration نیست.
 
-## فایل جدید
+## دامنه تغییر
 
-`**src/routes/api/public/products.ts**` — server route با handler های `GET` و `OPTIONS`:
+فقط دو فایل:
+- `src/hooks/credit/useDynamicScoring.ts` — گسترش type‌ها و query/mutation
+- `src/components/credit/DynamicScoringSection.tsx` — رندر input بر اساس `input_type`
 
-- استفاده از server publishable client (نه `supabaseAdmin`) — یعنی از `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` با auth غیرفعال.
-- کوئری روی `products` با JOIN به view `product_computed_prices_public` (فیلترها: `is_active=true`, `stock_status<>'unavailable'`، ordered by name).
-- projection فقط ستون‌های امن: `id, name, model, capacity, stock_status, is_active, price`.
-- CORS headers: `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, OPTIONS`, `Allow-Headers: Content-Type`.
-- Response: `Content-Type: application/json`.
+بقیه کامپوننت (Summary، آخرین تخصیص، realtime، دکمه ذخیره per-parameter، breakdown) دست‌نخورده می‌ماند.
 
-## RLS / دسترسی
+## طراحی input بر اساس `input_type`
 
-برای اینکه با کلید publishable خوانده شود، به policy `TO anon SELECT` نیاز است:
+| نوع | کنترل | نمایش |
+|---|---|---|
+| `boolean` | `Switch` (بله/خیر) | مقدار ۰ یا ۱ → normalized = مقدار |
+| `score_100` | `Slider` با `min=0 max=100 step=1` + عدد کنار آن | normalized = value/100 |
+| `toman` | `Input` عددی با جداکننده هزار (formatter موجود در `@/lib/i18n/formatters`) + پسوند «تومان» | راهنما: «حداقل … — حداکثر …» |
+| `months` | `Input` عددی + پسوند «ماه» | راهنما: «`min_value` تا `max_value` ماه» |
 
-- بررسی سریع لازم: آیا `products` الان policy `anon SELECT` دارد؟ و آیا view `product_computed_prices_public` روی `GRANT SELECT ... TO anon` تنظیم است؟
-- اگر نه → **یک migration جداگانه** با محتوای زیر (فقط بعد از تأیید):
-  ```sql
-  GRANT SELECT ON public.product_computed_prices_public TO anon;
-  CREATE POLICY "public_products_read_active"
-    ON public.products FOR SELECT TO anon
-    USING (is_active = true AND stock_status <> 'unavailable');
+### قواعد مشترک برای همه انواع
+
+- کاربر `actual_value` وارد می‌کند.
+- محاسبه سمت client:
   ```
-  این policy فقط ردیف‌های active و in-stock را برای anon باز می‌کند — با فیلتر endpoint هم‌راستا است.
+  normalized = clamp01((actual - min) / (max - min))    // برای toman/months/score_100
+  normalized = actual === 1 ? 1 : 0                     // برای boolean
+  isClipped = actual > max
+  ```
+- زیر input یک خط ریز: «امتیاز نرمال‌شده: X.XX» با اعداد فارسی.
+- اگر `isClipped` → Badge/alert زرد «⚠️ از سقف تعریف‌شده بیشتر است — مقدار در ۱ محدود می‌شود».
+- دکمه ذخیره جداگانه per-parameter، `disabled` اگر dirty نباشد یا مقدار نامعتبر (خالی/منفی برای عددی) باشد.
+- `dirty` بر اساس مقایسه `actual_value` draft با مقدار ذخیره‌شده تعیین می‌شود (نه raw_score).
 
-## URL نهایی
+## تغییرات کد
 
-بعد از publish:
+### `useDynamicScoring.ts`
 
-- Production: `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app/api/public/products`
-- Custom domain (بعد از publish): `https://get-git-going.lovable.app/api/public/products`
-- Preview (dev): `https://project--6906e01f-9a81-48a3-a856-35cbd0c22eb2-dev.lovable.app/api/public/products`
+- `ScoringParameter`: افزودن `input_type: 'boolean'|'score_100'|'toman'|'months'`, `min_value: number`, `max_value: number`, `unit_label: string | null`, `input_hint: string | null`.
+- `useScoringParameters`: افزودن این ستون‌ها به select.
+- `EntityScore`: افزودن `actual_value: number | null`, `is_clipped: boolean`.
+- `UpsertEntityScoreInput`: افزودن `actual_value: number` و `is_clipped?: boolean`. `raw_score` را همچنان می‌فرستیم (محاسبه‌شده client-side) تا سازگاری با `calculate_dynamic_score` حفظ شود.
+- `useUpsertEntityScore`: نوشتن `actual_value` و `is_clipped` در upsert.
 
-**نکته:** تغییرات backend خودکار deploy می‌شوند اما URL production فقط بعد از کلیک روی **Publish/Update** فعال می‌شود. Preview URL بلافاصله در دسترس است.
+### `DynamicScoringSection.tsx`
 
-## چرا edge function نه؟
-
-- قانون پروژه: منطق داخلی اپ روی TanStack (`createServerFn` یا server route)، نه Edge Function. Edge Functions فقط برای webhook از سرویس‌های خارجی که باید داخل شبکه Supabase بنشینند.
-- server route همان مزیت public URL + JSON را می‌دهد، با هم‌پوشانی کامل با محیط اپ.
-
-## سؤالات قبل از build
-
-۱. آیا policy `anon SELECT` روی `products` را با migration اضافه کنم (نیاز است تا کلید publishable بتواند بخواند)؟
-۲. آیا نیاز به rate-limiting یا API key اختیاری دارید، یا کاملاً باز باشد؟
-۳. آیا فیلد اضافی دیگری (مثل `brand`, `category`, `image_url`) هم برگردانده شود، یا دقیقاً همان ۷ ستون فوق؟
+- state جدید:
+  ```ts
+  const [draftActual, setDraftActual] = useState<Record<string, number>>({});
+  ```
+  به جای/در کنار `draft` فعلی، بر اساس `actual_value` هر رکورد ذخیره‌شده initialize می‌شود (fallback: اگر `actual_value` نبود ولی `raw_score` بود، معکوس محاسبه شود: `raw*(max-min)+min`).
+- helper محلی:
+  ```ts
+  function computeNormalized(param, actual): number
+  function isClipped(param, actual): boolean
+  ```
+- در map پارامترها، بر اساس `p.input_type` یکی از چهار کنترل رندر می‌شود. لایه بیرونی (label، `code`، breakdown badge، دکمه Save، وضعیت «ثبت نشده») ثابت می‌ماند.
+- Save: `upsert.mutate({ ..., actual_value, raw_score: normalized, is_clipped })`.
 
 ## ریسک‌ها
 
-- بدون policy anon → endpoint هیچ ردیفی برنمی‌گرداند (کلید publishable با RLS مواجه می‌شود).
-- اگر بعداً ستون حساسی به `products` اضافه شود، projection صریح از نشت جلوگیری می‌کند.
-- خود-میزبانی: کاملاً سازگار — بدون CDN، بدون secret جدید.  
-  
-  
-Yes, proceed with all three:
-  1. Add the anon SELECT policy migration for products table
-  2. Keep it completely open, no rate limiting or API key needed
-  3. Return exactly these 7 fields: id, name, model, capacity, stock_status, is_active, price
-  Build the server route and run the migration. Then tell me the exact working URL of the endpoint and show me a sample JSON response.
+- رکوردهای قدیمی که `actual_value` ندارند: با fallback معکوس از `raw_score` نمایش می‌دهیم؛ اگر `min=max` باشد fallback = min. تا زمانی که کاربر ذخیره نکند، rewrite نمی‌شود.
+- `calculate_dynamic_score` هنوز از `raw_score` استفاده می‌کند — تغییری در آن نمی‌دهیم؛ چون normalized را خودمان درست ذخیره می‌کنیم، breakdown/allocations بدون تغییر کار می‌کند.
+- تغییر فقط UI است؛ بدون migration، بدون RLS/RBAC، بدون audit جدید.
+
+## تأیید و مراحل بعد
+
+پس از تأیید:
+1. patch دو فایل بالا.
+2. `tsgo --noEmit` روی این دو فایل.
+3. گزارش تغییرات + مسیر تست دستی (`/customers/:id` → بخش امتیازدهی پویا: هر ۴ نوع پارامتر).
+
+منتظر تأیید هستم — کد نمی‌نویسم تا OK بدهید.
