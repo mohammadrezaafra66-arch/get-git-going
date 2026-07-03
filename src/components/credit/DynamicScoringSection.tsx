@@ -192,6 +192,9 @@ export function DynamicScoringSection({
             </Badge>
           )}
         </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          پس از ۶۰ ثانیه، عدد سقف اعتبار مؤثر بر اساس داده جدید تغییر خواهد کرد.
+        </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
