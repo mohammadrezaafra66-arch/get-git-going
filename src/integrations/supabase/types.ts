@@ -2494,40 +2494,46 @@ export type Database = {
       }
       dynamic_entity_scores: {
         Row: {
+          actual_value: number | null
           created_at: string
           entity_id: string
           entity_type: string
           id: string
+          is_clipped: boolean
           note: string | null
           parameter_id: string
           period_month: string
-          raw_score: number
+          raw_score: number | null
           scored_at: string
           scored_by: string | null
           updated_at: string
         }
         Insert: {
+          actual_value?: number | null
           created_at?: string
           entity_id: string
           entity_type: string
           id?: string
+          is_clipped?: boolean
           note?: string | null
           parameter_id: string
           period_month: string
-          raw_score: number
+          raw_score?: number | null
           scored_at?: string
           scored_by?: string | null
           updated_at?: string
         }
         Update: {
+          actual_value?: number | null
           created_at?: string
           entity_id?: string
           entity_type?: string
           id?: string
+          is_clipped?: boolean
           note?: string | null
           parameter_id?: string
           period_month?: string
-          raw_score?: number
+          raw_score?: number | null
           scored_at?: string
           scored_by?: string | null
           updated_at?: string
@@ -2589,8 +2595,13 @@ export type Database = {
           display_order: number
           entity_type: string
           id: string
+          input_hint: string | null
+          input_type: string
           is_active: boolean
           label_fa: string
+          max_value: number
+          min_value: number
+          unit_label: string | null
           updated_at: string
         }
         Insert: {
@@ -2601,8 +2612,13 @@ export type Database = {
           display_order?: number
           entity_type: string
           id?: string
+          input_hint?: string | null
+          input_type?: string
           is_active?: boolean
           label_fa: string
+          max_value?: number
+          min_value?: number
+          unit_label?: string | null
           updated_at?: string
         }
         Update: {
@@ -2613,8 +2629,13 @@ export type Database = {
           display_order?: number
           entity_type?: string
           id?: string
+          input_hint?: string | null
+          input_type?: string
           is_active?: boolean
           label_fa?: string
+          max_value?: number
+          min_value?: number
+          unit_label?: string | null
           updated_at?: string
         }
         Relationships: []
