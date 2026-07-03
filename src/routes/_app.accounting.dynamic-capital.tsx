@@ -217,14 +217,18 @@ function DynamicCapitalPage() {
                     raw ? Number(raw).toLocaleString("en-US") : "",
                   );
                 }}
-                disabled={alreadyExists || runMutation.isPending}
+                disabled={runMutation.isPending || isOverwriting}
                 className="text-left"
               />
-              {totalCapitalNum > 0 && (
+              {totalCapitalNum > 0 ? (
                 <p className="text-xs text-muted-foreground">
                   {fmtMoney(totalCapitalNum)} ریال
                 </p>
-              )}
+              ) : alreadyExists ? (
+                <p className="text-xs text-red-600">
+                  برای بازنویسی ابتدا سرمایه جدید را وارد کنید
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>یادداشت (اختیاری)</Label>
@@ -233,7 +237,7 @@ function DynamicCapitalPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="توضیح کوتاه..."
-                disabled={alreadyExists || runMutation.isPending}
+                disabled={runMutation.isPending || isOverwriting}
               />
             </div>
           </div>
