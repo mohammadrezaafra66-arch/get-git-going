@@ -29,11 +29,9 @@ export const Route = createFileRoute("/api/public/products")({
             },
           );
 
-          const { data, error } = await supabase
+          const { data: rows, error } = await supabase
             .from("products")
-            .select(
-              "id, name, model, capacity, stock_status, is_active, product_computed_prices_public(rounded_sale_price)",
-            )
+            .select("id, name, model, capacity, stock_status, is_active")
             .eq("is_active", true)
             .neq("stock_status", "unavailable")
             .order("name", { ascending: true });
@@ -48,20 +46,41 @@ export const Route = createFileRoute("/api/public/products")({
             );
           }
 
-          const products = (data ?? []).map((row) => {
-            const priceRow = Array.isArray(row.product_computed_prices_public)
-              ? row.product_computed_prices_public[0]
-              : row.product_computed_prices_public;
-            return {
-              id: row.id,
-              name: row.name,
-              model: row.model,
-              capacity: row.capacity,
-              stock_status: row.stock_status,
-              is_active: row.is_active,
-              price: Number(priceRow?.rounded_sale_price ?? 0),
-            };
-          });
+          const ids = (rows ?? []).map((r) => r.id);
+          const priceMap = new Map<string, number>();
+          if (ids.length > 0) {
+            const { data: prices, error: priceErr } = await supabase
+              .from("product_computed_prices_public")
+              .select("product_id, rounded_sale_price")
+              .in("product_id", ids);
+            if (priceErr) {
+              return new Response(
+                JSON.stringify({ error: "Failed to fetch prices" }),
+                {
+                  status: 500,
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders,
+                  },
+                },
+              );
+            }
+            for (const p of prices ?? []) {
+              if (p.product_id) {
+                priceMap.set(p.product_id, Number(p.rounded_sale_price ?? 0));
+              }
+            }
+          }
+
+          const products = (rows ?? []).map((row) => ({
+            id: row.id,
+            name: row.name,
+            model: row.model,
+            capacity: row.capacity,
+            stock_status: row.stock_status,
+            is_active: row.is_active,
+            price: priceMap.get(row.id) ?? 0,
+          }));
 
           return new Response(JSON.stringify({ products }), {
             status: 200,
