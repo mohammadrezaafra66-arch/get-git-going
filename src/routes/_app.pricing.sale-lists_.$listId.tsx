@@ -863,13 +863,15 @@ function SaleListDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setPdfFontSize(10);
-              setPdfRowPadY(2);
-              setPdfCellPadX(4);
-              if (canSavePdfOrder) {
-                void persistPdfAppearance(10, 2, 4);
-              }
+            onClick={async () => {
+              const nextFontSize = 10;
+              const nextRowPadY = 2;
+              const nextCellPadX = 4;
+              setPdfFontSize(nextFontSize);
+              setPdfRowPadY(nextRowPadY);
+              setPdfCellPadX(nextCellPadX);
+              const ok = await persistPdfAppearance(nextFontSize, nextRowPadY, nextCellPadX);
+              if (ok) toast.success("تنظیمات ظاهر PDF بازنشانی شد.");
             }}
           >
             بازنشانی
