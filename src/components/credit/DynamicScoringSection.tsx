@@ -323,20 +323,6 @@ export function DynamicScoringSection({
               {allocView ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
             </div>
           </div>
-          <div className="rounded-md border p-3 space-y-1">
-            <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Wallet className="h-3.5 w-3.5" />
-              {allocView?.amountLabel ?? "تخصیص آخرین snapshot"}
-            </div>
-            <div className="text-sm font-bold">
-              {allocView ? `${formatNumber(allocView.amount)} ریال` : "—"}
-            </div>
-            {allocView?.binding && (
-              <Badge className={`text-[10px] ${allocView.binding.cls}`}>
-                {allocView.binding.label}
-              </Badge>
-            )}
-          </div>
         </div>
 
         {/* Parameters */}
