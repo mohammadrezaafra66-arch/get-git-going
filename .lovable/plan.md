@@ -1,132 +1,315 @@
+سخه پاکنویس نهایی که من ۱۰۰٪ با آن موافقم:
 
-## Task ID
-credit-realtime-customer
+```
 
-## Classification
-PLAN ONLY — File edits allowed: No (awaiting approval)
+```
 
-## Goal
-هر تغییر پارامتر امتیازدهی مشتری، بلافاصله `weighted_score`، `final_limit` و `binding_constraint` را زنده بازمحاسبه کند — بدون وابستگی به snapshot امروز.
+```
+## هدف
 
----
+حذف input تاریخ native مرورگر از UIهای کاربرمحور، مثل `mm/dd/yyyy`، و جایگزینی با تقویم شمسی، بدون تغییر فرمت ذخیره در DB/API.
 
-## پاسخ به سوال‌های شما (بر اساس بررسی schema)
-
-1. **رابطه مشتری-کارشناس:** بله، `customers.responsible_id uuid` وجود دارد. تأیید شد.
-2. **آیا `calculate_dynamic_score` برای salesperson هم صدا زده شود؟**
-   بله — برای محاسبه سهم کارشناس از کل سرمایه، نیاز به `weighted_score` او داریم. اما راه ساده‌تر: از آخرین ردیف `salesperson_capital_allocations_dynamic` (بر اساس `capital_date` DESC) `allocated_capital` را بگیریم؛ این ستون از قبل «سهم کارشناس از سرمایه روز» را ذخیره کرده و نیازی به بازمحاسبه ندارد. RPC مشتری فقط نسبت مشتری‌ها را داخل سهم کارشناس زنده حساب کند.
-3. **اگر `responsible_id` null باشد؟** پیشنهاد: `final_limit = LEAST(credit_limit, 0)` نیست — بلکه `raw_allocation = 0`, `binding = 'no_salesperson'`, و `final_limit = 0`. علت: بدون کارشناس، سهمی از سرمایه فروش تخصیص داده نمی‌شود. کاربر می‌تواند دستی `credit_limit` را ست کند ولی این binding جدید باعث می‌شود مشکل قابل دیدن باشد. **نیاز به تأیید شما.**
-4. **Migration:** بله — یک migration برای ایجاد RPC جدید `calculate_customer_realtime_credit`. بدون تغییر schema جداول. فقط `CREATE OR REPLACE FUNCTION` (STABLE, SECURITY DEFINER با `has_role` check برای admin/accountant/manager).
+فرمت ذخیره‌سازی باید همچنان Gregorian/ISO با فرمت `YYYY-MM-DD` بماند.
 
 ---
 
-## Scope (فاز اول قابل تحویل)
+## نکته مهم قبل از شروع
 
-### Phase 1 — Migration (backend)
-- ایجاد RPC `public.calculate_customer_realtime_credit(p_customer_id uuid) RETURNS jsonb`
-- STABLE، SECURITY DEFINER، `SET search_path = public`
-- منطق داخل RPC:
-  1. گرفتن `responsible_id`, `credit_limit`, `has_overdue` از `customers` + `customer_credit_profile`
-  2. اگر `has_overdue` → return با `binding='overdue'`, `final_limit=0`
-  3. اگر `responsible_id IS NULL` → return با `binding='no_salesperson'`, `final_limit=0`
-  4. گرفتن آخرین `salesperson_capital_allocations_dynamic` برای این کارشناس (max `capital_date`) → `allocated_capital` + `capital_date_used`
-  5. صدا زدن `calculate_dynamic_score('customer', p_customer_id, capital_date_used)` → `weighted_score_self`, `breakdown`, `params_evaluated`, `params_active`
-  6. مجموع امتیاز همه مشتریان فعال این کارشناس در همان period → `sum_scores`
-  7. `share_ratio = weighted_score_self / NULLIF(sum_scores, 0)`
-  8. `raw_allocation = allocated_capital * share_ratio`
-  9. `final_limit = LEAST(raw_allocation, credit_limit)` با binding مطابق
-- خروجی jsonb مطابق مشخصات شما + فیلد `is_capital_stale` (اگر `capital_date_used < CURRENT_DATE`)
-- GRANT EXECUTE فقط به `authenticated`
+در پروژه یک کامپوننت آماده و منطبق با نیاز وجود دارد:
 
-### Phase 2 — Hook و UI (فقط بعد از تأیید Phase 1)
-- `src/hooks/credit/useDynamicScoring.ts`: افزودن `useCustomerRealtimeCredit(customerId)` با key `["dyn-customer-realtime-credit", customerId]`، `staleTime: 30s`
-- `DynamicScoringSection.tsx`:
-  - `onSuccess` upsert امتیاز → `invalidateQueries(['dyn-customer-realtime-credit', entityId])`
-  - کارت خلاصه real-time: `final_limit` + Badge سبز «زنده»، `weighted_score` + «X از Y پارامتر»، `binding_constraint` real-time، Badge زرد «سرمایه: DD/MM (قدیمی)» اگر stale
-- `_app.sales_.customers_.$customerId.credit.tsx`:
-  - کارت metric «سقف اعتبار مؤثر» → از `useCustomerRealtimeCredit` (نه snapshot)
-  - Badge «🟢 زنده» کنار عدد
-  - حفظ کارت‌های snapshot به عنوان reference پایینی
+`src/shared/components/JalaliDateInput.tsx`
+
+این کامپوننت:
+- از `react-multi-date-picker` استفاده می‌کند.
+- از calendar `persian` استفاده می‌کند.
+- از locale `persian_fa` استفاده می‌کند.
+- مقدار ورودی/خروجی را ISO Gregorian با فرمت `YYYY-MM-DD` نگه می‌دارد.
+- UI را شمسی نمایش می‌دهد.
+- placeholder، disabled، min، max و className را پشتیبانی می‌کند.
+
+طبق قانون workspace:
+“Prefer extending existing components. Avoid parallel modules.”
+
+بنابراین کامپوننت جدید موازی نساز. به‌جای duplicate کردن منطق، یک wrapper نازک بساز.
 
 ---
 
-## Out of scope
-- تغییر منطق تخصیص سرمایه کارشناس (خودش snapshot می‌ماند)
-- Realtime WebSocket (فقط invalidate query — کافی است)
-- تغییر UI صفحه امتیازدهی salesperson
-- Recalc خودکار snapshot روزانه
-- تغییر `dynamic_entity_scores` schema
-- migration جدید برای جداول موجود
+## ۱) ساخت wrapper مشترک
+
+فایل زیر را اضافه کن:
+
+`src/components/common/PersianDatePicker.tsx`
+
+این فایل باید فقط wrapper نازک روی `JalaliDateInput` باشد.
+
+API عمومی:
+
+```ts
+value: string | null
+onChange: (value: string | null) => void
+placeholder?: string
+disabled?: boolean
+className?: string
+clearable?: boolean
+min?: string
+max?: string
+```
+
+رفتار:
+
+-   
+مقدار ورودی `value` می‌تواند `string | null` باشد.  
+
+-   
+اگر `JalaliDateInput` مقدار خالی برگرداند، wrapper باید آن را به `null` نرمال کند.  
+
+-   
+خروجی همیشه `YYYY-MM-DD` میلادی یا `null` باشد.  
+
+- `clearable` به‌صورت پیش‌فرض `true` باشد.  
+
+-   
+اگر `clearable` فعال بود و مقدار وجود داشت، یک دکمه کوچک ✕ برای پاک‌کردن تاریخ نمایش بده.  
+
+-   
+هیچ منطق تبدیل تاریخ جدید ننویس؛ منطق تبدیل باید از همان `JalaliDateInput` بیاید.  
+
 
 ---
 
-## Files likely to change
-- `supabase/migrations/<ts>_calculate_customer_realtime_credit.sql` (جدید)
-- `src/hooks/credit/useDynamicScoring.ts` (افزودن hook)
-- `src/components/credit/DynamicScoringSection.tsx` (کارت خلاصه + invalidate)
-- `src/routes/_app.sales_.customers_.$customerId.credit.tsx` (metric card)
+## ۲) اصلاح صفحه `/sales/quotes`
 
-## Files likely to inspect again
-- `src/hooks/credit/useDynamicScoring.ts` (تایپ‌ها + pattern)
-- تعریف فعلی `calculate_dynamic_score` (برای امضا و return shape)
+اولویت اصلی این صفحه است، چون الان در UI هنوز `mm/dd/yyyy` دیده می‌شود.
 
----
+فایل احتمالی:
 
-## Database / migration impact
-- فقط ایجاد یک function جدید (`CREATE OR REPLACE`). Reversible: `DROP FUNCTION` در rollback.
-- بدون تغییر جدول، بدون تغییر RLS جداول موجود.
-- STABLE → cache-safe. SECURITY DEFINER → داخل تابع `has_role` چک می‌شود.
+`src/routes/_app.sales.quotes.index.tsx`
 
-## RLS / RBAC / audit impact
-- RLS: بدون تغییر
-- RBAC: RPC فقط برای admin/manager/accountant قابل اجرا (چک داخل تابع)
-- Audit: بدون نیاز — read-only
+کارها:
 
-## Performance impact
-- هر بار ذخیره امتیاز → یک RPC call (چند JOIN سبک + یک aggregation). indexed. قابل قبول.
-- بدون polling. فقط invalidate بعد از mutation.
+-   
+دو فیلتر تاریخ که الان native date input هستند را پیدا کن.  
 
-## UI/UX impact
-- اضافه شدن Badge «زنده» و «سرمایه قدیمی» — Persian، RTL، سازگار با design فعلی
-- بدون تغییر layout اصلی صفحه
-- Fallback واضح در حالت‌های `no_salesperson`, `overdue`, `no_capital`
+-   
+هر دو `<Input type="date">` را با `<PersianDatePicker>` جایگزین کن.  
 
-## Manual test path
-1. `/sales/customers/<test-1>/credit` → کارت‌های real-time لود شوند
-2. یک پارامتر را تغییر بده و ذخیره کن → `weighted_score` و `final_limit` **بدون refresh** به‌روز شود
-3. مشتری بدون `responsible_id` → binding='no_salesperson', limit=0
-4. مشتری با `has_overdue=true` → binding='overdue', limit=0
-5. `credit_limit` کم → binding='credit_limit'
+-   
+placeholderها:  
 
-## Commands to run
-- `npm run build`
-- `npm run lint`
-- (بعد از migration) اجرای دستی RPC روی test 1 و مقایسه با snapshot
+  - `از تاریخ`  
 
-## Acceptance criteria
-- ذخیره امتیاز → به‌روزرسانی فوری کارت‌ها بدون refresh
-- سه binding جدید/موجود (`overdue`, `credit_limit`, `formula`) + `no_salesperson` درست کار کنند
-- در نبود snapshot امروز، از آخرین `capital_date` موجود استفاده شود و badge stale ظاهر شود
-- بدون regression روی کارت‌های snapshot موجود
+  - `تا تاریخ`  
 
-## Risks
-- **R1:** اگر تعداد مشتریان یک کارشناس زیاد باشد، aggregation کند شود → mitigation: index روی `dynamic_entity_scores(entity_id, period_month)` احتمالاً موجود است — بررسی در implementation
-- **R2:** RPC مشتری‌ها اگر امتیاز نداشته باشند، `sum_scores=0` → division-by-zero → با `NULLIF` مدیریت شده
-- **R3:** ناسازگاری تعریف period_month بین `calculate_dynamic_score` و ما — باید `capital_date_used` را به همان تابع pass کنیم
+-   
+state داخلی `dateFrom` و `dateTo` همچنان string با فرمت `YYYY-MM-DD` بماند.  
 
-## Stop conditions
-- اگر پاسخ سوال ۳ (رفتار `responsible_id=null`) با پیشنهاد ما مخالف باشد → پیش نرو
-- اگر مشخص شد `calculate_dynamic_score` signature با فرض ما (پذیرش تاریخ) متفاوت است → بازنگری plan
+-   
+منطق query/filter/API را تغییر نده.  
+
+-   
+بعد از اصلاح، در صفحه `/sales/quotes` نباید `mm/dd/yyyy` دیده شود.  
+
 
 ---
 
-## سوال‌های باقی‌مانده برای تأیید شما
-1. رفتار `responsible_id = null` — پیشنهاد ما: `final_limit=0, binding='no_salesperson'`. موافقید؟
-2. آیا `binding='no_salesperson'` را به عنوان binding جدید بپذیریم یا از `formula` استفاده کنیم؟
-3. Phase 1 (migration) و Phase 2 (UI) را جدا تحویل بدهم یا یکجا؟
+## ۳) اصلاح بقیه فایل‌های user-facing
 
-## Smallest safe next slice
-Phase 1 فقط: migration ایجاد RPC + تست دستی روی test 1 قبل از هر تغییر UI.
+در فایل‌های زیر هر `type="date"` که برای کاربر قابل مشاهده است باید با `PersianDatePicker` جایگزین شود:
 
-## Next SAFE AGENT CHANGE prompt
-"Phase 1 را اجرا کن: migration ایجاد `calculate_customer_realtime_credit` را بزن. بعد از تأیید و اجرا، RPC را روی مشتری test 1 صدا بزن و خروجی jsonb را نشان بده. UI هنوز تغییر نکند."
+- `src/routes/_app.sales.quotes.new.tsx`  
+
+- `src/routes/_app.sales.stock-alerts.tsx`  
+
+- `src/routes/_app.sales.send-queue.tsx`  
+
+- `src/routes/_app.sales.quote-share-logs.tsx`  
+
+- `src/routes/_app.marketing.suggestions-history.tsx`  
+
+- `src/routes/_app.gamification.admin.analytics.tsx`  
+
+- `src/routes/_app.gamification.admin.leagues.tsx`  
+
+- `src/components/operations/mood/DailyMoodAdminTable.tsx`  
+
+- `src/components/products/ProductForm.tsx`  
+
+- `src/components/profile/DynamicProfileFields.tsx`  
+
+- `src/shared/components/CustomerForm.tsx`  
+
+- `src/shared/components/WaybillCustomFieldsInput.tsx`  
+
+
+در هر فایل:
+
+-   
+فقط ورودی تاریخ را تغییر بده.  
+
+-   
+منطق ذخیره‌سازی، query، mutation، API و DB را تغییر نده.  
+
+-   
+مقدارهایی که قبلاً `YYYY-MM-DD` بودند، همان `YYYY-MM-DD` بمانند.  
+
+-   
+اگر فرم با react-hook-form کار می‌کند، bind را دقیق انجام بده:  
+
+  - `value={field.value ?? null}`  
+
+  - `onChange={(v) => field.onChange(v ?? "")}` یا متناسب با schema همان فرم  
+
+-   
+اگر state ساده است:  
+
+  - `value={value || null}`  
+
+  - `onChange={(v) => setValue(v ?? "")}`  
+
+
+---
+
+## ۴) دیتابیس / RLS / migration
+
+هیچ تغییری در موارد زیر انجام نده:
+
+-   
+دیتابیس  
+
+-   
+migration  
+
+-   
+RLS  
+
+-   
+GRANT  
+
+-   
+policy  
+
+-   
+API contracts  
+
+
+این تغییر فقط UI است.
+
+---
+
+## ۵) تأیید فنی
+
+بعد از تغییرات اجرا کن:
+
+```
+
+```
+
+```
+bunx tsgo --noEmit
+bun run build
+```
+
+بعد بررسی کن:
+
+```
+
+```
+
+```
+rg 'type="date"' src/
+rg "PersianDatePicker" src/
+```
+
+انتظار:
+
+- `PersianDatePicker` باید در فایل‌های اصلاح‌شده دیده شود.  
+
+-   
+در صفحه `/sales/quotes` دیگر `mm/dd/yyyy` دیده نشود.  
+
+- `type="date"` در فایل‌های user-facing بالا باقی نماند.  
+
+-   
+اگر موردی از `type="date"` باقی ماند، باید در گزارش پایان با دلیل توضیح داده شود.  
+
+
+---
+
+## ۶) تست دستی
+
+صفحه زیر را باز کن:
+
+`/sales/quotes`
+
+باید:
+
+1.   
+فیلترهای تاریخ شمسی باشند.  
+
+2.   
+placeholderها فارسی باشند:  
+
+  - `از تاریخ`  
+
+  - `تا تاریخ`  
+
+3.   
+تقویم شمسی باز شود.  
+
+4.   
+بعد از انتخاب تاریخ، فیلتر همچنان درست کار کند.  
+
+5.   
+در UI دیگر `mm/dd/yyyy` دیده نشود.  
+
+
+همچنین صفحات زیر را سریع smoke test کن:
+
+-   
+ساخت پیش‌فاکتور جدید  
+
+-   
+هشدار موجودی  
+
+-   
+صف ارسال  
+
+-   
+گزارش ارسال پیش‌فاکتور  
+
+-   
+تاریخ تولد مشتری  
+
+-   
+فصل‌های گیمیفیکیشن  
+
+
+---
+
+## ۷) گزارش پایان
+
+بعد از اجرا، لطفاً این موارد را گزارش بده:
+
+-   
+نام branch  
+
+-   
+commit hash  
+
+-   
+فایل‌های تغییرکرده  
+
+-   
+وضعیت صفحه `/sales/quotes`  
+
+-   
+نتیجه `bunx tsgo --noEmit`  
+
+-   
+نتیجه `bun run build`  
+
+-   
+خروجی خلاصه `rg 'type="date"' src/`  
+
+-   
+اگر `type="date"` باقی مانده، دلیل باقی‌ماندن هر مورد
