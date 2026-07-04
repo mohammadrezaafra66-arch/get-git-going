@@ -38,13 +38,30 @@ async function safeCount(
 }
 
 export function usePendingPurchaseCount() {
+  const { user, roles } = useAuth();
+  const isAdminOrManager = roles.some(
+    (r) => r === "admin" || r === "manager",
+  );
   return useQuery({
     ...COMMON,
-    queryKey: ["hub-count", "purchase-pending"],
+    enabled: !!user?.id,
+    queryKey: [
+      "hub-count",
+      "purchase-pending",
+      user?.id,
+      isAdminOrManager ? "all" : "mine",
+    ],
     queryFn: () =>
-      safeCount((db) =>
-        db.from("purchase_requests").select("id", { count: "estimated", head: true }).eq("status", "pending"),
-      ),
+      safeCount((db) => {
+        const q = db
+          .from("purchase_requests")
+          .select("id", { count: "estimated", head: true })
+          .eq("status", "pending") as unknown as {
+          eq: (k: string, v: unknown) => unknown;
+        };
+        if (isAdminOrManager) return q;
+        return q.eq("requested_by", user!.id);
+      }),
   });
 }
 
