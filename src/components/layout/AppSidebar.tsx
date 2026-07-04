@@ -143,7 +143,7 @@ export function AppSidebar() {
   const { data: pricingQueueHealth } = useQuery({
     queryKey: ["sidebar-pricing-queue-summary"],
     enabled: canSeePricingQueue,
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase

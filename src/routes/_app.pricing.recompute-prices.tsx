@@ -72,7 +72,7 @@ function RecomputePricesPage() {
       if (error) throw error;
       return data;
     },
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     staleTime: 10_000,
   });
