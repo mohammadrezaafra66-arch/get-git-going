@@ -308,9 +308,9 @@ function SaleListDetailPage() {
   useEffect(() => {
     const d = listQ.data;
     if (!d) return;
-    if (typeof d.pdf_font_size === "number") setPdfFontSize(d.pdf_font_size);
-    if (typeof d.pdf_row_padding_y === "number") setPdfRowPadY(d.pdf_row_padding_y);
-    if (typeof d.pdf_cell_padding_x === "number") setPdfCellPadX(d.pdf_cell_padding_x);
+    setPdfFontSize(d.pdf_font_size ?? 10);
+    setPdfRowPadY(d.pdf_row_padding_y ?? 2);
+    setPdfCellPadX(d.pdf_cell_padding_x ?? 4);
   }, [
     listQ.data?.id,
     listQ.data?.pdf_font_size,
@@ -624,9 +624,11 @@ function SaleListDetailPage() {
     try {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
-        await persistPdfOrder();
-        await persistPdfAppearance();
+        const orderOk = await persistPdfOrder();
+        if (!orderOk) return;
       }
+      const appearanceOk = await persistPdfAppearance();
+      if (!appearanceOk) return;
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
       const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
@@ -861,13 +863,15 @@ function SaleListDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setPdfFontSize(10);
-              setPdfRowPadY(2);
-              setPdfCellPadX(4);
-              if (canSavePdfOrder) {
-                void persistPdfAppearance(10, 2, 4);
-              }
+            onClick={async () => {
+              const nextFontSize = 10;
+              const nextRowPadY = 2;
+              const nextCellPadX = 4;
+              setPdfFontSize(nextFontSize);
+              setPdfRowPadY(nextRowPadY);
+              setPdfCellPadX(nextCellPadX);
+              const ok = await persistPdfAppearance(nextFontSize, nextRowPadY, nextCellPadX);
+              if (ok) toast.success("تنظیمات ظاهر PDF بازنشانی شد.");
             }}
           >
             بازنشانی
