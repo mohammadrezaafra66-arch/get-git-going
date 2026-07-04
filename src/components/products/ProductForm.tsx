@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Select,
   SelectContent,
@@ -961,7 +962,12 @@ function DynamicAttrField({
       );
       break;
     case "date":
-      control = <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />;
+      control = (
+        <PersianDatePicker
+          value={value || null}
+          onChange={(v) => onChange(v ?? "")}
+        />
+      );
       break;
     case "text":
     default:

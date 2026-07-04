@@ -16,6 +16,7 @@ import {
 import { Loader2, Activity, Trophy, Target, Users, AlertTriangle } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -276,15 +277,19 @@ function AnalyticsPage() {
             <>
               <div className="space-y-1">
                 <Label className="text-xs">از تاریخ</Label>
-                <Input
-                  type="date"
-                  value={customFrom}
-                  onChange={(e) => setCustomFrom(e.target.value)}
+                <PersianDatePicker
+                  value={customFrom || null}
+                  onChange={(v) => setCustomFrom(v ?? "")}
+                  placeholder="از تاریخ"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">تا تاریخ</Label>
-                <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+                <PersianDatePicker
+                  value={customTo || null}
+                  onChange={(v) => setCustomTo(v ?? "")}
+                  placeholder="تا تاریخ"
+                />
               </div>
             </>
           ) : null}

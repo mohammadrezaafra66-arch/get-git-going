@@ -6,6 +6,7 @@ import { Loader2, Plus, Trash2, Search, Save, Package, FileText, Sparkles } from
 import { ensureAuthReady } from "@/lib/auth/session";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -176,11 +177,10 @@ function NewQuotePage() {
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
-              <Input
-                id="expires_at"
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+              <PersianDatePicker
+                value={expiresAt || null}
+                onChange={(v) => setExpiresAt(v ?? "")}
+                placeholder="انتخاب تاریخ اعتبار"
               />
             </div>
             <div className="space-y-1.5 md:col-span-1">
