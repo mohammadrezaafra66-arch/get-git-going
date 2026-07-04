@@ -11,7 +11,7 @@ import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { formatNumber, toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
 import {
   useCustomerLatestAllocation,
@@ -108,9 +108,18 @@ function CustomerCreditPage() {
             label="امتیاز وزنی"
             hintText="امتیاز نهایی از سیستم امتیازدهی پویا (۰ تا ۱)."
             value={
-              <span className="text-xl font-bold">
-                {toFaDigits(Number(latestAlloc.weighted_score).toFixed(3))}
-              </span>
+              <div className="space-y-1">
+                <span className="text-xl font-bold">
+                  {toFaDigits(
+                    Number(realtime?.weighted_score ?? latestAlloc.weighted_score).toFixed(3),
+                  )}
+                </span>
+                {realtime && (
+                  <div className="text-xs text-muted-foreground">
+                    {toFaDigits(realtime.params_evaluated)} از {toFaDigits(realtime.params_active)} پارامتر ارزیابی شده
+                  </div>
+                )}
+              </div>
             }
           />
           <MetricCard
@@ -128,8 +137,13 @@ function CustomerCreditPage() {
             label="تاریخ تخصیص"
             hintText="تاریخ اجرای تخصیص سرمایه که این سقف از آن آمده."
             value={
-              <span className="text-base font-semibold">
-                {toFaDigits(latestAlloc.capital_date || "—")}
+              <span className="text-base font-semibold inline-flex items-center gap-2">
+                {latestAlloc.capital_date ? formatDateTimeFa(latestAlloc.capital_date) : "—"}
+                {realtime?.is_capital_stale && (
+                  <Badge variant="outline" className="text-yellow-700 border-yellow-500 text-[10px]">
+                    قدیمی
+                  </Badge>
+                )}
               </span>
             }
           />
