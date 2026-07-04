@@ -50,6 +50,7 @@ function CollaborationPage() {
       icon: MessageSquare,
       gradient: "from-blue-500 to-blue-600",
       badge: unread,
+      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
     },
     {
       to: "/purchase",
@@ -58,6 +59,7 @@ function CollaborationPage() {
       icon: ShoppingCart,
       gradient: "from-emerald-500 to-emerald-600",
       badge: purchase,
+      allowedRoles: ["admin", "manager", "sales"],
     },
     {
       to: "/my-penalties",
@@ -66,6 +68,7 @@ function CollaborationPage() {
       icon: ShieldAlert,
       gradient: "from-red-500 to-red-600",
       badge: penalty,
+      allowedRoles: ["admin", "manager", "sales", "accountant"],
     },
     {
       to: "/delivery-receipts",
@@ -74,6 +77,7 @@ function CollaborationPage() {
       icon: FileCheck,
       gradient: "from-violet-500 to-violet-600",
       badge: receipts,
+      allowedRoles: ["admin", "manager", "sales"],
     },
     {
       to: "/documents",
@@ -82,6 +86,7 @@ function CollaborationPage() {
       icon: FileText,
       gradient: "from-amber-500 to-amber-600",
       badge: docs,
+      allowedRoles: ["admin", "manager", "accountant"],
     },
     {
       to: "/gamification",
@@ -90,8 +95,13 @@ function CollaborationPage() {
       icon: Trophy,
       gradient: "from-yellow-500 to-amber-600",
       badge: 0,
+      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
     },
   ];
+
+  const visibleItems = items.filter((item) =>
+    roles.some((role) => item.allowedRoles.includes(role as AppRole))
+  );
 
   return (
     <div
