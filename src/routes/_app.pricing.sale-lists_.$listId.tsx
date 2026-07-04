@@ -583,6 +583,29 @@ function SaleListDetailPage() {
     }
   };
 
+  const persistPdfAppearance = async (
+    fontSize: number = pdfFontSize,
+    rowPadY: number = pdfRowPadY,
+    cellPadX: number = pdfCellPadX,
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("sale_lists")
+        .update({
+          pdf_font_size: fontSize,
+          pdf_row_padding_y: rowPadY,
+          pdf_cell_padding_x: cellPadX,
+        })
+        .eq("id", listId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["sale-list", listId] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ذخیره تنظیمات ظاهر PDF ناموفق بود.");
+      return false;
+    }
+  };
+
   const handleSaveOrder = async () => {
     setSavingOrder(true);
     try {
