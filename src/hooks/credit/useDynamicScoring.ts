@@ -299,3 +299,55 @@ export function useSalespersonLatestAllocation(salespersonId: string | undefined
     },
   });
 }
+
+export type RealtimeBinding =
+  | "overdue"
+  | "no_salesperson"
+  | "no_capital"
+  | "credit_limit"
+  | "formula";
+
+export interface RealtimeCreditBreakdownItem {
+  parameter_code: string;
+  parameter_name: string;
+  raw_score: number | null;
+  raw_weight: number;
+  normalized_weight: number;
+  contribution: number;
+  has_score: boolean;
+}
+
+export interface RealtimeCreditResult {
+  weighted_score: number;
+  params_evaluated: number;
+  params_active: number;
+  final_limit: number;
+  raw_allocation: number;
+  credit_limit: number;
+  binding_constraint: RealtimeBinding;
+  capital_date_used: string | null;
+  is_capital_stale: boolean;
+  salesperson_allocated_capital: number;
+  share_ratio: number;
+  breakdown: RealtimeCreditBreakdownItem[];
+}
+
+export function useCustomerRealtimeCredit(customerId: string | undefined) {
+  return useQuery({
+    queryKey: ["dyn-customer-realtime-credit", customerId],
+    enabled: Boolean(customerId),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<RealtimeCreditResult | null> => {
+      // RPC not yet in generated types — cast the fn name to satisfy the client.
+      const { data, error } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+      )("calculate_customer_realtime_credit", { p_customer_id: customerId! });
+      if (error) throw new Error(error.message);
+      return (data ?? null) as RealtimeCreditResult | null;
+    },
+  });
+}
