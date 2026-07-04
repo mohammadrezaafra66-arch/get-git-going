@@ -15,7 +15,7 @@ type AnySupabase = {
   from: (t: string) => {
     select: (
       cols: string,
-      opts: { count: "exact"; head: true },
+      opts: { count: "estimated"; head: true },
     ) => {
       eq: (k: string, v: unknown) => unknown;
     };
