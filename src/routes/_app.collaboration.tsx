@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageSquare, ShoppingCart, ShieldAlert, FileCheck, FileText, Trophy, type LucideIcon } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
+import type { AppRole } from "@/lib/rbac/roles";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
@@ -23,10 +24,11 @@ interface HubItem {
   icon: LucideIcon;
   gradient: string;
   badge: number;
+  allowedRoles: AppRole[];
 }
 
 function CollaborationPage() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
@@ -48,6 +50,7 @@ function CollaborationPage() {
       icon: MessageSquare,
       gradient: "from-blue-500 to-blue-600",
       badge: unread,
+      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
     },
     {
       to: "/purchase",
@@ -56,6 +59,7 @@ function CollaborationPage() {
       icon: ShoppingCart,
       gradient: "from-emerald-500 to-emerald-600",
       badge: purchase,
+      allowedRoles: ["admin", "manager", "sales"],
     },
     {
       to: "/my-penalties",
@@ -64,6 +68,7 @@ function CollaborationPage() {
       icon: ShieldAlert,
       gradient: "from-red-500 to-red-600",
       badge: penalty,
+      allowedRoles: ["admin", "manager", "sales", "accountant"],
     },
     {
       to: "/delivery-receipts",
@@ -72,6 +77,7 @@ function CollaborationPage() {
       icon: FileCheck,
       gradient: "from-violet-500 to-violet-600",
       badge: receipts,
+      allowedRoles: ["admin", "manager", "sales"],
     },
     {
       to: "/documents",
@@ -80,6 +86,7 @@ function CollaborationPage() {
       icon: FileText,
       gradient: "from-amber-500 to-amber-600",
       badge: docs,
+      allowedRoles: ["admin", "manager", "accountant"],
     },
     {
       to: "/gamification",
@@ -88,8 +95,13 @@ function CollaborationPage() {
       icon: Trophy,
       gradient: "from-yellow-500 to-amber-600",
       badge: 0,
+      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
     },
   ];
+
+  const visibleItems = items.filter((item) =>
+    roles.some((role) => item.allowedRoles.includes(role as AppRole))
+  );
 
   return (
     <div
@@ -108,7 +120,7 @@ function CollaborationPage() {
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
             <Link
