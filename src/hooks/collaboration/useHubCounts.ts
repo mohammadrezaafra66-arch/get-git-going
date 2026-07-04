@@ -58,7 +58,7 @@ export function useActivePenaltyCount() {
       safeCount((db) => {
         const q = db
           .from("performance_penalties")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("is_active", true) as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
