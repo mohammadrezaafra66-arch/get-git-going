@@ -96,7 +96,7 @@ export function usePendingDocCount() {
       safeCount((db) => {
         const q = db
           .from("documents")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("status", "pending_review") as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
