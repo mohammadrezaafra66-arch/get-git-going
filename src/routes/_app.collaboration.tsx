@@ -28,7 +28,7 @@ interface HubItem {
 }
 
 function CollaborationPage() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const displayName =
     (user?.user_metadata?.full_name as string | undefined) ||
     (user?.user_metadata?.name as string | undefined) ||
