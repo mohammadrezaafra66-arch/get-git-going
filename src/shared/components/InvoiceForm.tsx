@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
+import { formatDateFa } from "@/lib/i18n/formatters";
 import { AdvancePaymentSection } from "@/shared/components/AdvancePaymentSection";
 
 import { Button } from "@/components/ui/button";
@@ -212,7 +213,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("settlement_types")
-        .select("id, title, code, sort_order")
+        .select("id, title, code, sort_order, days")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("title", { ascending: true });
@@ -221,6 +222,39 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     staleTime: 60_000,
   });
+
+  const settlementTypeId = form.watch("settlement_type_id") ?? null;
+  const selectedSettlement = useMemo(
+    () => settlementTypes.find((s) => s.id === settlementTypeId) ?? null,
+    [settlementTypes, settlementTypeId],
+  );
+  const settlementDays = selectedSettlement?.days ?? null;
+  const settlementDueDatePreview = useMemo(() => {
+    if (settlementDays == null) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + settlementDays);
+    return d.toISOString().slice(0, 10);
+  }, [settlementDays]);
+
+  // Price/settlement compatibility validation via RPC
+  const { data: settlementValidation } = useQuery({
+    queryKey: ["price-settlement-compat", form.watch("sale_price_type_id"), settlementTypeId],
+    enabled: !!form.watch("sale_price_type_id") && !!settlementTypeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("validate_price_settlement_compatibility", {
+        p_sale_price_type_id: form.getValues("sale_price_type_id"),
+        p_settlement_type_id: settlementTypeId as string,
+      });
+      if (error) throw error;
+      return data as { valid: boolean; message?: string; reason?: string } | null;
+    },
+    staleTime: 30_000,
+  });
+  const settlementInvalid =
+    !!settlementValidation && settlementValidation.valid === false;
+  const settlementErrorMsg = settlementInvalid
+    ? settlementValidation?.message || "نوع تسویه انتخاب‌شده با نوع قیمت سازگار نیست."
+    : null;
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
