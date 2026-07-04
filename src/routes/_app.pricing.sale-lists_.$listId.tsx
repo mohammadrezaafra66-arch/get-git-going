@@ -308,9 +308,9 @@ function SaleListDetailPage() {
   useEffect(() => {
     const d = listQ.data;
     if (!d) return;
-    if (typeof d.pdf_font_size === "number") setPdfFontSize(d.pdf_font_size);
-    if (typeof d.pdf_row_padding_y === "number") setPdfRowPadY(d.pdf_row_padding_y);
-    if (typeof d.pdf_cell_padding_x === "number") setPdfCellPadX(d.pdf_cell_padding_x);
+    setPdfFontSize(d.pdf_font_size ?? 10);
+    setPdfRowPadY(d.pdf_row_padding_y ?? 2);
+    setPdfCellPadX(d.pdf_cell_padding_x ?? 4);
   }, [
     listQ.data?.id,
     listQ.data?.pdf_font_size,
