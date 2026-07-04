@@ -55,9 +55,11 @@ export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => {
     await requirePermission("products", "view");
   },
-  validateSearch: (search: Record<string, unknown>) => ({
-    edit: search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { edit?: 1 } => {
+    const edit =
+      search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined;
+    return edit ? { edit } : {};
+  },
   component: ProductDetailPage,
 });
 
