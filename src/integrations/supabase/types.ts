@@ -9624,6 +9624,10 @@ export type Database = {
           score: number
         }[]
       }
+      calculate_customer_realtime_credit: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
       calculate_dynamic_score: {
         Args: {
           p_entity_id: string
