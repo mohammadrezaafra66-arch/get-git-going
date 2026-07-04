@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import html2canvas from "html2canvas";
+
 import { toast } from "sonner";
 
 interface UseChartExportOptions {
@@ -19,6 +19,7 @@ export function useChartExport(options?: UseChartExportOptions): UseChartExportR
 
   const captureCanvas = useCallback(
     async (element: HTMLElement): Promise<HTMLCanvasElement> => {
+      const html2canvas = (await import("html2canvas")).default;
       return html2canvas(element, {
         scale: options?.scale ?? 2,
         backgroundColor: options?.backgroundColor ?? "#ffffff",

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Loader2, Check, ChevronsUpDown, Eye, FileSpreadsheet } from "lucide-react";
-import * as XLSX from "xlsx";
+
 import { toast } from "sonner";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -100,6 +100,7 @@ function ReceiptsListPage() {
   async function handleExportExcel() {
     setExporting(true);
     try {
+      const XLSX = await import("xlsx");
       let q = supabase
         .from("payment_receipts")
         .select(
