@@ -21,10 +21,12 @@ import {
   useCalculatedScore,
   useCustomerLatestAllocation,
   useSalespersonLatestAllocation,
+  useCustomerRealtimeCredit,
   currentPeriodMonth,
   type CalculatedScoreBreakdownItem,
   type EntityType,
   type ScoringParameter,
+  type RealtimeBinding,
 } from "@/hooks/credit/useDynamicScoring";
 
 function bindingLabel(c: string): { label: string; cls: string } {
@@ -35,6 +37,10 @@ function bindingLabel(c: string): { label: string; cls: string } {
       return { label: "سقف اعتبار", cls: "bg-amber-500 text-white" };
     case "floor":
       return { label: "کف", cls: "bg-muted" };
+    case "no_salesperson":
+      return { label: "بدون کارشناس", cls: "bg-destructive text-destructive-foreground" };
+    case "no_capital":
+      return { label: "بدون سرمایه", cls: "bg-destructive text-destructive-foreground" };
     case "formula":
     default:
       return { label: "فرمول", cls: "bg-emerald-600 text-white" };
