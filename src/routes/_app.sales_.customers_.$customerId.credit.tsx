@@ -137,8 +137,13 @@ function CustomerCreditPage() {
             label="تاریخ تخصیص"
             hintText="تاریخ اجرای تخصیص سرمایه که این سقف از آن آمده."
             value={
-              <span className="text-base font-semibold">
-                {toFaDigits(latestAlloc.capital_date || "—")}
+              <span className="text-base font-semibold inline-flex items-center gap-2">
+                {latestAlloc.capital_date ? formatDateTimeFa(latestAlloc.capital_date) : "—"}
+                {realtime?.is_capital_stale && (
+                  <Badge variant="outline" className="text-yellow-700 border-yellow-500 text-[10px]">
+                    قدیمی
+                  </Badge>
+                )}
               </span>
             }
           />
