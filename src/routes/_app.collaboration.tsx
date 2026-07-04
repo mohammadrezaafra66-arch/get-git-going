@@ -10,6 +10,7 @@ import {
   useActivePenaltyCount,
   usePendingReceiptCount,
   usePendingDocCount,
+  useGamificationBadgeCount,
 } from "@/hooks/collaboration/useHubCounts";
 
 function toPersianDigits(n: number): string {
