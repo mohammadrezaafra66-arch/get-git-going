@@ -102,6 +102,9 @@ export function DynamicScoringSection({
   const salespersonAllocQ = useSalespersonLatestAllocation(
     entityType === "salesperson" ? entityId : undefined,
   );
+  const realtimeQ = useCustomerRealtimeCredit(
+    entityType === "customer" ? entityId : undefined,
+  );
   const upsert = useUpsertEntityScore();
 
   // Realtime: when weights or params change, or today's allocation is rewritten,
