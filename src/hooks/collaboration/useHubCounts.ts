@@ -15,7 +15,7 @@ type AnySupabase = {
   from: (t: string) => {
     select: (
       cols: string,
-      opts: { count: "exact"; head: true },
+      opts: { count: "estimated"; head: true },
     ) => {
       eq: (k: string, v: unknown) => unknown;
     };
@@ -43,7 +43,7 @@ export function usePendingPurchaseCount() {
     queryKey: ["hub-count", "purchase-pending"],
     queryFn: () =>
       safeCount((db) =>
-        db.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        db.from("purchase_requests").select("id", { count: "estimated", head: true }).eq("status", "pending"),
       ),
   });
 }
@@ -58,7 +58,7 @@ export function useActivePenaltyCount() {
       safeCount((db) => {
         const q = db
           .from("performance_penalties")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("is_active", true) as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
@@ -77,7 +77,7 @@ export function usePendingReceiptCount() {
       safeCount((db) => {
         const q = db
           .from("delivery_receipts")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("status", "pending_review") as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
@@ -96,7 +96,7 @@ export function usePendingDocCount() {
       safeCount((db) => {
         const q = db
           .from("documents")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("status", "pending_review") as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
