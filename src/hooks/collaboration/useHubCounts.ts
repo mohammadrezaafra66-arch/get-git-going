@@ -43,7 +43,7 @@ export function usePendingPurchaseCount() {
     queryKey: ["hub-count", "purchase-pending"],
     queryFn: () =>
       safeCount((db) =>
-        db.from("purchase_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        db.from("purchase_requests").select("id", { count: "estimated", head: true }).eq("status", "pending"),
       ),
   });
 }
