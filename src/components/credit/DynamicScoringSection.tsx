@@ -26,7 +26,6 @@ import {
   type CalculatedScoreBreakdownItem,
   type EntityType,
   type ScoringParameter,
-  type RealtimeBinding,
 } from "@/hooks/credit/useDynamicScoring";
 
 function bindingLabel(c: string): { label: string; cls: string } {
