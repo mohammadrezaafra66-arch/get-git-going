@@ -10,6 +10,7 @@ import {
   useActivePenaltyCount,
   usePendingReceiptCount,
   usePendingDocCount,
+  useGamificationBadgeCount,
 } from "@/hooks/collaboration/useHubCounts";
 
 function toPersianDigits(n: number): string {
@@ -41,6 +42,7 @@ function CollaborationPage() {
   const penalty = useActivePenaltyCount().data ?? 0;
   const receipts = usePendingReceiptCount().data ?? 0;
   const docs = usePendingDocCount().data ?? 0;
+  const gamification = useGamificationBadgeCount();
 
   const items: HubItem[] = [
     {
@@ -94,7 +96,7 @@ function CollaborationPage() {
       description: "رتبه‌بندی و نشان‌های تیم",
       icon: Trophy,
       gradient: "from-yellow-500 to-amber-600",
-      badge: 0,
+      badge: gamification,
       allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
     },
   ];

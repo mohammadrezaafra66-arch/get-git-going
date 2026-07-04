@@ -104,3 +104,23 @@ export function usePendingDocCount() {
       }),
   });
 }
+
+export function useGamificationBadgeCount(): number {
+  const { user } = useAuth();
+  const { data } = useQuery({
+    enabled: !!user?.id,
+    queryKey: ["gamification-badge", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employee_progress")
+        .select("level")
+        .eq("employee_id", user!.id)
+        .maybeSingle();
+      if (error) return 0;
+      return data?.level ?? 0;
+    },
+    staleTime: 300_000,
+    refetchInterval: 300_000,
+  });
+  return data ?? 0;
+}
