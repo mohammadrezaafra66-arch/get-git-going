@@ -13,7 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
-import { useCustomerLatestAllocation } from "@/hooks/credit/useDynamicScoring";
+import {
+  useCustomerLatestAllocation,
+  useCustomerRealtimeCredit,
+} from "@/hooks/credit/useDynamicScoring";
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/credit")({
   beforeLoad: async () => {
@@ -41,6 +44,7 @@ function CustomerCreditPage() {
   });
 
   const { data: latestAlloc } = useCustomerLatestAllocation(customerId);
+  const { data: realtime } = useCustomerRealtimeCredit(customerId);
 
   const bindingLabel = (b: string) => {
     switch (b) {
@@ -84,9 +88,19 @@ function CustomerCreditPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={<Wallet className="h-5 w-5" />}
-            label="سقف اعتبار مؤثر (Dynamic)"
-            hintText="آخرین final_limit از تخصیص سرمایه پویا. اگر امروز محاسبه نشده باشد، آخرین تاریخ موجود مبنا است."
-            value={<span className="text-xl font-bold">{formatNumber(latestAlloc.final_limit)}</span>}
+            label="سقف اعتبار مؤثر"
+            hintText="محاسبه لحظه‌ای: آخرین سرمایه کارشناس × سهم زنده مشتری، محدود شده به سقف اعتباری."
+            value={
+              <span className="text-xl font-bold inline-flex items-center gap-2">
+                {formatNumber(realtime?.final_limit ?? latestAlloc.final_limit)}
+                {realtime && (
+                  <Badge variant="outline" className="text-green-700 border-green-500 text-[10px] gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                    زنده
+                  </Badge>
+                )}
+              </span>
+            }
             hint="ریال"
           />
           <MetricCard

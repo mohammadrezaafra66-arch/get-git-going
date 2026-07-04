@@ -21,6 +21,7 @@ import {
   useCalculatedScore,
   useCustomerLatestAllocation,
   useSalespersonLatestAllocation,
+  useCustomerRealtimeCredit,
   currentPeriodMonth,
   type CalculatedScoreBreakdownItem,
   type EntityType,
@@ -35,6 +36,10 @@ function bindingLabel(c: string): { label: string; cls: string } {
       return { label: "سقف اعتبار", cls: "bg-amber-500 text-white" };
     case "floor":
       return { label: "کف", cls: "bg-muted" };
+    case "no_salesperson":
+      return { label: "بدون کارشناس", cls: "bg-destructive text-destructive-foreground" };
+    case "no_capital":
+      return { label: "بدون سرمایه", cls: "bg-destructive text-destructive-foreground" };
     case "formula":
     default:
       return { label: "فرمول", cls: "bg-emerald-600 text-white" };
@@ -95,6 +100,9 @@ export function DynamicScoringSection({
   );
   const salespersonAllocQ = useSalespersonLatestAllocation(
     entityType === "salesperson" ? entityId : undefined,
+  );
+  const realtimeQ = useCustomerRealtimeCredit(
+    entityType === "customer" ? entityId : undefined,
   );
   const upsert = useUpsertEntityScore();
 
@@ -244,6 +252,55 @@ export function DynamicScoringSection({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {entityType === "customer" && realtimeQ.data && (
+          <div className="rounded-xl border-2 border-green-500/40 bg-green-50 dark:bg-green-950/20 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold inline-flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-green-600" />
+                سقف اعتبار — محاسبه زنده
+              </span>
+              <Badge variant="outline" className="text-green-700 border-green-500 text-[10px] gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
+                زنده
+              </Badge>
+            </div>
+            <div className="text-2xl font-bold text-primary">
+              {formatNumber(realtimeQ.data.final_limit)}
+              <span className="text-sm font-normal text-muted-foreground mr-2">ریال</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>امتیاز وزنی: {toFaDigits(Number(realtimeQ.data.weighted_score ?? 0).toFixed(3))}</span>
+              <span>·</span>
+              <span>
+                {toFaDigits(realtimeQ.data.params_evaluated)} از{" "}
+                {toFaDigits(realtimeQ.data.params_active)} پارامتر ارزیابی شده
+              </span>
+              <span>·</span>
+              <Badge className={`text-[10px] ${bindingLabel(realtimeQ.data.binding_constraint).cls}`}>
+                {bindingLabel(realtimeQ.data.binding_constraint).label}
+              </Badge>
+            </div>
+            {realtimeQ.data.is_capital_stale && realtimeQ.data.capital_date_used && (
+              <div className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>
+                  سرمایه از تاریخ {formatDateTimeFa(realtimeQ.data.capital_date_used)} (قدیمی) استفاده شده
+                </span>
+              </div>
+            )}
+            {realtimeQ.data.binding_constraint === "no_capital" && (
+              <div className="text-xs text-destructive">
+                هنوز سرمایه‌ای برای کارشناس تخصیص داده نشده است.
+              </div>
+            )}
+            {realtimeQ.data.binding_constraint === "no_salesperson" && (
+              <div className="text-xs text-destructive">
+                این مشتری به هیچ کارشناسی متصل نیست؛ سقف اعتبار محاسبه نمی‌شود.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-md border p-3 space-y-2">
