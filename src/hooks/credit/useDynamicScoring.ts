@@ -191,6 +191,11 @@ export function useUpsertEntityScore() {
       qc.invalidateQueries({
         queryKey: ["dyn-salesperson-latest-allocation", vars.entity_id],
       });
+      if (vars.entity_type === "customer") {
+        qc.invalidateQueries({
+          queryKey: ["dyn-customer-realtime-credit", vars.entity_id],
+        });
+      }
     },
   });
 }
