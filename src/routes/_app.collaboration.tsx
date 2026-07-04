@@ -24,6 +24,7 @@ interface HubItem {
   icon: LucideIcon;
   gradient: string;
   badge: number;
+  allowedRoles: AppRole[];
 }
 
 function CollaborationPage() {
