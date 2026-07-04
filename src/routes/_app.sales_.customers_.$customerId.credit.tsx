@@ -108,9 +108,18 @@ function CustomerCreditPage() {
             label="امتیاز وزنی"
             hintText="امتیاز نهایی از سیستم امتیازدهی پویا (۰ تا ۱)."
             value={
-              <span className="text-xl font-bold">
-                {toFaDigits(Number(latestAlloc.weighted_score).toFixed(3))}
-              </span>
+              <div className="space-y-1">
+                <span className="text-xl font-bold">
+                  {toFaDigits(
+                    Number(realtime?.weighted_score ?? latestAlloc.weighted_score).toFixed(3),
+                  )}
+                </span>
+                {realtime && (
+                  <div className="text-xs text-muted-foreground">
+                    {toFaDigits(realtime.params_evaluated)} از {toFaDigits(realtime.params_active)} پارامتر ارزیابی شده
+                  </div>
+                )}
+              </div>
             }
           />
           <MetricCard
