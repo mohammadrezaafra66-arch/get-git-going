@@ -11,7 +11,7 @@ import { HelpHint } from "@/components/common/HelpHint";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { formatNumber, toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
 import {
   useCustomerLatestAllocation,
