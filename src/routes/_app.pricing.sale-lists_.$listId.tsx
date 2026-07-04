@@ -625,6 +625,7 @@ function SaleListDetailPage() {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
         await persistPdfOrder();
+        await persistPdfAppearance();
       }
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
