@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { MessageSquare, ShoppingCart, ShieldAlert, FileCheck, FileText, Trophy, type LucideIcon } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
+import type { AppRole } from "@/lib/rbac/roles";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
