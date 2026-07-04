@@ -816,7 +816,16 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending || hasOverdue} className="flex-1">
+        <Button
+          type="submit"
+          disabled={mutation.isPending || hasOverdue || settlementInvalid}
+          className="flex-1"
+          onClick={() => {
+            if (settlementInvalid && settlementErrorMsg) {
+              toast.error(settlementErrorMsg);
+            }
+          }}
+        >
           {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           ذخیره پیش‌فاکتور
         </Button>
