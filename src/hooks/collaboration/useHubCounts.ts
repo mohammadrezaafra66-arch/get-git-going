@@ -77,7 +77,7 @@ export function usePendingReceiptCount() {
       safeCount((db) => {
         const q = db
           .from("delivery_receipts")
-          .select("id", { count: "exact", head: true })
+          .select("id", { count: "estimated", head: true })
           .eq("status", "pending_review") as unknown as {
           eq: (k: string, v: unknown) => unknown;
         };
