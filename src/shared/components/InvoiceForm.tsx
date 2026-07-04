@@ -709,7 +709,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
           {/* نوع تسویه */}
           <div className="space-y-2">
-            <Label>نوع تسویه</Label>
+            <Label>
+              نوع تسویه
+              {settlementDays != null && settlementDays > 0 && (
+                <span className="mr-1 text-xs text-muted-foreground">
+                  ({toFaDigits(settlementDays)} روزه)
+                </span>
+              )}
+            </Label>
             <Select
               value={form.watch("settlement_type_id") ?? "__none"}
               onValueChange={(v) =>
@@ -726,10 +733,22 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                 {settlementTypes.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.title}
+                    {s.days > 0 ? ` (${toFaDigits(s.days)} روزه)` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {settlementDueDatePreview && (
+              <p className="text-sm text-muted-foreground">
+                تاریخ تسویه: {formatDateFa(settlementDueDatePreview)}
+              </p>
+            )}
+            {settlementErrorMsg && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{settlementErrorMsg}</AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>
