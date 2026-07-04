@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useMessengerGroups } from "@/hooks/messenger/useMessengerGroups";
 
-const COMMON = { staleTime: 60_000, refetchInterval: 60_000, retry: false } as const;
+const COMMON = { staleTime: 60_000, refetchInterval: 120_000, retry: false } as const;
 
 export function useUnreadMessagesCount(): number {
   const { data } = useMessengerGroups();
