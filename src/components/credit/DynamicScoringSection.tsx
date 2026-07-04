@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Save, Sparkles, Calendar } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -310,18 +310,6 @@ export function DynamicScoringSection({
             </div>
             <div className="text-lg font-bold">{toFaDigits(weighted.toFixed(3))}</div>
             <Progress value={weightedPct} className="h-2" />
-          </div>
-          <div className="rounded-md border p-3 space-y-1">
-            <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              آخرین تخصیص سرمایه
-            </div>
-            <div className="text-sm font-medium">
-              {allocView ? formatDateTimeFa(allocView.capital_date) : "—"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {allocView ? "تاریخ snapshot" : "هنوز snapshot تولید نشده"}
-            </div>
           </div>
         </div>
 
