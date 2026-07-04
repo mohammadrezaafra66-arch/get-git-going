@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Command,
   CommandEmpty,
@@ -238,9 +238,11 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="birth_date">تاریخ تولد (اختیاری)</Label>
-        <BirthDatePicker
+        <PersianDatePicker
           value={form.watch("birth_date") ?? null}
           onChange={(iso) => form.setValue("birth_date", iso, { shouldValidate: true })}
+          placeholder="انتخاب تاریخ تولد"
+          max={new Date().toISOString().slice(0, 10)}
         />
         {errors.birth_date && (
           <p className="text-xs text-destructive">{errors.birth_date.message as string}</p>
