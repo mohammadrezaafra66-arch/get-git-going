@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, Save, Sparkles, Calendar, Wallet } from "lucide-react";
+import { AlertTriangle, Loader2, Save, Sparkles, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
