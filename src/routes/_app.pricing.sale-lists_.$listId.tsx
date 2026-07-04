@@ -624,9 +624,11 @@ function SaleListDetailPage() {
     try {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
-        await persistPdfOrder();
-        await persistPdfAppearance();
+        const orderOk = await persistPdfOrder();
+        if (!orderOk) return;
       }
+      const appearanceOk = await persistPdfAppearance();
+      if (!appearanceOk) return;
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
       const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
