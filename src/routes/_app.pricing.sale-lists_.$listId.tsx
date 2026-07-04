@@ -865,6 +865,9 @@ function SaleListDetailPage() {
               setPdfFontSize(10);
               setPdfRowPadY(2);
               setPdfCellPadX(4);
+              if (canSavePdfOrder) {
+                void persistPdfAppearance(10, 2, 4);
+              }
             }}
           >
             بازنشانی
