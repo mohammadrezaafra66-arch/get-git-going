@@ -156,6 +156,9 @@ interface SaleListDetail {
   settlement_type: { id: string; title: string } | null;
   pdf_brand_order: string[] | null;
   pdf_product_order_by_brand: Record<string, string[]> | null;
+  pdf_font_size: number | null;
+  pdf_row_padding_y: number | null;
+  pdf_cell_padding_x: number | null;
 }
 
 interface SaleListItemRow {
@@ -198,7 +201,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, pdf_font_size, pdf_row_padding_y, pdf_cell_padding_x, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -300,6 +303,20 @@ function SaleListDetailPage() {
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
   const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+
+  // Sync PDF appearance state from DB when listQ.data loads/changes.
+  useEffect(() => {
+    const d = listQ.data;
+    if (!d) return;
+    if (typeof d.pdf_font_size === "number") setPdfFontSize(d.pdf_font_size);
+    if (typeof d.pdf_row_padding_y === "number") setPdfRowPadY(d.pdf_row_padding_y);
+    if (typeof d.pdf_cell_padding_x === "number") setPdfCellPadX(d.pdf_cell_padding_x);
+  }, [
+    listQ.data?.id,
+    listQ.data?.pdf_font_size,
+    listQ.data?.pdf_row_padding_y,
+    listQ.data?.pdf_cell_padding_x,
+  ]);
 
   // PDF order settings dialog state (brand keys + per-brand product UUIDs).
   // Brand keys use the same convention as the PDF (NO_BRAND_KEY for no-brand).
