@@ -42,6 +42,7 @@ function CollaborationPage() {
   const penalty = useActivePenaltyCount().data ?? 0;
   const receipts = usePendingReceiptCount().data ?? 0;
   const docs = usePendingDocCount().data ?? 0;
+  const gamification = useGamificationBadgeCount();
 
   const items: HubItem[] = [
     {
