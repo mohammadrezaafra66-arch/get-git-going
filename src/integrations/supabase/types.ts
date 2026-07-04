@@ -3932,6 +3932,8 @@ export type Database = {
           number: string | null
           sale_price_type_id: string | null
           settled_amount: number | null
+          settlement_days: number | null
+          settlement_due_date: string | null
           settlement_type_id: string | null
           status: string
           subtotal: number
@@ -3958,6 +3960,8 @@ export type Database = {
           number?: string | null
           sale_price_type_id?: string | null
           settled_amount?: number | null
+          settlement_days?: number | null
+          settlement_due_date?: string | null
           settlement_type_id?: string | null
           status?: string
           subtotal?: number
@@ -3984,6 +3988,8 @@ export type Database = {
           number?: string | null
           sale_price_type_id?: string | null
           settled_amount?: number | null
+          settlement_days?: number | null
+          settlement_due_date?: string | null
           settlement_type_id?: string | null
           status?: string
           subtotal?: number
@@ -8017,6 +8023,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          max_settlement_days: number
           sort_order: number
           title: string
           updated_at: string
@@ -8027,6 +8034,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          max_settlement_days?: number
           sort_order?: number
           title: string
           updated_at?: string
@@ -8037,6 +8045,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          max_settlement_days?: number
           sort_order?: number
           title?: string
           updated_at?: string
@@ -8456,6 +8465,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          days: number
           description: string | null
           id: string
           is_active: boolean
@@ -8466,6 +8476,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          days?: number
           description?: string | null
           id?: string
           is_active?: boolean
@@ -8476,6 +8487,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          days?: number
           description?: string | null
           id?: string
           is_active?: boolean
@@ -11719,6 +11731,10 @@ export type Database = {
           total_credit: number
           total_debit: number
         }[]
+      }
+      validate_price_settlement_compatibility: {
+        Args: { p_sale_price_type_id: string; p_settlement_type_id: string }
+        Returns: Json
       }
       vote_on_appeal: {
         Args: { p_appeal_id: string; p_note?: string; p_vote: string }
