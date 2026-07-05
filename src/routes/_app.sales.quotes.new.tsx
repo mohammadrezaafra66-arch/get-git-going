@@ -422,25 +422,19 @@ function ProductTab(props: {
     queryKey: ["quote-product-search", term],
     queryFn: async () => {
       const safe = term.replace(/[%_]/g, "");
-      const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+      const { data, error } = await supabase.rpc("search_product_ids", {
         p_term: safe,
-        p_limit: 100,
+        p_limit: 20,
       });
-      let q = supabase
-        .from("products")
-        .select("id, name, sku, barcode, stock_status, labels:product_label_links(label:product_labels(id, title, color, visibility))")
-        .eq("is_active", true)
-        .limit(20);
-      if (idsErr) {
-        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%,barcode.ilike.%${safe}%`);
-      } else {
-        const ids = (idsData ?? []).map((r: { id: string }) => r.id);
-        if (ids.length === 0) return [];
-        q = q.in("id", ids);
-      }
-      const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Array<{
+        id: string;
+        name: string;
+        sku: string | null;
+        barcode: string | null;
+        stock_status: "available" | "unavailable" | "limited" | "unknown";
+        is_active: boolean;
+      }>;
     },
     staleTime: 30_000,
   });
