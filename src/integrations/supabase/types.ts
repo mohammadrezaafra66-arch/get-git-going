@@ -11435,7 +11435,12 @@ export type Database = {
       search_product_ids: {
         Args: { p_limit?: number; p_term: string }
         Returns: {
+          barcode: string
           id: string
+          is_active: boolean
+          name: string
+          sku: string
+          stock_status: string
         }[]
       }
       send_invoice_to_accountant: {
