@@ -1,315 +1,65 @@
-سخه پاکنویس نهایی که من ۱۰۰٪ با آن موافقم:
 
-```
+# پاکسازی داده‌های محصولات از Lovable Cloud
 
-```
-
-```
 ## هدف
+حذف داده‌های تراکنشی/کاربری وارد شده روی Cloud (فقط شاخه محصولات و وابسته‌های آن + `audit_logs` + همه Storage buckets) — بدون دست‌کاری ساختار جدول‌ها، RLS، توابع، نقش‌ها، پیکربندی و کاربران auth.
 
-حذف input تاریخ native مرورگر از UIهای کاربرمحور، مثل `mm/dd/yyyy`، و جایگزینی با تقویم شمسی، بدون تغییر فرمت ذخیره در DB/API.
+## گام ۱ — Export امن (قبل از هر کار — دستی توسط شما)
+1. در بالای چت روی نام پروژه → **Settings**.
+2. تب **Cloud** (یا از نوار More → Cloud) را باز کنید.
+3. **Advanced settings → Export data** → دانلود فایل ZIP.
+4. فایل را حداقل در دو جای مختلف (لپ‌تاپ + درایو خارجی/سرور LAN) نگه دارید.
+5. بعد از تأیید اینکه فایل export سالم دانلود شد، به من پیام بدهید «Export گرفتم، ادامه بده».
 
-فرمت ذخیره‌سازی باید همچنان Gregorian/ISO با فرمت `YYYY-MM-DD` بماند.
+بدون این گام هیچ migration/truncate اجرا نمی‌شود.
 
----
+## گام ۲ — پاکسازی جدول‌های شاخه محصولات (یک migration)
+اجرا در یک transaction با `session_replication_role = replica` تا FKها/triggerها موقتاً غیرفعال شوند و ترتیب اهمیت نداشته باشد.
 
-## نکته مهم قبل از شروع
+جدول‌هایی که TRUNCATE می‌شوند:
 
-در پروژه یک کامپوننت آماده و منطبق با نیاز وجود دارد:
+**هسته محصول:**
+`products`, `product_images`, `product_label_links`, `product_labels`, `product_owner_assignments`, `product_suppliers`, `product_computed_prices`, `product_sale_price_history`, `product_recommendation_overrides`, `product_interaction_events`, `product_sku_counters`, `product_category_attribute_values`, `product_attributes`, `product_attribute_groups`, `category_product_attributes`, `categories`, `brands`
 
-`src/shared/components/JalaliDateInput.tsx`
+**قیمت‌گذاری/خرید مرتبط با محصول:**
+`purchase_prices`, `purchases`, `purchase_items`, `purchase_receipts`, `purchase_requests`, `purchase_request_status_history`, `suppliers`, `price_lists`, `price_list_items`, `pricing_rules`, `price_calculation_snapshots`, `price_alert_rules`, `price_alert_notifications`, `inquiry_price_cache`, `pricing_recompute_queue`, `stock_alert_requests`
 
-این کامپوننت:
-- از `react-multi-date-picker` استفاده می‌کند.
-- از calendar `persian` استفاده می‌کند.
-- از locale `persian_fa` استفاده می‌کند.
-- مقدار ورودی/خروجی را ISO Gregorian با فرمت `YYYY-MM-DD` نگه می‌دارد.
-- UI را شمسی نمایش می‌دهد.
-- placeholder، disabled، min، max و className را پشتیبانی می‌کند.
+**اسناد فروش وابسته به محصول (چون بدون محصول بی‌معنی می‌شوند و FK دارند):**
+`sales_quotes`, `sales_quote_items`, `sales_quote_send_queue`, `sales_quote_share_logs`, `sales_quote_counters`, `sale_lists`, `sale_list_items`, `sale_list_versions`, `invoices`, `invoice_items`, `inquiries`, `inquiry_replies`, `inquiry_status_history`, `inquiry_transfers`, `delivery_receipts`, `delivery_receipt_status_history`, `waybills`, `waybill_items`, `waybill_number_counter`, `payment_receipts`, `payment_receipt_links`, `payment_receipt_documents`, `payment_receipt_custom_fields`
 
-طبق قانون workspace:
-“Prefer extending existing components. Avoid parallel modules.”
+**بازار / تطبیق محصولات:**
+`market_product_matches`, `market_product_match_events`, `market_rate_ticks`, `market_rate_ingestion_runs`, `currency_rate_fetches`, `currency_rates`
 
-بنابراین کامپوننت جدید موازی نساز. به‌جای duplicate کردن منطق، یک wrapper نازک بساز.
+**+ به درخواست شما:** `audit_logs`
 
----
+## گام ۳ — جدول‌هایی که دست نمی‌خورند (تأیید شما)
+مشتریان، persons، کارمندان، نقش‌ها، پیکربندی، academy، gamification، messenger، notifications، ai_*، bank_accounts، knowledge_*، daily_mood_*، automation_*، seed دستمزد/جریمه/کاپیتال، `currencies/currency_sources`, `price_change_reasons`, `settlement_types`, `payment_terms`, `shipping_cost_rules`, `marketing_channels`, `sale_price_types`, `validation_rules`, `workflow_settings`, `invoice_workflow_stages`, `role_permissions`, `custom_roles`, `user_roles`, `profiles`, `auth.users`.
 
-## ۱) ساخت wrapper مشترک
+## گام ۴ — خالی کردن Storage buckets
+با ابزار Storage:
+1. لیست همه bucketها را می‌گیرم (`storage.buckets`).
+2. برای هر bucket: `DELETE FROM storage.objects WHERE bucket_id = '<name>'` (فقط فایل‌ها، خود bucket و پیکربندی‌اش می‌ماند).
+3. تأیید با `SELECT bucket_id, COUNT(*) FROM storage.objects GROUP BY bucket_id`.
 
-فایل زیر را اضافه کن:
+اگر می‌خواهید bucket خاصی (مثلاً `avatars` یا لوگو) دست نخورد، قبل از اجرا نامش را بگویید.
 
-`src/components/common/PersianDatePicker.tsx`
+## گام ۵ — تأیید نهایی
+- `SELECT COUNT(*)` روی ~۱۰ جدول گروه پاک‌شده → باید همه صفر باشند.
+- `SELECT COUNT(*)` روی `profiles`, `user_roles`, `role_permissions`, `currencies` → باید بدون تغییر.
+- در مرورگر hard-reload (Ctrl+Shift+R) تا React Query cache پاک شود.
 
-این فایل باید فقط wrapper نازک روی `JalaliDateInput` باشد.
+## ریسک‌های باقی‌مانده
+- **برگشت‌ناپذیر است** — تنها راه برگشت، import فایل export گام ۱ است.
+- شماره‌گذارهای فاکتور/کوت (`sales_quote_counters`, `waybill_number_counter`, `product_sku_counters`) reset می‌شوند → شماره‌های بعدی از ۱ شروع می‌شوند.
+- اگر migrationای در آینده به این جدول‌ها seed دیتای واقعی اضافه کرده باشد، پاک می‌شود. (بررسی: هیچ seed دیتای واقعی در migrationهای فعلی برای این جدول‌ها نیست.)
+- Storage: لینک‌های عمومی به تصاویر قبلی 404 می‌دهند.
+- بعد از پاکسازی، اگر کاربر با نقش sales/viewer وارد شود و صفحه محصولات را باز کند، لیست خالی است — این طبیعی است.
 
-API عمومی:
-
-```ts
-value: string | null
-onChange: (value: string | null) => void
-placeholder?: string
-disabled?: boolean
-className?: string
-clearable?: boolean
-min?: string
-max?: string
-```
-
-رفتار:
-
--   
-مقدار ورودی `value` می‌تواند `string | null` باشد.  
-
--   
-اگر `JalaliDateInput` مقدار خالی برگرداند، wrapper باید آن را به `null` نرمال کند.  
-
--   
-خروجی همیشه `YYYY-MM-DD` میلادی یا `null` باشد.  
-
-- `clearable` به‌صورت پیش‌فرض `true` باشد.  
-
--   
-اگر `clearable` فعال بود و مقدار وجود داشت، یک دکمه کوچک ✕ برای پاک‌کردن تاریخ نمایش بده.  
-
--   
-هیچ منطق تبدیل تاریخ جدید ننویس؛ منطق تبدیل باید از همان `JalaliDateInput` بیاید.  
-
+## تحویل نهایی گزارش
+- فایل migration ایجادشده
+- خروجی `COUNT(*)` قبل و بعد
+- لیست bucketهای پاک‌شده و تعداد فایل حذف‌شده
+- تأیید سلامت auth/roles
 
 ---
-
-## ۲) اصلاح صفحه `/sales/quotes`
-
-اولویت اصلی این صفحه است، چون الان در UI هنوز `mm/dd/yyyy` دیده می‌شود.
-
-فایل احتمالی:
-
-`src/routes/_app.sales.quotes.index.tsx`
-
-کارها:
-
--   
-دو فیلتر تاریخ که الان native date input هستند را پیدا کن.  
-
--   
-هر دو `<Input type="date">` را با `<PersianDatePicker>` جایگزین کن.  
-
--   
-placeholderها:  
-
-  - `از تاریخ`  
-
-  - `تا تاریخ`  
-
--   
-state داخلی `dateFrom` و `dateTo` همچنان string با فرمت `YYYY-MM-DD` بماند.  
-
--   
-منطق query/filter/API را تغییر نده.  
-
--   
-بعد از اصلاح، در صفحه `/sales/quotes` نباید `mm/dd/yyyy` دیده شود.  
-
-
----
-
-## ۳) اصلاح بقیه فایل‌های user-facing
-
-در فایل‌های زیر هر `type="date"` که برای کاربر قابل مشاهده است باید با `PersianDatePicker` جایگزین شود:
-
-- `src/routes/_app.sales.quotes.new.tsx`  
-
-- `src/routes/_app.sales.stock-alerts.tsx`  
-
-- `src/routes/_app.sales.send-queue.tsx`  
-
-- `src/routes/_app.sales.quote-share-logs.tsx`  
-
-- `src/routes/_app.marketing.suggestions-history.tsx`  
-
-- `src/routes/_app.gamification.admin.analytics.tsx`  
-
-- `src/routes/_app.gamification.admin.leagues.tsx`  
-
-- `src/components/operations/mood/DailyMoodAdminTable.tsx`  
-
-- `src/components/products/ProductForm.tsx`  
-
-- `src/components/profile/DynamicProfileFields.tsx`  
-
-- `src/shared/components/CustomerForm.tsx`  
-
-- `src/shared/components/WaybillCustomFieldsInput.tsx`  
-
-
-در هر فایل:
-
--   
-فقط ورودی تاریخ را تغییر بده.  
-
--   
-منطق ذخیره‌سازی، query، mutation، API و DB را تغییر نده.  
-
--   
-مقدارهایی که قبلاً `YYYY-MM-DD` بودند، همان `YYYY-MM-DD` بمانند.  
-
--   
-اگر فرم با react-hook-form کار می‌کند، bind را دقیق انجام بده:  
-
-  - `value={field.value ?? null}`  
-
-  - `onChange={(v) => field.onChange(v ?? "")}` یا متناسب با schema همان فرم  
-
--   
-اگر state ساده است:  
-
-  - `value={value || null}`  
-
-  - `onChange={(v) => setValue(v ?? "")}`  
-
-
----
-
-## ۴) دیتابیس / RLS / migration
-
-هیچ تغییری در موارد زیر انجام نده:
-
--   
-دیتابیس  
-
--   
-migration  
-
--   
-RLS  
-
--   
-GRANT  
-
--   
-policy  
-
--   
-API contracts  
-
-
-این تغییر فقط UI است.
-
----
-
-## ۵) تأیید فنی
-
-بعد از تغییرات اجرا کن:
-
-```
-
-```
-
-```
-bunx tsgo --noEmit
-bun run build
-```
-
-بعد بررسی کن:
-
-```
-
-```
-
-```
-rg 'type="date"' src/
-rg "PersianDatePicker" src/
-```
-
-انتظار:
-
-- `PersianDatePicker` باید در فایل‌های اصلاح‌شده دیده شود.  
-
--   
-در صفحه `/sales/quotes` دیگر `mm/dd/yyyy` دیده نشود.  
-
-- `type="date"` در فایل‌های user-facing بالا باقی نماند.  
-
--   
-اگر موردی از `type="date"` باقی ماند، باید در گزارش پایان با دلیل توضیح داده شود.  
-
-
----
-
-## ۶) تست دستی
-
-صفحه زیر را باز کن:
-
-`/sales/quotes`
-
-باید:
-
-1.   
-فیلترهای تاریخ شمسی باشند.  
-
-2.   
-placeholderها فارسی باشند:  
-
-  - `از تاریخ`  
-
-  - `تا تاریخ`  
-
-3.   
-تقویم شمسی باز شود.  
-
-4.   
-بعد از انتخاب تاریخ، فیلتر همچنان درست کار کند.  
-
-5.   
-در UI دیگر `mm/dd/yyyy` دیده نشود.  
-
-
-همچنین صفحات زیر را سریع smoke test کن:
-
--   
-ساخت پیش‌فاکتور جدید  
-
--   
-هشدار موجودی  
-
--   
-صف ارسال  
-
--   
-گزارش ارسال پیش‌فاکتور  
-
--   
-تاریخ تولد مشتری  
-
--   
-فصل‌های گیمیفیکیشن  
-
-
----
-
-## ۷) گزارش پایان
-
-بعد از اجرا، لطفاً این موارد را گزارش بده:
-
--   
-نام branch  
-
--   
-commit hash  
-
--   
-فایل‌های تغییرکرده  
-
--   
-وضعیت صفحه `/sales/quotes`  
-
--   
-نتیجه `bunx tsgo --noEmit`  
-
--   
-نتیجه `bun run build`  
-
--   
-خروجی خلاصه `rg 'type="date"' src/`  
-
--   
-اگر `type="date"` باقی مانده، دلیل باقی‌ماندن هر مورد
+**اقدام شما الان:** گام ۱ (Export) را انجام دهید و «Export گرفتم، ادامه بده» بنویسید. اگر می‌خواهید bucket یا جدول خاصی از لیست حذف/اضافه شود، همین حالا بگویید.
