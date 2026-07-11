@@ -6,9 +6,9 @@ export type ShippingCostType = Database["public"]["Enums"]["shipping_cost_type"]
 
 export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   toman: "تومان",
-  usd: "دلار",
-  aed: "درهم",
-  usd_us: "دلار آمریکا",
+  usd: "دلار سلیمانیه",
+  aed: "درهم امارات",
+  usd_us: "دلار تهران",
 };
 
 export const MARGIN_TYPE_LABELS: Record<MarginType, string> = {
