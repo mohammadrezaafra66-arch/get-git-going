@@ -24,6 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +43,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -88,7 +107,8 @@ interface ColumnRow {
 }
 
 function BotApiKeysPage() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const canViewAudit = roles.includes("admin") || roles.includes("manager");
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -100,6 +120,8 @@ function BotApiKeysPage() {
   } | null>(null);
   const [accessKey, setAccessKey] = useState<BotKey | null>(null);
   const [labelKey, setLabelKey] = useState<BotKey | null>(null);
+  const [deleteKey, setDeleteKey] = useState<BotKey | null>(null);
+  const [reasonText, setReasonText] = useState("");
 
   const keysQuery = useQuery({
     enabled: !!user,
@@ -180,6 +202,66 @@ function BotApiKeysPage() {
     onError: (e: any) => toast.error(e?.message ?? "خطا"),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: async (vars: { keyId: string; reason: string }) => {
+      const { error } = await supabase.rpc("delete_bot_api_key_secure", {
+        _key_id: vars.keyId,
+        _reason: vars.reason,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("کلید غیرفعال شد");
+      qc.invalidateQueries({ queryKey: ["bot-api-keys"] });
+      qc.invalidateQueries({ queryKey: ["bot-api-key-audit-log"] });
+      setDeleteKey(null);
+      setReasonText("");
+    },
+    onError: (e: any) => {
+      const msg = String(e?.message ?? "");
+      if (msg.includes("UNAUTHORIZED")) {
+        toast.error("مجاز به حذف این کلید نیستید");
+      } else if (msg.includes("REASON_REQUIRED")) {
+        toast.error("دلیل حذف الزامی است");
+      } else {
+        toast.error(msg || "خطا در حذف کلید");
+      }
+    },
+  });
+
+  const auditQuery = useQuery({
+    enabled: !!user && canViewAudit,
+    queryKey: ["bot-api-key-audit-log"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bot_api_key_audit_log")
+        .select("id, key_id, key_name, action, performed_by, performed_at, reason")
+        .order("performed_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        key_id: string | null;
+        key_name: string | null;
+        action: string;
+        performed_by: string;
+        performed_at: string;
+        reason: string | null;
+      }>;
+      const ids = Array.from(new Set(rows.map((r) => r.performed_by)));
+      let nameMap = new Map<string, string>();
+      if (ids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", ids);
+        nameMap = new Map((profs ?? []).map((p: any) => [p.id as string, (p.full_name as string) ?? ""]));
+      }
+      return rows.map((r) => ({ ...r, performer_name: nameMap.get(r.performed_by) ?? "—" }));
+    },
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Bot API Keys</h1>
@@ -244,6 +326,12 @@ function BotApiKeysPage() {
                         <span className="text-xs font-mono text-muted-foreground" dir="ltr">
                           {k.key_prefix ?? "—"}…
                         </span>
+                        <span
+                          className="text-[10px] text-muted-foreground border border-dashed border-muted-foreground/40 rounded px-1 py-0.5 cursor-help"
+                          title="کلید کامل فقط هنگام ساخت قابل مشاهده بود و دیگر قابل بازیابی نیست"
+                        >
+                          غیرقابل بازیابی
+                        </span>
                         {!k.is_active && <Badge variant="secondary">غیرفعال</Badge>}
                         {expired && <Badge variant="destructive">منقضی</Badge>}
                         <Badge variant="outline" className="text-xs">
@@ -278,6 +366,18 @@ function BotApiKeysPage() {
                         />
                         فعال
                       </label>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setDeleteKey(k);
+                          setReasonText("");
+                        }}
+                        aria-label="حذف کلید"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 );
@@ -286,6 +386,122 @@ function BotApiKeysPage() {
           )}
         </CardContent>
       </Card>
+
+      {canViewAudit && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-medium">تاریخچه عملیات</h2>
+              <span className="text-xs text-muted-foreground">۵۰ مورد اخیر</span>
+            </div>
+            {auditQuery.isLoading ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (auditQuery.data ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">رویدادی ثبت نشده است.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>زمان</TableHead>
+                      <TableHead>عملیات</TableHead>
+                      <TableHead>کلید</TableHead>
+                      <TableHead>دلیل</TableHead>
+                      <TableHead>انجام‌دهنده</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(auditQuery.data ?? []).map((row) => {
+                      const actionLabel =
+                        row.action === "create"
+                          ? "ایجاد"
+                          : row.action === "delete"
+                            ? "غیرفعال‌سازی"
+                            : row.action === "view_key"
+                              ? "مشاهده کلید"
+                              : row.action === "deactivate"
+                                ? "ابطال"
+                                : row.action === "rotate"
+                                  ? "چرخش"
+                                  : row.action;
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {formatDateTimeFa(row.performed_at)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {actionLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">{row.key_name ?? "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                            {row.reason ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-sm">{row.performer_name}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={!!deleteKey}
+        onOpenChange={(v) => {
+          if (!v) {
+            setDeleteKey(null);
+            setReasonText("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>غیرفعال کردن کلید API</AlertDialogTitle>
+            <AlertDialogDescription>
+              این عملیات برگشت‌ناپذیر است. کلید API غیرفعال می‌شود.
+              {deleteKey && (
+                <span className="block mt-2 font-medium text-foreground">{deleteKey.name}</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="delete-reason">دلیل (الزامی)</Label>
+            <Textarea
+              id="delete-reason"
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              placeholder="دلیل حذف این کلید را بنویسید…"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMut.isPending}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reasonText.trim().length <= 3 || deleteMut.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteKey) return;
+                deleteMut.mutate({ keyId: deleteKey.id, reason: reasonText.trim() });
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "تأیید غیرفعال‌سازی"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -356,6 +572,7 @@ function RevealKeyDialog({
 }) {
   const [shown, setShown] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const open = !!revealed;
 
   const copy = async () => {
@@ -364,7 +581,6 @@ function RevealKeyDialog({
       await navigator.clipboard.writeText(revealed.raw);
       setCopied(true);
       toast.success("کلید کپی شد.");
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("کپی ناموفق بود؛ لطفاً دستی انتخاب و کپی کنید.");
     }
@@ -375,9 +591,11 @@ function RevealKeyDialog({
       open={open}
       onOpenChange={(v) => {
         if (!v) {
+          if (!copied || !confirmed) return;
           onClose();
           setShown(false);
           setCopied(false);
+          setConfirmed(false);
         }
       }}
     >
@@ -406,6 +624,26 @@ function RevealKeyDialog({
                 کپی
               </Button>
             </div>
+            {!copied && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                ⚠️ ابتدا کلید را کپی کنید، سپس می‌توانید پنجره را ببندید.
+              </p>
+            )}
+            {copied && !confirmed && (
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                ✓ کلید کپی شد — تیک تأیید را بزنید تا بتوانید ببندید.
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <Checkbox
+                checked={confirmed}
+                onCheckedChange={(v) => setConfirmed(!!v)}
+                disabled={!copied}
+              />
+              <span className={!copied ? "text-muted-foreground" : ""}>
+                کلید را در محل امن ذخیره کردم
+              </span>
+            </label>
           </div>
         )}
         <DialogFooter>
@@ -414,7 +652,9 @@ function RevealKeyDialog({
               onClose();
               setShown(false);
               setCopied(false);
+              setConfirmed(false);
             }}
+            disabled={!copied || !confirmed}
           >
             متوجه شدم، بستن
           </Button>

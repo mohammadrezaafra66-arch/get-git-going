@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
-import * as XLSX from "xlsx";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -88,6 +88,7 @@ export function CustomerImportForm() {
     setResult(null);
     setParsing(true);
     try {
+      const XLSX = await import("xlsx");
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheetName = wb.SheetNames[0];

@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { toFaDigits, formatNumber } from "@/lib/i18n/formatters";
+import { toFaDigits, formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import { AdvancePaymentSection } from "@/shared/components/AdvancePaymentSection";
 
 import { Button } from "@/components/ui/button";
@@ -156,7 +156,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     enabled: !!customerId,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_customer_credit", {
+      const { data, error } = await supabase.rpc("get_customer_dynamic_credit", {
         p_customer_id: customerId,
       });
       if (error) throw error;
@@ -171,6 +171,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
   const heldCredit = Number((creditInfo as { held_credit?: number } | null)?.held_credit ?? 0);
   const outstanding = Number(
     (creditInfo as { outstanding_balance?: number } | null)?.outstanding_balance ?? 0,
+  );
+  const hasOverdue = Boolean(
+    (creditInfo as { has_overdue?: boolean } | null)?.has_overdue ?? false,
+  );
+  const overdueSince =
+    (creditInfo as { overdue_since?: string | null } | null)?.overdue_since ?? null;
+  const settlementScore = Number(
+    (creditInfo as { settlement_score?: number } | null)?.settlement_score ?? 0,
   );
   const exceedsLimit = availableCredit > 0 && totalAmount > availableCredit;
   const invoiceType = form.watch("invoice_type");
@@ -204,7 +212,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("settlement_types")
-        .select("id, title, code, sort_order")
+        .select("id, title, code, sort_order, days")
         .eq("is_active", true)
         .order("sort_order", { ascending: true })
         .order("title", { ascending: true });
@@ -213,6 +221,39 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     staleTime: 60_000,
   });
+
+  const settlementTypeId = form.watch("settlement_type_id") ?? null;
+  const selectedSettlement = useMemo(
+    () => settlementTypes.find((s) => s.id === settlementTypeId) ?? null,
+    [settlementTypes, settlementTypeId],
+  );
+  const settlementDays = selectedSettlement?.days ?? null;
+  const settlementDueDatePreview = useMemo(() => {
+    if (settlementDays == null) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + settlementDays);
+    return d.toISOString().slice(0, 10);
+  }, [settlementDays]);
+
+  // Price/settlement compatibility validation via RPC
+  const { data: settlementValidation } = useQuery({
+    queryKey: ["price-settlement-compat", form.watch("sale_price_type_id"), settlementTypeId],
+    enabled: !!form.watch("sale_price_type_id") && !!settlementTypeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("validate_price_settlement_compatibility", {
+        p_sale_price_type_id: form.getValues("sale_price_type_id"),
+        p_settlement_type_id: settlementTypeId as string,
+      });
+      if (error) throw error;
+      return data as { valid: boolean; message?: string; reason?: string } | null;
+    },
+    staleTime: 30_000,
+  });
+  const settlementInvalid =
+    !!settlementValidation && settlementValidation.valid === false;
+  const settlementErrorMsg = settlementInvalid
+    ? settlementValidation?.message || "نوع تسویه انتخاب‌شده با نوع قیمت سازگار نیست."
+    : null;
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -286,7 +327,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
       // Credit pre-flight check for credit pre-invoices only (real-time balance)
       if (values.invoice_type === "pre_invoice") {
-        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_credit", {
+        const { data: cc, error: ccErr } = await supabase.rpc("get_customer_dynamic_credit", {
           p_customer_id: values.customer_id,
         });
         if (ccErr) throw ccErr;
@@ -454,7 +495,11 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : "خطای ناشناخته";
-      toast.error(`ثبت ناموفق بود: ${msg}`);
+      if (msg.includes("CUSTOMER_OVERDUE")) {
+        toast.error("این مشتری مانده معوق دارد. صدور فاکتور امکان‌پذیر نیست.");
+      } else {
+        toast.error(`ثبت ناموفق بود: ${msg}`);
+      }
     },
   });
 
@@ -574,6 +619,27 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
               </AlertDescription>
             </Alert>
           )}
+          {selectedCustomer && hasOverdue && (
+            <Alert className="border-destructive bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive font-medium">
+                ⛔ این مشتری مانده معوق دارد — صدور فاکتور غیرمجاز است
+                {overdueSince && (
+                  <span className="block text-xs mt-1 font-normal">
+                    معوق از: {toFaDigits(overdueSince)}
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          {selectedCustomer && !hasOverdue && settlementScore < -20 && (
+            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900 dark:text-amber-200">
+                ⚠️ امتیاز تسویه این مشتری منفی است ({toFaDigits(settlementScore)})
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* نوع قیمت */}
           <div className="space-y-2">
@@ -643,7 +709,14 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
           {/* نوع تسویه */}
           <div className="space-y-2">
-            <Label>نوع تسویه</Label>
+            <Label>
+              نوع تسویه
+              {settlementDays != null && settlementDays > 0 && (
+                <span className="mr-1 text-xs text-muted-foreground">
+                  ({toFaDigits(settlementDays)} روزه)
+                </span>
+              )}
+            </Label>
             <Select
               value={form.watch("settlement_type_id") ?? "__none"}
               onValueChange={(v) =>
@@ -660,10 +733,22 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
                 {settlementTypes.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.title}
+                    {s.days > 0 ? ` (${toFaDigits(s.days)} روزه)` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {settlementDueDatePreview && (
+              <p className="text-sm text-muted-foreground">
+                تاریخ تسویه: {formatDateFa(settlementDueDatePreview)}
+              </p>
+            )}
+            {settlementErrorMsg && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{settlementErrorMsg}</AlertDescription>
+              </Alert>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -731,7 +816,16 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit" disabled={mutation.isPending} className="flex-1">
+        <Button
+          type="submit"
+          disabled={mutation.isPending || hasOverdue || settlementInvalid}
+          className="flex-1"
+          onClick={() => {
+            if (settlementInvalid && settlementErrorMsg) {
+              toast.error(settlementErrorMsg);
+            }
+          }}
+        >
           {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
           ذخیره پیش‌فاکتور
         </Button>

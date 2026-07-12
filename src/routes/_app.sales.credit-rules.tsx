@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Save } from "lucide-react";
@@ -34,10 +34,11 @@ export const Route = createFileRoute("/_app/sales/credit-rules")({
 
 interface Rule {
   id: string;
-  parameter_name: string;
+  code: string;
+  label_fa: string;
   weight: number;
   is_active: boolean;
-  score_formula: string | null;
+  direction: string;
 }
 
 function CreditRulesPage() {
@@ -45,15 +46,54 @@ function CreditRulesPage() {
   const queryClient = useQueryClient();
   const canEdit = hasAnyRole(roles, ["admin", "accountant"]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel("credit-rules-rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_parameter_weights" },
+        () => queryClient.invalidateQueries({ queryKey: ["credit-rules"] }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dynamic_scoring_parameters" },
+        () => queryClient.invalidateQueries({ queryKey: ["credit-rules"] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data: rules = [], isLoading } = useQuery<Rule[]>({
     queryKey: ["credit-rules"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("credit_scoring_rules")
-        .select("id, parameter_name, weight, is_active, score_formula")
-        .order("parameter_name");
-      if (error) throw error;
-      return (data ?? []) as Rule[];
+      const { data: params, error: pErr } = await supabase
+        .from("dynamic_scoring_parameters")
+        .select("id, code, label_fa, is_active, direction, display_order")
+        .eq("entity_type", "customer")
+        .order("display_order", { ascending: true });
+      if (pErr) throw pErr;
+      const ids = (params ?? []).map((p) => p.id);
+      if (ids.length === 0) return [];
+      const { data: weights, error: wErr } = await supabase
+        .from("dynamic_parameter_weights")
+        .select("parameter_id, weight, valid_from, valid_to")
+        .in("parameter_id", ids)
+        .is("valid_to", null);
+      if (wErr) throw wErr;
+      const wMap = new Map<string, number>();
+      (weights ?? []).forEach((w) => {
+        wMap.set(w.parameter_id as string, Number(w.weight));
+      });
+      return (params ?? []).map((p) => ({
+        id: p.id as string,
+        code: p.code as string,
+        label_fa: p.label_fa as string,
+        is_active: p.is_active as boolean,
+        direction: p.direction as string,
+        weight: wMap.get(p.id as string) ?? 0,
+      }));
     },
   });
 
@@ -69,10 +109,14 @@ function CreditRulesPage() {
       weight: number;
       is_active: boolean;
     }) => {
-      const { error } = await supabase
-        .from("credit_scoring_rules")
-        .update({ weight, is_active } as never)
-        .eq("id", id);
+      const { error } = await supabase.rpc(
+        "upsert_dynamic_parameter_weight" as never,
+        {
+          _parameter_id: id,
+          _new_weight: weight,
+          _new_is_active: is_active,
+        } as never,
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -84,24 +128,32 @@ function CreditRulesPage() {
     },
   });
 
-  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
+  const [newLabel, setNewLabel] = useState("");
   const [newWeight, setNewWeight] = useState<number>(0.1);
+  const [newDirection, setNewDirection] = useState<"positive" | "negative">("positive");
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!newName.trim()) throw new Error("نام پارامتر الزامی است");
+      if (!newCode.trim()) throw new Error("کد پارامتر الزامی است");
       if (newWeight < 0 || newWeight > 1) throw new Error("وزن باید بین ۰ و ۱ باشد");
-      const { error } = await supabase.from("credit_scoring_rules").insert({
-        parameter_name: newName.trim(),
-        weight: newWeight,
-        is_active: true,
-      } as never);
+      const { error } = await supabase.rpc(
+        "create_dynamic_scoring_parameter" as never,
+        {
+          _code: newCode.trim(),
+          _label_fa: newLabel.trim(),
+          _weight: newWeight,
+          _direction: newDirection,
+        } as never,
+      );
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("پارامتر جدید اضافه شد");
-      setNewName("");
+      setNewCode("");
+      setNewLabel("");
       setNewWeight(0.1);
+      setNewDirection("positive");
       queryClient.invalidateQueries({ queryKey: ["credit-rules"] });
     },
     onError: (e: unknown) => {
@@ -163,7 +215,7 @@ function CreditRulesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right">نام پارامتر</TableHead>
+                  <TableHead className="text-right">پارامتر</TableHead>
                   <TableHead className="text-right w-32">
                     <span className="inline-flex items-center gap-1">
                       وزن (۰-۱)
@@ -180,12 +232,12 @@ function CreditRulesPage() {
                       />
                     </span>
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="text-right w-28">
                     <span className="inline-flex items-center gap-1">
-                      فرمول
+                      جهت
                       <HelpHint
                         text={
-                          "فرمول داخلی محاسبهٔ این پارامتر (فقط نمایشی).\nبرای تغییر منطق با مدیر سیستم هماهنگ کنید."
+                          "positive: مقدار بیشتر امتیاز بیشتر می‌دهد.\nnegative: مقدار بیشتر امتیاز کمتر می‌دهد."
                         }
                       />
                     </span>
@@ -202,7 +254,12 @@ function CreditRulesPage() {
                     (draft[r.id]?.is_active !== undefined && draft[r.id].is_active !== r.is_active);
                   return (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.parameter_name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{r.label_fa}</span>
+                          <span className="text-[11px] text-muted-foreground">{r.code}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Input
                           type="number"
@@ -230,7 +287,7 @@ function CreditRulesPage() {
                         />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {r.score_formula ?? "—"}
+                        {r.direction === "negative" ? "negative" : "positive"}
                       </TableCell>
                       <TableCell>
                         {canEdit && dirty && (
@@ -268,7 +325,7 @@ function CreditRulesPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label className="inline-flex items-center gap-1">
-                  نام پارامتر
+                  کد پارامتر
                   <HelpHint
                     text={
                       "شناسهٔ انگلیسی پارامتر؛ بدون فاصله، با حروف کوچک و _ مثلاً total_purchases."
@@ -276,9 +333,20 @@ function CreditRulesPage() {
                   />
                 </Label>
                 <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value)}
                   placeholder="مثلاً profitability"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="inline-flex items-center gap-1">
+                  برچسب فارسی
+                  <HelpHint text={"نامی که در پروفایل مشتری نمایش داده می‌شود. اگر خالی باشد از کد استفاده می‌شود."} />
+                </Label>
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="مثلاً سودآوری"
                 />
               </div>
               <div className="space-y-1">
@@ -296,10 +364,25 @@ function CreditRulesPage() {
                   onChange={(e) => setNewWeight(Number(e.target.value))}
                 />
               </div>
-              <div className="flex items-end">
+              <div className="space-y-1">
+                <Label className="inline-flex items-center gap-1">
+                  جهت
+                  <HelpHint text={"positive: بیشتر = بهتر. negative: بیشتر = بدتر."} />
+                </Label>
+                <select
+                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  value={newDirection}
+                  onChange={(e) => setNewDirection(e.target.value as "positive" | "negative")}
+                >
+                  <option value="positive">positive</option>
+                  <option value="negative">negative</option>
+                </select>
+              </div>
+              <div className="flex items-end sm:col-span-3">
                 <Button
+                  type="button"
                   onClick={() => create.mutate()}
-                  disabled={create.isPending}
+                  disabled={create.isPending || !newCode.trim()}
                   className="w-full"
                 >
                   <Plus className="ml-1 h-4 w-4" /> افزودن

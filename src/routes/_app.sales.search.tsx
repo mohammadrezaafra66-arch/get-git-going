@@ -66,6 +66,7 @@ import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {
   fetchObservatorySnippetsForProducts,
@@ -98,6 +99,7 @@ interface ProductRow {
   id: string;
   name: string;
   sku: string | null;
+  barcode?: string | null;
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
   color?: string | null;
@@ -343,6 +345,10 @@ function SalesSearchPage() {
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
 
+  // Thumbnails for visible search results (shared pattern with /products admin list)
+  const visibleProductIds = useMemo(() => products.map((p) => p.id), [products]);
+  const { thumbnailFor } = useProductThumbnails(visibleProductIds);
+
   // ---------- DT.7H: Observatory snippets for current page of results ----------
   // Read-only sidecar query. Never blocks/replaces the main search.
   const productIdsForSnippets = useMemo(
@@ -422,7 +428,7 @@ function SalesSearchPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="نام محصول، SKU، برند یا دسته (حداقل ۲ کاراکتر)"
+                placeholder="نام محصول، SKU، بارکد، برند یا دسته (حداقل ۲ کاراکتر)"
                 className="pr-10 h-12 text-base"
                 autoFocus
               />
@@ -779,6 +785,7 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
+                    thumbnailUrl={thumbnailFor(p.id)}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                       queryClient.invalidateQueries({
@@ -876,6 +883,7 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
+  thumbnailUrl?: string;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
@@ -885,6 +893,7 @@ function ProductCard({
   primarySalePriceTypeId,
   canRecalcPrice,
   observatorySnippet,
+  thumbnailUrl,
   onRecalcDone,
   onOpenChart,
 }: ProductCardProps) {
@@ -986,10 +995,21 @@ function ProductCard({
   };
 
   return (
-    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
+    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 focus-within:border-primary/50">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 items-start gap-3">
+            {thumbnailUrl ? (
+              <img
+                src={thumbnailUrl}
+                alt={product.name}
+                loading="lazy"
+                className="h-16 w-16 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+              />
+            ) : (
+              <div className="h-16 w-16 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+            )}
+            <div className="min-w-0 space-y-1">
             <h3 className="font-semibold text-foreground break-words">
               {formatProductDisplayNameWithFallback(product)}
             </h3>
@@ -997,6 +1017,15 @@ function ProductCard({
               {product.sku && (
                 <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
                   <Tag className="h-3 w-3" /> {product.sku}
+                </span>
+              )}
+              {product.barcode && (
+                <span
+                  className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono"
+                  dir="ltr"
+                  title="بارکد"
+                >
+                  <Tag className="h-3 w-3" /> {product.barcode}
                 </span>
               )}
               {product.brand?.name && <span>برند: {product.brand.name}</span>}
@@ -1032,6 +1061,7 @@ function ProductCard({
                 ))}
               </div>
             )}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant={STOCK_VARIANT[stockKey] ?? "outline"}>
@@ -1058,7 +1088,10 @@ function ProductCard({
             <div className="flex items-end justify-between gap-2">
               <div>
                 <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
-                <div className="text-2xl font-bold text-primary">
+                <div
+                  key={`pcard-${cur}`}
+                  className="price-flash inline-block text-3xl font-bold tabular-nums tracking-tight text-primary"
+                >
                   {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
@@ -1114,7 +1147,7 @@ function ProductCard({
                   className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
                 >
                   <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
-                  <div className="text-sm font-semibold tabular-nums">
+                  <div className="text-base font-semibold tabular-nums">
                     {c !== null ? (
                       formatNumber(c)
                     ) : (

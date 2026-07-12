@@ -1,46 +1,65 @@
-## مشکل و ریشه
 
-از کنسول preview مشخص است که حین جابه‌جایی بین ماژول‌ها (به‌ویژه «کارگاه قیمت من») سه اتفاق پشت‌سرهم رخ می‌دهد:
-
-1. اتصال vite/HMR قطع و وصل می‌شود (`[vite] server connection lost. Polling for restart...`) — این اتفاق هم در پیش‌نمایش و هم گاهی روی سایت منتشرشده باعث ری‌مونت iframe می‌شود.
-2. در هر ری‌مونت، supabase دوباره `SIGNED_IN` با `previousUserId: null` ارسال می‌کند → snapshot از صفر بارگذاری می‌شود → `loading=true`.
-3. `AppLayout` در `src/routes/_app.tsx` به‌محض true شدن هر یک از `loading | profileLoading | rolesLoading` تمام درخت اپ را با `AuthLoadingScreen` («در حال بررسی جلسه کاربری…») جایگزین می‌کند → کاربر احساس می‌کند «پرت شده».
-
-از نظر امنیت کاربر همچنان لاگین است (session در localStorage برمی‌گردد) و خودش هم به صفحه برمی‌گردد، فقط تجربهٔ کاربری بد است.
+# پاکسازی داده‌های محصولات از Lovable Cloud
 
 ## هدف
+حذف داده‌های تراکنشی/کاربری وارد شده روی Cloud (فقط شاخه محصولات و وابسته‌های آن + `audit_logs` + همه Storage buckets) — بدون دست‌کاری ساختار جدول‌ها، RLS، توابع، نقش‌ها، پیکربندی و کاربران auth.
 
-پرش به صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» حذف شود، در عوض وقتی session از قبل موجود است محتوای صفحه باقی بماند و فقط یک نوار بارگذاری کوچک نمایش داده شود.
+## گام ۱ — Export امن (قبل از هر کار — دستی توسط شما)
+1. در بالای چت روی نام پروژه → **Settings**.
+2. تب **Cloud** (یا از نوار More → Cloud) را باز کنید.
+3. **Advanced settings → Export data** → دانلود فایل ZIP.
+4. فایل را حداقل در دو جای مختلف (لپ‌تاپ + درایو خارجی/سرور LAN) نگه دارید.
+5. بعد از تأیید اینکه فایل export سالم دانلود شد، به من پیام بدهید «Export گرفتم، ادامه بده».
 
-## تغییرات (فقط فرانت‌اند، ریسک LOW)
+بدون این گام هیچ migration/truncate اجرا نمی‌شود.
 
-### ۱) `src/routes/_app.tsx`
-- منطق نمایش `AuthLoadingScreen` تغییر کند:
-  - فقط در حالتی صفحهٔ تمام‌صفحه نمایش داده شود که هنوز هیچ کاربری در snapshot نیست **و** session قبلی هم در localStorage پیدا نشد (یعنی واقعاً ورود اول).
-  - اگر کاربر در snapshot هست (یا توکن در localStorage هست) و فقط `profileLoading`/`rolesLoading` فعال است، `<Outlet />` داخل `AppShell` رندر شود و یک نوار باریک بالای صفحه (مثلاً پروگرس بار شاد cn یا یک Banner کوتاه) با متن «به‌روزرسانی جلسه…» نمایش داده شود.
-  - منطق «خطای واقعی» (`authError`) و دکمهٔ «تلاش دوباره» همان‌طور حفظ می‌شود.
-- اضافه شدن یک helper کوچک برای تشخیص وجود session ذخیره‌شده (با خواندن کلید `sb-<ref>-auth-token` از localStorage یا با بررسی `getAuthSnapshot().user`/`session`).
+## گام ۲ — پاکسازی جدول‌های شاخه محصولات (یک migration)
+اجرا در یک transaction با `session_replication_role = replica` تا FKها/triggerها موقتاً غیرفعال شوند و ترتیب اهمیت نداشته باشد.
 
-### ۲) `src/lib/auth/session.ts`
-- در `applySession`، وقتی رویداد `SIGNED_IN` با `previousUserId === null` می‌رسد ولی `lastLoadedUserId` همان کاربر است (یعنی فقط ری‌مونت بعد از HMR/قطعی)، `loading` global را true نکند و identity را مجدداً fetch نکند مگر اینکه profile/roles واقعاً خالی باشند.
-- بدون تغییر در منطق امنیت/توکن؛ فقط جلوگیری از flash بارگذاری.
+جدول‌هایی که TRUNCATE می‌شوند:
 
-### ۳) (اختیاری) `src/components/layout/AppShell.tsx`
-- اگر prop `sessionRefreshing` از `_app.tsx` پاس داده شد، یک نوار باریک (`h-1`) بالای shell با کلاس‌های موجود `bg-primary/20` نمایش داده شود — راست‌چین و سازگار با theme فعلی.
+**هسته محصول:**
+`products`, `product_images`, `product_label_links`, `product_labels`, `product_owner_assignments`, `product_suppliers`, `product_computed_prices`, `product_sale_price_history`, `product_recommendation_overrides`, `product_interaction_events`, `product_sku_counters`, `product_category_attribute_values`, `product_attributes`, `product_attribute_groups`, `category_product_attributes`, `categories`, `brands`
 
-## خارج از محدوده
+**قیمت‌گذاری/خرید مرتبط با محصول:**
+`purchase_prices`, `purchases`, `purchase_items`, `purchase_receipts`, `purchase_requests`, `purchase_request_status_history`, `suppliers`, `price_lists`, `price_list_items`, `pricing_rules`, `price_calculation_snapshots`, `price_alert_rules`, `price_alert_notifications`, `inquiry_price_cache`, `pricing_recompute_queue`, `stock_alert_requests`
 
-- بازطراحی AuthProvider یا route guardها انجام نمی‌شود.
-- منطق redirect به /login، RBAC، RLS، migration، یا API هیچ تغییری ندارد.
-- مشکل اصلی قطعی HMR در preview Lovable در حوزهٔ زیرساخت Lovable است و این تغییر فقط اثر بصری آن را خنثی می‌کند.
+**اسناد فروش وابسته به محصول (چون بدون محصول بی‌معنی می‌شوند و FK دارند):**
+`sales_quotes`, `sales_quote_items`, `sales_quote_send_queue`, `sales_quote_share_logs`, `sales_quote_counters`, `sale_lists`, `sale_list_items`, `sale_list_versions`, `invoices`, `invoice_items`, `inquiries`, `inquiry_replies`, `inquiry_status_history`, `inquiry_transfers`, `delivery_receipts`, `delivery_receipt_status_history`, `waybills`, `waybill_items`, `waybill_number_counter`, `payment_receipts`, `payment_receipt_links`, `payment_receipt_documents`, `payment_receipt_custom_fields`
 
-## آزمون دستی
+**بازار / تطبیق محصولات:**
+`market_product_matches`, `market_product_match_events`, `market_rate_ticks`, `market_rate_ingestion_runs`, `currency_rate_fetches`, `currency_rates`
 
-1. ورود به اپ → باز کردن «کارگاه قیمت من» → جابه‌جایی به ماژول دیگر → نباید صفحهٔ تمام‌صفحهٔ «در حال برقراری جلسه» ظاهر شود.
-2. خروج کامل (sign out) و ورود مجدد → صفحهٔ تمام‌صفحه فقط یک بار در ابتدا دیده شود.
-3. حالت خطای واقعی شبکه (مثلاً قطع کامل اینترنت) → پیام خطا و دکمهٔ «تلاش دوباره» مثل قبل کار کند.
-4. RTL و راست‌چینی نوار جدید بررسی شود.
+**+ به درخواست شما:** `audit_logs`
 
-## ریسک
+## گام ۳ — جدول‌هایی که دست نمی‌خورند (تأیید شما)
+مشتریان، persons، کارمندان، نقش‌ها، پیکربندی، academy، gamification، messenger، notifications، ai_*، bank_accounts، knowledge_*، daily_mood_*، automation_*، seed دستمزد/جریمه/کاپیتال، `currencies/currency_sources`, `price_change_reasons`, `settlement_types`, `payment_terms`, `shipping_cost_rules`, `marketing_channels`, `sale_price_types`, `validation_rules`, `workflow_settings`, `invoice_workflow_stages`, `role_permissions`, `custom_roles`, `user_roles`, `profiles`, `auth.users`.
 
-LOW — فقط لایهٔ UI و یک شاخهٔ کوچک در `applySession`. بدون تغییر دیتابیس، RLS، RBAC، یا audit log.
+## گام ۴ — خالی کردن Storage buckets
+با ابزار Storage:
+1. لیست همه bucketها را می‌گیرم (`storage.buckets`).
+2. برای هر bucket: `DELETE FROM storage.objects WHERE bucket_id = '<name>'` (فقط فایل‌ها، خود bucket و پیکربندی‌اش می‌ماند).
+3. تأیید با `SELECT bucket_id, COUNT(*) FROM storage.objects GROUP BY bucket_id`.
+
+اگر می‌خواهید bucket خاصی (مثلاً `avatars` یا لوگو) دست نخورد، قبل از اجرا نامش را بگویید.
+
+## گام ۵ — تأیید نهایی
+- `SELECT COUNT(*)` روی ~۱۰ جدول گروه پاک‌شده → باید همه صفر باشند.
+- `SELECT COUNT(*)` روی `profiles`, `user_roles`, `role_permissions`, `currencies` → باید بدون تغییر.
+- در مرورگر hard-reload (Ctrl+Shift+R) تا React Query cache پاک شود.
+
+## ریسک‌های باقی‌مانده
+- **برگشت‌ناپذیر است** — تنها راه برگشت، import فایل export گام ۱ است.
+- شماره‌گذارهای فاکتور/کوت (`sales_quote_counters`, `waybill_number_counter`, `product_sku_counters`) reset می‌شوند → شماره‌های بعدی از ۱ شروع می‌شوند.
+- اگر migrationای در آینده به این جدول‌ها seed دیتای واقعی اضافه کرده باشد، پاک می‌شود. (بررسی: هیچ seed دیتای واقعی در migrationهای فعلی برای این جدول‌ها نیست.)
+- Storage: لینک‌های عمومی به تصاویر قبلی 404 می‌دهند.
+- بعد از پاکسازی، اگر کاربر با نقش sales/viewer وارد شود و صفحه محصولات را باز کند، لیست خالی است — این طبیعی است.
+
+## تحویل نهایی گزارش
+- فایل migration ایجادشده
+- خروجی `COUNT(*)` قبل و بعد
+- لیست bucketهای پاک‌شده و تعداد فایل حذف‌شده
+- تأیید سلامت auth/roles
+
+---
+**اقدام شما الان:** گام ۱ (Export) را انجام دهید و «Export گرفتم، ادامه بده» بنویسید. اگر می‌خواهید bucket یا جدول خاصی از لیست حذف/اضافه شود، همین حالا بگویید.

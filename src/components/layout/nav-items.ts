@@ -11,7 +11,6 @@ import {
   BarChart3,
   BookOpen,
   MessageSquare,
-  Mail,
   ScrollText,
   Database,
   KeyRound,
@@ -44,6 +43,9 @@ import {
   CreditCard,
   BadgeCheck,
   LifeBuoy,
+  FileCheck,
+  ClipboardList,
+  Plug,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 
@@ -87,6 +89,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
   { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
+  { to: "/collaboration", label: "ارتباطات همکاری", icon: MessageSquare, module: "messages", group: "main" },
 
   // ۲) محصولات و قیمت‌گذاری
   {
@@ -407,6 +410,13 @@ export const NAV_ITEMS: NavItem[] = [
     module: "accounting",
     group: "finance",
   },
+  {
+    to: "/accounting/dynamic-capital",
+    label: "تخصیص سرمایه پویا",
+    icon: Coins,
+    module: "accounting",
+    group: "finance",
+  },
 
   // ۶) عملیات داخلی
   {
@@ -431,7 +441,6 @@ export const NAV_ITEMS: NavItem[] = [
     group: "operations",
     adminOnly: true,
   },
-  { to: "/messages", label: "پیام‌ها", icon: Mail, module: "messages", group: "operations" },
   {
     to: "/feedback",
     label: "بازخورد",
@@ -557,6 +566,60 @@ export const NAV_ITEMS: NavItem[] = [
   {
     to: "/admin/settings",
     label: "تنظیمات عمومی",
+    icon: Settings,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/penalties",
+    label: "کارت‌های قرمز",
+    icon: AlertTriangle,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/audit",
+    label: "لاگ فعالیت‌ها",
+    icon: ClipboardList,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/purchase",
+    label: "مدیریت خرید",
+    icon: ShoppingCart,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/documents",
+    label: "مدیریت اسناد",
+    icon: FileText,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/delivery-receipts",
+    label: "مدیریت رسیدها",
+    icon: FileCheck,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
+  },
+  {
+    to: "/admin/workflow-settings",
+    label: "تنظیمات گردش‌کار",
     icon: Settings,
     module: "roles",
     group: "admin",
@@ -714,6 +777,15 @@ export const NAV_ITEMS: NavItem[] = [
     module: "bot-api-keys",
     group: "admin",
     subgroup: "adm-tools",
+  },
+  {
+    to: "/integrations/didar",
+    label: "یکپارچه‌سازی دیدار",
+    icon: Plug,
+    module: "bot-api-keys",
+    group: "admin",
+    subgroup: "adm-tools",
+    adminOnly: true,
   },
   {
     to: "/market-matches",

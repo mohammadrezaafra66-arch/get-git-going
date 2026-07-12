@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,26 +135,24 @@ function SuggestionsHistoryPage() {
       <div className="flex flex-col gap-3 rounded-md border bg-card p-4 md:flex-row md:items-end">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="from">از تاریخ</Label>
-          <Input
-            id="from"
-            type="date"
-            value={fromInput}
-            onChange={(e) => {
+          <PersianDatePicker
+            value={fromInput || null}
+            onChange={(v) => {
               setPage(0);
-              setFromInput(e.target.value);
+              setFromInput(v ?? "");
             }}
+            placeholder="از تاریخ"
           />
         </div>
         <div className="flex-1 space-y-1.5">
           <Label htmlFor="to">تا تاریخ</Label>
-          <Input
-            id="to"
-            type="date"
-            value={toInput}
-            onChange={(e) => {
+          <PersianDatePicker
+            value={toInput || null}
+            onChange={(v) => {
               setPage(0);
-              setToInput(e.target.value);
+              setToInput(v ?? "");
             }}
+            placeholder="تا تاریخ"
           />
         </div>
         <div className="flex-1 space-y-1.5">

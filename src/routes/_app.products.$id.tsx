@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -29,12 +29,14 @@ import {
   PRODUCT_STATUS_LABELS,
   PRODUCT_STATUS_VARIANTS,
 } from "@/lib/products/constants";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
 import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
 import { ProductForm } from "@/components/products/ProductForm";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
+import { AdCopyGenerator } from "@/components/products/AdCopyGenerator";
 import type { ProductFormValues } from "@/lib/products/schemas";
 import {
   fetchProductDynamicValues,
@@ -53,9 +55,11 @@ export const Route = createFileRoute("/_app/products/$id")({
   beforeLoad: async () => {
     await requirePermission("products", "view");
   },
-  validateSearch: (search: Record<string, unknown>) => ({
-    edit: search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { edit?: 1 } => {
+    const edit =
+      search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined;
+    return edit ? { edit } : {};
+  },
   component: ProductDetailPage,
 });
 
@@ -72,6 +76,42 @@ function ProductDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [editMode, setEditMode] = useState(!!search.edit && canUpdate);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  // وقتی «ذخیره و خروج» انتخاب شود، بعد از پایان موفق ذخیره این callback اجرا می‌شود.
+  const pendingProceedRef = useRef<(() => void) | null>(null);
+
+  // Warn before tab close/reload while editing if an unsaved draft exists.
+  useEffect(() => {
+    if (!editMode) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      try {
+        const raw = window.sessionStorage.getItem(`afrakala_product_draft_${id}`);
+        if (!raw) return;
+      } catch {
+        return;
+      }
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editMode, id]);
+
+  // SPA navigation guard: فقط در حالت ویرایش با تغییرات ذخیره‌نشده.
+  const blocker = useBlocker({
+    shouldBlockFn: () => editMode && isDirty,
+    withResolver: true,
+    enableBeforeUnload: false,
+  });
+
+  const clearDraft = () => {
+    try {
+      window.sessionStorage.removeItem(`afrakala_product_draft_${id}`);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["product", id],
@@ -81,7 +121,7 @@ function ProductDetailPage() {
         .select(
           `
           id, name, sku, description, technical_notes, unit, color, capacity, model, primary_spec,
-          product_type, base_currency, stock_status, status,
+          product_type, base_currency, stock_status, status, barcode,
           created_at, updated_at,
           brand:brands(id,name), category:categories(id,name,primary_spec_label),
           product_label_links(label:product_labels(id,title,color))
@@ -154,6 +194,18 @@ function ProductDetailPage() {
     },
   });
 
+  const adjustedPriceQ = useQuery({
+    queryKey: ["product-adjusted-price", id],
+    enabled: !editMode,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("calculate_adjusted_price", {
+        _product_id: id,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+  });
+
   if (isLoading)
     return (
       <div className="py-10 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
@@ -202,6 +254,7 @@ function ProductDetailPage() {
           primary_spec: v.primary_spec || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
+          barcode: v.barcode?.trim() ? v.barcode.trim() : null,
         })
         .eq("id", id);
       if (error) throw error;
@@ -325,6 +378,8 @@ function ProductDetailPage() {
       }
 
       toast.success("تغییرات ذخیره شد");
+      clearDraft();
+      setIsDirty(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["product", id] }),
         queryClient.invalidateQueries({ queryKey: ["product-edit-extras", id] }),
@@ -333,6 +388,12 @@ function ProductDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["product-history", id] }),
       ]);
       setEditMode(false);
+      // اگر navigation در حال انتظار بوده، بعد از ذخیره موفق ادامه بده.
+      if (pendingProceedRef.current) {
+        const proceed = pendingProceedRef.current;
+        pendingProceedRef.current = null;
+        proceed();
+      }
     } catch (e: any) {
       const code = e?.code ?? "";
       const msg = String(e?.message ?? "");
@@ -343,6 +404,8 @@ function ProductDetailPage() {
       } else {
         toast.error(msg || "خطا در ذخیره");
       }
+      // در صورت خطا، navigation در انتظار را لغو می‌کنیم تا کاربر در صفحه بماند.
+      pendingProceedRef.current = null;
     } finally {
       setSaving(false);
     }
@@ -363,6 +426,7 @@ function ProductDetailPage() {
     primary_spec: p.primary_spec ?? "",
     description: p.description ?? "",
     technical_notes: p.technical_notes ?? "",
+    barcode: p.barcode ?? "",
     label_ids: editDataQ.data?.labelIds ?? labels.map((l: any) => l.id),
   };
 
@@ -416,13 +480,34 @@ function ProductDetailPage() {
                 onSubmit={handleSave}
                 loading={saving}
                 submitLabel="ذخیره تغییرات"
-                onCancel={() => setEditMode(false)}
+                onCancel={() => {
+                  setEditMode(false);
+                  setIsDirty(false);
+                }}
+                onDirtyChange={setIsDirty}
+                formRef={formRef}
               />
             </CardContent>
           </Card>
         )
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-3 border-primary/30 bg-primary/5">
+            <CardContent className="flex items-center justify-between gap-3 p-4">
+              <div className="text-sm text-muted-foreground">
+                قیمت پیشنهادی بر اساس مدت نگهداری
+              </div>
+              <div className="text-base font-semibold tabular-nums">
+                {adjustedPriceQ.isLoading ? (
+                  <Skeleton className="h-5 w-28" />
+                ) : adjustedPriceQ.data && adjustedPriceQ.data > 0 ? (
+                  `${formatNumber(adjustedPriceQ.data)} تومان`
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           <Card className="lg:col-span-2">
             <CardContent className="grid gap-3 p-4 md:grid-cols-2">
               <Info label="برند" value={p.brand?.name ?? "—"} />
@@ -552,6 +637,25 @@ function ProductDetailPage() {
 
       <ProductPublishPricesCard productId={id} />
 
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <h3 className="text-sm font-semibold">ابزارهای هوش مصنوعی</h3>
+            <p className="text-xs text-muted-foreground">
+              تولید سریع متن تبلیغاتی برای این محصول
+            </p>
+          </div>
+          <AdCopyGenerator
+            productId={id}
+            productName={p.name}
+            category={p.category?.name ?? null}
+            brand={p.brand?.name ?? null}
+            price={adjustedPriceQ.data ?? null}
+            description={p.description ?? null}
+          />
+        </CardContent>
+      </Card>
+
       <ProductHistoryCard productId={id} />
 
       <Card>
@@ -584,6 +688,48 @@ function ProductDetailPage() {
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
               {deleting && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}حذف کن
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={blocker.status === "blocked"}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تغییرات ذخیره‌نشده دارید</AlertDialogTitle>
+            <AlertDialogDescription>
+              تغییراتی که در فرم محصول واردکرده‌اید هنوز ذخیره نشده است. می‌خواهید چه کاری انجام دهید؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => blocker.reset?.()}
+              disabled={saving}
+            >
+              بازگشت به ویرایش
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                // ذخیره و در ادامه navigation
+                pendingProceedRef.current = blocker.proceed ?? null;
+                formRef.current?.requestSubmit();
+              }}
+              disabled={saving}
+            >
+              {saving && <Loader2 className="ms-1 h-4 w-4 animate-spin" />}
+              ذخیره و خروج
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                clearDraft();
+                setIsDirty(false);
+                blocker.proceed?.();
+              }}
+              disabled={saving}
+            >
+              خروج بدون ذخیره
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

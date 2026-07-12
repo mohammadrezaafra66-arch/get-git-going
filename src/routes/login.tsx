@@ -68,6 +68,11 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { signIn, signUp, refreshRoles } = useAuth();
   const navigate = useNavigate();
+  const { redirect: redirectSearch } = Route.useSearch();
+  const safeRedirect =
+    redirectSearch && redirectSearch.startsWith("/") && !redirectSearch.startsWith("//")
+      ? redirectSearch
+      : null;
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -195,7 +200,11 @@ function LoginPage() {
         // non-blocking
       }
       toast.success("خوش آمدید");
-      navigate({ to: "/dashboard", replace: true });
+      if (safeRedirect) {
+        navigate({ to: safeRedirect, replace: true });
+      } else {
+        navigate({ to: "/dashboard", replace: true });
+      }
     } catch (err) {
       const fa = translateAuthError(err instanceof Error ? err.message : null);
       setLoginError(fa);

@@ -2,7 +2,7 @@ import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-r
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 import {
   logAuthDiagnostic,
   getAuthDiagnostics,
@@ -89,6 +89,14 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  return (
+    <AuthProvider>
+      <AppLayoutContent />
+    </AuthProvider>
+  );
+}
+
+function AppLayoutContent() {
   const {
     user,
     initialized,

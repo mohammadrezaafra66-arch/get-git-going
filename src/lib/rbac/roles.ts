@@ -1,4 +1,6 @@
 import { getCachedRolePermissions } from "./permissions-cache";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "manager" | "sales" | "accountant" | "viewer";
 
@@ -11,6 +13,36 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "accountant", "viewer"];
+
+/**
+ * Returns the full list of role names: the 5 fixed system roles plus any
+ * active rows from `custom_roles`. System roles always come first; custom
+ * roles are de-duplicated against the fixed list.
+ */
+export type RoleOption = { name: string; label: string };
+
+export function useAllRoles() {
+  const query = useQuery({
+    queryKey: ["all-roles-combined"],
+    queryFn: async (): Promise<RoleOption[]> => {
+      const { data, error } = await supabase
+        .from("custom_roles" as never)
+        .select("name, display_name, is_active")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      const fixed: RoleOption[] = ALL_ROLES.map((n) => ({ name: n, label: ROLE_LABELS[n] }));
+      const fixedSet = new Set(ALL_ROLES as string[]);
+      const custom: RoleOption[] = (
+        (data ?? []) as unknown as { name: string; display_name: string | null }[]
+      )
+        .filter((r) => !fixedSet.has(r.name))
+        .map((r) => ({ name: r.name, label: r.display_name || r.name }));
+      return [...fixed, ...custom];
+    },
+  });
+  return { data: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
 
 export type ModuleKey =
   | "products"

@@ -14,6 +14,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PendingApprovalRouteImport } from './routes/pending-approval'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,27 +25,38 @@ import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
+import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppMyPenaltiesRouteImport } from './routes/_app.my-penalties'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMarketMatchesRouteImport } from './routes/_app.market-matches'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
 import { Route as AppInvoicesRouteImport } from './routes/_app.invoices'
 import { Route as AppGamificationRouteImport } from './routes/_app.gamification'
 import { Route as AppFeedbackRouteImport } from './routes/_app.feedback'
+import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppDeliveryReceiptsRouteImport } from './routes/_app.delivery-receipts'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppCollaborationRouteImport } from './routes/_app.collaboration'
 import { Route as AppBotApiKeysRouteImport } from './routes/_app.bot-api-keys'
 import { Route as AppAuditLogsRouteImport } from './routes/_app.audit-logs'
+import { Route as AppApiKeysRouteImport } from './routes/_app.api-keys'
 import { Route as AppAcademyRouteImport } from './routes/_app.academy'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppSalesIndexRouteImport } from './routes/_app.sales.index'
 import { Route as AppProductsIndexRouteImport } from './routes/_app.products.index'
 import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index'
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
+import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
+import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
 import { Route as AppSalesInvoicesRouteImport } from './routes/_app.sales_.invoices'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
@@ -86,13 +98,20 @@ import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.a
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
+import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
+import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
+import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
+import { Route as AppIntegrationsDidarRouteImport } from './routes/_app.integrations.didar'
+import { Route as AppGamificationSettingsRouteImport } from './routes/_app.gamification.settings'
 import { Route as AppGamificationLeaderboardRouteImport } from './routes/_app.gamification.leaderboard'
+import { Route as AppGamificationAchievementsRouteImport } from './routes/_app.gamification.achievements'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
 import { Route as AppFeedbackFeedbackIdRouteImport } from './routes/_app.feedback_.$feedbackId'
 import { Route as AppDataTablesNewRouteImport } from './routes/_app.data-tables.new'
@@ -101,28 +120,37 @@ import { Route as AppBotApiKeysUsageRouteImport } from './routes/_app.bot-api-ke
 import { Route as AppBotApiKeysPlaygroundRouteImport } from './routes/_app.bot-api-keys.playground'
 import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-keys.docs'
 import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
+import { Route as AppAdminWorkflowSettingsRouteImport } from './routes/_app.admin.workflow-settings'
 import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
+import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purchase'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
+import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.documents'
+import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
+import { Route as AppAdminAuditRouteImport } from './routes/_app.admin.audit'
 import { Route as AppAccountingSalespersonCapitalAllocationsRouteImport } from './routes/_app.accounting.salesperson-capital-allocations'
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app.accounting.purchase-payments'
 import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
+import { Route as AppAccountingDynamicCapitalRouteImport } from './routes/_app.accounting.dynamic-capital'
 import { Route as AppAccountingDailyCapitalRouteImport } from './routes/_app.accounting.daily-capital'
 import { Route as AppAccountingCustomerCapitalAllocationsRouteImport } from './routes/_app.accounting.customer-capital-allocations'
 import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
@@ -189,6 +217,11 @@ const PendingApprovalRoute = PendingApprovalRouteImport.update({
   path: '/pending-approval',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -238,6 +271,11 @@ const AppPurchasesRoute = AppPurchasesRouteImport.update({
   path: '/purchases',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPurchaseRoute = AppPurchaseRouteImport.update({
+  id: '/purchase',
+  path: '/purchase',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
   id: '/price-lists',
   path: '/price-lists',
@@ -256,6 +294,11 @@ const AppPersonsRoute = AppPersonsRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyPenaltiesRoute = AppMyPenaltiesRouteImport.update({
+  id: '/my-penalties',
+  path: '/my-penalties',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -288,9 +331,24 @@ const AppFeedbackRoute = AppFeedbackRouteImport.update({
   path: '/feedback',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDeliveryReceiptsRoute = AppDeliveryReceiptsRouteImport.update({
+  id: '/delivery-receipts',
+  path: '/delivery-receipts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCollaborationRoute = AppCollaborationRouteImport.update({
+  id: '/collaboration',
+  path: '/collaboration',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBotApiKeysRoute = AppBotApiKeysRouteImport.update({
@@ -303,11 +361,28 @@ const AppAuditLogsRoute = AppAuditLogsRouteImport.update({
   path: '/audit-logs',
   getParentRoute: () => AppRoute,
 } as any)
+const AppApiKeysRoute = AppApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAcademyRoute = AppAcademyRouteImport.update({
   id: '/academy',
   path: '/academy',
   getParentRoute: () => AppRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesIndexRoute = AppSalesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -338,9 +413,24 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   path: '/public/sale-lists/$listId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
+  id: '/api/public/products',
+  path: '/api/public/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
+  id: '/api/messenger/ai-chat',
+  path: '/api/messenger/ai-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppUsersPendingRoute = AppUsersPendingRouteImport.update({
   id: '/pending',
   path: '/pending',
+  getParentRoute: () => AppUsersRoute,
+} as any)
+const AppUsersUserIdRoute = AppUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
   getParentRoute: () => AppUsersRoute,
 } as any)
 const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
@@ -558,15 +648,36 @@ const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   path: '/operations/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsReceiptsRoute = AppOperationsReceiptsRouteImport.update({
+  id: '/operations/receipts',
+  path: '/operations/receipts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsPurchaseAdvisorRoute =
+  AppOperationsPurchaseAdvisorRouteImport.update({
+    id: '/operations/purchase-advisor',
+    path: '/operations/purchase-advisor',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsGamificationRoute =
   AppOperationsGamificationRouteImport.update({
     id: '/operations/gamification',
     path: '/operations/gamification',
     getParentRoute: () => AppRoute,
   } as any)
+const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
+  id: '/operations/didar',
+  path: '/operations/didar',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   id: '/operations/daily-mood',
   path: '/operations/daily-mood',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsApiKeysRoute = AppOperationsApiKeysRouteImport.update({
+  id: '/operations/api-keys',
+  path: '/operations/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMarketingSuggestionsHistoryRoute =
@@ -590,10 +701,26 @@ const AppKnowledgeDocumentIdRoute = AppKnowledgeDocumentIdRouteImport.update({
   path: '/knowledge/$documentId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppIntegrationsDidarRoute = AppIntegrationsDidarRouteImport.update({
+  id: '/integrations/didar',
+  path: '/integrations/didar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGamificationSettingsRoute = AppGamificationSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppGamificationRoute,
+} as any)
 const AppGamificationLeaderboardRoute =
   AppGamificationLeaderboardRouteImport.update({
     id: '/leaderboard',
     path: '/leaderboard',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
+const AppGamificationAchievementsRoute =
+  AppGamificationAchievementsRouteImport.update({
+    id: '/achievements',
+    path: '/achievements',
     getParentRoute: () => AppGamificationRoute,
   } as any)
 const AppFeedbackCreateRoute = AppFeedbackCreateRouteImport.update({
@@ -636,6 +763,12 @@ const AppAdminWorkflowStagesRoute = AppAdminWorkflowStagesRouteImport.update({
   path: '/admin/workflow-stages',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminWorkflowSettingsRoute =
+  AppAdminWorkflowSettingsRouteImport.update({
+    id: '/admin/workflow-settings',
+    path: '/admin/workflow-settings',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminWaybillFieldsRoute = AppAdminWaybillFieldsRouteImport.update({
   id: '/admin/waybill-fields',
   path: '/admin/waybill-fields',
@@ -667,9 +800,19 @@ const AppAdminReceiptFieldsRoute = AppAdminReceiptFieldsRouteImport.update({
   path: '/admin/receipt-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPurchaseRoute = AppAdminPurchaseRouteImport.update({
+  id: '/admin/purchase',
+  path: '/admin/purchase',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   id: '/admin/profile-fields',
   path: '/admin/profile-fields',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
+  id: '/admin/penalties',
+  path: '/admin/penalties',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminPaymentTermsRoute = AppAdminPaymentTermsRouteImport.update({
@@ -688,9 +831,25 @@ const AppAdminGamificationRoute = AppAdminGamificationRouteImport.update({
   path: '/admin/gamification',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminDocumentsRoute = AppAdminDocumentsRouteImport.update({
+  id: '/admin/documents',
+  path: '/admin/documents',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminDeliveryReceiptsRoute =
+  AppAdminDeliveryReceiptsRouteImport.update({
+    id: '/admin/delivery-receipts',
+    path: '/admin/delivery-receipts',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminAutomationRoute = AppAdminAutomationRouteImport.update({
   id: '/admin/automation',
   path: '/admin/automation',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
+  id: '/admin/audit',
+  path: '/admin/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAccountingSalespersonCapitalAllocationsRoute =
@@ -727,6 +886,12 @@ const AppAccountingExternalPartiesRoute =
     path: '/accounting/external-parties',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAccountingDynamicCapitalRoute =
+  AppAccountingDynamicCapitalRouteImport.update({
+    id: '/accounting/dynamic-capital',
+    path: '/accounting/dynamic-capital',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAccountingDailyCapitalRoute =
   AppAccountingDailyCapitalRouteImport.update({
     id: '/accounting/daily-capital',
@@ -754,6 +919,17 @@ const AppAcademyCourseIdRoute = AppAcademyCourseIdRouteImport.update({
   id: '/academy_/$courseId',
   path: '/academy/$courseId',
   getParentRoute: () => AppRoute,
+} as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppSalesQuotesIndexRoute = AppSalesQuotesIndexRouteImport.update({
   id: '/',
@@ -990,25 +1166,34 @@ const ApiPublicBotDynamicTablesTableIdRowsRowIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/academy': typeof AppAcademyRoute
+  '/api-keys': typeof AppApiKeysRoute
   '/audit-logs': typeof AppAuditLogsRoute
   '/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
+  '/collaboration': typeof AppCollaborationRoute
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
+  '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
+  '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
@@ -1016,28 +1201,37 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
+  '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -1046,13 +1240,20 @@ export interface FileRoutesByFullPath {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/settings': typeof AppGamificationSettingsRoute
+  '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
+  '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1094,7 +1295,10 @@ export interface FileRoutesByFullPath {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
+  '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -1145,52 +1349,70 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/academy': typeof AppAcademyRoute
+  '/api-keys': typeof AppApiKeysRoute
   '/audit-logs': typeof AppAuditLogsRoute
+  '/collaboration': typeof AppCollaborationRoute
   '/dashboard': typeof AppDashboardRoute
+  '/delivery-receipts': typeof AppDeliveryReceiptsRoute
+  '/documents': typeof AppDocumentsRoute
   '/feedback': typeof AppFeedbackRoute
   '/gamification': typeof AppGamificationRouteWithChildren
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
+  '/my-penalties': typeof AppMyPenaltiesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/price-lists': typeof AppPriceListsRoute
+  '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
+  '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -1199,13 +1421,20 @@ export interface FileRoutesByTo {
   '/data-tables/new': typeof AppDataTablesNewRoute
   '/feedback/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/feedback/create': typeof AppFeedbackCreateRoute
+  '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/settings': typeof AppGamificationSettingsRoute
+  '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/gamification': typeof AppOperationsGamificationRoute
+  '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1246,7 +1475,10 @@ export interface FileRoutesByTo {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/sales/invoices': typeof AppSalesInvoicesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
+  '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -1299,25 +1531,34 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/pending-approval': typeof PendingApprovalRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/unauthorized': typeof UnauthorizedRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/academy': typeof AppAcademyRoute
+  '/_app/api-keys': typeof AppApiKeysRoute
   '/_app/audit-logs': typeof AppAuditLogsRoute
   '/_app/bot-api-keys': typeof AppBotApiKeysRouteWithChildren
+  '/_app/collaboration': typeof AppCollaborationRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/delivery-receipts': typeof AppDeliveryReceiptsRoute
+  '/_app/documents': typeof AppDocumentsRoute
   '/_app/feedback': typeof AppFeedbackRoute
   '/_app/gamification': typeof AppGamificationRouteWithChildren
   '/_app/invoices': typeof AppInvoicesRoute
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/market-matches': typeof AppMarketMatchesRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/my-penalties': typeof AppMyPenaltiesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
   '/_app/price-lists': typeof AppPriceListsRoute
+  '/_app/purchase': typeof AppPurchaseRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/roles': typeof AppRolesRoute
@@ -1325,28 +1566,37 @@ export interface FileRoutesById {
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/_app/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/_app/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
+  '/_app/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/_app/accounting/payables': typeof AppAccountingPayablesRoute
   '/_app/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/_app/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
+  '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/_app/admin/documents': typeof AppAdminDocumentsRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
+  '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
+  '/_app/admin/purchase': typeof AppAdminPurchaseRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
+  '/_app/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
   '/_app/bot-api-keys/docs': typeof AppBotApiKeysDocsRoute
   '/_app/bot-api-keys/playground': typeof AppBotApiKeysPlaygroundRoute
@@ -1355,13 +1605,20 @@ export interface FileRoutesById {
   '/_app/data-tables/new': typeof AppDataTablesNewRoute
   '/_app/feedback_/$feedbackId': typeof AppFeedbackFeedbackIdRoute
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
+  '/_app/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/_app/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/_app/gamification/settings': typeof AppGamificationSettingsRoute
+  '/_app/integrations/didar': typeof AppIntegrationsDidarRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
+  '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/gamification': typeof AppOperationsGamificationRoute
+  '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
@@ -1403,7 +1660,10 @@ export interface FileRoutesById {
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/sales_/invoices': typeof AppSalesInvoicesRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
+  '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -1456,25 +1716,34 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/mcp'
     | '/pending-approval'
     | '/register'
     | '/reset-password'
     | '/sitemap.xml'
     | '/unauthorized'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/academy'
+    | '/api-keys'
     | '/audit-logs'
     | '/bot-api-keys'
+    | '/collaboration'
     | '/dashboard'
+    | '/delivery-receipts'
+    | '/documents'
     | '/feedback'
     | '/gamification'
     | '/invoices'
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
     | '/price-lists'
+    | '/purchase'
     | '/purchases'
     | '/reports'
     | '/roles'
@@ -1482,28 +1751,37 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
+    | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/audit'
     | '/admin/automation'
+    | '/admin/delivery-receipts'
+    | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
+    | '/admin/purchase'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/validation-rules'
     | '/admin/waybill-fields'
+    | '/admin/workflow-settings'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -1512,13 +1790,20 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/settings'
+    | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/api-keys'
     | '/operations/daily-mood'
+    | '/operations/didar'
     | '/operations/gamification'
+    | '/operations/purchase-advisor'
+    | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
@@ -1560,7 +1845,10 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/$userId'
     | '/users/pending'
+    | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -1611,52 +1899,70 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/mcp'
     | '/pending-approval'
     | '/register'
     | '/reset-password'
     | '/sitemap.xml'
     | '/unauthorized'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/academy'
+    | '/api-keys'
     | '/audit-logs'
+    | '/collaboration'
     | '/dashboard'
+    | '/delivery-receipts'
+    | '/documents'
     | '/feedback'
     | '/gamification'
     | '/invoices'
     | '/knowledge'
     | '/market-matches'
     | '/messages'
+    | '/my-penalties'
     | '/notifications'
     | '/persons'
     | '/popup-center'
     | '/price-lists'
+    | '/purchase'
     | '/purchases'
     | '/reports'
     | '/roles'
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
     | '/academy/manage'
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
+    | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/audit'
     | '/admin/automation'
+    | '/admin/delivery-receipts'
+    | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
     | '/admin/payment-terms'
+    | '/admin/penalties'
     | '/admin/profile-fields'
+    | '/admin/purchase'
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
     | '/admin/settings'
     | '/admin/validation-rules'
     | '/admin/waybill-fields'
+    | '/admin/workflow-settings'
     | '/admin/workflow-stages'
     | '/bot-api-keys/docs'
     | '/bot-api-keys/playground'
@@ -1665,13 +1971,20 @@ export interface FileRouteTypes {
     | '/data-tables/new'
     | '/feedback/$feedbackId'
     | '/feedback/create'
+    | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/settings'
+    | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/operations/api-keys'
     | '/operations/daily-mood'
+    | '/operations/didar'
     | '/operations/gamification'
+    | '/operations/purchase-advisor'
+    | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/create'
     | '/pricing/amin-hozoor-board'
@@ -1712,7 +2025,10 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/sales/invoices'
     | '/suppliers/$supplierId'
+    | '/users/$userId'
     | '/users/pending'
+    | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -1764,25 +2080,34 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/mcp'
     | '/pending-approval'
     | '/register'
     | '/reset-password'
     | '/sitemap.xml'
     | '/unauthorized'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/_app/academy'
+    | '/_app/api-keys'
     | '/_app/audit-logs'
     | '/_app/bot-api-keys'
+    | '/_app/collaboration'
     | '/_app/dashboard'
+    | '/_app/delivery-receipts'
+    | '/_app/documents'
     | '/_app/feedback'
     | '/_app/gamification'
     | '/_app/invoices'
     | '/_app/knowledge'
     | '/_app/market-matches'
     | '/_app/messages'
+    | '/_app/my-penalties'
     | '/_app/notifications'
     | '/_app/persons'
     | '/_app/popup-center'
     | '/_app/price-lists'
+    | '/_app/purchase'
     | '/_app/purchases'
     | '/_app/reports'
     | '/_app/roles'
@@ -1790,28 +2115,37 @@ export interface FileRouteTypes {
     | '/_app/suppliers'
     | '/_app/users'
     | '/api/healthz'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
     | '/_app/accounting/bank-accounts'
     | '/_app/accounting/customer-capital-allocations'
     | '/_app/accounting/daily-capital'
+    | '/_app/accounting/dynamic-capital'
     | '/_app/accounting/external-parties'
     | '/_app/accounting/payables'
     | '/_app/accounting/purchase-payments'
     | '/_app/accounting/receipts'
     | '/_app/accounting/receivables'
     | '/_app/accounting/salesperson-capital-allocations'
+    | '/_app/admin/audit'
     | '/_app/admin/automation'
+    | '/_app/admin/delivery-receipts'
+    | '/_app/admin/documents'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
     | '/_app/admin/payment-terms'
+    | '/_app/admin/penalties'
     | '/_app/admin/profile-fields'
+    | '/_app/admin/purchase'
     | '/_app/admin/receipt-fields'
     | '/_app/admin/recent-purchase-settings'
     | '/_app/admin/roles'
     | '/_app/admin/settings'
     | '/_app/admin/validation-rules'
     | '/_app/admin/waybill-fields'
+    | '/_app/admin/workflow-settings'
     | '/_app/admin/workflow-stages'
     | '/_app/bot-api-keys/docs'
     | '/_app/bot-api-keys/playground'
@@ -1820,13 +2154,20 @@ export interface FileRouteTypes {
     | '/_app/data-tables/new'
     | '/_app/feedback_/$feedbackId'
     | '/_app/feedback_/create'
+    | '/_app/gamification/achievements'
     | '/_app/gamification/leaderboard'
+    | '/_app/gamification/settings'
+    | '/_app/integrations/didar'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
+    | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
+    | '/_app/operations/didar'
     | '/_app/operations/gamification'
+    | '/_app/operations/purchase-advisor'
+    | '/_app/operations/receipts'
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
     | '/_app/pricing/amin-hozoor-board'
@@ -1868,7 +2209,10 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers'
     | '/_app/sales_/invoices'
     | '/_app/suppliers_/$supplierId'
+    | '/_app/users/$userId'
     | '/_app/users/pending'
+    | '/api/messenger/ai-chat'
+    | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -1921,12 +2265,19 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   PendingApprovalRoute: typeof PendingApprovalRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
+  ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
@@ -1973,6 +2324,13 @@ declare module '@tanstack/react-router' {
       path: '/pending-approval'
       fullPath: '/pending-approval'
       preLoaderRoute: typeof PendingApprovalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -2045,6 +2403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPurchasesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/purchase': {
+      id: '/_app/purchase'
+      path: '/purchase'
+      fullPath: '/purchase'
+      preLoaderRoute: typeof AppPurchaseRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/price-lists': {
       id: '/_app/price-lists'
       path: '/price-lists'
@@ -2071,6 +2436,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/my-penalties': {
+      id: '/_app/my-penalties'
+      path: '/my-penalties'
+      fullPath: '/my-penalties'
+      preLoaderRoute: typeof AppMyPenaltiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -2115,11 +2487,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFeedbackRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/documents': {
+      id: '/_app/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/delivery-receipts': {
+      id: '/_app/delivery-receipts'
+      path: '/delivery-receipts'
+      fullPath: '/delivery-receipts'
+      preLoaderRoute: typeof AppDeliveryReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/collaboration': {
+      id: '/_app/collaboration'
+      path: '/collaboration'
+      fullPath: '/collaboration'
+      preLoaderRoute: typeof AppCollaborationRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/bot-api-keys': {
@@ -2136,12 +2529,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditLogsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/api-keys': {
+      id: '/_app/api-keys'
+      path: '/api-keys'
+      fullPath: '/api-keys'
+      preLoaderRoute: typeof AppApiKeysRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy': {
       id: '/_app/academy'
       path: '/academy'
       fullPath: '/academy'
       preLoaderRoute: typeof AppAcademyRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/sales/': {
       id: '/_app/sales/'
@@ -2185,11 +2599,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/products': {
+      id: '/api/public/products'
+      path: '/api/public/products'
+      fullPath: '/api/public/products'
+      preLoaderRoute: typeof ApiPublicProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/messenger/ai-chat': {
+      id: '/api/messenger/ai-chat'
+      path: '/api/messenger/ai-chat'
+      fullPath: '/api/messenger/ai-chat'
+      preLoaderRoute: typeof ApiMessengerAiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/users/pending': {
       id: '/_app/users/pending'
       path: '/pending'
       fullPath: '/users/pending'
       preLoaderRoute: typeof AppUsersPendingRouteImport
+      parentRoute: typeof AppUsersRoute
+    }
+    '/_app/users/$userId': {
+      id: '/_app/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof AppUsersUserIdRouteImport
       parentRoute: typeof AppUsersRoute
     }
     '/_app/suppliers_/$supplierId': {
@@ -2479,6 +2914,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/receipts': {
+      id: '/_app/operations/receipts'
+      path: '/operations/receipts'
+      fullPath: '/operations/receipts'
+      preLoaderRoute: typeof AppOperationsReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/purchase-advisor': {
+      id: '/_app/operations/purchase-advisor'
+      path: '/operations/purchase-advisor'
+      fullPath: '/operations/purchase-advisor'
+      preLoaderRoute: typeof AppOperationsPurchaseAdvisorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/gamification': {
       id: '/_app/operations/gamification'
       path: '/operations/gamification'
@@ -2486,11 +2935,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsGamificationRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/didar': {
+      id: '/_app/operations/didar'
+      path: '/operations/didar'
+      fullPath: '/operations/didar'
+      preLoaderRoute: typeof AppOperationsDidarRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/daily-mood': {
       id: '/_app/operations/daily-mood'
       path: '/operations/daily-mood'
       fullPath: '/operations/daily-mood'
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/api-keys': {
+      id: '/_app/operations/api-keys'
+      path: '/operations/api-keys'
+      fullPath: '/operations/api-keys'
+      preLoaderRoute: typeof AppOperationsApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/marketing/suggestions-history': {
@@ -2521,11 +2984,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKnowledgeDocumentIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/integrations/didar': {
+      id: '/_app/integrations/didar'
+      path: '/integrations/didar'
+      fullPath: '/integrations/didar'
+      preLoaderRoute: typeof AppIntegrationsDidarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/gamification/settings': {
+      id: '/_app/gamification/settings'
+      path: '/settings'
+      fullPath: '/gamification/settings'
+      preLoaderRoute: typeof AppGamificationSettingsRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/gamification/leaderboard': {
       id: '/_app/gamification/leaderboard'
       path: '/leaderboard'
       fullPath: '/gamification/leaderboard'
       preLoaderRoute: typeof AppGamificationLeaderboardRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
+    '/_app/gamification/achievements': {
+      id: '/_app/gamification/achievements'
+      path: '/achievements'
+      fullPath: '/gamification/achievements'
+      preLoaderRoute: typeof AppGamificationAchievementsRouteImport
       parentRoute: typeof AppGamificationRoute
     }
     '/_app/feedback_/create': {
@@ -2584,6 +3068,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWorkflowStagesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/workflow-settings': {
+      id: '/_app/admin/workflow-settings'
+      path: '/admin/workflow-settings'
+      fullPath: '/admin/workflow-settings'
+      preLoaderRoute: typeof AppAdminWorkflowSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/waybill-fields': {
       id: '/_app/admin/waybill-fields'
       path: '/admin/waybill-fields'
@@ -2626,11 +3117,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminReceiptFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/purchase': {
+      id: '/_app/admin/purchase'
+      path: '/admin/purchase'
+      fullPath: '/admin/purchase'
+      preLoaderRoute: typeof AppAdminPurchaseRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/profile-fields': {
       id: '/_app/admin/profile-fields'
       path: '/admin/profile-fields'
       fullPath: '/admin/profile-fields'
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/penalties': {
+      id: '/_app/admin/penalties'
+      path: '/admin/penalties'
+      fullPath: '/admin/penalties'
+      preLoaderRoute: typeof AppAdminPenaltiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/payment-terms': {
@@ -2654,11 +3159,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminGamificationRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/documents': {
+      id: '/_app/admin/documents'
+      path: '/admin/documents'
+      fullPath: '/admin/documents'
+      preLoaderRoute: typeof AppAdminDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/delivery-receipts': {
+      id: '/_app/admin/delivery-receipts'
+      path: '/admin/delivery-receipts'
+      fullPath: '/admin/delivery-receipts'
+      preLoaderRoute: typeof AppAdminDeliveryReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/automation': {
       id: '/_app/admin/automation'
       path: '/admin/automation'
       fullPath: '/admin/automation'
       preLoaderRoute: typeof AppAdminAutomationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/audit': {
+      id: '/_app/admin/audit'
+      path: '/admin/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AppAdminAuditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/accounting/salesperson-capital-allocations': {
@@ -2703,6 +3229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingExternalPartiesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/dynamic-capital': {
+      id: '/_app/accounting/dynamic-capital'
+      path: '/accounting/dynamic-capital'
+      fullPath: '/accounting/dynamic-capital'
+      preLoaderRoute: typeof AppAccountingDynamicCapitalRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/daily-capital': {
       id: '/_app/accounting/daily-capital'
       path: '/accounting/daily-capital'
@@ -2737,6 +3270,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/academy/$courseId'
       preLoaderRoute: typeof AppAcademyCourseIdRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/sales/quotes/': {
       id: '/_app/sales/quotes/'
@@ -3040,7 +3587,9 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
 )
 
 interface AppGamificationRouteChildren {
+  AppGamificationAchievementsRoute: typeof AppGamificationAchievementsRoute
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
+  AppGamificationSettingsRoute: typeof AppGamificationSettingsRoute
   AppGamificationAdminAchievementsRoute: typeof AppGamificationAdminAchievementsRoute
   AppGamificationAdminAnalyticsRoute: typeof AppGamificationAdminAnalyticsRoute
   AppGamificationAdminKpiRulesRoute: typeof AppGamificationAdminKpiRulesRoute
@@ -3052,7 +3601,9 @@ interface AppGamificationRouteChildren {
 }
 
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
+  AppGamificationAchievementsRoute: AppGamificationAchievementsRoute,
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
+  AppGamificationSettingsRoute: AppGamificationSettingsRoute,
   AppGamificationAdminAchievementsRoute: AppGamificationAdminAchievementsRoute,
   AppGamificationAdminAnalyticsRoute: AppGamificationAdminAnalyticsRoute,
   AppGamificationAdminKpiRulesRoute: AppGamificationAdminKpiRulesRoute,
@@ -3113,10 +3664,12 @@ const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
 )
 
 interface AppUsersRouteChildren {
+  AppUsersUserIdRoute: typeof AppUsersUserIdRoute
   AppUsersPendingRoute: typeof AppUsersPendingRoute
 }
 
 const AppUsersRouteChildren: AppUsersRouteChildren = {
+  AppUsersUserIdRoute: AppUsersUserIdRoute,
   AppUsersPendingRoute: AppUsersPendingRoute,
 }
 
@@ -3211,19 +3764,25 @@ const AppSalesInvoicesInvoiceIdRouteWithChildren =
 
 interface AppRouteChildren {
   AppAcademyRoute: typeof AppAcademyRoute
+  AppApiKeysRoute: typeof AppApiKeysRoute
   AppAuditLogsRoute: typeof AppAuditLogsRoute
   AppBotApiKeysRoute: typeof AppBotApiKeysRouteWithChildren
+  AppCollaborationRoute: typeof AppCollaborationRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDeliveryReceiptsRoute: typeof AppDeliveryReceiptsRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
   AppFeedbackRoute: typeof AppFeedbackRoute
   AppGamificationRoute: typeof AppGamificationRouteWithChildren
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMarketMatchesRoute: typeof AppMarketMatchesRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppMyPenaltiesRoute: typeof AppMyPenaltiesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
+  AppPurchaseRoute: typeof AppPurchaseRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
   AppRolesRoute: typeof AppRolesRoute
@@ -3235,34 +3794,46 @@ interface AppRouteChildren {
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
   AppAccountingCustomerCapitalAllocationsRoute: typeof AppAccountingCustomerCapitalAllocationsRoute
   AppAccountingDailyCapitalRoute: typeof AppAccountingDailyCapitalRoute
+  AppAccountingDynamicCapitalRoute: typeof AppAccountingDynamicCapitalRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
   AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
   AppAccountingPurchasePaymentsRoute: typeof AppAccountingPurchasePaymentsRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
   AppAccountingSalespersonCapitalAllocationsRoute: typeof AppAccountingSalespersonCapitalAllocationsRoute
+  AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
+  AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
+  AppAdminDocumentsRoute: typeof AppAdminDocumentsRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
+  AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
+  AppAdminPurchaseRoute: typeof AppAdminPurchaseRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
+  AppAdminWorkflowSettingsRoute: typeof AppAdminWorkflowSettingsRoute
   AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
   AppDataTablesTableIdRoute: typeof AppDataTablesTableIdRoute
   AppDataTablesNewRoute: typeof AppDataTablesNewRoute
   AppFeedbackFeedbackIdRoute: typeof AppFeedbackFeedbackIdRoute
   AppFeedbackCreateRoute: typeof AppFeedbackCreateRoute
+  AppIntegrationsDidarRoute: typeof AppIntegrationsDidarRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
+  AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
+  AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
+  AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
@@ -3314,19 +3885,25 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAcademyRoute: AppAcademyRoute,
+  AppApiKeysRoute: AppApiKeysRoute,
   AppAuditLogsRoute: AppAuditLogsRoute,
   AppBotApiKeysRoute: AppBotApiKeysRouteWithChildren,
+  AppCollaborationRoute: AppCollaborationRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDeliveryReceiptsRoute: AppDeliveryReceiptsRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
   AppFeedbackRoute: AppFeedbackRoute,
   AppGamificationRoute: AppGamificationRouteWithChildren,
   AppInvoicesRoute: AppInvoicesRoute,
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMarketMatchesRoute: AppMarketMatchesRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppMyPenaltiesRoute: AppMyPenaltiesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
   AppPriceListsRoute: AppPriceListsRoute,
+  AppPurchaseRoute: AppPurchaseRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
   AppRolesRoute: AppRolesRoute,
@@ -3339,6 +3916,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingCustomerCapitalAllocationsRoute:
     AppAccountingCustomerCapitalAllocationsRoute,
   AppAccountingDailyCapitalRoute: AppAccountingDailyCapitalRoute,
+  AppAccountingDynamicCapitalRoute: AppAccountingDynamicCapitalRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
   AppAccountingPayablesRoute: AppAccountingPayablesRoute,
   AppAccountingPurchasePaymentsRoute: AppAccountingPurchasePaymentsRoute,
@@ -3346,28 +3924,39 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingReceivablesRoute: AppAccountingReceivablesRoute,
   AppAccountingSalespersonCapitalAllocationsRoute:
     AppAccountingSalespersonCapitalAllocationsRoute,
+  AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,
+  AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,
+  AppAdminDocumentsRoute: AppAdminDocumentsRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
+  AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
+  AppAdminPurchaseRoute: AppAdminPurchaseRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,
+  AppAdminWorkflowSettingsRoute: AppAdminWorkflowSettingsRoute,
   AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
   AppDataTablesTableIdRoute: AppDataTablesTableIdRoute,
   AppDataTablesNewRoute: AppDataTablesNewRoute,
   AppFeedbackFeedbackIdRoute: AppFeedbackFeedbackIdRoute,
   AppFeedbackCreateRoute: AppFeedbackCreateRoute,
+  AppIntegrationsDidarRoute: AppIntegrationsDidarRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
+  AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsGamificationRoute: AppOperationsGamificationRoute,
+  AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
+  AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
@@ -3453,12 +4042,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   PendingApprovalRoute: PendingApprovalRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   UnauthorizedRoute: UnauthorizedRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiHealthzRoute: ApiHealthzRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
+  ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,

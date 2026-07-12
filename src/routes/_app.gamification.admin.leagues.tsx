@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Loader2, Plus, Pencil, Eye, Play, Lock } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -528,18 +529,18 @@ function SeasonDialog({
           </div>
           <div>
             <Label>تاریخ شروع</Label>
-            <Input
-              type="date"
-              value={form.starts_at}
-              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+            <PersianDatePicker
+              value={form.starts_at || null}
+              onChange={(v) => setForm({ ...form, starts_at: v ?? "" })}
+              placeholder="تاریخ شروع"
             />
           </div>
           <div>
             <Label>تاریخ پایان</Label>
-            <Input
-              type="date"
-              value={form.ends_at}
-              onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+            <PersianDatePicker
+              value={form.ends_at || null}
+              onChange={(v) => setForm({ ...form, ends_at: v ?? "" })}
+              placeholder="تاریخ پایان"
             />
           </div>
           <div className="col-span-2">

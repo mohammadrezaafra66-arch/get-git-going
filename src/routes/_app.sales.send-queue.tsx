@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -248,8 +249,16 @@ function SendQueuePage() {
                 ))}
               </SelectContent>
             </Select>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <PersianDatePicker
+              value={dateFrom || null}
+              onChange={(v) => setDateFrom(v ?? "")}
+              placeholder="از تاریخ"
+            />
+            <PersianDatePicker
+              value={dateTo || null}
+              onChange={(v) => setDateTo(v ?? "")}
+              placeholder="تا تاریخ"
+            />
           </div>
         </CardContent>
       </Card>

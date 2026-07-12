@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -25,8 +25,19 @@ interface Props {
  * - دلار با snapshot آخرین نرخ معتبر محاسبه می‌شود.
  * - tooltip شامل تاریخ شمسی و قیمت.
  */
-export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) {
+const ProductPriceChart = forwardRef<HTMLDivElement, Props>(function ProductPriceChart(
+  { data, mode, usdRate, height = 280 },
+  ref,
+) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const setWrapperRef = (node: HTMLDivElement | null) => {
+    wrapperRef.current = node;
+    if (typeof ref === "function") {
+      ref(node);
+    } else if (ref) {
+      (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }
+  };
   const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
@@ -191,7 +202,7 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
 
   return (
     <div
-      ref={wrapperRef}
+      ref={setWrapperRef}
       style={{ width: "100%", height }}
       className="overflow-x-auto overflow-y-hidden"
       dir="ltr"
@@ -342,6 +353,8 @@ export function ProductPriceChart({ data, mode, usdRate, height = 280 }: Props) 
       </div>
     </div>
   );
-}
+});
+ProductPriceChart.displayName = "ProductPriceChart";
 
+export { ProductPriceChart };
 export default ProductPriceChart;

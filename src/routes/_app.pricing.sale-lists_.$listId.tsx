@@ -23,6 +23,7 @@ import {
   ArrowUpDown,
   AlertTriangle,
   RefreshCw,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -94,6 +95,11 @@ import {
   fetchObservatoryPdfHintsForProducts,
   type ObservatoryPdfHintMap,
 } from "@/lib/sales/observatory-snippets";
+import { buildFromSaleList } from "@/lib/price-list/builders";
+import { formatForPlainText } from "@/lib/price-list/formatters/plain-text";
+import { formatForTelegram } from "@/lib/price-list/formatters/telegram";
+import { formatForWhatsApp } from "@/lib/price-list/formatters/whatsapp";
+import { formatForRubika } from "@/lib/price-list/formatters/rubika";
 
 const PAGE_SIZE = 20;
 
@@ -150,6 +156,9 @@ interface SaleListDetail {
   settlement_type: { id: string; title: string } | null;
   pdf_brand_order: string[] | null;
   pdf_product_order_by_brand: Record<string, string[]> | null;
+  pdf_font_size: number | null;
+  pdf_row_padding_y: number | null;
+  pdf_cell_padding_x: number | null;
 }
 
 interface SaleListItemRow {
@@ -192,7 +201,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, pdf_font_size, pdf_row_padding_y, pdf_cell_padding_x, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -284,7 +293,7 @@ function SaleListDetailPage() {
       const formatted: Record<string, string> = {};
       for (const [pid, arr] of byProduct) {
         arr.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label, "fa"));
-        formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
+        formatted[pid] = arr.map((a) => a.value).join(" - ");
       }
       return formatted;
     },
@@ -294,6 +303,20 @@ function SaleListDetailPage() {
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
   const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+
+  // Sync PDF appearance state from DB when listQ.data loads/changes.
+  useEffect(() => {
+    const d = listQ.data;
+    if (!d) return;
+    setPdfFontSize(d.pdf_font_size ?? 10);
+    setPdfRowPadY(d.pdf_row_padding_y ?? 2);
+    setPdfCellPadX(d.pdf_cell_padding_x ?? 4);
+  }, [
+    listQ.data?.id,
+    listQ.data?.pdf_font_size,
+    listQ.data?.pdf_row_padding_y,
+    listQ.data?.pdf_cell_padding_x,
+  ]);
 
   // PDF order settings dialog state (brand keys + per-brand product UUIDs).
   // Brand keys use the same convention as the PDF (NO_BRAND_KEY for no-brand).
@@ -411,9 +434,9 @@ function SaleListDetailPage() {
     ): string | null => {
       const d = (desc ?? "").trim();
       const a = (attrs ?? "").trim();
-      if (d && a) return `${d}\nویژگی‌ها: ${a}`;
+      if (d && a) return `${d}\n${a}`;
       if (d) return d;
-      if (a) return `ویژگی‌ها: ${a}`;
+      if (a) return a;
       return null;
     };
     return {
@@ -560,6 +583,29 @@ function SaleListDetailPage() {
     }
   };
 
+  const persistPdfAppearance = async (
+    fontSize: number = pdfFontSize,
+    rowPadY: number = pdfRowPadY,
+    cellPadX: number = pdfCellPadX,
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("sale_lists")
+        .update({
+          pdf_font_size: fontSize,
+          pdf_row_padding_y: rowPadY,
+          pdf_cell_padding_x: cellPadX,
+        })
+        .eq("id", listId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["sale-list", listId] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ذخیره تنظیمات ظاهر PDF ناموفق بود.");
+      return false;
+    }
+  };
+
   const handleSaveOrder = async () => {
     setSavingOrder(true);
     try {
@@ -578,8 +624,11 @@ function SaleListDetailPage() {
     try {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
-        await persistPdfOrder();
+        const orderOk = await persistPdfOrder();
+        if (!orderOk) return;
       }
+      const appearanceOk = await persistPdfAppearance();
+      if (!appearanceOk) return;
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
       const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
@@ -654,6 +703,32 @@ function SaleListDetailPage() {
   const handlePreview = () => openPdfOrderDialog();
   const handleDownload = () => openPdfOrderDialog();
 
+  const copyShareText = async (
+    channel: "plain" | "telegram" | "whatsapp" | "rubika",
+    label: string,
+  ) => {
+    if (items.length === 0) {
+      toast.error("لیست خالی است.");
+      return;
+    }
+    try {
+      const model = buildFromSaleList({
+        list,
+        items,
+        shop: shopSettingsQ.data ?? null,
+      });
+      let text = "";
+      if (channel === "plain") text = formatForPlainText(model);
+      else if (channel === "telegram") text = formatForTelegram(model)[0] ?? "";
+      else if (channel === "whatsapp") text = formatForWhatsApp(model);
+      else text = formatForRubika(model);
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} در کلیپ‌بورد کپی شد.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "کپی ناموفق بود.");
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -669,6 +744,38 @@ function SaleListDetailPage() {
             </Button>
             <Button variant="outline" size="sm" className="gap-1" onClick={handleDownload}>
               <Download className="h-4 w-4" /> دانلود PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("plain", "متن ساده")}
+            >
+              <Copy className="h-4 w-4" /> کپی متن ساده
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("telegram", "متن تلگرام")}
+            >
+              <Copy className="h-4 w-4" /> تلگرام
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("whatsapp", "متن واتساپ")}
+            >
+              <Copy className="h-4 w-4" /> واتساپ
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("rubika", "متن روبیکا")}
+            >
+              <Copy className="h-4 w-4" /> روبیکا
             </Button>
             {canPublish && (
               <Button asChild size="sm" className="gap-1">
@@ -756,10 +863,15 @@ function SaleListDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setPdfFontSize(10);
-              setPdfRowPadY(2);
-              setPdfCellPadX(4);
+            onClick={async () => {
+              const nextFontSize = 10;
+              const nextRowPadY = 2;
+              const nextCellPadX = 4;
+              setPdfFontSize(nextFontSize);
+              setPdfRowPadY(nextRowPadY);
+              setPdfCellPadX(nextCellPadX);
+              const ok = await persistPdfAppearance(nextFontSize, nextRowPadY, nextCellPadX);
+              if (ok) toast.success("تنظیمات ظاهر PDF بازنشانی شد.");
             }}
           >
             بازنشانی

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +40,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "sonner";
 import { fetchProfileFieldValues, fetchActiveProfileFields } from "@/lib/profile-fields/queries";
 import { WEEK_DAYS } from "@/lib/profile-fields/types";
-import { Zap } from "lucide-react";
+import { Zap, ShieldCheck } from "lucide-react";
+import { RoleManagerDialog } from "@/components/users/RoleManagerDialog";
 
 type Status = "all" | "pending" | "active" | "inactive" | "rejected";
 const VALID_STATUS: Status[] = ["all", "pending", "active", "inactive", "rejected"];
@@ -93,6 +94,7 @@ function UsersManagementPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<Row | null>(null);
   const [reactivateTarget, setReactivateTarget] = useState<Row | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Row | null>(null);
+  const [roleManageTarget, setRoleManageTarget] = useState<Row | null>(null);
   const [selRole, setSelRole] = useState<AppRole>("viewer");
   const [selPosition, setSelPosition] = useState("");
   const [rejectNotes, setRejectNotes] = useState("");
@@ -313,6 +315,11 @@ function UsersManagementPage() {
                             <Button size="sm" variant="ghost" onClick={() => setDetailsTarget(u)}>
                               جزئیات
                             </Button>
+                            <Button size="sm" variant="outline" asChild>
+                              <Link to="/users/$userId" params={{ userId: u.id }}>
+                                امتیاز پویا
+                              </Link>
+                            </Button>
                             {u.status === "pending" && (
                               <>
                                 <Button
@@ -345,13 +352,23 @@ function UsersManagementPage() {
                               </>
                             )}
                             {u.status === "active" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setDeactivateTarget(u)}
-                              >
-                                غیرفعال‌سازی
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setRoleManageTarget(u)}
+                                >
+                                  <ShieldCheck className="ml-1 h-3.5 w-3.5" />
+                                  مدیریت نقش
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setDeactivateTarget(u)}
+                                >
+                                  غیرفعال‌سازی
+                                </Button>
+                              </>
                             )}
                             {(u.status === "inactive" || u.status === "rejected") && (
                               <Button
@@ -528,6 +545,13 @@ function UsersManagementPage() {
       </AlertDialog>
 
       <UserDetailsDialog target={detailsTarget} onClose={() => setDetailsTarget(null)} />
+
+      <RoleManagerDialog
+        userId={roleManageTarget?.id ?? null}
+        userName={roleManageTarget?.full_name}
+        open={!!roleManageTarget}
+        onOpenChange={(o) => !o && setRoleManageTarget(null)}
+      />
     </div>
   );
 }

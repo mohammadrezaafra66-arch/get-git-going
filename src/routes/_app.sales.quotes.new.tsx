@@ -6,6 +6,7 @@ import { Loader2, Plus, Trash2, Search, Save, Package, FileText, Sparkles } from
 import { ensureAuthReady } from "@/lib/auth/session";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +25,10 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
+import { Badge } from "@/components/ui/badge";
+import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -241,11 +245,10 @@ function NewQuotePage() {
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
-              <Input
-                id="expires_at"
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
+              <PersianDatePicker
+                value={expiresAt || null}
+                onChange={(v) => setExpiresAt(v ?? "")}
+                placeholder="انتخاب تاریخ اعتبار"
               />
             </div>
             <div className="space-y-1.5 md:col-span-1">
@@ -487,21 +490,19 @@ function ProductTab(props: {
     queryKey: ["quote-product-search", term],
     queryFn: async () => {
       const safe = term.replace(/[%_]/g, "");
-      const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+      const { data, error } = await supabase.rpc("search_product_ids", {
         p_term: safe,
-        p_limit: 100,
+        p_limit: 20,
       });
-      let q = supabase.from("products").select("id, name, sku").eq("is_active", true).limit(20);
-      if (idsErr) {
-        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
-      } else {
-        const ids = (idsData ?? []).map((r: { id: string }) => r.id);
-        if (ids.length === 0) return [];
-        q = q.in("id", ids);
-      }
-      const { data, error } = await q;
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Array<{
+        id: string;
+        name: string;
+        sku: string | null;
+        barcode: string | null;
+        stock_status: "available" | "unavailable" | "limited" | "unknown";
+        is_active: boolean;
+      }>;
     },
     staleTime: 30_000,
   });
@@ -513,6 +514,7 @@ function ProductTab(props: {
     () => (productsQuery.data ?? []).map((p: { id: string }) => p.id),
     [productsQuery.data],
   );
+  const { thumbnailFor } = useProductThumbnails(productIds);
   const pricesByProductQuery = useQuery({
     enabled: productIds.length > 0,
     queryKey: ["quote-product-search-prices", productIds],
@@ -593,7 +595,7 @@ function ProductTab(props: {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="جستجوی نام محصول یا SKU (حداقل ۲ حرف)"
+              placeholder="جستجوی نام محصول، SKU یا بارکد (حداقل ۲ حرف)"
               className="pr-9"
             />
           </div>
@@ -605,19 +607,89 @@ function ProductTab(props: {
             ) : (
               <div className="max-h-80 overflow-y-auto rounded-md border border-border divide-y divide-border">
                 {(productsQuery.data ?? []).map(
-                  (p: { id: string; name: string; sku: string | null }) => {
+                  (p: {
+                    id: string;
+                    name: string;
+                    sku: string | null;
+                    barcode?: string | null;
+                    stock_status: "available" | "unavailable" | "limited" | "unknown";
+                    labels?: Array<{
+                      label:
+                        | { id: string; title: string; color: string | null; visibility?: string | null }
+                        | Array<{ id: string; title: string; color: string | null; visibility?: string | null }>
+                        | null;
+                    }>;
+                  }) => {
                     const prices = pricesByProductQuery.data?.get(p.id) ?? [];
+                    const thumb = thumbnailFor(p.id);
+                    const labelList = (p.labels ?? [])
+                      .map((row) => (Array.isArray(row.label) ? row.label[0] : row.label))
+                      .filter(
+                        (l): l is { id: string; title: string; color: string | null; visibility?: string | null } =>
+                          !!l,
+                      );
                     return (
                       <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
                         <button
                           type="button"
                           onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
-                          className="flex w-full items-center justify-between gap-2 text-right"
+                          className="flex w-full items-start justify-between gap-2 text-right"
                         >
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{p.name}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">
-                              {p.sku ?? "—"}
+                          <div className="flex min-w-0 items-start gap-2">
+                            {thumb ? (
+                              <img
+                                src={thumb}
+                                alt={p.name}
+                                loading="lazy"
+                                className="h-10 w-10 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-bold truncate">{p.name}</div>
+                              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                <span
+                                  className="text-[11px] text-muted-foreground font-mono"
+                                  dir="ltr"
+                                >
+                                  {p.sku ?? "—"}
+                                </span>
+                                {p.barcode && (
+                                  <span
+                                    className="text-[11px] text-muted-foreground font-mono"
+                                    dir="ltr"
+                                    title="بارکد"
+                                  >
+                                    {p.barcode}
+                                  </span>
+                                )}
+                                <Badge
+                                  variant={STOCK_STATUS_VARIANTS[p.stock_status]}
+                                  className="text-[10px] py-0 px-1.5"
+                                >
+                                  {STOCK_STATUS_LABELS[p.stock_status]}
+                                </Badge>
+                              </div>
+                              {labelList.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {labelList.slice(0, 4).map((l) => (
+                                    <span
+                                      key={l.id}
+                                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                                      style={
+                                        l.color ? { borderColor: l.color, color: l.color } : undefined
+                                      }
+                                    >
+                                      <span
+                                        className="inline-block h-2 w-2 rounded-full"
+                                        style={l.color ? { backgroundColor: l.color } : undefined}
+                                      />
+                                      {l.title}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </button>

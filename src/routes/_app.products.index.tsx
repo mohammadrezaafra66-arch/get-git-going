@@ -2,7 +2,17 @@ import { useMemo, useState } from "react";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye, Tag } from "lucide-react";
+import {
+  Plus,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Eye,
+  Tag,
+  History,
+  ImageIcon,
+} from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -31,6 +41,7 @@ import {
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
+import { ProductTimelineDialog } from "@/components/products/ProductTimelineDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 
@@ -69,6 +80,7 @@ function ProductsPage() {
   );
   const [page, setPage] = useSessionStorageState<number>("products:list:page", 0);
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<{ id: string; name: string } | null>(null);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
@@ -160,6 +172,44 @@ function ProductsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PRODUCTS_PAGE_SIZE));
 
+  // Fetch one thumbnail per visible product (primary first, else lowest sort_order)
+  const visibleIds = useMemo(() => (data?.rows ?? []).map((r) => r.id), [data?.rows]);
+  const thumbnailsQ = useQuery({
+    enabled: visibleIds.length > 0,
+    queryKey: ["product-thumbnails", visibleIds],
+    queryFn: async () => {
+      const { data: imgs, error } = await supabase
+        .from("product_images")
+        .select("product_id, url, is_primary, sort_order")
+        .in("product_id", visibleIds)
+        .order("is_primary", { ascending: false })
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      const firstByProduct = new Map<string, string>();
+      for (const r of imgs ?? []) {
+        if (!firstByProduct.has((r as any).product_id))
+          firstByProduct.set((r as any).product_id, (r as any).url);
+      }
+      const paths = Array.from(firstByProduct.values());
+      if (paths.length === 0) return new Map<string, string>();
+      const { data: signed } = await supabase.storage
+        .from("product-images")
+        .createSignedUrls(paths, 3600);
+      const signedByPath = new Map<string, string>();
+      (signed ?? []).forEach((s: any) => {
+        if (s.path && s.signedUrl) signedByPath.set(s.path, s.signedUrl);
+      });
+      const out = new Map<string, string>();
+      firstByProduct.forEach((path, pid) => {
+        const u = signedByPath.get(path);
+        if (u) out.set(pid, u);
+      });
+      return out;
+    },
+    staleTime: 60_000,
+  });
+  const thumbnailFor = (id: string) => thumbnailsQ.data?.get(id);
+
   const onFiltersChange = (next: ProductFilterState) => {
     setFilters(next);
     setPage(0);
@@ -240,6 +290,7 @@ function ProductsPage() {
                 <table className="w-full text-sm">
                   <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                     <tr>
+                      <th className="p-3 font-medium w-12">تصویر</th>
                       <th className="p-3 font-medium">نام</th>
                       <th className="p-3 font-medium">SKU</th>
                       <th className="p-3 font-medium">برند</th>
@@ -256,8 +307,26 @@ function ProductsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data?.rows ?? []).map((p) => (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                    {(data?.rows ?? []).map((p, index) => (
+                      <tr
+                        key={p.id}
+                        className="border-b last:border-0 hover:bg-muted/30 opacity-0 animate-in fade-in slide-in-from-bottom-1 duration-300"
+                        style={{ animationDelay: `${index * 30}ms`, animationFillMode: "forwards" }}
+                      >
+                        <td className="p-2">
+                          {thumbnailFor(p.id) ? (
+                            <img
+                              src={thumbnailFor(p.id)}
+                              alt=""
+                              className="h-10 w-10 rounded-md object-cover border border-border transition-transform duration-200 hover:scale-110"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                              <ImageIcon className="h-4 w-4" />
+                            </div>
+                          )}
+                        </td>
                         <td className="p-3">
                           <Link
                             to="/products/$id"
@@ -315,6 +384,20 @@ function ProductsPage() {
                               <Link to="/products/$id" params={{ id: p.id }}>
                                 <Eye className="h-4 w-4" />
                               </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="تاریخچه"
+                              title="تاریخچه"
+                              onClick={() =>
+                                setTimelineTarget({
+                                  id: p.id,
+                                  name: formatProductDisplayNameWithFallback(p),
+                                })
+                              }
+                            >
+                              <History className="h-4 w-4" />
                             </Button>
                             {canUpdate && (
                               <Button asChild variant="ghost" size="icon" aria-label="ویرایش">
@@ -396,6 +479,19 @@ function ProductsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
+                            setTimelineTarget({
+                              id: p.id,
+                              name: formatProductDisplayNameWithFallback(p),
+                            })
+                          }
+                        >
+                          <History className="ms-1 h-3.5 w-3.5" />
+                          تاریخچه
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
                             setLabelTarget({
                               id: p.id,
                               name: formatProductDisplayNameWithFallback(p),
@@ -459,6 +555,15 @@ function ProductsPage() {
         open={!!labelTarget}
         onOpenChange={(o) => {
           if (!o) setLabelTarget(null);
+        }}
+      />
+
+      <ProductTimelineDialog
+        productId={timelineTarget?.id ?? null}
+        productName={timelineTarget?.name ?? ""}
+        open={!!timelineTarget}
+        onOpenChange={(o) => {
+          if (!o) setTimelineTarget(null);
         }}
       />
     </div>
