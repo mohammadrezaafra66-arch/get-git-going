@@ -9180,7 +9180,6 @@ export type Database = {
       product_computed_prices_public: {
         Row: {
           computed_at: string | null
-          computed_by: string | null
           final_sale_price: number | null
           id: string | null
           pricing_rule_id: string | null
@@ -9191,7 +9190,6 @@ export type Database = {
         }
         Insert: {
           computed_at?: string | null
-          computed_by?: string | null
           final_sale_price?: number | null
           id?: string | null
           pricing_rule_id?: string | null
@@ -9202,7 +9200,6 @@ export type Database = {
         }
         Update: {
           computed_at?: string | null
-          computed_by?: string | null
           final_sale_price?: number | null
           id?: string | null
           pricing_rule_id?: string | null
