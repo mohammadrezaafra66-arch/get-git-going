@@ -35,6 +35,28 @@ type Task = {
   completed_at: string | null;
 };
 
+type NumericValue = number | string | null | undefined;
+
+type TaskKpiRow = {
+  section: "overall" | "queue" | "proof" | "status" | string;
+  bucket_key: string;
+  bucket_label: string;
+  task_count: NumericValue;
+  open_count: NumericValue;
+  pending_count: NumericValue;
+  in_progress_count: NumericValue;
+  done_count: NumericValue;
+  blocked_count: NumericValue;
+  canceled_count: NumericValue;
+  overdue_count: NumericValue;
+  due_soon_count: NumericValue;
+  avg_completion_hours: NumericValue;
+  completion_rate: NumericValue;
+  overdue_rate: NumericValue;
+  oldest_open_at: string | null;
+  newest_task_at: string | null;
+};
+
 function statusLabel(s: string) {
   switch (s) {
     case "pending":
@@ -88,6 +110,83 @@ function isInvoiceLinkTask(t: Task) {
   );
 }
 
+function asNumber(value: NumericValue) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatNumber(value: NumericValue) {
+  const n = asNumber(value);
+  return n === null ? "—" : Math.round(n).toLocaleString("fa-IR");
+}
+
+function formatPercent(value: NumericValue) {
+  const n = asNumber(value);
+  return n === null ? "—" : `${n.toLocaleString("fa-IR", { maximumFractionDigits: 1 })}٪`;
+}
+
+function formatHours(value: NumericValue) {
+  const n = asNumber(value);
+  return n === null ? "—" : `${n.toLocaleString("fa-IR", { maximumFractionDigits: 1 })} ساعت`;
+}
+
+function formatDateOnly(value: string | null) {
+  return value ? formatDateFa(value.slice(0, 10)) : "—";
+}
+
+function KpiCard({ title, value, hint }: { title: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="text-xs text-muted-foreground">{title}</div>
+      <div className="mt-2 text-2xl font-bold">{value}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+    </div>
+  );
+}
+
+function KpiTable({ title, rows }: { title: string; rows: TaskKpiRow[] }) {
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <div className="border-b bg-muted/40 px-4 py-2 text-sm font-semibold">{title}</div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[780px] text-sm">
+          <thead className="bg-muted/30 text-xs text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2 text-right">بخش</th>
+              <th className="px-3 py-2 text-right">کل</th>
+              <th className="px-3 py-2 text-right">باز</th>
+              <th className="px-3 py-2 text-right">معوق</th>
+              <th className="px-3 py-2 text-right">نزدیک موعد</th>
+              <th className="px-3 py-2 text-right">انجام‌شده</th>
+              <th className="px-3 py-2 text-right">نرخ تکمیل</th>
+              <th className="px-3 py-2 text-right">نرخ معوق</th>
+              <th className="px-3 py-2 text-right">قدیمی‌ترین باز</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={`${r.section}:${r.bucket_key}`} className="border-t">
+                <td className="px-3 py-2 font-medium">{r.bucket_label}</td>
+                <td className="px-3 py-2">{formatNumber(r.task_count)}</td>
+                <td className="px-3 py-2">{formatNumber(r.open_count)}</td>
+                <td className="px-3 py-2">{formatNumber(r.overdue_count)}</td>
+                <td className="px-3 py-2">{formatNumber(r.due_soon_count)}</td>
+                <td className="px-3 py-2">{formatNumber(r.done_count)}</td>
+                <td className="px-3 py-2">{formatPercent(r.completion_rate)}</td>
+                <td className="px-3 py-2">{formatPercent(r.overdue_rate)}</td>
+                <td className="px-3 py-2">{formatDateOnly(r.oldest_open_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function TasksBoardPage() {
   const { roles } = useAuth();
   const canTick = roles.includes("admin") || roles.includes("accountant");
@@ -97,6 +196,9 @@ function TasksBoardPage() {
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [kpiRows, setKpiRows] = useState<TaskKpiRow[]>([]);
+  const [kpiDays, setKpiDays] = useState<string>("30");
+  const [kpiLoading, setKpiLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -118,9 +220,26 @@ function TasksBoardPage() {
     setCount(c ?? 0);
   };
 
+  const loadKpi = async () => {
+    setKpiLoading(true);
+    const { data, error } = await (supabase as any).rpc("get_task_kpi_report", {
+      p_days: Number(kpiDays),
+    });
+    setKpiLoading(false);
+    if (error) {
+      toast.error("خطا در بارگذاری گزارش وظایف");
+      return;
+    }
+    setKpiRows((data ?? []) as TaskKpiRow[]);
+  };
+
   useEffect(() => {
     load(); /* eslint-disable-next-line */
   }, [page, filterStatus]);
+
+  useEffect(() => {
+    loadKpi(); /* eslint-disable-next-line */
+  }, [kpiDays]);
 
   const startTask = async (id: string) => {
     setActing(id);
@@ -134,6 +253,7 @@ function TasksBoardPage() {
     }
     toast.success("شروع شد");
     load();
+    loadKpi();
   };
 
   const completeTask = async (t: Task) => {
@@ -157,9 +277,14 @@ function TasksBoardPage() {
     }
     toast.success("وظیفه تکمیل شد");
     load();
+    loadKpi();
   };
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const overall = kpiRows.find((r) => r.section === "overall");
+  const queueRows = kpiRows.filter((r) => r.section === "queue");
+  const proofRows = kpiRows.filter((r) => r.section === "proof");
+  const statusRows = kpiRows.filter((r) => r.section === "status");
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -167,6 +292,66 @@ function TasksBoardPage() {
         title="برد وظایف"
         description="وظایف اختصاص‌یافته، بررسی پیش‌فاکتورها و کارهای عملیاتی ارسال/مدرک"
       />
+
+      <div className="space-y-4 rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">گزارش عملکرد وظایف</h2>
+            <p className="text-xs text-muted-foreground">
+              نمای مدیریتی از وظایف باز، معوق، نزدیک موعد، تکمیل‌شده و عملکرد صف‌ها
+            </p>
+          </div>
+          <Select value={kpiDays} onValueChange={setKpiDays}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">۷ روز اخیر</SelectItem>
+              <SelectItem value="30">۳۰ روز اخیر</SelectItem>
+              <SelectItem value="90">۹۰ روز اخیر</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {kpiLoading ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">در حال بارگذاری گزارش...</div>
+        ) : kpiRows.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+            هنوز داده‌ای برای گزارش عملکرد وظایف وجود ندارد.
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-4">
+              <KpiCard
+                title="کل وظایف"
+                value={formatNumber(overall?.task_count)}
+                hint="در بازه انتخابی + وظایف باز قدیمی"
+              />
+              <KpiCard
+                title="وظایف باز"
+                value={formatNumber(overall?.open_count)}
+                hint={`نزدیک موعد: ${formatNumber(overall?.due_soon_count)}`}
+              />
+              <KpiCard
+                title="وظایف معوق"
+                value={formatNumber(overall?.overdue_count)}
+                hint={`نرخ معوق: ${formatPercent(overall?.overdue_rate)}`}
+              />
+              <KpiCard
+                title="نرخ تکمیل"
+                value={formatPercent(overall?.completion_rate)}
+                hint={`میانگین زمان تکمیل: ${formatHours(overall?.avg_completion_hours)}`}
+              />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <KpiTable title="عملکرد به تفکیک صف" rows={queueRows} />
+              <KpiTable title="عملکرد به تفکیک مدرک" rows={proofRows} />
+            </div>
+            <KpiTable title="عملکرد به تفکیک وضعیت" rows={statusRows} />
+          </>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Select
