@@ -35,6 +35,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set build time
+        id: build_time
+        run: echo "value=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
 
       - name: Build & push
         uses: docker/build-push-action@v5
@@ -46,6 +50,10 @@ jobs:
           tags: |
             ${{ steps.img.outputs.name }}:latest
             ${{ steps.img.outputs.name }}:sha-${{ github.sha }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.build_time.outputs.value }}
+            APP_ENV=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -65,3 +73,4 @@ jobs:
           else
             echo "ℹ️ No client bundle directory in image — skipping scan"
           fi
+
