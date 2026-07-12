@@ -3,12 +3,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import { createCustomer } from "@/lib/customers/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +34,11 @@ const schema = z.object({
   accounting_code: z
     .string()
     .trim()
-    .min(1, "کد آسان الزامی است")
-    .regex(accountingCodeRegex, "کد آسان نامعتبر (حروف انگلیسی/اعداد/_/-، حداکثر ۳۰)"),
+    .optional()
+    .refine(
+      (v) => !v || accountingCodeRegex.test(v),
+      "کد آسان نامعتبر (حروف انگلیسی/اعداد/_/-، حداکثر ۳۰)",
+    ),
   city: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(500).optional(),
 });
@@ -48,7 +49,7 @@ export interface QuickAddCustomerResult {
   id: string;
   name: string;
   phone: string;
-  accounting_code: string;
+  accounting_code: string | null;
 }
 
 interface Props {
@@ -73,7 +74,6 @@ export function QuickAddCustomerDialog({
 }: Props) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-  const createCustomerFn = useServerFn(createCustomer);
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -86,7 +86,7 @@ export function QuickAddCustomerDialog({
       const payload = {
         name: v.name.trim(),
         phone: v.phone.trim(),
-        accounting_code: v.accounting_code.trim(),
+        accounting_code: v.accounting_code?.trim() || null,
         city: v.city?.trim() || null,
         notes: v.notes?.trim() || null,
       };
@@ -97,20 +97,32 @@ export function QuickAddCustomerDialog({
       if (!token) {
         throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
       }
-      const row = await createCustomerFn({
-        headers: { Authorization: `Bearer ${token}` },
-        data: payload,
-      });
+      const { data: row, error } = await supabase
+        .from("customers")
+        .insert(payload)
+        .select("id, name, phone, accounting_code")
+        .single();
+
+      if (error) {
+        throw error;
+      }
+      if (!row) {
+        throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
+      }
+
       return {
         id: row.id,
         name: row.name,
         phone: row.phone ?? payload.phone,
-        accounting_code: row.accounting_code ?? payload.accounting_code,
+        accounting_code: row.accounting_code ?? payload.accounting_code ?? null,
       } satisfies QuickAddCustomerResult;
     },
     onSuccess: (c) => {
       toast.success(`شخص «${c.name}» با موفقیت ثبت شد`);
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers", "search"] });
+      queryClient.invalidateQueries({ queryKey: ["invoice-form-customers"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-quote-customer-search"] });
       onCreated?.(c);
       form.reset();
       setOpen(false);
@@ -133,7 +145,11 @@ export function QuickAddCustomerDialog({
       }
 
       // Duplicate accounting code → highlight the field too
-      if (raw.includes("کد حسابداری تکراری") || lower.includes("accounting_code")) {
+      if (
+        raw.includes("کد حسابداری تکراری") ||
+        lower.includes("accounting_code") ||
+        lower.includes("duplicate key")
+      ) {
         form.setError("accounting_code", { message: "کد آسان تکراری است" });
         toast.error("کد آسان تکراری است؛ یک کد یکتای دیگر انتخاب کنید.");
         return;
@@ -212,9 +228,7 @@ export function QuickAddCustomerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="qa-code">
-              کد آسان <span className="text-destructive">*</span>
-            </Label>
+            <Label htmlFor="qa-code">کد آسان</Label>
             <Input
               id="qa-code"
               dir="ltr"
@@ -225,7 +239,9 @@ export function QuickAddCustomerDialog({
             {errors.accounting_code && (
               <p className="text-xs text-destructive">{errors.accounting_code.message}</p>
             )}
-            <p className="text-[11px] text-muted-foreground">یکتا، فقط حروف انگلیسی/اعداد/_/-</p>
+            <p className="text-[11px] text-muted-foreground">
+              اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-
+            </p>
           </div>
 
           <div className="space-y-1.5">

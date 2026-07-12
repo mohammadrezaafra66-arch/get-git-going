@@ -6,13 +6,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { createCustomer, updateCustomer } from "@/lib/customers/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,8 +86,6 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles } = useAuth();
-  const createCustomerFn = useServerFn(createCustomer);
-  const updateCustomerFn = useServerFn(updateCustomer);
 
   const isAdminOrManager = roles.includes("admin") || roles.includes("manager");
   const isSales = roles.includes("sales");
@@ -131,28 +127,78 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         link_group: values.link_group?.trim() || null,
         birth_date: values.birth_date ? values.birth_date : null,
       };
-      // Belt-and-suspenders: explicitly attach bearer token at call site.
-      // Mirrors the proven persons pattern — guarantees Authorization header
-      // is present even if the global attachSupabaseAuth middleware misfires
-      // (hydration timing, bundler quirk), avoiding «نشست کاربری معتبر نیست».
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
+      if (!user?.id) {
         throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
       }
-      const authHeaders = { Authorization: `Bearer ${token}` };
-      if (customerId) {
-        const row = await updateCustomerFn({
-          headers: authHeaders,
-          data: { id: customerId, patch: payload },
-        });
-        return row.id;
+
+      const duplicateFilters: string[] = [];
+      if (payload.accounting_code) {
+        duplicateFilters.push(`accounting_code.eq.${payload.accounting_code}`);
       }
-      const row = await createCustomerFn({
-        headers: authHeaders,
-        data: payload,
-      });
-      return row.id;
+      if (payload.phone) {
+        duplicateFilters.push(`phone.eq.${payload.phone}`);
+      }
+
+      if (duplicateFilters.length > 0) {
+        let duplicateQuery = supabase
+          .from("customers")
+          .select("id, name, phone, accounting_code")
+          .or(duplicateFilters.join(","))
+          .limit(1);
+
+        if (customerId) {
+          duplicateQuery = duplicateQuery.neq("id", customerId);
+        }
+
+        const { data: duplicateRows, error: duplicateError } = await duplicateQuery;
+        if (duplicateError) throw new Error(duplicateError.message);
+
+        const duplicate = duplicateRows?.[0] as
+          | {
+              id: string;
+              name: string | null;
+              phone: string | null;
+              accounting_code: string | null;
+            }
+          | undefined;
+
+        if (duplicate) {
+          if (payload.accounting_code && duplicate.accounting_code === payload.accounting_code) {
+            throw new Error(
+              `کد حسابداری تکراری است؛ مشتری «${duplicate.name ?? "بدون نام"}» قبلاً با این کد ثبت شده است.`,
+            );
+          }
+          if (payload.phone && duplicate.phone === payload.phone) {
+            throw new Error(
+              `شماره تماس تکراری است؛ مشتری «${duplicate.name ?? "بدون نام"}» قبلاً با این شماره ثبت شده است.`,
+            );
+          }
+          throw new Error("مشتری مشابه قبلاً ثبت شده است.");
+        }
+      }
+
+      if (customerId) {
+        const { data: row, error } = await supabase
+          .from("customers")
+          .update(payload as never)
+          .eq("id", customerId)
+          .select("id")
+          .single();
+
+        if (error) throw new Error(error.message);
+        if (!row) throw new Error("مشتری یافت نشد یا دسترسی به آن ندارید");
+        return (row as { id: string }).id;
+      }
+
+      const { data: row, error } = await supabase
+        .from("customers")
+        .insert(payload as never)
+        .select("id")
+        .single();
+
+      if (error) throw new Error(error.message);
+      if (!row) throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
+      return (row as { id: string }).id;
     },
     onSuccess: () => {
       toast.success(customerId ? "مشتری ویرایش شد" : "مشتری ثبت شد");

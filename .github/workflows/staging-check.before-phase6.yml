@@ -1,0 +1,17 @@
+name: Staging Check Backup Disabled
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup-disabled:
+    name: Backup workflow disabled
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain disabled backup workflow
+        run: |
+          echo "This file is a disabled Phase 6 backup workflow."
+          echo "It does not run on pull_request or push events."

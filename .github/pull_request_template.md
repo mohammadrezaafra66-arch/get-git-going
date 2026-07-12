@@ -1,86 +1,390 @@
-## Summary
+# AfraKala Pull Request Template
 
-<!-- What does this PR change and why? Keep scope small and incremental. -->
+## 1. PR Identity
 
-## Task Packet
+Task Packet / WPC ID:
 
-- Task ID:
-- Phase Label: BASELINE / PHASE-0 / PHASE-1 / FUTURE
-- Related ADR/docs:
+-
 
-## Baseline / ADR alignment
+PR title:
 
-- [ ] This PR does **not** introduce a parallel backend, database, API, or control plane.
-- [ ] This PR does **not** implement Divar, Torob real extraction, WhatsApp, Instagram, OCR, STT, or AI bots in Phase 0.
-- [ ] Supabase/PostgreSQL remains the source of truth for persistent state.
-- [ ] GitHub remains the source of truth for code/docs; Drive is mirror only.
-- [ ] Lovable/React/TanStack changes are UI-only unless explicitly approved by ADR.
-- [ ] Python Worker Runtime concerns are not implemented inside UI components.
-- [ ] External integrations, if any, are optional, feature-flagged, and server-side secret safe.
+-
 
-## Change type
+Tool/source of change:
 
-- [ ] Feature
-- [ ] Bug fix
-- [ ] Docs / baseline / ADR
-- [ ] Automation contract (OpenAPI / JSON Schema)
-- [ ] Migration / RLS / RBAC
-- [ ] Deploy / ops
+- [ ] Cursor
+- [ ] Lovable
+- [ ] Human manual edit
+- [ ] Other:
 
-## Files intentionally changed
+Branch family:
 
-<!-- List changed files or directories and why each was changed. -->
+- [ ] `lovable/ui/WPC-*-*`
+- [ ] `cursor/core/WPC-*-*`
+- [ ] `cursor/automation/WPC-*-*`
+- [ ] `cursor/contract/WPC-*-*`
+- [ ] `cursor/docs/WPC-*-*`
+- [ ] `docs/WPC-*-*`
+- [ ] `hotfix/WPC-*-*`
+- [ ] Other:
 
-## Migration impact
+Source branch:
 
-<!-- None, or link to `supabase/migrations/<timestamp>_*.sql` -->
+-
 
-## RLS / RBAC impact
+Target branch:
 
-<!-- None, or describe policy / permission changes -->
+- [ ] `staging`
+- [ ] `main`
+- [ ] Other:
 
-## Audit log impact
+---
 
-<!-- None, or describe new audited actions -->
+## 2. Governance Source of Truth
 
-## Secret / sensitive data impact
+This PR follows the Phase 3.9 / WPC governance process.
 
-- [ ] No real secrets were added.
-- [ ] No service role key is exposed to browser/client code.
-- [ ] Sensitive data is not logged in raw form.
+Required references:
 
-## Self-host acceptance check
+- [ ] `docs/process/path-ownership-matrix.md`
+- [ ] `docs/process/lovable-cursor-boundary.md`
+- [ ] `docs/process/branch-policy.md`
+- [ ] `docs/process/two-pr-policy.md`
+- [ ] `docs/process/handoff-policy.md`
+- [ ] `docs/process/evidence-policy.md`
+- [ ] `docs/process/definition-of-ready.md`
+- [ ] `docs/process/definition-of-done.md`
+- [ ] `docs/process/stop-the-line.md`
 
-- [ ] No critical dependency on CDN, online fonts, or non-self-hostable cloud APIs
-- [ ] No `VITE_` server secrets
-- [ ] Large queries use limit, pagination, indexes, and debounced search/filter (if applicable)
-- [ ] UI remains Persian, RTL, mobile-first (if UI changed)
+This PR must not bypass the approved branch flow:
 
-## Test plan
+feature/WPC branch  
+→ PR to `staging`  
+→ automated checks  
+→ human review  
+→ local/staging evidence  
+→ merge to `staging`  
+→ later controlled release to `main`
 
-<!-- Manual steps and/or automated tests run -->
+---
 
-## Build / lint / typecheck
+## 3. Summary
 
-- [ ] `npm run build`
+What changed?
+
+-
+
+Why was this change needed?
+
+-
+
+What problem does it solve?
+
+-
+
+What is intentionally not included in this PR?
+
+-
+
+---
+
+## 4. Scope Classification
+
+Primary scope:
+
+- [ ] UI only
+- [ ] API/OpenAPI contract
+- [ ] Backend/domain logic
+- [ ] Worker/automation
+- [ ] Database/migration/RLS
+- [ ] GitHub Actions/CI
+- [ ] Governance/process
+- [ ] Deployment/self-hosting
+- [ ] Evidence only
+- [ ] Hotfix
+
+Risk level:
+
+- [ ] Low
+- [ ] Medium
+- [ ] High
+- [ ] Production-critical
+
+---
+
+## 5. Path Ownership Check
+
+Changed areas:
+
+UI / Lovable allowed area:
+
+- [ ] `src/routes/**`
+- [ ] `src/components/**`
+- [ ] `src/components/ui/**`
+- [ ] `src/shared/**`
+- [ ] `src/assets/**`
+- [ ] `public/**`
+- [ ] `.lovable/**`
+- [ ] `docs/lovable-change-reports/**`
+
+Core / Cursor controlled area:
+
+- [ ] `src/lib/**`
+- [ ] `src/integrations/**`
+- [ ] `src/server/**`
+- [ ] `server/**`
+- [ ] `openapi/**`
+- [ ] `automation/openapi/**`
+- [ ] `automation/schemas/**`
+- [ ] `automation/worker-dummy/**`
+- [ ] `automation/worker-runtime/**`
+- [ ] `supabase/**`
+- [ ] `deploy/**`
+
+Governance / enforcement area:
+
+- [ ] `.github/**`
+- [ ] `.cursor/**`
+- [ ] `docs/process/**`
+- [ ] `docs/handoffs/**`
+- [ ] `docs/evidence/**`
+- [ ] `docs/adr/**`
+- [ ] `docs/security/**`
+- [ ] `docs/ops/**`
+
+Sensitive files:
+
+- [ ] `package.json`
+- [ ] lock files
+- [ ] `.env.example`
+- [ ] `.env.staging.example`
+- [ ] `.env.production.example`
+- [ ] no sensitive files changed
+
+---
+
+## 6. Lovable Boundary Check
+
+Complete this section if Lovable created or modified this PR.
+
+- [ ] This is Lovable UI work only.
+- [ ] Lovable worked only on an approved `lovable/ui/WPC-*-*` branch.
+- [ ] Lovable did not work directly on `main`.
+- [ ] Lovable did not work directly on `staging`.
+- [ ] Lovable did not edit `supabase/**`.
+- [ ] Lovable did not edit `automation/**`.
+- [ ] Lovable did not edit `openapi/**`.
+- [ ] Lovable did not edit `server/**`.
+- [ ] Lovable did not edit `.github/**`.
+- [ ] Lovable did not edit `.cursor/**`.
+- [ ] Lovable did not create or modify `.env*` real secret files.
+- [ ] Lovable did not invent new API endpoints.
+- [ ] Lovable used only approved API/OpenAPI contracts.
+- [ ] Lovable did not create migrations.
+- [ ] Lovable did not create Worker/runtime logic.
+
+If Lovable needs backend/API/database/Worker support, describe the required handoff:
+
+-
+
+---
+
+## 7. Cursor Boundary Check
+
+Complete this section if Cursor created or modified this PR.
+
+- [ ] Cursor did not work directly on `main`.
+- [ ] Cursor did not push directly to `staging` unless explicitly instructed.
+- [ ] Cursor changes match the branch family.
+- [ ] Cursor did not mix unrelated UI/backend/database/worker/governance work.
+- [ ] Cursor did not redesign UI without a handoff.
+- [ ] Cursor did not create API behavior without OpenAPI/contract alignment.
+- [ ] Cursor did not expose unsafe Worker execution.
+- [ ] Cursor did not commit secrets or real `.env*` files.
+
+If Cursor touched UI, explain why it was required:
+
+-
+
+---
+
+## 8. Two PR Rule
+
+Does this work require separate Core and UI PRs?
+
+- [ ] No, this PR is single-scope and does not mix Core/UI.
+- [ ] Yes, Core/Contract PR exists or is required.
+- [ ] Yes, UI PR exists or is required.
+
+Related Core/Contract PR:
+
+-
+
+Related UI PR:
+
+-
+
+Reason if only one PR is used:
+
+-
+
+---
+
+## 9. Handoff Check
+
+Is a handoff required?
+
+- [ ] No, this PR is single-scope and does not cross boundaries.
+- [ ] Yes, handoff exists under `docs/handoffs/**`.
+- [ ] Yes, handoff is missing and this PR is not ready.
+
+Handoff file:
+
+-
+
+Handoff confirms:
+
+- [ ] Owner roles
+- [ ] allowed paths
+- [ ] forbidden paths
+- [ ] contract/API expectations
+- [ ] mock data, if UI is involved
+- [ ] acceptance criteria
+- [ ] evidence required
+
+---
+
+## 10. Evidence Check
+
+Evidence path:
+
+-
+
+Required evidence:
+
+- [ ] `docs/evidence/<WPC-ID>/summary.md`
+- [ ] typecheck output, if code changed
+- [ ] lint output, if code changed
+- [ ] build output, if app/runtime changed
+- [ ] local test result
+- [ ] screenshot, if UI changed
+- [ ] contract check, if API/OpenAPI changed
+- [ ] migration explanation and rollback, if Supabase changed
+- [ ] workflow run link, if CI/GitHub Actions changed
+- [ ] not applicable because this PR is documentation-only
+
+Evidence status:
+
+- [ ] Complete
+- [ ] Partial, explanation below
+- [ ] Missing, PR is not ready
+
+Explanation:
+
+-
+
+---
+
+## 11. Typecheck / Build / Test
+
+Local validation performed:
+
+- [ ] `npm install`
+- [ ] `npm run typecheck`
 - [ ] `npm run lint`
-- [ ] typecheck (if script exists)
+- [ ] `npm run build`
+- [ ] `npm run test`
+- [ ] `npm run dev`
+- [ ] not applicable because this PR is documentation-only
 
-## Remaining risks
+Result summary:
 
-<!-- Known gaps, follow-ups, or rollback notes -->
+-
 
-## Evidence
+Known failures or skipped checks:
 
-<!-- Attach screenshots, logs, sample input/output, test results, workflow links, or other proof that this PR works and stays inside scope. -->
+-
 
-- [ ] Screenshot attached if UI changed
-- [ ] Logs attached if backend/worker/process changed
-- [ ] Test output attached or pasted
-- [ ] Boundary Guard result checked
-- [ ] Evidence is enough for reviewer to verify without guessing
+---
 
-## Rollback Plan
+## 12. API and OpenAPI Check
+
+Does this PR change API behavior?
+
+- [ ] No
+- [ ] Yes
+
+If yes:
+
+- [ ] OpenAPI/contract was updated before implementation.
+- [ ] Request payload shape is documented.
+- [ ] Response payload shape is documented.
+- [ ] Error responses are documented.
+- [ ] UI usage matches the approved contract.
+- [ ] Breaking changes are clearly explained.
+
+OpenAPI files changed:
+
+-
+
+---
+
+## 13. Database / Supabase Check
+
+Does this PR change database, migration, RLS, RBAC, auth, or Supabase integration?
+
+- [ ] No
+- [ ] Yes
+
+If yes:
+
+- [ ] migration reason documented
+- [ ] rollback strategy documented
+- [ ] RLS/RBAC impact reviewed
+- [ ] seed/sample data reviewed
+- [ ] local/staging validation evidence added
+
+Changed database paths:
+
+-
+
+---
+
+## 14. Stop-The-Line Check
+
+This PR must not be merged if any of these are true:
+
+- [ ] Lovable changed forbidden Core/backend/database/worker paths.
+- [ ] Cursor changed UI without handoff.
+- [ ] real `.env*` or secret files were committed.
+- [ ] migration was added without reason and rollback.
+- [ ] API behavior changed without contract update.
+- [ ] typecheck/build failed without explicit approval.
+- [ ] evidence is missing.
+- [ ] PR mixes unrelated scopes.
+- [ ] PR bypasses branch flow.
+- [ ] none of the above
+
+---
+
+## 15. Reviewer Notes
+
+Reviewer focus areas:
+
+-
+
+Questions for reviewer:
+
+-
+
+Final readiness:
+
+- [ ] Ready for review
+- [ ] Not ready; draft only
+
+---
+
+## 16. Rollback Plan
 
 <!-- Explain exactly how to revert this PR if it causes a problem. -->
 
@@ -90,3 +394,4 @@
 - Local/self-host rollback needed: yes/no
 - Risk after rollback:
 
+- [ ] Boundary Guard result checked

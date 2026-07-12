@@ -1,8 +1,25 @@
 name: Boundary Guard
 
+# Phase 3.9 / WPC Boundary Guard
+
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - staging
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - edited
+
+  push:
+    branches:
+      - main
+      - staging
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,141 +29,308 @@ jobs:
   boundary-guard:
     name: Boundary Guard
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check branch and path boundaries
+      - name: Collect changed files
         shell: bash
-        env:
-          HEAD_BRANCH: ${{ github.head_ref }}
-          BASE_BRANCH: ${{ github.base_ref }}
         run: |
           set -euo pipefail
 
-          python - <<'PY'
+          BRANCH_NAME="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            TARGET_BRANCH="${{ github.base_ref }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            TARGET_BRANCH="$GITHUB_REF_NAME"
+          fi
+
+          echo "TARGET_BRANCH=$TARGET_BRANCH" >> "$GITHUB_ENV"
+          echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
+          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+
+          git fetch --no-tags --prune --depth=300 origin +refs/heads/*:refs/remotes/origin/* || true
+
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" | sort -u > changed-files.txt
+          else
+            git show --pretty="" --name-only "$HEAD_SHA" | sort -u > changed-files.txt
+          fi
+
+          echo "Changed files:"
+          cat changed-files.txt
+
+      - name: Run boundary guard
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import fnmatch
           import os
-          import re
-          import subprocess
+          import pathlib
           import sys
 
-          head_branch = os.environ.get("HEAD_BRANCH", "")
-          base_branch = os.environ.get("BASE_BRANCH", "")
+          branch = os.environ.get("BRANCH_NAME", "")
+          target_branch = os.environ.get("TARGET_BRANCH", "")
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "")
 
-          print("Boundary Guard")
-          print(f"Head branch: {head_branch}")
-          print(f"Base branch: {base_branch}")
+          changed_file = pathlib.Path("changed-files.txt")
+          files = []
+          if changed_file.exists():
+              files = [
+                  line.strip().replace("\\", "/")
+                  for line in changed_file.read_text(encoding="utf-8").splitlines()
+                  if line.strip()
+              ]
 
-          def run(command):
-              return subprocess.run(command, text=True, capture_output=True, check=False)
-
-          diff_commands = [
-              ["git", "diff", "--name-only", f"origin/{base_branch}...HEAD"],
-              ["git", "diff", "--name-only", "HEAD^1", "HEAD"],
-          ]
-
-          changed_files = []
-          for command in diff_commands:
-              result = run(command)
-              if result.returncode == 0 and result.stdout.strip():
-                  changed_files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-                  break
-
-          print("Changed files:")
-          for file in changed_files:
-              print(file)
-
-          errors = []
+          violations = []
           warnings = []
 
-          def add_error(message):
-              errors.append(message)
-              print(f"::error::{message}")
+          def matches(path, pattern):
+              return fnmatch.fnmatch(path, pattern)
 
-          def add_warning(message):
-              warnings.append(message)
-              print(f"::warning::{message}")
+          def any_match(path, patterns):
+              return any(matches(path, pattern) for pattern in patterns)
 
-          def any_match(pattern):
-              return any(re.search(pattern, file) for file in changed_files)
+          integration_branches = {"main", "staging"}
+          is_integration_branch = branch in integration_branches
 
-          for file in changed_files:
-              basename = file.rsplit("/", 1)[-1]
+          def is_lovable_ui_branch(name):
+              return name.startswith("lovable/ui/WPC-") or name.startswith("lovable/")
 
-              if basename.startswith(".env") and not basename.endswith(".example"):
-                  add_error("Unsafe .env file detected. Commit only .env.example templates, never real environment files.")
+          def is_cursor_core_branch(name):
+              return name.startswith("cursor/core/WPC-")
 
-              if basename.endswith((".pem", ".key")):
-                  add_error("Private key-like file detected. Do not commit .pem or .key files.")
+          def is_cursor_automation_branch(name):
+              return name.startswith("cursor/automation/WPC-")
 
-              if "service-role" in file.lower():
-                  add_error("Service-role-like file name detected. Service role material must not be committed.")
+          def is_cursor_contract_branch(name):
+              return name.startswith("cursor/contract/WPC-")
 
-          if any_match(r"^openapi/.*\.ya?ml$"):
-              add_error("Root openapi YAML is deprecated. Use automation/openapi/automation-v1.yaml unless an ADR approves otherwise.")
+          def is_cursor_docs_branch(name):
+              return name.startswith("cursor/docs/WPC-") or name.startswith("docs/WPC-")
 
-          if head_branch.startswith("docs"):
-              allowed_exact = {
-                  ".github/workflows/boundary-guard.yml",
-                  ".github/CODEOWNERS",
-                  ".github/pull_request_template.md",
-              }
-              bad_files = [
-                  file for file in changed_files
-                  if not (file.startswith("docs/") or file in allowed_exact)
-              ]
-              if bad_files:
-                  print("Files outside docs/governance scope:")
-                  for file in bad_files:
-                      print(file)
-                  add_error("Docs/governance branches may change only docs/ and approved GitHub governance files.")
+          def is_hotfix_branch(name):
+              return name.startswith("hotfix/WPC-") or name.startswith("hotfix/")
 
-          if head_branch.startswith("lovable/"):
-              forbidden_prefixes = (
-                  "supabase/migrations/",
-                  "automation/worker-runtime/",
-                  "server/",
-                  "openapi/",
-                  "automation/openapi/",
-                  "automation/schemas/",
-                  "deploy/",
-                  ".github/workflows/",
+          allowed_branch_families = (
+              is_lovable_ui_branch(branch)
+              or is_cursor_core_branch(branch)
+              or is_cursor_automation_branch(branch)
+              or is_cursor_contract_branch(branch)
+              or is_cursor_docs_branch(branch)
+              or is_hotfix_branch(branch)
+              or is_integration_branch
+          )
+
+          if event_name == "pull_request" and not allowed_branch_families:
+              warnings.append(
+                  f"Branch naming warning: `{branch}` does not match the preferred WPC branch families. "
+                  "Preferred families: lovable/ui/WPC-*, cursor/core/WPC-*, cursor/automation/WPC-*, "
+                  "cursor/contract/WPC-*, cursor/docs/WPC-*, docs/WPC-*, hotfix/WPC-*."
               )
-              if any(file.startswith(forbidden_prefixes) for file in changed_files):
-                  add_error("Lovable branches may not change backend, database, worker, contract, deploy, or workflow paths by default.")
-              if any(file.endswith(("package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lockb")) for file in changed_files):
-                  add_warning("Lovable changed a lockfile. Verify dependency change was explicitly approved.")
 
-          if head_branch.startswith("cursor/worker-"):
-              if any(file.startswith(("src/components/", "src/shared/components/")) for file in changed_files):
-                  add_error("cursor/worker-* branches may not change broad UI components by default.")
-              if any(file.startswith("src/routes/") and not file.startswith("src/routes/api") for file in changed_files):
-                  add_error("cursor/worker-* branches may not change broad UI routes by default.")
-              if any(file.startswith("supabase/migrations/") for file in changed_files):
-                  add_warning("cursor/worker-* changed migrations. Use cursor/db-* or a separate DB PR unless approved.")
+          for path in files:
+              name = pathlib.PurePosixPath(path).name
 
-          if head_branch.startswith("cursor/api-"):
-              if any(file.startswith(("src/components/", "src/shared/components/")) for file in changed_files):
-                  add_error("cursor/api-* branches may not change broad UI components by default.")
-              if any_match(r"^openapi/.*\.ya?ml$"):
-                  add_error("Do not implement against root openapi/. Use automation/openapi/automation-v1.yaml.")
+              if name.startswith(".env") and not name.endswith(".example"):
+                  violations.append(
+                      f"Secret/env safety violation: `{path}` looks like a real environment file. "
+                      "Only environment example files ending in `.example` are allowed."
+                  )
 
-          if head_branch.startswith("cursor/db-"):
-              if any(file.startswith(("src/components/", "src/shared/components/", "automation/worker-runtime/src/")) for file in changed_files):
-                  add_error("cursor/db-* branches may not change UI or worker runtime implementation by default.")
-              if any(file.startswith("src/routes/") and not file.startswith("src/routes/api") for file in changed_files):
-                  add_error("cursor/db-* branches may not change broad UI routes by default.")
+              if name in {"id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"}:
+                  violations.append(f"Secret safety violation: private key-like file committed: `{path}`")
 
-          if base_branch == "main":
-              allowed_prefixes = ("docs", "lovable/", "cursor/", "hotfix/", "staging")
-              if not head_branch.startswith(allowed_prefixes):
-                  add_warning("Branch name does not match approved patterns: docs*, lovable/*, cursor/*, hotfix/*, staging. Review carefully.")
+              if name.endswith((".pem", ".key", ".p12", ".pfx")):
+                  violations.append(f"Secret safety violation: certificate/key-like file committed: `{path}`")
 
-          if errors:
-              print("Boundary Guard failed. Fix the branch/path violation or create an ADR/task packet for an approved exception.")
+          lovable_forbidden_patterns = [
+              "automation/**",
+              "openapi/**",
+              "server/**",
+              "src/lib/**",
+              "src/integrations/**",
+              "src/server/**",
+              "supabase/**",
+              ".github/**",
+              ".cursor/**",
+              "deploy/**",
+              "docs/adr/**",
+              "docs/security/**",
+              "docs/ops/**",
+              ".env",
+              ".env.*",
+              "package.json",
+              "package-lock.json",
+              "bun.lock",
+              "pnpm-lock.yaml",
+              "yarn.lock",
+          ]
+
+          if is_lovable_ui_branch(branch) and not is_integration_branch:
+              for path in files:
+                  if any_match(path, lovable_forbidden_patterns):
+                      violations.append(
+                          f"Lovable boundary violation: branch `{branch}` must be UI-only, "
+                          f"but it changed forbidden path `{path}`."
+                      )
+
+          docs_governance_allowed_patterns = [
+              "docs/process/**",
+              "docs/handoffs/**",
+              "docs/evidence/**",
+              ".github/CODEOWNERS",
+              ".github/pull_request_template.md",
+              ".github/workflows/**",
+              ".cursor/rules/**",
+              "README.md",
+              "AGENTS.md",
+          ]
+
+          if is_cursor_docs_branch(branch) and not is_integration_branch:
+              for path in files:
+                  if not any_match(path, docs_governance_allowed_patterns):
+                      warnings.append(
+                          f"Docs/governance branch warning: `{branch}` changed `{path}`. "
+                          "This may be valid only if the PR explains why it belongs in a docs/governance branch."
+                      )
+
+          workflow_changed = [path for path in files if matches(path, ".github/workflows/**")]
+          if workflow_changed and not is_integration_branch:
+              if not (is_cursor_docs_branch(branch) or is_hotfix_branch(branch)):
+                  for path in workflow_changed:
+                      violations.append(
+                          f"Workflow governance violation: `{path}` changed from branch `{branch}`. "
+                          "Workflow changes must come from cursor/docs/WPC-*, docs/WPC-*, or approved hotfix branches."
+                      )
+
+          migration_changed = [path for path in files if matches(path, "supabase/migrations/**")]
+          if migration_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in migration_changed:
+                      violations.append(
+                          f"Database boundary violation: Lovable branch `{branch}` changed migration `{path}`."
+                      )
+              elif not (is_cursor_core_branch(branch) or is_hotfix_branch(branch)):
+                  for path in migration_changed:
+                      violations.append(
+                          f"Database branch violation: migration `{path}` should be changed from "
+                          f"`cursor/core/WPC-*` or approved `hotfix/WPC-*`, not `{branch}`."
+                      )
+
+          automation_changed = [path for path in files if matches(path, "automation/**")]
+          if automation_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in automation_changed:
+                      violations.append(
+                          f"Automation boundary violation: Lovable branch `{branch}` changed automation path `{path}`."
+                      )
+              elif not (is_cursor_automation_branch(branch) or is_cursor_contract_branch(branch) or is_hotfix_branch(branch)):
+                  for path in automation_changed:
+                      warnings.append(
+                          f"Automation branch warning: `{path}` changed from `{branch}`. "
+                          "Expected cursor/automation/WPC-* or cursor/contract/WPC-* unless explicitly justified."
+                      )
+
+          contract_changed = [
+              path for path in files
+              if any_match(path, ["openapi/**", "automation/openapi/**", "automation/schemas/**"])
+          ]
+          if contract_changed and not is_integration_branch:
+              if is_lovable_ui_branch(branch):
+                  for path in contract_changed:
+                      violations.append(
+                          f"Contract boundary violation: Lovable branch `{branch}` changed contract path `{path}`."
+                      )
+              elif not (is_cursor_contract_branch(branch) or is_cursor_automation_branch(branch) or is_hotfix_branch(branch)):
+                  for path in contract_changed:
+                      warnings.append(
+                          f"Contract branch warning: `{path}` changed from `{branch}`. "
+                          "Expected cursor/contract/WPC-* or cursor/automation/WPC-* unless explicitly justified."
+                      )
+
+          api_surface_patterns = [
+              "server/**",
+              "src/server/**",
+              "src/routes/api.*",
+              "src/routes/api/**",
+          ]
+          api_contract_patterns = [
+              "automation/openapi/**",
+              "automation/schemas/**",
+              "openapi/**",
+          ]
+
+          api_surface_changed = [path for path in files if any_match(path, api_surface_patterns)]
+          api_contract_changed = any(any_match(path, api_contract_patterns) for path in files)
+
+          if api_surface_changed and not api_contract_changed and not is_integration_branch:
+              for path in api_surface_changed:
+                  warnings.append(
+                      f"API contract warning: `{path}` changed without an OpenAPI/schema file in the same PR. "
+                      "If API behavior changed, update the contract before merge."
+                  )
+
+          if is_lovable_ui_branch(branch) and api_surface_changed:
+              for path in api_surface_changed:
+                  violations.append(
+                      f"Lovable API violation: Lovable branch `{branch}` changed API/backend path `{path}`."
+                  )
+
+          broad_ui_patterns = [
+              "src/components/**",
+              "src/routes/**",
+              "src/shared/**",
+          ]
+
+          if (
+              (is_cursor_core_branch(branch) or is_cursor_automation_branch(branch) or is_cursor_contract_branch(branch))
+              and not is_integration_branch
+          ):
+              for path in files:
+                  if any_match(path, broad_ui_patterns):
+                      warnings.append(
+                          f"Cursor core/automation/contract branch warning: `{branch}` changed UI path `{path}`. "
+                          "This may be valid only with a handoff."
+                      )
+
+          if target_branch == "main" and branch != "staging" and not is_hotfix_branch(branch) and event_name == "pull_request":
+              violations.append(
+                  f"Release flow violation: PRs to `main` must normally come from `staging` or approved `hotfix/WPC-*`, not `{branch}`."
+              )
+
+          print("Boundary Guard Report")
+          print("=====================")
+          print(f"Event: {event_name}")
+          print(f"Source branch: {branch}")
+          print(f"Target branch: {target_branch}")
+          print(f"Changed files: {len(files)}")
+          print()
+
+          if warnings:
+              print("Warnings:")
+              for warning in warnings:
+                  print(f"- {warning}")
+              print()
+
+          if violations:
+              print("Violations:")
+              for violation in violations:
+                  print(f"- {violation}")
+              print()
+              print("Boundary Guard failed.")
               sys.exit(1)
 
-          print("Boundary Guard passed.")
+          print("No blocking boundary violations found.")
           PY

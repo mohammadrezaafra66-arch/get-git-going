@@ -1,33 +1,179 @@
-# AfraKala Automation Platform — CODEOWNERS
-# Baseline freeze: 2026-06-05
+# AfraKala CODEOWNERS
 #
-# GitHub is the source of truth. Changes to baseline, ADRs, automation contracts,
-# security docs, and ops runbooks require explicit review before merge.
+# Phase: 3.9 / WPC Enforcement
+# Purpose:
+# Define review ownership for sensitive repository paths so Lovable UI work,
+# Cursor core/backend work, automation, contracts, Supabase, CI, governance,
+# deployment, and security changes remain reviewable and controlled.
+#
+# Source of truth:
+# - docs/process/path-ownership-matrix.md
+# - docs/process/lovable-cursor-boundary.md
+# - docs/process/branch-policy.md
+# - docs/process/stop-the-line.md
+#
+# Important:
+# This file defines ownership.
+# Full enforcement also depends on GitHub Branch Protection settings:
+# - Require a pull request before merging
+# - Require approvals
+# - Require review from Code Owners
+# - Require required status checks where applicable
+#
+# Until Branch Protection is fully verified, this file is ownership alignment.
+# After Branch Protection is verified, it becomes part of the technical gate.
 
-# Default owners for the control plane / core repository
-*                                   @mohammadrezaafra66-arch
+# ------------------------------------------------------------
+# Default ownership
+# ------------------------------------------------------------
 
-# Baseline freeze artifacts
-/docs/baseline/                     @mohammadrezaafra66-arch
-/docs/adr/                          @mohammadrezaafra66-arch
-/docs/ops/                          @mohammadrezaafra66-arch
-/docs/process/                      @mohammadrezaafra66-arch
-/docs/automation/                   @mohammadrezaafra66-arch
-/docs/security/                     @mohammadrezaafra66-arch
+* @mohammadrezaafra66-arch
 
-# Automation contracts (schemas + OpenAPI only — no worker runtime here)
-/automation/                        @mohammadrezaafra66-arch
-/openapi/                           @mohammadrezaafra66-arch
+# ------------------------------------------------------------
+# GitHub governance, PR rules, CI, and repository controls
+# ------------------------------------------------------------
 
-# Database migrations and RLS (source of truth: Supabase/PostgreSQL)
-/supabase/migrations/               @mohammadrezaafra66-arch
+.github/ @mohammadrezaafra66-arch
+.github/CODEOWNERS @mohammadrezaafra66-arch
+.github/pull_request_template.md @mohammadrezaafra66-arch
+.github/workflows/ @mohammadrezaafra66-arch
 
-# Control plane / UI / server boundaries
-/src/                               @mohammadrezaafra66-arch
-/server/                            @mohammadrezaafra66-arch
+# ------------------------------------------------------------
+# WPC / Phase 3.9 process documents
+# ------------------------------------------------------------
 
-# Self-host deployment stacks
-/deploy/                            @mohammadrezaafra66-arch
+docs/process/ @mohammadrezaafra66-arch
+docs/process/path-ownership-matrix.md @mohammadrezaafra66-arch
+docs/process/lovable-cursor-boundary.md @mohammadrezaafra66-arch
+docs/process/branch-policy.md @mohammadrezaafra66-arch
+docs/process/two-pr-policy.md @mohammadrezaafra66-arch
+docs/process/handoff-policy.md @mohammadrezaafra66-arch
+docs/process/evidence-policy.md @mohammadrezaafra66-arch
+docs/process/definition-of-ready.md @mohammadrezaafra66-arch
+docs/process/definition-of-done.md @mohammadrezaafra66-arch
+docs/process/definition-of-success.md @mohammadrezaafra66-arch
+docs/process/stop-the-line.md @mohammadrezaafra66-arch
+docs/process/local-test-checklist.md @mohammadrezaafra66-arch
+docs/process/server-deployment-checklist.md @mohammadrezaafra66-arch
+docs/process/ali-implementation-handoff.md @mohammadrezaafra66-arch
 
-# CI / release automation
-/.github/                           @mohammadrezaafra66-arch
+# ------------------------------------------------------------
+# Handoff and evidence
+# ------------------------------------------------------------
+
+docs/handoffs/ @mohammadrezaafra66-arch
+docs/evidence/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Architecture, security, and ops
+# ------------------------------------------------------------
+
+docs/adr/ @mohammadrezaafra66-arch
+docs/security/ @mohammadrezaafra66-arch
+docs/ops/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Cursor rules
+# ------------------------------------------------------------
+
+.cursor/ @mohammadrezaafra66-arch
+.cursor/rules/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Lovable UI configuration and UI change reports
+# ------------------------------------------------------------
+
+.lovable/ @mohammadrezaafra66-arch
+docs/lovable-change-reports/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# UI / Lovable allowed areas
+# ------------------------------------------------------------
+
+src/routes/ @mohammadrezaafra66-arch
+src/components/ @mohammadrezaafra66-arch
+src/components/ui/ @mohammadrezaafra66-arch
+src/shared/ @mohammadrezaafra66-arch
+src/assets/ @mohammadrezaafra66-arch
+public/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Core frontend/server logic
+# ------------------------------------------------------------
+
+src/lib/ @mohammadrezaafra66-arch
+src/integrations/ @mohammadrezaafra66-arch
+src/server/ @mohammadrezaafra66-arch
+server/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# API contracts and automation schemas
+# ------------------------------------------------------------
+
+openapi/ @mohammadrezaafra66-arch
+automation/openapi/ @mohammadrezaafra66-arch
+automation/schemas/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Worker / automation
+# ------------------------------------------------------------
+
+automation/ @mohammadrezaafra66-arch
+automation/worker-dummy/ @mohammadrezaafra66-arch
+automation/worker-runtime/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Supabase / Database / Source of truth
+# ------------------------------------------------------------
+
+supabase/ @mohammadrezaafra66-arch
+supabase/migrations/ @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Deployment and self-hosting
+# ------------------------------------------------------------
+
+deploy/ @mohammadrezaafra66-arch
+Dockerfile @mohammadrezaafra66-arch
+docker-compose.yml @mohammadrezaafra66-arch
+vite.config.ts @mohammadrezaafra66-arch
+src/start.ts @mohammadrezaafra66-arch
+server/node-entry.mjs @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Package management, build, lint, and lock files
+# ------------------------------------------------------------
+
+package.json @mohammadrezaafra66-arch
+package-lock.json @mohammadrezaafra66-arch
+bun.lock @mohammadrezaafra66-arch
+eslint.config.js @mohammadrezaafra66-arch
+tsconfig.json @mohammadrezaafra66-arch
+tsconfig.*.json @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Environment examples only
+# Real environment files must never be committed.
+# ------------------------------------------------------------
+
+.env.example @mohammadrezaafra66-arch
+.env.staging.example @mohammadrezaafra66-arch
+.env.production.example @mohammadrezaafra66-arch
+
+# ------------------------------------------------------------
+# Explicit sensitive route/config surfaces
+# ------------------------------------------------------------
+
+src/routes/login.tsx @mohammadrezaafra66-arch
+src/routes/register.tsx @mohammadrezaafra66-arch
+src/routes/reset-password.tsx @mohammadrezaafra66-arch
+src/routes/pending-approval.tsx @mohammadrezaafra66-arch
+src/routes/unauthorized.tsx @mohammadrezaafra66-arch
+src/routes/_app.admin.* @mohammadrezaafra66-arch
+src/routes/_app.roles.tsx @mohammadrezaafra66-arch
+src/routes/_app.users.tsx @mohammadrezaafra66-arch
+src/routes/__root.tsx @mohammadrezaafra66-arch
+src/routes/_app.tsx @mohammadrezaafra66-arch
+src/routeTree.gen.ts @mohammadrezaafra66-arch
+src/routes/sitemap[.]xml.ts @mohammadrezaafra66-arch
+public/robots.txt @mohammadrezaafra66-arch
