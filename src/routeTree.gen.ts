@@ -18,6 +18,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiVersionRouteImport } from './routes/api.version'
 import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
@@ -234,6 +235,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVersionRoute = ApiVersionRouteImport.update({
+  id: '/api/version',
+  path: '/api/version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthzRoute = ApiHealthzRouteImport.update({
@@ -1201,6 +1207,7 @@ export interface FileRoutesByFullPath {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
@@ -1382,6 +1389,7 @@ export interface FileRoutesByTo {
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
@@ -1566,6 +1574,7 @@ export interface FileRoutesById {
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRouteWithChildren
   '/api/healthz': typeof ApiHealthzRoute
+  '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
@@ -1751,6 +1760,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/api/version'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
@@ -1932,6 +1942,7 @@ export interface FileRouteTypes {
     | '/suppliers'
     | '/users'
     | '/api/healthz'
+    | '/api/version'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
@@ -2115,6 +2126,7 @@ export interface FileRouteTypes {
     | '/_app/suppliers'
     | '/_app/users'
     | '/api/healthz'
+    | '/api/version'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_app/academy_/$courseId'
@@ -2274,6 +2286,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
+  ApiVersionRoute: typeof ApiVersionRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
@@ -2352,6 +2365,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/version': {
+      id: '/api/version'
+      path: '/api/version'
+      fullPath: '/api/version'
+      preLoaderRoute: typeof ApiVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/healthz': {
@@ -4052,6 +4072,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiHealthzRoute: ApiHealthzRoute,
+  ApiVersionRoute: ApiVersionRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
