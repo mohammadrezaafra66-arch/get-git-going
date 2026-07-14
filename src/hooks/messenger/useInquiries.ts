@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type InquiryStatus =
   | "draft" | "pending" | "warning_5min" | "danger_8min" | "critical_10min"
@@ -27,11 +28,7 @@ export function useInquiries(groupId: string | null) {
   // Unique per-hook-instance suffix so multiple subscribers (e.g. ChatWindow + MessageList)
   // don't collide on the same realtime channel name and trigger
   // "cannot add `postgres_changes` callbacks ... after `subscribe()`".
-  const instanceIdRef = useRef<string>(
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2),
-  );
+  const instanceIdRef = useRef<string>(safeRandomUUID());
 
   const query = useQuery({
     queryKey,

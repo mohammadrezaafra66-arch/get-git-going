@@ -1,49 +1,40 @@
-## مرحله C — حذف وابستگی `crypto.randomUUID` در آپلود رسیدهای تحویل
+## مرحله D — گسترش `safeRandomUUID` به سایر آپلودها و کلیدهای کلاینت
 
 ### مشکل
-در مرورگرِ مصرف‌کننده روی LAN با `http://192.168.170.8` (غیرHTTPS و غیر‌localhost)، `window.crypto.randomUUID` در دسترس نیست چون `SubtleCrypto`/`crypto.randomUUID` فقط در Secure Context فعال‌اند. نتیجه: هنگام آپلود رسید در `useDeliveryReceipts` خطای `crypto.randomUUID is not a function` رخ می‌دهد و آپلود شکست می‌خورد — دقیقاً همان الگویی که در ماژول messenger هم بود.
+پس از تأیید مرحله C، همان الگو در بقیهٔ نقاط کلاینت هم وجود دارد و دقیقاً همان خطای `crypto.randomUUID is not a function` را روی LAN با HTTP ساده (192.168.x.x — غیر Secure Context) به‌محض استفاده تولید می‌کند. تا وقتی این نقاط سوئیچ نشوند، هر بار که کاربر LAN وارد آن جریان‌ها شود، آپلود/ثبت شکست می‌خورد.
 
-الگویی که پروژه از قبل استفاده می‌کند در `src/hooks/messenger/useInquiries.ts` و `src/components/data-tables/FiltersBar.tsx` وجود دارد:
+### نقاط مشمول تغییر (فقط client-side)
+1. `src/hooks/documents/useDocuments.ts:157` — مسیر آپلود Storage.
+2. `src/hooks/purchase/usePurchase.ts:216` — مسیر آپلود پیوست خرید.
+3. `src/components/accounting/PaymentReceiptDocuments.tsx:315` — مسیر آپلود مستندات فیش واریزی.
+4. `src/components/products/ProductImagesSection.tsx:85` — مسیر آپلود تصویر محصول.
+5. `src/routes/_app.sales.quotes.new.tsx:780,859` — کلید ردیف در آرایه‌های فرم پیش‌فاکتور (کلید React).
+6. `src/hooks/messenger/useInquiries.ts:32` — جایگزینی fallback inline موجود با helper مشترک برای یک‌دستی.
+7. `src/components/data-tables/FiltersBar.tsx:52` — همان یکسان‌سازی fallback inline.
 
-```ts
-typeof crypto !== "undefined" && "randomUUID" in crypto
-  ? crypto.randomUUID()
-  : /* fallback */
-```
-
-اما این fallbackها هر بار به‌صورت inline تکرار شده‌اند. برای مرحله C یک helper مشترک، ساده و بدون وابستگی می‌سازیم و فقط نقطهٔ تحویل رسیدها را به آن سوئیچ می‌کنیم.
+### خارج از دامنه
+- `src/lib/messenger/upload.functions.ts:62` — سرور (Node runtime). `crypto.randomUUID` در Node موجود است و مشکل LAN ندارد؛ دست‌نخورده.
+- هیچ تغییر در schema/RLS/RBAC/audit/migration. هیچ تغییر منطق کسب‌وکار. هیچ تغییر UI.
 
 ### تغییرات
-
-1) **افزودن `src/lib/utils/safe-uuid.ts` (فایل جدید، ~20 خط):**
-   - export `safeRandomUUID(): string`
-   - اگر `globalThis.crypto?.randomUUID` موجود بود، همان را برگرداند.
-   - در غیر این صورت، اگر `crypto.getRandomValues` موجود بود، از آن برای ساخت UUID v4 استاندارد استفاده کند (الگوریتم مرسوم با ماسک 0x40/0x80).
-   - در نهایت fallback به `Math.random`-based v4 (فقط برای اسم فایل storage استفاده می‌شود، امنیتی نیست).
-
-2) **`src/hooks/delivery-receipts/useDeliveryReceipts.ts`:**
-   - import `safeRandomUUID` و جایگزینی خط 187:  
-     `const path = \`${type}/${safeRandomUUID()}.${ext}\`;`
-   - هیچ منطق دیگری تغییر نمی‌کند.
-
-### خارج از دامنهٔ این مرحله
-- سایر call-siteهای `crypto.randomUUID` (sales quotes, documents, purchases, product images, payment receipt documents) در حال حاضر روی HTTPS/localhost کار می‌کنند و مشکل گزارش‌شدهٔ کاربر مربوط به آن‌ها نیست. طبق قانون «تغییر کوچک و محدود به task»، در این مرحله دست‌نخورده می‌مانند. اگر پس از messenger-doctor نیاز به توسعهٔ این fix تأیید شد، در یک مرحلهٔ جداگانه (D+) با همان helper سوئیچ می‌شوند.
-- `useInquiries` و `FiltersBar` که از قبل fallback inline دارند نیز تغییر نمی‌کنند تا diff مینیمال بماند.
-- `src/lib/messenger/upload.functions.ts` (سرور، Node) و `enqueue-dummy-job.server.ts` (`node:crypto`) اصلاً متأثر نیستند.
-
-### RLS/RBAC/Migration/Audit
-- بدون هیچ migration، بدون تغییر policy، بدون تغییر schema، بدون تغییر RBAC، بدون تغییر audit. صرفاً تغییر یک سطر client-side + یک utility خالص.
-
-### تأثیر بر سایر ماژول‌ها
-- هیچ. helper جدید فقط از یک نقطه فراخوانی می‌شود. Browser Realtime، AI chat، pricing، messenger و سایر بخش‌ها بدون تغییر باقی می‌مانند.
+- در هر فایل بالا: افزودن `import { safeRandomUUID } from "@/lib/utils/safe-uuid";` و جایگزینی نقطه‌ای `crypto.randomUUID()` با `safeRandomUUID()`.
+- در `useInquiries.ts` و `FiltersBar.tsx`: حذف عبارت شرطی inline (`typeof crypto !== "undefined" && "randomUUID" in crypto ? ... : ...`) و جایگزینی با فراخوانی مستقیم `safeRandomUUID()`.
+- helper از پیش موجود است؛ فایل جدیدی ایجاد نمی‌شود.
 
 ### راستی‌آزمایی
-- `bunx tsgo --noEmit` روی مسیرهای تغییرکرده.
-- `bunx eslint src/lib/utils/safe-uuid.ts src/hooks/delivery-receipts/useDeliveryReceipts.ts`.
-- تست دستی توسط اپراتور روی `http://192.168.170.8/delivery-receipts`: انتخاب فایل jpg/pdf و آپلود، مشاهدهٔ ایجاد ردیف در `delivery_receipts` و فایل در باکت `delivery-receipts`.
+- `bunx tsgo --noEmit`
+- `npm run build`
+- تست دستی روی `http://192.168.170.8`:
+  - آپلود سند در بخش Documents
+  - آپلود پیوست در Purchases
+  - آپلود مستند در فیش واریزی حسابداری
+  - آپلود تصویر محصول
+  - ساخت پیش‌فاکتور جدید (افزودن ردیف)
+  - فیلترها در جدول‌ها و ماژول Inquiries
+- انتظار: در Console هیچ خطای `crypto.randomUUID is not a function` دیده نشود.
 
 ### Rollback
-`git revert` روی همین commit؛ چون تنها یک فایل جدید و یک سطر تغییر است، بدون هیچ اثر جانبی.
+`git revert` روی همین commit. تغییرات هم‌شکل و کوچک هستند.
 
-### ریسک باقی‌مانده
-- fallback مبتنی بر `Math.random` از نظر آماری برای شناسهٔ فایل storage کافی است (فضای 122 بیتی v4)، ولی cryptographically-strong نیست؛ چون فقط برای نام فایل استفاده می‌شود و هرگز به‌عنوان توکن/راز به‌کار نمی‌رود، ریسک عملی صفر است. اگر `getRandomValues` موجود باشد (که در همهٔ مرورگرهای مدرن حتی روی HTTP هست) این fallback هرگز اجرا نمی‌شود.
+### ریسک
+هیچ. helper در مسیر HTTPS/localhost همان native `crypto.randomUUID` را برمی‌گرداند، در LAN از `getRandomValues` استفاده می‌کند. رفتار عملی یکسان است.

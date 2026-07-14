@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import { Badge } from "@/components/ui/badge";
@@ -777,7 +778,7 @@ function ProductTab(props: {
               onClick={() => {
                 if (!selected || !salePriceTypeId) return;
                 props.onAdd({
-                  key: crypto.randomUUID(),
+                  key: safeRandomUUID(),
                   source: "product_price",
                   product_id: selected.id,
                   free_item_name: null,
@@ -856,7 +857,7 @@ function FreeItemTab(props: {
           disabled={!canSubmit}
           onClick={() => {
             props.onAdd({
-              key: crypto.randomUUID(),
+              key: safeRandomUUID(),
               source: props.source,
               product_id: null,
               free_item_name: name.trim(),
