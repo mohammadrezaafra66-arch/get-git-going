@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type DeliveryReceiptRow = {
   id: string;
@@ -184,7 +185,7 @@ export function useCreateDeliveryReceipt() {
       if (file.size > MAX_SIZE) {
         throw new Error("حجم فایل بیش از ۲۰ مگابایت است");
       }
-      const path = `${type}/${crypto.randomUUID()}.${ext}`;
+      const path = `${type}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("delivery-receipts")
         .upload(path, file, { contentType: file.type, upsert: false });
