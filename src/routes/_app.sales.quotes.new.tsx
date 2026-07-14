@@ -778,7 +778,7 @@ function ProductTab(props: {
               onClick={() => {
                 if (!selected || !salePriceTypeId) return;
                 props.onAdd({
-                  key: crypto.randomUUID(),
+                  key: safeRandomUUID(),
                   source: "product_price",
                   product_id: selected.id,
                   free_item_name: null,
@@ -857,7 +857,7 @@ function FreeItemTab(props: {
           disabled={!canSubmit}
           onClick={() => {
             props.onAdd({
-              key: crypto.randomUUID(),
+              key: safeRandomUUID(),
               source: props.source,
               product_id: null,
               free_item_name: name.trim(),
