@@ -183,6 +183,8 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 http://<LAN_HOST_IP>:3000
 ```
 
+> ⚠️ محدودیت مرورگر برای ضبط صدا: دسترسی به میکروفون روی آدرس‌های `http://192.168.x.x` یا هر IP داخلیِ بدون HTTPS توسط Chrome/Edge/Firefox مسدود می‌شود. برای تست پیام صوتی باید برنامه از یک **secure context** باز شود: یا روی خود لپ‌تاپ میزبان با `http://localhost:3000`، یا از طریق HTTPS داخلی/production. این محدودیت سمت مرورگر است و با تغییر کد یا policy دیتابیس دور زده نمی‌شود.
+
 ## ۱۰. پورت‌هایی که در Windows Firewall باید باز شوند
 
 - TCP **3000** (اپ)
