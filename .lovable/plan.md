@@ -1,60 +1,49 @@
-## تقسیم کار به بخش‌های کوچک
+## مرحله C — حذف وابستگی `crypto.randomUUID` در آپلود رسیدهای تحویل
 
-کل کار رفع باگ‌های /messages را به ۶ بخش مستقل تقسیم می‌کنیم. هر بخش جداگانه اجرا، تست و تایید می‌شود قبل از رفتن به بخش بعد.
+### مشکل
+در مرورگرِ مصرف‌کننده روی LAN با `http://192.168.170.8` (غیرHTTPS و غیر‌localhost)، `window.crypto.randomUUID` در دسترس نیست چون `SubtleCrypto`/`crypto.randomUUID` فقط در Secure Context فعال‌اند. نتیجه: هنگام آپلود رسید در `useDeliveryReceipts` خطای `crypto.randomUUID is not a function` رخ می‌دهد و آپلود شکست می‌خورد — دقیقاً همان الگویی که در ماژول messenger هم بود.
 
-### نقشه کلی بخش‌ها
+الگویی که پروژه از قبل استفاده می‌کند در `src/hooks/messenger/useInquiries.ts` و `src/components/data-tables/FiltersBar.tsx` وجود دارد:
 
-| بخش | موضوع | وابستگی |
-|---|---|---|
-| **A** | ابزار تشخیص read-only (`messenger-doctor.ps1`) + مستندات | هیچ — فقط اسکریپت، صفر ریسک |
-| B | رفع WebSocket در Node 20 (کلاینت Supabase سمت سرور) | خروجی A |
-| C | رفع `crypto.randomUUID` (helper + delivery receipts) | مستقل از A/B |
-| D | UX ضبط صدا + پیش‌بررسی HTTPS/mediaDevices | مستقل |
-| E | پیام‌های خطای دقیق برای semantic-search و ai-chat | خروجی A (برای دیدن env واقعی) |
-| F | migration نقش‌های `messenger_group_members` (فقط بعد از دیدن خروجی doctor) | خروجی A |
+```ts
+typeof crypto !== "undefined" && "randomUUID" in crypto
+  ? crypto.randomUUID()
+  : /* fallback */
+```
 
-هیچ بخشی به بخش قبل commit نمی‌شود قبل از تایید شما.
+اما این fallbackها هر بار به‌صورت inline تکرار شده‌اند. برای مرحله C یک helper مشترک، ساده و بدون وابستگی می‌سازیم و فقط نقطهٔ تحویل رسیدها را به آن سوئیچ می‌کنیم.
 
----
+### تغییرات
 
-## بخش A — که الان می‌خواهیم انجام دهیم
+1) **افزودن `src/lib/utils/safe-uuid.ts` (فایل جدید، ~20 خط):**
+   - export `safeRandomUUID(): string`
+   - اگر `globalThis.crypto?.randomUUID` موجود بود، همان را برگرداند.
+   - در غیر این صورت، اگر `crypto.getRandomValues` موجود بود، از آن برای ساخت UUID v4 استاندارد استفاده کند (الگوریتم مرسوم با ماسک 0x40/0x80).
+   - در نهایت fallback به `Math.random`-based v4 (فقط برای اسم فایل storage استفاده می‌شود، امنیتی نیست).
 
-**وضعیت:** پیاده‌سازی در turn قبل انجام شد. این پلن فقط برای تایید نهایی محتوای بخش A است.
+2) **`src/hooks/delivery-receipts/useDeliveryReceipts.ts`:**
+   - import `safeRandomUUID` و جایگزینی خط 187:  
+     `const path = \`${type}/${safeRandomUUID()}.${ext}\`;`
+   - هیچ منطق دیگری تغییر نمی‌کند.
 
-**فایل‌های تولیدشده:**
-1. `deploy/lan/scripts/messenger-doctor.ps1` — اسکریپت PowerShell 5.1 سازگار، ASCII فقط، کاملاً read-only.
-2. `deploy/lan/README.md` — بخش ۱۵.۱ اضافه شد.
+### خارج از دامنهٔ این مرحله
+- سایر call-siteهای `crypto.randomUUID` (sales quotes, documents, purchases, product images, payment receipt documents) در حال حاضر روی HTTPS/localhost کار می‌کنند و مشکل گزارش‌شدهٔ کاربر مربوط به آن‌ها نیست. طبق قانون «تغییر کوچک و محدود به task»، در این مرحله دست‌نخورده می‌مانند. اگر پس از messenger-doctor نیاز به توسعهٔ این fix تأیید شد، در یک مرحلهٔ جداگانه (D+) با همان helper سوئیچ می‌شوند.
+- `useInquiries` و `FiltersBar` که از قبل fallback inline دارند نیز تغییر نمی‌کنند تا diff مینیمال بماند.
+- `src/lib/messenger/upload.functions.ts` (سرور، Node) و `enqueue-dummy-job.server.ts` (`node:crypto`) اصلاً متأثر نیستند.
 
-**چه چیزی چک می‌کند (بدون چاپ هیچ secret):**
-- وضعیت Docker + `compose ps`
-- نسخهٔ Node در کانتینر web + `typeof WebSocket`
-- حضور env vars مهم (فقط `SET` / `MISSING`)
-- Health سه endpoint: `web/`, `kong /auth/v1/health`, `kong /storage/v1/status`
-- دسترسی به Ollama (`/api/tags`) از داخل کانتینر
-- الگوهای خطا در ۳۰۰ خط آخر لاگ web
-- وجود ۶ جدول messenger + delivery
-- نام policyها روی جدول‌های messenger + `storage.objects` (فقط نام‌ها)
-- وجود ۵ function کلیدی (`send_messenger_message`, `is_messenger_group_admin`, …)
-- تعداد ردیف و ابعاد بردار در `message_embeddings`
-- وجود دو bucket: `messenger-attachments`, `delivery-receipts`
+### RLS/RBAC/Migration/Audit
+- بدون هیچ migration، بدون تغییر policy، بدون تغییر schema، بدون تغییر RBAC، بدون تغییر audit. صرفاً تغییر یک سطر client-side + یک utility خالص.
 
-**خروج:** exit code = تعداد FAIL؛ خلاصهٔ رنگی PASS/FAIL/WARN/INFO.
+### تأثیر بر سایر ماژول‌ها
+- هیچ. helper جدید فقط از یک نقطه فراخوانی می‌شود. Browser Realtime، AI chat، pricing، messenger و سایر بخش‌ها بدون تغییر باقی می‌مانند.
 
-**تضمین‌های امنیتی:**
-- هیچ SQL نوشتاری اجرا نمی‌شود.
-- هیچ کانتینر restart/recreate نمی‌شود.
-- مقدار هیچ env یا secret چاپ نمی‌شود؛ فقط SET/MISSING.
-- هیچ فایل کد پروژه تغییر نکرده — فقط دو فایل داخل `deploy/lan/` اضافه/ویرایش شده.
+### راستی‌آزمایی
+- `bunx tsgo --noEmit` روی مسیرهای تغییرکرده.
+- `bunx eslint src/lib/utils/safe-uuid.ts src/hooks/delivery-receipts/useDeliveryReceipts.ts`.
+- تست دستی توسط اپراتور روی `http://192.168.170.8/delivery-receipts`: انتخاب فایل jpg/pdf و آپلود، مشاهدهٔ ایجاد ردیف در `delivery_receipts` و فایل در باکت `delivery-receipts`.
 
-**قدم بعدی که از شما می‌خواهیم:**
-1. روی سرور LAN اجرا کنید:
-   ```powershell
-   cd C:\path\to\repo
-   .\deploy\lan\scripts\messenger-doctor.ps1
-   ```
-2. خروجی کامل را (بدون ویرایش) در چت بچسبانید.
-3. پس از دیدن خروجی، بخش B را با migrations/کد واقعی مبتنی بر شواهد شروع می‌کنیم — هیچ migration حدسی ساخته نمی‌شود.
+### Rollback
+`git revert` روی همین commit؛ چون تنها یک فایل جدید و یک سطر تغییر است، بدون هیچ اثر جانبی.
 
-**Rollback بخش A:** حذف دو فایل بالا — چون هیچ کد اپ و هیچ migration تغییر نکرده، ریسک صفر است.
-
-**تأثیر روی سایر ماژول‌ها:** هیچ. اسکریپت فقط می‌خواند.
+### ریسک باقی‌مانده
+- fallback مبتنی بر `Math.random` از نظر آماری برای شناسهٔ فایل storage کافی است (فضای 122 بیتی v4)، ولی cryptographically-strong نیست؛ چون فقط برای نام فایل استفاده می‌شود و هرگز به‌عنوان توکن/راز به‌کار نمی‌رود، ریسک عملی صفر است. اگر `getRandomValues` موجود باشد (که در همهٔ مرورگرهای مدرن حتی روی HTTP هست) این fallback هرگز اجرا نمی‌شود.
