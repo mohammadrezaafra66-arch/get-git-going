@@ -53,25 +53,30 @@ export async function fetchOwnerAttentionReport(): Promise<OwnerAttentionReport>
   // 1) owner assignments
   const { data: assigns, error: aErr } = await supabase
     .from("product_owner_assignments")
-    .select(
-      "product_id, user_id, profile:profiles!product_owner_assignments_user_id_fkey(full_name)",
-    )
+    .select("product_id, user_id")
     .limit(OWNERS_LIMIT);
   if (aErr) throw aErr;
 
   const truncated = (assigns?.length ?? 0) >= OWNERS_LIMIT;
   const ownersByProduct = new Map<string, { user_id: string; full_name: string | null }[]>();
-  const ownerNameById = new Map<string, string>();
-  for (const r of (assigns ?? []) as Array<{
-    product_id: string;
-    user_id: string;
-    profile: { full_name: string | null } | null;
-  }>) {
-    const name = r.profile?.full_name ?? r.user_id.slice(0, 8);
-    ownerNameById.set(r.user_id, name);
+  const ownerNameById = new Map<string, string | null>();
+  for (const r of (assigns ?? []) as Array<{ product_id: string; user_id: string }>) {
+    ownerNameById.set(r.user_id, null);
     const arr = ownersByProduct.get(r.product_id) ?? [];
-    arr.push({ user_id: r.user_id, full_name: r.profile?.full_name ?? null });
+    arr.push({ user_id: r.user_id, full_name: null });
     ownersByProduct.set(r.product_id, arr);
+  }
+  const userIds = Array.from(ownerNameById.keys());
+  if (userIds.length > 0) {
+    for (const ids of chunk(userIds, PRODUCTS_CHUNK)) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", ids);
+      for (const p of (profs ?? []) as Array<{ id: string; full_name: string | null }>) {
+        ownerNameById.set(p.id, p.full_name);
+      }
+    }
   }
   const ownedProductIds = Array.from(ownersByProduct.keys());
   if (ownedProductIds.length === 0) {
