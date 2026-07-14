@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type DocumentRow = {
   id: string;
@@ -154,7 +155,7 @@ export function useCreateDocument() {
       if (file.size > MAX_SIZE) {
         throw new Error("حجم فایل بیش از ۲۰ مگابایت است");
       }
-      const path = `${type}/${crypto.randomUUID()}.${ext}`;
+      const path = `${type}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("documents")
         .upload(path, file, { contentType: file.type, upsert: false });
