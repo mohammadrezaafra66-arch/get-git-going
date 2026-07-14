@@ -69,10 +69,7 @@ export async function fetchOwnerAttentionReport(): Promise<OwnerAttentionReport>
   const userIds = Array.from(ownerNameById.keys());
   if (userIds.length > 0) {
     for (const ids of chunk(userIds, PRODUCTS_CHUNK)) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", ids);
+      const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
       for (const p of (profs ?? []) as Array<{ id: string; full_name: string | null }>) {
         ownerNameById.set(p.id, p.full_name);
       }

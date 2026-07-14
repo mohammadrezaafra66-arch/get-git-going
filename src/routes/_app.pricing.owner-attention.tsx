@@ -82,14 +82,7 @@ function OwnerAttentionPage() {
 
   const downloadCsv = () => {
     if (!report) return;
-    const header = [
-      "مسئول",
-      "محصول",
-      "SKU",
-      "وضعیت موجودی",
-      "مشکلات",
-      "روزهای بدون آپدیت",
-    ];
+    const header = ["مسئول", "محصول", "SKU", "وضعیت موجودی", "مشکلات", "روزهای بدون آپدیت"];
     const rows: string[][] = [];
     for (const g of filteredGroups) {
       for (const p of g.products) {
@@ -104,8 +97,7 @@ function OwnerAttentionPage() {
       }
     }
     const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const csv =
-      "\uFEFF" + [header, ...rows].map((r) => r.map(escape).join(",")).join("\r\n");
+    const csv = "\uFEFF" + [header, ...rows].map((r) => r.map(escape).join(",")).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -178,10 +170,7 @@ function OwnerAttentionPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">نوع مشکل:</span>
-              <Select
-                value={issueFilter}
-                onValueChange={(v) => setIssueFilter(v as IssueFilter)}
-              >
+              <Select value={issueFilter} onValueChange={(v) => setIssueFilter(v as IssueFilter)}>
                 <SelectTrigger className="h-8 w-[220px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -224,24 +213,17 @@ function OwnerAttentionPage() {
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                     <CardTitle className="text-base">{g.owner_name}</CardTitle>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">
-                        کل: {formatNumber(g.products.length)}
-                      </Badge>
+                      <Badge variant="outline">کل: {formatNumber(g.products.length)}</Badge>
                       {g.no_purchase_price > 0 && (
                         <Badge variant="destructive">
                           بدون قیمت خرید: {formatNumber(g.no_purchase_price)}
                         </Badge>
                       )}
                       {g.unavailable > 0 && (
-                        <Badge variant="destructive">
-                          ناموجود: {formatNumber(g.unavailable)}
-                        </Badge>
+                        <Badge variant="destructive">ناموجود: {formatNumber(g.unavailable)}</Badge>
                       )}
                       {g.stale > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="border-amber-500 text-amber-700"
-                        >
+                        <Badge variant="outline" className="border-amber-500 text-amber-700">
                           کهنه: {formatNumber(g.stale)}
                         </Badge>
                       )}
@@ -263,10 +245,7 @@ function OwnerAttentionPage() {
                             <TableRow key={p.id}>
                               <TableCell className="font-medium">
                                 <div className="truncate">{p.name}</div>
-                                <div
-                                  className="text-[10px] text-muted-foreground"
-                                  dir="ltr"
-                                >
+                                <div className="text-[10px] text-muted-foreground" dir="ltr">
                                   {p.sku ?? "—"}
                                 </div>
                               </TableCell>
