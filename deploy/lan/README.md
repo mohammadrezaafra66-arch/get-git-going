@@ -239,6 +239,16 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 ```
 
+### ۱۵.۱ عیب‌یابی ماژول پیام‌رسان و رسیدهای تحویل (read-only)
+
+ابزار تشخیصی `messenger-doctor.ps1` وضعیت runtime، envها، health endpointها، لاگ‌ها، schema، policyها، functionها و bucketهای مرتبط با `/messages` و رسیدهای تحویل را بررسی می‌کند. این ابزار **فقط خواندنی** است، هیچ داده‌ای تغییر نمی‌دهد و هیچ مقدار secretی چاپ نمی‌کند (فقط `SET` یا `MISSING`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\messenger-doctor.ps1
+```
+
+خروجی را کامل ذخیره کنید و برای گزارش باگ ضمیمه کنید. تا زمانی که خروجی این ابزار دیده نشود، هیچ migration جدیدی روی جداول messenger یا رسیدها نوشته/اجرا نخواهد شد.
+
 ## ۱۶. RBAC و کنترل دسترسی
 
 کنترل دسترسی کاربران داخل اپ همان RBAC فعلی AfraKala است (جدول `user_roles` + `has_role()`). این deployment فقط مسیر شبکه را فراهم می‌کند و امنیت ورود و نقش‌ها از داخل اپ کنترل می‌شود. این مسیر نباید روی اینترنت عمومی expose شود.
