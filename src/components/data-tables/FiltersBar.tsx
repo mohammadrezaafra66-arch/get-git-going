@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DynamicColumnDataType } from "@/lib/data-tables/constants";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type FilterColumn = {
   id: string;
@@ -47,10 +48,7 @@ const OPS_BY_TYPE: Record<DynamicColumnDataType, { op: string; label: string }[]
 };
 
 export function makeRule(column_id: string, data_type: DynamicColumnDataType): FilterRule {
-  const id =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
+  const id = safeRandomUUID();
   const firstOp = OPS_BY_TYPE[data_type][0]?.op ?? "contains";
   return { id, column_id, op: firstOp };
 }
