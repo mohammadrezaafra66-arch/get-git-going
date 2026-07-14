@@ -53,6 +53,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { fetchEffectiveCurrencies } from "@/lib/pricing/effective-currencies";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
@@ -913,6 +914,15 @@ function ProductCard({
   const amt = cur !== null && prev !== null ? cur - prev : null;
   const pct = computeChangePercent(cur, prev);
 
+  const { data: effectiveCurrencies } = useQuery({
+    queryKey: ["effective-currencies"],
+    queryFn: fetchEffectiveCurrencies,
+    staleTime: 60_000,
+  });
+  const usdRate = effectiveCurrencies?.find((c) => c.code === "usd")?.latest_rate ?? null;
+  const toUsd = (tomanPrice: number | null): number | null =>
+    tomanPrice != null && usdRate && usdRate > 0 ? Math.round(tomanPrice / usdRate) : null;
+
   const hasAnyPrice = prices.some((p) => p.current_price != null);
   const noPriceReason = !hasAnyPrice
     ? isUnavailable
@@ -1010,57 +1020,57 @@ function ProductCard({
               <div className="h-16 w-16 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
             )}
             <div className="min-w-0 space-y-1">
-            <h3 className="font-semibold text-foreground break-words">
-              {formatProductDisplayNameWithFallback(product)}
-            </h3>
-            <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-              {product.sku && (
-                <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
-                  <Tag className="h-3 w-3" /> {product.sku}
-                </span>
-              )}
-              {product.barcode && (
-                <span
-                  className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono"
-                  dir="ltr"
-                  title="بارکد"
-                >
-                  <Tag className="h-3 w-3" /> {product.barcode}
-                </span>
-              )}
-              {product.brand?.name && <span>برند: {product.brand.name}</span>}
-              {product.category?.name && <span>· {product.category.name}</span>}
-            </div>
-            {specChips.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1 text-xs">
-                {specChips.map((s) => (
-                  <span
-                    key={s.label}
-                    className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
-                  >
-                    <span className="text-muted-foreground">{s.label}:</span>
-                    <span className="font-medium">{s.value}</span>
+              <h3 className="font-semibold text-foreground break-words">
+                {formatProductDisplayNameWithFallback(product)}
+              </h3>
+              <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                {product.sku && (
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
+                    <Tag className="h-3 w-3" /> {product.sku}
                   </span>
-                ))}
-              </div>
-            )}
-            {labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1">
-                {labels.slice(0, 4).map((l) => (
+                )}
+                {product.barcode && (
                   <span
-                    key={l.id}
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
-                    style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                    className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono"
+                    dir="ltr"
+                    title="بارکد"
                   >
+                    <Tag className="h-3 w-3" /> {product.barcode}
+                  </span>
+                )}
+                {product.brand?.name && <span>برند: {product.brand.name}</span>}
+                {product.category?.name && <span>· {product.category.name}</span>}
+              </div>
+              {specChips.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1 text-xs">
+                  {specChips.map((s) => (
                     <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={l.color ? { backgroundColor: l.color } : undefined}
-                    />
-                    {l.title}
-                  </span>
-                ))}
-              </div>
-            )}
+                      key={s.label}
+                      className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
+                    >
+                      <span className="text-muted-foreground">{s.label}:</span>
+                      <span className="font-medium">{s.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {labels.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {labels.slice(0, 4).map((l) => (
+                    <span
+                      key={l.id}
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                      style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={l.color ? { backgroundColor: l.color } : undefined}
+                      />
+                      {l.title}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -1095,6 +1105,11 @@ function ProductCard({
                   {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
+                {toUsd(cur) !== null && (
+                  <div className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                    ≈ {formatNumber(toUsd(cur)!)} دلار
+                  </div>
+                )}
                 {prev !== null && (
                   <div className="text-[11px] text-muted-foreground line-through">
                     {formatNumber(prev)} ت
@@ -1154,6 +1169,11 @@ function ProductCard({
                       <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>
                     )}
                   </div>
+                  {toUsd(c) !== null && (
+                    <div className="text-[10px] font-normal text-muted-foreground tabular-nums">
+                      ≈ {formatNumber(toUsd(c)!)} دلار
+                    </div>
+                  )}
                   {a !== null && a !== 0 && (
                     <div
                       className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}
