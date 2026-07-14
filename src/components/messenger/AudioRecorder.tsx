@@ -46,7 +46,6 @@ function recorderStartErrorMessage(err: unknown): string {
   return "شروع ضبط ناموفق بود؛ صفحه را با HTTPS یا localhost باز کنید و دسترسی میکروفون را بررسی کنید.";
 }
 
-
 function pickMimeType(): { mime: string; ext: string } | null {
   const candidates: Array<{ mime: string; ext: string }> = [
     { mime: "audio/webm;codecs=opus", ext: "webm" },
