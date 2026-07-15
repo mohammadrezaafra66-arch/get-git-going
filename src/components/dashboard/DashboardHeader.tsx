@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import moment from "moment-jalaali";
+import { ClockInOutButton } from "@/components/attendance/ClockInOutButton";
 
 let momentLoaded = false;
 function todayJalali(): string {
@@ -49,17 +50,20 @@ export function DashboardHeader() {
         </h1>
         <p className="mt-1 text-xs text-muted-foreground md:text-sm">{todayJalali()}</p>
       </div>
-      <div
-        className={`flex items-center gap-2 rounded-full px-3 py-1 text-[11px] ${
-          online
-            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-            : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-        }`}
-      >
-        <span
-          className={`h-2 w-2 rounded-full ${online ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`}
-        />
-        {online ? "اتصال زنده برقرار است" : "اتصال زنده قطع است"}
+      <div className="flex flex-wrap items-center gap-2">
+        <ClockInOutButton />
+        <div
+          className={`flex items-center gap-2 rounded-full px-3 py-1 text-[11px] ${
+            online
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+          }`}
+        >
+          <span
+            className={`h-2 w-2 rounded-full ${online ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`}
+          />
+          {online ? "اتصال زنده برقرار است" : "اتصال زنده قطع است"}
+        </div>
       </div>
     </div>
   );
