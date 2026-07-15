@@ -51,6 +51,7 @@ import { requireAnyRole } from "@/lib/rbac/route-guards";
 import {
   listKpis,
   updateKpi,
+  upsertKpi,
   listKpiRules,
   toggleKpiRule,
   calculateEmployeeScore,
@@ -63,7 +64,7 @@ import { recordManualScoreAdjustment } from "@/lib/gamification/manual-score.fun
 
 export const Route = createFileRoute("/_app/gamification/settings")({
   beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
+    await requireAnyRole(["admin"]);
   },
   component: GamificationSettingsPage,
 });
@@ -110,9 +111,12 @@ function KpiWeightsCard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">وزن KPIهای پیوسته</CardTitle>
-        <Badge variant={Math.abs(totalWeight - 1) < 0.001 ? "default" : "secondary"}>
-          مجموع وزن فعال: {toPersianDigits(totalWeight.toFixed(2))}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={Math.abs(totalWeight - 1) < 0.001 ? "default" : "secondary"}>
+            مجموع وزن فعال: {toPersianDigits(totalWeight.toFixed(2))}
+          </Badge>
+          <NewKpiDialog onCreated={() => qc.invalidateQueries({ queryKey: ["settings-kpis"] })} />
+        </div>
       </CardHeader>
       <CardContent className="p-0 overflow-x-auto">
         {isLoading ? (
