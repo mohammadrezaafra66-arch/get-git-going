@@ -133,7 +133,7 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
 
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
 const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 25 * 1024 * 1024;
 
 export function useCreateDocument() {
   const qc = useQueryClient();
@@ -153,7 +153,7 @@ export function useCreateDocument() {
         throw new Error("فرمت فایل مجاز نیست (jpg, png, pdf)");
       }
       if (file.size > MAX_SIZE) {
-        throw new Error("حجم فایل بیش از ۲۰ مگابایت است");
+        throw new Error("حجم فایل بیش از ۲۵ مگابایت است");
       }
       const path = `${type}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
