@@ -1,85 +1,46 @@
-## چرا این خطا رخ می‌دهد؟
+## تشخیص مشکل
 
-خطای «دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید» معادل `fetch_failed` در backend است. این یعنی کانتینر app **اصلاً نتوانست به آدرس Ollama متصل شود** (قبل از هر پاسخ HTTP). با خطای قبلی `http_403` فرق دارد:
+خطای `Node.js detected but native WebSocket not found` هنگام ثبت استعلام جدید از این نقطه می‌آید:
 
-- `http_403` = اتصال برقرار شد، ولی سرور مقصد رد کرد (proxy/firewall/auth)
-- `fetch_failed` = اتصال TCP/DNS اصلاً برقرار نشد
+- `src/lib/messenger/inquiries.functions.ts` از `requireSupabaseAuth` (فایل auto-generated `auth-middleware.ts`) استفاده می‌کند.
+- این middleware داخل `createClient(...)` **بدون** تنظیم `realtime.transport` اجرا می‌شود، و `@supabase/supabase-js` v2.104 در Node 20 (سرور self-host) به‌طور eager `RealtimeClient` می‌سازد و WebSocket ندارد → 500.
+- برای همین مشکل قبلاً `requireSupabaseAuthNode20` در `src/integrations/supabase/messenger-auth-middleware.ts` نوشته شده که با `NoopRealtimeTransport` این خطا را دور می‌زند و در سایر بخش‌های messenger (پیام، آپلود) استفاده شده.
 
-## علت‌های محتمل (به ترتیب شیوع)
+`inquiries.functions.ts` هنگام ساخت این workaround جا افتاده. سه server function استعلام (`createInquiry`, `replyInquiry`, `transferInquiry`) هنوز از middleware ناسازگار با Node 20 استفاده می‌کنند.
 
-1. **`OLLAMA_API_URL` در `.env` سرور تنظیم نشده یا خالی است**
-   - اگر خالی باشد کد پیام `disabled` می‌دهد، ولی اگر مقدار نامعتبر داشته باشد `fetch_failed` می‌دهد.
+## برنامه اجرا
 
-2. **مقدار `OLLAMA_API_URL` اشتباه است**
-   - نمونه‌های اشتباه: `localhost:11434` بدون `http://`، آدرس با endpoint کامل مثل `/api/chat`، آدرس داخلی که از کانتینر app قابل دسترس نیست.
-   - مقدار درست: `http://IP_OR_HOST:11434` یا `https://ollama.your-domain.com`
+### تغییر واحد و کم‌ریسک
+در `src/lib/messenger/inquiries.functions.ts`:
+- import را از `@/integrations/supabase/auth-middleware` به `@/integrations/supabase/messenger-auth-middleware` تغییر بده.
+- `requireSupabaseAuth` را به `requireSupabaseAuthNode20` جایگزین کن در هر سه server function.
 
-3. **کانتینر app به شبکه Ollama دسترسی ندارد**
-   - Ollama روی سرور دیگر است و port `11434` روی فایروال آن سرور بسته است.
-   - Ollama فقط روی `127.0.0.1` bind شده (نه `0.0.0.0`) و از بیرون قابل دسترس نیست.
-   - DNS نام دامنه در کانتینر app resolve نمی‌شود.
+قرارداد `context` (شامل `supabase`, `userId`, `claims`) دقیقاً یکسان است، پس بقیه کد بدون تغییر می‌ماند.
 
-4. **کانتینر app بعد از تغییر `.env` restart نشده**
-   - env جدید فقط با `docker compose up -d --force-recreate app` بارگذاری می‌شود.
+## چرا این ۳ مورد بعدی هم رفع می‌شود
 
-5. **TLS/گواهی نامعتبر** (اگر https استفاده می‌کنید)
-   - certificate self-signed یا expired → fetch در Node رد می‌کند.
+- **ارجاع استعلام به همکار (transferInquiry)**: همان server function است، با اصلاح middleware کار می‌کند.
+- **پاسخ به استعلام (replyInquiry)**: همان server function.
+- **تاریخچه/برد استعلام‌ها**: از realtime browser client (`.channel(...)`) و query معمولی استفاده می‌کنند، نه server function؛ فقط ناتوانی در `createInquiry`/`replyInquiry`/`transferInquiry` باعث می‌شد داده جدیدی وارد جریان نشود. با رفع serverFnها، UI موجود درست کار می‌کند.
 
-## بله، قابل حل است
+## فایل هدف
+- `src/lib/messenger/inquiries.functions.ts` (فقط ۲ خط: import و ۳ محل middleware)
 
-مشکل صرفاً پیکربندی سرور است، نه باگ کد. مراحل تشخیص و رفع:
+## بدون تغییر
+- بدون migration/RLS/RPC (خود RPCها `create_inquiry`, `reply_inquiry`, `transfer_inquiry` دست‌نخورده)
+- بدون تغییر UI (`InquiryButton`, `InquiryReplyDialog`, `InquiryBoard`, `InquiryCard`)
+- بدون dependency جدید (`ws` نصب نمی‌شود؛ روش noop-transport حفظ می‌شود)
+- بدون تغییر schema
+- بدون secret
 
-### ۱. مقدار فعلی env را ببینید
-```bash
-docker exec <app-container> printenv OLLAMA_API_URL OLLAMA_MODEL OLLAMA_API_KEY
-```
+## بررسی‌های بعد از اجرا
+- `npm run build`
+- `npm run lint` روی فایل تغییر یافته
+- تست دستی مسیر `/messages`:
+  1. ثبت استعلام جدید از دکمه داخل چت → باید بدون خطا ثبت شود.
+  2. پاسخ به استعلام از دیالوگ → قیمت ثبت شود.
+  3. ارجاع استعلام به همکار → مسئول عوض شود.
+  4. نمایش برد استعلام‌ها و تاریخچه → آیتم جدید دیده شود.
 
-### ۲. از داخل کانتینر app تست اتصال بگیرید
-```bash
-docker exec <app-container> sh -c 'curl -sS -o /dev/null -w "HTTP %{http_code}  time %{time_total}s\n" --max-time 10 "$OLLAMA_API_URL/api/tags"'
-```
-- خروجی `HTTP 200` → اتصال سالم است، مشکل جای دیگر.
-- خطای `Could not resolve host` → DNS مشکل دارد.
-- خطای `Connection refused` → Ollama روی این آدرس/پورت گوش نمی‌دهد یا فقط `127.0.0.1` bind است.
-- خطای `Connection timed out` → فایروال بین کانتینر app و سرور Ollama بسته است.
-- خطای `SSL certificate problem` → گواهی نامعتبر.
-
-### ۳. اطمینان از bind درست Ollama روی سرور Ollama
-```bash
-# روی سرور Ollama
-ss -tlnp | grep 11434
-```
-باید `0.0.0.0:11434` یا `*:11434` باشد، نه `127.0.0.1:11434`. اگر روی localhost است، در systemd unit یا docker compose بگذارید:
-```
-OLLAMA_HOST=0.0.0.0:11434
-```
-سپس Ollama را restart کنید.
-
-### ۴. باز کردن فایروال سرور Ollama برای IP سرور app
-```bash
-# نمونه ufw
-sudo ufw allow from <APP_SERVER_IP> to any port 11434 proto tcp
-```
-
-### ۵. اصلاح `.env` سرور app و restart
-```
-OLLAMA_API_URL=http://<OLLAMA_HOST_OR_IP>:11434
-OLLAMA_MODEL=llama3.2:8b
-```
-```bash
-docker compose up -d --force-recreate app
-```
-
-### ۶. اگر پشت reverse proxy با auth است
-- علاوه بر آدرس صحیح، `OLLAMA_API_KEY` را هم در `.env` بگذارید (کد قبلاً هدر `Authorization: Bearer` را server-side می‌فرستد).
-
-## بدون تغییر کد
-
-هیچ تغییر کدی لازم نیست — کد فعلی این خطاها را درست مدیریت و پیام مناسب فارسی نشان می‌دهد. مشکل کاملاً در لایه زیرساخت/شبکه سرور است.
-
-## اگر می‌خواهید کمک بیشتری بدهم
-
-لطفاً یکی از این‌ها را بفرستید تا تشخیص دقیق‌تر بدهم:
-- خروجی دستور `curl` مرحله ۲ از داخل کانتینر app
-- مقدار فعلی `OLLAMA_API_URL` (بدون IP واقعی اگر حساس است، فقط الگو مثلاً `http://<ip>:11434`)
-- محل اجرای Ollama: همان سرور app، سرور دیگر در LAN، یا سرور دیگر روی اینترنت
+## توضیح درباره ارور Ollama (طبق درخواست شما فعلاً کنار می‌گذاریم)
+همان‌طور که در پلن قبلی توضیح داده شد، خطای `fetch_failed` مربوط به شبکه/پیکربندی سرور Ollama است، نه کد این پروژه. با اجرای مراحل زیرساختی که در `.lovable/plan.md` هست قابل رفع است. این پلن آن را دست نمی‌زند.
