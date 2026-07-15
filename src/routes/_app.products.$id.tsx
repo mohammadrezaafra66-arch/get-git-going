@@ -658,6 +658,9 @@ function ProductDetailPage() {
 
       <ProductHistoryCard productId={id} />
 
+      <ProductStatsCard productId={id} />
+      <ProductTimelineCard productId={id} />
+
       <Card>
         <CardContent className="space-y-2 p-4">
           <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی</h3>
