@@ -111,7 +111,7 @@ function InvoiceDetailPage() {
       const { data, error } = await supabase
         .from("invoices")
         .select(
-          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
+          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, product_video_required, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
         )
         .eq("id", invoiceId)
         .maybeSingle();
