@@ -414,12 +414,33 @@ function SalesSearchPage() {
     setLabelModePage(1);
   };
 
+  const { data: pageEffectiveCurrencies } = useQuery({
+    queryKey: ["effective-currencies"],
+    queryFn: fetchEffectiveCurrencies,
+    staleTime: 60_000,
+  });
+  const pageUsd = pageEffectiveCurrencies?.find((c) => c.code === "usd");
+  const pageUsdRate = pageUsd?.latest_rate ?? null;
+  const pageUsdRateAt = pageUsd?.latest_rate_at ?? null;
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
       />
+
+      {pageUsdRate && pageUsdRate > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <DollarSign className="h-4 w-4 text-primary" />
+          <span className="font-medium">نرخ لحظه‌ای دلار:</span>
+          <span className="font-bold text-primary tabular-nums">{formatNumber(pageUsdRate)} تومان</span>
+          <span className="text-xs text-muted-foreground">مبنای محاسبهٔ قیمت‌های دلاری</span>
+          {pageUsdRateAt && (
+            <span className="text-xs text-muted-foreground">— به‌روزرسانی: {formatDateTimeFa(pageUsdRateAt)}</span>
+          )}
+        </div>
+      )}
 
       {/* search & price type */}
       <Card>
