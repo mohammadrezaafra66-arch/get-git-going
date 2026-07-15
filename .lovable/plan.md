@@ -1,39 +1,33 @@
-## دو تغییر کوچک
+## هدف
+رفع سه مشکل صفحه اسناد `/documents` و `/admin/documents`:
 
-### ۱) رفع خطای `crypto.randomUUID is not a function` هنگام آپلود رسید
-- polyfill در `src/lib/polyfills/crypto-uuid.ts` وجود دارد و `src/start.ts` هم آن را import کرده، ولی در محیط self-host روی HTTP LAN همچنان خطا می‌آید. علت: در برخی مسیرها ماژول `start.ts` به‌اندازه‌ی کافی زود در بندل کلاینت اجرا نمی‌شود.
-- **اصلاح:** اولین خط `src/routes/__root.tsx` را با یک import ساده‌ی side-effect به polyfill اضافه می‌کنیم:
-  ```ts
-  import "@/lib/polyfills/crypto-uuid";
-  ```
-  همین یک خط تضمین می‌کند که polyfill قبل از هر ماژول دیگر (از جمله supabase-js) در بروزر بارگذاری شود.
+1. خطای `crypto.randomUUID is not a function` هنگام آپلود PDF/تصویر.
+2. سقف حجم فایل باید ۲۵ مگابایت باشد (الان ۲۰ مگابایت).
+3. اطمینان از اینکه پنل تأیید/رد و RBAC (فقط حسابدار/مدیر/ادمین) درست کار می‌کند.
 
-### ۲) سخت‌کردن سیاست دسترسی: فقط فرد تخصیص‌یافته (assignee) می‌تواند رسید ثبت کند
-سیاست‌های فعلی جدول `purchase_receipts`:
-- INSERT فقط `uploaded_by = auth.uid()` را چک می‌کند → هر کاربری می‌تواند رسید بزند.
-- سیاست Storage روی bucket `purchase-receipts` قبلاً صحیح است (فقط assignee/manager/admin).
+## تحلیل
 
-**Migration کوچک** روی `public.purchase_receipts`:
-- DROP POLICY "assignee can upload receipt"
-- CREATE POLICY جدید با شرط:
-  ```sql
-  uploaded_by = auth.uid()
-  AND (
-    has_role(auth.uid(),'admin')
-    OR has_role(auth.uid(),'manager')
-    OR EXISTS (
-      SELECT 1 FROM public.purchase_requests pr
-      WHERE pr.id = request_id AND pr.assigned_to = auth.uid()
-    )
-  )
-  ```
-- بقیه‌ی سیاست‌ها (SELECT/DELETE) دست‌نخورده.
+- `useCreateDocument` از `safeRandomUUID` استفاده می‌کند، اما خطا از **داخل supabase-js** می‌آید (کلاینت realtime/storage هنگام init یا upload به `crypto.randomUUID` نیاز دارد). در LAN self-host با HTTP (غیر secure context)، این API در مرورگر موجود نیست.
+- پلی‌فیل در `src/start.ts` و `src/routes/__root.tsx` هست ولی چون ماژول `@/integrations/supabase/client` از خیلی جاها import می‌شود، ممکن است init آن قبل از اجرای پلی‌فیل رخ دهد. مطمئن‌ترین نقطه، ابتدای `src/router.tsx` است که پیش از هر route module بارگذاری می‌شود.
+- سقف فعلی در دو جا: `MAX_SIZE` در `useCreateDocument` (۲۰MB) و `DocumentUploadForm` (۲۰MB) و متن UI.
+- RLS اسناد از قبل درست است: INSERT فقط برای accountant/manager/admin، UPDATE (تأیید/رد) فقط manager/admin، SELECT برای uploader یا مدیر. نیازی به migration نیست.
 
-### خارج از این پلن
-- UI/کد آپلود دست‌نخورده باقی می‌ماند.
-- خطای Ollama و اصلاحات استعلام قبلی مرتبط نیستند.
+## تغییرات
 
-### تست پس از اعمال
-1. `/admin/purchase` → یک درخواست، آپلود رسید → دیگر خطای `crypto.randomUUID` دیده نشود و رسید ثبت شود.
-2. با کاربری غیر از assignee (و بدون نقش admin/manager) تلاش برای آپلود → پیام permission denied از دیتابیس (rejection صحیح).
-3. با assignee → آپلود موفق.
+**۱. پلی‌فیل قبل از هر چیز**
+- در `src/router.tsx` بالاترین خط: `import "@/lib/polyfills/crypto-uuid";`
+- (importهای موجود در `start.ts` و `__root.tsx` حفظ می‌شوند به‌عنوان لایه دوم.)
+
+**۲. سقف ۲۵ مگابایت**
+- `src/hooks/documents/useDocuments.ts`: `MAX_SIZE = 25 * 1024 * 1024` و پیام خطا «حجم فایل بیش از ۲۵ مگابایت است».
+- `src/components/documents/DocumentUploadForm.tsx`: همان مقدار و متن راهنمای زیر drop zone «jpg، png، pdf — حداکثر ۲۵ مگابایت».
+
+**۳. بدون تغییر backend/RLS**
+- پنل «در انتظار تأیید» و دکمه‌های آمد/نیامد در `PendingDocumentsPanel` و `DocumentReviewActions` از قبل هست و طبق RLS فقط برای manager/admin کار می‌کند.
+
+## سناریوهای تست بعد از اعمال
+- با حساب حسابدار: آپلود PDF ۵MB → موفق، بدون خطای crypto.
+- آپلود PNG ۳MB → موفق.
+- آپلود فایل ۳۰MB → پیام «حجم فایل بیش از ۲۵ مگابایت است»، عملیات upload اجرا نشود.
+- با حساب فروش (بدون نقش حسابدار): دکمه/فرم آپلود قابل استفاده نباشد.
+- با حساب مدیر: تب «در انتظار تأیید» ببیند، «آمد»/«نیامد» با یادداشت ثبت شود.
