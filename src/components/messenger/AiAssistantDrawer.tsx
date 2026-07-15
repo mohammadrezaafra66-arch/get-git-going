@@ -82,7 +82,7 @@ export function AiAssistantDrawer({
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
-        toast.error("ارتباط با دستیار برقرار نشد");
+        toast.error(`ارتباط با دستیار برقرار نشد (کد ${res.status})`);
         setStreaming(false);
         return;
       }
@@ -114,7 +114,14 @@ export function AiAssistantDrawer({
               } else if (j.ok === false && j.reason === "disabled") {
                 setDisabled(true);
               } else if (j.error) {
-                toast.error("ارتباط با دستیار قطع شد");
+                const reason = j.error;
+                const msg =
+                  reason === "timeout"
+                    ? "پاسخ دستیار طول کشید؛ دوباره تلاش کنید"
+                    : reason === "fetch_failed"
+                      ? "دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید"
+                      : `خطا در دستیار: ${reason}`;
+                toast.error(msg);
               }
             } catch {
               // ignore
@@ -175,9 +182,7 @@ export function AiAssistantDrawer({
             {turns.map((t) => (
               <Bubble key={t.id} role={t.role} content={t.content} />
             ))}
-            {streaming && (
-              <Bubble role="assistant" content={liveAssistant || "…"} streaming />
-            )}
+            {streaming && <Bubble role="assistant" content={liveAssistant || "…"} streaming />}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
@@ -210,7 +215,11 @@ export function AiAssistantDrawer({
               className="min-h-12 resize-none"
             />
             <Button size="icon" onClick={() => void send()} disabled={streaming || !input.trim()}>
-              {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {streaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

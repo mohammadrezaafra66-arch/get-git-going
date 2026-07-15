@@ -163,12 +163,16 @@ export function GroupMembersDialog({
 
   const updateRole = useMutation({
     mutationFn: async (vars: { userId: string; role: MemberRole }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("messenger_group_members")
         .update({ role: vars.role })
         .eq("group_id", groupId)
-        .eq("user_id", vars.userId);
+        .eq("user_id", vars.userId)
+        .select("user_id, role");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("شما دسترسی تغییر نقش را ندارید یا عضو یافت نشد");
+      }
     },
     onSuccess: () => {
       toast.success("نقش به‌روزرسانی شد");
@@ -210,9 +214,7 @@ export function GroupMembersDialog({
                         <span className="truncate text-sm font-medium">
                           {m.full_name ?? "بدون نام"}
                         </span>
-                        {isSelf && (
-                          <span className="text-xs text-muted-foreground">(شما)</span>
-                        )}
+                        {isSelf && <span className="text-xs text-muted-foreground">(شما)</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         {canEdit ? (
@@ -286,9 +288,7 @@ export function GroupMembersDialog({
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : (searchQuery.data ?? []).length === 0 ? (
-                  <p className="p-3 text-center text-xs text-muted-foreground">
-                    کاربری یافت نشد
-                  </p>
+                  <p className="p-3 text-center text-xs text-muted-foreground">کاربری یافت نشد</p>
                 ) : (
                   (searchQuery.data ?? []).map((p) => (
                     <div
