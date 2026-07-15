@@ -714,7 +714,13 @@ function SaleListDetailPage() {
       } catch (err) {
         console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints, usdRateForPdf);
+      const input = buildPdfInput(
+        brandOrder,
+        productOrderByBrand,
+        livePrices,
+        observatoryHints,
+        usdRateForPdf,
+      );
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
@@ -972,7 +978,9 @@ function SaleListDetailPage() {
             <div>
               <div className="text-sm font-semibold">تفاوت تسویه (برای ارسال به مشتری)</div>
               <div className="text-xs text-muted-foreground">
-                مبلغ تفاوت بین ترمِ تسویهٔ PDF و ترمِ مبنا را برای محصولات انتخابی محاسبه و به‌صورت متنِ قابل‌کپی تولید می‌کند. این اطلاعات فقط در همین صفحه نمایش داده می‌شود و هرگز وارد PDF نمی‌شود.
+                مبلغ تفاوت بین ترمِ تسویهٔ PDF و ترمِ مبنا را برای محصولات انتخابی محاسبه و به‌صورت
+                متنِ قابل‌کپی تولید می‌کند. این اطلاعات فقط در همین صفحه نمایش داده می‌شود و هرگز
+                وارد PDF نمی‌شود.
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -986,11 +994,13 @@ function SaleListDetailPage() {
                     <SelectValue placeholder="انتخاب ترم" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(discountSalePriceTypesQ.data ?? []).map((t: { id: string; title: string }) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.title}
-                      </SelectItem>
-                    ))}
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1001,18 +1011,19 @@ function SaleListDetailPage() {
                     <SelectValue placeholder="انتخاب ترم مبنا" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(discountSalePriceTypesQ.data ?? []).map((t: { id: string; title: string }) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.title}
-                      </SelectItem>
-                    ))}
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
         </TabsContent>
-
       </Tabs>
 
       <Dialog
