@@ -163,12 +163,16 @@ export function GroupMembersDialog({
 
   const updateRole = useMutation({
     mutationFn: async (vars: { userId: string; role: MemberRole }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("messenger_group_members")
         .update({ role: vars.role })
         .eq("group_id", groupId)
-        .eq("user_id", vars.userId);
+        .eq("user_id", vars.userId)
+        .select("user_id, role");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("شما دسترسی تغییر نقش را ندارید یا عضو یافت نشد");
+      }
     },
     onSuccess: () => {
       toast.success("نقش به‌روزرسانی شد");
