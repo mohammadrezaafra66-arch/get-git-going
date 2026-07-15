@@ -83,12 +83,13 @@ function AdminPenaltiesPage() {
 
   return (
     <div dir="rtl" className="space-y-4">
-      <PageHeader
-        title="مدیریت کارت‌های قرمز"
-        description="مشاهده تخلف‌های ثبت‌شده در سامانه و رسیدگی به اعتراض‌ها."
-      >
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader
+          title="مدیریت کارت‌های قرمز"
+          description="مشاهده تخلف‌های ثبت‌شده در سامانه و رسیدگی به اعتراض‌ها."
+        />
         <CreatePenaltyDialog />
-      </PageHeader>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card>
