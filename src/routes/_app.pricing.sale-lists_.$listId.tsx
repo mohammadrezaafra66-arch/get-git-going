@@ -70,7 +70,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
-import { fetchSettlementTypes } from "@/lib/pricing/queries";
+import { fetchSalePriceTypes, fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
