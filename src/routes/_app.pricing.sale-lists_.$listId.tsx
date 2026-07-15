@@ -929,6 +929,7 @@ function SaleListDetailPage() {
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
           <TabsTrigger value="versions">نسخه‌ها و تاریخچه</TabsTrigger>
           <TabsTrigger value="settings">تنظیمات و ویرایش</TabsTrigger>
+          <TabsTrigger value="discount">تفاوت تسویه</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="pt-4">
