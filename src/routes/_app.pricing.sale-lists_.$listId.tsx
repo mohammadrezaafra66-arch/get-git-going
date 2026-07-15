@@ -246,6 +246,13 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  const discountSalePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active-for-discount"],
+    queryFn: () => fetchSalePriceTypes(true),
+  });
+  const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
+  const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
+
   // Category-specific product attributes for items, used only inside PDF "description" column.
   const productIdsForAttrs = useMemo(() => {
     const ids = new Set<string>();
