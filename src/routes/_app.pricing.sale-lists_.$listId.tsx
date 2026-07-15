@@ -413,6 +413,7 @@ function SaleListDetailPage() {
     overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
     observatoryHints?: ObservatoryPdfHintMap,
+    usdRate?: number | null,
   ): SaleListPdfInput => {
     // Default-on column set for legacy lists with NULL selected_columns.
     // `observatory_price_advantage` is intentionally excluded so existing
@@ -447,6 +448,7 @@ function SaleListDetailPage() {
       // Metadata only — never feeds into price calculation.
       settlementTypeTitle: list.settlement_type?.title ?? null,
       termsText: list.terms_text,
+      usdRate: usdRate ?? null,
       sellerInfo: list.seller_info ?? null,
       shopInfo: shop
         ? {
