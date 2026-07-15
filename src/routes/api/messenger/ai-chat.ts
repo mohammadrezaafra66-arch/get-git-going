@@ -9,7 +9,6 @@ const bodySchema = z.object({
   message: z.string().min(1).max(4000),
 });
 
-
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 const CHAT_TIMEOUT_MS = 120_000;
