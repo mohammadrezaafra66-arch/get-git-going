@@ -40,6 +40,7 @@ import {
 } from "@/lib/penalties/labels";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { AppealReviewPanel } from "@/components/penalties/AppealReviewPanel";
+import { CreatePenaltyDialog } from "@/components/penalties/CreatePenaltyDialog";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 const ALL = "__all__";
@@ -85,7 +86,9 @@ function AdminPenaltiesPage() {
       <PageHeader
         title="مدیریت کارت‌های قرمز"
         description="مشاهده تخلف‌های ثبت‌شده در سامانه و رسیدگی به اعتراض‌ها."
-      />
+      >
+        <CreatePenaltyDialog />
+      </PageHeader>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card>
