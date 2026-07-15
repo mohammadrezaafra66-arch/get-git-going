@@ -42,8 +42,10 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
-const MAX_SIZE = 20 * 1024 * 1024;
+const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf", "mp4", "mov", "webm", "mkv"];
+const VIDEO_EXT = ["mp4", "mov", "webm", "mkv"];
+const IMAGE_PDF_MAX = 20 * 1024 * 1024;
+const VIDEO_MAX = 100 * 1024 * 1024;
 
 const schema = z.object({
   type: z.enum(["shipping_receipt", "delivery_receipt"]),
@@ -163,8 +165,14 @@ export function DeliveryReceiptUploadForm({
 
   const validateFile = (f: File): string | null => {
     const ext = (f.name.split(".").pop() ?? "").toLowerCase();
-    if (!ALLOWED_EXT.includes(ext)) return "فرمت مجاز: jpg, png, pdf";
-    if (f.size > MAX_SIZE) return "حجم فایل بیش از ۲۰ مگابایت است";
+    if (!ALLOWED_EXT.includes(ext)) return "فرمت مجاز: jpg, png, pdf, mp4, mov, webm";
+    const isVideo = VIDEO_EXT.includes(ext) || f.type.startsWith("video/");
+    const max = isVideo ? VIDEO_MAX : IMAGE_PDF_MAX;
+    if (f.size > max) {
+      return isVideo
+        ? "حجم ویدئو بیش از ۱۰۰ مگابایت است"
+        : "حجم فایل بیش از ۲۰ مگابایت است";
+    }
     return null;
   };
 
