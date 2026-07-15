@@ -115,7 +115,7 @@ export function DeliveryReceiptUploadForm({
       const term = debouncedInvoiceSearch.trim();
       let q = supabase
         .from("invoices")
-        .select("id, number, created_at")
+        .select("id, number, created_at, product_video_required")
         .order("created_at", { ascending: false })
         .limit(20);
       if (term) q = q.ilike("number", `%${term}%`);
@@ -124,6 +124,9 @@ export function DeliveryReceiptUploadForm({
       return (data ?? []).map((r) => ({
         id: r.id as string,
         label: (r.number as string | null) ?? `فاکتور ${String(r.id).slice(0, 8)}`,
+        videoRequired: Boolean(
+          (r as { product_video_required?: boolean }).product_video_required,
+        ),
       }));
     },
     staleTime: 30_000,
@@ -151,10 +154,12 @@ export function DeliveryReceiptUploadForm({
     staleTime: 30_000,
   });
 
-  const selectedInvoiceLabel = useMemo(
-    () => (invoiceId ? invoiceOptions.find((o) => o.id === invoiceId)?.label ?? null : null),
+  const selectedInvoice = useMemo(
+    () => (invoiceId ? invoiceOptions.find((o) => o.id === invoiceId) ?? null : null),
     [invoiceId, invoiceOptions],
   );
+  const selectedInvoiceLabel = selectedInvoice?.label ?? null;
+  const invoiceVideoRequired = selectedInvoice?.videoRequired ?? false;
   const selectedCustomerLabel = useMemo(
     () =>
       customerId
