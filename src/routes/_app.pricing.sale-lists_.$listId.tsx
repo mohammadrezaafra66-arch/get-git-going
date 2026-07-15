@@ -252,8 +252,10 @@ function SaleListDetailPage() {
   });
   const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
   const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
+  const [discountSelectedIds, setDiscountSelectedIds] = useState<string[]>([]);
 
   // Category-specific product attributes for items, used only inside PDF "description" column.
+
   const productIdsForAttrs = useMemo(() => {
     const ids = new Set<string>();
     for (const it of itemsQ.data ?? []) {
@@ -1020,6 +1022,69 @@ function SaleListDetailPage() {
                     )}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>محصولات موردنظر برای محاسبهٔ تفاوت</Label>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() =>
+                      setDiscountSelectedIds(
+                        items.map((it) => it.product?.id).filter((x): x is string => !!x),
+                      )
+                    }
+                  >
+                    انتخاب همه
+                  </button>
+                  <span className="text-muted-foreground">·</span>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setDiscountSelectedIds([])}
+                  >
+                    حذف همه
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2">
+                {items.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">این لیست محصولی ندارد.</div>
+                ) : (
+                  items.map((it) => {
+                    const pid = it.product?.id;
+                    if (!pid) return null;
+                    const checked = discountSelectedIds.includes(pid);
+                    return (
+                      <label
+                        key={pid}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setDiscountSelectedIds((prev) =>
+                              v === true ? [...prev, pid] : prev.filter((id) => id !== pid),
+                            )
+                          }
+                        />
+                        <span className="text-sm">
+                          {it.product?.name ?? "—"}
+                          {it.product?.sku ? (
+                            <span className="ms-2 text-xs text-muted-foreground">
+                              {it.product.sku}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {discountSelectedIds.length.toLocaleString("fa-IR")} محصول انتخاب شده
               </div>
             </div>
           </div>
