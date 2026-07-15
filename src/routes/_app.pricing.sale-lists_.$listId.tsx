@@ -1094,7 +1094,6 @@ function SaleListDetailPage() {
       <Dialog
         open={pdfOrderOpen}
         onOpenChange={(o) => {
-
           if (!o && !runningPdf && !savingOrder) setPdfOrderOpen(false);
         }}
       >
