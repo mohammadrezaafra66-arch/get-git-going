@@ -1,46 +1,40 @@
-## تشخیص مشکل
+## مشکل
+هنگام «پاسخ به استعلام»، تریگر `award_inquiry_response_score` روی جدول `inquiries` اجرا می‌شود و در `employee_score_events` این INSERT را می‌زند:
 
-خطای `Node.js detected but native WebSocket not found` هنگام ثبت استعلام جدید از این نقطه می‌آید:
+```
+ON CONFLICT (source_table, source_id, event_type) DO NOTHING
+```
 
-- `src/lib/messenger/inquiries.functions.ts` از `requireSupabaseAuth` (فایل auto-generated `auth-middleware.ts`) استفاده می‌کند.
-- این middleware داخل `createClient(...)` **بدون** تنظیم `realtime.transport` اجرا می‌شود، و `@supabase/supabase-js` v2.104 در Node 20 (سرور self-host) به‌طور eager `RealtimeClient` می‌سازد و WebSocket ندارد → 500.
-- برای همین مشکل قبلاً `requireSupabaseAuthNode20` در `src/integrations/supabase/messenger-auth-middleware.ts` نوشته شده که با `NoopRealtimeTransport` این خطا را دور می‌زند و در سایر بخش‌های messenger (پیام، آپلود) استفاده شده.
+روی این جدول یک **unique index جزئی (partial)** وجود دارد:
 
-`inquiries.functions.ts` هنگام ساخت این workaround جا افتاده. سه server function استعلام (`createInquiry`, `replyInquiry`, `transferInquiry`) هنوز از middleware ناسازگار با Node 20 استفاده می‌کنند.
+```
+CREATE UNIQUE INDEX uniq_score_events_source
+  ON employee_score_events (source_table, source_id, event_type)
+  WHERE source_table IS NOT NULL AND source_id IS NOT NULL;
+```
 
-## برنامه اجرا
+PostgreSQL برای تطبیق `ON CONFLICT` با یک partial index، **باید همان predicate به عبارت ON CONFLICT اضافه شود**. چون این کار نشده، خطای `there is no unique or exclusion constraint matching the ON CONFLICT specification` بلند می‌شود و کل تراکنش reply_inquiry rollback می‌گیرد.
 
-### تغییر واحد و کم‌ریسک
-در `src/lib/messenger/inquiries.functions.ts`:
-- import را از `@/integrations/supabase/auth-middleware` به `@/integrations/supabase/messenger-auth-middleware` تغییر بده.
-- `requireSupabaseAuth` را به `requireSupabaseAuthNode20` جایگزین کن در هر سه server function.
+## راه‌حل (کم‌ریسک، فقط یک تابع تریگر)
+یک migration کوچک که فقط بدنه‌ی `public.award_inquiry_response_score()` را با `CREATE OR REPLACE FUNCTION` بازتعریف کند و در دستور `ON CONFLICT` این predicate را اضافه کند:
 
-قرارداد `context` (شامل `supabase`, `userId`, `claims`) دقیقاً یکسان است، پس بقیه کد بدون تغییر می‌ماند.
+```sql
+ON CONFLICT (source_table, source_id, event_type)
+  WHERE source_table IS NOT NULL AND source_id IS NOT NULL
+  DO NOTHING;
+```
 
-## چرا این ۳ مورد بعدی هم رفع می‌شود
+بقیه‌ی منطق تابع، تریگر، ایندکس، RPCها و جداول دست‌نخورده باقی می‌مانند.
 
-- **ارجاع استعلام به همکار (transferInquiry)**: همان server function است، با اصلاح middleware کار می‌کند.
-- **پاسخ به استعلام (replyInquiry)**: همان server function.
-- **تاریخچه/برد استعلام‌ها**: از realtime browser client (`.channel(...)`) و query معمولی استفاده می‌کنند، نه server function؛ فقط ناتوانی در `createInquiry`/`replyInquiry`/`transferInquiry` باعث می‌شد داده جدیدی وارد جریان نشود. با رفع serverFnها، UI موجود درست کار می‌کند.
+## چرا این گزینه
+- ایندکس همچنان partial می‌ماند (backward-compatible با داده‌های احتمالی NULL و رفتار کنونی صف امتیازها).
+- هیچ تغییری در schema، RLS، grant، RPC، یا کد فرانت لازم نیست.
+- ریسک روی سایر بخش‌های گیمیفیکیشن صفر است چون فقط predicate ON CONFLICT اصلاح می‌شود.
 
-## فایل هدف
-- `src/lib/messenger/inquiries.functions.ts` (فقط ۲ خط: import و ۳ محل middleware)
+## تست پس از اجرا
+1. `/messages` → یک استعلام باز → «پاسخ» با قیمت صحیح → باید بدون خطا ثبت شود و وضعیت به `completed_on_time` یا `completed_late` برود.
+2. اطمینان: در `employee_score_events` یک ردیف با `source_table='inquiries'` و همان `source_id` ثبت شود؛ پاسخ دوباره روی همان استعلام رکورد تکراری نسازد.
+3. سناریوهای قبلی (ثبت استعلام، ارجاع، برد، تاریخچه) دست‌نخورده کار کنند.
 
-## بدون تغییر
-- بدون migration/RLS/RPC (خود RPCها `create_inquiry`, `reply_inquiry`, `transfer_inquiry` دست‌نخورده)
-- بدون تغییر UI (`InquiryButton`, `InquiryReplyDialog`, `InquiryBoard`, `InquiryCard`)
-- بدون dependency جدید (`ws` نصب نمی‌شود؛ روش noop-transport حفظ می‌شود)
-- بدون تغییر schema
-- بدون secret
-
-## بررسی‌های بعد از اجرا
-- `npm run build`
-- `npm run lint` روی فایل تغییر یافته
-- تست دستی مسیر `/messages`:
-  1. ثبت استعلام جدید از دکمه داخل چت → باید بدون خطا ثبت شود.
-  2. پاسخ به استعلام از دیالوگ → قیمت ثبت شود.
-  3. ارجاع استعلام به همکار → مسئول عوض شود.
-  4. نمایش برد استعلام‌ها و تاریخچه → آیتم جدید دیده شود.
-
-## توضیح درباره ارور Ollama (طبق درخواست شما فعلاً کنار می‌گذاریم)
-همان‌طور که در پلن قبلی توضیح داده شد، خطای `fetch_failed` مربوط به شبکه/پیکربندی سرور Ollama است، نه کد این پروژه. با اجرای مراحل زیرساختی که در `.lovable/plan.md` هست قابل رفع است. این پلن آن را دست نمی‌زند.
+## خارج از این پلن
+- خطای Ollama و مرحله‌ی ارجاع/برد قبلاً بررسی و OK اعلام شدند؛ این پلن فقط باگ ON CONFLICT در پاسخ استعلام را رفع می‌کند.
