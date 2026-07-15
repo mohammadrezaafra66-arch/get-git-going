@@ -1,40 +1,39 @@
-## مشکل
-هنگام «پاسخ به استعلام»، تریگر `award_inquiry_response_score` روی جدول `inquiries` اجرا می‌شود و در `employee_score_events` این INSERT را می‌زند:
+## دو تغییر کوچک
 
-```
-ON CONFLICT (source_table, source_id, event_type) DO NOTHING
-```
+### ۱) رفع خطای `crypto.randomUUID is not a function` هنگام آپلود رسید
+- polyfill در `src/lib/polyfills/crypto-uuid.ts` وجود دارد و `src/start.ts` هم آن را import کرده، ولی در محیط self-host روی HTTP LAN همچنان خطا می‌آید. علت: در برخی مسیرها ماژول `start.ts` به‌اندازه‌ی کافی زود در بندل کلاینت اجرا نمی‌شود.
+- **اصلاح:** اولین خط `src/routes/__root.tsx` را با یک import ساده‌ی side-effect به polyfill اضافه می‌کنیم:
+  ```ts
+  import "@/lib/polyfills/crypto-uuid";
+  ```
+  همین یک خط تضمین می‌کند که polyfill قبل از هر ماژول دیگر (از جمله supabase-js) در بروزر بارگذاری شود.
 
-روی این جدول یک **unique index جزئی (partial)** وجود دارد:
+### ۲) سخت‌کردن سیاست دسترسی: فقط فرد تخصیص‌یافته (assignee) می‌تواند رسید ثبت کند
+سیاست‌های فعلی جدول `purchase_receipts`:
+- INSERT فقط `uploaded_by = auth.uid()` را چک می‌کند → هر کاربری می‌تواند رسید بزند.
+- سیاست Storage روی bucket `purchase-receipts` قبلاً صحیح است (فقط assignee/manager/admin).
 
-```
-CREATE UNIQUE INDEX uniq_score_events_source
-  ON employee_score_events (source_table, source_id, event_type)
-  WHERE source_table IS NOT NULL AND source_id IS NOT NULL;
-```
+**Migration کوچک** روی `public.purchase_receipts`:
+- DROP POLICY "assignee can upload receipt"
+- CREATE POLICY جدید با شرط:
+  ```sql
+  uploaded_by = auth.uid()
+  AND (
+    has_role(auth.uid(),'admin')
+    OR has_role(auth.uid(),'manager')
+    OR EXISTS (
+      SELECT 1 FROM public.purchase_requests pr
+      WHERE pr.id = request_id AND pr.assigned_to = auth.uid()
+    )
+  )
+  ```
+- بقیه‌ی سیاست‌ها (SELECT/DELETE) دست‌نخورده.
 
-PostgreSQL برای تطبیق `ON CONFLICT` با یک partial index، **باید همان predicate به عبارت ON CONFLICT اضافه شود**. چون این کار نشده، خطای `there is no unique or exclusion constraint matching the ON CONFLICT specification` بلند می‌شود و کل تراکنش reply_inquiry rollback می‌گیرد.
+### خارج از این پلن
+- UI/کد آپلود دست‌نخورده باقی می‌ماند.
+- خطای Ollama و اصلاحات استعلام قبلی مرتبط نیستند.
 
-## راه‌حل (کم‌ریسک، فقط یک تابع تریگر)
-یک migration کوچک که فقط بدنه‌ی `public.award_inquiry_response_score()` را با `CREATE OR REPLACE FUNCTION` بازتعریف کند و در دستور `ON CONFLICT` این predicate را اضافه کند:
-
-```sql
-ON CONFLICT (source_table, source_id, event_type)
-  WHERE source_table IS NOT NULL AND source_id IS NOT NULL
-  DO NOTHING;
-```
-
-بقیه‌ی منطق تابع، تریگر، ایندکس، RPCها و جداول دست‌نخورده باقی می‌مانند.
-
-## چرا این گزینه
-- ایندکس همچنان partial می‌ماند (backward-compatible با داده‌های احتمالی NULL و رفتار کنونی صف امتیازها).
-- هیچ تغییری در schema، RLS، grant، RPC، یا کد فرانت لازم نیست.
-- ریسک روی سایر بخش‌های گیمیفیکیشن صفر است چون فقط predicate ON CONFLICT اصلاح می‌شود.
-
-## تست پس از اجرا
-1. `/messages` → یک استعلام باز → «پاسخ» با قیمت صحیح → باید بدون خطا ثبت شود و وضعیت به `completed_on_time` یا `completed_late` برود.
-2. اطمینان: در `employee_score_events` یک ردیف با `source_table='inquiries'` و همان `source_id` ثبت شود؛ پاسخ دوباره روی همان استعلام رکورد تکراری نسازد.
-3. سناریوهای قبلی (ثبت استعلام، ارجاع، برد، تاریخچه) دست‌نخورده کار کنند.
-
-## خارج از این پلن
-- خطای Ollama و مرحله‌ی ارجاع/برد قبلاً بررسی و OK اعلام شدند؛ این پلن فقط باگ ON CONFLICT در پاسخ استعلام را رفع می‌کند.
+### تست پس از اعمال
+1. `/admin/purchase` → یک درخواست، آپلود رسید → دیگر خطای `crypto.randomUUID` دیده نشود و رسید ثبت شود.
+2. با کاربری غیر از assignee (و بدون نقش admin/manager) تلاش برای آپلود → پیام permission denied از دیتابیس (rejection صحیح).
+3. با assignee → آپلود موفق.
