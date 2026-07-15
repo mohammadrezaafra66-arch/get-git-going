@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { useAllDeliveryReceipts } from "@/hooks/delivery-receipts/useDeliveryReceipts";
+import { DeliveryReceiptCard } from "@/components/delivery-receipts/DeliveryReceiptCard";
 import {
   AlertDialog,
   AlertDialogAction,
