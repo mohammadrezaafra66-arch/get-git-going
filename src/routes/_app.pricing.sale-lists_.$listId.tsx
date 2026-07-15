@@ -691,7 +691,23 @@ function SaleListDetailPage() {
           );
         }
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints);
+      // نرخ دلار مؤثر در لحظهٔ صدور PDF (best-effort؛ در صورت خطا PDF بدون نرخ تولید می‌شود).
+      let usdRateForPdf: number | null = null;
+      try {
+        const { data: rateRow } = await (supabase as any)
+          .from("currency_rates")
+          .select("rate_to_toman, effective_at")
+          .eq("currency", "usd")
+          .eq("is_active", true)
+          .lte("effective_at", new Date().toISOString())
+          .order("effective_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        usdRateForPdf = rateRow ? Number(rateRow.rate_to_toman) : null;
+      } catch (err) {
+        console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
+      }
+      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints, usdRateForPdf);
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
