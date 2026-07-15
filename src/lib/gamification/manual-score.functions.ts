@@ -14,12 +14,16 @@ export const recordManualScoreAdjustment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Authorize: admin only
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (!isAdmin) {
+    // Authorize: admin only (query user_roles directly to avoid
+    // has_role overload ambiguity between text and app_role signatures)
+    const { data: adminRow, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleErr) throw new Error(roleErr.message);
+    if (!adminRow) {
       throw new Error("Forbidden: admin role required");
     }
 
