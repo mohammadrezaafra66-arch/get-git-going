@@ -19,24 +19,6 @@ function sseEvent(data: unknown) {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-function getOllamaHeaders() {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const apiKey = process.env.OLLAMA_API_KEY?.trim();
-  if (!apiKey) return headers;
-
-  const authHeader = process.env.OLLAMA_AUTH_HEADER?.trim() || "Authorization";
-  headers[authHeader] = authHeader.toLowerCase() === "authorization" ? `Bearer ${apiKey}` : apiKey;
-  return headers;
-}
-
-function classifyOllamaStatus(status: number) {
-  if (status === 401) return "ollama_unauthorized";
-  if (status === 403) return "ollama_forbidden";
-  if (status === 404) return "ollama_not_found";
-  if (status >= 500) return "ollama_server_error";
-  return `http_${status}`;
-}
-
 export const Route = createFileRoute("/api/messenger/ai-chat")({
   server: {
     handlers: {
@@ -154,20 +136,6 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           return new Response(stream, { headers: sseHeaders });
         }
 
-        let chatUrl: string;
-        try {
-          chatUrl = new URL("/api/chat", apiUrl.replace(/\/+$/, "") + "/").toString();
-        } catch {
-          const stream = new ReadableStream({
-            start(controller) {
-              controller.enqueue(new TextEncoder().encode(sseEvent({ error: "invalid_url" })));
-              controller.enqueue(new TextEncoder().encode("event: done\ndata: {}\n\n"));
-              controller.close();
-            },
-          });
-          return new Response(stream, { headers: sseHeaders });
-        }
-
         const messages: ChatMessage[] = [
           { role: "system", content: SYSTEM_PROMPT },
           ...history,
@@ -177,11 +145,17 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
+        const ollamaHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        const ollamaApiKey = process.env.OLLAMA_API_KEY?.trim();
+        if (ollamaApiKey) {
+          ollamaHeaders.Authorization = `Bearer ${ollamaApiKey}`;
+        }
+
         let ollamaRes: Response;
         try {
-          ollamaRes = await fetch(chatUrl, {
+          ollamaRes = await fetch(apiUrl.replace(/\/+$/, "") + "/api/chat", {
             method: "POST",
-            headers: getOllamaHeaders(),
+            headers: ollamaHeaders,
             body: JSON.stringify({ model, messages, stream: true }),
             signal: controller.signal,
           });
@@ -200,7 +174,8 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
 
         if (!ollamaRes.ok || !ollamaRes.body) {
           clearTimeout(timer);
-          const error = classifyOllamaStatus(ollamaRes.status);
+          const status = ollamaRes.status;
+          const error = status === 403 ? "ollama_forbidden" : `http_${status}`;
           const stream = new ReadableStream({
             start(c) {
               c.enqueue(new TextEncoder().encode(sseEvent({ error })));

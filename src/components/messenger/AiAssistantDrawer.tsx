@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Sparkles, Trash2, Wifi } from "lucide-react";
+import { Loader2, Send, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
@@ -37,8 +37,6 @@ export function AiAssistantDrawer({
   const [streaming, setStreaming] = useState(false);
   const [liveAssistant, setLiveAssistant] = useState<string>("");
   const [disabled, setDisabled] = useState(false);
-  const [healthChecking, setHealthChecking] = useState(false);
-  const [healthMessage, setHealthMessage] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -118,25 +116,14 @@ export function AiAssistantDrawer({
               } else if (j.error) {
                 const reason = j.error;
                 let msg = `خطا در دستیار: ${reason}`;
-                if (reason === "invalid_url") {
-                  msg = "آدرس OLLAMA_API_URL نامعتبر است";
-                } else if (reason === "timeout") {
+                if (reason === "timeout") {
                   msg = "پاسخ دستیار طول کشید؛ دوباره تلاش کنید";
                 } else if (reason === "fetch_failed") {
                   msg =
                     "دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید";
-                } else if (
-                  reason === "ollama_unauthorized" ||
-                  reason === "ollama_forbidden" ||
-                  reason === "http_401" ||
-                  reason === "http_403"
-                ) {
+                } else if (reason === "ollama_forbidden" || reason === "http_403") {
                   msg =
                     "سرور Ollama دسترسی را رد کرد؛ تنظیمات آدرس، فایروال، reverse proxy یا کلید دسترسی را بررسی کنید";
-                } else if (reason === "ollama_not_found" || reason === "http_404") {
-                  msg = "آدرس Ollama درست نیست؛ OLLAMA_API_URL باید ریشه سرویس باشد";
-                } else if (reason === "ollama_server_error") {
-                  msg = "سرور Ollama خطای داخلی داد؛ لاگ سرویس Ollama را بررسی کنید";
                 }
                 toast.error(msg);
               }
@@ -156,43 +143,6 @@ export function AiAssistantDrawer({
       setLiveAssistant("");
       abortRef.current = null;
       qc.invalidateQueries({ queryKey: ["ai-conversation", user?.id, groupId] });
-    }
-  };
-
-  const checkHealth = async () => {
-    if (healthChecking) return;
-    setHealthChecking(true);
-    setHealthMessage(null);
-
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) {
-      toast.error("ابتدا وارد شوید");
-      setHealthChecking(false);
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/messenger/ai-health", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        reason?: string;
-        status?: number;
-        model?: string;
-      };
-      const message = healthResultMessage(data.reason, data.status, data.model);
-      setHealthMessage(message);
-      if (data.ok) toast.success(message);
-      else toast.error(message);
-    } catch {
-      const message = "تست اتصال دستیار ناموفق بود";
-      setHealthMessage(message);
-      toast.error(message);
-    } finally {
-      setHealthChecking(false);
     }
   };
 
@@ -220,24 +170,6 @@ export function AiAssistantDrawer({
           <SheetDescription className="text-xs">
             گفتگو با مدل محلی روی سرور خودتان. هیچ داده‌ای به خارج ارسال نمی‌شود.
           </SheetDescription>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void checkHealth()}
-              disabled={healthChecking}
-              className="w-fit"
-            >
-              {healthChecking ? (
-                <Loader2 className="ms-1 h-3 w-3 animate-spin" />
-              ) : (
-                <Wifi className="ms-1 h-3 w-3" />
-              )}
-              بررسی اتصال
-            </Button>
-            {healthMessage && <p className="text-xs text-muted-foreground">{healthMessage}</p>}
-          </div>
         </SheetHeader>
         <ScrollArea className="flex-1 px-3 py-4">
           <div className="space-y-3">
@@ -298,22 +230,6 @@ export function AiAssistantDrawer({
       </SheetContent>
     </Sheet>
   );
-}
-
-function healthResultMessage(reason?: string, status?: number, model?: string) {
-  if (reason === "ok") return "اتصال به Ollama سالم است";
-  if (reason === "disabled") return "آدرس OLLAMA_API_URL روی سرور تنظیم نشده است";
-  if (reason === "invalid_url") return "آدرس OLLAMA_API_URL نامعتبر است";
-  if (reason === "timeout") return "اتصال به Ollama زمان‌بر شد؛ شبکه یا فایروال را بررسی کنید";
-  if (reason === "fetch_failed") return "از این سرور به Ollama دسترسی شبکه وجود ندارد";
-  if (reason === "forbidden") {
-    return `دسترسی به Ollama رد شد${status ? ` (کد ${status})` : ""}`;
-  }
-  if (reason === "model_missing") {
-    return `اتصال برقرار است اما مدل ${model ?? "تنظیم‌شده"} در Ollama پیدا نشد`;
-  }
-  if (reason === "http_error") return `Ollama پاسخ ناموفق داد${status ? ` (کد ${status})` : ""}`;
-  return "وضعیت اتصال دستیار قابل تشخیص نیست";
 }
 
 function Bubble({
