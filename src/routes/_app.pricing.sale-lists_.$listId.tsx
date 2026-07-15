@@ -70,7 +70,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
-import { fetchSettlementTypes } from "@/lib/pricing/queries";
+import { fetchSalePriceTypes, fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -245,6 +245,13 @@ function SaleListDetailPage() {
     queryFn: fetchShopSettings,
     staleTime: 300_000,
   });
+
+  const discountSalePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active-for-discount"],
+    queryFn: () => fetchSalePriceTypes(true),
+  });
+  const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
+  const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
 
   // Category-specific product attributes for items, used only inside PDF "description" column.
   const productIdsForAttrs = useMemo(() => {
@@ -707,7 +714,13 @@ function SaleListDetailPage() {
       } catch (err) {
         console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints, usdRateForPdf);
+      const input = buildPdfInput(
+        brandOrder,
+        productOrderByBrand,
+        livePrices,
+        observatoryHints,
+        usdRateForPdf,
+      );
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
@@ -922,6 +935,7 @@ function SaleListDetailPage() {
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
           <TabsTrigger value="versions">نسخه‌ها و تاریخچه</TabsTrigger>
           <TabsTrigger value="settings">تنظیمات و ویرایش</TabsTrigger>
+          <TabsTrigger value="discount">تفاوت تسویه</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="pt-4">
@@ -957,6 +971,58 @@ function SaleListDetailPage() {
             }}
             onDeleted={() => navigate({ to: "/pricing/sale-lists" })}
           />
+        </TabsContent>
+
+        <TabsContent value="discount" className="pt-4">
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <div className="text-sm font-semibold">تفاوت تسویه (برای ارسال به مشتری)</div>
+              <div className="text-xs text-muted-foreground">
+                مبلغ تفاوت بین ترمِ تسویهٔ PDF و ترمِ مبنا را برای محصولات انتخابی محاسبه و به‌صورت
+                متنِ قابل‌کپی تولید می‌کند. این اطلاعات فقط در همین صفحه نمایش داده می‌شود و هرگز
+                وارد PDF نمی‌شود.
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>ترمِ تسویهٔ نمایش‌داده‌شده در PDF</Label>
+                <Select
+                  value={discountPdfTermId || list.sale_price_type_id}
+                  onValueChange={setDiscountPdfTermId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>ترمِ مبنا برای مقایسه (مثلاً پیش‌واریز)</Label>
+                <Select value={discountBaseTermId} onValueChange={setDiscountBaseTermId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم مبنا" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
