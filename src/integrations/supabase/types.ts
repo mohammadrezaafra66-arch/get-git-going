@@ -9440,6 +9440,10 @@ export type Database = {
       }
     }
     Functions: {
+      _capital_alloc_used: {
+        Args: { p_alloc_id: string; p_kind: string }
+        Returns: Record<string, unknown>
+      }
       _dyn_compute_row_values: {
         Args: { p_row_id: string; p_table_id: string }
         Returns: Json
@@ -9448,6 +9452,7 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: undefined
       }
+      _latest_active_capital_setting: { Args: never; Returns: string }
       _mi_require_privileged: { Args: never; Returns: undefined }
       _obs_compute_row_values: { Args: { p_row_id: string }; Returns: Json }
       _par_latest_usd_rate: { Args: never; Returns: number }
