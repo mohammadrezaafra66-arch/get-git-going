@@ -1,3 +1,4 @@
+import "@/lib/polyfills/crypto-uuid";
 import {
   Outlet,
   Link,
