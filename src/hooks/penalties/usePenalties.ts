@@ -335,3 +335,29 @@ export function useVoteOnAppeal() {
     onError: (e: Error) => toast.error(e.message || "ثبت رأی ناموفق بود"),
   });
 }
+
+export function useCreateManualPenalty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      userId: string;
+      type: string;
+      severity: "low" | "medium" | "high";
+      description?: string;
+    }) => {
+      const { data, error } = await supabase.rpc("create_manual_penalty", {
+        p_user_id: vars.userId,
+        p_type: vars.type,
+        p_severity: vars.severity,
+        p_description: vars.description ?? undefined,
+      });
+      if (error) throw new Error(error.message);
+      return data as string;
+    },
+    onSuccess: () => {
+      toast.success("کارت قرمز با موفقیت ثبت شد");
+      qc.invalidateQueries({ queryKey: ["penalties"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "ثبت کارت قرمز ناموفق بود"),
+  });
+}
