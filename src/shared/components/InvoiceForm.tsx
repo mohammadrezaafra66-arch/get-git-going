@@ -494,16 +494,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
       navigate({ to: "/sales/invoices" });
     },
     onError: (err: unknown) => {
-      const anyErr = err as { message?: string; details?: string; hint?: string; code?: string } | null;
-      const msg =
-        (err instanceof Error && err.message) ||
-        anyErr?.message ||
-        anyErr?.details ||
-        anyErr?.hint ||
-        (anyErr?.code ? `کد خطا: ${anyErr.code}` : "") ||
-        "خطای ناشناخته";
-      // eslint-disable-next-line no-console
-      console.error("[invoice-submit]", err);
+      const msg = err instanceof Error ? err.message : "خطای ناشناخته";
       if (msg.includes("CUSTOMER_OVERDUE")) {
         toast.error("این مشتری مانده معوق دارد. صدور فاکتور امکان‌پذیر نیست.");
       } else {
