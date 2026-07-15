@@ -36,7 +36,10 @@ function DocumentsPage() {
   const { roles } = useAuth();
   const canUpload =
     roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
-  const canReview = roles.includes("admin") || roles.includes("manager");
+  const canReview =
+    roles.includes("admin") ||
+    roles.includes("manager") ||
+    roles.includes("accountant");
 
   const [type, setType] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
