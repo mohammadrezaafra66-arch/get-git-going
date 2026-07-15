@@ -253,6 +253,8 @@ function SaleListDetailPage() {
   const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
   const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
   const [discountSelectedIds, setDiscountSelectedIds] = useState<string[]>([]);
+  const [discountText, setDiscountText] = useState<string>("");
+  const [discountBusy, setDiscountBusy] = useState(false);
 
   // Category-specific product attributes for items, used only inside PDF "description" column.
 
@@ -762,6 +764,92 @@ function SaleListDetailPage() {
     }
   };
 
+  const buildDiscountText = async () => {
+    const pdfTermId = discountPdfTermId || list.sale_price_type_id;
+    const baseTermId = discountBaseTermId;
+    if (!baseTermId) {
+      toast.error("ترمِ مبنا برای مقایسه را انتخاب کنید.");
+      return;
+    }
+    if (pdfTermId === baseTermId) {
+      toast.error("ترمِ PDF و ترمِ مبنا نباید یکسان باشند.");
+      return;
+    }
+    if (discountSelectedIds.length === 0) {
+      toast.error("حداقل یک محصول انتخاب کنید.");
+      return;
+    }
+    setDiscountBusy(true);
+    try {
+      const fetchTermPrices = async (typeId: string): Promise<Map<string, number>> => {
+        const map = new Map<string, number>();
+        const CHUNK = 200;
+        for (let i = 0; i < discountSelectedIds.length; i += CHUNK) {
+          const chunk = discountSelectedIds.slice(i, i + CHUNK);
+          const { data, error } = await (supabase as any)
+            .from("product_computed_prices_public")
+            .select("product_id, rounded_sale_price, computed_at")
+            .eq("sale_price_type_id", typeId)
+            .in("product_id", chunk)
+            .order("computed_at", { ascending: false });
+          if (error) throw error;
+          for (const row of (data ?? []) as Array<{
+            product_id: string;
+            rounded_sale_price: number | string | null;
+          }>) {
+            if (!map.has(row.product_id)) {
+              map.set(row.product_id, Number(row.rounded_sale_price ?? 0) || 0);
+            }
+          }
+        }
+        return map;
+      };
+      const [pdfPrices, basePrices] = await Promise.all([
+        fetchTermPrices(pdfTermId),
+        fetchTermPrices(baseTermId),
+      ]);
+      const lines: string[] = [];
+      let missing = 0;
+      for (const it of items) {
+        const pid = it.product?.id;
+        if (!pid || !discountSelectedIds.includes(pid)) continue;
+        const pPdf = pdfPrices.get(pid);
+        const pBase = basePrices.get(pid);
+        if (!pPdf || !pBase) {
+          missing++;
+          continue;
+        }
+        const diff = Math.abs(pPdf - pBase);
+        lines.push(`${it.product?.name ?? "—"} ${formatNumber(diff)} تومان`);
+      }
+      if (lines.length === 0) {
+        setDiscountText("");
+        toast.error("برای محصولات انتخابی قیمتی برای محاسبه پیدا نشد.");
+        return;
+      }
+      let text = `تفاوت قیمت — ${formatDateTimeFa(new Date())}\n\n${lines.join("\n")}`;
+      if (missing > 0) {
+        text += `\n\n(${formatNumber(missing)} محصول به‌دلیل نبودِ قیمت محاسبه نشد)`;
+      }
+      setDiscountText(text);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در محاسبهٔ تفاوت.");
+      console.error(e);
+    } finally {
+      setDiscountBusy(false);
+    }
+  };
+
+  const copyDiscountText = async () => {
+    if (!discountText) return;
+    try {
+      await navigator.clipboard.writeText(discountText);
+      toast.success("متن تفاوت کپی شد.");
+    } catch {
+      toast.error("کپی ناموفق بود.");
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -1086,6 +1174,39 @@ function SaleListDetailPage() {
               <div className="text-xs text-muted-foreground">
                 {discountSelectedIds.length.toLocaleString("fa-IR")} محصول انتخاب شده
               </div>
+            </div>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={buildDiscountText}
+                disabled={discountBusy || discountSelectedIds.length === 0}
+                className="gap-1"
+              >
+                {discountBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                محاسبه و تولید متن
+              </Button>
+              {discountText ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={discountText}
+                    readOnly
+                    rows={Math.min(20, discountText.split("\n").length + 1)}
+                    className="font-mono text-sm"
+                    dir="rtl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyDiscountText}
+                    className="gap-1"
+                  >
+                    <Copy className="h-4 w-4" />
+                    کپی متن
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
         </TabsContent>
