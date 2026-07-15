@@ -115,12 +115,16 @@ export function AiAssistantDrawer({
                 setDisabled(true);
               } else if (j.error) {
                 const reason = j.error;
-                const msg =
-                  reason === "timeout"
-                    ? "پاسخ دستیار طول کشید؛ دوباره تلاش کنید"
-                    : reason === "fetch_failed"
-                      ? "دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید"
-                      : `خطا در دستیار: ${reason}`;
+                let msg = `خطا در دستیار: ${reason}`;
+                if (reason === "timeout") {
+                  msg = "پاسخ دستیار طول کشید؛ دوباره تلاش کنید";
+                } else if (reason === "fetch_failed") {
+                  msg =
+                    "دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید";
+                } else if (reason === "ollama_forbidden" || reason === "http_403") {
+                  msg =
+                    "سرور Ollama دسترسی را رد کرد؛ تنظیمات آدرس، فایروال، reverse proxy یا کلید دسترسی را بررسی کنید";
+                }
                 toast.error(msg);
               }
             } catch {
