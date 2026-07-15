@@ -27,7 +27,10 @@ export function DocumentReviewActions({ document }: { document: DocumentRow }) {
   const [openKind, setOpenKind] = useState<null | "confirmed" | "rejected">(null);
   const [note, setNote] = useState("");
 
-  const canReview = roles.includes("admin") || roles.includes("manager");
+  const canReview =
+    roles.includes("admin") ||
+    roles.includes("manager") ||
+    roles.includes("accountant");
   if (!canReview) return null;
   if (document.status !== "pending_review") return null;
 
