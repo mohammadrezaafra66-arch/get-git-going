@@ -787,7 +787,7 @@ function SaleListDetailPage() {
         for (let i = 0; i < discountSelectedIds.length; i += CHUNK) {
           const chunk = discountSelectedIds.slice(i, i + CHUNK);
           const { data, error } = await (supabase as any)
-            .from("product_computed_prices_public")
+            .from("product_computed_prices")
             .select("product_id, rounded_sale_price, computed_at")
             .eq("sale_price_type_id", typeId)
             .in("product_id", chunk)
@@ -824,7 +824,15 @@ function SaleListDetailPage() {
       }
       if (lines.length === 0) {
         setDiscountText("");
-        toast.error("برای محصولات انتخابی قیمتی برای محاسبه پیدا نشد.");
+        const termTitle = (tid: string) =>
+          discountSalePriceTypesQ.data?.find(
+            (t: { id: string; title: string }) => t.id === tid,
+          )?.title ?? tid;
+        const pdfMissing = discountSelectedIds.filter((id) => !pdfPrices.has(id)).length;
+        const baseMissing = discountSelectedIds.filter((id) => !basePrices.has(id)).length;
+        toast.error(
+          `قیمتی برای محاسبه پیدا نشد. از ${discountSelectedIds.length} محصول، برای ترمِ «${termTitle(pdfTermId)}» ${pdfMissing} مورد و برای ترمِ «${termTitle(baseTermId)}» ${baseMissing} مورد قیمت ندارند.`,
+        );
         return;
       }
       let text = `تفاوت قیمت — ${formatDateTimeFa(new Date())}\n\n${lines.join("\n")}`;
