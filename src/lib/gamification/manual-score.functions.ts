@@ -12,18 +12,19 @@ export const recordManualScoreAdjustment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuthNode20])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { userId } = context;
 
-    // Authorize: admin only
-    const { data: isAdmin } = await supabase.rpc("has_role", {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Authorize: admin only (use service-role client for a definitive role check)
+    const { data: isAdmin, error: roleErr } = await supabaseAdmin.rpc("has_role", {
       _user_id: userId,
       _role: "admin",
     });
+    if (roleErr) throw new Error(roleErr.message);
     if (!isAdmin) {
       throw new Error("Forbidden: admin role required");
     }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error: insErr } = await supabaseAdmin
       .from("employee_score_events")
