@@ -825,9 +825,8 @@ function SaleListDetailPage() {
       if (lines.length === 0) {
         setDiscountText("");
         const termTitle = (tid: string) =>
-          discountSalePriceTypesQ.data?.find(
-            (t: { id: string; title: string }) => t.id === tid,
-          )?.title ?? tid;
+          discountSalePriceTypesQ.data?.find((t: { id: string; title: string }) => t.id === tid)
+            ?.title ?? tid;
         const pdfMissing = discountSelectedIds.filter((id) => !pdfPrices.has(id)).length;
         const baseMissing = discountSelectedIds.filter((id) => !basePrices.has(id)).length;
         toast.error(
