@@ -10822,6 +10822,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_appellant_of_appeal: {
+        Args: { _appeal_id: string; _user: string }
+        Returns: boolean
+      }
       is_board_approved: {
         Args: { _board_key: string; _user_id: string }
         Returns: boolean
@@ -10834,6 +10838,10 @@ export type Database = {
       }
       is_product_owner: {
         Args: { _product_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_reviewer_of_appeal: {
+        Args: { _appeal_id: string; _user: string }
         Returns: boolean
       }
       is_user_online: { Args: { _user_id: string }; Returns: boolean }

@@ -1,33 +1,34 @@
-## هدف
-رفع سه مشکل صفحه اسناد `/documents` و `/admin/documents`:
+## مشکل
 
-1. خطای `crypto.randomUUID is not a function` هنگام آپلود PDF/تصویر.
-2. سقف حجم فایل باید ۲۵ مگابایت باشد (الان ۲۰ مگابایت).
-3. اطمینان از اینکه پنل تأیید/رد و RBAC (فقط حسابدار/مدیر/ادمین) درست کار می‌کند.
+هنگام بارگذاری پنل اعتراض‌ها برای بازبین، خطای «infinite recursion detected in policy for relation "appeal_reviewers"» می‌آید. علت: دو جدول سیاست‌های متقاطع دارند که به یکدیگر ارجاع می‌دهند.
 
-## تحلیل
+- `appeal_reviewers` سیاست «appellant sees reviewers of own appeal» → از `penalty_appeals` می‌خواند.
+- `penalty_appeals` سیاست «reviewers see assigned appeals» → از `appeal_reviewers` می‌خواند.
 
-- `useCreateDocument` از `safeRandomUUID` استفاده می‌کند، اما خطا از **داخل supabase-js** می‌آید (کلاینت realtime/storage هنگام init یا upload به `crypto.randomUUID` نیاز دارد). در LAN self-host با HTTP (غیر secure context)، این API در مرورگر موجود نیست.
-- پلی‌فیل در `src/start.ts` و `src/routes/__root.tsx` هست ولی چون ماژول `@/integrations/supabase/client` از خیلی جاها import می‌شود، ممکن است init آن قبل از اجرای پلی‌فیل رخ دهد. مطمئن‌ترین نقطه، ابتدای `src/router.tsx` است که پیش از هر route module بارگذاری می‌شود.
-- سقف فعلی در دو جا: `MAX_SIZE` در `useCreateDocument` (۲۰MB) و `DocumentUploadForm` (۲۰MB) و متن UI.
-- RLS اسناد از قبل درست است: INSERT فقط برای accountant/manager/admin، UPDATE (تأیید/رد) فقط manager/admin، SELECT برای uploader یا مدیر. نیازی به migration نیست.
+Postgres هنگام ارزیابی هر SELECT وارد حلقهٔ بی‌نهایت می‌شود.
 
-## تغییرات
+## راه‌حل
 
-**۱. پلی‌فیل قبل از هر چیز**
-- در `src/router.tsx` بالاترین خط: `import "@/lib/polyfills/crypto-uuid";`
-- (importهای موجود در `start.ts` و `__root.tsx` حفظ می‌شوند به‌عنوان لایه دوم.)
+سیاست‌های متقاطع را با توابع `SECURITY DEFINER` که RLS را دور می‌زنند جایگزین می‌کنیم تا حلقه شکسته شود. رفتار مجاز بودن دسترسی بدون تغییر می‌ماند:
 
-**۲. سقف ۲۵ مگابایت**
-- `src/hooks/documents/useDocuments.ts`: `MAX_SIZE = 25 * 1024 * 1024` و پیام خطا «حجم فایل بیش از ۲۵ مگابایت است».
-- `src/components/documents/DocumentUploadForm.tsx`: همان مقدار و متن راهنمای زیر drop zone «jpg، png، pdf — حداکثر ۲۵ مگابایت».
+- بازبین همچنان می‌تواند اعتراض‌های اختصاص‌یافته به خودش را ببیند.
+- شاکی همچنان می‌تواند فهرست بازبین‌های اعتراض خودش را ببیند.
+- ادمین/مدیر همچنان همه را می‌بیند.
 
-**۳. بدون تغییر backend/RLS**
-- پنل «در انتظار تأیید» و دکمه‌های آمد/نیامد در `PendingDocumentsPanel` و `DocumentReviewActions` از قبل هست و طبق RLS فقط برای manager/admin کار می‌کند.
+### تغییرات دیتابیس (یک migration)
 
-## سناریوهای تست بعد از اعمال
-- با حساب حسابدار: آپلود PDF ۵MB → موفق، بدون خطای crypto.
-- آپلود PNG ۳MB → موفق.
-- آپلود فایل ۳۰MB → پیام «حجم فایل بیش از ۲۵ مگابایت است»، عملیات upload اجرا نشود.
-- با حساب فروش (بدون نقش حسابدار): دکمه/فرم آپلود قابل استفاده نباشد.
-- با حساب مدیر: تب «در انتظار تأیید» ببیند، «آمد»/«نیامد» با یادداشت ثبت شود.
+1. ایجاد تابع `public.is_reviewer_of_appeal(_appeal_id uuid, _user uuid) RETURNS boolean` — `SECURITY DEFINER`، `SET search_path = public`، از `appeal_reviewers` می‌خواند.
+2. ایجاد تابع `public.is_appellant_of_appeal(_appeal_id uuid, _user uuid) RETURNS boolean` — `SECURITY DEFINER`، از `penalty_appeals` می‌خواند.
+3. حذف و بازنویسی سیاست‌های SELECT:
+   - `appeal_reviewers`: سیاست «appellant sees reviewers of own appeal» با استفاده از `is_appellant_of_appeal(appeal_id, auth.uid())`.
+   - `penalty_appeals`: سیاست «reviewers see assigned appeals» با استفاده از `is_reviewer_of_appeal(id, auth.uid())`.
+4. `GRANT EXECUTE` هر دو تابع به `authenticated`.
+
+بقیهٔ سیاست‌ها (ادمین/مدیر، مالک ردیف) دست‌نخورده باقی می‌مانند.
+
+## تست پس از اعمال
+
+- ورود با بازبین (عضو `appeal_reviewers`) → `/admin/penalties` → پنل «اعتراض‌های در انتظار بررسی شما» بدون خطا لود شود.
+- رأی تأیید/رد → توست موفقیت.
+- ورود با شاکی → `/my-penalties` → کارت اعتراض دیده شود.
+- ورود با کاربر بی‌ارتباط → نه اعتراض دیگران را ببیند نه بازبین‌های آن‌ها را.
