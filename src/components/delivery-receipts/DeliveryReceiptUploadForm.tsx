@@ -291,7 +291,7 @@ export function DeliveryReceiptUploadForm({
             ref={inputRef}
             type="file"
             className="hidden"
-            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm,.mkv,image/jpeg,image/png,application/pdf,video/*"
             onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
           />
           {file ? (
@@ -317,12 +317,17 @@ export function DeliveryReceiptUploadForm({
               <Upload className="h-6 w-6 text-muted-foreground" />
               <div className="text-sm">فایل را اینجا رها کنید یا کلیک کنید</div>
               <div className="text-xs text-muted-foreground">
-                jpg، png، pdf — حداکثر ۲۰ مگابایت
+                jpg، png، pdf تا ۲۰MB — mp4/mov/webm تا ۱۰۰MB
               </div>
             </>
           )}
         </div>
         {fileError && <p className="text-xs text-destructive">{fileError}</p>}
+        {invoiceVideoRequired && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            برای این فاکتور آپلود ویدئوی محصول الزامی است.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
