@@ -27,8 +27,8 @@ export function normalizeSearchText(input: string | null | undefined): string {
   // Arabic tashkeel (diacritics) -> remove
   s = s.replace(/[\u064B-\u0652\u0670]/g, "");
 
-  // Collapse multiple whitespace and trim
-  s = s.replace(/\s+/g, " ").trim();
+  // Remove all whitespace so "لباس شویی" matches "لباسشویی" (per product-search spec)
+  s = s.replace(/\s+/g, "").trim();
 
   return s;
 }
