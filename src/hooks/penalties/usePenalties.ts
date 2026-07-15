@@ -349,7 +349,7 @@ export function useCreateManualPenalty() {
         p_user_id: vars.userId,
         p_type: vars.type,
         p_severity: vars.severity,
-        p_description: vars.description ?? null,
+        p_description: vars.description ?? undefined,
       });
       if (error) throw new Error(error.message);
       return data as string;
