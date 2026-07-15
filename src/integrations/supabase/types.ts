@@ -3930,6 +3930,7 @@ export type Database = {
           issued_by: string | null
           notes: string | null
           number: string | null
+          product_video_required: boolean
           sale_price_type_id: string | null
           settled_amount: number | null
           settlement_days: number | null
@@ -3958,6 +3959,7 @@ export type Database = {
           issued_by?: string | null
           notes?: string | null
           number?: string | null
+          product_video_required?: boolean
           sale_price_type_id?: string | null
           settled_amount?: number | null
           settlement_days?: number | null
@@ -3986,6 +3988,7 @@ export type Database = {
           issued_by?: string | null
           notes?: string | null
           number?: string | null
+          product_video_required?: boolean
           sale_price_type_id?: string | null
           settled_amount?: number | null
           settlement_days?: number | null

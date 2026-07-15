@@ -161,9 +161,23 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["delivery-receipts"] });
 }
 
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
-const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
-const MAX_SIZE = 20 * 1024 * 1024;
+const ALLOWED_MIME = [
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "application/pdf",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-matroska",
+];
+const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf", "mp4", "mov", "webm", "mkv"];
+const IMAGE_PDF_MAX = 20 * 1024 * 1024;
+const VIDEO_MAX = 100 * 1024 * 1024;
+function isVideo(f: File) {
+  const ext = (f.name.split(".").pop() ?? "").toLowerCase();
+  return f.type.startsWith("video/") || ["mp4", "mov", "webm", "mkv"].includes(ext);
+}
 
 export function useCreateDeliveryReceipt() {
   const qc = useQueryClient();
@@ -180,10 +194,15 @@ export function useCreateDeliveryReceipt() {
       const { file, type } = input;
       const ext = (file.name.split(".").pop() ?? "").toLowerCase();
       if (!ALLOWED_EXT.includes(ext) && !ALLOWED_MIME.includes(file.type)) {
-        throw new Error("فرمت فایل مجاز نیست (jpg, png, pdf)");
+        throw new Error("فرمت فایل مجاز نیست (jpg, png, pdf, mp4, mov, webm)");
       }
-      if (file.size > MAX_SIZE) {
-        throw new Error("حجم فایل بیش از ۲۰ مگابایت است");
+      const max = isVideo(file) ? VIDEO_MAX : IMAGE_PDF_MAX;
+      if (file.size > max) {
+        throw new Error(
+          isVideo(file)
+            ? "حجم ویدئو بیش از ۱۰۰ مگابایت است"
+            : "حجم فایل بیش از ۲۰ مگابایت است",
+        );
       }
       const path = `${type}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
