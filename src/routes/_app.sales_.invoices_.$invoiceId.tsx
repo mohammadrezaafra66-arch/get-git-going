@@ -515,6 +515,13 @@ function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
+      <DeliveryReceiptsForInvoice
+        invoiceId={invoice.id}
+        videoRequired={Boolean(
+          (invoice as { product_video_required?: boolean }).product_video_required,
+        )}
+      />
+
       {/* Print layout — hidden in browser, shown only when printing */}
       <div
         id="invoice-print-root"
