@@ -9944,6 +9944,15 @@ export type Database = {
         }
         Returns: string
       }
+      create_manual_penalty: {
+        Args: {
+          p_description?: string
+          p_severity: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       create_messenger_group: {
         Args: { p_name: string; p_type: string }
         Returns: string
