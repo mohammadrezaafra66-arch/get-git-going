@@ -774,3 +774,44 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
+
+function DeliveryReceiptsForInvoice({
+  invoiceId,
+  videoRequired,
+}: {
+  invoiceId: string;
+  videoRequired: boolean;
+}) {
+  const { data, isLoading } = useAllDeliveryReceipts({
+    invoice_id: invoiceId,
+    limit: 20,
+  });
+  const rows = data?.rows ?? [];
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3" dir="rtl">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">رسیدهای تحویل</div>
+          {videoRequired && (
+            <Badge variant="outline" className="text-amber-700 border-amber-400">
+              ویدئوی محصول الزامی است
+            </Badge>
+          )}
+        </div>
+        {isLoading ? (
+          <div className="text-xs text-muted-foreground">در حال بارگذاری...</div>
+        ) : rows.length === 0 ? (
+          <div className="text-xs text-muted-foreground">
+            رسیدی برای این فاکتور ثبت نشده است.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {rows.map((r) => (
+              <DeliveryReceiptCard key={r.id} receipt={r} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
