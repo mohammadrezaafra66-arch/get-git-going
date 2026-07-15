@@ -120,6 +120,8 @@ export function AiAssistantDrawer({
                     ? "پاسخ دستیار طول کشید؛ دوباره تلاش کنید"
                     : reason === "fetch_failed"
                       ? "دسترسی به سرویس دستیار محلی برقرار نشد؛ تنظیمات OLLAMA_API_URL را بررسی کنید"
+                        : reason === "ollama_forbidden" || reason === "http_403"
+                          ? "سرور Ollama دسترسی را رد کرد؛ تنظیمات آدرس، فایروال، reverse proxy یا کلید دسترسی را بررسی کنید"
                       : `خطا در دستیار: ${reason}`;
                 toast.error(msg);
               }
