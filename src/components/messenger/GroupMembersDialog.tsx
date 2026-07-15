@@ -214,9 +214,7 @@ export function GroupMembersDialog({
                         <span className="truncate text-sm font-medium">
                           {m.full_name ?? "بدون نام"}
                         </span>
-                        {isSelf && (
-                          <span className="text-xs text-muted-foreground">(شما)</span>
-                        )}
+                        {isSelf && <span className="text-xs text-muted-foreground">(شما)</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         {canEdit ? (
@@ -290,9 +288,7 @@ export function GroupMembersDialog({
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : (searchQuery.data ?? []).length === 0 ? (
-                  <p className="p-3 text-center text-xs text-muted-foreground">
-                    کاربری یافت نشد
-                  </p>
+                  <p className="p-3 text-center text-xs text-muted-foreground">کاربری یافت نشد</p>
                 ) : (
                   (searchQuery.data ?? []).map((p) => (
                     <div

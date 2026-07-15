@@ -182,9 +182,7 @@ export function AiAssistantDrawer({
             {turns.map((t) => (
               <Bubble key={t.id} role={t.role} content={t.content} />
             ))}
-            {streaming && (
-              <Bubble role="assistant" content={liveAssistant || "…"} streaming />
-            )}
+            {streaming && <Bubble role="assistant" content={liveAssistant || "…"} streaming />}
             <div ref={bottomRef} />
           </div>
         </ScrollArea>
@@ -217,7 +215,11 @@ export function AiAssistantDrawer({
               className="min-h-12 resize-none"
             />
             <Button size="icon" onClick={() => void send()} disabled={streaming || !input.trim()}>
-              {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {streaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
