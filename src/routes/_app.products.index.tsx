@@ -449,13 +449,34 @@ function ProductsPage() {
               <Card key={p.id}>
                 <CardContent className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to="/products/$id"
-                      params={{ id: p.id }}
-                      className="font-semibold text-foreground hover:underline"
-                    >
-                      {formatProductDisplayNameWithFallback(p)}
-                    </Link>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="shrink-0"
+                        aria-label="مشاهده محصول"
+                      >
+                        {thumbnailFor(p.id) ? (
+                          <img
+                            src={thumbnailFor(p.id)}
+                            alt=""
+                            className="h-12 w-12 rounded-md border border-border object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                      </Link>
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="min-w-0 font-semibold text-foreground hover:underline"
+                      >
+                        {formatProductDisplayNameWithFallback(p)}
+                      </Link>
+                    </div>
                     <div className="flex shrink-0 gap-1">
                       <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>
                         {PRODUCT_STATUS_LABELS[p.status]}
