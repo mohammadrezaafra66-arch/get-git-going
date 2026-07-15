@@ -73,6 +73,7 @@ export interface SaleListPdfInput {
    */
   settlementTypeTitle?: string | null;
   termsText?: string | null;
+  usdRate?: number | null;
   selectedColumns: SaleListPdfColumn[];
   items: SaleListPdfItem[];
   /**
@@ -374,6 +375,11 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       ? `<div>نوع تسویه: ${escapeHtml(input.settlementTypeTitle.trim())}</div>`
       : "";
 
+  const usdRateLine =
+    input.usdRate && input.usdRate > 0
+      ? `<div style="font-weight:700;color:#1e293b">نرخ دلار (در لحظهٔ صدور): ${escapeHtml(formatNumber(Math.round(input.usdRate)))} تومان</div>`
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -536,6 +542,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       <div class="doc-title">لیست فروش</div>
       <div class="meta">
         <div>تاریخ: ${escapeHtml(formatDateFa(new Date()))}</div>
+        ${usdRateLine}
         <div>ایجادکننده: ${escapeHtml(input.createdByName)}</div>
         ${settlementLine}
       </div>
