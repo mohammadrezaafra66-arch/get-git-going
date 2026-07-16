@@ -20,7 +20,8 @@ export type InteractionEventType =
   | "price_checked"
   | "chart_opened"
   | "product_details_opened"
-  | "board_price_viewed";
+  | "board_price_viewed"
+  | "sales_text_copied";
 
 export type InteractionSource =
   | "sales_search"
@@ -34,13 +35,14 @@ interface TrackArgs {
   eventType: InteractionEventType;
   source: InteractionSource;
   salePriceTypeId?: string | null;
+  searchSessionId?: string | null;
 }
 
 const DEDUP_WINDOW_MS = 30_000;
 const recent = new Map<string, number>();
 
 function makeKey(a: TrackArgs): string {
-  return [a.productId, a.eventType, a.source, a.salePriceTypeId ?? "_"].join("|");
+  return [a.productId, a.eventType, a.source, a.salePriceTypeId ?? "_", a.searchSessionId ?? "_"].join("|");
 }
 
 function gc() {
@@ -68,6 +70,7 @@ export function trackProductInteraction(args: TrackArgs): void {
           event_type: args.eventType,
           source: args.source,
           sale_price_type_id: args.salePriceTypeId ?? null,
+          search_session_id: args.searchSessionId ?? null,
         },
       });
     } catch {
