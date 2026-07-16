@@ -37,6 +37,7 @@ const EventTypeEnum = z.enum([
   "chart_opened",
   "product_details_opened",
   "board_price_viewed",
+  "sales_text_copied",
 ]);
 
 const SourceEnum = z.enum([
@@ -52,6 +53,7 @@ const InputSchema = z.object({
   event_type: EventTypeEnum,
   source: SourceEnum,
   sale_price_type_id: z.string().uuid().nullable().optional(),
+  search_session_id: z.string().uuid().nullable().optional(),
 });
 
 export type TrackProductInteractionResult =
@@ -94,8 +96,15 @@ export const trackProductInteractionFn = createServerFn({ method: "POST" })
       event_type: data.event_type,
       source: data.source,
       sale_price_type_id: data.sale_price_type_id ?? null,
+      search_session_id: data.search_session_id ?? null,
     });
-    if (insErr) throw new Error("خطا در ثبت رویداد تعامل");
+    if (insErr) {
+      // Session-based dedup: a duplicate (same user/product/session/event) is a no-op success.
+      if ((insErr as { code?: string }).code === "23505") {
+        return { ok: true };
+      }
+      throw new Error("خطا در ثبت رویداد تعامل");
+    }
 
     return { ok: true };
   });
