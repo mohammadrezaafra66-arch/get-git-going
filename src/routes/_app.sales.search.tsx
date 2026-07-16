@@ -298,6 +298,20 @@ function SalesSearchPage() {
   }, [labelMode, labelModeIds, visibleLabelIds]);
 
   // ---------- products query ----------
+  // A fresh session id per distinct search — used to de-duplicate interaction
+  // events server-side via (user_id, product_id, search_session_id, event_type).
+  const searchSessionKey = JSON.stringify(
+    labelMode === "off"
+      ? [term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice]
+      : [effectiveLabelIds, labelModePage],
+  );
+  const searchSessionId = useMemo(() => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+  }, [searchSessionKey]);
   const productsQuery = useQuery({
     enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
     queryKey:
@@ -331,14 +345,9 @@ function SalesSearchPage() {
       if (isLabelMode) {
         rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
       }
-      // Track that these products were viewed in search results
-      for (const r of rows) {
-        trackProductInteraction({
-          productId: r.id,
-          eventType: "search_result_viewed",
-          source: "sales_search",
-        });
-      }
+      // NOTE: merely appearing in search results is no longer tracked as an
+      // interaction (it created "herd" noise for brand searches). Deliberate
+      // per-product actions (details/price/chart/copy) are tracked instead.
       return rows;
     },
     staleTime: 30_000,
@@ -829,6 +838,7 @@ function SalesSearchPage() {
                         eventType: "chart_opened",
                         source: "sales_search",
                         salePriceTypeId: targetId,
+                        searchSessionId,
                       });
                       setChartCtx({
                         productId: p.id,
