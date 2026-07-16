@@ -573,6 +573,15 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: true,
   },
   {
+    to: "/admin/sales-reminders",
+    label: "یادآوری‌های فروش",
+    icon: MessageSquare,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
     to: "/admin/payment-terms",
     label: "زمان‌های تسویه",
     icon: Wallet,

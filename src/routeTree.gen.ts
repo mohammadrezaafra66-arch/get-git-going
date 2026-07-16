@@ -104,6 +104,7 @@ import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.
 import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
+import { Route as AppAdminSalesRemindersRouteImport } from './routes/_app.admin.sales-reminders'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
 import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_app.admin.recent-purchase-settings'
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
@@ -651,6 +652,11 @@ const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   path: '/admin/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSalesRemindersRoute = AppAdminSalesRemindersRouteImport.update({
+  id: '/admin/sales-reminders',
+  path: '/admin/sales-reminders',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminRolesRoute = AppAdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -1035,6 +1041,7 @@ export interface FileRoutesByFullPath {
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -1188,6 +1195,7 @@ export interface FileRoutesByTo {
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/admin/roles': typeof AppAdminRolesRoute
+  '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -1344,6 +1352,7 @@ export interface FileRoutesById {
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
   '/_app/admin/recent-purchase-settings': typeof AppAdminRecentPurchaseSettingsRoute
   '/_app/admin/roles': typeof AppAdminRolesRoute
+  '/_app/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
@@ -1501,6 +1510,7 @@ export interface FileRouteTypes {
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
+    | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/validation-rules'
     | '/admin/waybill-fields'
@@ -1654,6 +1664,7 @@ export interface FileRouteTypes {
     | '/admin/receipt-fields'
     | '/admin/recent-purchase-settings'
     | '/admin/roles'
+    | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/validation-rules'
     | '/admin/waybill-fields'
@@ -1809,6 +1820,7 @@ export interface FileRouteTypes {
     | '/_app/admin/receipt-fields'
     | '/_app/admin/recent-purchase-settings'
     | '/_app/admin/roles'
+    | '/_app/admin/sales-reminders'
     | '/_app/admin/settings'
     | '/_app/admin/validation-rules'
     | '/_app/admin/waybill-fields'
@@ -2605,6 +2617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/sales-reminders': {
+      id: '/_app/admin/sales-reminders'
+      path: '/admin/sales-reminders'
+      fullPath: '/admin/sales-reminders'
+      preLoaderRoute: typeof AppAdminSalesRemindersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/roles': {
       id: '/_app/admin/roles'
       path: '/admin/roles'
@@ -3249,6 +3268,7 @@ interface AppRouteChildren {
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
   AppAdminRecentPurchaseSettingsRoute: typeof AppAdminRecentPurchaseSettingsRoute
   AppAdminRolesRoute: typeof AppAdminRolesRoute
+  AppAdminSalesRemindersRoute: typeof AppAdminSalesRemindersRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
@@ -3354,6 +3374,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
   AppAdminRecentPurchaseSettingsRoute: AppAdminRecentPurchaseSettingsRoute,
   AppAdminRolesRoute: AppAdminRolesRoute,
+  AppAdminSalesRemindersRoute: AppAdminSalesRemindersRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,

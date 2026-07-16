@@ -73,6 +73,7 @@ import {
 } from "@/lib/sales/observatory-snippets";
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 import { fetchProductOwnersForProducts, type ProductOwnerLite } from "@/lib/sales/product-owners";
+import { SalesReminderPopup } from "@/components/sales/SalesReminderPopup";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => {
@@ -442,6 +443,8 @@ function SalesSearchPage() {
 
   return (
     <div className="space-y-5">
+      {/* 128 — rotating 2s reminder popup on each open of the search page */}
+      <SalesReminderPopup />
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
