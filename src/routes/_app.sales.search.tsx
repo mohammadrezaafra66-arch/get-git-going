@@ -799,6 +799,7 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
+                    searchSessionId={searchSessionId}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                       queryClient.invalidateQueries({
@@ -897,6 +898,7 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
+  searchSessionId?: string | null;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
@@ -906,6 +908,7 @@ function ProductCard({
   primarySalePriceTypeId,
   canRecalcPrice,
   observatorySnippet,
+  searchSessionId,
   onRecalcDone,
   onOpenChart,
 }: ProductCardProps) {
@@ -915,6 +918,7 @@ function ProductCard({
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   // primary price = the one selected globally (if available for this product), otherwise the first.
   const primary =
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
@@ -985,8 +989,35 @@ function ProductCard({
     }
   };
 
+  // A1 (FE-B3) — conscious "select / show full" action for a product card.
+  // Fires product_details_opened only when the details panel is opened (not on
+  // collapse), so merely toggling closed does not spam events.
+  const handleToggleDetails = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDetailsOpen((open) => {
+      if (!open) {
+        trackProductInteraction({
+          productId: product.id,
+          eventType: "product_details_opened",
+          source: "sales_search",
+          salePriceTypeId: primarySalePriceTypeId || null,
+          searchSessionId,
+        });
+      }
+      return !open;
+    });
+  };
+
   const handleRecalc = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    // A1 (FE-B3) — recalculating the exact price is a deliberate price check.
+    trackProductInteraction({
+      productId: product.id,
+      eventType: "price_checked",
+      source: "sales_search",
+      salePriceTypeId: primary?.sale_price_type_id ?? primarySalePriceTypeId ?? null,
+      searchSessionId,
+    });
     setRecalcing(true);
     try {
       const r = await publishProductPrices({ productId: product.id, source: "sales_search" });
@@ -1164,7 +1195,48 @@ function ProductCard({
         {/* Alternative / recommended products with their 3 cheapest prices */}
         <SalesProductRecommendations productId={product.id} />
 
+        {/* A1 (FE-B3) — full product details, revealed on the deliberate
+            "انتخاب محصول / نمایش کامل" action (fires product_details_opened). */}
+        {detailsOpen && (
+          <div className="rounded-md border bg-muted/20 p-3 text-sm space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">اطلاعات کامل محصول</div>
+            {product.description && (
+              <p className="whitespace-pre-wrap break-words text-foreground">
+                {product.description}
+              </p>
+            )}
+            {specChips.length > 0 && (
+              <div className="flex flex-wrap gap-1 text-xs">
+                {specChips.map((s) => (
+                  <span
+                    key={s.label}
+                    className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
+                  >
+                    <span className="text-muted-foreground">{s.label}:</span>
+                    <span className="font-medium">{s.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            {product.sku && (
+              <div className="text-xs text-muted-foreground font-mono">کد: {product.sku}</div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant={detailsOpen ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleDetails}
+            aria-expanded={detailsOpen}
+          >
+            <ChevronDown
+              className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+            />
+            انتخاب محصول / نمایش کامل
+          </Button>
           <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
