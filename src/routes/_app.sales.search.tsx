@@ -293,6 +293,29 @@ function SalesSearchPage() {
     return labelModeIds.filter((id) => set.has(id));
   }, [labelMode, labelModeIds, visibleLabelIds]);
 
+  // FE-B2 — one fresh session id per distinct search. Passed to per-product
+  // interaction events so downstream reports can de-duplicate within a single
+  // search session. Regenerated whenever the search parameters change.
+  const searchSessionId = useMemo<string | null>(
+    () =>
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      term,
+      brandIds,
+      categoryIds,
+      labelIds,
+      stockStatus,
+      productType,
+      onlyWithPrice,
+      labelMode,
+      effectiveLabelIds,
+      labelModePage,
+    ],
+  );
+
   // ---------- products query ----------
   const productsQuery = useQuery({
     enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
@@ -327,14 +350,11 @@ function SalesSearchPage() {
       if (isLabelMode) {
         rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
       }
-      // Track that these products were viewed in search results
-      for (const r of rows) {
-        trackProductInteraction({
-          productId: r.id,
-          eventType: "search_result_viewed",
-          source: "sales_search",
-        });
-      }
+      // FE-B2 — the previous per-row `search_result_viewed` herd loop was
+      // removed: it fired an event for every product on every fetch, drowning
+      // out the deliberate signals. Meaningful per-product events are now
+      // recorded on explicit user actions (see product_details_opened /
+      // price_checked / chart_opened / sales_text_copied).
       return rows;
     },
     staleTime: 30_000,
@@ -799,6 +819,7 @@ function SalesSearchPage() {
                         eventType: "chart_opened",
                         source: "sales_search",
                         salePriceTypeId: targetId,
+                        searchSessionId,
                       });
                       setChartCtx({
                         productId: p.id,
