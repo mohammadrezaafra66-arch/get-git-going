@@ -5857,6 +5857,87 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_nomination_policy: {
+        Row: {
+          boost_cap_per_product: number
+          boost_per_nomination: number
+          created_at: string
+          daily_quota: number
+          id: string
+          is_active: boolean
+          per_product_daily_cap: number
+          role: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          boost_cap_per_product?: number
+          boost_per_nomination?: number
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          is_active?: boolean
+          per_product_daily_cap?: number
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          boost_cap_per_product?: number
+          boost_per_nomination?: number
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          is_active?: boolean
+          per_product_daily_cap?: number
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      promotion_nominations: {
+        Row: {
+          boost_applied: number
+          cancelled_at: string | null
+          cancelled_by: string | null
+          channel_id: string | null
+          created_at: string
+          id: string
+          nominated_by: string
+          nominated_on: string
+          product_id: string
+          reason_code: string
+          reason_note: string | null
+        }
+        Insert: {
+          boost_applied?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          nominated_by: string
+          nominated_on?: string
+          product_id: string
+          reason_code: string
+          reason_note?: string | null
+        }
+        Update: {
+          boost_applied?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          nominated_by?: string
+          nominated_on?: string
+          product_id?: string
+          reason_code?: string
+          reason_note?: string | null
+        }
+        Relationships: []
+      }
       purchase_items: {
         Row: {
           id: string
