@@ -145,9 +145,12 @@ function ShippingRulesPage() {
   };
 
   const scopeLabel = (r: SRule) => {
-    if (r.product_name) return r.product_name;
-    if (r.category_name) return `دسته: ${r.category_name}`;
-    if (r.brand_name) return `برند: ${r.brand_name}`;
+    // Combined دسته → برند → محصول chain is shown as a single narrowed label.
+    const parts: string[] = [];
+    if (r.category_name) parts.push(`دسته: ${r.category_name}`);
+    if (r.brand_name) parts.push(`برند: ${r.brand_name}`);
+    if (r.product_name) parts.push(r.product_name);
+    if (parts.length > 0) return parts.join(" · ");
     if (r.min_purchase_price != null || r.max_purchase_price != null) return "بازه قیمت خرید";
     return "—";
   };
@@ -316,10 +319,13 @@ function SRuleDialog({
   const handleOpenChange = (v: boolean) => {
     if (v) {
       if (editing) {
-        const scope_mode: "product" | "category" | "price_range" = editing.product_id
-          ? "product"
-          : editing.category_id
-            ? "category"
+        // Category-scoped rules (incl. the دسته → برند → محصول chain) open in
+        // "category" so the brand/product narrowing is editable; a rule bound
+        // only to a product (no category) opens in "product".
+        const scope_mode: "product" | "category" | "price_range" = editing.category_id
+          ? "category"
+          : editing.product_id
+            ? "product"
             : editing.min_purchase_price != null || editing.max_purchase_price != null
               ? "price_range"
               : "product";
