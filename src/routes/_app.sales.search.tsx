@@ -984,6 +984,14 @@ function ProductCard({
     try {
       await navigator.clipboard.writeText(text);
       toast.success("متن فروش کپی شد");
+      // A2 (FE-B4) — copying the sales text is a deliberate engagement signal.
+      trackProductInteraction({
+        productId: product.id,
+        eventType: "sales_text_copied",
+        source: "sales_search",
+        salePriceTypeId: primarySalePriceTypeId || null,
+        searchSessionId,
+      });
     } catch {
       toast.error("کپی انجام نشد");
     }
