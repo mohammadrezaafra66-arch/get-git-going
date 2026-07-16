@@ -6757,6 +6757,7 @@ export type Database = {
           id: string
           product_id: string
           sale_price_type_id: string | null
+          search_session_id: string | null
           source: string
           user_id: string | null
         }
@@ -6766,6 +6767,7 @@ export type Database = {
           id?: string
           product_id: string
           sale_price_type_id?: string | null
+          search_session_id?: string | null
           source: string
           user_id?: string | null
         }
@@ -6775,6 +6777,7 @@ export type Database = {
           id?: string
           product_id?: string
           sale_price_type_id?: string | null
+          search_session_id?: string | null
           source?: string
           user_id?: string | null
         }
