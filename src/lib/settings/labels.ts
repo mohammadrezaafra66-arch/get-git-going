@@ -10,6 +10,8 @@ export const ROLE_FA: Record<string, string> = {
   sales: "کارشناس فروش",
   accountant: "حسابدار",
   viewer: "بازدیدکننده",
+  purchase_specialist: "کارشناس خرید",
+  site: "سایت",
 };
 
 export const ROLE_OPTIONS: { value: string; label: string }[] = [
@@ -18,6 +20,8 @@ export const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "sales", label: ROLE_FA.sales },
   { value: "accountant", label: ROLE_FA.accountant },
   { value: "viewer", label: ROLE_FA.viewer },
+  { value: "purchase_specialist", label: ROLE_FA.purchase_specialist },
+  { value: "site", label: ROLE_FA.site },
 ];
 
 export const PENALTY_FOR_FA: Record<string, string> = {
