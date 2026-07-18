@@ -282,6 +282,8 @@ services:
         fi
         exec /docker-entrypoint.sh kong docker-start
     environment:
+      KONG_NGINX_HTTP_LARGE_CLIENT_HEADER_BUFFERS: "8 64k"
+      KONG_NGINX_HTTP_CLIENT_HEADER_BUFFER_SIZE: "64k"
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.rendered.yml
       KONG_DNS_ORDER: LAST,A,CNAME

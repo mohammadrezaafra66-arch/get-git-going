@@ -310,7 +310,7 @@ function ProductsPage() {
                     {(data?.rows ?? []).map((p, index) => (
                       <tr
                         key={p.id}
-                        className="border-b last:border-0 hover:bg-muted/30 opacity-0 animate-in fade-in slide-in-from-bottom-1 duration-300"
+                        className="border-b last:border-0 hover:bg-muted/30 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-forwards"
                         style={{ animationDelay: `${index * 30}ms`, animationFillMode: "forwards" }}
                       >
                         <td className="p-2">

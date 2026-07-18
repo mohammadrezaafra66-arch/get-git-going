@@ -29,7 +29,7 @@ export default defineConfig({
   // so the toggle must be handled at the Dockerfile/runtime level.
   // See deploy/app/README.md section "Build target — Cloudflare Workers vs Node SSR".
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: process.env.DISABLE_LOVABLE_MCP === "1" ? [] : [mcpPlugin()],
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudPublishableKey),
