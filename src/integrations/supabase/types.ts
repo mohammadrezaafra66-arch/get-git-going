@@ -11769,7 +11769,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
+      app_role:
+        | "admin"
+        | "manager"
+        | "sales"
+        | "accountant"
+        | "viewer"
+        | "purchase_specialist"
+        | "site"
       base_currency: "toman" | "usd" | "aed"
       currency_code: "toman" | "usd" | "aed" | "usd_us"
       dynamic_column_data_type:
@@ -11971,7 +11978,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "sales", "accountant", "viewer"],
+      app_role: [
+        "admin",
+        "manager",
+        "sales",
+        "accountant",
+        "viewer",
+        "purchase_specialist",
+        "site",
+      ],
       base_currency: ["toman", "usd", "aed"],
       currency_code: ["toman", "usd", "aed", "usd_us"],
       dynamic_column_data_type: [
