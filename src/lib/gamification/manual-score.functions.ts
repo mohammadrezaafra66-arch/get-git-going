@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuthNode20 } from "@/integrations/supabase/messenger-auth-middleware";
 
 const InputSchema = z.object({
   employeeId: z.string().uuid(),
@@ -9,22 +9,18 @@ const InputSchema = z.object({
 });
 
 export const recordManualScoreAdjustment = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthNode20])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Authorize: admin or manager only
+    // Authorize: admin only
     const { data: isAdmin } = await supabase.rpc("has_role", {
       _user_id: userId,
       _role: "admin",
     });
-    const { data: isManager } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "manager",
-    });
-    if (!isAdmin && !isManager) {
-      throw new Error("Forbidden: admin or manager role required");
+    if (!isAdmin) {
+      throw new Error("Forbidden: admin role required");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -2,7 +2,10 @@
 // جبران فقدان allowed_mime_types روی bucket: ext/mime/size + عضویت گروه
 // + تولید path امن {userId}/{uuid}.{ext}.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// Node-20-safe wrapper: disables Realtime inside the per-request Supabase
+// client so `createClient(...)` does not throw the native-WebSocket error
+// during messenger attachment pre-check on self-host.
+import { requireSupabaseAuthNode20 as requireSupabaseAuth } from "@/integrations/supabase/messenger-auth-middleware";
 import { z } from "zod";
 import {
   ABSOLUTE_MAX_BYTES,

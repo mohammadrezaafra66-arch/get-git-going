@@ -1,7 +1,8 @@
 // Phase 5 — STT با Whisper self-hosted (graceful fallback)
 // خروجی همیشه { ok, reason? } — هرگز throw نمی‌کند تا UX ارسال قطع نشود.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// Node-20-safe wrapper — see messenger-auth-middleware.ts for rationale.
+import { requireSupabaseAuthNode20 as requireSupabaseAuth } from "@/integrations/supabase/messenger-auth-middleware";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 

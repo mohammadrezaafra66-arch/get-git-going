@@ -1,6 +1,6 @@
 // Phase 7 — Inquiry serverFns. هرگز throw نمی‌کنند؛ خطای فارسی RPC را عیناً برمی‌گردانند.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuthNode20 } from "@/integrations/supabase/messenger-auth-middleware";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -30,7 +30,7 @@ function parseError(message: string | undefined | null): string {
 }
 
 export const createInquiry = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthNode20])
   .inputValidator((data: unknown) => createInput.parse(data))
   .handler(async ({ data, context }): Promise<InquiryResult> => {
     const { supabase } = context as { supabase: SupabaseClient };
@@ -49,7 +49,7 @@ export const createInquiry = createServerFn({ method: "POST" })
   });
 
 export const replyInquiry = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthNode20])
   .inputValidator((data: unknown) => replyInput.parse(data))
   .handler(async ({ data, context }): Promise<InquiryResult> => {
     const { supabase } = context as { supabase: SupabaseClient };
@@ -67,7 +67,7 @@ export const replyInquiry = createServerFn({ method: "POST" })
   });
 
 export const transferInquiry = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireSupabaseAuthNode20])
   .inputValidator((data: unknown) => transferInput.parse(data))
   .handler(async ({ data, context }): Promise<InquiryResult> => {
     const { supabase } = context as { supabase: SupabaseClient };
