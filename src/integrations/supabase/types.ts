@@ -5262,6 +5262,7 @@ export type Database = {
           id: string
           product_id: string
           sale_price_type_id: string | null
+          search_session_id: string | null
           source: string
           user_id: string | null
         }
@@ -5271,6 +5272,7 @@ export type Database = {
           id?: string
           product_id: string
           sale_price_type_id?: string | null
+          search_session_id?: string | null
           source: string
           user_id?: string | null
         }
@@ -5280,6 +5282,7 @@ export type Database = {
           id?: string
           product_id?: string
           sale_price_type_id?: string | null
+          search_session_id?: string | null
           source?: string
           user_id?: string | null
         }
@@ -5851,6 +5854,87 @@ export type Database = {
           registered_at?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      promotion_nomination_policy: {
+        Row: {
+          boost_cap_per_product: number
+          boost_per_nomination: number
+          created_at: string
+          daily_quota: number
+          id: string
+          is_active: boolean
+          per_product_daily_cap: number
+          role: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          boost_cap_per_product?: number
+          boost_per_nomination?: number
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          is_active?: boolean
+          per_product_daily_cap?: number
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          boost_cap_per_product?: number
+          boost_per_nomination?: number
+          created_at?: string
+          daily_quota?: number
+          id?: string
+          is_active?: boolean
+          per_product_daily_cap?: number
+          role?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      promotion_nominations: {
+        Row: {
+          boost_applied: number
+          cancelled_at: string | null
+          cancelled_by: string | null
+          channel_id: string | null
+          created_at: string
+          id: string
+          nominated_by: string
+          nominated_on: string
+          product_id: string
+          reason_code: string
+          reason_note: string | null
+        }
+        Insert: {
+          boost_applied?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          nominated_by: string
+          nominated_on?: string
+          product_id: string
+          reason_code: string
+          reason_note?: string | null
+        }
+        Update: {
+          boost_applied?: number
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          nominated_by?: string
+          nominated_on?: string
+          product_id?: string
+          reason_code?: string
+          reason_note?: string | null
         }
         Relationships: []
       }
@@ -6656,6 +6740,36 @@ export type Database = {
           salesperson_id?: string | null
           status?: Database["public"]["Enums"]["sales_quote_status"]
           subtotal_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_reminders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          sort_order: number
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          text?: string
           updated_at?: string
         }
         Relationships: []
