@@ -6645,6 +6645,7 @@ export type Database = {
           purchase_price_toman: number
           rounded_sale_price: number
           sale_price_type_id: string
+          settlement_type_id: string | null
           shipping_cost: number
           source: string
         }
@@ -6663,6 +6664,7 @@ export type Database = {
           purchase_price_toman: number
           rounded_sale_price: number
           sale_price_type_id: string
+          settlement_type_id?: string | null
           shipping_cost?: number
           source?: string
         }
@@ -6681,6 +6683,7 @@ export type Database = {
           purchase_price_toman?: number
           rounded_sale_price?: number
           sale_price_type_id?: string
+          settlement_type_id?: string | null
           shipping_cost?: number
           source?: string
         }
@@ -6996,6 +6999,7 @@ export type Database = {
           old_sale_price: number | null
           product_id: string
           sale_price_type_id: string | null
+          settlement_type_id: string | null
           snapshot_id: string | null
         }
         Insert: {
@@ -7008,6 +7012,7 @@ export type Database = {
           old_sale_price?: number | null
           product_id: string
           sale_price_type_id?: string | null
+          settlement_type_id?: string | null
           snapshot_id?: string | null
         }
         Update: {
@@ -7020,6 +7025,7 @@ export type Database = {
           old_sale_price?: number | null
           product_id?: string
           sale_price_type_id?: string | null
+          settlement_type_id?: string | null
           snapshot_id?: string | null
         }
         Relationships: [
