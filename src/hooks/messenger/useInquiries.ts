@@ -61,6 +61,13 @@ export function useInquiries(groupId: string | null) {
           qc.invalidateQueries({ queryKey });
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inquiry_replies" },
+        () => {
+          qc.invalidateQueries({ queryKey });
+        },
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
