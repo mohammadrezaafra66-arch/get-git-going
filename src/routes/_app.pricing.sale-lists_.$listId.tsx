@@ -790,6 +790,8 @@ function SaleListDetailPage() {
             .from("product_computed_prices")
             .select("product_id, rounded_sale_price, computed_at")
             .eq("sale_price_type_id", typeId)
+            // Baseline rows only — preserve exact pre-settlement behavior.
+            .is("settlement_type_id", null)
             .in("product_id", chunk)
             .order("computed_at", { ascending: false });
           if (error) throw error;
