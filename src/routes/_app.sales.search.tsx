@@ -89,8 +89,10 @@ type LabelMode = "off" | "all" | "selected";
 
 interface PriceEntry {
   sale_price_type_id: string;
+  settlement_type_id?: string | null;
   code: string;
   title: string;
+  settlement_title?: string | null;
   sort_order: number;
   current_price: number | null;
   previous_price: number | null;
@@ -936,10 +938,22 @@ function ProductCard({
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  // primary price = the one selected globally (if available for this product), otherwise the first.
+  // Baseline rows carry settlement_type_id == null (exactly the pre-settlement
+  // behavior). Per-settlement rows carry a settlement_type_id + settlement_title.
+  const isBaseline = (p: PriceEntry) => p.settlement_type_id == null;
+  // primary price = the BASELINE row of the globally selected sale type
+  // (fallback to any baseline row, then the first entry).
   const primary =
-    prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
-  const others = prices.filter((p) => p.sale_price_type_id !== (primary?.sale_price_type_id ?? ""));
+    prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId && isBaseline(p)) ??
+    prices.find((p) => isBaseline(p)) ??
+    prices[0] ??
+    null;
+  // Other sale-price types (baseline rows only, excluding the primary's type).
+  const otherSaleTypes = prices.filter(
+    (p) => isBaseline(p) && p.sale_price_type_id !== (primary?.sale_price_type_id ?? ""),
+  );
+  // Per-settlement prices (one row per settlement term that has a price).
+  const settlementPrices = prices.filter((p) => !isBaseline(p));
 
   const cur = primary?.current_price != null ? Number(primary.current_price) : null;
   const prev = primary?.previous_price != null ? Number(primary.previous_price) : null;
@@ -997,10 +1011,11 @@ function ProductCard({
     if (hasAnyPrice) {
       lines.push("قیمت‌ها:");
       for (const p of prices) {
+        const label = p.settlement_type_id == null ? p.title : `${p.title} (${p.settlement_title})`;
         if (p.current_price != null) {
-          lines.push(`• ${p.title}: ${formatNumber(Number(p.current_price))} تومان`);
+          lines.push(`• ${label}: ${formatNumber(Number(p.current_price))} تومان`);
         } else {
-          lines.push(`• ${p.title}: قیمت ثبت نشده`);
+          lines.push(`• ${label}: قیمت ثبت نشده`);
         }
       }
     } else {
@@ -1176,10 +1191,10 @@ function ProductCard({
             Rendered only when a snippet exists for this product. */}
         <ObservatoryBadges snippet={observatorySnippet} />
 
-        {/* Secondary prices grid */}
-        {!isUnavailable && others.length > 0 && (
+        {/* Secondary prices grid — other sale price types (baseline rows). */}
+        {!isUnavailable && otherSaleTypes.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-            {others.map((p) => {
+            {otherSaleTypes.map((p) => {
               const c = p.current_price != null ? Number(p.current_price) : null;
               const pv = p.previous_price != null ? Number(p.previous_price) : null;
               const a = c !== null && pv !== null ? c - pv : null;
@@ -1222,6 +1237,62 @@ function ProductCard({
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Per-settlement prices — one card per settlement term. */}
+        {!isUnavailable && settlementPrices.length > 0 && (
+          <div className="mt-1.5">
+            <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+              قیمت بر اساس نوع تسویه
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {settlementPrices.map((p) => {
+                const c = p.current_price != null ? Number(p.current_price) : null;
+                const pv = p.previous_price != null ? Number(p.previous_price) : null;
+                const a = c !== null && pv !== null ? c - pv : null;
+                return (
+                  <button
+                    key={`${p.sale_price_type_id}:${p.settlement_type_id}`}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenChart(p.sale_price_type_id);
+                    }}
+                    className="rounded-md border border-dashed bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
+                  >
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {p.settlement_title ?? p.title}
+                    </div>
+                    <div className="text-base font-semibold tabular-nums">
+                      {c !== null ? (
+                        formatNumber(c)
+                      ) : (
+                        <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>
+                      )}
+                    </div>
+                    {toUsd(c) !== null && (
+                      <div className="text-[10px] font-normal text-muted-foreground tabular-nums">
+                        ≈ {formatNumber(toUsd(c)!)} دلار
+                      </div>
+                    )}
+                    {a !== null && a !== 0 && (
+                      <div
+                        className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}
+                      >
+                        {a > 0 ? "+" : ""}
+                        {formatNumber(a)}
+                      </div>
+                    )}
+                    {p.last_updated_at && (
+                      <div className="text-[9px] text-muted-foreground truncate">
+                        {formatDateTimeFa(p.last_updated_at)}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
