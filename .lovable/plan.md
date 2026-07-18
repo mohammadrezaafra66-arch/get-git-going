@@ -1,110 +1,42 @@
-## Task ID
-FIX-BATCH-2026-07-18
+## تشخیص
 
-## Classification
-PLAN ONLY — بدون تغییر فایل تا تأیید
+محیط تست: **self-host روی LAN با HTTP** (نه لاول). هر دو خطا مختص همین محیط‌اند:
 
-## Goal
-رفع ۶ نقص گزارش‌شدهٔ کاربر در بخش‌های وظایف، گزارش‌ها، آپلود فایل‌ها، تنظیمات گردش‌کار، بیجک و جست‌وجوی سریع محصول — به‌صورت اسلایس‌های کوچک و مستقل.
+1. `crypto.randomUUID is not a function` — روی origin غیرامن (HTTP LAN) مرورگر این API را حذف می‌کند. کد ما پلی‌فیل دارد (`src/lib/polyfills/crypto-uuid.ts` که در `__root.tsx` و `start.ts` import شده) و در ProductImagesSection هم از `safeRandomUUID` استفاده می‌شود. اما خطا از **داخل خود `@supabase/supabase-js`** می‌آید (auth/storage در زمان generate id از `globalThis.crypto.randomUUID` استفاده می‌کند) — یعنی پلی‌فیل یا اجرا نمی‌شود یا **build جدید روی سرور نصب نشده**.
 
-## Current state (verified)
-- `src/routes/_app.operations.tasks.tsx` وجود دارد (۲۳۶ خط). صف تخصیص/نوع مدرک/گزارش KPI بررسی نشده — نیاز به مرور محتوا.
-- `src/routes/_app.reports.tsx` وجود دارد (۳۵۰ خط). ارجاعی به Excel/xlsx/export یافت نشد — احتمالاً خروجی Excel و فیلترها موجود نیستند.
-- `_app.admin.workflow-settings.tsx` وجود دارد؛ ولی این‌که چه نقش‌هایی در dropdown نمایش داده می‌شوند بررسی نشد (نیاز به مرور).
-- `_app.sales_.invoices_.$invoiceId.waybill.tsx` (بیجک) وجود دارد؛ مشکل «نمی‌توانم فیلد کنم» مبهم است — نیاز به شفاف‌سازی کاربر.
-- `src/lib/messenger/upload.functions.ts` از `requireSupabaseAuthNode20` استفاده می‌کند تا خطای WebSocket را دور بزند. با این حال گزارش کاربر می‌گوید هنوز خطای «Node.js detected but native WebSocket not found» رخ می‌دهد — یعنی خطا احتمالاً از مسیر دیگری (کلاینتِ realtime در همان صفحه، نه سرور فانکشن) می‌آید و باید مسیر واقعیِ ایجاد کلاینت هنگام آپلود مسنجر ردیابی شود.
-- `crypto.randomUUID` polyfill در `src/lib/polyfills/crypto-uuid.ts` هست و در `src/start.ts` import شده؛ اما `ProductImagesSection.tsx` از `safeRandomUUID` استفاده می‌کند — یعنی خطا نباید در این فایل رخ دهد. باید بررسی شود که آیا خطا از خودِ supabase-js داخل `storage.upload` می‌آید یا مسیر دیگری، و آیا polyfill در LAN self-host واقعاً بار می‌شود (ترتیب importها در start.ts).
-- در `_app.sales.search.tsx` فیلتر `stock_status` وجود دارد و در حالت غیر-label فقط available/limited برمی‌گرداند. ادعای کاربر «محصول ناموجود پیشنهاد می‌شود و قیمت اشتباه می‌زند» یعنی احتمالاً در حالت label یا در بخش «محصول پیشنهادی/related» فیلتر ناموجود اعمال نمی‌شود — نیاز به بررسی همان بخش «پیشنهادی».
+2. `Node.js detected but native WebSocket not found` — از server function اجرای supabase realtime روی Node 20 self-host. ما `requireSupabaseAuthNode20` را با NoopRealtimeTransport ساخته‌ایم و در `upload.functions.ts` مسنجر استفاده می‌شود. پس این هم نشان می‌دهد **کد جدید روی سرور اجرا نمی‌شود**.
 
-هیچ‌کدام از این علل هنوز قطعی نیست — همه فرضیه‌ای هستند و باید در فاز اولِ هر اسلایس با read-only investigation تأیید شوند.
+3. Documents/Delivery/Purchase Receipts هیچ دکمه‌ای نمی‌بینند در حالی که کاربر admin است. کد `canUpload = roles.includes("admin") …` صحیح است و تب «آپلود جدید» باید نمایش داده شود. یعنی یا build قدیمی است، یا roles کاربر روی سرور خالی برگردانده می‌شود.
 
-## Out of scope
-- بازطراحی هیچ صفحه‌ای.
-- تغییر schema/RLS مگر آن‌که برای رفع باگ لازم باشد و صراحتاً تأیید شود.
-- افزودن قابلیت جدید فراتر از رفع نقص گزارش‌شده.
+**فرضیه اصلی: build فعلی روی سرور self-host، نسخه‌ای قبل از fixهای اخیر (پلی‌فیل crypto + Node20 middleware + آپلود forms) است.** قبل از هر تغییر کد باید این تأیید شود.
 
-## Phased plan (هر فاز مستقل، کوچک، قابل‌تست)
+## قدم‌های پیشنهادی
 
-### فاز ۱ — Investigation-only (بدون تغییر کد)
-هدف: قبل از هر فیکس، علت هر مورد را دقیق مستند کنیم.
-1. مرور `_app.operations.tasks.tsx` برای دیدنِ اینکه «صف تخصیص/نوع مدرک/گزارش KPI» کجا رندر می‌شوند یا نمی‌شوند و آیا صفحه‌های زیرمجموعه لازم دارند.
-2. مرور `_app.reports.tsx` برای وضعیت فیلترها و دکمهٔ خروجی Excel.
-3. مرور `_app.admin.workflow-settings.tsx` + مقادیرِ منبعِ نقش‌ها (rpc `get_workflow_settings` و enumِ نقش‌ها).
-4. باز کردن صفحهٔ بیجک با Playwright و درخواست از کاربر: منظور از «نمی‌توانم فیلد کنم» چیست (فیلد سفارشی؟ فیلتر لیست؟ ویرایش فیلد آیتم؟).
-5. Trace واقعیِ خطای `crypto.randomUUID` هنگام آپلود عکس محصول (احتمالاً از مسیر storage خودِ supabase-js فراخوانی می‌شود؛ بررسی ترتیب importِ polyfill در `src/start.ts` و اینکه در client-entry هم زودتر بار می‌شود یا نه).
-6. Trace خطای WebSocket در آپلود مسنجر: بررسی همه‌جای فراخوانیِ `createClient` سمت کلاینت در مسیرِ آپلود مسنجر (احتمالاً یک `supabase.storage.upload` که realtime auto-init می‌کند).
-7. در `_app.sales.search.tsx` بخشِ «محصول پیشنهادی/related» یا کارتِ پیشنهاد را پیدا کن و ببین فیلترِ ناموجود روی آن اعمال می‌شود یا نه؛ همین‌طور منبعِ قیمت آن.
+### فاز 0 — تأیید نسخه سرور (بدون تغییر کد)
+- شما یک بار سرور را pull/rebuild کنید و hard reload بزنید (`Ctrl+Shift+R`).
+- در DevTools → Console بزنید: `typeof crypto?.randomUUID` — اگر `"undefined"` بود پلی‌فیل load نشده.
+- در Network تب Documents، ببینید آیا request به `/documents` HTML چیزی شبیه `crypto-uuid` در chunkها بارگذاری می‌کند.
+- اگر بعد از rebuild خطاها رفتند و تب آپلود ظاهر شد → مشکل فقط دیپلوی بود، نه کد.
 
-خروجی فاز ۱: یک یادداشتِ کوتاه در همین چت با علتِ قطعیِ هر مورد، بعد فازهای زیر یکی‌یکی شروع می‌شوند.
+### فاز 1 — سخت‌تر کردن پلی‌فیل (اگر بعد از rebuild هم باقی ماند)
+- انتقال پلی‌فیل به یک `<script>` inline در `head` روت (قبل از هر ماژول Vite) تا حتی قبل از bootstrap اجرا شود.
+- افزودن log اولیه در پلی‌فیل: `console.debug("[crypto-uuid] installed", typeof crypto.randomUUID)` برای تشخیص.
 
-### فاز ۲ — Fix A: polyfill `crypto.randomUUID` در LAN
-- تأیید که `import "@/lib/polyfills/crypto-uuid"` در بالاترین نقطهٔ client entry (نه فقط `src/start.ts` که ممکن است سمت سرور اجرا شود) بارگذاری شود.
-- در صورت نیاز، افزودن import در `src/router.tsx` یا `src/routes/__root.tsx`.
-- تست: آپلود عکس محصول روی HTTP LAN.
+### فاز 2 — پوشش کامل Node20 WS
+- بررسی همه server functionهایی که `requireSupabaseAuth` استاندارد را استفاده می‌کنند (نه Node20 wrapper) و تبدیل آن‌ها روی مسیرهای آپلود/رسید/سند به `requireSupabaseAuthNode20`.
+- فایل‌های هدف احتمالی: `src/hooks/documents/*.functions.ts`, `src/hooks/delivery-receipts/*.functions.ts`, upload حساب‌داری.
 
-### فاز ۳ — Fix B: خطای WebSocket در آپلود مسنجر
-- شناسایی نقطه‌ای که `supabase-js` سمت کلاینت realtime را init می‌کند در مسیر آپلود؛ اگر لازم است options `{ realtime: { transport: ... } }` را غیرفعال کنیم یا مثل سرور از wrapper node20 استفاده کنیم.
-- تست: ارسال JPG در گروه مسنجر.
+### فاز 3 — تأیید Documents/Delivery/Purchase Receipts
+- بعد از rebuild با کاربر admin تست کنید تب «آپلود جدید» ظاهر شود.
+- اگر ظاهر نشد، `useAuth().roles` را در کنسول لاگ می‌کنیم تا ببینیم چرا خالی است.
 
-### فاز ۴ — Fix C: فیلتر «ناموجود» در جست‌وجوی سریع (بخش پیشنهادی)
-- افزودن فیلتر `stock_status in ('available','limited')` روی بخش پیشنهادی و/یا مخفی‌کردن «افزودن به لیست» برای `stock_status='unavailable'`.
-- در صورت اثبات باگِ قیمت: بررسی resolverِ قیمت روی همان بخش.
-- تست: جست‌وجو → مشاهده پیشنهادی‌ها → نبودِ ناموجود.
+### فاز 4 — Purchase Receipts (فقط اگر واقعاً upload form ندارد)
+- بررسی مسیر مربوطه (`_app.purchase.tsx` یا مشابه) و اگر form آپلود واقعاً موجود نیست، اضافه کردن آن مطابق الگوی Delivery Receipts.
 
-### فاز ۵ — Fix D: workflow-settings — افزودن نقش‌های کارشناس خرید و سایت
-- بررسی enum یا لیست ثابت نقش‌ها در همان route (احتمالاً hard-coded)؛ افزودن دو نقشِ مفقود مطابق `app_role` واقعی در DB.
-- اگر نقش‌ها در enumِ DB نیستند، این تغییر migration نیاز دارد و باید جدا تأیید شود.
+## سؤال قبل از build
+لطفاً اول **فاز 0** را اجرا کنید و نتیجه سه چیز را بگویید:
+1. خروجی `typeof crypto?.randomUUID` در کنسول سرور self-host.
+2. آیا بعد از rebuild + hard reload تب «آپلود سند جدید» در `/documents` (با کاربر admin) ظاهر می‌شود؟
+3. آیا خطای WebSocket در آپلود مسنجر بعد از rebuild هنوز رخ می‌دهد؟
 
-### فاز ۶ — Fix E: بیجک (بعد از شفاف‌سازی کاربر)
-- بسته به پاسخِ کاربر در فاز ۱، اسلایسِ کوچکِ متناسب.
-
-### فاز ۷ — Fix F: صفحات و گزارش‌های وظایف/گزارش‌ها
-- اگر صف تخصیص/نوع مدرک/KPI واقعاً وجود ندارند: افزودن به‌صورت زیر-تب در `_app.operations.tasks.tsx` با استفاده از RPCهای موجود (`get_task_kpi_report`).
-- اگر خروجی Excel در `/reports` وجود ندارد: افزودن دکمه خروجی با کتابخانهٔ موجود در پروژه (باید بررسی شود کدام export util استفاده شده — بدون افزودن dependency جدید).
-- این دو مورد بزرگ‌تر از بقیه‌اند و باید بعد از تأیید scope دقیق، به دو–سه اسلایس شکسته شوند.
-
-## Migration / RLS / RBAC impact
-- فازهای ۲، ۳، ۴، ۶، ۷: فقط UI/client — بدون migration، بدون تغییر RLS/RBAC.
-- فاز ۵: احتمالاً نیازمند بررسی enum نقش‌ها؛ اگر migration لازم شد، جدا و با تأیید صریح.
-
-## Performance / Self-host impact
-- polyfillها و wrapperهای node20 قبلاً برای self-host طراحی شده‌اند؛ فازهای ۲ و ۳ آن‌ها را کامل می‌کنند.
-
-## UI/UX impact
-- تغییرات جزئی؛ زبان و RTL دست‌نخورده.
-
-## Manual test path (بعد از هر فاز جدا)
-- فاز ۲: LAN → افزودن عکس به محصول.
-- فاز ۳: LAN → ارسال فایل در مسنجر.
-- فاز ۴: جست‌وجوی سریع → پیشنهادی‌ها فقط موجود.
-- فاز ۵: `/admin/workflow-settings` → همه نقش‌ها در dropdown.
-- فاز ۶: صفحهٔ بیجک → سناریوی مشخص‌شدهٔ کاربر.
-- فاز ۷: `/operations/tasks` و `/reports` طبق نیازمندی.
-
-## Commands to run (بعد از هر فاز)
-- `bun run build`
-- `bun run lint` (فقط روی فایل‌های تغییر‌کرده)
-
-## Risks
-- اگر polyfill در client entry غایب باشد، خطر برگشتِ خطاست.
-- ادغام realtime supabase-js شکننده است — فیکس فاز ۳ باید minimum-invasive باشد.
-- تغییر لیست نقش‌ها اگر با enumِ DB ناسازگار باشد، runtime error می‌دهد.
-
-## Stop conditions
-- اگر در فاز ۱ معلوم شد یک فیکس نیاز به schema change دارد، متوقف شو و تأیید بگیر.
-- اگر «نمی‌توانم فیلد کنم» برای بیجک شفاف نشد، فاز ۶ را شروع نکن.
-
-## Smallest safe next slice
-شروع با **فاز ۱ (Investigation-only)** — فقط خواندن فایل‌ها و باز کردن صفحات با Playwright و پرسش از کاربر دربارهٔ بیجک. هیچ کدی تغییر نکند.
-
-## Next SAFE AGENT CHANGE prompt
-پس از تأیید این پلن: «فاز ۱ را انجام بده — فقط خواندنی. علت‌های قطعی هر ۶ مورد را گزارش کن و منتظر تأیید بمان.»
-
----
-
-### سؤالِ لازم قبل از تأیید نهایی (برای فاز ۶)
-منظورت از «بیجک نمی‌توانم فیلد کنم» دقیقاً چیست؟
-- (الف) فیلترِ ستون در لیست بیجک‌ها کار نمی‌کند؟
-- (ب) فیلد سفارشی جدید اضافه نمی‌شود؟
-- (ج) هنگام ویرایش یک بیجک، مقدارِ فیلد را نمی‌توانی تغییر دهی؟
-- (د) چیز دیگر؟
+با این سه پاسخ می‌توانم دقیقاً مشخص کنم که آیا نیاز به تغییر کد است یا فقط دیپلوی، و بعد وارد فازهای 1–4 می‌شویم.
