@@ -110,6 +110,22 @@ export function ShippingCostRuleForm({
     },
   });
 
+  const { data: brands } = useQuery({
+    queryKey: ["brands-lite-shipping"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brands")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name", { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+
+  const NO_BRAND = "__all_brands";
+
   const amountLabel =
     values.cost_type === "fixed"
       ? "مبلغ (تومان)"
@@ -123,6 +139,47 @@ export function ShippingCostRuleForm({
 
   const set = <K extends keyof ShippingRuleFormValues>(k: K, v: ShippingRuleFormValues[K]) =>
     onChange({ ...values, [k]: v });
+
+  const productPickerBlock = (label: string) => (
+    <div className="sm:col-span-2">
+      <Label>{label}</Label>
+      <Input
+        dir="rtl"
+        placeholder="نام محصول را برای جستجو تایپ کنید..."
+        value={productTerm}
+        onChange={(e) => {
+          setProductTerm(e.target.value);
+          if (!e.target.value) set("product_id", null);
+        }}
+      />
+      {productSearch.data && productSearch.data.length > 0 && (
+        <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover text-sm">
+          {productSearch.data.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
+                  values.product_id === p.id ? "bg-muted font-semibold" : ""
+                }`}
+                onClick={() => {
+                  set("product_id", p.id);
+                  setProductTerm(p.name);
+                }}
+              >
+                {p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {values.product_id && (
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          انتخاب‌شده — برای حذف، فیلد را خالی کنید.
+        </p>
+      )}
+      {errors.product_id && <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>}
+    </div>
+  );
 
   return (
     <form
@@ -138,15 +195,19 @@ export function ShippingCostRuleForm({
           value={values.scope_mode}
           onValueChange={(v) => {
             const next = v as "product" | "price_range" | "category";
+            // In "category" scope the rule may be narrowed دسته → برند → محصول,
+            // so brand_id/product_id are preserved there; "product" keeps only
+            // product_id; "price_range" clears all scope bindings.
             onChange({
               ...values,
               scope_mode: next,
-              product_id: next === "product" ? values.product_id : null,
+              product_id: next === "product" || next === "category" ? values.product_id : null,
+              brand_id: next === "category" ? values.brand_id : null,
               category_id: next === "category" ? values.category_id : null,
               min_purchase_price: next === "price_range" ? values.min_purchase_price : null,
               max_purchase_price: next === "price_range" ? values.max_purchase_price : null,
             });
-            if (next !== "product") setProductTerm("");
+            if (next === "price_range") setProductTerm("");
           }}
         >
           <SelectTrigger>
@@ -160,71 +221,64 @@ export function ShippingCostRuleForm({
         </Select>
       </div>
 
-      {values.scope_mode === "product" && (
-        <div className="sm:col-span-2">
-          <Label>محصول *</Label>
-          <Input
-            dir="rtl"
-            placeholder="نام محصول را برای جستجو تایپ کنید..."
-            value={productTerm}
-            onChange={(e) => {
-              setProductTerm(e.target.value);
-              if (!e.target.value) set("product_id", null);
-            }}
-          />
-          {productSearch.data && productSearch.data.length > 0 && (
-            <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover text-sm">
-              {productSearch.data.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
-                      values.product_id === p.id ? "bg-muted font-semibold" : ""
-                    }`}
-                    onClick={() => {
-                      set("product_id", p.id);
-                      setProductTerm(p.name);
-                    }}
-                  >
-                    {p.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {values.product_id && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              انتخاب‌شده — برای حذف، فیلد را خالی کنید.
-            </p>
-          )}
-          {errors.product_id && (
-            <p className="mt-1 text-xs text-destructive">{errors.product_id}</p>
-          )}
-        </div>
-      )}
+      {values.scope_mode === "product" && productPickerBlock("محصول *")}
 
       {values.scope_mode === "category" && (
-        <div className="sm:col-span-2">
-          <Label>دسته *</Label>
-          <Select value={values.category_id ?? ""} onValueChange={(v) => set("category_id", v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="انتخاب دسته" />
-            </SelectTrigger>
-            <SelectContent>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            هزینه برای تمام محصولات این دسته اعمال می‌شود.
-          </p>
-          {errors.category_id && (
-            <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
-          )}
-        </div>
+        <>
+          <div className="sm:col-span-2">
+            <Label>دسته *</Label>
+            <Select value={values.category_id ?? ""} onValueChange={(v) => set("category_id", v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="انتخاب دسته" />
+              </SelectTrigger>
+              <SelectContent>
+                {(categories ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              هزینه برای محصولات این دسته اعمال می‌شود. با انتخاب برند و سپس محصول، می‌توانید آن را
+              دقیق‌تر کنید (اولویت: محصول &gt; برند &gt; دسته).
+            </p>
+            {errors.category_id && (
+              <p className="mt-1 text-xs text-destructive">{errors.category_id}</p>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
+            <Label>برند (اختیاری)</Label>
+            <Select
+              value={values.brand_id ?? NO_BRAND}
+              onValueChange={(v) => {
+                const nextBrand = v === NO_BRAND ? null : v;
+                // Narrowing to a different brand drops any product below it.
+                onChange({
+                  ...values,
+                  brand_id: nextBrand,
+                  product_id: nextBrand ? values.product_id : null,
+                });
+                if (!nextBrand) setProductTerm("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="همه برندهای این دسته" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_BRAND}>همه برندهای این دسته</SelectItem>
+                {(brands ?? []).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {values.brand_id && productPickerBlock("محصول خاص (اختیاری)")}
+        </>
       )}
 
       {values.scope_mode === "price_range" && (

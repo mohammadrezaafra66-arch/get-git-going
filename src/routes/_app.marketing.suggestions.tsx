@@ -49,6 +49,12 @@ type Suggestion = {
   daily_quota: number | null;
   used_today: number;
   remaining_today: number | null;
+  // DB-D two-lane columns (present when the DB-D migration is applied)
+  market_score?: number | null;
+  sales_nomination_boost?: number | null;
+  final_score?: number | null;
+  nomination_count?: number | null;
+  last_nominated_at?: string | null;
 };
 
 type Channel = { id: string; name: string };
@@ -117,7 +123,8 @@ function PromotionSuggestionsPage() {
         _limit: 200,
       };
       if (channelId !== "__all__") args._channel_id = channelId;
-      const { data, error } = await supabase.rpc("compute_promotion_scores", args);
+      // (supabase as any): the two-lane columns are not in generated types yet.
+      const { data, error } = await (supabase as any).rpc("compute_promotion_scores", args);
       if (error) throw error;
       return (data ?? []) as Suggestion[];
     },
@@ -240,7 +247,9 @@ function PromotionSuggestionsPage() {
               <TableHead className="text-right">وزن کانال</TableHead>
               <TableHead className="text-right">موجودی</TableHead>
               <TableHead className="text-right">فروش ۹۰ روز</TableHead>
-              <TableHead className="text-right">امتیاز</TableHead>
+              <TableHead className="text-right">امتیاز بازار</TableHead>
+              <TableHead className="text-right">بوست فروش</TableHead>
+              <TableHead className="text-right">امتیاز نهایی</TableHead>
               <TableHead className="text-right">سهمیه امروز</TableHead>
               <TableHead className="text-right">عمل</TableHead>
             </TableRow>
@@ -248,19 +257,19 @@ function PromotionSuggestionsPage() {
           <TableBody>
             {suggestionsQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="py-10 text-center text-muted-foreground">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </TableCell>
               </TableRow>
             ) : suggestionsQuery.isError ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-destructive">
+                <TableCell colSpan={11} className="py-10 text-center text-destructive">
                   خطا در بارگذاری پیشنهادها
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={11} className="py-10 text-center text-muted-foreground">
                   پیشنهادی یافت نشد. مطمئن شوید برچسب‌ها وزن‌دار و کانال‌ها فعال هستند.
                 </TableCell>
               </TableRow>
@@ -286,7 +295,30 @@ function PromotionSuggestionsPage() {
                       <Badge variant={stock.variant}>{stock.label}</Badge>
                     </TableCell>
                     <TableCell>{fmt(s.qty_90d, 0)}</TableCell>
-                    <TableCell className="font-bold">{fmt(s.score, 2)}</TableCell>
+                    <TableCell>{fmt(Number(s.market_score ?? s.score), 2)}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const boost = Number(s.sales_nomination_boost ?? 0);
+                        const count = Number(s.nomination_count ?? 0);
+                        if (boost <= 0 && count <= 0) {
+                          return <span className="text-muted-foreground">—</span>;
+                        }
+                        const tip =
+                          `${fmt(count, 0)} نامزدی` +
+                          (s.last_nominated_at
+                            ? ` — آخرین: ${new Date(s.last_nominated_at).toLocaleString("fa-IR")}`
+                            : "");
+                        return (
+                          <Badge variant="secondary" title={tip}>
+                            +{fmt(boost, 2)}
+                            {count > 0 ? ` (${fmt(count, 0)})` : ""}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell className="font-bold">
+                      {fmt(Number(s.final_score ?? s.score), 2)}
+                    </TableCell>
                     <TableCell>
                       {unlimited ? (
                         <Badge variant="outline">نامحدود</Badge>

@@ -185,7 +185,7 @@ export async function calculateSalePrice(
     input.settlement_type_id ?? m.settlement_type_id ?? null;
 
   // 5) قانون حمل — همیشه از shipping_cost_rules انتخاب می‌شود
-  // (اولویت تطبیق: محصول > دسته > برند > نوع کالا)
+  // (اولویت تطبیق: محصول > برند > دسته > نوع کالا)
   let shipping_cost = 0;
   let shipping_rule_used: { id: string; title: string } | null = null;
   const { data: shippingRows, error: shippingErr } = await db
@@ -209,11 +209,13 @@ export async function calculateSalePrice(
       return false;
     return true;
   });
-  // اولویت‌بندی صریح: محصول > دسته > برند > نوع کالا
+  // اولویت‌بندی صریح: محصول > برند > دسته > نوع کالا (نیازمندی ۱۲۷).
+  // مجموع امتیازها باعث می‌شود قانونِ باریک‌ترِ زنجیرهٔ دسته→برند→محصول
+  // (که چند فیلد را هم‌زمان مقید می‌کند) خاص‌تر از قانونِ تک‌بُعدی شمرده شود.
   const specificity = (s: any): number =>
     (s.product_id ? 1000 : 0) +
-    (s.category_id ? 100 : 0) +
-    (s.brand_id ? 10 : 0) +
+    (s.brand_id ? 100 : 0) +
+    (s.category_id ? 10 : 0) +
     (s.product_type ? 1 : 0);
   candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
   const sRule = candidates[0];
