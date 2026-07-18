@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -816,6 +817,7 @@ function SalesSearchPage() {
                     key={p.id}
                     product={p}
                     primarySalePriceTypeId={salePriceTypeId}
+                    searchSessionId={searchSessionId}
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
@@ -915,6 +917,7 @@ function SalesSearchPage() {
 interface ProductCardProps {
   product: ProductRow;
   primarySalePriceTypeId: string;
+  searchSessionId: string | null;
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
@@ -926,6 +929,7 @@ interface ProductCardProps {
 function ProductCard({
   product,
   primarySalePriceTypeId,
+  searchSessionId,
   canRecalcPrice,
   observatorySnippet,
   thumbnailUrl,
@@ -938,6 +942,35 @@ function ProductCard({
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // «مشاهده کامل» — reveals the full product details AND records the two
+  // deliberate-intent events. Market Intelligence should count a price check
+  // only when the user intentionally inspects a specific product, not merely
+  // because it appeared in the search results. Fire on open only; the tracker
+  // itself de-duplicates within a 30s window.
+  const handleToggleDetails = () => {
+    setDetailsOpen((open) => {
+      const next = !open;
+      if (next) {
+        trackProductInteraction({
+          productId: product.id,
+          eventType: "product_details_opened",
+          source: "sales_search",
+          salePriceTypeId: primarySalePriceTypeId,
+          searchSessionId,
+        });
+        trackProductInteraction({
+          productId: product.id,
+          eventType: "price_checked",
+          source: "sales_search",
+          salePriceTypeId: primarySalePriceTypeId,
+          searchSessionId,
+        });
+      }
+      return next;
+    });
+  };
   // Baseline rows carry settlement_type_id == null (exactly the pre-settlement
   // behavior). Per-settlement rows carry a settlement_type_id + settlement_title.
   const isBaseline = (p: PriceEntry) => p.settlement_type_id == null;
@@ -1300,6 +1333,22 @@ function ProductCard({
         <SalesProductRecommendations productId={product.id} />
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={detailsOpen}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleDetails();
+            }}
+          >
+            <Eye className="ms-1 h-4 w-4" />
+            مشاهده کامل
+            <ChevronDown
+              className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+            />
+          </Button>
           <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
@@ -1357,6 +1406,49 @@ function ProductCard({
             </Button>
           </RoleGuard>
         </div>
+
+        {/* «مشاهده کامل» — full product details, revealed on demand. */}
+        {detailsOpen && (
+          <div className="mt-2 rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="mb-2 font-medium">{formatProductDisplayNameWithFallback(product)}</div>
+            {(() => {
+              const detailRows: Array<{ label: string; value: string }> = [];
+              if (product.sku) detailRows.push({ label: "کد", value: product.sku });
+              if (product.barcode) detailRows.push({ label: "بارکد", value: product.barcode });
+              if (product.brand?.name) detailRows.push({ label: "برند", value: product.brand.name });
+              if (product.category?.name)
+                detailRows.push({ label: "دسته", value: product.category.name });
+              if (product.model) detailRows.push({ label: "مدل", value: product.model });
+              if (product.color) detailRows.push({ label: "رنگ", value: product.color });
+              if (product.capacity) detailRows.push({ label: "ظرفیت", value: product.capacity });
+              if (product.primary_spec)
+                detailRows.push({ label: "مشخصهٔ اصلی", value: product.primary_spec });
+              if (product.product_type === "iranian" || product.product_type === "foreign")
+                detailRows.push({
+                  label: "نوع کالا",
+                  value: product.product_type === "foreign" ? "خارجی" : "ایرانی",
+                });
+              detailRows.push({ label: "وضعیت موجودی", value: STOCK_LABEL[stockKey] ?? stockKey });
+              return (
+                <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                  {detailRows.map((row) => (
+                    <div key={row.label} className="flex justify-between gap-2">
+                      <dt className="text-muted-foreground">{row.label}</dt>
+                      <dd className="text-right font-medium tabular-nums">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              );
+            })()}
+            {product.description && (
+              <div className="mt-2 border-t pt-2">
+                <div className="mb-1 text-muted-foreground">توضیحات</div>
+                <p className="whitespace-pre-wrap leading-6">{product.description}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         <SupplierReferralModal
           open={supplierModalOpen}
           onOpenChange={setSupplierModalOpen}
