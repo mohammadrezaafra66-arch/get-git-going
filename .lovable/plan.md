@@ -1,43 +1,109 @@
+## هدف
+انتقال همه تغییرات این چند روز (اسناد/رسیدها، جریمه، امتیازدهی، سرمایه پویا، تصاویر محصول، API key، حضور و غیاب، API عمومی محصولات، اعتبار مشتری، جست‌وجوی محصول، تفاوت تسویه، role‌های جدید، polyfill crypto/UUID، embeddings مسنجر با Lovable AI، نمایش قیمت استعلام) به سرور LAN شما در `192.168.170.8:3100`.
 
-# سوییچ جست‌وجوی معنایی به Lovable AI Gateway
+## نوع آپدیت
+طبق `docs/LOCAL_UPDATE_PROTOCOL.md` این یک آپدیت **نوع B** است: **کد + migration‌های زیاد**.
+تعداد قابل توجهی migration جدید ثبت شده (documents/receipts، penalty، capital dynamic، product search، messenger embeddings 1536-dim، inquiry price cache، RLS updates و …). پس **backup کامل قبل از اجرا الزامی است**.
 
-**مشکل تأیید‌شده:** در network log سرور برای `semanticSearchMessenger` نتیجه `{ok: false, reason: "fetch_failed"}` است — یعنی سرور نتوانسته به `OLLAMA_API_URL` وصل شود، پس هیچ query embedding ساخته نمی‌شود و همیشه لیست خالی برمی‌گردد. علاوه بر این، پیام‌های موجود هم embedding ندارند (چون قبلاً هم Ollama در دسترس نبوده).
+نکته مهم درباره embeddings مسنجر: migration جدید ابعاد ستون `message_embeddings.embedding` را از 768 به 1536 تغییر می‌دهد و ایندکس HNSW را بازسازی می‌کند. embeddingهای قبلی روی سرور شما بی‌اعتبار می‌شوند و باید دوباره تولید شوند (کد به‌طور خودکار تا ۵۰ پیام آخر هر گروه را قبل از اولین سرچ backfill می‌کند). این نیازمند این است که سرور شما بتواند به `LOVABLE_API_KEY` دسترسی داشته باشد — یا در `.env` سرور ست شود، یا فعلاً بدون سرچ معنایی کار کنید.
 
-## راه‌حل
+## مراحل اجرا روی سرور 192.168.170.8
 
-سوییچ کامل به Lovable AI Gateway با مدل `google/gemini-embedding-2` (۳۰۷۲ بعد). این مدل روی preview ابری و روی self-host شما (تا زمانی که `LOVABLE_API_KEY` را در env سرور بگذارید) کار می‌کند و نیازی به Ollama ندارد.
+### ۱) Backup اجباری
+```bash
+ssh <user>@192.168.170.8
+cd /opt/afrakala   # یا مسیر واقعی نصب
+DRY_RUN=false bash deploy/backups/scripts/backup-postgres.sh
+DRY_RUN=false bash deploy/backups/scripts/backup-storage.sh
+```
+تا زمانی که فایل dump تازه در پوشه backup تایید نشده، ادامه ندهید.
 
-## تغییرات
+### ۲) Sync کد از GitHub
+```bash
+cd /opt/afrakala
+git fetch --all
+git status          # مطمئن شوید هیچ تغییر محلی commit-نشده نیست
+git pull origin main
+```
 
-### ۱. Migration دیتابیس
-- تغییر ستون `message_embeddings.embedding` از ابعاد فعلی به `vector(3072)`
-- Drop و بازسازی ایندکس HNSW با الگوی halfvec:
-  `create index ... using hnsw ((embedding::halfvec(3072)) halfvec_cosine_ops)`
-- خالی کردن ردیف‌های embedding قدیمی (چون با مدل جدید ناسازگارند)
-- افزودن ستون `model_version text` برای پیگیری مدل embedding
+### ۳) بررسی migration‌های جدید
+```bash
+ls -lt supabase/migrations | head -30
+```
+migration‌های مربوط به این چند روز را باز کنید و یک بار مرور کنید (طبق `MIGRATION_SAFETY_POLICY.md`). به‌خصوص migration مربوط به:
+- `message_embeddings` (تغییر ابعاد vector)
+- `documents` / `delivery_receipts` / `product_video_required`
+- `create_manual_penalty` و RLS جدولین `penalty_appeals` / `appeal_reviewers`
+- `customer_capital_allocations_dynamic` (RPCهای جدید)
+- `can_issue_customer_invoice` (رفع ambiguity)
 
-### ۲. `src/lib/messenger/embeddings.functions.ts`
-- حذف تابع `callOllamaEmbedding` و متغیرهای `OLLAMA_API_URL` / `OLLAMA_EMBED_MODEL`
-- افزودن `callLovableEmbedding(text)` که به `https://ai.gateway.lovable.dev/v1/embeddings` POST می‌کند با:
-  - Header: `Authorization: Bearer ${LOVABLE_API_KEY}`
-  - Body: `{ model: "google/gemini-embedding-2", input: text }`
-  - Timeout و error handling مثل قبل (هرگز throw نکند، فقط `{ok:false, reason}`)
-- در `semanticSearchMessenger` تغییر SQL similarity به الگوی halfvec (برای استفاده از ایندکس)
-- ذخیره `model_version = "gemini-embedding-2"` هنگام upsert
+### ۴) Preview اول (بدون اعمال)
+```bash
+bash deploy/migration/scripts/apply-project-migrations.sh    # DRY_RUN پیش‌فرض
+```
+لیست دستورات SQL که قرار است اجرا شوند را ببینید.
 
-### ۳. Backfill خودکار
-- در همان `semanticSearchMessenger`: قبل از جست‌وجو، اگر تعداد پیام‌های text گروه بدون embedding > 0 بود، تا سقف N=۵۰ پیام آخر را embed کند (async، محدود). این باعث می‌شود پیام‌های قدیمی هم قابل جست‌وجو باشند بدون نیاز به job جدا.
-- برای پیام‌های جدید: `generateMessageEmbedding` که از قبل روی ثبت پیام صدا زده می‌شود، حالا Lovable AI را می‌زند.
+### ۵) اجرای واقعی migration
+```bash
+DRY_RUN=false bash deploy/migration/scripts/apply-project-migrations.sh
+```
 
-### ۴. نکته Self-host
-در فایل env سرور self-host باید `LOVABLE_API_KEY` اضافه شود (مقدارش را از Preferences → Cloud پروژه Lovable می‌گیرید). بدون این متغیر، در سرور self-host همان خطا تکرار می‌شود ولی روی preview ابری خودکار کار می‌کند.
+### ۶) ست‌کردن `LOVABLE_API_KEY` (برای سرچ معنایی مسنجر)
+در `.env.production` روی سرور اضافه کنید:
+```
+LOVABLE_API_KEY=<کلید Lovable AI Gateway>
+```
+اگر ندارید، جست‌وجوی معنایی مسنجر روی سرور کار نمی‌کند ولی بقیه اپ سالم می‌ماند.
 
-## چک بعد از اعمال
-1. در `/messages` روی یک گروه سرچ کن → باید نتایج مرتبط بیاید (نه لیست خالی).
-2. یک پیام text جدید بفرست → `message_embeddings` باید یک ردیف با `model_version="gemini-embedding-2"` بگیرد.
-3. Network log: `_serverFn/...semanticSearchMessenger` باید `{ok: true, hits: [...]}` برگرداند.
+### ۷) Deploy کد اپ
+دو حالت:
+
+**حالت الف — اگر از image GHCR استفاده می‌کنید:**
+```bash
+export IMAGE_TAG=sha-<commit-جدید>
+docker compose -f deploy/app/docker-compose.prod.yml pull web
+docker compose -f deploy/app/docker-compose.prod.yml up -d web
+```
+
+**حالت ب — اگر LAN build محلی است:**
+```bash
+docker compose -f deploy/lan/docker-compose.yml build web
+docker compose -f deploy/lan/docker-compose.yml up -d web
+```
+
+### ۸) Smoke test
+```bash
+bash deploy/migration/scripts/smoke-test.sh
+curl -fsS http://192.168.170.8:3100/api/healthz
+```
+سپس از مرورگر باز کنید و این مسیرها را دستی چک کنید:
+- `/documents` و `/admin/documents` — آپلود PDF/عکس بدون خطای crypto
+- `/delivery-receipts` — آپلود رسید + ویدئو
+- `/admin/penalties` و `/my-penalties`
+- `/gamification/settings` — دکمه ساخت پارامتر، ثبت امتیاز دستی
+- `/accounting/dynamic-capital`
+- `/products` — جست‌وجوی «لباس شویی»، آپلود تصویر، صفحه محصول با آمار/تایم‌لاین
+- `/api-keys` — ساخت کلید
+- `/api/public/products` — پاسخ JSON بدون خطا
+- `/messages` — سرچ معنایی + کارت استعلام قیمت‌دار
+- `/admin/workflow-settings` — دیده‌شدن role‌های جدید
+
+### ۹) Rollback در صورت خطا
+- **فقط اپ خراب شد:** برگرداندن IMAGE_TAG به commit قبلی طبق بخش ۵ runbook.
+- **migration مشکل ایجاد کرد:**
+  ```bash
+  DRY_RUN=false bash deploy/backups/scripts/restore-postgres.sh <dump-file>
+  bash deploy/backups/scripts/verify-restore.sh
+  ```
 
 ## ریسک‌ها
-- **هزینه:** هر پیام یک بار embed می‌شود (تک‌بار)، جست‌وجو هم query را embed می‌کند. حجم خیلی کم.
-- **Migration:** embeddingهای قدیمی پاک می‌شوند — چون فقط ۳ پیام text دارید (طبق network log) و backfill خودکار انجام می‌شود، عملاً بی‌اثر است.
-- **Self-host:** تا زمانی که `LOVABLE_API_KEY` در env سرور تنظیم نشود، روی self-host کار نمی‌کند (fallback به Ollama را حذف می‌کنم چون هرگز کار نکرده؛ اگر می‌خواهید Ollama fallback بماند، بگویید).
+- **از دست رفتن embeddings مسنجر:** ستون از 768→1536 مهاجرت می‌کند؛ داده قدیمی حذف/بازسازی می‌شود. تاریخچه پیام‌ها سالم می‌ماند، فقط ایندکس معنایی خالی می‌شود و به‌مرور backfill می‌شود.
+- **نبود `LOVABLE_API_KEY`:** فقط سرچ معنایی مسنجر غیرفعال می‌شود، بقیه اپ سالم است.
+- **RLS جدید penalty/appeal:** اگر role کاربر روی سرور LAN با محیط توسعه یکسان نباشد، دسترسی متفاوت می‌بیند — بعد از deploy یک بار با role حسابدار/ادمین/کارمند تست کنید.
+
+## سؤال‌های لازم قبل از اجرا
+1. سرور شما از **image GHCR** استفاده می‌کند (سناریو رسمی production) یا **build محلی LAN** (`deploy/lan/docker-compose.yml`)؟
+2. آیا `LOVABLE_API_KEY` را روی سرور LAN دارید یا فعلاً سرچ معنایی مسنجر را کنار می‌گذاریم؟
+3. تایید می‌کنید که قبل از اجرا **backup کامل Postgres و Storage** گرفته می‌شود؟
+
+بعد از پاسخ این سه سؤال، وارد build mode شوید تا هر اسکریپت/کمکی که لازم دارید (مثل یک اسکریپت single-command برای این deploy) را برای‌تان آماده کنم.
