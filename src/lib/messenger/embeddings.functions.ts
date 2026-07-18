@@ -1,4 +1,4 @@
-// Phase 6 — Embedding + جست‌وجوی معنایی پیام‌رسان (Ollama self-hosted)
+// Phase 6 — Embedding + جست‌وجوی معنایی پیام‌رسان (Lovable AI Gateway)
 // خروجی همیشه { ok, reason? } — هرگز throw نمی‌کند تا UX قطع نشود.
 import { createServerFn } from "@tanstack/react-start";
 // Node-20-safe wrapper — see messenger-auth-middleware.ts for rationale.
@@ -28,35 +28,88 @@ export type SemanticSearchResult =
   | { ok: false; reason: string; hits?: never };
 
 const EMBED_TIMEOUT_MS = 30_000;
+const EMBED_MODEL = "openai/text-embedding-3-small"; // 1536-dim, HNSW-indexable
+const EMBED_ENDPOINT = "https://ai.gateway.lovable.dev/v1/embeddings";
+const BACKFILL_LIMIT = 50;
 
-async function callOllamaEmbedding(text: string): Promise<{ vec?: number[]; reason?: string }> {
-  const apiUrl = process.env.OLLAMA_API_URL?.trim();
-  if (!apiUrl) return { reason: "disabled" };
-  const model = process.env.OLLAMA_EMBED_MODEL?.trim() || "nomic-embed-text";
-  const url = apiUrl.replace(/\/+$/, "") + "/api/embeddings";
+async function callLovableEmbedding(text: string): Promise<{ vec?: number[]; reason?: string }> {
+  const apiKey = process.env.LOVABLE_API_KEY?.trim();
+  if (!apiKey) return { reason: "disabled" };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(EMBED_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, prompt: text }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model: EMBED_MODEL, input: text }),
       signal: controller.signal,
     });
     if (!res.ok) {
-      console.warn("[ollama-embed] non-OK", res.status);
+      console.warn("[lovable-embed] non-OK", res.status);
       return { reason: `http_${res.status}` };
     }
-    const json = (await res.json()) as { embedding?: number[] };
-    const vec = json?.embedding;
+    const json = (await res.json()) as { data?: Array<{ embedding?: number[] }> };
+    const vec = json?.data?.[0]?.embedding;
     if (!Array.isArray(vec) || vec.length === 0) return { reason: "empty_embedding" };
     return { vec };
   } catch (e) {
     const reason = (e as Error)?.name === "AbortError" ? "timeout" : "fetch_failed";
-    console.warn("[ollama-embed] fetch error:", reason);
+    console.warn("[lovable-embed] fetch error:", reason);
     return { reason };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// Best-effort backfill for text messages in a group that don't have embeddings yet.
+// Runs inline (bounded) so first search after switching models works without a job.
+async function backfillGroupEmbeddings(
+  supabase: SupabaseClient,
+  groupId: string,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from("message_embeddings")
+      .select("message_id")
+      .eq("group_id", groupId);
+    const existingIds = new Set((existing ?? []).map((r) => r.message_id as string));
+
+    const { data: msgs } = await supabase
+      .from("messenger_messages")
+      .select("id, content, group_id")
+      .eq("group_id", groupId)
+      .eq("type", "text")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(BACKFILL_LIMIT);
+
+    const todo = (msgs ?? []).filter((m) => {
+      const c = (m.content ?? "").trim();
+      return c && !existingIds.has(m.id as string);
+    });
+    if (todo.length === 0) return;
+
+    for (const m of todo) {
+      const content = (m.content ?? "").trim();
+      const { vec } = await callLovableEmbedding(content);
+      if (!vec) continue;
+      const literal = `[${vec.join(",")}]`;
+      await supabase.from("message_embeddings").upsert(
+        {
+          message_id: m.id,
+          group_id: m.group_id,
+          embedding: literal as unknown as string,
+          content_excerpt: content.slice(0, 200),
+          model_version: EMBED_MODEL,
+        },
+        { onConflict: "message_id" },
+      );
+    }
+  } catch (e) {
+    console.warn("[backfill] unexpected:", (e as Error)?.message);
   }
 }
 
@@ -79,7 +132,7 @@ export const generateMessageEmbedding = createServerFn({ method: "POST" })
       const content = (msg.content ?? "").trim();
       if (!content) return { ok: false, reason: "empty_content" };
 
-      const { vec, reason } = await callOllamaEmbedding(content);
+      const { vec, reason } = await callLovableEmbedding(content);
       if (!vec) return { ok: false, reason: reason || "no_vector" };
 
       // pgvector text format: "[0.1,0.2,...]"
@@ -94,17 +147,18 @@ export const generateMessageEmbedding = createServerFn({ method: "POST" })
             group_id: msg.group_id,
             embedding: literal as unknown as string,
             content_excerpt: excerpt,
+            model_version: EMBED_MODEL,
           },
           { onConflict: "message_id" },
         );
       if (upErr) {
-        console.warn("[ollama-embed] upsert failed:", upErr.message);
+        console.warn("[lovable-embed] upsert failed:", upErr.message);
         return { ok: false, reason: "upsert_failed" };
       }
 
       return { ok: true };
     } catch (e) {
-      console.warn("[ollama-embed] unexpected:", (e as Error)?.message);
+      console.warn("[lovable-embed] unexpected:", (e as Error)?.message);
       return { ok: false, reason: "unexpected" };
     }
   });
@@ -124,7 +178,10 @@ export const semanticSearchMessenger = createServerFn({ method: "POST" })
         .maybeSingle();
       if (!membership) return { ok: false, reason: "not_member" };
 
-      const { vec, reason } = await callOllamaEmbedding(data.query);
+      // Best-effort backfill of missing embeddings before searching
+      await backfillGroupEmbeddings(supabase, data.group_id);
+
+      const { vec, reason } = await callLovableEmbedding(data.query);
       if (!vec) return { ok: false, reason: reason || "no_vector" };
 
       const literal = `[${vec.join(",")}]`;
