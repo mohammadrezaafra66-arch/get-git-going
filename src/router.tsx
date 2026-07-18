@@ -1,3 +1,4 @@
+import "@/lib/polyfills/crypto-uuid";
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 

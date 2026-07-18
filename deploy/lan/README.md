@@ -183,6 +183,8 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 http://<LAN_HOST_IP>:3000
 ```
 
+> ⚠️ محدودیت مرورگر برای ضبط صدا: دسترسی به میکروفون روی آدرس‌های `http://192.168.x.x` یا هر IP داخلیِ بدون HTTPS توسط Chrome/Edge/Firefox مسدود می‌شود. برای تست پیام صوتی باید برنامه از یک **secure context** باز شود: یا روی خود لپ‌تاپ میزبان با `http://localhost:3000`، یا از طریق HTTPS داخلی/production. این محدودیت سمت مرورگر است و با تغییر کد یا policy دیتابیس دور زده نمی‌شود.
+
 ## ۱۰. پورت‌هایی که در Windows Firewall باید باز شوند
 
 - TCP **3000** (اپ)
@@ -238,6 +240,16 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 ```
+
+### ۱۵.۱ عیب‌یابی ماژول پیام‌رسان و رسیدهای تحویل (read-only)
+
+ابزار تشخیصی `messenger-doctor.ps1` وضعیت runtime، envها، health endpointها، لاگ‌ها، schema، policyها، functionها و bucketهای مرتبط با `/messages` و رسیدهای تحویل را بررسی می‌کند. این ابزار **فقط خواندنی** است، هیچ داده‌ای تغییر نمی‌دهد و هیچ مقدار secretی چاپ نمی‌کند (فقط `SET` یا `MISSING`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\messenger-doctor.ps1
+```
+
+خروجی را کامل ذخیره کنید و برای گزارش باگ ضمیمه کنید. تا زمانی که خروجی این ابزار دیده نشود، هیچ migration جدیدی روی جداول messenger یا رسیدها نوشته/اجرا نخواهد شد.
 
 ## ۱۶. RBAC و کنترل دسترسی
 

@@ -115,6 +115,7 @@ function NewSaleListPage() {
   const [stockStatus, setStockStatus] = useState<string>("__all");
   const [productType, setProductType] = useState<string>("__all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Step 2 state
@@ -179,10 +180,11 @@ function NewSaleListPage() {
       stockStatus,
       productType,
       page,
+      pageSize,
     ],
     queryFn: async () => {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
       let q = supabase
         .from("products")
         .select(
@@ -241,7 +243,7 @@ function NewSaleListPage() {
 
   const total = productsQ.data?.total ?? 0;
   const rows = productsQ.data?.rows ?? [];
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
 
@@ -665,6 +667,23 @@ function NewSaleListPage() {
                     {formatNumber(totalPages)}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        setPageSize(Number(v));
+                        resetPage();
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[130px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="20">۲۰ در صفحه</SelectItem>
+                        <SelectItem value="50">۵۰ در صفحه</SelectItem>
+                        <SelectItem value="100">۱۰۰ در صفحه</SelectItem>
+                        <SelectItem value="200">۲۰۰ در صفحه</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="outline"
                       size="sm"

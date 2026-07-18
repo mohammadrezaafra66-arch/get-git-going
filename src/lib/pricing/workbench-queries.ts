@@ -67,11 +67,14 @@ async function resolveCategoryIds(filters: WorkbenchFilters): Promise<string[] |
 }
 
 async function fetchProductIdsBySalePrice(want: "has" | "missing"): Promise<Set<string>> {
-  const { data } = await (supabase as any)
+  const { data, error } = await (supabase as any)
     .from("product_computed_prices_public")
     .select("product_id, rounded_sale_price")
     .gt("rounded_sale_price", 0)
     .limit(PRE_FILTER_LIMIT);
+  if (error) {
+    console.error("[workbench] sale price pre-filter query failed", error);
+  }
   const has = new Set<string>(
     ((data ?? []) as Array<{ product_id: string }>).map((r) => r.product_id),
   );
@@ -332,6 +335,10 @@ export async function fetchWorkbenchRowsV2(opts: {
       return { data: (data ?? []) as CategoryRow[] };
     })(),
   ]);
+
+  if ((spRes as any).error) {
+    console.error("[workbench] sale price query failed", (spRes as any).error);
+  }
 
   const latestPP = new Map<string, any>();
   (ppRes.data ?? []).forEach((p: any) => {

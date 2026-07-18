@@ -1,124 +1,109 @@
-<<<<<<< HEAD
-
-# پاکسازی داده‌های محصولات از Lovable Cloud
-
-=======
->>>>>>> origin/feat/phase-0-automation-ui
 ## هدف
-حذف داده‌های تراکنشی/کاربری وارد شده روی Cloud (فقط شاخه محصولات و وابسته‌های آن + `audit_logs` + همه Storage buckets) — بدون دست‌کاری ساختار جدول‌ها، RLS، توابع، نقش‌ها، پیکربندی و کاربران auth.
+انتقال همه تغییرات این چند روز (اسناد/رسیدها، جریمه، امتیازدهی، سرمایه پویا، تصاویر محصول، API key، حضور و غیاب، API عمومی محصولات، اعتبار مشتری، جست‌وجوی محصول، تفاوت تسویه، role‌های جدید، polyfill crypto/UUID، embeddings مسنجر با Lovable AI، نمایش قیمت استعلام) به سرور LAN شما در `192.168.170.8:3100`.
 
-<<<<<<< HEAD
-## گام ۱ — Export امن (قبل از هر کار — دستی توسط شما)
-1. در بالای چت روی نام پروژه → **Settings**.
-2. تب **Cloud** (یا از نوار More → Cloud) را باز کنید.
-3. **Advanced settings → Export data** → دانلود فایل ZIP.
-4. فایل را حداقل در دو جای مختلف (لپ‌تاپ + درایو خارجی/سرور LAN) نگه دارید.
-5. بعد از تأیید اینکه فایل export سالم دانلود شد، به من پیام بدهید «Export گرفتم، ادامه بده».
+## نوع آپدیت
+طبق `docs/LOCAL_UPDATE_PROTOCOL.md` این یک آپدیت **نوع B** است: **کد + migration‌های زیاد**.
+تعداد قابل توجهی migration جدید ثبت شده (documents/receipts، penalty، capital dynamic، product search، messenger embeddings 1536-dim، inquiry price cache، RLS updates و …). پس **backup کامل قبل از اجرا الزامی است**.
 
-بدون این گام هیچ migration/truncate اجرا نمی‌شود.
+نکته مهم درباره embeddings مسنجر: migration جدید ابعاد ستون `message_embeddings.embedding` را از 768 به 1536 تغییر می‌دهد و ایندکس HNSW را بازسازی می‌کند. embeddingهای قبلی روی سرور شما بی‌اعتبار می‌شوند و باید دوباره تولید شوند (کد به‌طور خودکار تا ۵۰ پیام آخر هر گروه را قبل از اولین سرچ backfill می‌کند). این نیازمند این است که سرور شما بتواند به `LOVABLE_API_KEY` دسترسی داشته باشد — یا در `.env` سرور ست شود، یا فعلاً بدون سرچ معنایی کار کنید.
 
-## گام ۲ — پاکسازی جدول‌های شاخه محصولات (یک migration)
-اجرا در یک transaction با `session_replication_role = replica` تا FKها/triggerها موقتاً غیرفعال شوند و ترتیب اهمیت نداشته باشد.
+## مراحل اجرا روی سرور 192.168.170.8
 
-جدول‌هایی که TRUNCATE می‌شوند:
+### ۱) Backup اجباری
+```bash
+ssh <user>@192.168.170.8
+cd /opt/afrakala   # یا مسیر واقعی نصب
+DRY_RUN=false bash deploy/backups/scripts/backup-postgres.sh
+DRY_RUN=false bash deploy/backups/scripts/backup-storage.sh
+```
+تا زمانی که فایل dump تازه در پوشه backup تایید نشده، ادامه ندهید.
 
-**هسته محصول:**
-`products`, `product_images`, `product_label_links`, `product_labels`, `product_owner_assignments`, `product_suppliers`, `product_computed_prices`, `product_sale_price_history`, `product_recommendation_overrides`, `product_interaction_events`, `product_sku_counters`, `product_category_attribute_values`, `product_attributes`, `product_attribute_groups`, `category_product_attributes`, `categories`, `brands`
+### ۲) Sync کد از GitHub
+```bash
+cd /opt/afrakala
+git fetch --all
+git status          # مطمئن شوید هیچ تغییر محلی commit-نشده نیست
+git pull origin main
+```
 
-**قیمت‌گذاری/خرید مرتبط با محصول:**
-`purchase_prices`, `purchases`, `purchase_items`, `purchase_receipts`, `purchase_requests`, `purchase_request_status_history`, `suppliers`, `price_lists`, `price_list_items`, `pricing_rules`, `price_calculation_snapshots`, `price_alert_rules`, `price_alert_notifications`, `inquiry_price_cache`, `pricing_recompute_queue`, `stock_alert_requests`
+### ۳) بررسی migration‌های جدید
+```bash
+ls -lt supabase/migrations | head -30
+```
+migration‌های مربوط به این چند روز را باز کنید و یک بار مرور کنید (طبق `MIGRATION_SAFETY_POLICY.md`). به‌خصوص migration مربوط به:
+- `message_embeddings` (تغییر ابعاد vector)
+- `documents` / `delivery_receipts` / `product_video_required`
+- `create_manual_penalty` و RLS جدولین `penalty_appeals` / `appeal_reviewers`
+- `customer_capital_allocations_dynamic` (RPCهای جدید)
+- `can_issue_customer_invoice` (رفع ambiguity)
 
-**اسناد فروش وابسته به محصول (چون بدون محصول بی‌معنی می‌شوند و FK دارند):**
-`sales_quotes`, `sales_quote_items`, `sales_quote_send_queue`, `sales_quote_share_logs`, `sales_quote_counters`, `sale_lists`, `sale_list_items`, `sale_list_versions`, `invoices`, `invoice_items`, `inquiries`, `inquiry_replies`, `inquiry_status_history`, `inquiry_transfers`, `delivery_receipts`, `delivery_receipt_status_history`, `waybills`, `waybill_items`, `waybill_number_counter`, `payment_receipts`, `payment_receipt_links`, `payment_receipt_documents`, `payment_receipt_custom_fields`
+### ۴) Preview اول (بدون اعمال)
+```bash
+bash deploy/migration/scripts/apply-project-migrations.sh    # DRY_RUN پیش‌فرض
+```
+لیست دستورات SQL که قرار است اجرا شوند را ببینید.
 
-**بازار / تطبیق محصولات:**
-`market_product_matches`, `market_product_match_events`, `market_rate_ticks`, `market_rate_ingestion_runs`, `currency_rate_fetches`, `currency_rates`
+### ۵) اجرای واقعی migration
+```bash
+DRY_RUN=false bash deploy/migration/scripts/apply-project-migrations.sh
+```
 
-**+ به درخواست شما:** `audit_logs`
-=======
-سرعت دو نقطه‌ای که کند است را بدون تغییر backend/DB بالا ببریم:
-1. **جابجایی بین ماژول‌ها** در ساید‌بار (الان روی هر کلیک، چانک مقصد تازه دانلود می‌شود).
-2. **کارگاه قیمت من** که چند کوئری متوالی دارد و هر بار از صفر اجرا می‌شود.
+### ۶) ست‌کردن `LOVABLE_API_KEY` (برای سرچ معنایی مسنجر)
+در `.env.production` روی سرور اضافه کنید:
+```
+LOVABLE_API_KEY=<کلید Lovable AI Gateway>
+```
+اگر ندارید، جست‌وجوی معنایی مسنجر روی سرور کار نمی‌کند ولی بقیه اپ سالم می‌ماند.
 
-تغییرات صرفاً frontend است؛ هیچ migration/RLS/سرور تغییر نمی‌کند.
+### ۷) Deploy کد اپ
+دو حالت:
 
-## تغییرات
+**حالت الف — اگر از image GHCR استفاده می‌کنید:**
+```bash
+export IMAGE_TAG=sha-<commit-جدید>
+docker compose -f deploy/app/docker-compose.prod.yml pull web
+docker compose -f deploy/app/docker-compose.prod.yml up -d web
+```
 
-### ۱) Router: preload روی hover/intent
-فایل: `src/router.tsx`
-- افزودن `defaultPreload: "intent"` تا با hover روی Link چانک مقصد از قبل دانلود شود.
-- افزایش `defaultPreloadStaleTime` به مثلاً `30_000` تا بعد از preload دوباره fetch نشود (طبق گاید TanStack Query وقتی Query استفاده می‌شود این مقدار می‌تواند >0 باشد چون کش روتر فقط برای loaderهاست و کوئری‌های ما همگی از TanStack Query هستند).
-- نگه‌داشتن `scrollRestoration` و `defaultErrorComponent`.
+**حالت ب — اگر LAN build محلی است:**
+```bash
+docker compose -f deploy/lan/docker-compose.yml build web
+docker compose -f deploy/lan/docker-compose.yml up -d web
+```
 
-اثر: کلیک روی آیکن ماژول تقریباً آنی می‌شود چون JS مقصد قبل از کلیک آماده است.
+### ۸) Smoke test
+```bash
+bash deploy/migration/scripts/smoke-test.sh
+curl -fsS http://192.168.170.8:3100/api/healthz
+```
+سپس از مرورگر باز کنید و این مسیرها را دستی چک کنید:
+- `/documents` و `/admin/documents` — آپلود PDF/عکس بدون خطای crypto
+- `/delivery-receipts` — آپلود رسید + ویدئو
+- `/admin/penalties` و `/my-penalties`
+- `/gamification/settings` — دکمه ساخت پارامتر، ثبت امتیاز دستی
+- `/accounting/dynamic-capital`
+- `/products` — جست‌وجوی «لباس شویی»، آپلود تصویر، صفحه محصول با آمار/تایم‌لاین
+- `/api-keys` — ساخت کلید
+- `/api/public/products` — پاسخ JSON بدون خطا
+- `/messages` — سرچ معنایی + کارت استعلام قیمت‌دار
+- `/admin/workflow-settings` — دیده‌شدن role‌های جدید
 
-### ۲) Sidebar: prefetch ماژول‌ها هنگام hover روی ریل
-فایل: `src/components/layout/AppSidebar.tsx`
-- روی دکمه هر ماژول در ریل، `onMouseEnter` / `onFocus` فراخوانی `router.preloadRoute({ to: m.defaultTo })` (یا معادل از `useRouter`) اضافه کنیم. این مکمل گام ۱ است برای دکمه‌های `<button>` که Link نیستند.
+### ۹) Rollback در صورت خطا
+- **فقط اپ خراب شد:** برگرداندن IMAGE_TAG به commit قبلی طبق بخش ۵ runbook.
+- **migration مشکل ایجاد کرد:**
+  ```bash
+  DRY_RUN=false bash deploy/backups/scripts/restore-postgres.sh <dump-file>
+  bash deploy/backups/scripts/verify-restore.sh
+  ```
 
-### ۳) Lookupها: افزایش staleTime
-فایل: `src/routes/_app.pricing.my-workbench.tsx`
-- `brands-lite` / `categories-lite` / `labels-lite` / `product-owners-lite`: staleTime از `60_000` به `5 * 60_000` و `gcTime: 30 * 60_000`. این داده‌ها تقریباً ثابت‌اند.
-- staleTime کوئری اصلی `workbench-rows-v2` از `15_000` به `30_000` تا تب‌برگشت/refocus refetch نکند.
+## ریسک‌ها
+- **از دست رفتن embeddings مسنجر:** ستون از 768→1536 مهاجرت می‌کند؛ داده قدیمی حذف/بازسازی می‌شود. تاریخچه پیام‌ها سالم می‌ماند، فقط ایندکس معنایی خالی می‌شود و به‌مرور backfill می‌شود.
+- **نبود `LOVABLE_API_KEY`:** فقط سرچ معنایی مسنجر غیرفعال می‌شود، بقیه اپ سالم است.
+- **RLS جدید penalty/appeal:** اگر role کاربر روی سرور LAN با محیط توسعه یکسان نباشد، دسترسی متفاوت می‌بیند — بعد از deploy یک بار با role حسابدار/ادمین/کارمند تست کنید.
 
-### ۴) `fetchWorkbenchRowsV2`: موازی کردن pre-filterها
-فایل: `src/lib/pricing/workbench-queries.ts`
-- در حال حاضر pre-filterها (owner, label, sale price, category) به‌صورت متوالی `await` می‌شوند. آن‌ها مستقل‌اند → جمع‌آوری در یک `Promise.all` و سپس ترکیب نتایج. (منطق early-return در صورت خالی بودن restrict حفظ می‌شود ولی بعد از resolve).
-- این کار latency اولیه را تا حدود ۲۰۰–۵۰۰ms کم می‌کند.
+## سؤال‌های لازم قبل از اجرا
+1. سرور شما از **image GHCR** استفاده می‌کند (سناریو رسمی production) یا **build محلی LAN** (`deploy/lan/docker-compose.yml`)؟
+2. آیا `LOVABLE_API_KEY` را روی سرور LAN دارید یا فعلاً سرچ معنایی مسنجر را کنار می‌گذاریم؟
+3. تایید می‌کنید که قبل از اجرا **backup کامل Postgres و Storage** گرفته می‌شود؟
 
-### ۵) Memoize ردیف‌های جدول
-فایل: `src/routes/_app.pricing.my-workbench.tsx`
-- پیچیدن `DesktopRow` و `MobileCard` در `React.memo` با مقایسه سطحی روی `row.id`, `dirty`, `saving`, `publishError`, `stepPct`. اگر کاربر تنها یک ردیف را ویرایش کند، بقیه ۲۴ ردیف re-render نمی‌شوند.
-
-### ۶) جلوگیری از invalidate اضافه پس از save
-فایل: `src/routes/_app.pricing.my-workbench.tsx`
-- بعد از ذخیره، `invalidateQueries` با key `["workbench-rows"]` و `["workbench-rows-v2"]` هر دو فراخوانی می‌شوند و سپس `refetchQueries` هم. کلید قدیمی `workbench-rows` بلا‌استفاده است → حذف. `refetchQueries` کافی است و invalidate جدا‌گانه حذف شود (یک round-trip به DB کمتر).
->>>>>>> origin/feat/phase-0-automation-ui
-
-## گام ۳ — جدول‌هایی که دست نمی‌خورند (تأیید شما)
-مشتریان، persons، کارمندان، نقش‌ها، پیکربندی، academy، gamification، messenger، notifications، ai_*، bank_accounts، knowledge_*، daily_mood_*، automation_*، seed دستمزد/جریمه/کاپیتال، `currencies/currency_sources`, `price_change_reasons`, `settlement_types`, `payment_terms`, `shipping_cost_rules`, `marketing_channels`, `sale_price_types`, `validation_rules`, `workflow_settings`, `invoice_workflow_stages`, `role_permissions`, `custom_roles`, `user_roles`, `profiles`, `auth.users`.
-
-<<<<<<< HEAD
-## گام ۴ — خالی کردن Storage buckets
-با ابزار Storage:
-1. لیست همه bucketها را می‌گیرم (`storage.buckets`).
-2. برای هر bucket: `DELETE FROM storage.objects WHERE bucket_id = '<name>'` (فقط فایل‌ها، خود bucket و پیکربندی‌اش می‌ماند).
-3. تأیید با `SELECT bucket_id, COUNT(*) FROM storage.objects GROUP BY bucket_id`.
-
-اگر می‌خواهید bucket خاصی (مثلاً `avatars` یا لوگو) دست نخورد، قبل از اجرا نامش را بگویید.
-
-## گام ۵ — تأیید نهایی
-- `SELECT COUNT(*)` روی ~۱۰ جدول گروه پاک‌شده → باید همه صفر باشند.
-- `SELECT COUNT(*)` روی `profiles`, `user_roles`, `role_permissions`, `currencies` → باید بدون تغییر.
-- در مرورگر hard-reload (Ctrl+Shift+R) تا React Query cache پاک شود.
-
-## ریسک‌های باقی‌مانده
-- **برگشت‌ناپذیر است** — تنها راه برگشت، import فایل export گام ۱ است.
-- شماره‌گذارهای فاکتور/کوت (`sales_quote_counters`, `waybill_number_counter`, `product_sku_counters`) reset می‌شوند → شماره‌های بعدی از ۱ شروع می‌شوند.
-- اگر migrationای در آینده به این جدول‌ها seed دیتای واقعی اضافه کرده باشد، پاک می‌شود. (بررسی: هیچ seed دیتای واقعی در migrationهای فعلی برای این جدول‌ها نیست.)
-- Storage: لینک‌های عمومی به تصاویر قبلی 404 می‌دهند.
-- بعد از پاکسازی، اگر کاربر با نقش sales/viewer وارد شود و صفحه محصولات را باز کند، لیست خالی است — این طبیعی است.
-
-## تحویل نهایی گزارش
-- فایل migration ایجادشده
-- خروجی `COUNT(*)` قبل و بعد
-- لیست bucketهای پاک‌شده و تعداد فایل حذف‌شده
-- تأیید سلامت auth/roles
-
----
-**اقدام شما الان:** گام ۱ (Export) را انجام دهید و «Export گرفتم، ادامه بده» بنویسید. اگر می‌خواهید bucket یا جدول خاصی از لیست حذف/اضافه شود، همین حالا بگویید.
-=======
-- LOW. فقط UI/data-fetching layer. هیچ تغییر schema/RLS/API.
-- preload با hover ممکن است مصرف داده را کمی بالا ببرد؛ ولی فقط چانک‌های کوچک JS مسیرهای ماژول است (نه داده DB).
-
-## بررسی self-host
-
-- بدون CDN جدید، بدون secret، بدون dependency جدید.
-- اپ همچنان روی Linux+Docker+Supabase self-host بدون تغییر کار می‌کند.
-
-## تأیید پس از اجرا
-
-- `npm run build` و `npm run lint`.
-- مسیر دستی: ورود → ساید‌بار → hover روی ماژول‌های مختلف → کلیک. باید تقریباً بدون تأخیر باز شوند.
-- «کارگاه قیمت من»: بارگذاری اولیه باید نسبت به قبل سریع‌تر باشد؛ ویرایش یک ردیف نباید بقیه را re-render کند (DevTools Profiler).
->>>>>>> origin/feat/phase-0-automation-ui
+بعد از پاسخ این سه سؤال، وارد build mode شوید تا هر اسکریپت/کمکی که لازم دارید (مثل یک اسکریپت single-command برای این deploy) را برای‌تان آماده کنم.

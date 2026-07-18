@@ -230,10 +230,10 @@ export const NAV_ITEMS: NavItem[] = [
     subgroup: "pp-publish",
   },
   {
-    to: "/price-lists",
+    to: "/pricing/live-price-list",
     label: "لیست قیمت زنده",
     icon: ListOrdered,
-    module: "price-lists",
+    module: "pricing",
     group: "products-pricing",
     subgroup: "pp-publish",
   },

@@ -4,6 +4,7 @@ import { ImagePlus, Loader2, Trash2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 interface ProductImageRow {
   id: string;
@@ -82,7 +83,7 @@ export function ProductImagesSection({ productId }: Props) {
     setUploading(true);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `${productId}/${crypto.randomUUID()}.${ext}`;
+      const path = `${productId}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from(BUCKET)
         .upload(path, file, { contentType: file.type, upsert: false });

@@ -217,6 +217,13 @@ function PricingHubPage() {
       desc: `مدیریت و انتشار لیست‌های رسمی فروش${data ? ` — ${formatNumber(data.saleListsTotal)} لیست (${formatNumber(data.saleListsPublished)} منتشرشده)` : ""}`,
       enabled: true,
     },
+    {
+      to: "/pricing/owner-attention",
+      label: "گزارش رسیدگی مسئولان",
+      icon: AlertCircle,
+      desc: "محصولات مسئول‌دار بدون قیمت خرید، ناموجود، یا بیش از ۲ روز آپدیت‌نشده",
+      enabled: true,
+    },
   ] as const;
 
   return (

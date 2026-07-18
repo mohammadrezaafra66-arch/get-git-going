@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/command";
 
 const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 25 * 1024 * 1024;
 
 const schema = z.object({
   type: z.enum(["bijak", "invoice", "havale"]),
@@ -123,7 +123,7 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
   const validateFile = (f: File): string | null => {
     const ext = (f.name.split(".").pop() ?? "").toLowerCase();
     if (!ALLOWED_EXT.includes(ext)) return "فرمت مجاز: jpg, png, pdf";
-    if (f.size > MAX_SIZE) return "حجم فایل بیش از ۲۰ مگابایت است";
+    if (f.size > MAX_SIZE) return "حجم فایل بیش از ۲۵ مگابایت است";
     return null;
   };
 
@@ -255,7 +255,7 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
               <Upload className="h-6 w-6 text-muted-foreground" />
               <div className="text-sm">فایل را اینجا رها کنید یا کلیک کنید</div>
               <div className="text-xs text-muted-foreground">
-                jpg، png، pdf — حداکثر ۲۰ مگابایت
+                jpg، png، pdf — حداکثر ۲۵ مگابایت
               </div>
             </>
           )}

@@ -42,8 +42,10 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
-const MAX_SIZE = 20 * 1024 * 1024;
+const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf", "mp4", "mov", "webm", "mkv"];
+const VIDEO_EXT = ["mp4", "mov", "webm", "mkv"];
+const IMAGE_PDF_MAX = 20 * 1024 * 1024;
+const VIDEO_MAX = 100 * 1024 * 1024;
 
 const schema = z.object({
   type: z.enum(["shipping_receipt", "delivery_receipt"]),
@@ -113,7 +115,7 @@ export function DeliveryReceiptUploadForm({
       const term = debouncedInvoiceSearch.trim();
       let q = supabase
         .from("invoices")
-        .select("id, number, created_at")
+        .select("id, number, created_at, product_video_required")
         .order("created_at", { ascending: false })
         .limit(20);
       if (term) q = q.ilike("number", `%${term}%`);
@@ -122,6 +124,9 @@ export function DeliveryReceiptUploadForm({
       return (data ?? []).map((r) => ({
         id: r.id as string,
         label: (r.number as string | null) ?? `فاکتور ${String(r.id).slice(0, 8)}`,
+        videoRequired: Boolean(
+          (r as { product_video_required?: boolean }).product_video_required,
+        ),
       }));
     },
     staleTime: 30_000,
@@ -149,10 +154,12 @@ export function DeliveryReceiptUploadForm({
     staleTime: 30_000,
   });
 
-  const selectedInvoiceLabel = useMemo(
-    () => (invoiceId ? invoiceOptions.find((o) => o.id === invoiceId)?.label ?? null : null),
+  const selectedInvoice = useMemo(
+    () => (invoiceId ? invoiceOptions.find((o) => o.id === invoiceId) ?? null : null),
     [invoiceId, invoiceOptions],
   );
+  const selectedInvoiceLabel = selectedInvoice?.label ?? null;
+  const invoiceVideoRequired = selectedInvoice?.videoRequired ?? false;
   const selectedCustomerLabel = useMemo(
     () =>
       customerId
@@ -163,8 +170,14 @@ export function DeliveryReceiptUploadForm({
 
   const validateFile = (f: File): string | null => {
     const ext = (f.name.split(".").pop() ?? "").toLowerCase();
-    if (!ALLOWED_EXT.includes(ext)) return "فرمت مجاز: jpg, png, pdf";
-    if (f.size > MAX_SIZE) return "حجم فایل بیش از ۲۰ مگابایت است";
+    if (!ALLOWED_EXT.includes(ext)) return "فرمت مجاز: jpg, png, pdf, mp4, mov, webm";
+    const isVideo = VIDEO_EXT.includes(ext) || f.type.startsWith("video/");
+    const max = isVideo ? VIDEO_MAX : IMAGE_PDF_MAX;
+    if (f.size > max) {
+      return isVideo
+        ? "حجم ویدئو بیش از ۱۰۰ مگابایت است"
+        : "حجم فایل بیش از ۲۰ مگابایت است";
+    }
     return null;
   };
 
@@ -278,7 +291,7 @@ export function DeliveryReceiptUploadForm({
             ref={inputRef}
             type="file"
             className="hidden"
-            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm,.mkv,image/jpeg,image/png,application/pdf,video/*"
             onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
           />
           {file ? (
@@ -304,12 +317,17 @@ export function DeliveryReceiptUploadForm({
               <Upload className="h-6 w-6 text-muted-foreground" />
               <div className="text-sm">فایل را اینجا رها کنید یا کلیک کنید</div>
               <div className="text-xs text-muted-foreground">
-                jpg، png، pdf — حداکثر ۲۰ مگابایت
+                jpg، png، pdf تا ۲۰MB — mp4/mov/webm تا ۱۰۰MB
               </div>
             </>
           )}
         </div>
         {fileError && <p className="text-xs text-destructive">{fileError}</p>}
+        {invoiceVideoRequired && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            برای این فاکتور آپلود ویدئوی محصول الزامی است.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

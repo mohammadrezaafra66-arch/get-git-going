@@ -41,6 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { sha256Hex } from "@/lib/utils/sha256";
 
 export const Route = createFileRoute("/_app/api-keys")({
   beforeLoad: async () => {
@@ -74,12 +75,6 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-async function sha256Hex(input: string): Promise<string> {
-  const enc = new TextEncoder().encode(input);
-  const digest = await window.crypto.subtle.digest("SHA-256", enc);
-  return bytesToHex(new Uint8Array(digest));
 }
 
 function generateRawKey(): string {

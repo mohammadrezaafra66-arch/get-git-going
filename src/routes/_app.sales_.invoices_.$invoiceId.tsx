@@ -24,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { useAllDeliveryReceipts } from "@/hooks/delivery-receipts/useDeliveryReceipts";
+import { DeliveryReceiptCard } from "@/components/delivery-receipts/DeliveryReceiptCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +111,7 @@ function InvoiceDetailPage() {
       const { data, error } = await supabase
         .from("invoices")
         .select(
-          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
+          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, product_video_required, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
         )
         .eq("id", invoiceId)
         .maybeSingle();
@@ -513,6 +515,13 @@ function InvoiceDetailPage() {
         </CardContent>
       </Card>
 
+      <DeliveryReceiptsForInvoice
+        invoiceId={invoice.id}
+        videoRequired={Boolean(
+          (invoice as { product_video_required?: boolean }).product_video_required,
+        )}
+      />
+
       {/* Print layout — hidden in browser, shown only when printing */}
       <div
         id="invoice-print-root"
@@ -763,5 +772,46 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="font-medium">{children}</span>
     </div>
+  );
+}
+
+function DeliveryReceiptsForInvoice({
+  invoiceId,
+  videoRequired,
+}: {
+  invoiceId: string;
+  videoRequired: boolean;
+}) {
+  const { data, isLoading } = useAllDeliveryReceipts({
+    invoice_id: invoiceId,
+    limit: 20,
+  });
+  const rows = data?.rows ?? [];
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3" dir="rtl">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold">رسیدهای تحویل</div>
+          {videoRequired && (
+            <Badge variant="outline" className="text-amber-700 border-amber-400">
+              ویدئوی محصول الزامی است
+            </Badge>
+          )}
+        </div>
+        {isLoading ? (
+          <div className="text-xs text-muted-foreground">در حال بارگذاری...</div>
+        ) : rows.length === 0 ? (
+          <div className="text-xs text-muted-foreground">
+            رسیدی برای این فاکتور ثبت نشده است.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {rows.map((r) => (
+              <DeliveryReceiptCard key={r.id} receipt={r} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

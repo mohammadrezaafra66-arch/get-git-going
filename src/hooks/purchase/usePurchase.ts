@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type PurchaseRequestRow = {
   id: string;
@@ -213,7 +214,7 @@ export function useUploadPurchaseReceipt() {
       if (file.size > MAX_SIZE) {
         throw new Error("حجم فایل بیش از ۱۰ مگابایت است");
       }
-      const path = `${request_id}/${crypto.randomUUID()}.${ext}`;
+      const path = `${request_id}/${safeRandomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("purchase-receipts")
         .upload(path, file, { contentType: file.type, upsert: false });

@@ -13,10 +13,10 @@ import {
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
   PENALTY_FOR_OPTIONS,
-  ROLE_OPTIONS,
   formatMinutes,
   toPersianDigits,
 } from "@/lib/settings/labels";
+import { useAllRoles } from "@/lib/rbac/roles";
 import {
   useUpdateWorkflowSetting,
   type WorkflowSetting,
@@ -65,6 +65,11 @@ interface Props {
 export function WorkflowSettingRow({ setting, variant = "row" }: Props) {
   const [draft, setDraft] = useState<Draft>(() => toDraft(setting));
   const update = useUpdateWorkflowSetting();
+  const { data: roleOptions } = useAllRoles();
+  const roles = useMemo(
+    () => (roleOptions ?? []).map((r) => ({ value: r.name, label: r.label })),
+    [roleOptions],
+  );
 
   useEffect(() => {
     setDraft(toDraft(setting));
@@ -95,7 +100,7 @@ export function WorkflowSettingRow({ setting, variant = "row" }: Props) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={NONE}>—</SelectItem>
-        {ROLE_OPTIONS.map((r) => (
+        {roles.map((r) => (
           <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
         ))}
       </SelectContent>
@@ -112,7 +117,7 @@ export function WorkflowSettingRow({ setting, variant = "row" }: Props) {
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={NONE}>—</SelectItem>
-        {ROLE_OPTIONS.map((r) => (
+        {roles.map((r) => (
           <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
         ))}
       </SelectContent>

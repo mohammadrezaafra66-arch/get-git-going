@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -312,7 +313,7 @@ export async function uploadReceiptDocuments(
   let failed = 0;
   for (const file of files) {
     try {
-      const path = `${receiptId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const path = `${receiptId}/${safeRandomUUID()}-${safeFileName(file.name)}`;
       const { error: upErr } = await supabase.storage.from(RECEIPT_DOCS_BUCKET).upload(path, file, {
         contentType: file.type || "application/octet-stream",
         upsert: false,

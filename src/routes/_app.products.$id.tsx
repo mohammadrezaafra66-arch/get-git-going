@@ -658,6 +658,9 @@ function ProductDetailPage() {
 
       <ProductHistoryCard productId={id} />
 
+      <ProductStatsCard productId={id} />
+      <ProductTimelineCard productId={id} />
+
       <Card>
         <CardContent className="space-y-2 p-4">
           <h3 className="text-sm font-semibold">ویژگی‌های اختصاصی</h3>
@@ -875,6 +878,130 @@ function ProductHistoryCard({ productId }: { productId: string }) {
                 </li>
               );
             })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProductStatsCard({ productId }: { productId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["product-stats", productId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_product_stats", {
+        p_product_id: productId,
+      });
+      if (error) throw error;
+      return (data ?? {}) as {
+        avg_price: number | null;
+        last_price: number | null;
+        purchase_count: number | null;
+        last_purchase_date: string | null;
+        inquiry_count_month: number | null;
+        inquiry_count_total: number | null;
+      };
+    },
+    staleTime: 60_000,
+  });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">آمار محصول</h3>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <StatBox label="میانگین قیمت استعلام" value={data?.avg_price != null ? `${formatNumber(Number(data.avg_price))} ریال` : "—"} />
+            <StatBox label="آخرین قیمت استعلام" value={data?.last_price != null ? `${formatNumber(Number(data.last_price))} ریال` : "—"} />
+            <StatBox label="تعداد استعلام (کل)" value={formatNumber(data?.inquiry_count_total ?? 0)} />
+            <StatBox label="تعداد استعلام (۳۰ روز)" value={formatNumber(data?.inquiry_count_month ?? 0)} />
+            <StatBox label="تعداد خرید" value={formatNumber(data?.purchase_count ?? 0)} />
+            <StatBox label="آخرین تاریخ خرید" value={data?.last_purchase_date ? formatDateFa(data.last_purchase_date) : "—"} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-background p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
+
+const TIMELINE_EVENT_LABELS: Record<string, string> = {
+  purchase_request: "درخواست خرید",
+  purchase: "خرید",
+  inquiry: "استعلام قیمت",
+  invoice: "فاکتور",
+  price_change: "تغییر قیمت",
+  sale: "فروش",
+};
+
+function ProductTimelineCard({ productId }: { productId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["product-timeline", productId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_product_timeline", {
+        p_product_id: productId,
+        p_limit: 30,
+        p_offset: 0,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        event_time: string;
+        event_type: string;
+        actor_id: string | null;
+        actor_name: string | null;
+        description: string | null;
+        amount: number | null;
+        reference_id: string | null;
+        reference_type: string | null;
+      }>;
+    },
+    staleTime: 30_000,
+  });
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <h3 className="text-sm font-semibold">تایم‌لاین محصول</h3>
+        {isLoading ? (
+          <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
+        ) : (data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">رویدادی برای این محصول ثبت نشده است.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(data ?? []).map((row, i) => (
+              <li
+                key={`${row.event_time}-${i}`}
+                className="rounded-md border border-border bg-background p-3 text-sm"
+              >
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {TIMELINE_EVENT_LABELS[row.event_type] ?? row.event_type}
+                    </Badge>
+                    <span>{row.actor_name ?? "—"}</span>
+                  </span>
+                  <span>{formatDateFa(row.event_time)}</span>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{row.description ?? "—"}</span>
+                  {row.amount != null && (
+                    <span className="text-xs font-semibold">
+                      {formatNumber(Number(row.amount))} ریال
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </CardContent>

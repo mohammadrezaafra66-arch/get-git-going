@@ -145,11 +145,17 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
+        const ollamaHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        const ollamaApiKey = process.env.OLLAMA_API_KEY?.trim();
+        if (ollamaApiKey) {
+          ollamaHeaders.Authorization = `Bearer ${ollamaApiKey}`;
+        }
+
         let ollamaRes: Response;
         try {
           ollamaRes = await fetch(apiUrl.replace(/\/+$/, "") + "/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: ollamaHeaders,
             body: JSON.stringify({ model, messages, stream: true }),
             signal: controller.signal,
           });
@@ -169,9 +175,10 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
         if (!ollamaRes.ok || !ollamaRes.body) {
           clearTimeout(timer);
           const status = ollamaRes.status;
+          const error = status === 403 ? "ollama_forbidden" : `http_${status}`;
           const stream = new ReadableStream({
             start(c) {
-              c.enqueue(new TextEncoder().encode(sseEvent({ error: `http_${status}` })));
+              c.enqueue(new TextEncoder().encode(sseEvent({ error })));
               c.enqueue(new TextEncoder().encode("event: done\ndata: {}\n\n"));
               c.close();
             },

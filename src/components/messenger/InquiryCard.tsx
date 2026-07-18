@@ -170,6 +170,31 @@ export function InquiryCard({
         </div>
       )}
 
+      {inquiry.replies && inquiry.replies.length > 0 && (
+        <div className="mt-3 space-y-1.5 rounded-lg border bg-muted/40 p-2">
+          {[...inquiry.replies]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .map((r) => (
+              <div key={r.id} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">قیمت اعلامی</span>
+                  <span className="text-sm font-semibold" dir="ltr">
+                    {toPersianDigits(Number(r.price).toLocaleString("en-US"))} تومان
+                  </span>
+                </div>
+                {r.note && (
+                  <div className="text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
+                    {r.note}
+                  </div>
+                )}
+                <div className="text-[10px] text-muted-foreground" dir="ltr">
+                  {formatJalaliDateTime(r.created_at)}
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+
       {(canReply || canTransfer) && (
         <div className="mt-3 flex flex-wrap gap-2">
           {canReply && (

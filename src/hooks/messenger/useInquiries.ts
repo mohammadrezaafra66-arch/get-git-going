@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 export type InquiryStatus =
   | "draft" | "pending" | "warning_5min" | "danger_8min" | "critical_10min"
@@ -19,6 +20,7 @@ export type InquiryRow = {
   answered_at: string | null;
   closed_at: string | null;
   product: { id: string; name: string; sku: string | null } | null;
+  replies: { id: string; price: number; note: string | null; created_at: string; user_id: string }[] | null;
 };
 
 export function useInquiries(groupId: string | null) {
@@ -27,11 +29,7 @@ export function useInquiries(groupId: string | null) {
   // Unique per-hook-instance suffix so multiple subscribers (e.g. ChatWindow + MessageList)
   // don't collide on the same realtime channel name and trigger
   // "cannot add `postgres_changes` callbacks ... after `subscribe()`".
-  const instanceIdRef = useRef<string>(
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2),
-  );
+  const instanceIdRef = useRef<string>(safeRandomUUID());
 
   const query = useQuery({
     queryKey,
@@ -42,7 +40,7 @@ export function useInquiries(groupId: string | null) {
       const { data, error } = await supabase
         .from("inquiries")
         .select(
-          "id,product_id,group_id,requested_by,assigned_to,status,message_id,created_at,answered_at,closed_at,product:products(id,name,sku)",
+          "id,product_id,group_id,requested_by,assigned_to,status,message_id,created_at,answered_at,closed_at,product:products(id,name,sku),replies:inquiry_replies(id,price,note,created_at,user_id)",
         )
         .eq("group_id", groupId)
         .order("created_at", { ascending: true })
@@ -59,6 +57,13 @@ export function useInquiries(groupId: string | null) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "inquiries", filter: `group_id=eq.${groupId}` },
+        () => {
+          qc.invalidateQueries({ queryKey });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inquiry_replies" },
         () => {
           qc.invalidateQueries({ queryKey });
         },

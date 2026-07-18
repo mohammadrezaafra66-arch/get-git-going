@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -53,6 +54,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { fetchEffectiveCurrencies } from "@/lib/pricing/effective-currencies";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { StockAlertButton } from "@/components/sales/StockAlertButton";
@@ -66,15 +68,13 @@ import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {
   fetchObservatorySnippetsForProducts,
   type ObservatorySnippet,
 } from "@/lib/sales/observatory-snippets";
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
-import { fetchProductOwnersForProducts, type ProductOwnerLite } from "@/lib/sales/product-owners";
-import { SalesReminderPopup } from "@/components/sales/SalesReminderPopup";
-import { PromotionNominateButton } from "@/components/sales/PromotionNominateButton";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => {
@@ -101,6 +101,7 @@ interface ProductRow {
   id: string;
   name: string;
   sku: string | null;
+  barcode?: string | null;
   product_type: "iranian" | "foreign" | string;
   stock_status: string;
   color?: string | null;
@@ -296,30 +297,21 @@ function SalesSearchPage() {
     return labelModeIds.filter((id) => set.has(id));
   }, [labelMode, labelModeIds, visibleLabelIds]);
 
-  // FE-B2 — one fresh session id per distinct search. Passed to per-product
-  // interaction events so downstream reports can de-duplicate within a single
-  // search session. Regenerated whenever the search parameters change.
-  const searchSessionId = useMemo<string | null>(
-    () =>
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      term,
-      brandIds,
-      categoryIds,
-      labelIds,
-      stockStatus,
-      productType,
-      onlyWithPrice,
-      labelMode,
-      effectiveLabelIds,
-      labelModePage,
-    ],
-  );
-
   // ---------- products query ----------
+  // A fresh session id per distinct search — used to de-duplicate interaction
+  // events server-side via (user_id, product_id, search_session_id, event_type).
+  const searchSessionKey = JSON.stringify(
+    labelMode === "off"
+      ? [term, brandIds, categoryIds, labelIds, stockStatus, productType, onlyWithPrice]
+      : [effectiveLabelIds, labelModePage],
+  );
+  const searchSessionId = useMemo(() => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+  }, [searchSessionKey]);
   const productsQuery = useQuery({
     enabled: canSearch && (labelMode === "off" || effectiveLabelIds.length > 0),
     queryKey:
@@ -353,11 +345,9 @@ function SalesSearchPage() {
       if (isLabelMode) {
         rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
       }
-      // FE-B2 — the previous per-row `search_result_viewed` herd loop was
-      // removed: it fired an event for every product on every fetch, drowning
-      // out the deliberate signals. Meaningful per-product events are now
-      // recorded on explicit user actions (see product_details_opened /
-      // price_checked / chart_opened / sales_text_copied).
+      // NOTE: merely appearing in search results is no longer tracked as an
+      // interaction (it created "herd" noise for brand searches). Deliberate
+      // per-product actions (details/price/chart/copy) are tracked instead.
       return rows;
     },
     staleTime: 30_000,
@@ -365,6 +355,10 @@ function SalesSearchPage() {
 
   const products = productsQuery.data ?? [];
   const isLoading = canSearch && productsQuery.isLoading;
+
+  // Thumbnails for visible search results (shared pattern with /products admin list)
+  const visibleProductIds = useMemo(() => products.map((p) => p.id), [products]);
+  const { thumbnailFor } = useProductThumbnails(visibleProductIds);
 
   // ---------- DT.7H: Observatory snippets for current page of results ----------
   // Read-only sidecar query. Never blocks/replaces the main search.
@@ -388,19 +382,6 @@ function SalesSearchPage() {
     );
   }
   const snippetMap = observatorySnippetsQuery.data ?? {};
-
-  // ---------- 125: authoritative product owners (from assignments) ----------
-  // Read-only sidecar. The responsible person comes from
-  // product_owner_assignments + profiles, never inferred from a label.
-  const ownersQuery = useQuery({
-    enabled: productIdsForSnippets.length > 0,
-    queryKey: ["sales-search-product-owners", productIdsForSnippets],
-    queryFn: () => fetchProductOwnersForProducts(productIdsForSnippets),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-    retry: 1,
-  });
-  const ownersMap = ownersQuery.data ?? {};
 
   // ---------- label-mode total count (only enabled in label-mode) ----------
   const labelModeCountQuery = useQuery({
@@ -442,14 +423,33 @@ function SalesSearchPage() {
     setLabelModePage(1);
   };
 
+  const { data: pageEffectiveCurrencies } = useQuery({
+    queryKey: ["effective-currencies"],
+    queryFn: fetchEffectiveCurrencies,
+    staleTime: 60_000,
+  });
+  const pageUsd = pageEffectiveCurrencies?.find((c) => c.code === "usd");
+  const pageUsdRate = pageUsd?.latest_rate ?? null;
+  const pageUsdRateAt = pageUsd?.latest_rate_at ?? null;
+
   return (
     <div className="space-y-5">
-      {/* 128 — rotating 2s reminder popup on each open of the search page */}
-      <SalesReminderPopup />
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
       />
+
+      {pageUsdRate && pageUsdRate > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <DollarSign className="h-4 w-4 text-primary" />
+          <span className="font-medium">نرخ لحظه‌ای دلار:</span>
+          <span className="font-bold text-primary tabular-nums">{formatNumber(pageUsdRate)} تومان</span>
+          <span className="text-xs text-muted-foreground">مبنای محاسبهٔ قیمت‌های دلاری</span>
+          {pageUsdRateAt && (
+            <span className="text-xs text-muted-foreground">— به‌روزرسانی: {formatDateTimeFa(pageUsdRateAt)}</span>
+          )}
+        </div>
+      )}
 
       {/* search & price type */}
       <Card>
@@ -460,7 +460,7 @@ function SalesSearchPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="نام محصول، SKU، برند یا دسته (حداقل ۲ کاراکتر)"
+                placeholder="نام محصول، SKU، بارکد، برند یا دسته (حداقل ۲ کاراکتر)"
                 className="pr-10 h-12 text-base"
                 autoFocus
               />
@@ -817,8 +817,7 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
-                    owners={ownersMap[p.id] ?? []}
-                    searchSessionId={searchSessionId}
+                    thumbnailUrl={thumbnailFor(p.id)}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
                       queryClient.invalidateQueries({
@@ -917,8 +916,7 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
-  owners?: ProductOwnerLite[];
-  searchSessionId?: string | null;
+  thumbnailUrl?: string;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
 }
@@ -928,8 +926,7 @@ function ProductCard({
   primarySalePriceTypeId,
   canRecalcPrice,
   observatorySnippet,
-  owners = [],
-  searchSessionId,
+  thumbnailUrl,
   onRecalcDone,
   onOpenChart,
 }: ProductCardProps) {
@@ -939,7 +936,6 @@ function ProductCard({
   const labels = product.labels ?? [];
   const [recalcing, setRecalcing] = useState(false);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   // primary price = the one selected globally (if available for this product), otherwise the first.
   const primary =
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId) ?? prices[0] ?? null;
@@ -949,6 +945,15 @@ function ProductCard({
   const prev = primary?.previous_price != null ? Number(primary.previous_price) : null;
   const amt = cur !== null && prev !== null ? cur - prev : null;
   const pct = computeChangePercent(cur, prev);
+
+  const { data: effectiveCurrencies } = useQuery({
+    queryKey: ["effective-currencies"],
+    queryFn: fetchEffectiveCurrencies,
+    staleTime: 60_000,
+  });
+  const usdRate = effectiveCurrencies?.find((c) => c.code === "usd")?.latest_rate ?? null;
+  const toUsd = (tomanPrice: number | null): number | null =>
+    tomanPrice != null && usdRate && usdRate > 0 ? Math.round(tomanPrice / usdRate) : null;
 
   const hasAnyPrice = prices.some((p) => p.current_price != null);
   const noPriceReason = !hasAnyPrice
@@ -1005,48 +1010,13 @@ function ProductCard({
     try {
       await navigator.clipboard.writeText(text);
       toast.success("متن فروش کپی شد");
-      // A2 (FE-B4) — copying the sales text is a deliberate engagement signal.
-      trackProductInteraction({
-        productId: product.id,
-        eventType: "sales_text_copied",
-        source: "sales_search",
-        salePriceTypeId: primarySalePriceTypeId || null,
-        searchSessionId,
-      });
     } catch {
       toast.error("کپی انجام نشد");
     }
   };
 
-  // A1 (FE-B3) — conscious "select / show full" action for a product card.
-  // Fires product_details_opened only when the details panel is opened (not on
-  // collapse), so merely toggling closed does not spam events.
-  const handleToggleDetails = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDetailsOpen((open) => {
-      if (!open) {
-        trackProductInteraction({
-          productId: product.id,
-          eventType: "product_details_opened",
-          source: "sales_search",
-          salePriceTypeId: primarySalePriceTypeId || null,
-          searchSessionId,
-        });
-      }
-      return !open;
-    });
-  };
-
   const handleRecalc = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // A1 (FE-B3) — recalculating the exact price is a deliberate price check.
-    trackProductInteraction({
-      productId: product.id,
-      eventType: "price_checked",
-      source: "sales_search",
-      salePriceTypeId: primary?.sale_price_type_id ?? primarySalePriceTypeId ?? null,
-      searchSessionId,
-    });
     setRecalcing(true);
     try {
       const r = await publishProductPrices({ productId: product.id, source: "sales_search" });
@@ -1067,65 +1037,71 @@ function ProductCard({
   };
 
   return (
-    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/40 hover:shadow-md focus-within:border-primary/40">
+    <Card className="overflow-hidden cursor-pointer transition hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 focus-within:border-primary/50">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <h3 className="font-semibold text-foreground break-words">
-              {formatProductDisplayNameWithFallback(product)}
-            </h3>
-            <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
-              {product.sku && (
-                <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
-                  <Tag className="h-3 w-3" /> {product.sku}
-                </span>
-              )}
-              {product.brand?.name && <span>برند: {product.brand.name}</span>}
-              {product.category?.name && <span>· {product.category.name}</span>}
-            </div>
-            {specChips.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1 text-xs">
-                {specChips.map((s) => (
-                  <span
-                    key={s.label}
-                    className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
-                  >
-                    <span className="text-muted-foreground">{s.label}:</span>
-                    <span className="font-medium">{s.value}</span>
-                  </span>
-                ))}
-              </div>
+          <div className="flex min-w-0 items-start gap-3">
+            {thumbnailUrl ? (
+              <img
+                src={thumbnailUrl}
+                alt={product.name}
+                loading="lazy"
+                className="h-16 w-16 flex-shrink-0 rounded-md border border-border object-cover bg-muted"
+              />
+            ) : (
+              <div className="h-16 w-16 flex-shrink-0 rounded-md border border-dashed border-border bg-muted/40" />
             )}
-            {labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1">
-                {labels.slice(0, 4).map((l) => (
+            <div className="min-w-0 space-y-1">
+              <h3 className="font-semibold text-foreground break-words">
+                {formatProductDisplayNameWithFallback(product)}
+              </h3>
+              <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                {product.sku && (
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
+                    <Tag className="h-3 w-3" /> {product.sku}
+                  </span>
+                )}
+                {product.barcode && (
                   <span
-                    key={l.id}
-                    className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
-                    style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                    className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono"
+                    dir="ltr"
+                    title="بارکد"
                   >
+                    <Tag className="h-3 w-3" /> {product.barcode}
+                  </span>
+                )}
+                {product.brand?.name && <span>برند: {product.brand.name}</span>}
+                {product.category?.name && <span>· {product.category.name}</span>}
+              </div>
+              {specChips.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1 text-xs">
+                  {specChips.map((s) => (
                     <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={l.color ? { backgroundColor: l.color } : undefined}
-                    />
-                    {l.title}
-                  </span>
-                ))}
-              </div>
-            )}
-            {/* 125 — authoritative "مسئول" from product_owner_assignments,
-                independent of any person-named label. */}
-            <div className="flex items-center gap-1 pt-1 text-xs">
-              <span className="text-muted-foreground">مسئول:</span>
-              {owners.length > 0 ? (
-                <span
-                  className="font-medium text-foreground truncate"
-                  title={owners.map((o) => o.full_name ?? o.user_id).join("، ")}
-                >
-                  {owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
-                </span>
-              ) : (
-                <span className="text-muted-foreground">بدون مسئول</span>
+                      key={s.label}
+                      className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
+                    >
+                      <span className="text-muted-foreground">{s.label}:</span>
+                      <span className="font-medium">{s.value}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {labels.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {labels.slice(0, 4).map((l) => (
+                    <span
+                      key={l.id}
+                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
+                      style={l.color ? { borderColor: l.color, color: l.color } : undefined}
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={l.color ? { backgroundColor: l.color } : undefined}
+                      />
+                      {l.title}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -1154,10 +1130,18 @@ function ProductCard({
             <div className="flex items-end justify-between gap-2">
               <div>
                 <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
-                <div className="text-2xl font-bold text-primary">
+                <div
+                  key={`pcard-${cur}`}
+                  className="price-flash inline-block text-3xl font-bold tabular-nums tracking-tight text-primary"
+                >
                   {formatNumber(cur)}
                   <span className="mr-1 text-xs font-normal text-muted-foreground">تومان</span>
                 </div>
+                {toUsd(cur) !== null && (
+                  <div className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                    ≈ {formatNumber(toUsd(cur)!)} دلار
+                  </div>
+                )}
                 {prev !== null && (
                   <div className="text-[11px] text-muted-foreground line-through">
                     {formatNumber(prev)} ت
@@ -1210,13 +1194,18 @@ function ProductCard({
                   className="rounded-md border bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
                 >
                   <div className="text-[10px] text-muted-foreground truncate">{p.title}</div>
-                  <div className="text-sm font-semibold tabular-nums">
+                  <div className="text-base font-semibold tabular-nums">
                     {c !== null ? (
                       formatNumber(c)
                     ) : (
                       <span className="text-muted-foreground font-normal">قیمت ثبت نشده</span>
                     )}
                   </div>
+                  {toUsd(c) !== null && (
+                    <div className="text-[10px] font-normal text-muted-foreground tabular-nums">
+                      ≈ {formatNumber(toUsd(c)!)} دلار
+                    </div>
+                  )}
                   {a !== null && a !== 0 && (
                     <div
                       className={`text-[10px] tabular-nums ${a > 0 ? "text-emerald-600" : "text-red-600"}`}
@@ -1239,53 +1228,10 @@ function ProductCard({
         {/* Alternative / recommended products with their 3 cheapest prices */}
         <SalesProductRecommendations productId={product.id} />
 
-        {/* A1 (FE-B3) — full product details, revealed on the deliberate
-            "انتخاب محصول / نمایش کامل" action (fires product_details_opened). */}
-        {detailsOpen && (
-          <div className="rounded-md border bg-muted/20 p-3 text-sm space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">اطلاعات کامل محصول</div>
-            {product.description && (
-              <p className="whitespace-pre-wrap break-words text-foreground">
-                {product.description}
-              </p>
-            )}
-            {specChips.length > 0 && (
-              <div className="flex flex-wrap gap-1 text-xs">
-                {specChips.map((s) => (
-                  <span
-                    key={s.label}
-                    className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground"
-                  >
-                    <span className="text-muted-foreground">{s.label}:</span>
-                    <span className="font-medium">{s.value}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-            {product.sku && (
-              <div className="text-xs text-muted-foreground font-mono">کد: {product.sku}</div>
-            )}
-          </div>
-        )}
-
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant={detailsOpen ? "default" : "outline"}
-            size="sm"
-            onClick={handleToggleDetails}
-            aria-expanded={detailsOpen}
-          >
-            <ChevronDown
-              className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
-            />
-            انتخاب محصول / نمایش کامل
-          </Button>
           <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
-          {/* D3 — nomination button (self-gates to the sales role) */}
-          <PromotionNominateButton productId={product.id} />
           {canRecalcPrice && (
             <Button
               type="button"

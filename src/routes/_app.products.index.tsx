@@ -19,6 +19,13 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
@@ -79,6 +86,10 @@ function ProductsPage() {
     EMPTY_FILTERS,
   );
   const [page, setPage] = useSessionStorageState<number>("products:list:page", 0);
+  const [pageSize, setPageSize] = useSessionStorageState<number>(
+    "products:list:pageSize",
+    PRODUCTS_PAGE_SIZE,
+  );
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
   const [timelineTarget, setTimelineTarget] = useState<{ id: string; name: string } | null>(null);
   const debouncedRaw = useDebounce(filters.q, 350);
@@ -89,10 +100,10 @@ function ProductsPage() {
   const stableFilters = useMemo(() => ({ ...filters, q: debouncedQ }), [filters, debouncedQ]);
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["products", stableFilters, page],
+    queryKey: ["products", stableFilters, page, pageSize],
     queryFn: async () => {
-      const from = page * PRODUCTS_PAGE_SIZE;
-      const to = from + PRODUCTS_PAGE_SIZE - 1;
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
 
       let query = supabase
         .from("products")
@@ -170,7 +181,7 @@ function ProductsPage() {
   });
 
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PRODUCTS_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Fetch one thumbnail per visible product (primary first, else lowest sort_order)
   const visibleIds = useMemo(() => (data?.rows ?? []).map((r) => r.id), [data?.rows]);
@@ -438,13 +449,34 @@ function ProductsPage() {
               <Card key={p.id}>
                 <CardContent className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to="/products/$id"
-                      params={{ id: p.id }}
-                      className="font-semibold text-foreground hover:underline"
-                    >
-                      {formatProductDisplayNameWithFallback(p)}
-                    </Link>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="shrink-0"
+                        aria-label="مشاهده محصول"
+                      >
+                        {thumbnailFor(p.id) ? (
+                          <img
+                            src={thumbnailFor(p.id)}
+                            alt=""
+                            className="h-12 w-12 rounded-md border border-border object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                      </Link>
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="min-w-0 font-semibold text-foreground hover:underline"
+                      >
+                        {formatProductDisplayNameWithFallback(p)}
+                      </Link>
+                    </div>
                     <div className="flex shrink-0 gap-1">
                       <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>
                         {PRODUCT_STATUS_LABELS[p.status]}
@@ -523,6 +555,23 @@ function ProductsPage() {
               {isFetching && <span className="ms-2 text-xs">در حال به‌روزرسانی...</span>}
             </div>
             <div className="flex items-center gap-2">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[130px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">۲۰ در صفحه</SelectItem>
+                  <SelectItem value="50">۵۰ در صفحه</SelectItem>
+                  <SelectItem value="100">۱۰۰ در صفحه</SelectItem>
+                  <SelectItem value="200">۲۰۰ در صفحه</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"

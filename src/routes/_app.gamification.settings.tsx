@@ -51,6 +51,7 @@ import { requireAnyRole } from "@/lib/rbac/route-guards";
 import {
   listKpis,
   updateKpi,
+  upsertKpi,
   listKpiRules,
   toggleKpiRule,
   calculateEmployeeScore,
@@ -63,7 +64,7 @@ import { recordManualScoreAdjustment } from "@/lib/gamification/manual-score.fun
 
 export const Route = createFileRoute("/_app/gamification/settings")({
   beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
+    await requireAnyRole(["admin"]);
   },
   component: GamificationSettingsPage,
 });
@@ -110,9 +111,12 @@ function KpiWeightsCard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">وزن KPIهای پیوسته</CardTitle>
-        <Badge variant={Math.abs(totalWeight - 1) < 0.001 ? "default" : "secondary"}>
-          مجموع وزن فعال: {toPersianDigits(totalWeight.toFixed(2))}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={Math.abs(totalWeight - 1) < 0.001 ? "default" : "secondary"}>
+            مجموع وزن فعال: {toPersianDigits(totalWeight.toFixed(2))}
+          </Badge>
+          <NewKpiDialog onCreated={() => qc.invalidateQueries({ queryKey: ["settings-kpis"] })} />
+        </div>
       </CardHeader>
       <CardContent className="p-0 overflow-x-auto">
         {isLoading ? (
@@ -250,6 +254,147 @@ function RecalculateCard() {
 }
 
 function ManualAdjustmentCard() {
+  return <ManualAdjustmentCardImpl />;
+}
+
+function NewKpiDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [key, setKey] = useState("");
+  const [labelFa, setLabelFa] = useState("");
+  const [weight, setWeight] = useState("1");
+  const [source, setSource] = useState<string>("invoices");
+  const [direction, setDirection] = useState<string>("higher_better");
+  const [unit, setUnit] = useState("");
+  const [enabled, setEnabled] = useState(true);
+
+  function reset() {
+    setKey("");
+    setLabelFa("");
+    setWeight("1");
+    setSource("invoices");
+    setDirection("higher_better");
+    setUnit("");
+    setEnabled(true);
+  }
+
+  const mut = useMutation({
+    mutationFn: async () => {
+      const k = key.trim();
+      if (!/^[a-z][a-z0-9_]{1,63}$/.test(k)) {
+        throw new Error("کلید باید انگلیسی کوچک، snake_case و حداقل ۲ حرف باشد");
+      }
+      if (labelFa.trim().length < 2) throw new Error("عنوان فارسی الزامی است");
+      const w = Number(weight);
+      if (!Number.isFinite(w) || w < 0) throw new Error("وزن باید عددی نامنفی باشد");
+      await upsertKpi({
+        key: k,
+        label_fa: labelFa.trim(),
+        weight: w,
+        source,
+        direction: direction as "higher_better" | "lower_better",
+        unit: unit.trim() || null,
+        enabled,
+      });
+    },
+    onSuccess: () => {
+      toast.success("پارامتر جدید ذخیره شد");
+      onCreated();
+      setOpen(false);
+      reset();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-2">
+          <Plus className="h-4 w-4" />
+          پارامتر جدید
+        </Button>
+      </DialogTrigger>
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>افزودن پارامتر امتیازدهی جدید</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>کلید (انگلیسی، snake_case) *</Label>
+            <Input
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="مثلاً total_sales"
+              dir="ltr"
+            />
+          </div>
+          <div>
+            <Label>عنوان فارسی *</Label>
+            <Input value={labelFa} onChange={(e) => setLabelFa(e.target.value)} placeholder="مثلاً مجموع فروش" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>وزن *</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.05"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <Label>واحد</Label>
+              <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="ریال، عدد، درصد…" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>منبع</Label>
+              <Select value={source} onValueChange={setSource}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="invoices">فاکتورها</SelectItem>
+                  <SelectItem value="manual">دستی</SelectItem>
+                  <SelectItem value="penalty">جریمه</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>جهت</Label>
+              <Select value={direction} onValueChange={setDirection}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="higher_better">بیشتر = بهتر</SelectItem>
+                  <SelectItem value="lower_better">کمتر = بهتر</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label>فعال</Label>
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>انصراف</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
+            {mut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            ثبت
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ManualAdjustmentCardImpl() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [employeeId, setEmployeeId] = useState<string>("");

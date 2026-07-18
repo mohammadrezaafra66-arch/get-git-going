@@ -28,6 +28,7 @@ import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
 import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
+import { Route as AppPresenceRouteImport } from './routes/_app.presence'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
@@ -86,6 +87,7 @@ import { Route as AppPricingQuickPriceRouteImport } from './routes/_app.pricing.
 import { Route as AppPricingPurchasePricesRouteImport } from './routes/_app.pricing.purchase-prices'
 import { Route as AppPricingProductRecommendationsRouteImport } from './routes/_app.pricing.product-recommendations'
 import { Route as AppPricingPriceAlertsRouteImport } from './routes/_app.pricing.price-alerts'
+import { Route as AppPricingOwnerAttentionRouteImport } from './routes/_app.pricing.owner-attention'
 import { Route as AppPricingMyWorkbenchRouteImport } from './routes/_app.pricing.my-workbench'
 import { Route as AppPricingMarketRatesWorkshopRouteImport } from './routes/_app.pricing.market-rates-workshop'
 import { Route as AppPricingMarketIntelligenceRouteImport } from './routes/_app.pricing.market-intelligence'
@@ -286,6 +288,11 @@ const AppPurchaseRoute = AppPurchaseRouteImport.update({
 const AppPriceListsRoute = AppPriceListsRouteImport.update({
   id: '/price-lists',
   path: '/price-lists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPresenceRoute = AppPresenceRouteImport.update({
+  id: '/presence',
+  path: '/presence',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPopupCenterRoute = AppPopupCenterRouteImport.update({
@@ -586,6 +593,12 @@ const AppPricingPriceAlertsRoute = AppPricingPriceAlertsRouteImport.update({
   path: '/pricing/price-alerts',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPricingOwnerAttentionRoute =
+  AppPricingOwnerAttentionRouteImport.update({
+    id: '/pricing/owner-attention',
+    path: '/pricing/owner-attention',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPricingMyWorkbenchRoute = AppPricingMyWorkbenchRouteImport.update({
   id: '/pricing/my-workbench',
   path: '/pricing/my-workbench',
@@ -1204,6 +1217,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
+  '/presence': typeof AppPresenceRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
@@ -1281,6 +1295,7 @@ export interface FileRoutesByFullPath {
   '/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
   '/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
+  '/pricing/owner-attention': typeof AppPricingOwnerAttentionRoute
   '/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -1388,6 +1403,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
+  '/presence': typeof AppPresenceRoute
   '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
@@ -1464,6 +1480,7 @@ export interface FileRoutesByTo {
   '/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
   '/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
+  '/pricing/owner-attention': typeof AppPricingOwnerAttentionRoute
   '/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -1573,6 +1590,7 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
+  '/_app/presence': typeof AppPresenceRoute
   '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/purchase': typeof AppPurchaseRoute
   '/_app/purchases': typeof AppPurchasesRoute
@@ -1650,6 +1668,7 @@ export interface FileRoutesById {
   '/_app/pricing/market-intelligence': typeof AppPricingMarketIntelligenceRoute
   '/_app/pricing/market-rates-workshop': typeof AppPricingMarketRatesWorkshopRoute
   '/_app/pricing/my-workbench': typeof AppPricingMyWorkbenchRoute
+  '/_app/pricing/owner-attention': typeof AppPricingOwnerAttentionRoute
   '/_app/pricing/price-alerts': typeof AppPricingPriceAlertsRoute
   '/_app/pricing/product-recommendations': typeof AppPricingProductRecommendationsRoute
   '/_app/pricing/purchase-prices': typeof AppPricingPurchasePricesRoute
@@ -1760,6 +1779,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/persons'
     | '/popup-center'
+    | '/presence'
     | '/price-lists'
     | '/purchase'
     | '/purchases'
@@ -1837,6 +1857,7 @@ export interface FileRouteTypes {
     | '/pricing/market-intelligence'
     | '/pricing/market-rates-workshop'
     | '/pricing/my-workbench'
+    | '/pricing/owner-attention'
     | '/pricing/price-alerts'
     | '/pricing/product-recommendations'
     | '/pricing/purchase-prices'
@@ -1944,6 +1965,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/persons'
     | '/popup-center'
+    | '/presence'
     | '/price-lists'
     | '/purchase'
     | '/purchases'
@@ -2020,6 +2042,7 @@ export interface FileRouteTypes {
     | '/pricing/market-intelligence'
     | '/pricing/market-rates-workshop'
     | '/pricing/my-workbench'
+    | '/pricing/owner-attention'
     | '/pricing/price-alerts'
     | '/pricing/product-recommendations'
     | '/pricing/purchase-prices'
@@ -2128,6 +2151,7 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/persons'
     | '/_app/popup-center'
+    | '/_app/presence'
     | '/_app/price-lists'
     | '/_app/purchase'
     | '/_app/purchases'
@@ -2205,6 +2229,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/market-intelligence'
     | '/_app/pricing/market-rates-workshop'
     | '/_app/pricing/my-workbench'
+    | '/_app/pricing/owner-attention'
     | '/_app/pricing/price-alerts'
     | '/_app/pricing/product-recommendations'
     | '/_app/pricing/purchase-prices'
@@ -2447,6 +2472,13 @@ declare module '@tanstack/react-router' {
       path: '/price-lists'
       fullPath: '/price-lists'
       preLoaderRoute: typeof AppPriceListsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/presence': {
+      id: '/_app/presence'
+      path: '/presence'
+      fullPath: '/presence'
+      preLoaderRoute: typeof AppPresenceRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/popup-center': {
@@ -2853,6 +2885,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/price-alerts'
       fullPath: '/pricing/price-alerts'
       preLoaderRoute: typeof AppPricingPriceAlertsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing/owner-attention': {
+      id: '/_app/pricing/owner-attention'
+      path: '/pricing/owner-attention'
+      fullPath: '/pricing/owner-attention'
+      preLoaderRoute: typeof AppPricingOwnerAttentionRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pricing/my-workbench': {
@@ -3820,6 +3859,7 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
+  AppPresenceRoute: typeof AppPresenceRoute
   AppPriceListsRoute: typeof AppPriceListsRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
@@ -3887,6 +3927,7 @@ interface AppRouteChildren {
   AppPricingMarketIntelligenceRoute: typeof AppPricingMarketIntelligenceRoute
   AppPricingMarketRatesWorkshopRoute: typeof AppPricingMarketRatesWorkshopRoute
   AppPricingMyWorkbenchRoute: typeof AppPricingMyWorkbenchRoute
+  AppPricingOwnerAttentionRoute: typeof AppPricingOwnerAttentionRoute
   AppPricingPriceAlertsRoute: typeof AppPricingPriceAlertsRoute
   AppPricingProductRecommendationsRoute: typeof AppPricingProductRecommendationsRoute
   AppPricingPurchasePricesRoute: typeof AppPricingPurchasePricesRoute
@@ -3942,6 +3983,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
+  AppPresenceRoute: AppPresenceRoute,
   AppPriceListsRoute: AppPriceListsRoute,
   AppPurchaseRoute: AppPurchaseRoute,
   AppPurchasesRoute: AppPurchasesRoute,
@@ -4011,6 +4053,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingMarketIntelligenceRoute: AppPricingMarketIntelligenceRoute,
   AppPricingMarketRatesWorkshopRoute: AppPricingMarketRatesWorkshopRoute,
   AppPricingMyWorkbenchRoute: AppPricingMyWorkbenchRoute,
+  AppPricingOwnerAttentionRoute: AppPricingOwnerAttentionRoute,
   AppPricingPriceAlertsRoute: AppPricingPriceAlertsRoute,
   AppPricingProductRecommendationsRoute: AppPricingProductRecommendationsRoute,
   AppPricingPurchasePricesRoute: AppPricingPurchasePricesRoute,

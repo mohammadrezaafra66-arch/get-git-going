@@ -29,7 +29,10 @@ export function SalesProductRecommendations({ productId, max = 4 }: Props) {
     staleTime: 5 * 60_000,
   });
 
-  const recs = (recsQuery.data ?? []).slice(0, max);
+  // فیلتر محصولات ناموجود از فهرست پیشنهادی — نباید قیمت‌ ناموجود نمایش داده شود
+  const recs = (recsQuery.data ?? [])
+    .filter((r) => r.stock_status !== "out_of_stock" && r.stock_status !== "unavailable")
+    .slice(0, max);
   const ids = recs.map((r) => r.product_id);
 
   const { thumbnailFor } = useProductThumbnails(ids);

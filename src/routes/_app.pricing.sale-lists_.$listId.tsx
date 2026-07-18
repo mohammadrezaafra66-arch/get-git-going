@@ -70,7 +70,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
-import { fetchSettlementTypes } from "@/lib/pricing/queries";
+import { fetchSalePriceTypes, fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -246,7 +246,18 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  const discountSalePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active-for-discount"],
+    queryFn: () => fetchSalePriceTypes(true),
+  });
+  const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
+  const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
+  const [discountSelectedIds, setDiscountSelectedIds] = useState<string[]>([]);
+  const [discountText, setDiscountText] = useState<string>("");
+  const [discountBusy, setDiscountBusy] = useState(false);
+
   // Category-specific product attributes for items, used only inside PDF "description" column.
+
   const productIdsForAttrs = useMemo(() => {
     const ids = new Set<string>();
     for (const it of itemsQ.data ?? []) {
@@ -413,6 +424,7 @@ function SaleListDetailPage() {
     overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
     observatoryHints?: ObservatoryPdfHintMap,
+    usdRate?: number | null,
   ): SaleListPdfInput => {
     // Default-on column set for legacy lists with NULL selected_columns.
     // `observatory_price_advantage` is intentionally excluded so existing
@@ -447,6 +459,7 @@ function SaleListDetailPage() {
       // Metadata only — never feeds into price calculation.
       settlementTypeTitle: list.settlement_type?.title ?? null,
       termsText: list.terms_text,
+      usdRate: usdRate ?? null,
       sellerInfo: list.seller_info ?? null,
       shopInfo: shop
         ? {
@@ -689,7 +702,29 @@ function SaleListDetailPage() {
           );
         }
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints);
+      // نرخ دلار مؤثر در لحظهٔ صدور PDF (best-effort؛ در صورت خطا PDF بدون نرخ تولید می‌شود).
+      let usdRateForPdf: number | null = null;
+      try {
+        const { data: rateRow } = await (supabase as any)
+          .from("currency_rates")
+          .select("rate_to_toman, effective_at")
+          .eq("currency", "usd")
+          .eq("is_active", true)
+          .lte("effective_at", new Date().toISOString())
+          .order("effective_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        usdRateForPdf = rateRow ? Number(rateRow.rate_to_toman) : null;
+      } catch (err) {
+        console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
+      }
+      const input = buildPdfInput(
+        brandOrder,
+        productOrderByBrand,
+        livePrices,
+        observatoryHints,
+        usdRateForPdf,
+      );
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
@@ -726,6 +761,99 @@ function SaleListDetailPage() {
       toast.success(`${label} در کلیپ‌بورد کپی شد.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "کپی ناموفق بود.");
+    }
+  };
+
+  const buildDiscountText = async () => {
+    const pdfTermId = discountPdfTermId || list.sale_price_type_id;
+    const baseTermId = discountBaseTermId;
+    if (!baseTermId) {
+      toast.error("ترمِ مبنا برای مقایسه را انتخاب کنید.");
+      return;
+    }
+    if (pdfTermId === baseTermId) {
+      toast.error("ترمِ PDF و ترمِ مبنا نباید یکسان باشند.");
+      return;
+    }
+    if (discountSelectedIds.length === 0) {
+      toast.error("حداقل یک محصول انتخاب کنید.");
+      return;
+    }
+    setDiscountBusy(true);
+    try {
+      const fetchTermPrices = async (typeId: string): Promise<Map<string, number>> => {
+        const map = new Map<string, number>();
+        const CHUNK = 200;
+        for (let i = 0; i < discountSelectedIds.length; i += CHUNK) {
+          const chunk = discountSelectedIds.slice(i, i + CHUNK);
+          const { data, error } = await (supabase as any)
+            .from("product_computed_prices")
+            .select("product_id, rounded_sale_price, computed_at")
+            .eq("sale_price_type_id", typeId)
+            .in("product_id", chunk)
+            .order("computed_at", { ascending: false });
+          if (error) throw error;
+          for (const row of (data ?? []) as Array<{
+            product_id: string;
+            rounded_sale_price: number | string | null;
+          }>) {
+            if (!map.has(row.product_id)) {
+              map.set(row.product_id, Number(row.rounded_sale_price ?? 0) || 0);
+            }
+          }
+        }
+        return map;
+      };
+      const [pdfPrices, basePrices] = await Promise.all([
+        fetchTermPrices(pdfTermId),
+        fetchTermPrices(baseTermId),
+      ]);
+      const lines: string[] = [];
+      let missing = 0;
+      for (const it of items) {
+        const pid = it.product?.id;
+        if (!pid || !discountSelectedIds.includes(pid)) continue;
+        const pPdf = pdfPrices.get(pid);
+        const pBase = basePrices.get(pid);
+        if (!pPdf || !pBase) {
+          missing++;
+          continue;
+        }
+        const diff = Math.abs(pPdf - pBase);
+        lines.push(`${it.product?.name ?? "—"} ${formatNumber(diff)} تومان`);
+      }
+      if (lines.length === 0) {
+        setDiscountText("");
+        const termTitle = (tid: string) =>
+          discountSalePriceTypesQ.data?.find((t: { id: string; title: string }) => t.id === tid)
+            ?.title ?? tid;
+        const pdfMissing = discountSelectedIds.filter((id) => !pdfPrices.has(id)).length;
+        const baseMissing = discountSelectedIds.filter((id) => !basePrices.has(id)).length;
+        toast.error(
+          `قیمتی برای محاسبه پیدا نشد. از ${discountSelectedIds.length} محصول، برای ترمِ «${termTitle(pdfTermId)}» ${pdfMissing} مورد و برای ترمِ «${termTitle(baseTermId)}» ${baseMissing} مورد قیمت ندارند.`,
+        );
+        return;
+      }
+      let text = `تفاوت قیمت — ${formatDateTimeFa(new Date())}\n\n${lines.join("\n")}`;
+      if (missing > 0) {
+        text += `\n\n(${formatNumber(missing)} محصول به‌دلیل نبودِ قیمت محاسبه نشد)`;
+      }
+      setDiscountText(text);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در محاسبهٔ تفاوت.");
+      console.error(e);
+    } finally {
+      setDiscountBusy(false);
+    }
+  };
+
+  const copyDiscountText = async () => {
+    if (!discountText) return;
+    try {
+      await navigator.clipboard.writeText(discountText);
+      toast.success("متن تفاوت کپی شد.");
+    } catch {
+      toast.error("کپی ناموفق بود.");
     }
   };
 
@@ -904,6 +1032,7 @@ function SaleListDetailPage() {
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
           <TabsTrigger value="versions">نسخه‌ها و تاریخچه</TabsTrigger>
           <TabsTrigger value="settings">تنظیمات و ویرایش</TabsTrigger>
+          <TabsTrigger value="discount">تفاوت تسویه</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="pt-4">
@@ -939,6 +1068,154 @@ function SaleListDetailPage() {
             }}
             onDeleted={() => navigate({ to: "/pricing/sale-lists" })}
           />
+        </TabsContent>
+
+        <TabsContent value="discount" className="pt-4">
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <div className="text-sm font-semibold">تفاوت تسویه (برای ارسال به مشتری)</div>
+              <div className="text-xs text-muted-foreground">
+                مبلغ تفاوت بین ترمِ تسویهٔ PDF و ترمِ مبنا را برای محصولات انتخابی محاسبه و به‌صورت
+                متنِ قابل‌کپی تولید می‌کند. این اطلاعات فقط در همین صفحه نمایش داده می‌شود و هرگز
+                وارد PDF نمی‌شود.
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>ترمِ تسویهٔ نمایش‌داده‌شده در PDF</Label>
+                <Select
+                  value={discountPdfTermId || list.sale_price_type_id}
+                  onValueChange={setDiscountPdfTermId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>ترمِ مبنا برای مقایسه (مثلاً پیش‌واریز)</Label>
+                <Select value={discountBaseTermId} onValueChange={setDiscountBaseTermId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم مبنا" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>محصولات موردنظر برای محاسبهٔ تفاوت</Label>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() =>
+                      setDiscountSelectedIds(
+                        items.map((it) => it.product?.id).filter((x): x is string => !!x),
+                      )
+                    }
+                  >
+                    انتخاب همه
+                  </button>
+                  <span className="text-muted-foreground">·</span>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setDiscountSelectedIds([])}
+                  >
+                    حذف همه
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2">
+                {items.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">این لیست محصولی ندارد.</div>
+                ) : (
+                  items.map((it) => {
+                    const pid = it.product?.id;
+                    if (!pid) return null;
+                    const checked = discountSelectedIds.includes(pid);
+                    return (
+                      <label
+                        key={pid}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setDiscountSelectedIds((prev) =>
+                              v === true ? [...prev, pid] : prev.filter((id) => id !== pid),
+                            )
+                          }
+                        />
+                        <span className="text-sm">
+                          {it.product?.name ?? "—"}
+                          {it.product?.sku ? (
+                            <span className="ms-2 text-xs text-muted-foreground">
+                              {it.product.sku}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {discountSelectedIds.length.toLocaleString("fa-IR")} محصول انتخاب شده
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={buildDiscountText}
+                disabled={discountBusy || discountSelectedIds.length === 0}
+                className="gap-1"
+              >
+                {discountBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                محاسبه و تولید متن
+              </Button>
+              {discountText ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={discountText}
+                    readOnly
+                    rows={Math.min(20, discountText.split("\n").length + 1)}
+                    className="font-mono text-sm"
+                    dir="rtl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyDiscountText}
+                    className="gap-1"
+                  >
+                    <Copy className="h-4 w-4" />
+                    کپی متن
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

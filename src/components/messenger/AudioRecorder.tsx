@@ -6,6 +6,46 @@ import { toast } from "sonner";
 const MAX_SECONDS = 5 * 60;
 const MIN_BYTES = 1024;
 
+function getBrowserRecordingIssue(): string | null {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return null;
+  if (!window.isSecureContext) {
+    return "ضبط صدا در مرورگر فقط روی HTTPS یا localhost فعال است؛ آدرس LAN فعلی امن نیست.";
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    return "مرورگر یا تنظیمات امنیتی صفحه اجازه دسترسی به میکروفون را نمی‌دهد.";
+  }
+  if (typeof MediaRecorder === "undefined") {
+    return "مرورگر شما از ضبط صدا پشتیبانی نمی‌کند.";
+  }
+  if (!pickMimeType()) {
+    return "فرمت ضبط صدای پشتیبانی‌شده‌ای در این مرورگر پیدا نشد.";
+  }
+  return null;
+}
+
+function recorderStartErrorMessage(err: unknown): string {
+  const name = err instanceof DOMException || err instanceof Error ? err.name : "";
+  const message = err instanceof Error ? err.message : "";
+  const text = `${name} ${message}`;
+
+  if (/NotAllowedError|PermissionDeniedError|denied|permission/i.test(text)) {
+    return "دسترسی به میکروفون رد شد؛ اجازه Microphone را در مرورگر فعال کنید.";
+  }
+  if (/SecurityError|Only secure origins|secure/i.test(text)) {
+    return "ضبط صدا فقط روی HTTPS یا localhost مجاز است؛ آدرس LAN فعلی امن نیست.";
+  }
+  if (/NotFoundError|DevicesNotFoundError/i.test(text)) {
+    return "میکروفونی روی این دستگاه پیدا نشد.";
+  }
+  if (/NotReadableError|TrackStartError|AbortError/i.test(text)) {
+    return "میکروفون در دسترس نیست؛ ممکن است توسط برنامه دیگری در حال استفاده باشد.";
+  }
+  if (/NotSupportedError|mimeType/i.test(text)) {
+    return "فرمت ضبط صدا در این مرورگر پشتیبانی نمی‌شود.";
+  }
+  return "شروع ضبط ناموفق بود؛ صفحه را با HTTPS یا localhost باز کنید و دسترسی میکروفون را بررسی کنید.";
+}
+
 function pickMimeType(): { mime: string; ext: string } | null {
   const candidates: Array<{ mime: string; ext: string }> = [
     { mime: "audio/webm;codecs=opus", ext: "webm" },
@@ -25,8 +65,12 @@ function pickMimeType(): { mime: string; ext: string } | null {
 }
 
 function fmt(sec: number) {
-  const m = Math.floor(sec / 60).toString().padStart(2, "0");
-  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  const m = Math.floor(sec / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = Math.floor(sec % 60)
+    .toString()
+    .padStart(2, "0");
   return `${m}:${s}`;
 }
 
@@ -43,7 +87,7 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [supported] = useState<boolean>(() => pickMimeType() !== null);
+  const [supportIssue, setSupportIssue] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -65,10 +109,14 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
   };
 
   useEffect(() => {
+    setSupportIssue(getBrowserRecordingIssue());
+
     return () => {
       clearTimer();
       try {
-        recorderRef.current?.state !== "inactive" && recorderRef.current?.stop();
+        if (recorderRef.current?.state !== "inactive") {
+          recorderRef.current?.stop();
+        }
       } catch {
         // ignore
       }
@@ -79,6 +127,13 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
   }, []);
 
   const startRecording = async () => {
+    const issue = getBrowserRecordingIssue();
+    if (issue) {
+      setSupportIssue(issue);
+      toast.error(issue);
+      return;
+    }
+
     const picked = pickMimeType();
     if (!picked) {
       toast.error("مرورگر شما از ضبط صدا پشتیبانی نمی‌کند");
@@ -88,13 +143,30 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const rec = new MediaRecorder(stream, { mimeType: picked.mime });
+      const hasAudioTrack = stream.getAudioTracks().some((track) => track.readyState === "live");
+      if (!hasAudioTrack) {
+        stopStream();
+        toast.error("میکروفون فعال نیست؛ دوباره تلاش کنید");
+        return;
+      }
+
+      let rec: MediaRecorder;
+      try {
+        rec = new MediaRecorder(stream, { mimeType: picked.mime });
+      } catch {
+        rec = new MediaRecorder(stream);
+      }
+      const recorderMime = rec.mimeType || picked.mime;
+      pickedRef.current = {
+        mime: recorderMime,
+        ext: recorderMime.includes("mp4") ? "mp4" : "webm",
+      };
       chunksRef.current = [];
       rec.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
       rec.onstop = () => {
-        const out = new Blob(chunksRef.current, { type: picked.mime.split(";")[0] });
+        const out = new Blob(chunksRef.current, { type: recorderMime.split(";")[0] });
         stopStream();
         clearTimer();
         if (out.size < MIN_BYTES) {
@@ -128,14 +200,17 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
       }, 1000);
     } catch (err) {
       stopStream();
-      const msg = err instanceof Error ? err.message : "";
-      if (/denied|NotAllowed/i.test(msg)) {
-        toast.error("دسترسی به میکروفون رد شد");
-      } else if (/NotFound/i.test(msg)) {
-        toast.error("میکروفونی یافت نشد");
-      } else {
-        toast.error("شروع ضبط ناموفق بود");
-      }
+      const message = recorderStartErrorMessage(err);
+      console.warn("[messenger] audio recording start failed", {
+        name: err instanceof Error ? err.name : undefined,
+        message: err instanceof Error ? err.message : undefined,
+        secureContext: typeof window !== "undefined" ? window.isSecureContext : undefined,
+        hasMediaDevices:
+          typeof navigator !== "undefined"
+            ? Boolean(navigator.mediaDevices?.getUserMedia)
+            : undefined,
+      });
+      toast.error(message);
       setMode("idle");
     }
   };
@@ -181,10 +256,10 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
         type="button"
         size="icon"
         variant="ghost"
-        disabled={disabled || !supported}
+        disabled={disabled}
         onClick={startRecording}
         aria-label="ضبط پیام صوتی"
-        title={supported ? "ضبط پیام صوتی" : "مرورگر شما از ضبط صدا پشتیبانی نمی‌کند"}
+        title={supportIssue ?? "ضبط پیام صوتی"}
       >
         <Mic className="h-4 w-4" />
       </Button>
@@ -205,7 +280,13 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
           <Button type="button" size="icon" variant="ghost" onClick={discard} aria-label="لغو">
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button type="button" size="icon" variant="destructive" onClick={stopRecording} aria-label="توقف">
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            onClick={stopRecording}
+            aria-label="توقف"
+          >
             <Square className="h-4 w-4" />
           </Button>
         </div>
@@ -251,7 +332,13 @@ export function AudioRecorder({ disabled, sending, onSend, onCancel }: AudioReco
         >
           <Trash2 className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" onClick={handleSend} disabled={sending} aria-label="ارسال">
+        <Button
+          type="button"
+          size="icon"
+          onClick={handleSend}
+          disabled={sending}
+          aria-label="ارسال"
+        >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>

@@ -7,49 +7,13 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      _tmp_questionmark_audit: {
-        Row: {
-          column_name: string | null
-          row_ref: string | null
-          sample: string | null
-          table_name: string | null
-          table_schema: string | null
-        }
-        Insert: {
-          column_name?: string | null
-          row_ref?: string | null
-          sample?: string | null
-          table_name?: string | null
-          table_schema?: string | null
-        }
-        Update: {
-          column_name?: string | null
-          row_ref?: string | null
-          sample?: string | null
-          table_name?: string | null
-          table_schema?: string | null
-        }
-        Relationships: []
-      }
       academy_courses: {
         Row: {
           created_at: string
@@ -559,528 +523,6 @@ export type Database = {
           id?: number
         }
         Relationships: []
-      }
-      automation_artifacts: {
-        Row: {
-          artifact_type: string
-          byte_size: number | null
-          content: Json | null
-          created_at: string
-          id: string
-          job_id: string
-          mime_type: string | null
-          phase_label: string
-          run_id: string
-          storage_path: string | null
-          updated_at: string
-        }
-        Insert: {
-          artifact_type?: string
-          byte_size?: number | null
-          content?: Json | null
-          created_at?: string
-          id?: string
-          job_id: string
-          mime_type?: string | null
-          phase_label?: string
-          run_id: string
-          storage_path?: string | null
-          updated_at?: string
-        }
-        Update: {
-          artifact_type?: string
-          byte_size?: number | null
-          content?: Json | null
-          created_at?: string
-          id?: string
-          job_id?: string
-          mime_type?: string | null
-          phase_label?: string
-          run_id?: string
-          storage_path?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_artifacts_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "automation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_artifacts_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "automation_job_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_checkpoints: {
-        Row: {
-          created_at: string
-          id: string
-          job_id: string
-          message: string | null
-          phase_label: string
-          progress_percent: number
-          reported_at: string
-          run_id: string
-          sequence: number
-          stage: string | null
-          state: Json
-          worker_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          job_id: string
-          message?: string | null
-          phase_label?: string
-          progress_percent?: number
-          reported_at: string
-          run_id: string
-          sequence: number
-          stage?: string | null
-          state?: Json
-          worker_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          job_id?: string
-          message?: string | null
-          phase_label?: string
-          progress_percent?: number
-          reported_at?: string
-          run_id?: string
-          sequence?: number
-          stage?: string | null
-          state?: Json
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_checkpoints_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "automation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_checkpoints_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "automation_job_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_checkpoints_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "automation_workers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_driver_outputs: {
-        Row: {
-          checkpoint: Json | null
-          created_at: string
-          driver_name: string
-          errors: Json
-          id: string
-          job_id: string
-          job_type: string
-          output: Json
-          phase_label: string
-          run_id: string | null
-          source_kind: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          checkpoint?: Json | null
-          created_at?: string
-          driver_name: string
-          errors?: Json
-          id?: string
-          job_id: string
-          job_type: string
-          output?: Json
-          phase_label?: string
-          run_id?: string | null
-          source_kind?: string
-          status: string
-          updated_at?: string
-        }
-        Update: {
-          checkpoint?: Json | null
-          created_at?: string
-          driver_name?: string
-          errors?: Json
-          id?: string
-          job_id?: string
-          job_type?: string
-          output?: Json
-          phase_label?: string
-          run_id?: string | null
-          source_kind?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_driver_outputs_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "automation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_driver_outputs_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "automation_job_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_job_runs: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          error_code: string | null
-          error_message: string | null
-          id: string
-          job_id: string
-          phase_label: string
-          result: Json | null
-          started_at: string | null
-          status: string
-          updated_at: string
-          worker_id: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string
-          error_code?: string | null
-          error_message?: string | null
-          id?: string
-          job_id: string
-          phase_label?: string
-          result?: Json | null
-          started_at?: string | null
-          status?: string
-          updated_at?: string
-          worker_id?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string
-          error_code?: string | null
-          error_message?: string | null
-          id?: string
-          job_id?: string
-          phase_label?: string
-          result?: Json | null
-          started_at?: string | null
-          status?: string
-          updated_at?: string
-          worker_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_job_runs_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "automation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_job_runs_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "automation_workers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_jobs: {
-        Row: {
-          claimed_at: string | null
-          claimed_by_worker_id: string | null
-          correlation_id: string | null
-          created_at: string
-          created_by: string | null
-          expires_at: string | null
-          id: string
-          idempotency_key: string
-          job_type: string
-          module_id: string
-          payload: Json
-          phase_label: string
-          priority: number
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by_worker_id?: string | null
-          correlation_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          id?: string
-          idempotency_key: string
-          job_type: string
-          module_id: string
-          payload?: Json
-          phase_label?: string
-          priority?: number
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by_worker_id?: string | null
-          correlation_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          id?: string
-          idempotency_key?: string
-          job_type?: string
-          module_id?: string
-          payload?: Json
-          phase_label?: string
-          priority?: number
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_jobs_claimed_by_worker_id_fkey"
-            columns: ["claimed_by_worker_id"]
-            isOneToOne: false
-            referencedRelation: "automation_workers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_jobs_module_id_fkey"
-            columns: ["module_id"]
-            isOneToOne: false
-            referencedRelation: "automation_modules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_log_events: {
-        Row: {
-          created_at: string
-          event_type: string
-          id: string
-          job_id: string | null
-          message: string | null
-          occurred_at: string
-          payload: Json
-          phase_label: string
-          run_id: string
-          worker_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          event_type: string
-          id?: string
-          job_id?: string | null
-          message?: string | null
-          occurred_at: string
-          payload?: Json
-          phase_label?: string
-          run_id: string
-          worker_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          event_type?: string
-          id?: string
-          job_id?: string | null
-          message?: string | null
-          occurred_at?: string
-          payload?: Json
-          phase_label?: string
-          run_id?: string
-          worker_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_log_events_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "automation_jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_log_events_run_id_fkey"
-            columns: ["run_id"]
-            isOneToOne: false
-            referencedRelation: "automation_job_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "automation_log_events_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "automation_workers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_modules: {
-        Row: {
-          capabilities: string[]
-          config: Json
-          created_at: string
-          description: string | null
-          display_name: string
-          id: string
-          module_key: string
-          phase_label: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          capabilities?: string[]
-          config?: Json
-          created_at?: string
-          description?: string | null
-          display_name: string
-          id?: string
-          module_key: string
-          phase_label?: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          capabilities?: string[]
-          config?: Json
-          created_at?: string
-          description?: string | null
-          display_name?: string
-          id?: string
-          module_key?: string
-          phase_label?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      automation_worker_heartbeats: {
-        Row: {
-          active_jobs: number
-          capabilities: string[]
-          created_at: string
-          host: Json
-          id: string
-          max_concurrent_jobs: number
-          metadata: Json
-          observed_at: string
-          phase_label: string
-          status: string
-          version: string | null
-          worker_id: string
-        }
-        Insert: {
-          active_jobs?: number
-          capabilities?: string[]
-          created_at?: string
-          host?: Json
-          id?: string
-          max_concurrent_jobs?: number
-          metadata?: Json
-          observed_at: string
-          phase_label?: string
-          status: string
-          version?: string | null
-          worker_id: string
-        }
-        Update: {
-          active_jobs?: number
-          capabilities?: string[]
-          created_at?: string
-          host?: Json
-          id?: string
-          max_concurrent_jobs?: number
-          metadata?: Json
-          observed_at?: string
-          phase_label?: string
-          status?: string
-          version?: string | null
-          worker_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_worker_heartbeats_worker_id_fkey"
-            columns: ["worker_id"]
-            isOneToOne: false
-            referencedRelation: "automation_workers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      automation_workers: {
-        Row: {
-          active_run_id: string | null
-          capabilities: string[]
-          created_at: string
-          host: Json
-          id: string
-          last_seen_at: string | null
-          metadata: Json
-          phase_label: string
-          status: string
-          updated_at: string
-          version: string | null
-          worker_name: string
-        }
-        Insert: {
-          active_run_id?: string | null
-          capabilities?: string[]
-          created_at?: string
-          host?: Json
-          id?: string
-          last_seen_at?: string | null
-          metadata?: Json
-          phase_label?: string
-          status?: string
-          updated_at?: string
-          version?: string | null
-          worker_name: string
-        }
-        Update: {
-          active_run_id?: string | null
-          capabilities?: string[]
-          created_at?: string
-          host?: Json
-          id?: string
-          last_seen_at?: string | null
-          metadata?: Json
-          phase_label?: string
-          status?: string
-          updated_at?: string
-          version?: string | null
-          worker_name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "automation_workers_active_run_id_fkey"
-            columns: ["active_run_id"]
-            isOneToOne: false
-            referencedRelation: "automation_job_runs"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       bank_accounts: {
         Row: {
@@ -4474,12 +3916,10 @@ export type Database = {
       invoices: {
         Row: {
           actual_settlement_date: string | null
-          collection_due_date: string | null
           commitment_confirmed: boolean
           created_at: string
           created_by: string | null
           customer_id: string | null
-          delivery_mode: string
           deposit_amount: number | null
           discount_amount: number
           due_date: string | null
@@ -4491,7 +3931,6 @@ export type Database = {
           notes: string | null
           number: string | null
           product_video_required: boolean
-          proof_requirement: string
           sale_price_type_id: string | null
           settled_amount: number | null
           settlement_days: number | null
@@ -4506,12 +3945,10 @@ export type Database = {
         }
         Insert: {
           actual_settlement_date?: string | null
-          collection_due_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
-          delivery_mode?: string
           deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
@@ -4523,7 +3960,6 @@ export type Database = {
           notes?: string | null
           number?: string | null
           product_video_required?: boolean
-          proof_requirement?: string
           sale_price_type_id?: string | null
           settled_amount?: number | null
           settlement_days?: number | null
@@ -4538,12 +3974,10 @@ export type Database = {
         }
         Update: {
           actual_settlement_date?: string | null
-          collection_due_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
-          delivery_mode?: string
           deposit_amount?: number | null
           discount_amount?: number
           due_date?: string | null
@@ -4555,7 +3989,6 @@ export type Database = {
           notes?: string | null
           number?: string | null
           product_video_required?: boolean
-          proof_requirement?: string
           sale_price_type_id?: string | null
           settled_amount?: number | null
           settlement_days?: number | null
@@ -5326,6 +4759,7 @@ export type Database = {
           embedding: string
           group_id: string
           message_id: string
+          model_version: string | null
         }
         Insert: {
           content_excerpt?: string | null
@@ -5333,6 +4767,7 @@ export type Database = {
           embedding: string
           group_id: string
           message_id: string
+          model_version?: string | null
         }
         Update: {
           content_excerpt?: string | null
@@ -5340,6 +4775,7 @@ export type Database = {
           embedding?: string
           group_id?: string
           message_id?: string
+          model_version?: string | null
         }
         Relationships: [
           {
@@ -7324,7 +6760,6 @@ export type Database = {
           id: string
           product_id: string
           sale_price_type_id: string | null
-          search_session_id: string | null
           source: string
           user_id: string | null
         }
@@ -7334,7 +6769,6 @@ export type Database = {
           id?: string
           product_id: string
           sale_price_type_id?: string | null
-          search_session_id?: string | null
           source: string
           user_id?: string | null
         }
@@ -7344,7 +6778,6 @@ export type Database = {
           id?: string
           product_id?: string
           sale_price_type_id?: string | null
-          search_session_id?: string | null
           source?: string
           user_id?: string | null
         }
@@ -7925,87 +7358,6 @@ export type Database = {
           registered_at?: string
           status?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      promotion_nomination_policy: {
-        Row: {
-          boost_cap_per_product: number
-          boost_per_nomination: number
-          created_at: string
-          daily_quota: number
-          id: string
-          is_active: boolean
-          per_product_daily_cap: number
-          role: string | null
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          boost_cap_per_product?: number
-          boost_per_nomination?: number
-          created_at?: string
-          daily_quota?: number
-          id?: string
-          is_active?: boolean
-          per_product_daily_cap?: number
-          role?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          boost_cap_per_product?: number
-          boost_per_nomination?: number
-          created_at?: string
-          daily_quota?: number
-          id?: string
-          is_active?: boolean
-          per_product_daily_cap?: number
-          role?: string | null
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      promotion_nominations: {
-        Row: {
-          boost_applied: number
-          cancelled_at: string | null
-          cancelled_by: string | null
-          channel_id: string | null
-          created_at: string
-          id: string
-          nominated_by: string
-          nominated_on: string
-          product_id: string
-          reason_code: string
-          reason_note: string | null
-        }
-        Insert: {
-          boost_applied?: number
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          channel_id?: string | null
-          created_at?: string
-          id?: string
-          nominated_by: string
-          nominated_on?: string
-          product_id: string
-          reason_code: string
-          reason_note?: string | null
-        }
-        Update: {
-          boost_applied?: number
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          channel_id?: string | null
-          created_at?: string
-          id?: string
-          nominated_by?: string
-          nominated_on?: string
-          product_id?: string
-          reason_code?: string
-          reason_note?: string | null
         }
         Relationships: []
       }
@@ -8976,36 +8328,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sales_reminders: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          is_active: boolean
-          sort_order: number
-          text: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          sort_order?: number
-          text: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          sort_order?: number
-          text?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       salesperson_capital_allocations: {
         Row: {
           approved_by: string | null
@@ -9414,7 +8736,6 @@ export type Database = {
       }
       tasks: {
         Row: {
-          assigned_queue: string | null
           assigned_to: string | null
           completed_at: string | null
           created_at: string
@@ -9423,7 +8744,6 @@ export type Database = {
           due_date: string | null
           id: string
           priority: string
-          proof_requirement: string | null
           reference_id: string | null
           reference_type: string | null
           status: string
@@ -9431,7 +8751,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assigned_queue?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
@@ -9440,7 +8759,6 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
-          proof_requirement?: string | null
           reference_id?: string | null
           reference_type?: string | null
           status?: string
@@ -9448,7 +8766,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assigned_queue?: string | null
           assigned_to?: string | null
           completed_at?: string | null
           created_at?: string
@@ -9457,7 +8774,6 @@ export type Database = {
           due_date?: string | null
           id?: string
           priority?: string
-          proof_requirement?: string | null
           reference_id?: string | null
           reference_type?: string | null
           status?: string
@@ -10127,6 +9443,10 @@ export type Database = {
       }
     }
     Functions: {
+      _capital_alloc_used: {
+        Args: { p_alloc_id: string; p_kind: string }
+        Returns: Record<string, unknown>
+      }
       _dyn_compute_row_values: {
         Args: { p_row_id: string; p_table_id: string }
         Returns: Json
@@ -10135,6 +9455,7 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: undefined
       }
+      _latest_active_capital_setting: { Args: never; Returns: string }
       _mi_require_privileged: { Args: never; Returns: undefined }
       _obs_compute_row_values: { Args: { p_row_id: string }; Returns: Json }
       _par_latest_usd_rate: { Args: never; Returns: number }
@@ -10345,8 +9666,8 @@ export type Database = {
         Returns: Json
       }
       calculate_employee_score: {
-        Args: { _employee_id: string }
-        Returns: Json
+        Args: { _employee_id?: string }
+        Returns: undefined
       }
       calculate_salesperson_collected_sales: {
         Args: { p_employee_id: string; p_window_months?: number }
@@ -10631,13 +9952,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_manual_penalty: {
+        Args: {
+          p_description?: string
+          p_severity: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       create_messenger_group: {
         Args: { p_name: string; p_type: string }
         Returns: string
-      }
-      create_preinvoice_workflow_tasks: {
-        Args: { p_invoice_id: string }
-        Returns: number
       }
       create_purchase_request: {
         Args: {
@@ -10917,8 +10243,11 @@ export type Database = {
         Args: { p_customer_id: string }
         Returns: {
           available_credit: number
+          has_overdue: boolean
           held_credit: number
           outstanding_balance: number
+          overdue_since: string
+          settlement_score: number
           total_purchases: number
         }[]
       }
@@ -10994,7 +10323,7 @@ export type Database = {
       }
       get_employee_progress: { Args: { _employee_id: string }; Returns: Json }
       get_employee_rank: {
-        Args: { _employee_id: string }
+        Args: { _employee_id?: string }
         Returns: {
           all_time_rank: number
           daily_rank: number
@@ -11357,16 +10686,6 @@ export type Database = {
         Args: { p_product_id: string }
         Returns: Json
       }
-      get_recent_purchase_labels: {
-        Args: { p_ids: string[] }
-        Returns: {
-          hours_since: number
-          is_today_purchase: boolean
-          last_purchase_at: string
-          product_id: string
-          status: string
-        }[]
-      }
       get_sales_search_products: {
         Args: {
           p_brand_ids?: string[]
@@ -11380,42 +10699,23 @@ export type Database = {
           p_stock_status?: string
         }
         Returns: {
+          barcode: string
           brand: Json
           capacity: string
           category: Json
           color: string
           description: string
+          has_purchase_price: boolean
           id: string
           is_unavailable_for_sales: boolean
           labels: Json
           model: string
           name: string
           prices: Json
+          primary_spec: string
           product_type: string
           sku: string
           stock_status: string
-        }[]
-      }
-      get_task_kpi_report: {
-        Args: { p_days?: number }
-        Returns: {
-          avg_completion_hours: number
-          blocked_count: number
-          bucket_key: string
-          bucket_label: string
-          canceled_count: number
-          completion_rate: number
-          done_count: number
-          due_soon_count: number
-          in_progress_count: number
-          newest_task_at: string
-          oldest_open_at: string
-          open_count: number
-          overdue_count: number
-          overdue_rate: number
-          pending_count: number
-          section: string
-          task_count: number
         }[]
       }
       get_user_penalties: {
@@ -11517,6 +10817,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      import_dynamic_table_rows: {
+        Args: { p_rows: Json; p_session_id?: string; p_table_id: string }
+        Returns: Json
+      }
       increase_credit: {
         Args: {
           p_amount: number
@@ -11525,6 +10829,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      is_appellant_of_appeal: {
+        Args: { _appeal_id: string; _user: string }
+        Returns: boolean
       }
       is_board_approved: {
         Args: { _board_key: string; _user_id: string }
@@ -11538,6 +10846,10 @@ export type Database = {
       }
       is_product_owner: {
         Args: { _product_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_reviewer_of_appeal: {
+        Args: { _appeal_id: string; _user: string }
         Returns: boolean
       }
       is_user_online: { Args: { _user_id: string }; Returns: boolean }
@@ -11570,46 +10882,6 @@ export type Database = {
           status: string
           unit: string
           value: number
-        }[]
-      }
-      list_trusted_credit_customers: {
-        Args: {
-          p_limit?: number
-          p_max_allowed_credit?: number
-          p_max_credit_score?: number
-          p_max_outstanding_balance?: number
-          p_max_total_purchases?: number
-          p_min_allowed_credit?: number
-          p_min_credit_score?: number
-          p_min_outstanding_balance?: number
-          p_min_total_purchases?: number
-          p_offset?: number
-          p_only_trusted?: boolean
-          p_phone?: string
-          p_search?: string
-        }
-        Returns: {
-          available_credit: number
-          computed_allowed_credit: number
-          credit_limit: number
-          credit_score: number
-          customer_id: string
-          customer_name: string
-          easy_code: string
-          has_active_overdue: boolean
-          held_credit: number
-          is_trusted: boolean
-          oldest_due_date: string
-          outstanding_balance: number
-          overdue_amount: number
-          overdue_count: number
-          phone: string
-          responsible_id: string
-          responsible_name: string
-          status_code: string
-          status_reason: string
-          total_count: number
-          total_purchases: number
         }[]
       }
       log_event: {
@@ -12196,10 +11468,6 @@ export type Database = {
           stock_status: string
         }[]
       }
-      search_tokens_match: {
-        Args: { p_document: string; p_term: string }
-        Returns: boolean
-      }
       send_invoice_to_accountant: {
         Args: { p_invoice_id: string }
         Returns: string
@@ -12504,7 +11772,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "sales" | "accountant" | "viewer"
+      app_role:
+        | "admin"
+        | "manager"
+        | "sales"
+        | "accountant"
+        | "viewer"
+        | "purchase_specialist"
+        | "site"
       base_currency: "toman" | "usd" | "aed"
       currency_code: "toman" | "usd" | "aed" | "usd_us"
       dynamic_column_data_type:
@@ -12704,12 +11979,17 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      app_role: ["admin", "manager", "sales", "accountant", "viewer"],
+      app_role: [
+        "admin",
+        "manager",
+        "sales",
+        "accountant",
+        "viewer",
+        "purchase_specialist",
+        "site",
+      ],
       base_currency: ["toman", "usd", "aed"],
       currency_code: ["toman", "usd", "aed", "usd_us"],
       dynamic_column_data_type: [
@@ -12789,4 +12069,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -1,3 +1,4 @@
+import "@/lib/polyfills/crypto-uuid";
 import {
   Outlet,
   Link,
@@ -209,6 +210,16 @@ export const Route = createRootRoute({
       },
     ],
     scripts: [
+      {
+        // Inline crypto.randomUUID polyfill — runs in <head> BEFORE any Vite
+        // module chunk (including @supabase/supabase-js) loads. Required for
+        // self-host over LAN HTTP where the origin is non-secure and the
+        // browser hides crypto.randomUUID. Do NOT rely on the module import
+        // at the top of this file — module chunks may be evaluated after
+        // vendor chunks that already captured a reference to crypto.
+        children:
+          "(function(){try{var g=globalThis;var c=g.crypto;function mk(src){return function(){var b=new Uint8Array(16);if(src&&typeof src.getRandomValues==='function'){try{src.getRandomValues(b);}catch(e){for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}}else{for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}b[6]=(b[6]&0x0f)|0x40;b[8]=(b[8]&0x3f)|0x80;var h=[];for(var i=0;i<16;i++)h.push(b[i].toString(16).padStart(2,'0'));return h.slice(0,4).join('')+'-'+h.slice(4,6).join('')+'-'+h.slice(6,8).join('')+'-'+h.slice(8,10).join('')+'-'+h.slice(10,16).join('');};}if(c&&typeof c.randomUUID==='function'){try{c.randomUUID();return;}catch(e){}}var patched=mk(c);if(c){try{c.randomUUID=patched;return;}catch(e){}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:c.getRandomValues?c.getRandomValues.bind(c):function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},subtle:c.subtle,randomUUID:patched}});}catch(e){}return;}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},randomUUID:patched}});}catch(e){}}catch(e){try{console.warn('[crypto-uuid] polyfill install failed',e);}catch(_){}}try{console.debug('[crypto-uuid] ready',typeof crypto!=='undefined'&&typeof crypto.randomUUID);}catch(_){}})();",
+      },
       {
         type: "application/ld+json",
         children: JSON.stringify({
