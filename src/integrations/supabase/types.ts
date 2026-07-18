@@ -4759,6 +4759,7 @@ export type Database = {
           embedding: string
           group_id: string
           message_id: string
+          model_version: string | null
         }
         Insert: {
           content_excerpt?: string | null
@@ -4766,6 +4767,7 @@ export type Database = {
           embedding: string
           group_id: string
           message_id: string
+          model_version?: string | null
         }
         Update: {
           content_excerpt?: string | null
@@ -4773,6 +4775,7 @@ export type Database = {
           embedding?: string
           group_id?: string
           message_id?: string
+          model_version?: string | null
         }
         Relationships: [
           {
