@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuthNode20 } from "@/integrations/supabase/messenger-auth-middleware";
 
@@ -14,16 +14,19 @@ export const recordManualScoreAdjustment = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Authorize: admin only
-    const { data: isAdmin } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
-    if (!isAdmin) {
+    // Authorize: admin only.
+    // NOTE: has_role() is overloaded in the DB — (uuid,app_role) and (uuid,text) —
+    // so PostgREST cannot resolve it via RPC (PGRST203). Read user_roles directly
+    // with the service-role client instead.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: roleRows } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    const roles = (roleRows ?? []).map((r) => String(r.role));
+    if (!roles.includes("admin")) {
       throw new Error("Forbidden: admin role required");
     }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { error: insErr } = await supabaseAdmin
       .from("employee_score_events")

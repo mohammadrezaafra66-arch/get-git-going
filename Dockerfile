@@ -1,4 +1,4 @@
-# ====== Build stage ======
+﻿# ====== Build stage ======
 FROM oven/bun:1-debian AS builder
 WORKDIR /app
 
@@ -50,7 +50,7 @@ RUN set -e; \
     fi
 
 # ====== Runtime stage (Node SSR) ======
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
