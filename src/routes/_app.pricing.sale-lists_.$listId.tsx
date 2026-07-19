@@ -85,6 +85,7 @@ import {
   downloadSaleListPdf,
   type SaleListPdfInput,
   type SaleListPdfColumn,
+  COLUMN_LABELS as PDF_COLUMN_LABELS,
   NO_BRAND_KEY,
   brandKey as toBrandKey,
   brandLabel as toBrandLabel,
@@ -159,6 +160,7 @@ interface SaleListDetail {
   pdf_font_size: number | null;
   pdf_row_padding_y: number | null;
   pdf_cell_padding_x: number | null;
+  pdf_column_widths: Record<string, number> | null;
 }
 
 interface SaleListItemRow {
@@ -201,7 +203,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, pdf_font_size, pdf_row_padding_y, pdf_cell_padding_x, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, pdf_font_size, pdf_row_padding_y, pdf_cell_padding_x, pdf_column_widths, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -314,6 +316,7 @@ function SaleListDetailPage() {
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
   const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+  const [pdfColumnWidths, setPdfColumnWidths] = useState<Record<string, number> | null>(null);
 
   // Sync PDF appearance state from DB when listQ.data loads/changes.
   useEffect(() => {
@@ -322,11 +325,13 @@ function SaleListDetailPage() {
     setPdfFontSize(d.pdf_font_size ?? 10);
     setPdfRowPadY(d.pdf_row_padding_y ?? 2);
     setPdfCellPadX(d.pdf_cell_padding_x ?? 4);
+    setPdfColumnWidths((d.pdf_column_widths as Record<string, number> | null) ?? null);
   }, [
     listQ.data?.id,
     listQ.data?.pdf_font_size,
     listQ.data?.pdf_row_padding_y,
     listQ.data?.pdf_cell_padding_x,
+    listQ.data?.pdf_column_widths,
   ]);
 
   // PDF order settings dialog state (brand keys + per-brand product UUIDs).
@@ -518,6 +523,7 @@ function SaleListDetailPage() {
         fontSize: pdfFontSize,
         rowPaddingY: pdfRowPadY,
         cellPaddingX: pdfCellPadX,
+        columnWidths: pdfColumnWidths,
       },
     };
   };
@@ -600,6 +606,7 @@ function SaleListDetailPage() {
     fontSize: number = pdfFontSize,
     rowPadY: number = pdfRowPadY,
     cellPadX: number = pdfCellPadX,
+    columnWidths: Record<string, number> | null = pdfColumnWidths,
   ): Promise<boolean> => {
     try {
       const { error } = await supabase
@@ -608,6 +615,7 @@ function SaleListDetailPage() {
           pdf_font_size: fontSize,
           pdf_row_padding_y: rowPadY,
           pdf_cell_padding_x: cellPadX,
+          pdf_column_widths: columnWidths,
         })
         .eq("id", listId);
       if (error) throw error;
@@ -1006,6 +1014,88 @@ function SaleListDetailPage() {
           >
             بازنشانی
           </Button>
+
+          {(() => {
+            const defaultCols: SaleListPdfColumn[] = [
+              "name",
+              "brand",
+              "category",
+              "sale_price",
+              "previous_price",
+              "change",
+              "stock_status",
+            ];
+            const sel = (listQ.data?.selected_columns as SaleListPdfColumn[] | null) ?? defaultCols;
+            const pdfCols: SaleListPdfColumn[] = ["name", ...sel.filter((c) => c !== "name")];
+            const cw = pdfColumnWidths ?? {};
+            const setColW = (key: string, raw: string) => {
+              const next: Record<string, number> = { ...(pdfColumnWidths ?? {}) };
+              const n = Number(raw);
+              if (raw === "" || !Number.isFinite(n)) delete next[key];
+              else next[key] = n;
+              setPdfColumnWidths(Object.keys(next).length ? next : null);
+            };
+            const sumPct = pdfCols.reduce((s, c) => s + (Number(cw[c]) || 0), 0);
+            const hasAnyPct = Object.keys(cw).some((k) => k !== "row");
+            const sumOff = hasAnyPct && Math.round(sumPct) !== 100;
+            return (
+              <div className="w-full border-t pt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-medium text-muted-foreground">
+                    عرض ستون‌ها (درصد؛ خالی = خودکار):
+                  </span>
+                  <span className={sumOff ? "text-amber-600" : "text-muted-foreground"}>
+                    مجموع: {Math.round(sumPct).toLocaleString("fa-IR")}٪
+                    {sumOff ? " — توصیه ۱۰۰٪" : ""}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Label className="text-xs">ردیف (px)</Label>
+                    <Input
+                      type="number"
+                      min={24}
+                      max={200}
+                      className="h-7 w-16 text-xs"
+                      placeholder="۴۸"
+                      value={cw.row ?? ""}
+                      onChange={(e) => setColW("row", e.target.value)}
+                    />
+                  </div>
+                  {pdfCols.map((c) => (
+                    <div key={c} className="flex items-center gap-1">
+                      <Label className="text-xs">{PDF_COLUMN_LABELS[c]}</Label>
+                      <Input
+                        type="number"
+                        min={3}
+                        max={60}
+                        className="h-7 w-16 text-xs"
+                        placeholder="خودکار"
+                        value={cw[c] ?? ""}
+                        onChange={(e) => setColW(c, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      setPdfColumnWidths(null);
+                      const ok = await persistPdfAppearance(
+                        pdfFontSize,
+                        pdfRowPadY,
+                        pdfCellPadX,
+                        null,
+                      );
+                      if (ok) toast.success("عرض ستون‌ها بازنشانی شد.");
+                    }}
+                  >
+                    بازنشانی عرض‌ها
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 

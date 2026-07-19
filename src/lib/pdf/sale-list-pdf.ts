@@ -125,7 +125,7 @@ export interface SaleListPdfInput {
   } | null;
 }
 
-const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
+export const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   name: "نام محصول",
   brand: "برند",
   category: "دسته",
