@@ -7942,6 +7942,7 @@ export type Database = {
           name: string
           pdf_brand_order: Json | null
           pdf_cell_padding_x: number
+          pdf_column_widths: Json | null
           pdf_font_size: number
           pdf_product_order_by_brand: Json | null
           pdf_row_padding_y: number
@@ -7963,6 +7964,7 @@ export type Database = {
           name: string
           pdf_brand_order?: Json | null
           pdf_cell_padding_x?: number
+          pdf_column_widths?: Json | null
           pdf_font_size?: number
           pdf_product_order_by_brand?: Json | null
           pdf_row_padding_y?: number
@@ -7984,6 +7986,7 @@ export type Database = {
           name?: string
           pdf_brand_order?: Json | null
           pdf_cell_padding_x?: number
+          pdf_column_widths?: Json | null
           pdf_font_size?: number
           pdf_product_order_by_brand?: Json | null
           pdf_row_padding_y?: number
