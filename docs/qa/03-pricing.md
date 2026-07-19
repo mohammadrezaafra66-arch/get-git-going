@@ -19,6 +19,8 @@
 > - **RLS جدول‌ها (وضعیت نهایی):** `pricing_rules` خواندن admin/manager/accountant · `product_computed_prices` خواندن admin/manager/accountant (نقش پایین = خالی) · `currency_rates` خواندن admin/manager/accountant/sales (viewer محروم) · `purchase_prices` خواندن «مالک محصول یا admin/manager/accountant» · `shipping_cost_rules` و `price_change_reasons` و `currency_rate_fetches` خواندن admin/manager/accountant · `currency_sources` خواندن admin/accountant (ستون `api_key` از همه REVOKE شده) · ⚠️ `settlement_types`، `sale_price_types`، `currencies` خواندن‌شان برای **هر کاربر لاگین‌شده** باز است.
 
 > **پیش‌نیاز کلی:** با `test.accountant` وارد شو. حداقل یک «قانون قیمت» فعال، یک «نوع قیمت فروش» فعال، یک «نوع تسویه» فعال، یک نرخ ارز فعال، و حداقل یک محصول `QA-` با «قیمت خرید فعال» موجود باشد. رکوردهای خودت را با پیشوند `HAN-` بساز.
+>
+> ⚠️ **هشدار دسترسی محصولات (تأییدشده در live):** `test.accountant` طبق `role_permissions` جدولِ `products` را **مستقیماً نمی‌بیند** (`can_view=false` → آرایهٔ خالی از REST). صفحات قیمت‌گذاری که مستقیم از `products` می‌خوانند ممکن است برای accountant فهرست محصول خالی نشان دهند؛ صفحاتی که از `product_computed_prices`/RPC (خواندنِ admin/manager/accountant) می‌خوانند کار می‌کنند. **هر PRC که نیازمند «انتخاب/دیدن محصول از فهرست products» است باید بررسی شود** — اگر برای accountant خالی بود، وضعیت «مسدود» (طبق طراحی) بزن و برای تصمیم به توسعه‌دهنده ارجاع بده، نه «رد».
 
 ## ب) تست‌کیس‌ها
 

@@ -35,8 +35,8 @@ function SalesHub() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <FilePlus2 className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold text-foreground">پیش‌فاکتورها</h3>
-              <p className="text-sm text-muted-foreground">ثبت و مشاهده پیش‌فاکتورهای فروش</p>
+              <h3 className="font-semibold text-foreground">فاکتورهای فروش</h3>
+              <p className="text-sm text-muted-foreground">ثبت و مشاهده فاکتورهای فروش (سیستم فاکتور)</p>
             </CardContent>
           </Card>
         </Link>

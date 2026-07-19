@@ -69,8 +69,8 @@
 
 | جدول | policy | ستون‌های حساس در معرض | RLS برای نقش‌پایین | شدت |
 |---|---|---|---|---|
-| `didar_activities` | `didar_activities_read` (`FOR SELECT USING (true)`) — `supabase/migrations/20260626150154_…sql:40-41` | `activity_type`، `subject`، `description`، `customer_id`، `created_by_name`، `occurred_at`، `raw_data` | **SELECT=`true` → هر کاربر لاگین‌شده کل فعالیت‌های CRM دیدار را می‌خواند** (از طریق API مستقیم؛ لازم نیست هیچ صفحه‌ای آن را نشان دهد) | **بالا** — دادهٔ CRM (موضوع/شرح تماس‌ها و مشتری مرتبط) برای هر نقشی خواندنی است |
-| `inquiry_price_cache` | `inquiry_price_cache_select` (`FOR SELECT USING (true)`) — `supabase/migrations/20260624124802_…sql:117-118` (وضعیت نهایی در `schema_full_export.sql:20084`) | `product_id`، `price`، `valid_until`، `created_by` | **SELECT=`true` → هر کاربر لاگین‌شده کش قیمت خرید مذاکره‌شده را می‌خواند** (بقیهٔ جدول‌های استعلام با `is_messenger_group_member` بسته‌اند؛ فقط این باز است) | **بالا / 🔴 P0** — قیمت خرید مذاکره‌شده حساس‌ترین دادهٔ کسب‌وکار است؛ حاشیهٔ سود از رویش استخراج‌شدنی. یافتهٔ ماژول ۱۷ (MSG-N07) |
+| `didar_activities` | ~~`didar_activities_read` = `true`~~ → نقش‌محور | `activity_type`، `subject`، `description`، `customer_id`، `created_by_name`، `occurred_at`، `raw_data` | **بود** `SELECT=true`؛ اکنون policy نقش‌محور است | ✅ **بسته‌شده** (تأییدشده در live `afrakala`) — SELECT اکنون admin/manager؛ دادهٔ CRM دیگر به نقش‌پایین نمی‌رسد |
+| `inquiry_price_cache` | ~~`inquiry_price_cache_select` = `true`~~ → نقش‌محور | `product_id`، `price`، `valid_until`، `created_by` | **بود** `SELECT=true`؛ اکنون policy نقش‌محور است | ✅ **بسته‌شده** (تأییدشده در live `afrakala`؛ بود 🔴 P0) — SELECT اکنون admin/manager/accountant؛ قیمت خرید مذاکره‌شده دیگر به نقش‌پایین نمی‌رسد. یافتهٔ ماژول ۱۷ (MSG-N07) |
 | `academy_lessons` + `academy_quizzes` | `al_select_authed` / `aq_select_authed` (`FOR SELECT USING (auth.role()='authenticated')`) — `supabase/migrations/20260427155716_…sql:86-93` (نهایی: `schema_full_export.sql:19928,19933`) | `title`، `content`، `video_url`، `attachment_url` (درس) و متادیتای کوییز | **هر کاربر لاگین‌شده کل محتوای درس‌ها را می‌خواند — بدون فیلتر `is_published`** روی دورهٔ والد. مغایر مدل `is_published` که برای `academy_courses` (`ac_select_authed`) اعمال شده | **پایین** (تأییدشده از live afrakala) — شرط `auth.role()='authenticated'` است **نه `true`** (پس در دامنهٔ ۳۸‌تاییِ qual=true نیست)؛ فقط کاربر لاگین‌شده، محتوای آموزشی داخلی. **کلید پاسخ‌ها (`academy_quiz_questions`) قفل admin/manager است** → نشت حساس نیست. از migration خارج (کم‌اولویت) |
 
 > **تست:** با توکن `test.viewer` یک `GET /rest/v1/<table>?select=*` بزن (یا از کلاینت supabase در کنسول). اگر ردیف برگشت = یافتهٔ امنیتی تأییدشده.
@@ -117,7 +117,7 @@
 - **اقدام پیشنهادی (توسعه‌دهنده):** به صفحات دستهٔ الف و ب یک `beforeLoad` با `requireAnyRole([...])` یا `requireAdmin()` اضافه شود (هم‌راستا با پرچم `adminOnly` منو)، و سیاست `SELECT=true` جداول پیکربندی به admin/manager محدود شود.
 - **⚠️ نیاز به تأیید توسعه‌دهنده:** برای `/marketing/suggestions*` و `/pricing/quick-price` باید بررسی شود چه داده‌ای به نقش‌پایین برمی‌گردد.
 
-**وضعیت این فایل:** 🔴 باز — ۶ ردیف متوسط (دستهٔ الف) + ۱ ردیف بالا (دستهٔ د: `didar_activities`) باید پیش از توزیع محیط تست رفع یا «عمدی» تأیید شوند؛ به‌علاوهٔ ۲ ردیف marketing نیازمند تأیید توسعه‌دهنده.
+**وضعیت این فایل:** 🟠 در جریان — ✅ دو نشت P0 (`inquiry_price_cache`، `didar_activities`) در live بسته شدند. باقی‌مانده: ۲ ردیف CONFIG واقعی دستهٔ الف (`payment_receipt_custom_fields`، `invoice_workflow_stages`) + ۲ LEAK دیگر (`daily_capital_settings`، `dynamic_entity_scores`) در migration آماده، + ۵ ⚠️ نیازمند تصمیم + ریسک زیرساخت دستهٔ و.
 
 > نحوهٔ تست هر ردیف در فایل ماژول مربوطه (بخش «تست‌های منفی») آمده: با `test.viewer` یا `test.sales` آدرس را مستقیم باز کن و ببین صفحه بارگذاری می‌شود و آیا داده‌ای نشان می‌دهد.
 
@@ -156,8 +156,8 @@
 #### 🔴 LEAK — محدود شد (SECTION A در migration)
 | جدول | policy نهایی (قبل) | verdict | اصلاح اعمال‌شده |
 |---|---|---|---|
-| `inquiry_price_cache` | `inquiry_price_cache_select` = `true` | LEAK 🔴P0 | SELECT → admin/manager/accountant (⚠️ بدون `group_id`، پس group-membership ساختاراً ممکن نیست؛ مسیرهای سرور DEFINER هستند) |
-| `didar_activities` | `didar_activities_read` = `true` | LEAK | SELECT → admin OR manager (مطابق خواهر `didar_import_log`) |
+| `inquiry_price_cache` | ~~`true`~~ → نقش‌محور | ✅ **بسته‌شده** (بود 🔴P0) | **اعمال‌شده در live**: SELECT → admin/manager/accountant (⚠️ بدون `group_id`؛ مسیرهای سرور DEFINER) |
+| `didar_activities` | ~~`true`~~ → نقش‌محور | ✅ **بسته‌شده** | **اعمال‌شده در live**: SELECT → admin OR manager (مطابق خواهر `didar_import_log`) |
 | `daily_capital_settings` | `dcs_select_authenticated` = `true` | LEAK (مالی: `total_capital`) | SELECT → admin/manager/accountant (مطابق خواهرها `daily_capital_inputs`/`_snapshots`) |
 | `dynamic_entity_scores` | `dyn_scores_read_authenticated` = `true` | LEAK (امتیاز اعتباری مشتری/عملکرد فروشنده) | SELECT → admin/manager/accountant (خوانندگان: مسیر اعتبار مشتری + مسیر ادمین) |
 
@@ -202,5 +202,7 @@
 |---|---|---|---|
 | **دیتابیس دومِ `postgres`** | روی همان کانتینر `afrakala-lan-db`، علاوه بر دیتابیس اصلی `afrakala`، یک دیتابیس `postgres` با **schema قدیمی** (نقش هنوز از نوع `app_role` enum) و یک **کپی از دادهٔ کسب‌وکار** وجود دارد. | 🔴 **بالا** | این دیتابیس منبع سردرگمی و سطح‌حملهٔ اضافه است (دادهٔ واقعی در دو جا). پیش از production یا حذف شود یا صریحاً ایزوله/مستند شود. تحلیل RLS شب روی همین DB اشتباه انجام شده بود. |
 | **drift انوم `app_role`** | نوع `app_role` هنوز در `afrakala` وجود دارد، ولی ستون نقش‌ها اکنون `text` است (مهاجرت enum→text ناتمام مانده). | متوسط | drift باقی‌مانده؛ ثبت شد. باید تصمیم گرفته شود انوم حذف شود یا ستون به انوم برگردد. توابع RLS (`has_role`/`has_any_role`) هنوز با cast `::app_role` کار می‌کنند — تا وقتی انوم هست مشکلی نیست، ولی بدهی است. |
+| **fallback بازِ `has_dynamic_permission`** | دسترسی چند ماژول (products, suppliers, pricing, …) از `has_dynamic_permission(uid, module, action)` می‌آید (`20260429131128:70-81`). اگر **هیچ ردیفی** در `role_permissions` برای آن ماژول نباشد (`_exists=false`)، تابع به ماتریس قدیمی fallback می‌کند و برای `view` مقدار `admin/manager/accountant/sales/viewer` (**همه**) برمی‌گرداند. | 🟠 **متوسط** | **افزودن یک ماژول جدید بدون seed کردن ردیف‌های `role_permissions`، دسترسی view را ناخواسته به همه باز می‌کند.** توصیه: fallbackِ `view` به «بسته» تغییر کند، یا seed اجباری ردیف role_permissions برای هر ماژول جدید در چک‌لیست release. |
 
-> **زمینه:** این دو یافته از تأیید مستقیم دیتابیس زندهٔ `afrakala` به‌دست آمدند (نه از migrationها). دیتابیس درست برای همهٔ عملیات: `afrakala` با کاربر `supabase_admin`.
+> **زمینه:** این یافته‌ها از تأیید مستقیم دیتابیس زندهٔ `afrakala` به‌دست آمدند (نه از migrationها). دیتابیس درست برای همهٔ عملیات: `afrakala` با کاربر `supabase_admin`.
+> **نکتهٔ RBAC محصولات (تأییدشده عملی):** دسترسی *مشاهدهٔ* محصولات از `role_permissions` می‌آید نه نقشِ صرف. در live: `sales` → می‌بیند؛ `accountant` و `viewer` → `can_view=false` → از REST **آرایهٔ خالی** می‌گیرند (طبق طراحی، نه باگ). (توجه: seed migration `20260429124850` برای `sales` هم `false` داشت — یعنی `role_permissions` زنده دستی تغییر کرده؛ مبنا = وضعیت زنده.)

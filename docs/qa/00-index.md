@@ -33,8 +33,8 @@
 | # | ماژول (فارسی) | مسیر اصلی (route) | فایل‌های کلیدی | تعداد قابلیت | نقش‌های مجاز (route + RLS) |
 |---|---|---|---|---|---|
 | 01 | داشبورد و اعلان‌ها | `/dashboard`, `/notifications`, `/popup-center`, `/presence` | `_app.dashboard.tsx`, `_app.notifications.tsx`, `_app.presence.tsx` | ۴ | همهٔ نقش‌ها ⚙️ (notifications/popup/presence بدون guard route — فقط لاگین) |
-| 02 | محصولات | `/products` و زیرمسیرها (برند/دسته/ویژگی/برچسب) | `_app.products.*.tsx`, `lib/products/*` | ۸ | مشاهده: همه ⚙️ · ساخت/ویرایش: admin, manager · حذف: admin |
-| 03 | قیمت‌گذاری | `/pricing/*` (قوانین، ماشین‌حساب، قیمت سریع، کارگاه، ارز، تسویه، ارسال) | `_app.pricing.*.tsx`, `lib/pricing/*` | ۲۷ | مشاهده: admin, manager, accountant ⚙️ · برخی صفحات بدون guard route (attention, my-workbench, quick-price, settlement-types) ⚠️ |
+| 02 | محصولات | `/products` و زیرمسیرها (برند/دسته/ویژگی/برچسب) | `_app.products.*.tsx`, `lib/products/*` | ۸ | مشاهده: **admin/manager/sales** ⚙️ (accountant و viewer طبق `role_permissions` `can_view=false` → نمی‌بینند) · ساخت/ویرایش محصول: admin, manager · برند/دسته: admin/manager/**accountant** · حذف: admin |
+| 03 | قیمت‌گذاری | `/pricing/*` (قوانین، ماشین‌حساب، قیمت سریع، کارگاه، ارز، تسویه، ارسال) | `_app.pricing.*.tsx`, `lib/pricing/*` | ۲۷ | مشاهدهٔ قیمت: admin, manager, accountant ⚙️ · ⚠️ **accountant محصولِ خام (`products`) را نمی‌بیند** (مجوز پویا) — صفحاتی که مستقیم از `products` می‌خوانند برایش خالی‌اند · بدون guard route: فقط attention و my-workbench (quick-price و settlement-types اکنون guard دستی دارند) ⚠️ |
 | 04 | انتشار و لیست‌های قیمت | `/pricing/sale-lists`, `/pricing/live-price-list`, `/pricing/amin-hozoor-board`, `/pricing/recompute-prices`, `/price-lists` | `_app.pricing.sale-lists*.tsx`, `_app.pricing.live-price-list.tsx`, `lib/pricing/publish-prices.ts` | ۷ | مشاهده: admin, manager, accountant ⚙️ · قیمت حساس در «لیست زنده»: `view_sensitive` · انتشار دسته‌ای: admin (`update`) |
 | 05 | هوشمند بازار و نرخ‌ها | `/pricing/market-intelligence`, `/pricing/market-rates-workshop`, `/pricing/price-alerts`, `/pricing/currency-rates` | `_app.pricing.market-intelligence.tsx`, `lib/market-rates-ingestion.functions.ts` | ۵ | هوشمند بازار: admin, manager, accountant · هشدار قیمت: admin, manager, accountant, sales |
 | 06 | خرید و تأمین‌کنندگان | `/purchases`, `/purchase`, `/suppliers`, `/operations/purchase-advisor` | `_app.purchases*.tsx`, `_app.suppliers*.tsx` | ۶ | خرید/تأمین‌کننده مشاهده: admin, manager, accountant(, viewer) ⚙️ · مشاور خرید: admin, manager |
@@ -153,7 +153,7 @@
 2. **ستون «وضعیت»** یکی از این چهار باشد:
    - `قبول` — دقیقاً همان «نتیجهٔ مورد انتظار» رخ داد.
    - `رد` — رفتار متفاوت بود (باگ). حتماً نتیجهٔ واقعی را بنویس.
-   - `مسدود` — نتوانستی تست کنی (پیش‌نیاز آماده نبود، صفحه باز نشد، خطای محیط). دلیل را بنویس.
+   - `مسدود` — نتوانستی تست کنی (پیش‌نیاز آماده نبود، صفحه باز نشد، خطای محیط). دلیل را بنویس. **همچنین:** اگر نقشی طبق طراحی دسترسی ندارد و نتیجه خالی است (مثلاً `accountant`/`viewer` طبق `role_permissions` محصول نمی‌بیند)، این «مسدود طبق طراحی» است — **باگ نیست، `رد` نزن**.
    - `نامشخص` — رفتار مبهم بود و مطمئن نیستی درست است یا نه؛ برای تصمیم به توسعه‌دهنده ارجاع بده.
 3. **مراحل را دقیقاً به ترتیب و با همان متن دکمه‌ها/لیبل‌های فارسیِ داخل برنامه انجام بده.** اگر لیبل در برنامه با سند فرق داشت، همان را در «نتیجهٔ واقعی» یادداشت کن (خودش یک یافته است).
 4. **تست‌های منفی را جدی بگیر:** جایی که نوشته «نباید ببینی/نباید بتوانی»، اگر برعکس شد، `رد` بزن و بنویس چه چیزی دیدی — این‌ها حساس‌ترین موارد امنیتی‌اند.
