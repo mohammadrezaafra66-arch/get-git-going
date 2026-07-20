@@ -117,6 +117,7 @@ function NewSaleListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectingAll, setSelectingAll] = useState(false);
 
   // Step 2 state
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(
@@ -259,6 +260,53 @@ function NewSaleListPage() {
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+
+  // Fetch ALL product ids matching the CURRENT filters (not just the visible
+  // page), in batches so a large catalog never issues one heavy query.
+  const fetchAllMatchingIds = async (): Promise<string[]> => {
+    const BATCH = 1000;
+    const ids: string[] = [];
+    let from = 0;
+    // guard: max 20 batches = 20,000 products
+    for (let guard = 0; guard < 20; guard++) {
+      let q = supabase
+        .from("products")
+        .select("id")
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .range(from, from + BATCH - 1);
+      if (search) {
+        const safe = search.replace(/[%_]/g, "");
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+      }
+      if (brandId !== "__all") q = q.eq("brand_id", brandId);
+      if (categoryId !== "__all") q = q.eq("category_id", categoryId);
+      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as StockStatus);
+      if (productType !== "__all") q = q.eq("product_type", productType as ProductType);
+      const { data, error } = await q;
+      if (error) throw error;
+      const batch = (data ?? []).map((r) => r.id as string);
+      ids.push(...batch);
+      if (batch.length < BATCH) break;
+      from += BATCH;
+    }
+    return ids;
+  };
+
+  const handleSelectAllMatching = async () => {
+    setSelectingAll(true);
+    try {
+      const ids = await fetchAllMatchingIds();
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...ids])));
+      toast.success(`${formatNumber(ids.length)} محصول انتخاب شد.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "انتخاب همهٔ محصولات ناموفق بود.");
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+
+  const clearSelection = () => setSelectedIds([]);
 
   const toggleColumn = (key: ColumnKey) => {
     const opt = COLUMN_OPTIONS.find((c) => c.key === key);
@@ -543,16 +591,39 @@ function NewSaleListPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm">
               <span>
-                <strong>{formatNumber(selectedIds.length)}</strong> محصول انتخاب شده
+                <strong>{formatNumber(selectedIds.length)}</strong> از{" "}
+                <strong>{formatNumber(total)}</strong> محصول انتخاب شده
               </span>
-              {!salePriceTypeId && (
-                <span className="text-xs text-muted-foreground">
-                  برای مشاهده قیمت‌ها، نوع قیمت فروش را انتخاب کنید.
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllMatching}
+                  disabled={selectingAll || total === 0}
+                  className="gap-1"
+                >
+                  {selectingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  انتخاب همهٔ {formatNumber(total)} محصول
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  disabled={selectedIds.length === 0}
+                >
+                  حذف انتخاب‌ها
+                </Button>
+              </div>
             </div>
+            {!salePriceTypeId && (
+              <div className="px-3 text-xs text-muted-foreground">
+                برای مشاهده قیمت‌ها، نوع قیمت فروش را انتخاب کنید.
+              </div>
+            )}
 
             {productsQ.isLoading ? (
               <div className="space-y-2">
@@ -575,7 +646,7 @@ function NewSaleListPage() {
                           <Checkbox
                             checked={allVisibleSelected}
                             onCheckedChange={toggleSelectAllVisible}
-                            aria-label="انتخاب همه"
+                            aria-label="انتخاب این صفحه"
                           />
                         </TableHead>
                         <TableHead className="text-right">نام محصول</TableHead>
