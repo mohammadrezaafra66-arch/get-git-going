@@ -7,7 +7,7 @@
 | # | فاز | ریسک | وضعیت | commit |
 |---|---|---|---|---|
 | A | «انتخاب همهٔ محصولاتِ منطبق با فیلتر» (کمبود قابلیت، نه باگ) | کم | ✅ تمام | `fc1c5b02` |
-| B | باگ: دکمهٔ «ارسال» در پیش‌فاکتور (`type:public text`) | کم | ⬜ | |
+| B | باگ: دکمهٔ «ارسال» در پیش‌فاکتور (`type:public text`) | کم | ✅ تمام | `841a7781` |
 | C | تعداد در هر صفحه: ورودی عددی آزاد | کم | ⬜ | |
 | D | حذف سقف مبالغ در مشتریان | کم | ⬜ | |
 | E | انضباط واریز: عدد ۰ تا ۱۰۰ | کم | ⬜ | |
@@ -19,4 +19,5 @@
 
 ## یادداشت‌های اجرا
 - **فاز A:** تشخیص تجربی نشان داد backend سالم است (step-nav کلاینت‌ساید؛ `.in()` ۳۷۴ id → 200؛ درج ۳۷۴ آیتم → 201). مشکل واقعی: «انتخاب همه» فقط صفحهٔ جاری را می‌گرفت. رفع: دکمهٔ «انتخاب همهٔ {total} محصول» (batch ۱۰۰۰‌تایی) + rename به «انتخاب این صفحه» + شمارندهٔ «{n} از {total}» + «حذف انتخاب‌ها». `fc1c5b02`.
-- migrationهای فعال روی DB زندهٔ `afrakala`: `…120000_rls_permissive_select_fix`، `…130000_quote_price_bounds_validation`، `…140000_sale_lists_pdf_column_widths` (از جلسهٔ قبل).
+- migrationهای فعال روی DB زندهٔ `afrakala`: `…120000_rls_permissive_select_fix`، `…130000_quote_price_bounds_validation`، `…140000_sale_lists_pdf_column_widths` (جلسهٔ قبل)، `…20260720100000_fix_update_sales_quote_status_text_cast` (فاز B).
+- **فاز B:** دکمهٔ «ارسال» **کد مرده نبود** — گذار وضعیت draft→sent. علت خطا: تابع زندهٔ `update_sales_quote_status` از منبع منحرف شده بود و به نوعِ ناموجودِ `public.text[]` cast می‌کرد (drift دستی). رفع با بازگرداندن `::public.app_role[]`. تأیید: draft→sent کار کرد. `841a7781`. (بدون تغییر frontend/redeploy.)
