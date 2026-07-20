@@ -116,6 +116,7 @@ function NewSaleListPage() {
   const [productType, setProductType] = useState<string>("__all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZE);
+  const [pageSizeInput, setPageSizeInput] = useState<string>(String(PAGE_SIZE));
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectingAll, setSelectingAll] = useState(false);
 
@@ -150,6 +151,32 @@ function NewSaleListPage() {
 
   // Reset page on filter changes
   const resetPage = () => setPage(1);
+
+  // Free numeric "per page" input, clamped to 5–500 on commit (blur/Enter).
+  const commitPageSize = () => {
+    const raw = Number(pageSizeInput);
+    if (pageSizeInput.trim() === "" || !Number.isFinite(raw)) {
+      setPageSizeInput(String(pageSize));
+      return;
+    }
+    let n = Math.round(raw);
+    let clamped = false;
+    if (n < 5) {
+      n = 5;
+      clamped = true;
+    } else if (n > 500) {
+      n = 500;
+      clamped = true;
+    }
+    setPageSizeInput(String(n));
+    if (n !== pageSize) {
+      setPageSize(n);
+      resetPage();
+    }
+    if (clamped) {
+      toast.info(`تعداد در هر صفحه بین ۵ تا ۵۰۰ است — به ${formatNumber(n)} تنظیم شد.`);
+    }
+  };
 
   const salePriceTypesQ = useQuery({
     queryKey: ["sale-price-types-active"],
@@ -738,23 +765,24 @@ function NewSaleListPage() {
                     {formatNumber(totalPages)}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Select
-                      value={String(pageSize)}
-                      onValueChange={(v) => {
-                        setPageSize(Number(v));
-                        resetPage();
-                      }}
-                    >
-                      <SelectTrigger className="h-8 w-[130px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="20">۲۰ در صفحه</SelectItem>
-                        <SelectItem value="50">۵۰ در صفحه</SelectItem>
-                        <SelectItem value="100">۱۰۰ در صفحه</SelectItem>
-                        <SelectItem value="200">۲۰۰ در صفحه</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-1">
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">
+                        تعداد در صفحه:
+                      </span>
+                      <Input
+                        type="number"
+                        min={5}
+                        max={500}
+                        inputMode="numeric"
+                        className="h-8 w-20 text-xs"
+                        value={pageSizeInput}
+                        onChange={(e) => setPageSizeInput(e.target.value)}
+                        onBlur={commitPageSize}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                      />
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
