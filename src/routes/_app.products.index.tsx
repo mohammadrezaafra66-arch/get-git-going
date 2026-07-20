@@ -45,7 +45,8 @@ import {
   PRODUCT_STATUS_VARIANTS,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products/constants";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { fetchSettlementTypes, fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 import { ProductTimelineDialog } from "@/components/products/ProductTimelineDialog";
@@ -221,6 +222,53 @@ function ProductsPage() {
   });
   const thumbnailFor = (id: string) => thumbnailsQ.data?.get(id);
 
+  // Sale-price column: settlement-term selector + batched price lookup.
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("__base");
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
+    staleTime: 300_000,
+  });
+  const salePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 300_000,
+  });
+  // "primary" price type = first active by sort_order (نقدی), matching the
+  // sort_order convention used elsewhere.
+  const primaryPriceTypeId = salePriceTypesQ.data?.[0]?.id ?? null;
+  const primaryPriceTypeTitle = salePriceTypesQ.data?.[0]?.title ?? "";
+
+  const pricesQ = useQuery({
+    enabled: visibleIds.length > 0 && !!primaryPriceTypeId,
+    queryKey: ["product-list-prices", visibleIds, primaryPriceTypeId, settlementTypeId],
+    queryFn: async () => {
+      let pq = supabase
+        .from("product_computed_prices")
+        .select("product_id, rounded_sale_price, final_sale_price")
+        .eq("sale_price_type_id", primaryPriceTypeId as string)
+        .in("product_id", visibleIds);
+      pq =
+        settlementTypeId === "__base"
+          ? pq.is("settlement_type_id", null)
+          : pq.eq("settlement_type_id", settlementTypeId);
+      const { data: rows, error } = await pq;
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const r of rows ?? []) {
+        const row = r as {
+          product_id: string;
+          rounded_sale_price: number | null;
+          final_sale_price: number | null;
+        };
+        const price = row.rounded_sale_price ?? row.final_sale_price ?? null;
+        if (price != null) map.set(row.product_id, Number(price));
+      }
+      return map;
+    },
+  });
+  const priceFor = (id: string): number | null => pricesQ.data?.get(id) ?? null;
+
   const onFiltersChange = (next: ProductFilterState) => {
     setFilters(next);
     setPage(0);
@@ -294,6 +342,28 @@ function ProductsPage() {
         />
       ) : (
         <RecentPurchaseGroup productIds={(data?.rows ?? []).map((p) => p.id)}>
+          {/* Settlement-term selector for the sale-price column */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">نوع تسویه (قیمت فروش):</span>
+            <Select value={settlementTypeId} onValueChange={setSettlementTypeId}>
+              <SelectTrigger className="h-8 w-[180px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__base">قیمت پایه</SelectItem>
+                {(settlementTypesQ.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {primaryPriceTypeTitle && (
+              <span className="text-[11px] text-muted-foreground">
+                (نوع قیمت: {primaryPriceTypeTitle})
+              </span>
+            )}
+          </div>
           {/* Desktop table */}
           <Card className="hidden md:block">
             <CardContent className="p-0">
@@ -312,6 +382,7 @@ function ProductsPage() {
                       <th className="p-3 font-medium">نوع / ارز</th>
                       <th className="p-3 font-medium">موجودی</th>
                       <th className="p-3 font-medium">خرید اخیر</th>
+                      <th className="p-3 font-medium">قیمت فروش</th>
                       <th className="p-3 font-medium">وضعیت</th>
                       <th className="p-3 font-medium">به‌روزرسانی</th>
                       <th className="p-3 font-medium">عملیات</th>
@@ -380,6 +451,13 @@ function ProductsPage() {
                         </td>
                         <td className="p-3">
                           <RecentPurchaseBadge productId={p.id} />
+                        </td>
+                        <td className="p-3 font-medium">
+                          {priceFor(p.id) != null ? (
+                            `${formatNumber(priceFor(p.id) as number)} ت`
+                          ) : (
+                            <span className="text-xs text-muted-foreground">قیمت ثبت نشده</span>
+                          )}
                         </td>
                         <td className="p-3">
                           <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>
@@ -504,6 +582,11 @@ function ProductsPage() {
                         {STOCK_STATUS_LABELS[p.stock_status]}
                       </Badge>
                       <RecentPurchaseBadge productId={p.id} />
+                      <span className="text-xs font-medium">
+                        {priceFor(p.id) != null
+                          ? `${formatNumber(priceFor(p.id) as number)} ت`
+                          : "قیمت ثبت نشده"}
+                      </span>
                     </div>
                     {canUpdate && (
                       <div className="flex gap-1">
