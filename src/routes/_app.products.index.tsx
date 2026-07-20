@@ -77,6 +77,31 @@ interface ProductRow {
   labels: { id: string; title: string; color: string }[];
 }
 
+const PRODUCT_SELECT = `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
+   brand:brands(id,name), category:categories(id,name),
+   product_label_links(label:product_labels(id,title,color))`;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeProduct(r: any): ProductRow {
+  return {
+    id: r.id,
+    name: r.name,
+    sku: r.sku,
+    product_type: r.product_type,
+    base_currency: r.base_currency,
+    stock_status: r.stock_status,
+    status: r.status,
+    updated_at: r.updated_at,
+    color: r.color ?? null,
+    capacity: r.capacity ?? null,
+    model: r.model ?? null,
+    brand: r.brand ?? null,
+    category: r.category ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    labels: (r.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
+  };
+}
+
 function ProductsPage() {
   const { roles } = useAuth();
   const canCreate = hasPermission(roles, "products", "create");
@@ -100,84 +125,177 @@ function ProductsPage() {
   // any change in filters resets page to 0
   const stableFilters = useMemo(() => ({ ...filters, q: debouncedQ }), [filters, debouncedQ]);
 
+  // Sort + settlement-term selectors (settlement affects price-based sorts too).
+  const [sortMode, setSortMode] = useSessionStorageState<string>("products:list:sort", "default");
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("__base");
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
+    staleTime: 300_000,
+  });
+  const salePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 300_000,
+  });
+  // "primary" price type = first active by sort_order (نقدی).
+  const primaryPriceTypeId = salePriceTypesQ.data?.[0]?.id ?? null;
+  const primaryPriceTypeTitle = salePriceTypesQ.data?.[0]?.title ?? "";
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["products", stableFilters, page, pageSize],
+    queryKey: [
+      "products",
+      stableFilters,
+      page,
+      pageSize,
+      sortMode,
+      settlementTypeId,
+      primaryPriceTypeId,
+    ],
     queryFn: async () => {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
-      let query = supabase
-        .from("products")
-        .select(
-          `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
-           brand:brands(id,name), category:categories(id,name),
-           product_label_links(label:product_labels(id,title,color))`,
-          { count: "exact" },
-        )
-        .order("updated_at", { ascending: false })
-        .range(from, to);
-
+      // Resolve text-search ids once (shared by both code paths).
+      let textIds: string[] | null = null;
+      let textFallback = false;
       if (stableFilters.q.trim()) {
         const term = stableFilters.q.trim().replace(/[%_]/g, "");
-        // Use server-side multi-field search RPC to also match brand, category,
-        // model, color, capacity, primary_spec, and dynamic attribute values.
         const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
           p_term: term,
           p_limit: 500,
         });
         if (idsErr) {
-          // Fallback to legacy name/sku search if RPC is unavailable
-          query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+          textFallback = true;
         } else {
-          const ids = (idsData ?? []).map((r: { id: string }) => r.id);
-          if (ids.length === 0) {
-            return { rows: [] as ProductRow[], total: 0 };
-          }
-          query = query.in("id", ids);
+          textIds = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (textIds.length === 0) return { rows: [] as ProductRow[], total: 0 };
         }
       }
-      if (stableFilters.brand_id) query = query.eq("brand_id", stableFilters.brand_id);
-      if (stableFilters.category_id) query = query.eq("category_id", stableFilters.category_id);
-      if (stableFilters.product_type) query = query.eq("product_type", stableFilters.product_type);
-      if (stableFilters.base_currency)
-        query = query.eq("base_currency", stableFilters.base_currency);
-      if (stableFilters.stock_status) query = query.eq("stock_status", stableFilters.stock_status);
-      if (stableFilters.status) query = query.eq("status", stableFilters.status);
-      if (stableFilters.color) query = query.eq("color", stableFilters.color);
-      if (stableFilters.capacity) query = query.eq("capacity", stableFilters.capacity);
-      if (stableFilters.model) query = query.eq("model", stableFilters.model);
 
-      const { data: rows, error, count } = await query;
-      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const applyFilters = (qb: any) => {
+        if (textIds) qb = qb.in("id", textIds);
+        else if (textFallback && stableFilters.q.trim()) {
+          const term = stableFilters.q.trim().replace(/[%_]/g, "");
+          qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+        }
+        if (stableFilters.brand_id) qb = qb.eq("brand_id", stableFilters.brand_id);
+        if (stableFilters.category_id) qb = qb.eq("category_id", stableFilters.category_id);
+        if (stableFilters.product_type) qb = qb.eq("product_type", stableFilters.product_type);
+        if (stableFilters.base_currency) qb = qb.eq("base_currency", stableFilters.base_currency);
+        if (stableFilters.stock_status) qb = qb.eq("stock_status", stableFilters.stock_status);
+        if (stableFilters.status) qb = qb.eq("status", stableFilters.status);
+        if (stableFilters.color) qb = qb.eq("color", stableFilters.color);
+        if (stableFilters.capacity) qb = qb.eq("capacity", stableFilters.capacity);
+        if (stableFilters.model) qb = qb.eq("model", stableFilters.model);
+        return qb;
+      };
 
-      let normalized: ProductRow[] = (rows ?? []).map((r) => {
-        const row = r as any;
-        return {
-          id: row.id,
-          name: row.name,
-          sku: row.sku,
-          product_type: row.product_type,
-          base_currency: row.base_currency,
-          stock_status: row.stock_status,
-          status: row.status,
-          updated_at: row.updated_at,
-          color: row.color ?? null,
-          capacity: row.capacity ?? null,
-          model: row.model ?? null,
-          brand: row.brand ?? null,
-          category: row.category ?? null,
-          labels: (row.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
-        };
-      });
+      const isRankSort =
+        sortMode === "cheapest" || sortMode === "expensive" || sortMode === "most_viewed";
 
-      // فیلتر برچسب‌ها سمت کلاینت (چون m2m)
-      if (stableFilters.label_ids.length > 0) {
-        normalized = normalized.filter((p) =>
-          stableFilters.label_ids.every((id) => p.labels.some((l) => l.id === id)),
-        );
+      // Default / newest: order + range on the products table (server-side).
+      if (!isRankSort) {
+        const orderCol = sortMode === "newest" ? "created_at" : "updated_at";
+        const query = applyFilters(
+          supabase.from("products").select(PRODUCT_SELECT, { count: "exact" }),
+        )
+          .order(orderCol, { ascending: false })
+          .range(from, to);
+        const { data: rows, error, count } = await query;
+        if (error) throw error;
+        let normalized = (rows ?? []).map(normalizeProduct);
+        if (stableFilters.label_ids.length > 0) {
+          normalized = normalized.filter((p) =>
+            stableFilters.label_ids.every((id) => p.labels.some((l) => l.id === id)),
+          );
+        }
+        return { rows: normalized, total: count ?? 0 };
       }
 
-      return { rows: normalized, total: count ?? 0 };
+      // Cheapest / expensive / most-viewed: rank across ALL filtered ids, then
+      // paginate the sorted list (so pagination is correct, not per-page).
+      const { data: idRows, error: idErr } = await applyFilters(
+        supabase
+          .from("products")
+          .select("id, product_label_links(label:product_labels(id))")
+          .limit(5000),
+      );
+      if (idErr) throw idErr;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let allIds = (idRows ?? []).map((r: any) => r.id as string);
+      if (stableFilters.label_ids.length > 0) {
+        allIds = (idRows ?? [])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((r: any) =>
+            stableFilters.label_ids.every((id) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (r.product_label_links ?? []).some((x: any) => x.label?.id === id),
+            ),
+          )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((r: any) => r.id as string);
+      }
+
+      const rankMap = new Map<string, number>();
+      if (sortMode === "most_viewed") {
+        const { data: vc } = await (
+          supabase.rpc as unknown as (
+            fn: string,
+            args: { p_product_ids: string[] },
+          ) => Promise<{ data: { product_id: string; cnt: number }[] | null }>
+        )("get_product_view_counts_7d", { p_product_ids: allIds });
+        (vc ?? []).forEach((r) => rankMap.set(r.product_id, Number(r.cnt)));
+      } else if (primaryPriceTypeId) {
+        let pq = supabase
+          .from("product_computed_prices")
+          .select("product_id, rounded_sale_price, final_sale_price")
+          .eq("sale_price_type_id", primaryPriceTypeId)
+          .in("product_id", allIds);
+        pq =
+          settlementTypeId === "__base"
+            ? pq.is("settlement_type_id", null)
+            : pq.eq("settlement_type_id", settlementTypeId);
+        const { data: pr } = await pq;
+        (pr ?? []).forEach((r) => {
+          const row = r as {
+            product_id: string;
+            rounded_sale_price: number | null;
+            final_sale_price: number | null;
+          };
+          const v = row.rounded_sale_price ?? row.final_sale_price ?? null;
+          if (v != null) rankMap.set(row.product_id, Number(v));
+        });
+      }
+
+      // Products with a value first (asc for cheapest, desc otherwise);
+      // products with no price / no views go to the END.
+      const dir = sortMode === "cheapest" ? 1 : -1;
+      const sorted = [...allIds].sort((a, b) => {
+        const va = rankMap.get(a);
+        const vb = rankMap.get(b);
+        if (va !== undefined && vb !== undefined) return (va - vb) * dir;
+        if (va !== undefined) return -1;
+        if (vb !== undefined) return 1;
+        return 0;
+      });
+
+      const total = sorted.length;
+      const pageIds = sorted.slice(from, to + 1);
+      if (pageIds.length === 0) return { rows: [] as ProductRow[], total };
+
+      const { data: rows, error } = await supabase
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .in("id", pageIds);
+      if (error) throw error;
+      const byId = new Map<string, ProductRow>();
+      for (const r of rows ?? []) {
+        const n = normalizeProduct(r);
+        byId.set(n.id, n);
+      }
+      return { rows: pageIds.map((id) => byId.get(id)).filter(Boolean) as ProductRow[], total };
     },
   });
 
@@ -222,23 +340,7 @@ function ProductsPage() {
   });
   const thumbnailFor = (id: string) => thumbnailsQ.data?.get(id);
 
-  // Sale-price column: settlement-term selector + batched price lookup.
-  const [settlementTypeId, setSettlementTypeId] = useState<string>("__base");
-  const settlementTypesQ = useQuery({
-    queryKey: ["settlement-types-active"],
-    queryFn: () => fetchSettlementTypes(true),
-    staleTime: 300_000,
-  });
-  const salePriceTypesQ = useQuery({
-    queryKey: ["sale-price-types-active"],
-    queryFn: () => fetchSalePriceTypes(true),
-    staleTime: 300_000,
-  });
-  // "primary" price type = first active by sort_order (نقدی), matching the
-  // sort_order convention used elsewhere.
-  const primaryPriceTypeId = salePriceTypesQ.data?.[0]?.id ?? null;
-  const primaryPriceTypeTitle = salePriceTypesQ.data?.[0]?.title ?? "";
-
+  // Sale-price column values for the visible page (settlement-aware).
   const pricesQ = useQuery({
     enabled: visibleIds.length > 0 && !!primaryPriceTypeId,
     queryKey: ["product-list-prices", visibleIds, primaryPriceTypeId, settlementTypeId],
@@ -344,6 +446,25 @@ function ProductsPage() {
         <RecentPurchaseGroup productIds={(data?.rows ?? []).map((p) => p.id)}>
           {/* Settlement-term selector for the sale-price column */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">مرتب‌سازی:</span>
+            <Select
+              value={sortMode}
+              onValueChange={(v) => {
+                setSortMode(v);
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">پیش‌فرض</SelectItem>
+                <SelectItem value="cheapest">ارزان‌ترین</SelectItem>
+                <SelectItem value="expensive">گران‌ترین</SelectItem>
+                <SelectItem value="most_viewed">پربازدیدترین (۷ روز)</SelectItem>
+                <SelectItem value="newest">جدیدترین</SelectItem>
+              </SelectContent>
+            </Select>
             <span className="text-xs text-muted-foreground">نوع تسویه (قیمت فروش):</span>
             <Select value={settlementTypeId} onValueChange={setSettlementTypeId}>
               <SelectTrigger className="h-8 w-[180px] text-xs">
