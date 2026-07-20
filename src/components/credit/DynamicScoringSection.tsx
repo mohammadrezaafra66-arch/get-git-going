@@ -101,9 +101,7 @@ export function DynamicScoringSection({
   const salespersonAllocQ = useSalespersonLatestAllocation(
     entityType === "salesperson" ? entityId : undefined,
   );
-  const realtimeQ = useCustomerRealtimeCredit(
-    entityType === "customer" ? entityId : undefined,
-  );
+  const realtimeQ = useCustomerRealtimeCredit(entityType === "customer" ? entityId : undefined);
   const upsert = useUpsertEntityScore();
 
   // Realtime: when weights or params change, or today's allocation is rewritten,
@@ -145,14 +143,12 @@ export function DynamicScoringSection({
   const [draftActual, setDraftActual] = useState<Record<string, number>>({});
 
   const savedByParam = useMemo(() => {
-    const map: Record<
-      string,
-      { raw_score: number; actual_value: number | null }
-    > = {};
+    const map: Record<string, { raw_score: number; actual_value: number | null }> = {};
     (scoresQ.data ?? []).forEach((s) => {
       map[s.parameter_id] = {
         raw_score: Number(s.raw_score),
-        actual_value: s.actual_value === null || s.actual_value === undefined ? null : Number(s.actual_value),
+        actual_value:
+          s.actual_value === null || s.actual_value === undefined ? null : Number(s.actual_value),
       };
     });
     return map;
@@ -218,8 +214,7 @@ export function DynamicScoringSection({
       },
       {
         onSuccess: () => toast.success("امتیاز ذخیره شد"),
-        onError: (e) =>
-          toast.error(`خطا در ذخیره: ${e instanceof Error ? e.message : "ناشناخته"}`),
+        onError: (e) => toast.error(`خطا در ذخیره: ${e instanceof Error ? e.message : "ناشناخته"}`),
       },
     );
   };
@@ -259,7 +254,10 @@ export function DynamicScoringSection({
                 <Sparkles className="h-4 w-4 text-green-600" />
                 سقف اعتبار — محاسبه زنده
               </span>
-              <Badge variant="outline" className="text-green-700 border-green-500 text-[10px] gap-1">
+              <Badge
+                variant="outline"
+                className="text-green-700 border-green-500 text-[10px] gap-1"
+              >
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block animate-pulse" />
                 زنده
               </Badge>
@@ -269,14 +267,18 @@ export function DynamicScoringSection({
               <span className="text-sm font-normal text-muted-foreground mr-2">ریال</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span>امتیاز وزنی: {toFaDigits(Number(realtimeQ.data.weighted_score ?? 0).toFixed(3))}</span>
+              <span>
+                امتیاز وزنی: {toFaDigits(Number(realtimeQ.data.weighted_score ?? 0).toFixed(3))}
+              </span>
               <span>·</span>
               <span>
                 {toFaDigits(realtimeQ.data.params_evaluated)} از{" "}
                 {toFaDigits(realtimeQ.data.params_active)} پارامتر ارزیابی شده
               </span>
               <span>·</span>
-              <Badge className={`text-[10px] ${bindingLabel(realtimeQ.data.binding_constraint).cls}`}>
+              <Badge
+                className={`text-[10px] ${bindingLabel(realtimeQ.data.binding_constraint).cls}`}
+              >
                 {bindingLabel(realtimeQ.data.binding_constraint).label}
               </Badge>
             </div>
@@ -284,7 +286,8 @@ export function DynamicScoringSection({
               <div className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span>
-                  سرمایه از تاریخ {formatDateTimeFa(realtimeQ.data.capital_date_used)} (قدیمی) استفاده شده
+                  سرمایه از تاریخ {formatDateTimeFa(realtimeQ.data.capital_date_used)} (قدیمی)
+                  استفاده شده
                 </span>
               </div>
             )}
@@ -328,8 +331,7 @@ export function DynamicScoringSection({
               const current = draftActual[p.id] ?? 0;
               const saved = savedByParam[p.id];
               const savedActual = saved ? initialActualFor(p, saved) : undefined;
-              const dirty =
-                savedActual === undefined || Math.abs(current - savedActual) > 1e-9;
+              const dirty = savedActual === undefined || Math.abs(current - savedActual) > 1e-9;
               const bd = breakdownByParam[p.id];
               const normalized = computeNormalized(p, current);
               const clipped = isClippedFor(p, current);
@@ -338,10 +340,7 @@ export function DynamicScoringSection({
                 setDraftActual((d) => ({ ...d, [p.id]: Number.isFinite(v) ? v : 0 }));
 
               return (
-                <div
-                  key={p.id}
-                  className="rounded-md border p-3 flex flex-col gap-2"
-                >
+                <div key={p.id} className="rounded-md border p-3 flex flex-col gap-2">
                   <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                     <div className="sm:w-56 min-w-0">
                       <div className="font-medium text-sm flex items-center gap-2 flex-wrap">
@@ -381,6 +380,27 @@ export function DynamicScoringSection({
                           </div>
                           <div className="text-sm font-mono w-14 text-center">
                             {toFaDigits(Math.round(current))}
+                          </div>
+                        </div>
+                      )}
+
+                      {p.input_type === "score_input" && (
+                        <div className="space-y-1">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            dir="ltr"
+                            className="text-left font-mono w-24"
+                            disabled={disabled}
+                            value={String(Math.round(current))}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^\d]/g, "");
+                              const n = raw ? Number(raw) : 0;
+                              setVal(Math.min(100, Math.max(0, n)));
+                            }}
+                          />
+                          <div className="text-[11px] text-muted-foreground">
+                            {p.input_hint ?? "عددی بین ۰ تا ۱۰۰"}
                           </div>
                         </div>
                       )}
