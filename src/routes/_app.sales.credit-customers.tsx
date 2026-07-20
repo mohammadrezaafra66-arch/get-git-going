@@ -503,7 +503,7 @@ function FiltersForm(p: FiltersFormProps) {
             <Input
               value={p.name}
               onChange={(e) => p.setName(e.target.value)}
-              placeholder="جستجوی نام..."
+              placeholder="جستجوی نام یا کد آسان..."
               className="pr-8"
             />
           </div>
