@@ -54,6 +54,25 @@ function NewQuotePage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("");
+  const [stockConfirmed, setStockConfirmed] = useState(false);
+  // Reset the out-of-stock confirmation whenever the item set changes.
+  useEffect(() => {
+    setStockConfirmed(false);
+  }, [items]);
+  const { data: settlementTypes = [] } = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("settlement_types")
+        .select("id, title")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 10 * 60_000,
+  });
 
   const totals = useMemo(() => computeTotals(items), [items]);
   const debouncedCustomerSearch = useDebounce(customerSearch, 350);
@@ -120,6 +139,9 @@ function NewQuotePage() {
       if (errs.length > 0) {
         throw new Error(errs[0].message);
       }
+      if (!settlementTypeId) {
+        throw new Error("نوع تسویه را انتخاب کنید.");
+      }
 
       const itemsPayload = items.map((it) => ({
         product_id: it.product_id,
@@ -149,6 +171,7 @@ function NewQuotePage() {
         p_discount_amount: totals.discount_amount,
         p_final_amount: totals.final_amount,
         p_items: itemsPayload,
+        p_settlement_type_id: settlementTypeId,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
@@ -163,6 +186,37 @@ function NewQuotePage() {
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور."),
   });
+
+  // J-4: soft out-of-stock guard — warn once, then allow an explicit re-click
+  // (e.g. deliberately quoting in-transit goods).
+  const handleSubmit = async () => {
+    if (!stockConfirmed) {
+      const pids = items
+        .filter((it) => it.source === "product_price" && it.product_id)
+        .map((it) => it.product_id as string);
+      if (pids.length > 0) {
+        const { data: stockRows } = await supabase
+          .from("products")
+          .select("id, name, stock_status")
+          .in("id", pids);
+        const unavailable = (stockRows ?? []).filter(
+          (r) => (r as { stock_status?: string }).stock_status === "unavailable",
+        );
+        if (unavailable.length > 0) {
+          toast.warning(
+            `کالای ناموجود: ${unavailable
+              .map((r) => (r as { name?: string }).name ?? "؟")
+              .join(
+                "، ",
+              )}. اگر عمداً (مثلاً کالای در راه) ثبت می‌کنید، دوباره «ثبت پیش‌فاکتور» را بزنید.`,
+          );
+          setStockConfirmed(true);
+          return;
+        }
+      }
+    }
+    saveMutation.mutate();
+  };
 
   return (
     <div className="space-y-5">
@@ -251,6 +305,31 @@ function NewQuotePage() {
                 onChange={(v) => setExpiresAt(v ?? "")}
                 placeholder="انتخاب تاریخ اعتبار"
               />
+            </div>
+            <div className="space-y-1.5 md:col-span-1">
+              <Label htmlFor="settlement_type">نوع تسویه *</Label>
+              <Select
+                value={settlementTypeId}
+                onValueChange={(v) => {
+                  setSettlementTypeId(v);
+                  if (items.some((it) => it.source === "product_price")) {
+                    toast.info(
+                      "با تغییر نوع تسویه، کف قیمت هر آیتم تغییر می‌کند؛ قیمت آیتم‌ها را بازبینی کنید.",
+                    );
+                  }
+                }}
+              >
+                <SelectTrigger id="settlement_type">
+                  <SelectValue placeholder="انتخاب نوع تسویه" />
+                </SelectTrigger>
+                <SelectContent>
+                  {settlementTypes.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="customer_note">توضیحات مشتری</Label>
@@ -387,7 +466,7 @@ function NewQuotePage() {
                 انصراف
               </Button>
               <Button
-                onClick={() => saveMutation.mutate()}
+                onClick={handleSubmit}
                 disabled={saveMutation.isPending || items.length === 0}
               >
                 {saveMutation.isPending ? (
@@ -616,8 +695,18 @@ function ProductTab(props: {
                     stock_status: "available" | "unavailable" | "limited" | "unknown";
                     labels?: Array<{
                       label:
-                        | { id: string; title: string; color: string | null; visibility?: string | null }
-                        | Array<{ id: string; title: string; color: string | null; visibility?: string | null }>
+                        | {
+                            id: string;
+                            title: string;
+                            color: string | null;
+                            visibility?: string | null;
+                          }
+                        | Array<{
+                            id: string;
+                            title: string;
+                            color: string | null;
+                            visibility?: string | null;
+                          }>
                         | null;
                     }>;
                   }) => {
@@ -626,8 +715,14 @@ function ProductTab(props: {
                     const labelList = (p.labels ?? [])
                       .map((row) => (Array.isArray(row.label) ? row.label[0] : row.label))
                       .filter(
-                        (l): l is { id: string; title: string; color: string | null; visibility?: string | null } =>
-                          !!l,
+                        (
+                          l,
+                        ): l is {
+                          id: string;
+                          title: string;
+                          color: string | null;
+                          visibility?: string | null;
+                        } => !!l,
                       );
                     return (
                       <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
@@ -679,7 +774,9 @@ function ProductTab(props: {
                                       key={l.id}
                                       className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px]"
                                       style={
-                                        l.color ? { borderColor: l.color, color: l.color } : undefined
+                                        l.color
+                                          ? { borderColor: l.color, color: l.color }
+                                          : undefined
                                       }
                                     >
                                       <span

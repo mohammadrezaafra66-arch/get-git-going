@@ -8295,6 +8295,7 @@ export type Database = {
           id: string
           quote_number: string
           salesperson_id: string | null
+          settlement_type_id: string | null
           status: Database["public"]["Enums"]["sales_quote_status"]
           subtotal_amount: number
           updated_at: string
@@ -8313,6 +8314,7 @@ export type Database = {
           id?: string
           quote_number: string
           salesperson_id?: string | null
+          settlement_type_id?: string | null
           status?: Database["public"]["Enums"]["sales_quote_status"]
           subtotal_amount?: number
           updated_at?: string
@@ -8331,6 +8333,7 @@ export type Database = {
           id?: string
           quote_number?: string
           salesperson_id?: string | null
+          settlement_type_id?: string | null
           status?: Database["public"]["Enums"]["sales_quote_status"]
           subtotal_amount?: number
           updated_at?: string
