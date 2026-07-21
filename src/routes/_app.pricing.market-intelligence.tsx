@@ -23,6 +23,7 @@ import { DemandGrowthCard } from "@/components/management/market-intelligence/De
 import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
 import { HotBrandsCategoriesCard } from "@/components/management/market-intelligence/HotBrandsCategoriesCard";
 import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
+import { WhatsappTopProductsCard } from "@/components/management/market-intelligence/WhatsappTopProductsCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 
 export const Route = createFileRoute("/_app/pricing/market-intelligence")({
@@ -144,6 +145,12 @@ function MarketIntelligencePage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <HotBrandsCategoriesCard days={days} />
         <SellerFavoritesCard days={days} />
+      </div>
+
+      {/* External WhatsApp-platform customer-demand data (read-only), alongside
+          the internal usage-based cards above — clearly labeled as a distinct source. */}
+      <div className="grid grid-cols-1 gap-4">
+        <WhatsappTopProductsCard />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
