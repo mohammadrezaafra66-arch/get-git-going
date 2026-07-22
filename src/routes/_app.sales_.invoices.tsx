@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toFaDigits, formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { InvoiceAccountingMarkers } from "@/components/invoices/InvoiceAccountingMarkers";
 
 export const Route = createFileRoute("/_app/sales_/invoices")({
   beforeLoad: async () => {
@@ -40,7 +41,7 @@ function InvoicesListPage() {
       let q = supabase
         .from("invoices")
         .select(
-          "id, total_amount, status, created_at, created_by, customer:customers(name), price_type:sale_price_types(title)",
+          "id, total_amount, status, created_at, created_by, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by, customer:customers(name), price_type:sale_price_types(title)",
           { count: "exact" },
         )
         .eq("type", "pre_invoice")
@@ -92,6 +93,7 @@ function InvoicesListPage() {
                   <TableHead>جمع کل</TableHead>
                   <TableHead>تاریخ</TableHead>
                   <TableHead>وضعیت</TableHead>
+                  <TableHead>حسابداری</TableHead>
                   <TableHead className="text-left">عملیات</TableHead>
                 </TableRow>
               </TableHeader>
@@ -104,6 +106,8 @@ function InvoicesListPage() {
                     created_at: string;
                     customer: { name: string } | null;
                     price_type: { title: string } | null;
+                    accounting_registered_at: string | null;
+                    accounting_sent_at: string | null;
                   };
                   return (
                     <TableRow key={row.id}>
@@ -119,6 +123,16 @@ function InvoicesListPage() {
                           {row.status === "draft" ? "پیش‌نویس" : row.status}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <InvoiceAccountingMarkers
+                          invoiceId={row.id}
+                          state={{
+                            accounting_registered_at: row.accounting_registered_at,
+                            accounting_sent_at: row.accounting_sent_at,
+                          }}
+                          invalidateKeys={[["invoices"]]}
+                        />
+                      </TableCell>
                       <TableCell className="text-left">
                         <Button asChild size="sm" variant="ghost">
                           <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: row.id }}>
@@ -131,7 +145,7 @@ function InvoicesListPage() {
                 })}
                 {!isFetching && (data?.rows.length ?? 0) === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
                       پیش‌فاکتوری یافت نشد
                     </TableCell>
                   </TableRow>

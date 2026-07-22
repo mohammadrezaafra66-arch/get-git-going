@@ -3915,6 +3915,10 @@ export type Database = {
       }
       invoices: {
         Row: {
+          accounting_registered_at: string | null
+          accounting_registered_by: string | null
+          accounting_sent_at: string | null
+          accounting_sent_by: string | null
           actual_settlement_date: string | null
           commitment_confirmed: boolean
           created_at: string
@@ -3944,6 +3948,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accounting_registered_at?: string | null
+          accounting_registered_by?: string | null
+          accounting_sent_at?: string | null
+          accounting_sent_by?: string | null
           actual_settlement_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string
@@ -3973,6 +3981,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accounting_registered_at?: string | null
+          accounting_registered_by?: string | null
+          accounting_sent_at?: string | null
+          accounting_sent_by?: string | null
           actual_settlement_date?: string | null
           commitment_confirmed?: boolean
           created_at?: string

@@ -37,7 +37,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toFaDigits, formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { toFaDigits, formatNumber, formatDateFa, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { InvoiceAccountingMarkers } from "@/components/invoices/InvoiceAccountingMarkers";
 
 export const Route = createFileRoute("/_app/sales_/invoices_/$invoiceId")({
   beforeLoad: async () => {
@@ -111,7 +112,7 @@ function InvoiceDetailPage() {
       const { data, error } = await supabase
         .from("invoices")
         .select(
-          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, product_video_required, created_at, customer:customers(id, name), price_type:sale_price_types(title)",
+          "id, number, type, invoice_type, status, total_amount, subtotal, discount_amount, tax_amount, issue_date, due_date, notes, product_video_required, created_at, accounting_registered_at, accounting_sent_at, customer:customers(id, name), price_type:sale_price_types(title)",
         )
         .eq("id", invoiceId)
         .maybeSingle();
@@ -407,7 +408,23 @@ function InvoiceDetailPage() {
             <Field label="تخفیف">{formatNumber(Number(invoice.discount_amount))}</Field>
             <Field label="مالیات">{formatNumber(Number(invoice.tax_amount))}</Field>
             <Field label="جمع جزء">{formatNumber(Number(invoice.subtotal))}</Field>
+            <Field label="ثبت در حسابداری آسان">
+              {invoice.accounting_registered_at ? formatDateTimeFa(invoice.accounting_registered_at) : "—"}
+            </Field>
+            <Field label="ارسال برای مشتری">
+              {invoice.accounting_sent_at ? formatDateTimeFa(invoice.accounting_sent_at) : "—"}
+            </Field>
           </div>
+
+          {/* مورد ۱۳۵ — همان دو مارکر، قابل تغییر از صفحهٔ جزئیات */}
+          <InvoiceAccountingMarkers
+            invoiceId={invoice.id}
+            state={{
+              accounting_registered_at: invoice.accounting_registered_at,
+              accounting_sent_at: invoice.accounting_sent_at,
+            }}
+            invalidateKeys={[["invoice", invoiceId], ["invoices"]]}
+          />
           {/* Notes — always shown, editable */}
           <div className="text-sm mt-2">
             <div className="flex items-center justify-between mb-1">
