@@ -87,6 +87,54 @@ Direct validation entrypoints:
 - Existing untracked docs and one migration belong to other work and must not be staged or modified by navigation phases.
 - No database migration may be created or applied during this navigation task.
 
+## Stage C Audit Before Phase 1
+
+Existing search findings:
+
+- The desktop Sidebar already has an inline Persian search input with a visible `Ctrl K` badge.
+- That search is not a command palette. No global `Ctrl+K` command dialog is wired.
+- Existing Sidebar search matches only the visible item label through `normalizeSearchText`.
+- `cmdk` and shadcn `Command` components exist, but are used in forms/selectors, not as global navigation.
+
+Scope decision:
+
+- Phase 4 should improve the existing Sidebar search instead of replacing it.
+- Phase 9 should add the actual global command palette because no global palette exists.
+
+## Stage C Phase 1
+
+Commit pending at this checkpoint.
+
+Changes:
+
+- Added `src/lib/navigation/types.ts`.
+- Added `src/lib/navigation/registry.ts`.
+- Added `src/lib/navigation/selectors.ts`.
+- Added `src/lib/navigation/search.ts`.
+- Converted `src/components/layout/nav-items.ts` into a compatibility adapter derived from `NAVIGATION_REGISTRY`.
+
+Registry invariant checks:
+
+- route count: 97
+- duplicate routes: none
+- duplicate generated IDs: none
+- `NAV_ITEMS` derived from Registry: yes
+- manual `NAV_ITEMS` array retained: no
+
+Validation:
+
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new errors
+- build: pass
+
+Notes:
+
+- No route URL changed.
+- No route guard changed.
+- No permission was broadened.
+- No migration was created or applied.
+- Existing UI should remain visually unchanged in Phase 1.
+
 ## Resume Point
 
-Resume at Stage C Phase 1.
+Resume at Stage C Phase 2.
