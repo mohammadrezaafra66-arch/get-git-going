@@ -107,7 +107,7 @@ function ReceiptsListPage() {
            receiver_name, receiver_phone, receiver_accounting_code, created_at, created_by,
            customer:customers(id, name, phone, accounting_code),
            destination_bank_account:bank_accounts!payment_receipts_destination_bank_account_id_fkey(id, title),
-           receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, name)`,
+           receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, full_name)`,
         )
         .order("created_at", { ascending: false })
         .limit(5000);
@@ -154,7 +154,9 @@ function ReceiptsListPage() {
           accounting_code: string | null;
         } | null;
         destination_bank_account: { title: string | null } | null;
-        receiver_party: { name: string | null } | null;
+        // external_parties stores the display name in `full_name`; selecting
+        // `name` made the whole export query fail.
+        receiver_party: { full_name: string | null } | null;
       };
 
       const typed = data as unknown as Row[];
@@ -180,8 +182,8 @@ function ReceiptsListPage() {
       const rows = typed.map((r) => {
         const receiverTarget = r.destination_bank_account?.title
           ? `بانک ما: ${r.destination_bank_account.title}`
-          : r.receiver_party?.name
-            ? `طرف خارجی: ${r.receiver_party.name}`
+          : r.receiver_party?.full_name
+            ? `طرف خارجی: ${r.receiver_party.full_name}`
             : r.receiver_name || "—";
         return {
           "تاریخ ثبت (شمسی)": isoToJalaliDisplay(r.created_at?.slice(0, 10)),
