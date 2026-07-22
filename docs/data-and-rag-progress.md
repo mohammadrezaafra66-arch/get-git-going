@@ -6,11 +6,73 @@ Branch: `feature/navigation-modernization`.
 | Phase | Status |
 |---|---|
 | 1 — Encoding corruption audit | **OK** (read-only, complete) |
-| 2 — QA test product cleanup | **STOPPED** — premise absent from this database |
-| 3 — Gamification wiring | NOT STARTED |
-| 4 — Knowledge RAG | NOT STARTED |
+| 2 — QA test product cleanup | **SUPERSEDED** by Phase A |
+| 3 — Gamification wiring | superseded by Phase B |
+| 4 — Knowledge RAG | superseded by Phase E |
+| A — Resolve the two blockers | **OK** |
+| B — Gamification wiring | NOT STARTED |
+| C — Re-entry worksheet | NOT STARTED |
+| D — Prevention guide | NOT STARTED |
+| E — Knowledge RAG | **BLOCKED** — zero clean documents (see A.2) |
 
-**RESUME AT PHASE 2** (decision required) **then PHASE 3.**
+**RESUME AT PHASE B.**
+
+---
+
+## PHASE A — Blockers resolved
+
+### A.1 The QA products live in the stale `postgres` database
+
+Three databases exist on this server: `afrakala` (146 MB), `afrakala_test`
+(127 MB), `postgres` (134 MB).
+
+| database | products | max SKU | `name LIKE 'QA-%'` |
+|---|---|---|---|
+| afrakala | 354 | AFK-2026-00359 | 0 |
+| afrakala_test | 354 | AFK-2026-00359 | 0 |
+| **postgres** | **374** | **AFK-2026-00379** | **20** |
+
+The 20 QA products are in `postgres`, with SKUs **`AFK-2026-00360`..`00379`**,
+created **2026-07-19**. The original task document's range
+(`AFK-2026-00402`..`00421`) is wrong — no such SKU exists in any database.
+
+Their names are corrupted too (`QA- ????? ??? 1` .. `20`), and the 2026-07-19
+creation date is a **third corruption event**, distinct from the 2026-07-11 and
+2026-05-24 runs Phase 1 identified.
+
+Nothing was deleted in any database. Whether the stale `postgres` database
+should be dropped is a separate decision for the user.
+
+### A.2 All 42 knowledge documents were seeded — deleted
+
+Every one of the 42 rows was: corrupt, `created_by` NULL, `category` `general`,
+`version` 1, `is_published` true, and inside the corruption window — in three
+batches of 14 (`16:56:58`, `19:30:52`, `19:39:34`). The original document's
+"~14 documents" was one batch of the three.
+
+| metric | value |
+|---|---|
+| total | 42 |
+| inside corruption window | 42 |
+| outside window | 0 |
+| corrupt | 42 |
+| with a human author | 0 |
+
+`knowledge_confirmations` is the only table referencing `knowledge_documents`
+(ON DELETE CASCADE) and holds **0 rows**, so nothing cascaded.
+
+Migration `20260722235000_143_remove_corrupted_seeded_knowledge_documents.sql`
+backed all 42 up to `public.knowledge_documents_backup_20260722`, then deleted
+exactly the rows proven both corrupt and inside the window. The migration
+aborts if those two sets disagree. Result: **42 deleted, 42 preserved in backup,
+0 remaining.**
+
+### E.1 decision, determined by A.2
+
+`knowledge_documents` now holds **0 rows**, therefore **0 clean documents**.
+Per E.1, the RAG feature is **BLOCKED** and must not be built: a retrieval
+system over an empty corpus can only ever answer "not found". It resumes once
+real documents are entered via `/knowledge/manage`.
 
 ---
 
