@@ -967,6 +967,13 @@ function ProductCard({
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Item 138 — prices stay hidden until «مشاهده کامل». Cards are keyed by
+  // product id, so a product that survives into the next search would keep its
+  // revealed state; collapse everything whenever a new search session starts.
+  useEffect(() => {
+    setDetailsOpen(false);
+  }, [searchSessionId]);
+
   // «مشاهده کامل» — reveals the full product details AND records the two
   // deliberate-intent events. Market Intelligence should count a price check
   // only when the user intentionally inspects a specific product, not merely
@@ -1191,8 +1198,14 @@ function ProductCard({
           </div>
         </div>
 
+        {/* Item 138 — every price in this card is gated behind «مشاهده کامل». */}
         <div className="rounded-md border border-border bg-muted/30 p-3">
-          {isUnavailable ? (
+          {!detailsOpen ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Eye className="h-3.5 w-3.5" />
+              برای مشاهده قیمت‌ها، مشاهده کامل را بزنید.
+            </div>
+          ) : isUnavailable ? (
             <div className="flex items-center gap-2 text-sm text-red-600">
               <PackageX className="h-4 w-4" />
               ناموجود — قیمت نمایش داده نمی‌شود
@@ -1248,7 +1261,7 @@ function ProductCard({
         <ObservatoryBadges snippet={observatorySnippet} />
 
         {/* Secondary prices grid — other sale price types (baseline rows). */}
-        {!isUnavailable && otherSaleTypes.length > 0 && (
+        {detailsOpen && !isUnavailable && otherSaleTypes.length > 0 && (
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {otherSaleTypes.map((p) => {
               const c = p.current_price != null ? Number(p.current_price) : null;
@@ -1297,7 +1310,7 @@ function ProductCard({
         )}
 
         {/* Per-settlement prices — one card per settlement term. */}
-        {!isUnavailable && settlementPrices.length > 0 && (
+        {detailsOpen && !isUnavailable && settlementPrices.length > 0 && (
           <div className="mt-1.5">
             <div className="mb-1 text-[10px] font-medium text-muted-foreground">
               قیمت بر اساس نوع تسویه
@@ -1352,8 +1365,9 @@ function ProductCard({
           </div>
         )}
 
-        {/* Alternative / recommended products with their 3 cheapest prices */}
-        <SalesProductRecommendations productId={product.id} />
+        {/* Alternative / recommended products with their 3 cheapest prices.
+            Gated too — it renders real sale prices of the suggested products. */}
+        {detailsOpen && <SalesProductRecommendations productId={product.id} />}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
@@ -1367,7 +1381,7 @@ function ProductCard({
             }}
           >
             <Eye className="ms-1 h-4 w-4" />
-            مشاهده کامل
+            {detailsOpen ? "بستن جزئیات" : "مشاهده کامل"}
             <ChevronDown
               className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
             />
