@@ -18,7 +18,7 @@ export interface ProductAuditDiff {
   attributes?: Record<string, { label: string; from: string | null; to: string | null }>;
 }
 
-const FIELD_LABELS: Record<string, string> = {
+export const FIELD_LABELS: Record<string, string> = {
   name: "نام محصول",
   brand_id: "برند",
   category_id: "دسته",

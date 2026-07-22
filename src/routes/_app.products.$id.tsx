@@ -2,12 +2,13 @@ import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Pencil, ArrowRight, UserPlus, Trash2, Loader2 } from "lucide-react";
+import { Pencil, ArrowRight, UserPlus, Trash2, Loader2, History } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ProductFieldHistoryDialog } from "@/components/products/ProductFieldHistoryDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -793,6 +794,8 @@ function RemoveOwnerButton({
 }
 
 function ProductHistoryCard({ productId }: { productId: string }) {
+  // مورد ۱۳۲.۲ — کارت خلاصهٔ فعلی حفظ می‌شود؛ dialog تاریخچهٔ دقیق کنارش اضافه شد.
+  const [fieldHistoryOpen, setFieldHistoryOpen] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["product-history", productId],
     queryFn: async () => {
@@ -826,7 +829,23 @@ function ProductHistoryCard({ productId }: { productId: string }) {
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <h3 className="text-sm font-semibold">تاریخچه تغییرات</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">تاریخچه تغییرات</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setFieldHistoryOpen(true)}
+          >
+            <History className="ms-1 h-3.5 w-3.5" />
+            تاریخچه دقیق تغییرات
+          </Button>
+        </div>
+        <ProductFieldHistoryDialog
+          productId={productId}
+          open={fieldHistoryOpen}
+          onOpenChange={setFieldHistoryOpen}
+        />
         {isLoading ? (
           <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
         ) : (data ?? []).length === 0 ? (
