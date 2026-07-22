@@ -25,6 +25,13 @@ import {
 } from "@/components/accounting/PaymentReceiptDocuments";
 import { extractReceiptFromBytes } from "@/lib/receipt-ocr-bytes.functions";
 import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
+import {
+  RECEIPT_TYPES,
+  RECEIPT_TYPE_FA,
+  RECEIPT_TYPE_HINT_FA,
+  requiresInvoiceLinks,
+  type ReceiptType,
+} from "@/lib/receipts/receipt-types";
 import { parseDateToGregorianIso, isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import {
@@ -188,7 +195,7 @@ function evaluateFormWarnings(values: {
 const schema = z
   .object({
     customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
-    receipt_type: z.enum(["payment", "prepayment"]),
+    receipt_type: z.enum(RECEIPT_TYPES),
     payer_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
     payer_phone: z.string().trim().max(30).optional().or(z.literal("")),
     payer_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
@@ -293,7 +300,7 @@ export function PaymentReceiptForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       customer_id: "",
-      receipt_type: "payment",
+      receipt_type: "invoice_payment",
       payer_name: "",
       payer_phone: "",
       payer_accounting_code: "",
@@ -623,7 +630,7 @@ export function PaymentReceiptForm() {
   // Open invoices for the selected customer
   const { data: customerInvoices = [] } = useQuery<InvoiceOption[]>({
     queryKey: ["receipt-form-invoices", watchedCustomerId],
-    enabled: !!watchedCustomerId && watchedReceiptType === "payment",
+    enabled: !!watchedCustomerId && requiresInvoiceLinks(watchedReceiptType),
     queryFn: async () => {
       const { data: invs, error } = await supabase
         .from("invoices")
@@ -708,7 +715,7 @@ export function PaymentReceiptForm() {
   const watchedPaymentDate = form.watch("payment_date");
   const suggestions = useMemo(() => {
     if (
-      watchedReceiptType !== "payment" ||
+      !requiresInvoiceLinks(watchedReceiptType) ||
       !watchedCustomerId ||
       !watchedAmount ||
       watchedAmount <= 0 ||
@@ -845,10 +852,12 @@ export function PaymentReceiptForm() {
       } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
-      // Front-end allocation validation (server has no constraint)
-      if (values.receipt_type === "payment") {
+      // Front-end allocation validation (server has no constraint).
+      // Only invoice_payment carries invoice links — the other three types are
+      // recorded without any allocation.
+      if (requiresInvoiceLinks(values.receipt_type)) {
         if (allocs.length === 0) {
-          throw new Error("حداقل یک پیش‌فاکتور برای اتصال انتخاب کنید");
+          throw new Error("برای پرداخت پیش‌فاکتور، حداقل یک پیش‌فاکتور انتخاب کنید");
         }
         const sum = allocs.reduce((s, a) => s + Number(a.amount), 0);
         if (sum <= 0) throw new Error("مبلغ تخصیص نامعتبر است");
@@ -939,8 +948,8 @@ export function PaymentReceiptForm() {
       if (error) throw error;
       const receiptId = (data as { id: string }).id;
 
-      // Insert links if payment type
-      if (values.receipt_type === "payment" && allocs.length > 0) {
+      // Insert links only for invoice_payment
+      if (requiresInvoiceLinks(values.receipt_type) && allocs.length > 0) {
         const linkRows = allocs.map((a) => ({
           receipt_id: receiptId,
           invoice_id: a.invoice_id,
@@ -976,7 +985,7 @@ export function PaymentReceiptForm() {
           },
           status: "pending_review",
           linked_invoices:
-            values.receipt_type === "payment"
+            requiresInvoiceLinks(values.receipt_type)
               ? allocs.map((a) => ({
                   invoice_id: a.invoice_id,
                   amount: Number(a.amount),
@@ -1180,7 +1189,7 @@ export function PaymentReceiptForm() {
               <Select
                 value={watchedReceiptType}
                 onValueChange={(v) =>
-                  form.setValue("receipt_type", v as "payment" | "prepayment", {
+                  form.setValue("receipt_type", v as ReceiptType, {
                     shouldValidate: true,
                   })
                 }
@@ -1189,19 +1198,20 @@ export function PaymentReceiptForm() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
-                  <SelectItem value="prepayment">پیش واریز: اعتبار مثبت</SelectItem>
+                  {RECEIPT_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {RECEIPT_TYPE_FA[t]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {watchedReceiptType === "payment"
-                  ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
-                  : "برای پیش‌واریز، نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان اعتبار مثبت مشتری ثبت می‌شود."}
+                {RECEIPT_TYPE_HINT_FA[watchedReceiptType]}
               </p>
             </div>
 
-            {/* اتصال به پیش‌فاکتورها */}
-            {watchedReceiptType === "payment" && (
+            {/* اتصال به پیش‌فاکتورها — فقط برای پرداخت پیش‌فاکتور */}
+            {requiresInvoiceLinks(watchedReceiptType) && (
               <div className="space-y-3 rounded-md border bg-muted/30 p-3">
                 {suggestions.length > 0 && (
                   <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
@@ -1879,18 +1889,19 @@ export function PaymentReceiptForm() {
               type="submit"
               disabled={
                 mutation.isPending ||
-                (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
+                (requiresInvoiceLinks(watchedReceiptType) &&
+                  (allocations.length === 0 || overAllocated))
               }
             >
               {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ثبت فیش
             </Button>
-            {watchedReceiptType === "payment" && allocations.length === 0 && (
+            {requiresInvoiceLinks(watchedReceiptType) && allocations.length === 0 && (
               <p className="text-xs text-destructive">
-                برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
+                برای پرداخت پیش‌فاکتور، حداقل یک پیش‌فاکتور انتخاب کنید.
               </p>
             )}
-            {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
+            {requiresInvoiceLinks(watchedReceiptType) && allocations.length > 0 && overAllocated && (
               <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
             )}
           </div>

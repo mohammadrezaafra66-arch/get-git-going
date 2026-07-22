@@ -11,6 +11,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
+import { receiptTypeLabel } from "@/lib/receipts/receipt-types";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -91,10 +92,6 @@ function ReceiptsListPage() {
     pending_review: "در انتظار بررسی",
     approved: "تأییدشده",
     rejected: "ردشده",
-  };
-  const RECEIPT_TYPE_FA: Record<string, string> = {
-    prepayment: "پیش واریز (اعتبار)",
-    debt_payment: "پرداخت بدهی",
   };
 
   async function handleExportExcel() {
@@ -205,7 +202,7 @@ function ReceiptsListPage() {
           "بانک مقصد": r.destination_bank ?? "",
           "مبلغ (تومان)": Number(r.amount),
           "شماره پیگیری": r.tracking_number,
-          "نوع فیش": RECEIPT_TYPE_FA[r.receipt_type] ?? r.receipt_type,
+          "نوع فیش": receiptTypeLabel(r.receipt_type),
           وضعیت: STATUS_FA[r.status] ?? r.status,
           "وضعیت ثبت سند": r.posting_status ?? "",
           "تاریخ ثبت سند (شمسی)": r.posted_at ? isoToJalaliDisplay(r.posted_at.slice(0, 10)) : "",
@@ -467,9 +464,7 @@ function ReceiptsListPage() {
                       <TableCell dir="ltr">{toFaDigits(row.tracking_number)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {row.receipt_type === "prepayment"
-                            ? "پیش واریز: اعتبار مثبت"
-                            : "پرداخت بدهی"}
+                          {receiptTypeLabel(row.receipt_type)}
                         </Badge>
                       </TableCell>
                       <TableCell>

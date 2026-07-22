@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
+import { receiptTypeLabel, requiresInvoiceLinks } from "@/lib/receipts/receipt-types";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -455,11 +456,7 @@ function ReceiptDetailPage() {
                   <Badge variant={STATUS_VARIANT[receipt.status] ?? "secondary"}>
                     {STATUS_LABEL[receipt.status] ?? receipt.status}
                   </Badge>
-                  <Badge variant="outline">
-                    {receipt.receipt_type === "prepayment"
-                      ? "پیش واریز: اعتبار مثبت"
-                      : "پرداخت بدهی"}
-                  </Badge>
+                  <Badge variant="outline">{receiptTypeLabel(receipt.receipt_type)}</Badge>
                   <span className="text-sm text-muted-foreground">
                     شماره پیگیری: <span dir="ltr">{toFaDigits(receipt.tracking_number)}</span>
                   </span>
@@ -599,7 +596,7 @@ function ReceiptDetailPage() {
                   </>
                 )}
 
-                {receipt.receipt_type === "payment" && (
+                {requiresInvoiceLinks(receipt.receipt_type) && (
                   <>
                     <Separator />
                     <h3 className="text-sm font-semibold">پیش‌فاکتورهای متصل</h3>
