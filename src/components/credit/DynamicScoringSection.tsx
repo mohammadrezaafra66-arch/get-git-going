@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { HelpHint } from "@/components/common/HelpHint";
+import { CreditZeroReasonPanel } from "@/components/credit/CreditZeroReasonPanel";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
@@ -302,6 +303,12 @@ export function DynamicScoringSection({
               </div>
             )}
           </div>
+        )}
+
+        {/* مورد ۱۳۳ — تشخیص علت صفر شدن سقف اعتبار (خودش تصمیم می‌گیرد که
+            در حالت عادی اصلاً رندر نشود). */}
+        {entityType === "customer" && realtimeQ.data && (
+          <CreditZeroReasonPanel data={realtimeQ.data} />
         )}
 
         {/* Summary */}

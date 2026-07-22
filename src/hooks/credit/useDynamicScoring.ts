@@ -3,7 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type EntityType = "customer" | "salesperson";
 
-export type ScoringInputType = "boolean" | "score_100" | "toman" | "months";
+// `score_input` (numeric text 0..100) was added to the DB check constraint by
+// migration 20260720120000_phase_e_payment_discipline_score100.sql but never
+// reached this union, which made the live branch in DynamicScoringSection look
+// unreachable to TypeScript.
+export type ScoringInputType = "boolean" | "score_100" | "toman" | "months" | "score_input";
 
 export interface ScoringParameter {
   id: string;
