@@ -1,6 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Loader2, PlayCircle, History, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  PlayCircle,
+  History,
+  RefreshCw,
+  AlertTriangle,
+  Info,
+  GraduationCap,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -176,12 +185,74 @@ function DynamicCapitalPage() {
     return (salespersonRows.data ?? []).length;
   }, [salespersonRows.data]);
 
+  // Item 141 — surface every zero-allocation cause at once, so the accountant
+  // knows exactly what to fix rather than seeing a silently empty table.
+  const allocationWarnings = useMemo(() => {
+    const rows = salespersonRows.data ?? [];
+    const out: string[] = [];
+
+    if (rows.length === 0) {
+      out.push(
+        "هیچ کارشناسی در این snapshot تخصیص نگرفته است؛ بررسی کنید پارامترهای امتیازدهی کارشناسان تعریف و فعال شده باشند.",
+      );
+      return out;
+    }
+    if (rows.every((r) => r.weighted_score <= 0)) {
+      out.push(
+        "امتیاز وزنی همهٔ کارشناسان صفر است؛ پارامترهای امتیازدهی کارشناس و وزن‌های دورهٔ جاری را بررسی کنید.",
+      );
+    } else if (rows.some((r) => r.weighted_score <= 0)) {
+      const names = rows
+        .filter((r) => r.weighted_score <= 0)
+        .map((r) => r.full_name ?? "بدون نام")
+        .join("، ");
+      out.push(`امتیاز این کارشناسان صفر است و سهمی دریافت نکرده‌اند: ${names}`);
+    }
+    if (rows.some((r) => r.allocated_capital <= 0)) {
+      out.push(
+        "برای بعضی کارشناسان سرمایه‌ای تخصیص نیافته است؛ مشتریان آن‌ها سقف اعتبار صفر خواهند داشت.",
+      );
+    }
+    if (totalAllocated <= 0) {
+      out.push("مجموع تخصیص صفر است؛ سرمایه کل یا امتیازها را بررسی کنید.");
+    }
+    return out;
+  }, [salespersonRows.data, totalAllocated]);
+
   return (
     <div className="container mx-auto p-4 space-y-6" dir="rtl">
       <PageHeader
-        title="تخصیص سرمایه پویا"
-        description="محاسبه تخصیص سرمایه روزانه بر اساس امتیازدهی پویا کارشناسان و مشتریان"
+        title="تخصیص سرمایه روزانه"
+        description="صفحهٔ رسمی ثبت سرمایه روز و تقسیم آن بین کارشناسان و مشتریان"
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/sales/customers/credit-allocation-guide">
+              <GraduationCap className="ml-2 h-4 w-4" />
+              آموزش تخصیص اعتبار
+            </Link>
+          </Button>
+        }
       />
+
+      {/* Item 141 — plain-language explanation of what this page does. */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="p-4 text-sm leading-7">
+          <p className="font-medium">این صفحه در سه گام کار می‌کند:</p>
+          <ol className="mt-2 space-y-1">
+            <li>
+              <span className="font-medium">۱)</span> حسابدار سرمایه کل امروز را وارد می‌کند.
+            </li>
+            <li>
+              <span className="font-medium">۲)</span> سامانه سرمایه را بین کارشناسان فروش، بر اساس
+              امتیاز هر کارشناس، تقسیم می‌کند.
+            </li>
+            <li>
+              <span className="font-medium">۳)</span> سهم هر کارشناس بین مشتریان همان کارشناس، بر
+              اساس امتیاز هر مشتری، تقسیم می‌شود.
+            </li>
+          </ol>
+        </CardContent>
+      </Card>
 
       {/* فرم اجرا */}
       <Card>
@@ -295,6 +366,33 @@ function DynamicCapitalPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Item 141 — zero / missing allocation warnings. */}
+      {!activeSettingId && !alreadyExists && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>هنوز سرمایه‌ای برای این تاریخ ثبت نشده است</AlertTitle>
+          <AlertDescription className="text-xs leading-6">
+            تا زمانی که سرمایه روز ثبت نشود، سقف اعتبار هیچ مشتری‌ای محاسبه نمی‌شود.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {activeSettingId && !salespersonRows.isLoading && allocationWarnings.length > 0 && (
+        <Alert className="border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-300">
+            هشدارهای تخصیص
+          </AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc space-y-1 pe-4 text-xs leading-6">
+              {allocationWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* نتیجه snapshot فعال */}
       {activeSettingId && (

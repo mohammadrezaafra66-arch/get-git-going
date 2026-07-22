@@ -389,27 +389,10 @@ export const NAV_ITEMS: NavItem[] = [
     module: "accounting",
     group: "finance",
   },
-  {
-    to: "/accounting/customer-capital-allocations",
-    label: "تخصیص سرمایه مشتریان",
-    icon: Wallet,
-    module: "accounting",
-    group: "finance",
-  },
-  {
-    to: "/accounting/salesperson-capital-allocations",
-    label: "تخصیص سرمایه فروشندگان",
-    icon: Wallet,
-    module: "accounting",
-    group: "finance",
-  },
-  {
-    to: "/accounting/daily-capital",
-    label: "سرمایه روز",
-    icon: Coins,
-    module: "accounting",
-    group: "finance",
-  },
+  // Item 141 — the three legacy capital pages
+  // (/accounting/customer-capital-allocations, /accounting/salesperson-capital-allocations,
+  // /accounting/daily-capital) were removed from navigation. Their routes now
+  // redirect to /accounting/dynamic-capital, which is the single official page.
   {
     to: "/accounting/dynamic-capital",
     label: "تخصیص سرمایه پویا",

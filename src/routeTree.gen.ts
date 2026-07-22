@@ -163,6 +163,7 @@ import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bo
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesInvoicesInvoiceIdRouteImport } from './routes/_app.sales_.invoices_.$invoiceId'
 import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
+import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './routes/_app.sales_.customers_.credit-allocation-guide'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -1002,6 +1003,12 @@ const AppSalesCustomersCreditTrainingRoute =
     path: '/sales/customers/credit-training',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSalesCustomersCreditAllocationGuideRoute =
+  AppSalesCustomersCreditAllocationGuideRouteImport.update({
+    id: '/sales_/customers_/credit-allocation-guide',
+    path: '/sales/customers/credit-allocation-guide',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   id: '/sales_/customers_/create',
   path: '/sales/customers/create',
@@ -1360,6 +1367,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
@@ -1545,6 +1553,7 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
@@ -1735,6 +1744,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
+  '/_app/sales_/customers_/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/_app/sales_/invoices_/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
@@ -1925,6 +1935,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
@@ -2110,6 +2121,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
@@ -2299,6 +2311,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales_/customers_/create'
+    | '/_app/sales_/customers_/credit-allocation-guide'
     | '/_app/sales_/customers_/credit-training'
     | '/_app/sales_/invoices_/$invoiceId'
     | '/_app/sales_/invoices_/create'
@@ -3432,6 +3445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersCreditTrainingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/customers_/credit-allocation-guide': {
+      id: '/_app/sales_/customers_/credit-allocation-guide'
+      path: '/sales/customers/credit-allocation-guide'
+      fullPath: '/sales/customers/credit-allocation-guide'
+      preLoaderRoute: typeof AppSalesCustomersCreditAllocationGuideRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/create': {
       id: '/_app/sales_/customers_/create'
       path: '/sales/customers/create'
@@ -3977,6 +3997,7 @@ interface AppRouteChildren {
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesCustomersCreditAllocationGuideRoute: typeof AppSalesCustomersCreditAllocationGuideRoute
   AppSalesCustomersCreditTrainingRoute: typeof AppSalesCustomersCreditTrainingRoute
   AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
@@ -4104,6 +4125,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesCustomersCreditAllocationGuideRoute:
+    AppSalesCustomersCreditAllocationGuideRoute,
   AppSalesCustomersCreditTrainingRoute: AppSalesCustomersCreditTrainingRoute,
   AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRouteWithChildren,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,

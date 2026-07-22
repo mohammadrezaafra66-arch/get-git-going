@@ -41,7 +41,7 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
     "/accounting/receipts",
     "/accounting/receivables",
     "/accounting/payables",
-    "/accounting/daily-capital",
+    "/accounting/dynamic-capital",
   ],
   viewer: [],
 };

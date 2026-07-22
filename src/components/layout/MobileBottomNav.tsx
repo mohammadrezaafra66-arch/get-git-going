@@ -43,7 +43,7 @@ const SHORTCUTS_BY_ROLE: Partial<Record<AppRole, ShortcutItem[]>> = {
     { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
     { to: "/accounting/receipts", label: "فیش‌ها", icon: Receipt, module: "accounting" },
     { to: "/accounting/receivables", label: "مطالبات", icon: Wallet, module: "accounting" },
-    { to: "/accounting/daily-capital", label: "سرمایه", icon: Coins, module: "accounting" },
+    { to: "/accounting/dynamic-capital", label: "سرمایه", icon: Coins, module: "accounting" },
   ],
   viewer: [
     { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },

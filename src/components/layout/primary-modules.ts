@@ -113,9 +113,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/accounting/purchase-payments",
       "/accounting/bank-accounts",
       "/accounting/external-parties",
-      "/accounting/customer-capital-allocations",
-      "/accounting/salesperson-capital-allocations",
-      "/accounting/daily-capital",
+      // Item 141 — legacy capital paths dropped; dynamic-capital is official.
       "/accounting/dynamic-capital",
     ],
   },
