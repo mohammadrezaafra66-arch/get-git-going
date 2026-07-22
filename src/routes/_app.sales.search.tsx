@@ -70,6 +70,7 @@ import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/Create
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
 import { SalesReminderPopup } from "@/components/sales/SalesReminderPopup";
+import { FloatingReactionBurst } from "@/components/sales/FloatingReactionBurst";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {
@@ -974,6 +975,10 @@ function ProductCard({
     setDetailsOpen(false);
   }, [searchSessionId]);
 
+  // Item 138.1 — one independent burst counter per card, so opening several
+  // products produces independent effects that do not interfere.
+  const [reactionBurst, setReactionBurst] = useState(0);
+
   // «مشاهده کامل» — reveals the full product details AND records the two
   // deliberate-intent events. Market Intelligence should count a price check
   // only when the user intentionally inspects a specific product, not merely
@@ -997,6 +1002,9 @@ function ProductCard({
           salePriceTypeId: primarySalePriceTypeId,
           searchSessionId,
         });
+        // Fires last — after the two interaction events are recorded and after
+        // the prices have been unlocked by flipping `next` to true.
+        setReactionBurst((n) => n + 1);
       }
       return next;
     });
@@ -1370,22 +1378,25 @@ function ProductCard({
         {detailsOpen && <SalesProductRecommendations productId={product.id} />}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-expanded={detailsOpen}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggleDetails();
-            }}
-          >
-            <Eye className="ms-1 h-4 w-4" />
-            {detailsOpen ? "بستن جزئیات" : "مشاهده کامل"}
-            <ChevronDown
-              className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
-            />
-          </Button>
+          <span className="relative inline-flex">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-expanded={detailsOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleDetails();
+              }}
+            >
+              <Eye className="ms-1 h-4 w-4" />
+              {detailsOpen ? "بستن جزئیات" : "مشاهده کامل"}
+              <ChevronDown
+                className={`ms-1 h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+              />
+            </Button>
+            <FloatingReactionBurst trigger={reactionBurst} />
+          </span>
           <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>

@@ -236,3 +236,35 @@
     animation: none !important;
   }
 }
+
+/* Floating reaction burst — item 138.1. Each particle carries its own drift,
+   rise, rotation, delay and duration as custom properties so a single keyframe
+   set produces a varied burst. The layer itself is always pointer-events-none. */
+@keyframes float-reaction {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.55) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(calc(var(--fr-drift) * 0.2), calc(var(--fr-rise) * 0.18)) scale(1)
+      rotate(calc(var(--fr-rotate) * 0.2));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fr-drift), var(--fr-rise)) scale(1.05) rotate(var(--fr-rotate));
+  }
+}
+
+.floating-reaction {
+  animation: float-reaction var(--fr-duration, 1200ms) cubic-bezier(0.22, 0.61, 0.36, 1)
+    var(--fr-delay, 0ms) both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-reaction {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
