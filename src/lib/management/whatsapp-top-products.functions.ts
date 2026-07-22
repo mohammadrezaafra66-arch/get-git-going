@@ -18,6 +18,12 @@ const TIMEOUT_MS = 5000;
 const ALLOWED_ROLES = ["admin", "manager", "accountant"];
 
 export interface WhatsappTopProduct {
+  /** Set only when the platform matched the mention to a catalog product. */
+  product_id: string | null;
+  /** true = product exists in our assistant catalog, false = "خارج از دستیار". */
+  in_assistant: boolean;
+  /** Platform-supplied Persian label for the flag above. */
+  assistant_status: string | null;
   rank: number;
   product_name: string;
   mention_count: number;
@@ -74,28 +80,52 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
+type RawTopProduct = Partial<WhatsappTopProduct> & { product_name?: string };
+
+/** Tolerate the pre-fix upstream shape, which had no assistant-match fields:
+ *  only an explicit `false` marks a row as non-catalog, so an older platform
+ *  build degrades to "all catalog" rather than mislabelling everything. */
+function normalizeTopProduct(p: RawTopProduct): WhatsappTopProduct {
+  return {
+    product_id: p.product_id ?? null,
+    in_assistant: p.in_assistant !== false,
+    assistant_status: p.assistant_status ?? null,
+    rank: Number(p.rank ?? 0),
+    product_name: String(p.product_name ?? ""),
+    mention_count: Number(p.mention_count ?? 0),
+    group_count: Number(p.group_count ?? 0),
+    sender_count: Number(p.sender_count ?? 0),
+    last_mentioned_at: p.last_mentioned_at ?? null,
+    last_mentioned_shamsi: p.last_mentioned_shamsi ?? null,
+  };
+}
+
 export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuthNode20])
   .inputValidator((input: unknown) =>
     z
       .object({
         range: z.number().int().positive().max(365).optional(),
-        limit: z.number().int().positive().max(100).optional(),
+        limit: z.number().int().positive().max(300).optional(),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }): Promise<WhatsappTopProductsResult> => {
     await assertAllowed(context.userId);
     const range = data.range ?? 30;
-    const limit = data.limit ?? 30;
+    // The platform reports EVERY product mentioned in real messages — both
+    // catalog matches and non-catalog/competitor items ("خارج از دستیار"), which
+    // sit in the low-mention tail. A small limit silently truncates that tail and
+    // makes the card look catalog-only, so mirror the platform page's own default.
+    const limit = data.limit ?? 150;
     try {
       const json = (await getJson(
         `${baseUrl()}/api/v1/reports/top-products?range=${range}&limit=${limit}`,
-      )) as { generated_at?: string; products?: WhatsappTopProduct[] };
+      )) as { generated_at?: string; products?: RawTopProduct[] };
       return {
         ok: true,
         generated_at: json.generated_at ?? null,
-        products: Array.isArray(json.products) ? json.products : [],
+        products: Array.isArray(json.products) ? json.products.map(normalizeTopProduct) : [],
       };
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };

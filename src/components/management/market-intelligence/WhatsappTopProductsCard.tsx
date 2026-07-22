@@ -25,6 +25,16 @@ function fmtWhen(iso: string | null, shamsiFallback: string | null): string {
   return utc ? formatDateTimeFa(utc) : (shamsiFallback ?? "—");
 }
 
+/** Catalog-match filter. The platform reports every mentioned product, so the
+ *  default must be "همه" — narrowing to catalog matches is an explicit choice. */
+type ScopeFilter = "all" | "in" | "out";
+
+const SCOPES: Array<{ v: ScopeFilter; l: string }> = [
+  { v: "all", l: "همه" },
+  { v: "in", l: "در دستیار" },
+  { v: "out", l: "خارج از دستیار" },
+];
+
 export function WhatsappTopProductsCard() {
   const topFn = useServerFn(fetchWhatsappTopProducts);
   const q = useQuery({
@@ -35,14 +45,19 @@ export function WhatsappTopProductsCard() {
     staleTime: 60_000,
   });
   const [selected, setSelected] = useState<WhatsappTopProduct | null>(null);
+  const [scope, setScope] = useState<ScopeFilter>("all");
 
   const unreachable = q.isError || (q.data ? q.data.ok === false : false);
   const products = q.data && q.data.ok ? q.data.products : [];
+  const inCount = products.filter((p) => p.in_assistant).length;
+  const outCount = products.length - inCount;
+  const visible =
+    scope === "all" ? products : products.filter((p) => p.in_assistant === (scope === "in"));
 
   return (
     <MICardShell
       title="محصولات پرتکرار در گفتگوهای واتساپ (مشتریان)"
-      description="محصولاتی که مشتریان در گروه‌های واتساپ بیشترین بار درباره‌شان صحبت کرده‌اند (۳۰ روز اخیر)."
+      description="همهٔ محصولاتی که مشتریان در گروه‌های واتساپ درباره‌شان صحبت کرده‌اند (۳۰ روز اخیر) — شامل کالاهای داخل دستیار و کالاهای خارج از دستیار (رقبا و اقلام ناموجود در کاتالوگ)."
       rule="منبع: پلتفرم واتساپ — تقاضای واقعی مشتریان از پیام‌های گروه‌ها؛ متمایز از کارت‌های مبتنی بر استفادهٔ داخلیِ این سامانه."
       icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}
       actions={
@@ -60,49 +75,90 @@ export function WhatsappTopProductsCard() {
       ) : products.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">داده‌ای برای نمایش نیست.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b text-right text-xs text-muted-foreground">
-              <tr>
-                <th className="p-2 font-medium">رتبه</th>
-                <th className="p-2 font-medium">نام محصول</th>
-                <th className="p-2 font-medium">تعداد تکرار</th>
-                <th className="p-2 font-medium">تعداد گروه</th>
-                <th className="p-2 font-medium">تعداد فرستنده</th>
-                <th className="p-2 font-medium">آخرین ذکر</th>
-                <th className="p-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr
-                  key={`${p.rank}-${p.product_name}`}
-                  className="border-b last:border-0 hover:bg-muted/30"
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SCOPES.map((s) => {
+              const n = s.v === "all" ? products.length : s.v === "in" ? inCount : outCount;
+              return (
+                <Button
+                  key={s.v}
+                  type="button"
+                  size="sm"
+                  variant={scope === s.v ? "default" : "outline"}
+                  className="h-7 text-xs"
+                  onClick={() => setScope(s.v)}
                 >
-                  <td className="p-2 tabular-nums text-muted-foreground">{formatNumber(p.rank)}</td>
-                  <td className="p-2 font-medium">{p.product_name}</td>
-                  <td className="p-2 font-bold tabular-nums text-emerald-700">
-                    {formatNumber(p.mention_count)}
-                  </td>
-                  <td className="p-2 tabular-nums">{formatNumber(p.group_count)}</td>
-                  <td className="p-2 tabular-nums">{formatNumber(p.sender_count)}</td>
-                  <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">
-                    {fmtWhen(p.last_mentioned_at, p.last_mentioned_shamsi)}
-                  </td>
-                  <td className="p-2 text-left">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 gap-1 whitespace-nowrap text-xs"
-                      onClick={() => setSelected(p)}
-                    >
-                      <Users className="h-3.5 w-3.5" /> مشاهده فروشندگان اخیر
-                    </Button>
-                  </td>
+                  {s.l} ({formatNumber(n)})
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="max-h-[28rem] overflow-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 border-b bg-muted/50 text-right text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2 font-medium">رتبه</th>
+                  <th className="p-2 font-medium">نام محصول</th>
+                  <th className="p-2 font-medium">وضعیت</th>
+                  <th className="p-2 font-medium">تعداد تکرار</th>
+                  <th className="p-2 font-medium">تعداد گروه</th>
+                  <th className="p-2 font-medium">تعداد فرستنده</th>
+                  <th className="p-2 font-medium">آخرین ذکر</th>
+                  <th className="p-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visible.map((p) => (
+                  <tr
+                    key={`${p.rank}-${p.product_name}`}
+                    className="border-b last:border-0 hover:bg-muted/30"
+                  >
+                    <td className="p-2 tabular-nums text-muted-foreground">
+                      {formatNumber(p.rank)}
+                    </td>
+                    <td className="p-2 font-medium">{p.product_name}</td>
+                    <td className="p-2">
+                      <Badge
+                        variant="outline"
+                        className={`whitespace-nowrap text-[10px] ${
+                          p.in_assistant
+                            ? "border-emerald-200 text-emerald-700"
+                            : "border-amber-200 text-amber-700"
+                        }`}
+                      >
+                        {p.assistant_status ??
+                          (p.in_assistant ? "در دستیار داریم" : "خارج از دستیار")}
+                      </Badge>
+                    </td>
+                    <td className="p-2 font-bold tabular-nums text-emerald-700">
+                      {formatNumber(p.mention_count)}
+                    </td>
+                    <td className="p-2 tabular-nums">{formatNumber(p.group_count)}</td>
+                    <td className="p-2 tabular-nums">{formatNumber(p.sender_count)}</td>
+                    <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">
+                      {fmtWhen(p.last_mentioned_at, p.last_mentioned_shamsi)}
+                    </td>
+                    <td className="p-2 text-left">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 whitespace-nowrap text-xs"
+                        onClick={() => setSelected(p)}
+                      >
+                        <Users className="h-3.5 w-3.5" /> مشاهده فروشندگان اخیر
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {visible.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                در این دسته موردی نیست.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
