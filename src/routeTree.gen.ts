@@ -162,6 +162,7 @@ import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/ap
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesInvoicesInvoiceIdRouteImport } from './routes/_app.sales_.invoices_.$invoiceId'
+import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
@@ -995,6 +996,12 @@ const AppSalesInvoicesInvoiceIdRoute =
     path: '/sales/invoices/$invoiceId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSalesCustomersCreditTrainingRoute =
+  AppSalesCustomersCreditTrainingRouteImport.update({
+    id: '/sales_/customers_/credit-training',
+    path: '/sales/customers/credit-training',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   id: '/sales_/customers_/create',
   path: '/sales/customers/create',
@@ -1353,6 +1360,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
@@ -1537,6 +1545,7 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
+  '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
@@ -1726,6 +1735,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
+  '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
   '/_app/sales_/invoices_/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
@@ -1915,6 +1925,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/customers/credit-training'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/api/public/bot/products'
@@ -2099,6 +2110,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
+    | '/sales/customers/credit-training'
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/api/public/bot/products'
@@ -2287,6 +2299,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales_/customers_/create'
+    | '/_app/sales_/customers_/credit-training'
     | '/_app/sales_/invoices_/$invoiceId'
     | '/_app/sales_/invoices_/create'
     | '/api/public/bot/products'
@@ -3412,6 +3425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesInvoicesInvoiceIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/customers_/credit-training': {
+      id: '/_app/sales_/customers_/credit-training'
+      path: '/sales/customers/credit-training'
+      fullPath: '/sales/customers/credit-training'
+      preLoaderRoute: typeof AppSalesCustomersCreditTrainingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/create': {
       id: '/_app/sales_/customers_/create'
       path: '/sales/customers/create'
@@ -3957,6 +3977,7 @@ interface AppRouteChildren {
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
   AppSalesCustomersCreateRoute: typeof AppSalesCustomersCreateRoute
+  AppSalesCustomersCreditTrainingRoute: typeof AppSalesCustomersCreditTrainingRoute
   AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -4083,6 +4104,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
   AppSalesCustomersCreateRoute: AppSalesCustomersCreateRoute,
+  AppSalesCustomersCreditTrainingRoute: AppSalesCustomersCreditTrainingRoute,
   AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRouteWithChildren,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,

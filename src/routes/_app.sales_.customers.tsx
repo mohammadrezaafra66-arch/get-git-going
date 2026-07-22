@@ -11,6 +11,7 @@ import {
   X,
   Upload,
   Download,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -215,6 +216,12 @@ function CustomersListPage() {
                 </Link>
               </Button>
             )}
+            <Button asChild variant="outline">
+              <Link to="/sales/customers/credit-training">
+                <GraduationCap className="ml-2 h-4 w-4" />
+                آموزش ایجاد اعتبار
+              </Link>
+            </Button>
             <Button asChild>
               <Link to="/sales/customers/create">
                 <Plus className="ml-2 h-4 w-4" />
