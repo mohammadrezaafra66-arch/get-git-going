@@ -15,6 +15,7 @@ import {
   Eye,
   Search,
   FileText,
+  FileSpreadsheet,
   Download,
   Send,
   Link2,
@@ -26,6 +27,10 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  exportSalePriceListToExcel,
+  type SalePriceListExportRow,
+} from "@/lib/export/sale-price-list-excel";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -744,6 +749,32 @@ function SaleListDetailPage() {
     }
   };
   const handlePreview = () => openPdfOrderDialog();
+
+  // مورد ۱۳۶ — خروجی اکسل از ردیف‌های ذخیره‌شدهٔ همین لیست.
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const exportRows: SalePriceListExportRow[] = (itemsQ.data ?? []).map((it) => ({
+        sku: it.product?.sku ?? null,
+        name: it.product?.name ?? "—",
+        salePrice: it.current_price ?? null,
+        brand: it.product?.brand?.name ?? null,
+        category: it.product?.category?.name ?? null,
+        stockStatus: it.stock_status,
+        description: it.product?.description ?? null,
+      }));
+      await exportSalePriceListToExcel(exportRows, {
+        salePriceTypeTitle: list?.sale_price_type?.title ?? null,
+      });
+      toast.success("خروجی اکسل آماده شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(msg || "خطا در ساخت خروجی اکسل.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
   const handleDownload = () => openPdfOrderDialog();
 
   const copyShareText = async (
@@ -877,6 +908,21 @@ function SaleListDetailPage() {
             <Badge variant={list.status === "published" ? "default" : "secondary"}>
               {list.status === "published" ? "منتشرشده" : "پیش‌نویس"}
             </Badge>
+            {/* مورد ۱۳۶ — همان helper خروجی اکسل، اینجا با توضیحات محصول */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || (itemsQ.data ?? []).length === 0}
+            >
+              {exportingExcel ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
+              خروجی اکسل
+            </Button>
             <Button variant="outline" size="sm" className="gap-1" onClick={handlePreview}>
               <FileText className="h-4 w-4" /> پیش‌نمایش PDF
             </Button>

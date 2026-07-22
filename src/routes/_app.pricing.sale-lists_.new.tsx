@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   Save,
   Loader2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -50,6 +51,10 @@ import {
   type StockStatus,
   type ProductType,
 } from "@/lib/products/constants";
+import {
+  exportSalePriceListToExcel,
+  type SalePriceListExportRow,
+} from "@/lib/export/sale-price-list-excel";
 
 const PAGE_SIZE = 20;
 
@@ -272,6 +277,37 @@ function NewSaleListPage() {
   const total = productsQ.data?.total ?? 0;
   const rows = productsQ.data?.rows ?? [];
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // مورد ۱۳۶ — خروجی اکسل. لیست هنوز ذخیره نشده، پس از همان ردیف‌های جدول
+  // جاری و نقشهٔ قیمت‌های بارگذاری‌شده خروجی می‌گیریم.
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const priceMap = visiblePricesQ.data;
+      const priceTypeTitle =
+        (salePriceTypesQ.data ?? []).find((t) => t.id === salePriceTypeId)?.title ?? null;
+
+      const exportRows: SalePriceListExportRow[] = rows.map((r) => ({
+        sku: r.sku,
+        name: r.name,
+        salePrice: priceMap?.get(r.id)?.current ?? null,
+        brand: r.brand?.name ?? null,
+        category: r.category?.name ?? null,
+        stockStatus: STOCK_STATUS_LABELS[r.stock_status] ?? r.stock_status,
+        productType: PRODUCT_TYPE_LABELS[r.product_type] ?? r.product_type,
+      }));
+
+      await exportSalePriceListToExcel(exportRows, { salePriceTypeTitle: priceTypeTitle });
+      toast.success("خروجی اکسل آماده شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(msg || "خطا در ساخت خروجی اکسل.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
 
@@ -643,6 +679,21 @@ function NewSaleListPage() {
                   disabled={selectedIds.length === 0}
                 >
                   حذف انتخاب‌ها
+                </Button>
+                {/* مورد ۱۳۶ — خروجی اکسل از همان ردیف‌های جدول جاری */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportExcel}
+                  disabled={exporting || rows.length === 0}
+                >
+                  {exporting ? (
+                    <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="ms-1 h-4 w-4" />
+                  )}
+                  خروجی اکسل
                 </Button>
               </div>
             </div>
