@@ -51,6 +51,7 @@ import {
   useAllocationHistory,
   useSalespersonAllocations,
   useCustomerAllocations,
+  useSalespersonCapitalUsage,
   type SalespersonAllocationRow,
 } from "@/hooks/capital/useDynamicCapital";
 
@@ -184,6 +185,45 @@ function DynamicCapitalPage() {
   const totalCustomersAllocated = useMemo(() => {
     return (salespersonRows.data ?? []).length;
   }, [salespersonRows.data]);
+
+  // Item 141.3 — salesperson-level ledger usage for the open snapshot.
+  const spUsageMap = useSalespersonCapitalUsage(activeSettingId);
+  const spUsage = selectedSalesperson
+    ? (spUsageMap.data?.get(selectedSalesperson.salesperson_id) ?? null)
+    : null;
+
+  // Item 141.3 — per-drawer warnings about capital that cannot be used.
+  const drawerWarnings = useMemo(() => {
+    const out: string[] = [];
+    if (!selectedSalesperson) return out;
+
+    if (selectedSalesperson.weighted_score <= 0) {
+      out.push("امتیاز وزنی این کارشناس صفر است؛ سهمی از سرمایه دریافت نکرده است.");
+    }
+    if (selectedSalesperson.allocated_capital <= 0) {
+      out.push("سرمایه‌ای به این کارشناس تخصیص نیافته است؛ مشتریان او سقف اعتبار ندارند.");
+    }
+    if (spUsage && spUsage.allocated_capital > 0 && spUsage.remaining_amount <= 0) {
+      out.push("مانده سرمایه این کارشناس صفر است؛ پیش‌فاکتور جدید ثبت نمی‌شود.");
+    }
+
+    const rows = customerRows.data ?? [];
+    const noSalesperson = rows.filter((c) => !c.salesperson_id).length;
+    if (noSalesperson > 0) {
+      out.push(
+        `${toFaDigits(noSalesperson)} مشتری کارشناس مسئول ندارد و در تقسیم سرمایه شرکت داده نشده است.`,
+      );
+    }
+    const zeroScore = rows.filter((c) => c.weighted_score <= 0).length;
+    if (zeroScore > 0) {
+      out.push(`${toFaDigits(zeroScore)} مشتری امتیاز صفر دارند و سقف اعتبارشان صفر است.`);
+    }
+    const exhausted = rows.filter((c) => c.final_limit > 0 && c.remaining_amount <= 0).length;
+    if (exhausted > 0) {
+      out.push(`${toFaDigits(exhausted)} مشتری مانده سرمایه‌شان تمام شده است.`);
+    }
+    return out;
+  }, [selectedSalesperson, spUsage, customerRows.data]);
 
   // Item 141 — surface every zero-allocation cause at once, so the accountant
   // knows exactly what to fix rather than seeing a silently empty table.
@@ -486,6 +526,46 @@ function DynamicCapitalPage() {
             </SheetDescription>
           </SheetHeader>
 
+          {/* Item 141.3 — salesperson-level usage from the ledger */}
+          {spUsage && (
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border bg-muted/30 p-3 text-center text-xs">
+              <div>
+                <div className="text-muted-foreground">رزرو</div>
+                <div className="mt-0.5 font-semibold text-amber-700 dark:text-amber-400">
+                  {fmtMoney(spUsage.held_amount)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">مصرف‌شده</div>
+                <div className="mt-0.5 font-semibold">{fmtMoney(spUsage.consumed_amount)}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">مانده</div>
+                <div
+                  className={cn(
+                    "mt-0.5 font-semibold",
+                    spUsage.remaining_amount <= 0 && "text-destructive",
+                  )}
+                >
+                  {fmtMoney(spUsage.remaining_amount)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {drawerWarnings.length > 0 && (
+            <Alert className="mt-3 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription>
+                <ul className="list-disc space-y-1 pe-4 text-xs leading-6">
+                  {drawerWarnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="mt-4">
             {customerRows.isLoading ? (
               <p className="text-sm text-muted-foreground">در حال بارگذاری...</p>
@@ -500,8 +580,10 @@ function DynamicCapitalPage() {
                     <TableRow>
                       <TableHead className="text-right">مشتری</TableHead>
                       <TableHead className="text-right">امتیاز</TableHead>
-                      <TableHead className="text-right">سهم خام</TableHead>
                       <TableHead className="text-right">سقف نهایی</TableHead>
+                      <TableHead className="text-right">رزرو</TableHead>
+                      <TableHead className="text-right">مصرف‌شده</TableHead>
+                      <TableHead className="text-right">مانده</TableHead>
                       <TableHead className="text-right">قید</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -516,9 +598,22 @@ function DynamicCapitalPage() {
                         <TableRow key={c.id}>
                           <TableCell>{c.customer_name ?? "—"}</TableCell>
                           <TableCell>{toFaDigits(c.weighted_score.toFixed(3))}</TableCell>
-                          <TableCell>{fmtMoney(c.raw_allocation)}</TableCell>
                           <TableCell className="font-medium">
                             {fmtMoney(c.final_limit)}
+                          </TableCell>
+                          <TableCell className="text-amber-700 dark:text-amber-400">
+                            {fmtMoney(c.held_amount)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {fmtMoney(c.consumed_amount)}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              "font-medium",
+                              c.remaining_amount <= 0 && "text-destructive",
+                            )}
+                          >
+                            {fmtMoney(c.remaining_amount)}
                           </TableCell>
                           <TableCell>
                             <Badge className={cn("font-normal", meta.cls)} variant="secondary">

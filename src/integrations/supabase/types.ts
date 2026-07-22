@@ -9329,6 +9329,39 @@ export type Database = {
         }
         Relationships: []
       }
+      v_dynamic_customer_capital_balances: {
+        Row: {
+          allocation_id: string | null
+          binding_constraint: string | null
+          capital_setting_id: string | null
+          consumed_amount: number | null
+          created_at: string | null
+          customer_id: string | null
+          final_limit: number | null
+          held_amount: number | null
+          raw_allocation: number | null
+          remaining_amount: number | null
+          salesperson_id: string | null
+          share_ratio: number | null
+          weighted_score: number | null
+        }
+        Relationships: []
+      }
+      v_dynamic_salesperson_capital_balances: {
+        Row: {
+          allocated_capital: number | null
+          allocation_id: string | null
+          capital_setting_id: string | null
+          consumed_amount: number | null
+          created_at: string | null
+          held_amount: number | null
+          remaining_amount: number | null
+          salesperson_id: string | null
+          share_ratio: number | null
+          weighted_score: number | null
+        }
+        Relationships: []
+      }
       v_pricing_recompute_queue_summary: {
         Row: {
           done_count: number | null
