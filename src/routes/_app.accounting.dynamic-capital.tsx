@@ -86,8 +86,9 @@ function DynamicCapitalPage() {
   const [totalCapital, setTotalCapital] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [activeSettingId, setActiveSettingId] = useState<string | undefined>(undefined);
-  const [selectedSalesperson, setSelectedSalesperson] =
-    useState<SalespersonAllocationRow | null>(null);
+  const [selectedSalesperson, setSelectedSalesperson] = useState<SalespersonAllocationRow | null>(
+    null,
+  );
 
   const existing = useSettingByDate(capitalDate);
   const history = useAllocationHistory(30);
@@ -95,10 +96,7 @@ function DynamicCapitalPage() {
   const qc = useQueryClient();
   const [isOverwriting, setIsOverwriting] = useState(false);
   const salespersonRows = useSalespersonAllocations(activeSettingId);
-  const customerRows = useCustomerAllocations(
-    activeSettingId,
-    selectedSalesperson?.salesperson_id,
-  );
+  const customerRows = useCustomerAllocations(activeSettingId, selectedSalesperson?.salesperson_id);
 
   const alreadyExists = Boolean(existing.data);
   const totalCapitalNum = useMemo(() => {
@@ -108,7 +106,8 @@ function DynamicCapitalPage() {
 
   const canRun = !alreadyExists && totalCapitalNum > 0 && !runMutation.isPending;
 
-  const canOverwrite = alreadyExists && totalCapitalNum > 0 && !runMutation.isPending && !isOverwriting;
+  const canOverwrite =
+    alreadyExists && totalCapitalNum > 0 && !runMutation.isPending && !isOverwriting;
 
   const handleOverwrite = async () => {
     if (!canOverwrite) return;
@@ -161,8 +160,7 @@ function DynamicCapitalPage() {
           setActiveSettingId(res.setting_id);
         },
         onError: (err: unknown) => {
-          const msg =
-            err instanceof Error ? err.message : "خطا در محاسبه snapshot";
+          const msg = err instanceof Error ? err.message : "خطا در محاسبه snapshot";
           toast.error(msg, { id: toastId });
         },
       },
@@ -176,10 +174,7 @@ function DynamicCapitalPage() {
   };
 
   const totalAllocated = useMemo(() => {
-    return (salespersonRows.data ?? []).reduce(
-      (s, r) => s + r.allocated_capital,
-      0,
-    );
+    return (salespersonRows.data ?? []).reduce((s, r) => s + r.allocated_capital, 0);
   }, [salespersonRows.data]);
 
   const totalCustomersAllocated = useMemo(() => {
@@ -324,21 +319,15 @@ function DynamicCapitalPage() {
                 value={totalCapital}
                 onChange={(e) => {
                   const raw = e.target.value.replace(/[^\d]/g, "");
-                  setTotalCapital(
-                    raw ? Number(raw).toLocaleString("en-US") : "",
-                  );
+                  setTotalCapital(raw ? Number(raw).toLocaleString("en-US") : "");
                 }}
                 disabled={runMutation.isPending || isOverwriting}
                 className="text-left"
               />
               {totalCapitalNum > 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {fmtMoney(totalCapitalNum)} ریال
-                </p>
+                <p className="text-xs text-muted-foreground">{fmtMoney(totalCapitalNum)} ریال</p>
               ) : alreadyExists ? (
-                <p className="text-xs text-red-600">
-                  برای بازنویسی ابتدا سرمایه جدید را وارد کنید
-                </p>
+                <p className="text-xs text-red-600">برای بازنویسی ابتدا سرمایه جدید را وارد کنید</p>
               ) : null}
             </div>
             <div className="space-y-2">
@@ -356,14 +345,13 @@ function DynamicCapitalPage() {
           {alreadyExists && existing.data && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">
-                snapshot موجود — سرمایه ثبت‌شده: {fmtMoney(Number(existing.data.total_capital))} ریال
+                snapshot موجود — سرمایه ثبت‌شده: {fmtMoney(Number(existing.data.total_capital))}{" "}
+                ریال
               </span>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  handleHistoryClick(existing.data!.id, existing.data!.capital_date)
-                }
+                onClick={() => handleHistoryClick(existing.data!.id, existing.data!.capital_date)}
               >
                 مشاهده نتیجه
               </Button>
@@ -421,9 +409,7 @@ function DynamicCapitalPage() {
       {activeSettingId && !salespersonRows.isLoading && allocationWarnings.length > 0 && (
         <Alert className="border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 dark:text-amber-300">
-            هشدارهای تخصیص
-          </AlertTitle>
+          <AlertTitle className="text-amber-800 dark:text-amber-300">هشدارهای تخصیص</AlertTitle>
           <AlertDescription>
             <ul className="list-disc space-y-1 pe-4 text-xs leading-6">
               {allocationWarnings.map((w) => (
@@ -461,9 +447,7 @@ function DynamicCapitalPage() {
           {history.isLoading ? (
             <p className="text-sm text-muted-foreground">در حال بارگذاری...</p>
           ) : (history.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              هنوز هیچ snapshotی ثبت نشده است.
-            </p>
+            <p className="text-sm text-muted-foreground">هنوز هیچ snapshotی ثبت نشده است.</p>
           ) : (
             <div className="rounded-md border overflow-x-auto">
               <Table>
@@ -479,9 +463,7 @@ function DynamicCapitalPage() {
                   {(history.data ?? []).map((row) => (
                     <TableRow
                       key={row.id}
-                      className={cn(
-                        activeSettingId === row.id && "bg-muted/40",
-                      )}
+                      className={cn(activeSettingId === row.id && "bg-muted/40")}
                     >
                       <TableCell>{formatDateFa(row.capital_date)}</TableCell>
                       <TableCell>{fmtMoney(Number(row.total_capital))} ریال</TableCell>
@@ -513,11 +495,10 @@ function DynamicCapitalPage() {
       >
         <SheetContent side="left" className="w-full sm:max-w-2xl overflow-y-auto" dir="rtl">
           <SheetHeader>
-            <SheetTitle>
-              مشتریان کارشناس: {selectedSalesperson?.full_name ?? "بدون نام"}
-            </SheetTitle>
+            <SheetTitle>مشتریان کارشناس: {selectedSalesperson?.full_name ?? "بدون نام"}</SheetTitle>
             <SheetDescription>
-              سهم کارشناس: {selectedSalesperson ? fmtMoney(selectedSalesperson.allocated_capital) : "۰"} ریال
+              سهم کارشناس:{" "}
+              {selectedSalesperson ? fmtMoney(selectedSalesperson.allocated_capital) : "۰"} ریال
               {" • "}
               امتیاز وزنی:{" "}
               {selectedSalesperson
@@ -589,18 +570,15 @@ function DynamicCapitalPage() {
                   </TableHeader>
                   <TableBody>
                     {(customerRows.data ?? []).map((c) => {
-                      const meta =
-                        CONSTRAINT_META[c.binding_constraint] ?? {
-                          label: c.binding_constraint,
-                          cls: "bg-muted",
-                        };
+                      const meta = CONSTRAINT_META[c.binding_constraint] ?? {
+                        label: c.binding_constraint,
+                        cls: "bg-muted",
+                      };
                       return (
                         <TableRow key={c.id}>
                           <TableCell>{c.customer_name ?? "—"}</TableCell>
                           <TableCell>{toFaDigits(c.weighted_score.toFixed(3))}</TableCell>
-                          <TableCell className="font-medium">
-                            {fmtMoney(c.final_limit)}
-                          </TableCell>
+                          <TableCell className="font-medium">{fmtMoney(c.final_limit)}</TableCell>
                           <TableCell className="text-amber-700 dark:text-amber-400">
                             {fmtMoney(c.held_amount)}
                           </TableCell>
@@ -696,9 +674,7 @@ function ResultSection({
                     >
                       <TableCell>{r.full_name ?? "—"}</TableCell>
                       <TableCell>{toFaDigits(r.weighted_score.toFixed(3))}</TableCell>
-                      <TableCell>
-                        {toFaDigits((r.share_ratio * 100).toFixed(2))}٪
-                      </TableCell>
+                      <TableCell>{toFaDigits((r.share_ratio * 100).toFixed(2))}٪</TableCell>
                       <TableCell className="font-medium">
                         {fmtMoney(r.allocated_capital)} ریال
                       </TableCell>

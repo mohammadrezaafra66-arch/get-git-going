@@ -382,7 +382,11 @@ function CreditRulesPage() {
               <div className="space-y-1">
                 <Label className="inline-flex items-center gap-1">
                   برچسب فارسی
-                  <HelpHint text={"نامی که در پروفایل مشتری نمایش داده می‌شود. اگر خالی باشد از کد استفاده می‌شود."} />
+                  <HelpHint
+                    text={
+                      "نامی که در پروفایل مشتری نمایش داده می‌شود. اگر خالی باشد از کد استفاده می‌شود."
+                    }
+                  />
                 </Label>
                 <Input
                   value={newLabel}
