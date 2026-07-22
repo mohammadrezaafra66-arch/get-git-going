@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -41,7 +42,26 @@ interface Rule {
   direction: string;
 }
 
+// Item 141.2 — this page manages both scoring sides. Customer scores drive a
+// customer's share of its salesperson's capital; salesperson scores drive the
+// salesperson's share of the daily total.
+type ScoringEntityType = "customer" | "salesperson";
+
+const ENTITY_META: Record<ScoringEntityType, { tab: string; title: string; desc: string }> = {
+  customer: {
+    tab: "مشتریان",
+    title: "پارامترهای امتیازدهی مشتری",
+    desc: "امتیاز مشتری تعیین می‌کند چه سهمی از سرمایهٔ کارشناس مسئولش دریافت کند.",
+  },
+  salesperson: {
+    tab: "کارشناسان فروش",
+    title: "پارامترهای امتیازدهی کارشناس فروش",
+    desc: "امتیاز کارشناس تعیین می‌کند چه سهمی از سرمایه کل روز به او تخصیص یابد.",
+  },
+};
+
 function CreditRulesPage() {
+  const [entityType, setEntityType] = useState<ScoringEntityType>("customer");
   const { roles } = useAuth();
   const queryClient = useQueryClient();
   const canEdit = hasAnyRole(roles, ["admin", "accountant"]);
@@ -66,12 +86,12 @@ function CreditRulesPage() {
   }, [queryClient]);
 
   const { data: rules = [], isLoading } = useQuery<Rule[]>({
-    queryKey: ["credit-rules"],
+    queryKey: ["credit-rules", entityType],
     queryFn: async () => {
       const { data: params, error: pErr } = await supabase
         .from("dynamic_scoring_parameters")
         .select("id, code, label_fa, is_active, direction, display_order")
-        .eq("entity_type", "customer")
+        .eq("entity_type", entityType)
         .order("display_order", { ascending: true });
       if (pErr) throw pErr;
       const ids = (params ?? []).map((p) => p.id);
@@ -121,7 +141,7 @@ function CreditRulesPage() {
     },
     onSuccess: () => {
       toast.success("قانون به‌روزرسانی شد");
-      queryClient.invalidateQueries({ queryKey: ["credit-rules"] });
+      queryClient.invalidateQueries({ queryKey: ["credit-rules", entityType] });
     },
     onError: (e: unknown) => {
       toast.error(`خطا: ${e instanceof Error ? e.message : "ناشناخته"}`);
@@ -137,9 +157,12 @@ function CreditRulesPage() {
     mutationFn: async () => {
       if (!newCode.trim()) throw new Error("کد پارامتر الزامی است");
       if (newWeight < 0 || newWeight > 1) throw new Error("وزن باید بین ۰ و ۱ باشد");
+      // v2 takes an explicit entity_type and, unlike the original, writes only
+      // columns that still exist on dynamic_scoring_parameters.
       const { error } = await supabase.rpc(
-        "create_dynamic_scoring_parameter" as never,
+        "create_dynamic_scoring_parameter_v2" as never,
         {
+          _entity_type: entityType,
           _code: newCode.trim(),
           _label_fa: newLabel.trim(),
           _weight: newWeight,
@@ -154,7 +177,7 @@ function CreditRulesPage() {
       setNewLabel("");
       setNewWeight(0.1);
       setNewDirection("positive");
-      queryClient.invalidateQueries({ queryKey: ["credit-rules"] });
+      queryClient.invalidateQueries({ queryKey: ["credit-rules", entityType] });
     },
     onError: (e: unknown) => {
       toast.error(`خطا: ${e instanceof Error ? e.message : "ناشناخته"}`);
@@ -168,20 +191,38 @@ function CreditRulesPage() {
   return (
     <div className="space-y-6" dir="rtl">
       <PageHeader
-        title="قوانین امتیازدهی اعتباری"
-        description="مدیریت پارامترها و وزن‌های محاسبه امتیاز اعتباری مشتری"
+        title="قوانین امتیازدهی"
+        description={ENTITY_META[entityType].desc}
         actions={
           <HelpHint
             size={18}
             text={
-              "این صفحه برای تنظیم پارامترهای محاسبه امتیاز اعتباری مشتری است.\n" +
-              "هر پارامتر یک «وزن» بین ۰ تا ۱ دارد؛ مجموع وزن‌های فعال باید ۱.۰۰ شود.\n" +
-              "برای فعال/غیرفعال‌کردن از کلید کناری استفاده کنید و سپس روی «ذخیره» بزنید.\n" +
-              "می‌توانید پارامترهای جدید با نام انگلیسی (مثلاً profitability) اضافه کنید."
+              "این صفحه برای تنظیم پارامترهای امتیازدهی است.\n" +
+              "زبانهٔ «مشتریان» امتیاز مشتری و زبانهٔ «کارشناسان فروش» امتیاز کارشناس را تنظیم می‌کند.\n" +
+              "هر پارامتر یک «وزن» بین ۰ تا ۱ دارد؛ مجموع وزن‌های فعال هر زبانه باید ۱.۰۰ شود.\n" +
+              "برای فعال/غیرفعال‌کردن از کلید کناری استفاده کنید و سپس روی «ذخیره» بزنید."
             }
           />
         }
       />
+
+      {/* Item 141.2 — customer / salesperson tabs */}
+      <Tabs value={entityType} onValueChange={(v) => setEntityType(v as ScoringEntityType)}>
+        <TabsList>
+          <TabsTrigger value="customer">{ENTITY_META.customer.tab}</TabsTrigger>
+          <TabsTrigger value="salesperson">{ENTITY_META.salesperson.tab}</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {!isLoading && rules.length === 0 && (
+        <Alert>
+          <AlertDescription>
+            {entityType === "salesperson"
+              ? "هیچ پارامتر امتیازدهی برای کارشناسان فروش تعریف نشده است؛ تا زمانی که پارامتر و وزن تعریف نشود، امتیاز همهٔ کارشناسان صفر می‌ماند و سرمایه‌ای تخصیص نمی‌یابد."
+              : "هیچ پارامتر امتیازدهی برای مشتریان تعریف نشده است."}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {!canEdit && (
         <Alert>
