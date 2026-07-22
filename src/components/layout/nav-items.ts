@@ -89,7 +89,13 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
   { to: "/popup-center", label: "مرکز پاپ‌آپ‌ها", icon: Bell, module: "dashboard", group: "main" },
-  { to: "/collaboration", label: "ارتباطات همکاری", icon: MessageSquare, module: "messages", group: "main" },
+  {
+    to: "/collaboration",
+    label: "ارتباطات همکاری",
+    icon: MessageSquare,
+    module: "messages",
+    group: "main",
+  },
 
   // ۲) محصولات و قیمت‌گذاری
   {
@@ -846,6 +852,16 @@ export const NAV_ITEMS: NavItem[] = [
     to: "/gamification/admin/purchase-settings",
     label: "طلای زمان (خرید)",
     icon: Coins,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-gamification",
+    adminOnly: true,
+  },
+  // Item 132.1 — manual daily performance entry (admin/manager/accountant).
+  {
+    to: "/gamification/admin/manual-metrics",
+    label: "ثبت دستی عملکرد روزانه",
+    icon: Trophy,
     module: "roles",
     group: "admin",
     subgroup: "adm-gamification",

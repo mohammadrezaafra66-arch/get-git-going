@@ -175,6 +175,7 @@ import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.o
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
 import { Route as AppGamificationAdminMissionsRouteImport } from './routes/_app.gamification.admin.missions'
+import { Route as AppGamificationAdminManualMetricsRouteImport } from './routes/_app.gamification.admin.manual-metrics'
 import { Route as AppGamificationAdminLeaguesRouteImport } from './routes/_app.gamification.admin.leagues'
 import { Route as AppGamificationAdminKpiRulesRouteImport } from './routes/_app.gamification.admin.kpi-rules'
 import { Route as AppGamificationAdminAnalyticsRouteImport } from './routes/_app.gamification.admin.analytics'
@@ -1069,6 +1070,12 @@ const AppGamificationAdminMissionsRoute =
     path: '/admin/missions',
     getParentRoute: () => AppGamificationRoute,
   } as any)
+const AppGamificationAdminManualMetricsRoute =
+  AppGamificationAdminManualMetricsRouteImport.update({
+    id: '/admin/manual-metrics',
+    path: '/admin/manual-metrics',
+    getParentRoute: () => AppGamificationRoute,
+  } as any)
 const AppGamificationAdminLeaguesRoute =
   AppGamificationAdminLeaguesRouteImport.update({
     id: '/admin/leagues',
@@ -1356,6 +1363,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
   '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
+  '/gamification/admin/manual-metrics': typeof AppGamificationAdminManualMetricsRoute
   '/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
@@ -1542,6 +1550,7 @@ export interface FileRoutesByTo {
   '/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
   '/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
+  '/gamification/admin/manual-metrics': typeof AppGamificationAdminManualMetricsRoute
   '/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
@@ -1733,6 +1742,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
   '/_app/gamification/admin/kpi-rules': typeof AppGamificationAdminKpiRulesRoute
   '/_app/gamification/admin/leagues': typeof AppGamificationAdminLeaguesRoute
+  '/_app/gamification/admin/manual-metrics': typeof AppGamificationAdminManualMetricsRoute
   '/_app/gamification/admin/missions': typeof AppGamificationAdminMissionsRoute
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
@@ -1924,6 +1934,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/analytics'
     | '/gamification/admin/kpi-rules'
     | '/gamification/admin/leagues'
+    | '/gamification/admin/manual-metrics'
     | '/gamification/admin/missions'
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
@@ -2110,6 +2121,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/analytics'
     | '/gamification/admin/kpi-rules'
     | '/gamification/admin/leagues'
+    | '/gamification/admin/manual-metrics'
     | '/gamification/admin/missions'
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
@@ -2300,6 +2312,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/analytics'
     | '/_app/gamification/admin/kpi-rules'
     | '/_app/gamification/admin/leagues'
+    | '/_app/gamification/admin/manual-metrics'
     | '/_app/gamification/admin/missions'
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
@@ -3529,6 +3542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGamificationAdminMissionsRouteImport
       parentRoute: typeof AppGamificationRoute
     }
+    '/_app/gamification/admin/manual-metrics': {
+      id: '/_app/gamification/admin/manual-metrics'
+      path: '/admin/manual-metrics'
+      fullPath: '/gamification/admin/manual-metrics'
+      preLoaderRoute: typeof AppGamificationAdminManualMetricsRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
     '/_app/gamification/admin/leagues': {
       id: '/_app/gamification/admin/leagues'
       path: '/admin/leagues'
@@ -3712,6 +3732,7 @@ interface AppGamificationRouteChildren {
   AppGamificationAdminAnalyticsRoute: typeof AppGamificationAdminAnalyticsRoute
   AppGamificationAdminKpiRulesRoute: typeof AppGamificationAdminKpiRulesRoute
   AppGamificationAdminLeaguesRoute: typeof AppGamificationAdminLeaguesRoute
+  AppGamificationAdminManualMetricsRoute: typeof AppGamificationAdminManualMetricsRoute
   AppGamificationAdminMissionsRoute: typeof AppGamificationAdminMissionsRoute
   AppGamificationAdminPurchaseSettingsRoute: typeof AppGamificationAdminPurchaseSettingsRoute
   AppGamificationAdminRewardsRoute: typeof AppGamificationAdminRewardsRoute
@@ -3726,6 +3747,8 @@ const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationAdminAnalyticsRoute: AppGamificationAdminAnalyticsRoute,
   AppGamificationAdminKpiRulesRoute: AppGamificationAdminKpiRulesRoute,
   AppGamificationAdminLeaguesRoute: AppGamificationAdminLeaguesRoute,
+  AppGamificationAdminManualMetricsRoute:
+    AppGamificationAdminManualMetricsRoute,
   AppGamificationAdminMissionsRoute: AppGamificationAdminMissionsRoute,
   AppGamificationAdminPurchaseSettingsRoute:
     AppGamificationAdminPurchaseSettingsRoute,
