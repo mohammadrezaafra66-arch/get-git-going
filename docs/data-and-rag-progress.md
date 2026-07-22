@@ -10,12 +10,74 @@ Branch: `feature/navigation-modernization`.
 | 3 — Gamification wiring | superseded by Phase B |
 | 4 — Knowledge RAG | superseded by Phase E |
 | A — Resolve the two blockers | **OK** |
-| B — Gamification wiring | NOT STARTED |
-| C — Re-entry worksheet | NOT STARTED |
-| D — Prevention guide | NOT STARTED |
+| B — Gamification wiring | **STOPPED** at gate 3.6 — cannot be verified |
+| C — Re-entry worksheet | **OK** — `docs/corrupted-config-reentry.md` |
+| D — Prevention guide | **OK** — `docs/persian-data-safety.md` |
 | E — Knowledge RAG | **BLOCKED** — zero clean documents (see A.2) |
 
-**RESUME AT PHASE B.**
+**RESUME AT PHASE B**, once the gamification source data question below is
+answered.
+
+---
+
+## PHASE B — STOPPED at the 3.6 verification gate
+
+### Gate 3.4 passed
+
+The live `calculate_employee_score` matches the documented structure exactly:
+`call_logs` (x4), `invoices` (x3), `payment_receipts` + `payment_receipt_links`,
+`gamification_kpis`, `customers`; writes to `employee_scores`. No structural
+drift. The function was **not modified**.
+
+### Why the work stopped anyway
+
+3.6 requires three before/after tests, the third being the one that proves
+sales/profit do not double-count on a date that **has** automatic invoice data.
+That test cannot be constructed, because the source tables are empty:
+
+| table | rows |
+|---|---|
+| `invoices` | **0** |
+| `call_logs` | **0** |
+| `staff_daily_performance_metrics` | **0** |
+| `employee_scores` | 1 |
+
+There is no employee with invoice activity on any date, so the precedence rule
+in 3.1 — the entire point of the phase — cannot be exercised or proven. Building
+the three test cases would require inventing invoices, which is business data.
+Per 3.6 ("if either test fails, STOP") the migration was not written and
+`calculate_employee_score` was left untouched.
+
+### The larger finding
+
+With `invoices` and `call_logs` both empty, every KPI in
+`calculate_employee_score` already evaluates to zero for every employee. The
+gamification leaderboard has **no data source at all** today — wiring manual
+metrics would make `staff_daily_performance_metrics` the only input, which is a
+materially different design decision from the "manual entry is backfill-only"
+rule in 3.1. That rule assumes automatic invoice data is the norm and manual
+entry the exception; right now the automatic side does not exist.
+
+This should be settled before Phase B is retried.
+
+### Two corrections to the phase's premises
+
+1. **The RLS change in 3.2 is already done.** All three policies
+   (`sdpm_select_privileged`, `sdpm_insert_privileged`, `sdpm_update_privileged`)
+   already grant `accountant` via
+   `has_any_role(uid(), ARRAY['admin','manager','accountant'])`, and
+   `sdpm_delete_admin` is already admin-only. No migration is needed. The insert
+   policy also already enforces the 5-day backfill window
+   (`metric_date >= CURRENT_DATE - 5 days AND metric_date <= CURRENT_DATE`).
+2. **Profit has nowhere to land.** `gamification_kpis` contains `total_profit`
+   and `profit_per_talk_minute`, but both are `enabled = false` **and** neither
+   has a branch in the function's `CASE` statement — they would fall through to
+   `ELSE _value := 0`. Wiring `profit_amount` per 3.1 therefore requires adding
+   KPI branches, which is more than the "minimal additive edit" 3.5 permits.
+
+`manual_daily_metrics_totals(uuid, timestamptz)` does exist and is STABLE, but
+it is a plain `SUM` over `staff_daily_performance_metrics` with no
+per-date precedence logic, so 3.1 would need new logic regardless.
 
 ---
 
