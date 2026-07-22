@@ -1,9 +1,9 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { ROLE_LABELS } from "@/lib/rbac/roles";
-import { LogOut, User } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { ROLE_LABELS, hasPermissionEx } from "@/lib/rbac/roles";
+import { LogOut, ScanSearch, User } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +28,22 @@ export function AppHeader() {
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
   const roleLabels = roles.map((r) => ROLE_LABELS[r]).join("، ") || "بدون نقش";
 
+  // مورد ۱۳۷ — همان شرطی که `beforeLoad` صفحهٔ /sales/search اعمال می‌کند
+  // (`requirePermission("sales", "view")`). لیست دستی نقش‌ها نداریم.
+  const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4">
       <SidebarTrigger />
       <div className="flex-1" />
+      {canQuickSalesSearch && (
+        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <Link to="/sales/search" title="جستجوی سریع فروش" aria-label="جستجوی سریع فروش">
+            <ScanSearch className="h-4 w-4" />
+            <span className="hidden sm:inline">جستجوی سریع فروش</span>
+          </Link>
+        </Button>
+      )}
       <ClockInOutButton />
       <NotificationBell />
       <DropdownMenu>
