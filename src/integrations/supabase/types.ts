@@ -8692,6 +8692,54 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_daily_performance_metrics: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          inbound_calls_count: number
+          metric_date: string
+          notes: string | null
+          outbound_calls_count: number
+          profit_amount: number
+          sales_amount: number
+          staff_user_id: string
+          talk_time_minutes: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inbound_calls_count?: number
+          metric_date: string
+          notes?: string | null
+          outbound_calls_count?: number
+          profit_amount?: number
+          sales_amount?: number
+          staff_user_id: string
+          talk_time_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inbound_calls_count?: number
+          metric_date?: string
+          notes?: string | null
+          outbound_calls_count?: number
+          profit_amount?: number
+          sales_amount?: number
+          staff_user_id?: string
+          talk_time_minutes?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           address: string | null

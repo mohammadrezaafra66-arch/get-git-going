@@ -19,6 +19,7 @@ import {
   ChevronRight,
   DollarSign,
   Eye,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -77,6 +78,10 @@ import {
   fetchObservatorySnippetsForProducts,
   type ObservatorySnippet,
 } from "@/lib/sales/observatory-snippets";
+import {
+  fetchProductOwnersForProducts,
+  type ProductOwnerLite,
+} from "@/lib/sales/product-owners";
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 
 export const Route = createFileRoute("/_app/sales/search")({
@@ -381,6 +386,16 @@ function SalesSearchPage() {
   // Thumbnails for visible search results (shared pattern with /products admin list)
   const visibleProductIds = useMemo(() => products.map((p) => p.id), [products]);
   const { thumbnailFor } = useProductThumbnails(visibleProductIds);
+
+  const productOwnersQuery = useQuery({
+    enabled: visibleProductIds.length > 0,
+    queryKey: ["sales-search-product-owners", visibleProductIds],
+    queryFn: () => fetchProductOwnersForProducts(visibleProductIds),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+  const productOwnersMap = productOwnersQuery.data ?? {};
 
   // ---------- DT.7H: Observatory snippets for current page of results ----------
   // Read-only sidecar query. Never blocks/replaces the main search.
@@ -845,6 +860,8 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
+                    productOwners={productOwnersMap[p.id] ?? []}
+                    productOwnersLoading={productOwnersQuery.isLoading}
                     thumbnailUrl={thumbnailFor(p.id)}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
@@ -945,6 +962,8 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
+  productOwners: ProductOwnerLite[];
+  productOwnersLoading: boolean;
   thumbnailUrl?: string;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
@@ -956,6 +975,8 @@ function ProductCard({
   searchSessionId,
   canRecalcPrice,
   observatorySnippet,
+  productOwners,
+  productOwnersLoading,
   thumbnailUrl,
   onRecalcDone,
   onOpenChart,
@@ -1062,6 +1083,12 @@ function ProductCard({
       value: product.product_type === "foreign" ? "خارجی" : "ایرانی",
     });
   }
+  const productOwnerNames = productOwners.map((o) => o.full_name ?? o.user_id.slice(0, 8));
+  const productOwnerLabel = productOwnersLoading
+    ? "در حال دریافت..."
+    : productOwnerNames.length > 0
+      ? productOwnerNames.join("، ")
+      : "بدون مسئول";
 
   const handleCopySalesText = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1073,6 +1100,7 @@ function ProductCard({
     if (product.product_type === "iranian" || product.product_type === "foreign") {
       lines.push(`نوع کالا: ${product.product_type === "foreign" ? "خارجی" : "ایرانی"}`);
     }
+    lines.push(`مسئول محصول: ${productOwnerLabel}`);
     if (specChips.length > 0) {
       const tech = specChips.filter((s) => !["برند", "دسته", "نوع"].includes(s.label));
       if (tech.length > 0) lines.push(tech.map((s) => `${s.label}: ${s.value}`).join("  •  "));
@@ -1172,6 +1200,13 @@ function ProductCard({
                   ))}
                 </div>
               )}
+              <div className="flex flex-wrap gap-1 pt-1 text-xs">
+                <span className="inline-flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-foreground">
+                  <UserRound className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">مسئول محصول:</span>
+                  <span className="font-medium">{productOwnerLabel}</span>
+                </span>
+              </div>
               {labels.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
                   {labels.slice(0, 4).map((l) => (
@@ -1477,6 +1512,7 @@ function ProductCard({
                   label: "نوع کالا",
                   value: product.product_type === "foreign" ? "خارجی" : "ایرانی",
                 });
+              detailRows.push({ label: "مسئول محصول", value: productOwnerLabel });
               detailRows.push({ label: "وضعیت موجودی", value: STOCK_LABEL[stockKey] ?? stockKey });
               return (
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">

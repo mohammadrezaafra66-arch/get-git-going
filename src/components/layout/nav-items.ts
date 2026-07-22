@@ -851,6 +851,16 @@ export const NAV_ITEMS: NavItem[] = [
     subgroup: "adm-gamification",
     adminOnly: true,
   },
+  // Item 132.1 — manual daily performance entry (admin/manager/accountant).
+  {
+    to: "/gamification/admin/manual-metrics",
+    label: "ثبت دستی عملکرد روزانه",
+    icon: Trophy,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-gamification",
+    adminOnly: true,
+  },
 ];
 
 export const GROUP_LABELS: Record<NavItem["group"], string> = {
