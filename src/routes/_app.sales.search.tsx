@@ -69,6 +69,7 @@ import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/CreatePriceAlertButton";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
+import { SalesReminderPopup } from "@/components/sales/SalesReminderPopup";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {
@@ -348,6 +349,23 @@ function SalesSearchPage() {
       if (isLabelMode) {
         rows = rows.filter((r) => r.stock_status === "available" || r.stock_status === "limited");
       }
+      // 130 — guard sort (mirrors the RPC ORDER BY): available → limited →
+      // unknown → unavailable, then by name. Only reorders the current page of
+      // results, so server-side pagination/offset is unaffected.
+      const stockRank = (s?: string | null) =>
+        s === "available"
+          ? 0
+          : s === "limited"
+            ? 1
+            : s === "unknown"
+              ? 2
+              : s === "unavailable"
+                ? 3
+                : 4;
+      rows = [...rows].sort((a, b) => {
+        const d = stockRank(a.stock_status) - stockRank(b.stock_status);
+        return d !== 0 ? d : String(a.name ?? "").localeCompare(String(b.name ?? ""), "fa");
+      });
       // NOTE: merely appearing in search results is no longer tracked as an
       // interaction (it created "herd" noise for brand searches). Deliberate
       // per-product actions (details/price/chart/copy) are tracked instead.
@@ -437,6 +455,7 @@ function SalesSearchPage() {
 
   return (
     <div className="space-y-5">
+      <SalesReminderPopup />
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
@@ -446,10 +465,14 @@ function SalesSearchPage() {
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <DollarSign className="h-4 w-4 text-primary" />
           <span className="font-medium">نرخ لحظه‌ای دلار:</span>
-          <span className="font-bold text-primary tabular-nums">{formatNumber(pageUsdRate)} تومان</span>
+          <span className="font-bold text-primary tabular-nums">
+            {formatNumber(pageUsdRate)} تومان
+          </span>
           <span className="text-xs text-muted-foreground">مبنای محاسبهٔ قیمت‌های دلاری</span>
           {pageUsdRateAt && (
-            <span className="text-xs text-muted-foreground">— به‌روزرسانی: {formatDateTimeFa(pageUsdRateAt)}</span>
+            <span className="text-xs text-muted-foreground">
+              — به‌روزرسانی: {formatDateTimeFa(pageUsdRateAt)}
+            </span>
           )}
         </div>
       )}
@@ -1415,7 +1438,8 @@ function ProductCard({
               const detailRows: Array<{ label: string; value: string }> = [];
               if (product.sku) detailRows.push({ label: "کد", value: product.sku });
               if (product.barcode) detailRows.push({ label: "بارکد", value: product.barcode });
-              if (product.brand?.name) detailRows.push({ label: "برند", value: product.brand.name });
+              if (product.brand?.name)
+                detailRows.push({ label: "برند", value: product.brand.name });
               if (product.category?.name)
                 detailRows.push({ label: "دسته", value: product.category.name });
               if (product.model) detailRows.push({ label: "مدل", value: product.model });
