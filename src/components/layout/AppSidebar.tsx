@@ -13,7 +13,7 @@ import {
 } from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
+import { Sparkles, Search, ScanSearch, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
@@ -68,6 +68,7 @@ export function AppSidebar() {
   const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
+  const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
   const visible = useMemo(
     () =>
       NAV_ITEMS.filter((i) => {
@@ -262,8 +263,19 @@ export function AppSidebar() {
               </span>
             </div>
           </div>
-          {/* Global search */}
+          {/* Quick sales search */}
           <div className="border-t border-sidebar-border/60 px-2 py-2 group-data-[collapsible=icon]:hidden">
+            {canQuickSalesSearch && (
+              <Link
+                to="/sales/search"
+                title="جستجوی سریع فروش"
+                aria-label="جستجوی سریع فروش"
+                className="mb-2 flex h-9 items-center justify-center gap-2 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/35 px-3 text-xs font-semibold text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-primary"
+              >
+                <ScanSearch className="h-4 w-4 text-sidebar-primary" />
+                <span>جستجوی سریع فروش</span>
+              </Link>
+            )}
             <div className="relative">
               <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
               <input
