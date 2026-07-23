@@ -187,3 +187,24 @@ Validation:
 - primary-action invariant check: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 4
+
+Scope finding:
+
+- The existing Sidebar search was improved rather than replaced.
+- The global command palette remains Phase 9 scope.
+
+Changes:
+
+- Sidebar search now uses `searchNavigationEntries`.
+- Results are still permission-filtered through visible Registry entries only.
+- Search now ranks title, keywords, description, and route aliases instead of matching label text only.
+- Existing normalization already covered Persian/Arabic digits, ZWNJ, whitespace, diacritics, and Arabic/Persian letter variants.
+
+Validation:
+
+- targeted search check: pass
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass

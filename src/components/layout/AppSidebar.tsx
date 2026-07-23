@@ -14,8 +14,8 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
 import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
-import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
+import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
 import type { NavigationEntry } from "@/lib/navigation/types";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
@@ -109,15 +109,13 @@ export function AppSidebar() {
     return items;
   }, [roles, visible]);
 
-  // SIDEBAR-SEARCH — match against permission-filtered `visible` items only.
-  const normalizedQuery = normalizeSearchText(searchQuery).toLowerCase();
+  // SIDEBAR-SEARCH — rank permission-filtered Registry entries only.
+  const normalizedQuery = normalizeNavigationSearch(searchQuery);
   const isSearching = normalizedQuery.length > 0;
   const searchResults = useMemo(() => {
     if (!isSearching) return [] as NavigationEntry[];
-    return visible.filter((i) =>
-      normalizeSearchText(i.title).toLowerCase().includes(normalizedQuery),
-    );
-  }, [isSearching, normalizedQuery, visible]);
+    return searchNavigationEntries(visible, searchQuery).map((result) => result.entry);
+  }, [isSearching, searchQuery, visible]);
   // KBD-NAV — reset highlight when query or results change.
   useEffect(() => {
     setHighlightedIndex(0);
