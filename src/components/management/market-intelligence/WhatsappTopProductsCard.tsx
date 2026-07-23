@@ -35,6 +35,14 @@ const SCOPES: Array<{ v: ScopeFilter; l: string }> = [
   { v: "out", l: "خارج از دستیار" },
 ];
 
+/** Persian labels for the platform's message-source tags. Unknown values fall
+ *  back to the raw tag (see below), so a new upstream source never breaks the card. */
+const SOURCE_LABEL: Record<string, string> = {
+  pv: "خصوصی",
+  group: "گروه",
+  status: "استوری",
+};
+
 export function WhatsappTopProductsCard() {
   const topFn = useServerFn(fetchWhatsappTopProducts);
   const q = useQuery({
@@ -101,6 +109,7 @@ export function WhatsappTopProductsCard() {
                   <th className="p-2 font-medium">رتبه</th>
                   <th className="p-2 font-medium">نام محصول</th>
                   <th className="p-2 font-medium">وضعیت</th>
+                  <th className="p-2 font-medium">منبع</th>
                   <th className="p-2 font-medium">تعداد تکرار</th>
                   <th className="p-2 font-medium">تعداد گروه</th>
                   <th className="p-2 font-medium">تعداد فرستنده</th>
@@ -130,6 +139,23 @@ export function WhatsappTopProductsCard() {
                         {p.assistant_status ??
                           (p.in_assistant ? "در دستیار داریم" : "خارج از دستیار")}
                       </Badge>
+                    </td>
+                    <td className="p-2">
+                      {p.sources.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {p.sources.map((s) => (
+                            <Badge
+                              key={s}
+                              variant="outline"
+                              className="h-4 whitespace-nowrap px-1 text-[10px]"
+                            >
+                              {SOURCE_LABEL[s] ?? s}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="p-2 font-bold tabular-nums text-emerald-700">
                       {formatNumber(p.mention_count)}
