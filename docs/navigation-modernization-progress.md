@@ -170,3 +170,20 @@ Phase 2 validation after mismatch fix:
 - guard/navigation audit: 0 mismatches
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 3
+
+Changes:
+
+- Added a Registry-driven primary action selector.
+- Added deterministic multi-role precedence: admin, manager, accountant, sales, viewer.
+- Rendered the primary action near the top of the Sidebar.
+- Kept the action permission-filtered through the shared navigation selector.
+- Added collapsed-sidebar support through an icon button and tooltip.
+
+Validation:
+
+- touched-file eslint: pass
+- primary-action invariant check: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass

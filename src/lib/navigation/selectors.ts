@@ -3,6 +3,14 @@ import type { AppRole } from "@/lib/rbac/roles";
 import { NAVIGATION_REGISTRY } from "./registry";
 import type { NavigationEntry, NavigationPrimaryModule } from "./types";
 
+const PRIMARY_ACTION_ROLE_PRECEDENCE: AppRole[] = [
+  "admin",
+  "manager",
+  "accountant",
+  "sales",
+  "viewer",
+];
+
 export function getNavigationEntries(): NavigationEntry[] {
   return NAVIGATION_REGISTRY;
 }
@@ -44,4 +52,16 @@ export function getMobileNavigationEntries(roles: AppRole[] | string[]): Navigat
   return getVisibleNavigationEntries(roles)
     .filter((entry) => entry.mobileVisible)
     .sort((a, b) => (a.mobilePriority ?? 999) - (b.mobilePriority ?? 999));
+}
+
+export function getPrimaryActionEntry(roles: AppRole[] | string[]): NavigationEntry | undefined {
+  const visible = getVisibleNavigationEntries(roles);
+  const normalizedRoles = PRIMARY_ACTION_ROLE_PRECEDENCE.filter((role) => roles.includes(role));
+
+  for (const role of normalizedRoles) {
+    const entry = visible.find((item) => item.primaryForRoles.includes(role));
+    if (entry) return entry;
+  }
+
+  return visible.find((item) => item.route === "/dashboard") ?? visible[0];
 }

@@ -12,10 +12,10 @@ import {
 } from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, ScanSearch, Bell, HelpCircle, LogOut } from "lucide-react";
+import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
-import { getVisibleNavigationEntries } from "@/lib/navigation/selectors";
+import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
 import type { NavigationEntry } from "@/lib/navigation/types";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
@@ -69,8 +69,8 @@ export function AppSidebar() {
   const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
-  const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
   const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
+  const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
@@ -253,18 +253,34 @@ export function AppSidebar() {
                 دستیار هوشمند کسب‌وکار
               </span>
             </div>
+            {primaryAction && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={primaryAction.route}
+                    aria-label={primaryAction.title}
+                    className="hidden h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border/60 bg-sidebar-accent/35 text-sidebar-primary transition-colors hover:bg-sidebar-accent/60 group-data-[collapsible=icon]:flex"
+                  >
+                    <primaryAction.icon className="h-4 w-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  {primaryAction.title}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
-          {/* Quick sales search */}
+          {/* Role primary action and Sidebar search */}
           <div className="border-t border-sidebar-border/60 px-2 py-2 group-data-[collapsible=icon]:hidden">
-            {canQuickSalesSearch && (
+            {primaryAction && (
               <Link
-                to="/sales/search"
-                title="جستجوی سریع فروش"
-                aria-label="جستجوی سریع فروش"
+                to={primaryAction.route}
+                title={primaryAction.title}
+                aria-label={primaryAction.title}
                 className="mb-2 flex h-9 items-center justify-center gap-2 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/35 px-3 text-xs font-semibold text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-primary"
               >
-                <ScanSearch className="h-4 w-4 text-sidebar-primary" />
-                <span>جستجوی سریع فروش</span>
+                <primaryAction.icon className="h-4 w-4 text-sidebar-primary" />
+                <span>{primaryAction.title}</span>
               </Link>
             )}
             <div className="relative">
