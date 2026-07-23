@@ -208,3 +208,24 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 5
+
+Changes:
+
+- Added a typed Needs Action source abstraction.
+- Added compact Sidebar rendering for up to three actionable entries.
+- Added real sources only:
+  - pending users
+  - unhealthy pricing recompute queue
+- Kept zero-count sources hidden.
+- Kept source resolution permission-aware through Registry visibility.
+- Removed polling from the pricing queue Sidebar query.
+- Did not create any migration or backend object.
+
+Validation:
+
+- needs-action resolver check: pass
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass

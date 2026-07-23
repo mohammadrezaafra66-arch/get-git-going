@@ -16,6 +16,7 @@ import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
 import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
+import { resolveNeedsActionItems } from "@/lib/navigation/needs-action";
 import type { NavigationEntry } from "@/lib/navigation/types";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
@@ -120,7 +121,11 @@ export function AppSidebar() {
   useEffect(() => {
     setHighlightedIndex(0);
   }, [searchQuery, searchResults.length]);
-  const { data: pendingCount } = useQuery({
+  const {
+    data: pendingCount,
+    isLoading: isPendingUsersLoading,
+    isError: isPendingUsersError,
+  } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
     queryFn: async () => {
@@ -133,11 +138,13 @@ export function AppSidebar() {
   });
 
   // PRICE-RT.4 — small queue alert badge (admin/manager/accountant only).
-  const { data: pricingQueueHealth } = useQuery({
+  const {
+    data: pricingQueueHealth,
+    isLoading: isPricingQueueLoading,
+    isError: isPricingQueueError,
+  } = useQuery({
     queryKey: ["sidebar-pricing-queue-summary"],
     enabled: canSeePricingQueue,
-    refetchInterval: 120_000,
-    refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_pricing_recompute_queue_summary")
@@ -159,6 +166,24 @@ export function AppSidebar() {
       : pendingPricing > 100 || oldestPendingMs > 10 * 60 * 1000
         ? "warning"
         : null;
+  const needsActionItems = useMemo(
+    () =>
+      resolveNeedsActionItems(roles, {
+        pendingUsersCount: pendingCount,
+        pricingQueue: pricingQueueHealth
+          ? {
+              pending_count: pricingQueueHealth.pending_count,
+              failed_count: pricingQueueHealth.failed_count,
+              oldest_pending_at: pricingQueueHealth.oldest_pending_at,
+            }
+          : null,
+      }),
+    [roles, pendingCount, pricingQueueHealth],
+  );
+  const needsActionLoading =
+    (isAdmin && isPendingUsersLoading) || (canSeePricingQueue && isPricingQueueLoading);
+  const needsActionError =
+    (isAdmin && isPendingUsersError) || (canSeePricingQueue && isPricingQueueError);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -384,6 +409,51 @@ export function AppSidebar() {
               </>
             ) : (
               <>
+                {(needsActionItems.length > 0 || needsActionLoading || needsActionError) && (
+                  <div className="mb-3 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/15 p-2">
+                    <div className="mb-1.5 flex items-center justify-between px-1 text-[11px] font-semibold text-sidebar-primary/85">
+                      <span>نیازمند اقدام</span>
+                      {needsActionLoading && (
+                        <span className="text-[10px] font-normal text-sidebar-foreground/50">
+                          در حال بررسی
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {needsActionItems.map((item) => (
+                        <Link
+                          key={item.id}
+                          to={item.route}
+                          className="flex h-8 items-center gap-2 rounded-md bg-sidebar/50 px-2 text-[11px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/50"
+                        >
+                          <item.entry.icon
+                            className={`h-3.5 w-3.5 ${
+                              item.tone === "danger" ? "text-destructive" : "text-amber-500"
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                          {item.detail && (
+                            <span className="hidden truncate text-[10px] text-sidebar-foreground/50 xl:inline">
+                              {item.detail}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white ${
+                              item.tone === "danger" ? "bg-destructive" : "bg-amber-500"
+                            }`}
+                          >
+                            {item.count}
+                          </span>
+                        </Link>
+                      ))}
+                      {needsActionError && (
+                        <div className="rounded-md bg-sidebar/40 px-2 py-1.5 text-[10px] text-sidebar-foreground/55">
+                          بررسی بعضی اقدام‌ها ممکن نشد
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
                   {activeModuleMeta && (
                     <>
