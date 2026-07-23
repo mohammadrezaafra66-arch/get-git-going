@@ -970,6 +970,43 @@ const BADGE_SOURCE_BY_ROUTE: Record<string, NavigationEntry["badgeSource"]> = {
   "/pricing/recompute-prices": { id: "pricing-recompute-queue" },
 };
 
+const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["action"]>> = {
+  "/products/new": "create",
+  "/pricing/purchase-prices": "create",
+  "/pricing/recompute-prices": "update",
+};
+
+const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
+  "/accounting/dynamic-capital": ["admin", "accountant"],
+  "/admin/audit": ["admin", "manager"],
+  "/admin/automation": ["admin", "manager"],
+  "/admin/delivery-receipts": ["admin", "manager"],
+  "/admin/documents": ["admin", "manager"],
+  "/admin/penalties": ["admin", "manager"],
+  "/admin/profile-fields": ["admin"],
+  "/admin/purchase": ["admin", "manager"],
+  "/admin/recent-purchase-settings": ["admin"],
+  "/admin/roles": ["admin"],
+  "/admin/sales-reminders": ["admin", "manager"],
+  "/admin/settings": ["admin"],
+  "/admin/validation-rules": ["admin"],
+  "/admin/workflow-settings": ["admin", "manager"],
+  "/audit-logs": ["admin"],
+  "/gamification/admin/achievements": ["admin", "manager"],
+  "/gamification/admin/analytics": ["admin", "manager"],
+  "/gamification/admin/kpi-rules": ["admin", "manager"],
+  "/gamification/admin/leagues": ["admin", "manager"],
+  "/gamification/admin/manual-metrics": ["admin", "manager", "accountant"],
+  "/gamification/admin/missions": ["admin", "manager"],
+  "/gamification/admin/purchase-settings": ["admin", "manager", "accountant"],
+  "/gamification/admin/rewards": ["admin", "manager"],
+  "/pricing/market-intelligence": ["admin", "manager", "accountant"],
+  "/pricing/product-recommendations": ["admin", "manager"],
+  "/roles": ["admin"],
+  "/sales/credit-rules": ["admin", "accountant"],
+  "/users": ["admin"],
+};
+
 function idFromRoute(route: string): string {
   return (
     route
@@ -1012,8 +1049,9 @@ function toNavigationEntry(seed: NavigationEntrySeed): NavigationEntry {
     description: "Open " + seed.label,
     keywords: routeKeywords(seed),
     icon: seed.icon,
-    permission: { module: seed.module, action: "view" },
+    permission: { module: seed.module, action: ACTION_BY_ROUTE[seed.to] ?? "view" },
     adminOnly: seed.adminOnly,
+    allowedRoles: seed.allowedRoles ?? ROLE_ALLOWLIST_BY_ROUTE[seed.to],
     pinnable: true,
     primaryForRoles: PRIMARY_ROLE_ROUTES[seed.to] ?? [],
     badgeSource: BADGE_SOURCE_BY_ROUTE[seed.to],

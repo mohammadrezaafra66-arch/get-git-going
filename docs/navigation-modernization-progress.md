@@ -138,3 +138,35 @@ Notes:
 ## Resume Point
 
 Resume at Stage C Phase 2.
+
+## Stage C Phase 2 Guard Audit
+
+User-directed mismatch fix:
+
+- `/sales/credit-rules` navigation visibility was narrowed to `admin` and `accountant`.
+- The route guard remains unchanged: `requireAnyRole(["admin", "accountant"])`.
+- No guard was widened.
+
+Additional Registry audit:
+
+- Added route-level allowlists for Registry entries guarded by stricter `requireAdmin` or `requireAnyRole` checks.
+- Added action overrides for Registry entries that point directly at create/update screens:
+  - `/products/new`: `products:create`
+  - `/pricing/purchase-prices`: `pricing:create`
+  - `/pricing/recompute-prices`: `pricing:update`
+- Automated audit result:
+  - Registry entries scanned: 97
+  - Registry routes matched to direct route guards: 95
+  - Guard/navigation mismatches: 0
+  - Two parser misses were manually verified:
+    - `/sales/invoices`: route literal uses a TanStack path group and guards `invoices:view`.
+    - `/sales/customers`: route literal uses a TanStack path group and guards `sales:view`.
+
+No route guard, route URL, business logic, database object, or migration was changed.
+
+Phase 2 validation after mismatch fix:
+
+- touched-file eslint: pass
+- guard/navigation audit: 0 mismatches
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass

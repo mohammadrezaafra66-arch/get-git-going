@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NAV_ITEMS, type NavItem } from "./nav-items";
 import {
   PRIMARY_MODULES,
   resolveActiveModule,
@@ -16,6 +15,8 @@ import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
 import { Sparkles, Search, ScanSearch, Bell, HelpCircle, LogOut } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
+import { getVisibleNavigationEntries } from "@/lib/navigation/selectors";
+import type { NavigationEntry } from "@/lib/navigation/types";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -69,14 +70,7 @@ export function AppSidebar() {
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
-  const visible = useMemo(
-    () =>
-      NAV_ITEMS.filter((i) => {
-        if (i.adminOnly && !canSeeAdminOnly) return false;
-        return hasPermissionEx(roles, i.module, "view");
-      }),
-    [roles, canSeeAdminOnly],
-  );
+  const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
@@ -105,8 +99,8 @@ export function AppSidebar() {
         }
       }
     }
-    const byPath = new Map(visible.map((i) => [i.to, i] as const));
-    const items: NavItem[] = [];
+    const byPath = new Map(visible.map((i) => [i.route, i] as const));
+    const items: NavigationEntry[] = [];
     for (const p of paths) {
       const it = byPath.get(p);
       if (it) items.push(it);
@@ -119,9 +113,9 @@ export function AppSidebar() {
   const normalizedQuery = normalizeSearchText(searchQuery).toLowerCase();
   const isSearching = normalizedQuery.length > 0;
   const searchResults = useMemo(() => {
-    if (!isSearching) return [] as NavItem[];
+    if (!isSearching) return [] as NavigationEntry[];
     return visible.filter((i) =>
-      normalizeSearchText(i.label).toLowerCase().includes(normalizedQuery),
+      normalizeSearchText(i.title).toLowerCase().includes(normalizedQuery),
     );
   }, [isSearching, normalizedQuery, visible]);
   // KBD-NAV — reset highlight when query or results change.
@@ -181,25 +175,22 @@ export function AppSidebar() {
     };
   }, [isAdmin, qc]);
 
-  const isItemActive = (to: string) =>
-    location.pathname === to || location.pathname.startsWith(to + "/");
+  const isItemActive = (route: string) =>
+    location.pathname === route || location.pathname.startsWith(route + "/");
 
-  const renderItem = (item: NavItem, index?: number) => {
-    const active = isItemActive(item.to);
-    const isHighlighted =
-      isSearching && typeof index === "number" && index === highlightedIndex;
-    const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
+  const renderItem = (item: NavigationEntry, index?: number) => {
+    const active = isItemActive(item.route);
+    const isHighlighted = isSearching && typeof index === "number" && index === highlightedIndex;
+    const showBadge = item.route === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
-      item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+      item.route === "/pricing/recompute-prices" && pricingAlertVariant !== null;
     return (
       <Link
-        key={item.to}
-        to={item.to}
+        key={item.route}
+        to={item.route}
         aria-current={active ? "page" : undefined}
         onMouseEnter={
-          isSearching && typeof index === "number"
-            ? () => setHighlightedIndex(index)
-            : undefined
+          isSearching && typeof index === "number" ? () => setHighlightedIndex(index) : undefined
         }
         className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors
           ${
@@ -214,7 +205,7 @@ export function AppSidebar() {
         <item.icon
           className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`}
         />
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">{item.title}</span>
         {showBadge && (
           <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
             {pendingCount}
@@ -290,9 +281,7 @@ export function AppSidebar() {
                   if (e.key === "ArrowDown") {
                     e.preventDefault();
                     setHighlightedIndex((i) =>
-                      searchResults.length === 0
-                        ? 0
-                        : Math.min(i + 1, searchResults.length - 1),
+                      searchResults.length === 0 ? 0 : Math.min(i + 1, searchResults.length - 1),
                     );
                   } else if (e.key === "ArrowUp") {
                     e.preventDefault();
@@ -301,7 +290,7 @@ export function AppSidebar() {
                     e.preventDefault();
                     const target = searchResults[highlightedIndex];
                     if (target) {
-                      navigate({ to: target.to });
+                      navigate({ to: target.route });
                       setSearchQuery("");
                     }
                   } else if (e.key === "Escape") {
@@ -336,7 +325,7 @@ export function AppSidebar() {
                       disabled={disabled}
                       onClick={() => {
                         setActiveModule(m.key);
-                        if (m.defaultTo && visible.some((i) => i.to === m.defaultTo)) {
+                        if (m.defaultTo && visible.some((i) => i.route === m.defaultTo)) {
                           navigate({ to: m.defaultTo });
                         }
                       }}
@@ -407,11 +396,11 @@ export function AppSidebar() {
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {quickAccess.map((item) => {
-                        const active = isItemActive(item.to);
+                        const active = isItemActive(item.route);
                         return (
                           <Link
-                            key={`qa-${item.to}`}
-                            to={item.to}
+                            key={`qa-${item.route}`}
+                            to={item.route}
                             className={`flex h-8 items-center gap-1.5 truncate rounded-md border px-2 text-[11px] transition-colors ${
                               active
                                 ? "border-sidebar-primary/40 bg-sidebar-accent/70 text-sidebar-primary"
@@ -419,7 +408,7 @@ export function AppSidebar() {
                             }`}
                           >
                             <item.icon className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{item.label}</span>
+                            <span className="truncate">{item.title}</span>
                           </Link>
                         );
                       })}

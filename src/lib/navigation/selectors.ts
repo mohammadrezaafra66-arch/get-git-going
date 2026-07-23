@@ -24,6 +24,7 @@ export function isNavigationEntryVisible(
   roles: AppRole[] | string[],
 ): boolean {
   if (entry.adminOnly && !roles.includes("admin") && !roles.includes("manager")) return false;
+  if (entry.allowedRoles && !entry.allowedRoles.some((role) => roles.includes(role))) return false;
   return hasPermissionEx(roles, entry.permission.module, entry.permission.action);
 }
 

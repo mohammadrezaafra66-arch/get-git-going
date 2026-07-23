@@ -54,6 +54,7 @@ export interface NavigationEntrySeed {
   group: NavigationGroupKey;
   subgroup?: NavigationSubgroupKey;
   adminOnly?: boolean;
+  allowedRoles?: AppRole[];
 }
 
 export interface NavigationEntry {
@@ -69,6 +70,7 @@ export interface NavigationEntry {
   icon: ComponentType<{ className?: string }>;
   permission: NavigationPermission;
   adminOnly?: boolean;
+  allowedRoles?: AppRole[];
   pinnable: boolean;
   primaryForRoles: AppRole[];
   badgeSource?: NavigationBadgeSource;

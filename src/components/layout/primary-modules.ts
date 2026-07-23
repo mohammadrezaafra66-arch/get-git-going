@@ -7,7 +7,7 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
-import type { NavItem } from "./nav-items";
+import type { NavigationEntry } from "@/lib/navigation/types";
 
 export type PrimaryModuleKey =
   | "dashboard"
@@ -187,11 +187,14 @@ export function resolveActiveModule(pathname: string): PrimaryModuleKey {
  * Filter NAV_ITEMS to those belonging to a given primary module, preserving
  * the order declared in PRIMARY_MODULES.paths.
  */
-export function itemsForModule(moduleKey: PrimaryModuleKey, visibleItems: NavItem[]): NavItem[] {
+export function itemsForModule(
+  moduleKey: PrimaryModuleKey,
+  visibleItems: NavigationEntry[],
+): NavigationEntry[] {
   const m = PRIMARY_MODULES.find((x) => x.key === moduleKey);
   if (!m) return [];
-  const byPath = new Map(visibleItems.map((i) => [i.to, i] as const));
-  const out: NavItem[] = [];
+  const byPath = new Map(visibleItems.map((i) => [i.route, i] as const));
+  const out: NavigationEntry[] = [];
   for (const p of m.paths) {
     const it = byPath.get(p);
     if (it) out.push(it);
