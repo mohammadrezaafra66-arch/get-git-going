@@ -355,3 +355,68 @@ Regression note:
   - `26d0d2a8 fix(scoring): align weight validity dates with month-start period semantics`
   - It adds `supabase/migrations/20260722230000_142_fix_weight_validity_month_start.sql`.
   - This was not part of the navigation work and was not staged by the navigation phase commits.
+
+## Stage D Refresh After Branch Continuation
+
+Date: 2026-07-24
+Branch: feature/navigation-modernization
+Validated HEAD: `35216bb0`
+Required test route: `/gamification/admin/manual-metrics`
+
+Scope:
+
+- Phase 1 through Phase 9 were already implemented in earlier commits and remained intact.
+- This continuation completed the local validation/reporting pass only.
+- No Registry, route guard, permission, business logic, SQL migration, or live database data was changed.
+- Known unrelated untracked local artifacts were left untouched and unstaged.
+
+Validation commands:
+
+- `npm.cmd run typecheck`
+  - exit code: 1
+  - TypeScript error count: 70
+  - classification: existing baseline, no new navigation validation errors introduced by this pass
+- `npm.cmd run lint`
+  - exit code: 1
+  - result: `1289 problems (872 errors, 417 warnings)`
+  - classification: existing branch lint debt; this documentation-only pass did not add lintable source files
+- `npm.cmd run build`
+  - exit code: 0
+  - result: pass
+- Package test script:
+  - none exists in `package.json`
+
+Local LAN rebuild:
+
+- Stamped local LAN build metadata:
+  - `GIT_SHA=35216bb0`
+  - `BUILD_TIME=2026-07-23T22:04:03Z`
+- Rebuilt `afrakala-lan-web`.
+- Recreated/restarted `afrakala-lan-web`.
+- Restarted `afrakala-lan-rest`.
+- Confirmed the running web container exposes the stamped metadata above.
+
+HTTP smoke checks after rebuild:
+
+- `/`: 200
+- `/gamification/admin/manual-metrics`: 200
+- `/sales/search`: 200
+- `/knowledge`: 200
+- `/this-route-does-not-exist-xyz`: 404
+
+Runtime logs after rebuild:
+
+- Web logs: no fatal/error/schema-cache/missing-relation matches in the checked tail.
+- PostgREST logs: current schema cache reload was observed; no current missing relation/schema-cache failure was found in the checked tail. Historical startup retry lines from an older timestamp were not caused by this validation pass.
+
+Browser automation:
+
+- Attempted to start the in-app browser automation runtime.
+- The Node REPL browser bridge failed before page control due to a local filesystem permission error while resolving `C:\Users\AFRA\AppData`.
+- Result: interactive browser QA was not completed in this pass.
+- Manual logged-in QA remains required for visual and permission-sensitive behavior.
+
+Final documentation produced by this pass:
+
+- `docs/navigation-modernization-manual-test.md`
+- `docs/navigation-modernization-final-report.md`
