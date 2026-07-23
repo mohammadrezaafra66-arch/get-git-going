@@ -70,7 +70,7 @@ import { CreatePriceAlertButton } from "@/components/pricing/price-alerts/Create
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { SalesProductRecommendations } from "@/components/sales/SalesProductRecommendations";
 import { SalesReminderPopup } from "@/components/sales/SalesReminderPopup";
-import { FloatingReactionBurst } from "@/components/sales/FloatingReactionBurst";
+import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import {

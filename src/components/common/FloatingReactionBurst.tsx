@@ -1,20 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Heart, Moon, Sparkles, Star } from "lucide-react";
+import { Heart, PartyPopper, Sparkles, Star, Zap } from "lucide-react";
 
-/**
- * مورد ۱۳۸.۱ — افکت واکنش شناور
- *
- * هر بار که `trigger` تغییر کند یک burst از ۵ تا ۹ آیکون کوچک ساخته می‌شود که
- * از نزدیکی دکمه به سمت بالا شناور می‌شوند و محو می‌گردند. لایهٔ افکت همیشه
- * `pointer-events-none` است تا کلیک‌پذیری کارت دست‌نخورده بماند.
- *
- * انیمیشن کاملاً CSS است (کلاس `floating-reaction` در `src/styles.css`) و با
- * `prefers-reduced-motion: reduce` غیرفعال می‌شود. بدون وابستگی جدید.
- */
+const ICONS = [Star, Heart, Sparkles, Zap, PartyPopper];
 
-const ICONS = [Star, Heart, Sparkles, Moon];
-
-// رنگ‌های ملایم و هماهنگ با تم — روی تم روشن و تیره هر دو خوانا هستند.
 const TINTS = [
   "text-primary/70",
   "text-amber-400/80",
@@ -48,48 +36,51 @@ function buildParticles(startId: number): Particle[] {
     id: startId + i,
     iconIndex: randIntBetween(0, ICONS.length - 1),
     tint: TINTS[randIntBetween(0, TINTS.length - 1)],
-    // پخش افقی حول مرکز دکمه
-    left: randBetween(15, 85),
-    drift: randBetween(-26, 26),
-    rise: randBetween(-72, -110),
+    left: randBetween(18, 82),
+    drift: randBetween(-24, 24),
+    rise: randBetween(-46, -84),
     size: randBetween(12, 20),
     rotate: randBetween(-35, 35),
     delayMs: randBetween(0, 220),
-    durationMs: randBetween(900, 1500),
+    durationMs: randBetween(1000, 2000),
   }));
 }
 
 export function FloatingReactionBurst({ trigger }: { trigger: number }) {
   const [particles, setParticles] = useState<Particle[]>([]);
   const nextIdRef = useRef(0);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRefs = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   useEffect(() => {
     if (trigger <= 0) return;
     const batch = buildParticles(nextIdRef.current);
     nextIdRef.current += batch.length;
-    setParticles(batch);
+    setParticles((current) => [...current, ...batch]);
 
-    // پاک‌سازی بعد از پایان کندترین ذره تا state نشت نکند.
-    const lifetime = Math.max(...batch.map((p) => p.delayMs + p.durationMs)) + 80;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setParticles([]), lifetime);
+    const lifetime = Math.max(...batch.map((p) => p.delayMs + p.durationMs)) + 120;
+    const batchIds = new Set(batch.map((p) => p.id));
+    const timeout = setTimeout(() => {
+      setParticles((current) => current.filter((particle) => !batchIds.has(particle.id)));
+      timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
+    }, lifetime);
+    timeoutRefs.current.push(timeout);
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
     };
   }, [trigger]);
 
   if (particles.length === 0) return null;
 
   return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 z-20 block">
+    <span aria-hidden className="pointer-events-none absolute inset-0 z-20 block overflow-visible">
       {particles.map((p) => {
         const Icon = ICONS[p.iconIndex];
         return (
           <span
             key={p.id}
-            className={`floating-reaction absolute top-0 ${p.tint}`}
+            className={`floating-reaction absolute top-1/2 ${p.tint}`}
             style={
               {
                 left: `${p.left}%`,

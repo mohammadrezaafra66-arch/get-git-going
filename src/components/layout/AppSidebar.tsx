@@ -12,7 +12,7 @@ import {
 } from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, Bell, HelpCircle, LogOut, Star } from "lucide-react";
+import { Sparkles, Search, Bell, HelpCircle, LogOut, Star, ScanSearch } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
 import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
@@ -20,6 +20,7 @@ import { resolveNeedsActionItems } from "@/lib/navigation/needs-action";
 import type { NavigationEntry } from "@/lib/navigation/types";
 import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorites";
 import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
+import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -58,6 +59,7 @@ export function AppSidebar() {
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [quickSalesBurst, setQuickSalesBurst] = useState(0);
   const [activeModule, setActiveModule] = useState<PrimaryModuleKey>(() =>
     resolveActiveModule(location.pathname),
   );
@@ -72,6 +74,7 @@ export function AppSidebar() {
   const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
+  const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
   const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
@@ -321,58 +324,24 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             )}
-          </div>
-          {/* Role primary action and Sidebar search */}
-          <div className="border-t border-sidebar-border/60 px-2 py-2 group-data-[collapsible=icon]:hidden">
-            {primaryAction && (
-              <Link
-                to={primaryAction.route}
-                title={primaryAction.title}
-                aria-label={primaryAction.title}
-                className="mb-2 flex h-9 items-center justify-center gap-2 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/35 px-3 text-xs font-semibold text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-primary"
-              >
-                <primaryAction.icon className="h-4 w-4 text-sidebar-primary" />
-                <span>{primaryAction.title}</span>
-              </Link>
+            {canQuickSalesSearch && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/sales/search"
+                    aria-label="جستجوی سریع فروش"
+                    onClick={() => setQuickSalesBurst((value) => value + 1)}
+                    className="relative hidden h-9 w-9 items-center justify-center overflow-visible rounded-lg border border-sidebar-primary/35 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-colors hover:bg-sidebar-primary/90 group-data-[collapsible=icon]:flex"
+                  >
+                    <ScanSearch className="h-4 w-4" />
+                    <FloatingReactionBurst trigger={quickSalesBurst} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  جستجوی سریع فروش
+                </TooltipContent>
+              </Tooltip>
             )}
-            <div className="relative">
-              <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (!isSearching) {
-                    if (e.key === "Escape") setSearchQuery("");
-                    return;
-                  }
-                  if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setHighlightedIndex((i) =>
-                      searchResults.length === 0 ? 0 : Math.min(i + 1, searchResults.length - 1),
-                    );
-                  } else if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setHighlightedIndex((i) => Math.max(i - 1, 0));
-                  } else if (e.key === "Enter") {
-                    e.preventDefault();
-                    const target = searchResults[highlightedIndex];
-                    if (target) {
-                      navigate({ to: target.route });
-                      setSearchQuery("");
-                    }
-                  } else if (e.key === "Escape") {
-                    setSearchQuery("");
-                  }
-                }}
-                placeholder="جستجوی سریع..."
-                aria-label="جستجوی سریع"
-                className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
-              />
-              <kbd className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-sidebar-border/60 bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60">
-                Ctrl K
-              </kbd>
-            </div>
           </div>
         </SidebarHeader>
 
@@ -421,6 +390,61 @@ export function AppSidebar() {
 
           {/* SUBMENU PANEL — only the active module's items, or search results */}
           <div className="flex min-w-0 flex-1 flex-col overflow-y-auto py-2 pl-2 group-data-[collapsible=icon]:hidden">
+            <div className="sticky top-0 z-30 mb-3 border-b border-sidebar-border/60 bg-sidebar/95 px-2 pb-2 pt-0 backdrop-blur">
+              {canQuickSalesSearch && (
+                <div className="relative mb-2 overflow-visible">
+                  <Link
+                    to="/sales/search"
+                    title="جستجوی سریع فروش"
+                    aria-label="جستجوی سریع فروش"
+                    onClick={() => setQuickSalesBurst((value) => value + 1)}
+                    className="relative flex h-10 items-center justify-center gap-2 overflow-visible rounded-lg border border-sidebar-primary/40 bg-sidebar-primary px-3 text-xs font-bold text-sidebar-primary-foreground shadow-md shadow-sidebar-primary/15 ring-1 ring-sidebar-primary/20 transition-colors hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/60"
+                  >
+                    <ScanSearch className="h-4 w-4" />
+                    <span>جستجوی سریع فروش</span>
+                    <FloatingReactionBurst trigger={quickSalesBurst} />
+                  </Link>
+                </div>
+              )}
+              <div className="relative">
+                <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (!isSearching) {
+                      if (e.key === "Escape") setSearchQuery("");
+                      return;
+                    }
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setHighlightedIndex((i) =>
+                        searchResults.length === 0 ? 0 : Math.min(i + 1, searchResults.length - 1),
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setHighlightedIndex((i) => Math.max(i - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const target = searchResults[highlightedIndex];
+                      if (target) {
+                        navigate({ to: target.route });
+                        setSearchQuery("");
+                      }
+                    } else if (e.key === "Escape") {
+                      setSearchQuery("");
+                    }
+                  }}
+                  placeholder="جستجوی سریع..."
+                  aria-label="جستجوی سریع"
+                  className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
+                />
+                <kbd className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-sidebar-border/60 bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60">
+                  Ctrl K
+                </kbd>
+              </div>
+            </div>
             {isSearching ? (
               <>
                 <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
