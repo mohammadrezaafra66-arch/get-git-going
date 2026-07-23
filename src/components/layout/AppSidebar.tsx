@@ -12,12 +12,13 @@ import {
 } from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
+import { Sparkles, Search, Bell, HelpCircle, LogOut, Star } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
 import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
 import { resolveNeedsActionItems } from "@/lib/navigation/needs-action";
 import type { NavigationEntry } from "@/lib/navigation/types";
+import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorites";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -72,6 +73,8 @@ export function AppSidebar() {
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
+  const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
+    useNavigationFavorites(visible);
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
@@ -207,48 +210,72 @@ export function AppSidebar() {
     const showBadge = item.route === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
       item.route === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+    const isFavorite = favoriteIdSet.has(item.id);
     return (
-      <Link
+      <div
         key={item.route}
-        to={item.route}
-        aria-current={active ? "page" : undefined}
         onMouseEnter={
           isSearching && typeof index === "number" ? () => setHighlightedIndex(index) : undefined
         }
-        className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors
+        className={`group relative flex h-9 items-center rounded-lg transition-colors
           ${
             active
               ? "bg-sidebar-accent/70 font-semibold text-sidebar-primary shadow-sm"
               : "text-sidebar-foreground/85 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
           } ${isHighlighted ? "ring-1 ring-sidebar-primary/60 bg-sidebar-accent/50" : ""}`}
       >
-        {active && (
-          <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
-        )}
-        <item.icon
-          className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`}
-        />
-        <span className="truncate">{item.title}</span>
-        {showBadge && (
-          <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-            {pendingCount}
-          </span>
-        )}
-        {showPricingBadge && (
-          <span
-            className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
-              pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+        <Link
+          to={item.route}
+          aria-current={active ? "page" : undefined}
+          className="relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
+        >
+          {active && (
+            <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
+          )}
+          <item.icon
+            className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`}
+          />
+          <span className="truncate">{item.title}</span>
+          {showBadge && (
+            <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              {pendingCount}
+            </span>
+          )}
+          {showPricingBadge && (
+            <span
+              className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
+                pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+              }`}
+              title={
+                pricingAlertVariant === "alert"
+                  ? `${failedCount} مورد ناموفق در صف قیمت`
+                  : `${pendingPricing} مورد در انتظار در صف قیمت`
+              }
+            >
+              {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+            </span>
+          )}
+        </Link>
+        {item.pinnable && (
+          <button
+            type="button"
+            aria-label={isFavorite ? "حذف از میانبرهای من" : "افزودن به میانبرهای من"}
+            title={isFavorite ? "حذف از میانبرهای من" : "افزودن به میانبرهای من"}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleFavorite(item);
+            }}
+            className={`ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+              isFavorite
+                ? "text-amber-500 hover:bg-sidebar-accent/50"
+                : "text-sidebar-foreground/35 opacity-0 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/70 group-hover:opacity-100 focus:opacity-100"
             }`}
-            title={
-              pricingAlertVariant === "alert"
-                ? `${failedCount} مورد ناموفق در صف قیمت`
-                : `${pendingPricing} مورد در انتظار در صف قیمت`
-            }
           >
-            {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
-          </span>
+            <Star className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`} />
+          </button>
         )}
-      </Link>
+      </div>
     );
   };
 
@@ -453,6 +480,32 @@ export function AppSidebar() {
                       )}
                     </div>
                   </div>
+                )}
+                {favorites.length > 0 && (
+                  <>
+                    <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
+                      میانبرهای من
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-1">
+                      {favorites.slice(0, maxFavorites).map((item) => {
+                        const active = isItemActive(item.route);
+                        return (
+                          <Link
+                            key={`fav-${item.id}`}
+                            to={item.route}
+                            className={`flex h-8 items-center gap-1.5 truncate rounded-md border px-2 text-[11px] transition-colors ${
+                              active
+                                ? "border-sidebar-primary/40 bg-sidebar-accent/70 text-sidebar-primary"
+                                : "border-sidebar-border/50 bg-sidebar-accent/20 text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                            }`}
+                          >
+                            <item.icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
                 <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
                   {activeModuleMeta && (

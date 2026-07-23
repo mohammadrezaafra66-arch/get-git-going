@@ -229,3 +229,21 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 6
+
+Changes:
+
+- Added localStorage-backed Favorites with key `afrakala.navigation.favorites.v1`.
+- Stored stable Registry IDs only.
+- Capped favorites at five.
+- Removed duplicates, ignored invalid IDs, and hid inaccessible entries.
+- Added keyboard-accessible pin/unpin controls on Sidebar rows.
+- Rendered `My Shortcuts` only when at least one accessible favorite exists.
+- No migration or backend persistence was added.
+
+Validation:
+
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass
