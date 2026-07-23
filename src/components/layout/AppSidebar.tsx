@@ -19,6 +19,7 @@ import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/naviga
 import { resolveNeedsActionItems } from "@/lib/navigation/needs-action";
 import type { NavigationEntry } from "@/lib/navigation/types";
 import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorites";
+import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -75,6 +76,7 @@ export function AppSidebar() {
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
     useNavigationFavorites(visible);
+  const { recent, maxRecent } = useNavigationRecent(location.pathname, visible);
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
@@ -504,6 +506,28 @@ export function AppSidebar() {
                           </Link>
                         );
                       })}
+                    </div>
+                  </>
+                )}
+                {recent.length > 1 && (
+                  <>
+                    <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                      آخرین استفاده‌ها
+                    </div>
+                    <div className="mb-3 flex flex-col gap-0.5">
+                      {recent
+                        .filter((item) => item.route !== location.pathname)
+                        .slice(0, maxRecent)
+                        .map((item) => (
+                          <Link
+                            key={`recent-${item.id}`}
+                            to={item.route}
+                            className="flex h-7 items-center gap-2 rounded-md px-2 text-[11px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                          >
+                            <item.icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                          </Link>
+                        ))}
                     </div>
                   </>
                 )}

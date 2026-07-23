@@ -247,3 +247,20 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 7
+
+Changes:
+
+- Added localStorage-backed Recent destinations with key `afrakala.navigation.recent.v1`.
+- Stored stable Registry IDs only.
+- Recorded exact Registry routes only; query strings and dynamic detail URLs are never persisted.
+- Deduplicated entries, capped the list at five, and filtered by current permissions.
+- Ignored entries marked `recentEligible=false`.
+- Rendered a compact Recent section only when there is something useful to show.
+
+Validation:
+
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass
