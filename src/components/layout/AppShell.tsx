@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { NavigationBreadcrumbs } from "./NavigationBreadcrumbs";
+import { NavigationCommandPalette } from "./NavigationCommandPalette";
 import { PopupCenterProvider } from "@/lib/popups/PopupCenterProvider";
 import { PriceChangePopupListener } from "@/shared/components/PriceChangePopupListener";
 import { OwnerRemindersListener } from "@/shared/components/OwnerRemindersListener";
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavigationBreadcrumbs />
               {children}
             </main>
+            <NavigationCommandPalette />
             <MobileBottomNav />
           </SidebarInset>
         </div>

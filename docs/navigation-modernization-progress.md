@@ -281,3 +281,25 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 9
+
+Scope finding:
+
+- No global command palette existed before this phase.
+- Existing Sidebar `Ctrl K` text was only a visual affordance near the inline search input.
+
+Changes:
+
+- Added a Ctrl+K / Cmd+K command palette using existing shadcn `CommandDialog` / `cmdk`.
+- The shortcut does not fire while typing in inputs, textareas, selects, or contenteditable fields.
+- Commands are navigation-only and permission-filtered through Registry visibility.
+- Search reuses the Phase 4 Registry search.
+- Palette includes Favorites, Recent, and suggested navigation groups.
+- No destructive commands, raw database actions, dynamic sensitive detail routes, or placeholder commands were added.
+
+Validation:
+
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass
