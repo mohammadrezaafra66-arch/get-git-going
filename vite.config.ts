@@ -22,6 +22,8 @@ const cloudPublishableKey =
 const cloudProjectId =
   process.env.VITE_SUPABASE_PROJECT_ID ?? process.env.SUPABASE_PROJECT_ID ?? "kwwkppkcihrbeurwudjh";
 
+const disableLovableMcp = process.env.DISABLE_LOVABLE_MCP === "1" || process.platform === "win32";
+
 export default defineConfig({
   // NOTE: previously a `cloudflare: false` toggle was used when
   // SELF_HOST_NODE=1 to switch to a pure Node SSR build. The current
@@ -29,7 +31,7 @@ export default defineConfig({
   // so the toggle must be handled at the Dockerfile/runtime level.
   // See deploy/app/README.md section "Build target — Cloudflare Workers vs Node SSR".
   vite: {
-    plugins: process.env.DISABLE_LOVABLE_MCP === "1" ? [] : [mcpPlugin()],
+    plugins: disableLovableMcp ? [] : [mcpPlugin()],
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudPublishableKey),
