@@ -303,3 +303,55 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage D Runtime Validation
+
+Build/deploy:
+
+- Stamped local LAN build metadata:
+  - `GIT_SHA=18d2f417`
+  - `BUILD_TIME=2026-07-23T07:24:48Z`
+- Rebuilt LAN web image with Docker Compose.
+- Restarted `afrakala-lan-web`.
+- Restarted `afrakala-lan-rest`.
+- Confirmed `afrakala-lan-web` is healthy.
+- Confirmed REST endpoint returns 200 through Kong/PostgREST.
+
+HTTP smoke checks:
+
+- `/gamification/admin/manual-metrics`: 200
+- `/accounting/receipts/create`: 200
+- `/sales/invoices`: 200
+- `/sales/search`: 200
+- `/knowledge`: 200
+- `/sales/credit-rules`: 200
+- `/accounting/dynamic-capital`: 200
+- `/this-route-does-not-exist-xyz`: 404
+
+Runtime logs:
+
+- Web logs: no fatal/error/schema-cache/missing-relation matches in the checked window.
+- PostgREST logs: normal schema-cache reload observed; no missing relation error found.
+
+Browser automation:
+
+- No Playwright/Cypress app smoke script was found in `package.json`.
+- Remaining visual checks require a logged-in user:
+  - desktop Sidebar expanded/collapsed
+  - seven module order
+  - active route highlight
+  - primary action
+  - Needs Action
+  - Favorites add/remove
+  - Recent list
+  - breadcrumb strip
+  - Ctrl+K palette open/search/Escape/navigate
+  - mobile bottom navigation
+
+Regression note:
+
+- Navigation phase commits did not create a migration and did not edit `src/routeTree.gen.ts`.
+- A separate non-navigation commit appeared in the branch history during the session:
+  - `26d0d2a8 fix(scoring): align weight validity dates with month-start period semantics`
+  - It adds `supabase/migrations/20260722230000_142_fix_weight_validity_month_start.sql`.
+  - This was not part of the navigation work and was not staged by the navigation phase commits.
