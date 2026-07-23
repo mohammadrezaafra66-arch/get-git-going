@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -78,10 +79,56 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+type SalesSource = "auto" | "manual";
+
 function ManualMetricsPage() {
   const { roles } = useAuth();
   const qc = useQueryClient();
   const isAdmin = roles.includes("admin");
+  // Only admin/accountant may change how salesperson sales are scored.
+  const canToggleSource = isAdmin || roles.includes("accountant");
+
+  // Current sales-source mode (readable by any authenticated user).
+  const salesSourceQ = useQuery({
+    queryKey: ["gamification-sales-source"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<SalesSource> => {
+      const { data, error } = await supabase
+        .from("shop_settings")
+        .select("value")
+        .eq("key", "gamification_sales_source")
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.value as SalesSource) === "auto" ? "auto" : "manual";
+    },
+  });
+  const isAuto = salesSourceQ.data === "auto";
+
+  const setSource = useMutation({
+    mutationFn: async (mode: SalesSource) => {
+      // RPC not yet in generated types — cast the fn name to satisfy the client.
+      const { error } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+      )("set_gamification_sales_source", { _mode: mode });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_d, mode) => {
+      toast.success(
+        mode === "auto"
+          ? "حالت خودکار: فروش از پیش‌فاکتورهای نهایی‌شده خوانده می‌شود."
+          : "حالت دستی: فروش از مقادیر واردشده در همین صفحه خوانده می‌شود.",
+      );
+      qc.invalidateQueries({ queryKey: ["gamification-sales-source"] });
+      // The switch changes every score, so refresh the gamification surfaces.
+      qc.invalidateQueries({ queryKey: ["gamification-leaderboard"] });
+      qc.invalidateQueries({ queryKey: ["gamification-analytics"] });
+      qc.invalidateQueries({ queryKey: ["employee-scores"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "تغییر حالت ناموفق بود"),
+  });
 
   const [metricDate, setMetricDate] = useState<string>(todayISO());
   const [staffId, setStaffId] = useState<string>("");
@@ -201,7 +248,14 @@ function ManualMetricsPage() {
     [staffQ.data, staffId],
   );
 
-  const field = (key: keyof typeof EMPTY_FORM, label: string, unit: string, money = false) => (
+  const field = (
+    key: keyof typeof EMPTY_FORM,
+    label: string,
+    unit: string,
+    money = false,
+    forceDisabled = false,
+    hint?: string,
+  ) => (
     <div className="space-y-1">
       <Label>{label}</Label>
       <div className="flex items-center gap-2">
@@ -209,7 +263,7 @@ function ManualMetricsPage() {
           inputMode="numeric"
           dir="ltr"
           className="text-left font-mono"
-          disabled={locked || save.isPending}
+          disabled={locked || save.isPending || forceDisabled}
           value={money && form[key] ? Number(num(form[key])).toLocaleString("en-US") : form[key]}
           onChange={(e) =>
             setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d.]/g, "") }))
@@ -217,6 +271,9 @@ function ManualMetricsPage() {
         />
         <span className="whitespace-nowrap text-xs text-muted-foreground">{unit}</span>
       </div>
+      {forceDisabled && hint && (
+        <p className="text-[10px] leading-5 text-muted-foreground">{hint}</p>
+      )}
     </div>
   );
 
@@ -235,6 +292,46 @@ function ManualMetricsPage() {
           {isAdmin && " مدیر سیستم می‌تواند رکوردهای قدیمی‌تر را نیز اصلاح کند."}
         </AlertDescription>
       </Alert>
+
+      {canToggleSource && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">منبع محاسبهٔ فروش کارشناسان</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant={isAuto ? "default" : "secondary"} className="text-[10px]">
+                    {isAuto ? "خودکار" : "دستی"}
+                  </Badge>
+                  <span className="text-sm font-medium">
+                    {isAuto ? "فروش از پیش‌فاکتورهای نهایی‌شده" : "فروش از ورود دستی"}
+                  </span>
+                </div>
+                <p className="text-xs leading-6 text-muted-foreground">
+                  {isAuto
+                    ? "مبلغ فروش هر کارشناس از پیش‌فاکتورهای پذیرفته‌شده محاسبه می‌شود؛ مقدار فروشِ واردشده در این صفحه نادیده گرفته می‌شود (حذف نمی‌شود)."
+                    : "مبلغ فروش هر کارشناس از مقادیر واردشده در این صفحه محاسبه می‌شود. برای جبرانِ روزهای گذشته از همین فرم استفاده کنید."}
+                </p>
+                <p className="text-[10px] leading-5 text-muted-foreground">
+                  سود همیشه دستی است (پیش‌فاکتور بهای تمام‌شده را ذخیره نمی‌کند). تماس‌ها و
+                  دقایق مکالمه در هر دو حالت دستی هستند.
+                </p>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <Switch
+                  checked={isAuto}
+                  disabled={salesSourceQ.isLoading || setSource.isPending}
+                  onCheckedChange={(v) => setSource.mutate(v ? "auto" : "manual")}
+                  aria-label="حالت خودکار فروش"
+                />
+                <span className="text-[10px] text-muted-foreground">خودکار</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -305,7 +402,14 @@ function ManualMetricsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {field("sales_amount", "مبلغ فروش", "تومان", true)}
+            {field(
+              "sales_amount",
+              "مبلغ فروش",
+              "تومان",
+              true,
+              isAuto,
+              "در حالت خودکار، فروش از پیش‌فاکتورهای نهایی‌شده (پذیرفته‌شده) خوانده می‌شود و این مقدار نادیده گرفته می‌شود.",
+            )}
             {field("profit_amount", "مبلغ سود", "تومان", true)}
             {field("inbound_calls_count", "تماس ورودی", "تماس")}
             {field("outbound_calls_count", "تماس خروجی", "تماس")}
