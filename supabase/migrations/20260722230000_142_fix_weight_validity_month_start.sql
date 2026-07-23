@@ -16,7 +16,12 @@
 -- calculate_customer_realtime_credit resolve periods.
 --
 -- ---------------------------------------------------------------------
--- BACKUP TAKEN BEFORE THIS MIGRATION (18 rows):
+-- BACKUP TO TAKE BEFORE THIS MIGRATION:
+--
+--     CREATE TABLE IF NOT EXISTS public.dynamic_parameter_weights_backup_142 AS
+--       SELECT * FROM public.dynamic_parameter_weights;
+--
+-- Historical local backup name, kept for reference:
 --
 --     CREATE TABLE IF NOT EXISTS public.dynamic_parameter_weights_backup_20260722 AS
 --       SELECT * FROM public.dynamic_parameter_weights;
@@ -24,19 +29,41 @@
 -- ---------------------------------------------------------------------
 -- ROLLBACK
 --
---   1) Restore valid_from from the backup, by primary key:
+--   1) Restore any closed, non-month-covering rows deleted by this migration:
+--
+--     INSERT INTO public.dynamic_parameter_weights
+--     SELECT b.*
+--       FROM public.dynamic_parameter_weights_backup_142 b
+--      WHERE b.valid_to IS NOT NULL
+--        AND NOT EXISTS (
+--          SELECT 1
+--            FROM generate_series(
+--                   date_trunc('month', b.valid_from)::date,
+--                   date_trunc('month', b.valid_to)::date,
+--                   interval '1 month'
+--                 ) AS month_start
+--           WHERE b.valid_from <= month_start::date
+--             AND b.valid_to >= month_start::date
+--        )
+--        AND NOT EXISTS (
+--          SELECT 1
+--            FROM public.dynamic_parameter_weights w
+--           WHERE w.id = b.id
+--        );
+--
+--   2) Restore valid_from from the backup, by primary key:
 --
 --     UPDATE public.dynamic_parameter_weights w
 --        SET valid_from = b.valid_from
---       FROM public.dynamic_parameter_weights_backup_20260722 b
+--       FROM public.dynamic_parameter_weights_backup_142 b
 --      WHERE b.id = w.id;
 --
---   2) Restore the column default:
+--   3) Restore the column default:
 --
 --     ALTER TABLE public.dynamic_parameter_weights
 --       ALTER COLUMN valid_from SET DEFAULT CURRENT_DATE;
 --
---   3) Restore the three function bodies by re-applying their previous
+--   4) Restore the three function bodies by re-applying their previous
 --      definitions. The pre-change definitions are the ones live immediately
 --      before this migration:
 --        - public.upsert_dynamic_parameter_weight(uuid,numeric,boolean)
@@ -59,6 +86,31 @@
 -- =====================================================================
 
 BEGIN;
+
+-- ---------------------------------------------------------------------
+-- 0.1 Remove closed weight ranges that never cover a month-start period.
+--
+-- calculate_dynamic_score resolves one period per month, always normalized
+-- to that month's first day. A closed row that does not contain any such
+-- first-of-month date never affected scoring. Keeping those rows can make
+-- the later month-start backfill fail on fresh databases because the GiST
+-- exclusion constraint still sees range overlap after normalization.
+--
+-- This is intentionally semantic: no parameter code or audited date is
+-- hardcoded. Rows that covered even one month-start boundary are preserved.
+-- ---------------------------------------------------------------------
+DELETE FROM public.dynamic_parameter_weights w
+ WHERE w.valid_to IS NOT NULL
+   AND NOT EXISTS (
+     SELECT 1
+       FROM generate_series(
+              date_trunc('month', w.valid_from)::date,
+              date_trunc('month', w.valid_to)::date,
+              interval '1 month'
+            ) AS month_start
+      WHERE w.valid_from <= month_start::date
+        AND w.valid_to >= month_start::date
+   );
 
 -- ---------------------------------------------------------------------
 -- PRE-CHECK: refuse to run if the proposed backfill would leave any
