@@ -8294,6 +8294,10 @@ export type Database = {
       }
       sales_quotes: {
         Row: {
+          accounting_registered_at: string | null
+          accounting_registered_by: string | null
+          accounting_sent_at: string | null
+          accounting_sent_by: string | null
           cancel_reason: string | null
           canceled_at: string | null
           canceled_by: string | null
@@ -8313,6 +8317,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accounting_registered_at?: string | null
+          accounting_registered_by?: string | null
+          accounting_sent_at?: string | null
+          accounting_sent_by?: string | null
           cancel_reason?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
@@ -8332,6 +8340,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accounting_registered_at?: string | null
+          accounting_registered_by?: string | null
+          accounting_sent_at?: string | null
+          accounting_sent_by?: string | null
           cancel_reason?: string | null
           canceled_at?: string | null
           canceled_by?: string | null

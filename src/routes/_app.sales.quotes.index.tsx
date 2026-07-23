@@ -55,6 +55,7 @@ import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import { SALES_QUOTES_PAGE_SIZE, type SalesQuoteStatus } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
+import { QuoteAccountingMarkers } from "@/components/sales/quotes/QuoteAccountingMarkers";
 import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
 
@@ -80,6 +81,12 @@ interface QuoteRow {
   final_amount: number;
   expires_at: string | null;
   created_at: string;
+  accounting_registered_at: string | null;
+  accounting_registered_by: string | null;
+  accounting_sent_at: string | null;
+  accounting_sent_by: string | null;
+  accounting_registered_by_name?: string | null;
+  accounting_sent_by_name?: string | null;
   salesperson?: { id: string; full_name: string | null } | null;
 }
 
@@ -130,7 +137,7 @@ function QuotesListPage() {
       let q = supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, salesperson_id, status, final_amount, expires_at, created_at",
+          "id, quote_number, customer_name, customer_phone, salesperson_id, status, final_amount, expires_at, created_at, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -154,21 +161,31 @@ function QuotesListPage() {
       const { data, error, count } = await q;
       if (error) throw error;
       const baseRows = (data ?? []) as Array<Omit<QuoteRow, "salesperson">>;
-      const sIds = Array.from(
-        new Set(baseRows.map((r) => r.salesperson_id).filter((x): x is string => !!x)),
+      const profileIds = Array.from(
+        new Set(
+          baseRows
+            .flatMap((r) => [r.salesperson_id, r.accounting_registered_by, r.accounting_sent_by])
+            .filter((x): x is string => !!x),
+        ),
       );
-      let sMap = new Map<string, string | null>();
-      if (sIds.length > 0) {
-        const sr = await supabase.from("profiles").select("id, full_name").in("id", sIds);
+      let profileMap = new Map<string, string | null>();
+      if (profileIds.length > 0) {
+        const sr = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
         if (!sr.error)
-          sMap = new Map(
+          profileMap = new Map(
             (sr.data ?? []).map((p) => [p.id as string, (p.full_name as string | null) ?? null]),
           );
       }
       const rows: QuoteRow[] = baseRows.map((r) => ({
         ...r,
+        accounting_registered_by_name: r.accounting_registered_by
+          ? profileMap.get(r.accounting_registered_by) ?? null
+          : null,
+        accounting_sent_by_name: r.accounting_sent_by
+          ? profileMap.get(r.accounting_sent_by) ?? null
+          : null,
         salesperson: r.salesperson_id
-          ? { id: r.salesperson_id, full_name: sMap.get(r.salesperson_id) ?? null }
+          ? { id: r.salesperson_id, full_name: profileMap.get(r.salesperson_id) ?? null }
           : null,
       }));
       return { rows, total: count ?? 0 };
@@ -388,6 +405,15 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
   return (
     <>
       <div className="flex flex-wrap gap-1">
+        <QuoteAccountingMarkers
+          quoteId={row.id}
+          state={{
+            accounting_registered_at: row.accounting_registered_at,
+            accounting_registered_by_name: row.accounting_registered_by_name,
+            accounting_sent_at: row.accounting_sent_at,
+            accounting_sent_by_name: row.accounting_sent_by_name,
+          }}
+        />
         {canSend && (
           <Button
             size="sm"
