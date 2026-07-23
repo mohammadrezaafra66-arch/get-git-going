@@ -21,14 +21,14 @@ const ALLOWED_ROLES = ["admin", "manager", "accountant"];
  * Kept in sync with the WhatsApp platform's just-expanded reporting filters:
  *  - ALL_TIME_DAYS: the platform's بازه picker now goes up to "all time"; its report cutoff is
  *    `now - days` with no upper bound, so a ~100-year day-count is an effectively unbounded window.
- *  - MAX_PUBLIC_LIMIT: the platform's UI تعداد picker now goes to 1000, but the PUBLIC
- *    /api/v1/reports/top-products endpoint this proxy calls clamps the count at 500 — so 500 is the
- *    real ceiling reachable from here.
+ *  - MAX_PUBLIC_LIMIT: the PUBLIC /api/v1/reports/top-products endpoint this proxy calls now
+ *    clamps the count at 1000 (raised from 500; verified live — requests above 1000 echo
+ *    limit=1000), so 1000 is the real ceiling reachable from here.
  *  - DEFAULT_LIMIT: pull a wider default slice than the original 150 so the low-mention
  *    "خارج از دستیار" tail isn't silently truncated, given the now-much-larger available range.
  */
 export const ALL_TIME_DAYS = 36500;
-export const MAX_PUBLIC_LIMIT = 500;
+export const MAX_PUBLIC_LIMIT = 1000;
 export const DEFAULT_LIMIT = 300;
 
 export interface WhatsappTopProduct {
@@ -132,9 +132,8 @@ export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
         // The platform's بازه (range) picker was expanded up to "all time"; accept any
         // positive day count (ALL_TIME_DAYS ≈ 100 years is its unbounded sentinel).
         range: z.number().int().positive().max(ALL_TIME_DAYS).optional(),
-        // The platform's public reports endpoint clamps the count at 500 (its تعداد picker
-        // now offers up to 1000, but /api/v1/reports caps at 500), so 500 is the real max
-        // reachable from here.
+        // The platform's public reports endpoint clamps the count at 1000 (raised from 500),
+        // so MAX_PUBLIC_LIMIT is the real max reachable from here.
         limit: z.number().int().positive().max(MAX_PUBLIC_LIMIT).optional(),
       })
       .parse(input ?? {}),
@@ -146,7 +145,7 @@ export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
     // catalog matches and non-catalog/competitor items ("خارج از دستیار"), which
     // sit in the low-mention tail. A small limit silently truncates that tail and
     // makes the card look catalog-only. Now that the platform serves a much larger
-    // window, pull a wider slice by default (still within the 500 public ceiling).
+    // window, pull a wider slice by default (still within the 1000 public ceiling).
     const limit = data.limit ?? DEFAULT_LIMIT;
     try {
       const json = (await getJson(
