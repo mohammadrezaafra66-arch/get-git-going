@@ -944,7 +944,7 @@ const MOBILE_PRIORITIES: Record<string, number> = {
 
 const PRIMARY_ROLE_ROUTES: Partial<Record<string, AppRole[]>> = {
   "/dashboard": ["admin", "manager", "viewer"],
-  "/sales/search": ["sales"],
+  "/sales": ["sales"],
   "/accounting/receipts": ["accountant"],
 };
 

@@ -264,3 +264,20 @@ Validation:
 - touched-file eslint: pass
 - typecheck: 70 baseline errors, no new navigation errors
 - build: pass
+
+## Stage C Phase 8
+
+Changes:
+
+- Added a route metadata resolver for title, short title, description, module, group, analytics key, and breadcrumbs.
+- Static Registry routes resolve exactly.
+- Dynamic child routes use generic safe labels and never expose raw IDs.
+- Added a compact breadcrumb strip in the app shell without replacing or duplicating page `PageHeader` content.
+- Corrected the sales primary-role mapping to point at the existing Registry route `/sales`.
+
+Validation:
+
+- metadata resolver check: pass
+- touched-file eslint: pass
+- typecheck: 70 baseline errors, no new navigation errors
+- build: pass

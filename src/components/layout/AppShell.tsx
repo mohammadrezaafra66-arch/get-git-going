@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { NavigationBreadcrumbs } from "./NavigationBreadcrumbs";
 import { PopupCenterProvider } from "@/lib/popups/PopupCenterProvider";
 import { PriceChangePopupListener } from "@/shared/components/PriceChangePopupListener";
 import { OwnerRemindersListener } from "@/shared/components/OwnerRemindersListener";
@@ -17,7 +18,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AppSidebar />
           <SidebarInset className="flex min-w-0 flex-1 flex-col">
             <AppHeader />
-            <main className="flex-1 px-3 py-4 pb-20 sm:px-6 sm:py-6 md:pb-6">{children}</main>
+            <main className="flex-1 px-3 py-4 pb-20 sm:px-6 sm:py-6 md:pb-6">
+              <NavigationBreadcrumbs />
+              {children}
+            </main>
             <MobileBottomNav />
           </SidebarInset>
         </div>
