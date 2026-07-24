@@ -1,5 +1,56 @@
 # Execution progress — AfraKala-execution-round2.md
 
+## STILL BLOCKED — the receipt-posting blocker is an ACCOUNTING-MODEL DECISION, not a code fix
+
+Investigated 2026-07-24. The blocker is deeper than "one type cast." There are
+TWO live-but-broken posting paths that post DIFFERENT journal entries for the
+same receipt. `journal_entries` has 0 rows — no receipt has ever posted through
+either. A human/accountant must decide which model is authoritative before any
+code fix.
+
+**Path A — `post_receipt_journal`** (trigger `trg_payment_receipts_post_journal`,
+AFTER INSERT OR UPDATE OF status on `payment_receipts`, via
+`trg_post_receipt_on_approve` — fires on APPROVE):
+- Journal lines use `account_kind='accounting_code'` (valid columns).
+- Debit = beneficiary/receiver accounting_code; Credit = payer accounting_code.
+  A pure code-to-code entry. No `increase_credit`, no invoice updates.
+- Only bug: guard `source_id = _receipt_id::text` (source_id is uuid) →
+  `uuid = text` error. One-line fix (`= _receipt_id`).
+
+**Path B — `post_receipt_accounting`** (app RPC, called from
+`src/routes/_app.accounting.receipts.$receiptId.tsx:332` when the accountant
+clicks POST):
+- Journal lines reference columns `kind`/`ref_id` that DO NOT EXIST (real
+  columns are `account_kind`/`account_ref_id`) → runtime error.
+- Debit = bank/external_party (`account_ref_id` = entity); Credit = customer.
+  ALSO runs `increase_credit(customer, amount)` and reconciles invoice status.
+- Also reads `bank_accounts.accounting_code`, a column that does not exist.
+
+**Verdict (Step 1.3): the two paths are NOT equivalent and neither is dead.**
+Different accounts, different journal_lines columns, different side effects
+(Path B alone touches the customer credit ledger and invoice status). Which is
+correct is an accounting decision:
+- Model A: payer code (credit) → beneficiary code (debit).
+- Model B: bank/party asset (debit) → customer receivable (credit) + credit ledger.
+
+Per the task's own gate, execution STOPPED before any fix. No migration written,
+nothing applied.
+
+**Decision needed from a human/accountant:**
+1. Which journal model is authoritative — A (accounting-code pair) or B
+   (bank/customer + credit ledger)? They cannot both post for one receipt.
+2. `bank_accounts` has NO `accounting_code` column (only id, title, bank_name,
+   iban, account_no, card_no, currency, opening_balance, is_active, notes,
+   timestamps). If Model B is chosen, a bank->accounting-code mapping must be
+   decided (add a column, or resolve differently). Do NOT add on a guess.
+3. Once decided: fix the chosen path, and neutralize the other (make its
+   idempotency guard a genuine no-op — do NOT drop the function or trigger).
+
+RESUME remains at Phase 2A.4 posting (below) — still blocked until the above is
+decided.
+
+
+
 ## STOPPED in Phase 2A — pre-existing money-posting blocker. RESUME AT Phase 2A.4 (posting) after fixing `post_receipt_journal`.
 
 **Done and pushed this session (`AfraKala-phase2-payment-chain.md`):**
