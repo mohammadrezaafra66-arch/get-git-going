@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Search, Settings2 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
+import { KnowledgeAskBox } from "@/components/knowledge/KnowledgeAskBox";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,8 @@ function KnowledgeListPage() {
           ) : null
         }
       />
+
+      <KnowledgeAskBox />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">

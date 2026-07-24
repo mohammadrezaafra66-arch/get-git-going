@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Plus, Pencil, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowRight, Plus, Pencil, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
+import { reindexKnowledgeDocuments } from "@/lib/knowledge/rag.functions";
 import {
   KNOWLEDGE_CATEGORY_LABELS,
   KNOWLEDGE_ACCESS_LABELS,
@@ -57,6 +58,32 @@ function KnowledgeManagePage() {
       if (error) throw error;
       return (data ?? []) as unknown as DocRow[];
     },
+  });
+
+  const reindexM = useMutation({
+    mutationFn: () => reindexKnowledgeDocuments({ data: {} }),
+    onSuccess: (r) => {
+      if (!r.ok) {
+        toast.error(r.messageFa ?? "نمایه‌سازی انجام نشد.");
+        return;
+      }
+      if (r.documentsSeen === 0) {
+        // Say plainly that there was nothing to index rather than reporting a
+        // successful run that did nothing.
+        toast.info("سند منتشرشده‌ای برای نمایه‌سازی وجود ندارد.");
+        return;
+      }
+      const parts = [`${r.documentsIndexed} سند نمایه شد`, `${r.chunksWritten} بخش`];
+      if (r.documentsSkippedCorrupted > 0) {
+        parts.push(`${r.documentsSkippedCorrupted} سند به دلیل خرابی متن رد شد`);
+      }
+      if (r.documentsSkippedEmpty > 0) {
+        parts.push(`${r.documentsSkippedEmpty} سند خالی بود`);
+      }
+      if (r.model) parts.push(`مدل ${r.model} (${r.dimension} بعد)`);
+      toast.success(parts.join(" — "));
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در نمایه‌سازی"),
   });
 
   const createMutation = useMutation({
@@ -147,6 +174,19 @@ function KnowledgeManagePage() {
                 <ArrowRight className="ms-1 h-4 w-4" />
                 بازگشت
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reindexM.isPending}
+              onClick={() => reindexM.mutate()}
+            >
+              {reindexM.isPending ? (
+                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="ms-1 h-4 w-4" />
+              )}
+              نمایه‌سازی مجدد
             </Button>
             <Button size="sm" onClick={() => setCreating(true)}>
               <Plus className="ms-1 h-4 w-4" />
