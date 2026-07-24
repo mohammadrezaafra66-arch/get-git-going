@@ -79,6 +79,7 @@ import {
 } from "@/lib/sales/observatory-snippets";
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 import { fetchProductOwnersForProducts, type ProductOwnerLite } from "@/lib/sales/product-owners";
+import { PromotionNominateButton } from "@/components/sales/PromotionNominateButton";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => {
@@ -1434,6 +1435,8 @@ function ProductCard({
           <Button type="button" variant="secondary" size="sm" onClick={handleCopySalesText}>
             <Copy className="ms-1 h-4 w-4" /> کپی متن فروش
           </Button>
+          {/* D3 — promotion nomination (self-gates to the sales role). */}
+          <PromotionNominateButton productId={product.id} />
           {canRecalcPrice && (
             <Button
               type="button"
