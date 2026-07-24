@@ -19,7 +19,9 @@ export interface NavItem {
 
 export type SubgroupKey = NavigationSubgroupKey;
 
-export const NAV_ITEMS: NavItem[] = NAVIGATION_REGISTRY.map((entry) => ({
+export const NAV_ITEMS: NavItem[] = NAVIGATION_REGISTRY.filter(
+  (entry) => !entry.hiddenFromMenu,
+).map((entry) => ({
   to: entry.route,
   label: entry.title,
   icon: entry.icon,

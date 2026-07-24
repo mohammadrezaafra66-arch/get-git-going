@@ -55,6 +55,12 @@ export interface NavigationEntrySeed {
   subgroup?: NavigationSubgroupKey;
   adminOnly?: boolean;
   allowedRoles?: AppRole[];
+  /**
+   * Keep the route registered (breadcrumbs, module resolution, direct URL) but
+   * omit it from every menu, search result and pin list. Not a security
+   * mechanism — the route guard is unchanged.
+   */
+  hiddenFromMenu?: boolean;
 }
 
 export interface NavigationEntry {
@@ -71,6 +77,8 @@ export interface NavigationEntry {
   permission: NavigationPermission;
   adminOnly?: boolean;
   allowedRoles?: AppRole[];
+  /** See NavigationEntrySeed.hiddenFromMenu. */
+  hiddenFromMenu?: boolean;
   pinnable: boolean;
   primaryForRoles: AppRole[];
   badgeSource?: NavigationBadgeSource;

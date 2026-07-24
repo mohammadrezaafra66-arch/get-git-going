@@ -261,6 +261,10 @@ const NAVIGATION_SEEDS = [
     group: "sales-customers",
     subgroup: "sc-sales",
   },
+  // `invoices` / `invoice_items` are a dead parallel design: both tables hold 0
+  // rows and the live pre-invoice workflow is `sales_quotes` (/sales/quotes).
+  // Hidden from the menus only — routes, guards and breadcrumbs are unchanged,
+  // so /sales/invoices/$invoiceId/waybill stays reachable by direct URL.
   {
     to: "/sales/invoices",
     label: "فاکتورهای فروش",
@@ -268,6 +272,7 @@ const NAVIGATION_SEEDS = [
     module: "invoices",
     group: "sales-customers",
     subgroup: "sc-sales",
+    hiddenFromMenu: true,
   },
   {
     to: "/invoices",
@@ -276,6 +281,7 @@ const NAVIGATION_SEEDS = [
     module: "invoices",
     group: "sales-customers",
     subgroup: "sc-sales",
+    hiddenFromMenu: true,
   },
   {
     to: "/sales/stock-alerts",
@@ -1052,7 +1058,8 @@ function toNavigationEntry(seed: NavigationEntrySeed): NavigationEntry {
     permission: { module: seed.module, action: ACTION_BY_ROUTE[seed.to] ?? "view" },
     adminOnly: seed.adminOnly,
     allowedRoles: seed.allowedRoles ?? ROLE_ALLOWLIST_BY_ROUTE[seed.to],
-    pinnable: true,
+    hiddenFromMenu: seed.hiddenFromMenu,
+    pinnable: !seed.hiddenFromMenu,
     primaryForRoles: PRIMARY_ROLE_ROUTES[seed.to] ?? [],
     badgeSource: BADGE_SOURCE_BY_ROUTE[seed.to],
     breadcrumb: { title: seed.label },
