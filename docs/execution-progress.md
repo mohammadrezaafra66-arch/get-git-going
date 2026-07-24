@@ -1,6 +1,61 @@
 # Execution progress
 
-## FINAL PLAN (AfraKala-final-plan.md): PHASES 2, 3, 4 DONE. RESUME AT PHASE 5.
+## FINAL PLAN (AfraKala-final-plan.md): ALL NINE PHASES DONE (2026-07-24)
+
+Phases 5–9 completed in this session on `feature/navigation-modernization`.
+Commits: `223f3cd8` (hide invoices menu), `5244ab0f` (payments training page),
+`13c40865` (Ollama config), `79549707` (shared AI client + vault key storage),
+`7f870e2f` / `da54e463` / `3e64671c` / `48654da2` / `1701cc02` (five call-site
+migrations, one each), `877f9991` (knowledge RAG). All pushed.
+
+### Migrations applied: 153 (ai_providers + vault) and 154 (knowledge chunks)
+Both with `psql -U supabase_admin -d afrakala --single-transaction
+-v ON_ERROR_STOP=1 -f <file>`, no inner BEGIN/COMMIT, committed with the code.
+
+### THE TRAP THAT ALMOST BIT AGAIN
+Migration 153 rewrites `is_valid_audit_entity_type`. The version in the
+20260628 migration file is **completely different** from the live one — the
+live function carries ~70 entity types, the old file ~60 different ones.
+Rebuilding the list from the migration file would have silently deleted most
+valid entity types and broken audit logging app-wide. **Always dump the live
+definition with `pg_get_functiondef` before a CREATE OR REPLACE.**
+
+### Phase 6.2 capability probes — the findings that constrained everything after
+- **chat / qwen2.5:7b — works.** Persian in, Persian out, ~16-17s, no CJK or
+  Latin leakage. But it hallucinates domain facts when ungrounded (it invented
+  a definition of «پیش‌فاکتور»). Usable only with retrieved context.
+- **embeddings / bge-m3 — works. Dimension 1024**, measured, not assumed.
+- **vision / qwen3.6 — READS PERSIAN PROSE, MISREADS PERSIAN DIGITS.** On a
+  clean synthetic bank receipt at temperature 0, reproducibly across runs:
+  amount ۴۵٬۰۰۰٬۰۰۰ → ۲۵٬۰۰۰٬۰۰۰, tracking ۸۲۷۴۱۹۶۳۵۰ → ۸۲۷۴۱۹۶۲۵۰, account
+  ۵۸۹۲۱۰۱۲۳۴۵۶۷۸۹۰ → ۵۸۹۳۱۰۱۲۳۴۵۶۷۸۹۰. Consistent ۴→۲ and ۳→۲ confusion; a
+  digit-focused prompt made it worse. **Not safe for receipt OCR.** No real
+  receipt image exists anywhere in the system, so this was a synthetic upper
+  bound — a photographed receipt would be worse.
+  Enforced by data, not code: the seeded `ollama` provider does not declare
+  the `vision` capability, so `aiVision` can never select it.
+
+### Where AI provider keys live, and the operational trap
+Supabase Vault (`supabase_vault` 0.2.8 + `pgsodium` 3.1.8, both already
+installed). pgsodium's root key is a 0600 file at
+`/etc/postgresql-custom/pgsodium_root.key` — **outside the database**. So a
+pg_dump, a copied backup or a SQL-injection read yields ciphertext only.
+Host/container compromise still yields everything; there is no KMS here.
+**TRAP: the root key file is not in a database backup.** Restoring the database
+alone onto another host makes every stored provider key permanently
+undecryptable. Back the key file up separately.
+
+### BLOCKED-NEEDS-APPROVAL — still no container rebuild
+Confirmed by the smoke test: the app on :3100 serves `APP_GIT_SHA=35216bb0`,
+not this branch's `877f9991`. `/admin/ai-providers` returns **404** there while
+`/accounting/receipts/training` returns 200 only because it matches the
+deployed `$receiptId` route. Everything built in phases 5–9 that touches the
+frontend is therefore **not live**. `docker compose up -d web` (and the
+OLLAMA_* env it picks up) needs the user's approval.
+
+---
+
+## SUPERSEDED — PHASES 2, 3, 4 (same session, earlier)
 
 Session of 2026-07-24. Branch `feature/navigation-modernization`. Commits
 `028e448a` (Phase 2), `c9d7355e` (Phase 3), both pushed. **The payment chain is

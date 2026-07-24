@@ -218,6 +218,18 @@ const NAVIGATION_SEEDS = [
     group: "products-pricing",
     subgroup: "pp-publish",
   },
+  // Phase 9.3 — same situation as /messages: the route exists with
+  // requirePermission("price-lists", "view") and is already declared in
+  // PRIMARY_MODULES.paths for the catalog module, but had no seed. Guard
+  // unchanged.
+  {
+    to: "/price-lists",
+    label: "لیست‌های قیمت",
+    icon: ListOrdered,
+    module: "price-lists",
+    group: "products-pricing",
+    subgroup: "pp-publish",
+  },
   {
     to: "/pricing/recompute-prices",
     label: "انتشار دسته‌ای قیمت",
@@ -488,6 +500,18 @@ const NAVIGATION_SEEDS = [
     label: "آکادمی",
     icon: GraduationCap,
     module: "academy",
+    group: "knowledge-comms",
+  },
+  // Phase 9.3 — /messages already existed with requirePermission("messages",
+  // "view") and was already listed in PRIMARY_MODULES.paths for the assistant
+  // module, but had no navigation seed, so itemsForModule looked it up and
+  // found nothing. The whole messenger was unreachable from the menu. Guard
+  // unchanged; this only adds the missing entry.
+  {
+    to: "/messages",
+    label: "پیام‌رسان",
+    icon: MessageSquare,
+    module: "messages",
     group: "knowledge-comms",
   },
   {
