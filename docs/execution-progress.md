@@ -1,6 +1,59 @@
 # Execution progress — AfraKala-execution-round2.md
 
-## RESUME AT PHASE 2 (implementation)
+## STOPPED in Phase 2A — pre-existing money-posting blocker. RESUME AT Phase 2A.4 (posting) after fixing `post_receipt_journal`.
+
+**Done and pushed this session (`AfraKala-phase2-payment-chain.md`):**
+- `b03d0d83` — migration 148 (Phase 2A schema + recompute trigger). Applied,
+  verified, committed. Schema: `payment_receipt_links.quote_id` (nullable FK,
+  indexed), `invoice_id` nullable, XOR CHECK exactly-one (both-set and
+  neither-set both rejected — verified), `UNIQUE(receipt_id, quote_id)`.
+  `recompute_employee_scores_on_receipt_link` resolves the salesperson from the
+  quote (verified: recompute fired, event logged, salesperson resolved). Role
+  check switched to `public.has_role` — `user_roles.role` is TEXT, so the
+  original `ur.role = 'sales'::app_role` was a latent `text=app_role` bug.
+- `post_receipt_accounting` left UNCHANGED (analysis: journal + `increase_credit`
+  are receipt-based and already post for a quote-linked receipt; adding quote
+  logic would double-post). This half of 2A.4 could NOT be executed end-to-end —
+  see blocker.
+
+**BLOCKER (why 2A.4 posting, 2B, 2C, 2D did not run) — pre-existing, money-critical:**
+1. `post_receipt_journal(uuid)` (fired by trigger `trg_post_receipt_on_approve`
+   whenever a receipt reaches `status='approved'`) contains a type bug:
+   `... AND source_id = _receipt_id::text` where `journal_entries.source_id` is
+   `uuid` → `operator does not exist: uuid = text`. **No receipt can be approved
+   at all** — which is why `payment_receipts` has 0 rows. The whole chain is
+   blocked at the very first step (create+approve a receipt), before quotes even
+   matter. This function is NOT recorded in the research gate below and is
+   outside this doc's stated scope.
+2. There are therefore TWO journal-posting paths: `post_receipt_journal`
+   (trigger, on approve) and `post_receipt_accounting` (explicit). Both write
+   `journal_entries` with `source_type='payment_receipt', source_id=receipt.id`
+   and both have an idempotency guard, so they should not double-post — but this
+   must be confirmed by a human before any receipt is created. Deciding which is
+   authoritative, and fixing `post_receipt_journal`'s cast, is money-critical and
+   was a rule-0.4 STOP (money "silently not posted"; potential double-post).
+
+**To RESUME (next session):**
+1. Fix `post_receipt_journal`: correct the `source_id`/`_receipt_id` comparison
+   to matching types (mirror `post_receipt_accounting`, which uses
+   `source_id = v_receipt.id` uuid=uuid). Confirm the two posting paths are not
+   redundant/double-posting.
+2. Then complete Phase 2A.4 posting verification: approve a quote-linked receipt,
+   confirm ONE balanced journal entry, `increase_credit` ran once.
+3. Then Phase 2B (calculate_employee_score collected from quote receipts —
+   see 2.1a; check `calculate_salesperson_collected_sales` too; the trigger that
+   invokes recompute is already fixed), 2B.2 credit, 2B.3 receivables view.
+4. Then Phase 2C (receipt form) and Phase 2D (end-to-end).
+Test scaffolding that worked: accepted quote `4850549b-…` (salesperson
+`56014064-…`, customer `d05bbd0b-…`, final 100100000); external party
+`e9b29dd2-…` for the receiver path (avoid the bank path —
+`bank_accounts.accounting_code` referenced by `post_receipt_accounting` also
+does not exist, a second latent bug). Use `SET LOCAL request.jwt.claims` for
+`auth.uid()`.
+
+---
+
+## RESUME AT PHASE 2 (implementation)  [superseded by the section above]
 
 Phase 1 is COMPLETE and pushed. The Phase 2 **research gate is complete** and is
 recorded below. Phase 2 **implementation was intentionally NOT started** — it
