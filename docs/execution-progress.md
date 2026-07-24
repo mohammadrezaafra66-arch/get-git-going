@@ -188,6 +188,41 @@ real; none of it persisted.
 
 ---
 
+## VALIDATION (run at the end of Phase 4)
+
+**`npm run typecheck` — exactly 70 errors in exactly 6 files. Baseline met, zero
+new.** Files: `src/lib/accounting/functions.ts`, `src/lib/audit/index.ts`,
+`src/lib/invoices/functions.ts`, `src/routes/_app.admin.automation.tsx`,
+`src/routes/_app.admin.sales-reminders.tsx`, `src/routes/_app.products.index.tsx`.
+
+**`npm run lint` — 1272 problems (855 errors, 417 warnings). This does NOT match
+the "lint 0" figure recorded by an earlier session.** Breakdown by rule:
+
+| count | rule |
+|-------|------|
+| 854 | `prettier/prettier` |
+| 318 | `@typescript-eslint/no-explicit-any` (warnings) |
+| 33 | `react-hooks/exhaustive-deps` |
+| 28 | `react-refresh/only-export-components` |
+| 22 | `no-useless-escape` |
+| 5 | `prefer-const` |
+
+**854 of the 855 errors are `prettier/prettier`** — i.e. formatting drift, not
+defects. All of it is pre-existing: `git diff --name-only 88d13e98..HEAD -- src`
+returns **0 files**, so phases 2-4 changed no TypeScript at all (only two
+migrations and this document). The earlier "lint 0" note was most likely scoped
+to the files that session touched (cf. commit `ac6fb438`, "fix prettier
+formatting in receipt form"), not the whole repo.
+
+**Deliberately NOT auto-fixed.** `eslint --fix` would rewrite several hundred
+files that this work never touched, on a branch whose container is deployed
+against the live database. That is a large, risky, unreviewable diff and it
+violates the one-commit-per-phase / stage-only-your-own-files rule. Whoever picks
+this up should decide whether to do a dedicated formatting-only commit — and if
+so, do it as its own commit with nothing else in it.
+
+---
+
 ## NEW FINDINGS THAT NEED A HUMAN (money-relevant, not fixable by code)
 
 1. **No receipt can post to accounting through the external-party receiver path
