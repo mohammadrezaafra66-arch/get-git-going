@@ -96,6 +96,43 @@ export async function listProvidersFor(capability: AiCapability): Promise<AiProv
     .filter((p) => p.capabilities.includes(capability));
 }
 
+/**
+ * Provider + key for callers that cannot use aiChat/aiEmbed/aiVision because
+ * they need the raw response — today that is only the SSE chat route, which
+ * must stream tokens as they arrive and would lose that by going through the
+ * buffered helpers.
+ *
+ * Such callers still get central configuration, provider order and the vaulted
+ * key; what they give up is automatic failover, so they should report health
+ * themselves via recordProviderHealth.
+ */
+export async function resolveProviderForCapability(
+  capability: AiCapability,
+): Promise<{ provider: AiProvider; key: string | null } | null> {
+  const providers = await listProvidersFor(capability);
+  const provider = providers[0];
+  if (!provider) return null;
+  return { provider, key: provider.has_key ? await getKey(provider.id) : null };
+}
+
+export async function recordProviderHealth(
+  providerId: string,
+  capability: AiCapability,
+  reason: AiFailureReason | "ok",
+  detail: string | null,
+  latencyMs: number | null,
+): Promise<void> {
+  const status = reason === "ok" ? "ok" : healthStatusFor(reason);
+  await recordHealth(
+    providerId,
+    capability,
+    status,
+    reason === "ok" ? null : reason,
+    detail,
+    latencyMs,
+  );
+}
+
 async function getKey(providerId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin.rpc(
     "ai_get_provider_key" as never,
@@ -359,9 +396,20 @@ export async function aiEmbed(opts: AiEmbedOptions): Promise<AiResult<AiEmbedRes
       // Dimension is MEASURED, never assumed. bge-m3 returns 1024 while
       // message_embeddings is vector(1536) for a different model; assuming
       // either number is how a silent mismatch gets written to the database.
+      const dimension = vectors[0].length;
+      if (opts.requiredDimension != null && dimension !== opts.requiredDimension) {
+        // Not an answer to this question — keep walking to a provider whose
+        // model matches the target column.
+        return {
+          ok: false,
+          reason: "dimension_mismatch",
+          status: 200,
+          detail: `expected ${opts.requiredDimension}, got ${dimension}`,
+        };
+      }
       return {
         ok: true,
-        value: { vectors, dimension: vectors[0].length },
+        value: { vectors, dimension },
         status: 200,
         detail: null,
       };

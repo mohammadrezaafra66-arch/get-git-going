@@ -53,7 +53,12 @@ export type AiFailureReason =
   | "credit_exhausted" // 402
   | "unauthorized" // 401 / 403 — a key problem, not a load problem
   | "bad_request" // 4xx we caused
-  | "empty_response";
+  | "empty_response"
+  // The provider answered, but with a vector of the wrong width for the target
+  // column. pgvector fixes the dimension per column, so a 1024-wide vector is
+  // not a usable answer for a vector(1536) column — it is a different answer to
+  // a different question.
+  | "dimension_mismatch";
 
 export const AI_FAILURE_FA: Record<AiFailureReason, string> = {
   no_provider: "هیچ ارائه‌دهنده هوش مصنوعی برای این قابلیت تنظیم نشده است.",
@@ -65,6 +70,7 @@ export const AI_FAILURE_FA: Record<AiFailureReason, string> = {
   unauthorized: "کلید سرویس هوش مصنوعی معتبر نیست.",
   bad_request: "درخواست ارسال‌شده به سرویس هوش مصنوعی معتبر نبود.",
   empty_response: "سرویس هوش مصنوعی پاسخی برنگرداند.",
+  dimension_mismatch: "مدل برداری سازگار با این فهرست در دسترس نیست.",
 };
 
 /**
@@ -110,6 +116,12 @@ export interface AiEmbedOptions {
   input: string | string[];
   timeoutMs?: number;
   model?: string;
+  /**
+   * Width the caller's target column actually is. A provider returning any
+   * other width is skipped and the walk continues, instead of handing back a
+   * vector that cannot be stored. Omit when the caller has no fixed column.
+   */
+  requiredDimension?: number;
 }
 
 export interface AiEmbedResult {

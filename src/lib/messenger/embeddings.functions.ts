@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 // Node-20-safe wrapper — see messenger-auth-middleware.ts for rationale.
 import { requireSupabaseAuthNode20 as requireSupabaseAuth } from "@/integrations/supabase/messenger-auth-middleware";
 import { z } from "zod";
+import { aiEmbed } from "@/lib/ai/client.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const embedInput = z.object({
@@ -28,48 +29,46 @@ export type SemanticSearchResult =
   | { ok: false; reason: string; hits?: never };
 
 const EMBED_TIMEOUT_MS = 30_000;
-const EMBED_MODEL = "openai/text-embedding-3-small"; // 1536-dim, HNSW-indexable
-const EMBED_ENDPOINT = "https://ai.gateway.lovable.dev/v1/embeddings";
 const BACKFILL_LIMIT = 50;
 
-async function callLovableEmbedding(text: string): Promise<{ vec?: number[]; reason?: string }> {
-  const apiKey = process.env.LOVABLE_API_KEY?.trim();
-  if (!apiKey) return { reason: "disabled" };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
-  try {
-    const res = await fetch(EMBED_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model: EMBED_MODEL, input: text }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.warn("[lovable-embed] non-OK", res.status);
-      return { reason: `http_${res.status}` };
-    }
-    const json = (await res.json()) as { data?: Array<{ embedding?: number[] }> };
-    const vec = json?.data?.[0]?.embedding;
-    if (!Array.isArray(vec) || vec.length === 0) return { reason: "empty_embedding" };
-    return { vec };
-  } catch (e) {
-    const reason = (e as Error)?.name === "AbortError" ? "timeout" : "fetch_failed";
-    console.warn("[lovable-embed] fetch error:", reason);
-    return { reason };
-  } finally {
-    clearTimeout(timer);
+/**
+ * `message_embeddings.embedding` is `vector(1536)`, sized for
+ * openai/text-embedding-3-small. pgvector fixes the width per column, so a
+ * provider returning any other width cannot be stored here.
+ *
+ * This matters concretely: the LAN Ollama runs bge-m3 at 1024 and sits at
+ * priority 10, so it is tried FIRST. Passing requiredDimension makes the
+ * shared client treat its 1024-wide answer as unusable and walk on to a
+ * provider that matches, instead of handing back a vector that would fail on
+ * insert — or worse, land in a column that happened to accept it.
+ *
+ * Changing this number means re-indexing every row, so it is derived from the
+ * column, not from whichever model is configured today.
+ */
+const MESSAGE_EMBEDDING_DIMENSION = 1536;
+
+async function callEmbedding(
+  text: string,
+): Promise<{ vec?: number[]; model?: string; reason?: string }> {
+  const r = await aiEmbed({
+    input: text,
+    timeoutMs: EMBED_TIMEOUT_MS,
+    requiredDimension: MESSAGE_EMBEDDING_DIMENSION,
+  });
+  if (!r.ok) {
+    console.warn("[embed] unavailable:", r.reason);
+    return { reason: r.reason === "no_provider" ? "disabled" : r.reason };
   }
+  const vec = r.value.vectors[0];
+  if (!Array.isArray(vec) || vec.length === 0) return { reason: "empty_embedding" };
+  // The model that actually answered, not a hardcoded constant — otherwise
+  // model_version lies the moment the provider order changes.
+  return { vec, model: r.model };
 }
 
 // Best-effort backfill for text messages in a group that don't have embeddings yet.
 // Runs inline (bounded) so first search after switching models works without a job.
-async function backfillGroupEmbeddings(
-  supabase: SupabaseClient,
-  groupId: string,
-): Promise<void> {
+async function backfillGroupEmbeddings(supabase: SupabaseClient, groupId: string): Promise<void> {
   try {
     const { data: existing } = await supabase
       .from("message_embeddings")
@@ -94,7 +93,7 @@ async function backfillGroupEmbeddings(
 
     for (const m of todo) {
       const content = (m.content ?? "").trim();
-      const { vec } = await callLovableEmbedding(content);
+      const { vec, model } = await callEmbedding(content);
       if (!vec) continue;
       const literal = `[${vec.join(",")}]`;
       await supabase.from("message_embeddings").upsert(
@@ -103,7 +102,7 @@ async function backfillGroupEmbeddings(
           group_id: m.group_id,
           embedding: literal as unknown as string,
           content_excerpt: content.slice(0, 200),
-          model_version: EMBED_MODEL,
+          model_version: model ?? "unknown",
         },
         { onConflict: "message_id" },
       );
@@ -132,25 +131,23 @@ export const generateMessageEmbedding = createServerFn({ method: "POST" })
       const content = (msg.content ?? "").trim();
       if (!content) return { ok: false, reason: "empty_content" };
 
-      const { vec, reason } = await callLovableEmbedding(content);
+      const { vec, model, reason } = await callEmbedding(content);
       if (!vec) return { ok: false, reason: reason || "no_vector" };
 
       // pgvector text format: "[0.1,0.2,...]"
       const literal = `[${vec.join(",")}]`;
       const excerpt = content.slice(0, 200);
 
-      const { error: upErr } = await supabase
-        .from("message_embeddings")
-        .upsert(
-          {
-            message_id: msg.id,
-            group_id: msg.group_id,
-            embedding: literal as unknown as string,
-            content_excerpt: excerpt,
-            model_version: EMBED_MODEL,
-          },
-          { onConflict: "message_id" },
-        );
+      const { error: upErr } = await supabase.from("message_embeddings").upsert(
+        {
+          message_id: msg.id,
+          group_id: msg.group_id,
+          embedding: literal as unknown as string,
+          content_excerpt: excerpt,
+          model_version: model ?? "unknown",
+        },
+        { onConflict: "message_id" },
+      );
       if (upErr) {
         console.warn("[lovable-embed] upsert failed:", upErr.message);
         return { ok: false, reason: "upsert_failed" };
@@ -181,29 +178,28 @@ export const semanticSearchMessenger = createServerFn({ method: "POST" })
       // Best-effort backfill of missing embeddings before searching
       await backfillGroupEmbeddings(supabase, data.group_id);
 
-      const { vec, reason } = await callLovableEmbedding(data.query);
+      const { vec, reason } = await callEmbedding(data.query);
       if (!vec) return { ok: false, reason: reason || "no_vector" };
 
       const literal = `[${vec.join(",")}]`;
-      const { data: rows, error } = await supabase.rpc(
-        "search_messenger_messages_semantic",
-        {
-          p_group_id: data.group_id,
-          p_query_embedding: literal as unknown as string,
-          p_limit: 10,
-        },
-      );
+      const { data: rows, error } = await supabase.rpc("search_messenger_messages_semantic", {
+        p_group_id: data.group_id,
+        p_query_embedding: literal as unknown as string,
+        p_limit: 10,
+      });
       if (error) {
         console.warn("[semantic-search] rpc failed:", error.message);
         return { ok: false, reason: "rpc_failed" };
       }
-      const hits: SemanticSearchHit[] = ((rows ?? []) as Array<{
-        message_id: string;
-        content: string;
-        created_at: string;
-        sender_id: string | null;
-        similarity: number;
-      }>).map((r) => ({
+      const hits: SemanticSearchHit[] = (
+        (rows ?? []) as Array<{
+          message_id: string;
+          content: string;
+          created_at: string;
+          sender_id: string | null;
+          similarity: number;
+        }>
+      ).map((r) => ({
         message_id: r.message_id,
         content: r.content,
         created_at: r.created_at,
