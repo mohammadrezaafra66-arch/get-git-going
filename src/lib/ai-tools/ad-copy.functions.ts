@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { aiChat } from "@/lib/ai/client.server";
+import { stripJsonFence } from "@/lib/ai/json";
 
 const InputSchema = z.object({
   productId: z.string().uuid(),
@@ -18,15 +20,10 @@ export type AdCopyVariation = {
   cta: string;
 };
 
-const MODEL = "anthropic/claude-sonnet-4-5";
-
 export const generateAdCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
-
     const audienceFa =
       data.audience === "wholesale"
         ? "عمده‌فروشی"
@@ -47,38 +44,25 @@ ${data.price ? `قیمت: ${data.price.toLocaleString("fa-IR")} تومان` : ""
 ${data.description ? `توضیحات: ${data.description}` : ""}
 مخاطب هدف: ${audienceFa}`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": apiKey,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const result = await aiChat({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      if (res.status === 429) throw new Error("محدودیت تعداد درخواست. لطفاً کمی بعد تلاش کنید.");
-      if (res.status === 402) throw new Error("اعتبار هوش مصنوعی به پایان رسیده است.");
-      throw new Error(`خطای سرویس هوش مصنوعی (${res.status}): ${text.slice(0, 200)}`);
+    if (!result.ok) {
+      // The shared client already distinguishes 429 (busy) from 402 (credit
+      // exhausted) and carries the right Persian message for each.
+      throw new Error(result.messageFa);
     }
 
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = json.choices?.[0]?.message?.content ?? "";
+    const content = result.value;
 
     let parsed: { variations?: AdCopyVariation[] };
     try {
-      parsed = JSON.parse(content);
+      parsed = JSON.parse(stripJsonFence(content));
     } catch {
       throw new Error("پاسخ نامعتبر از سرویس هوش مصنوعی دریافت شد.");
     }
