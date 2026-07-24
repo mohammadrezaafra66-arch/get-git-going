@@ -1,3 +1,53 @@
+# Execution progress
+
+## ROUND 3 (AfraKala-execution-round3.md): Phase 1 + Phase 2 DONE. RESUME AT PHASE 3.2.
+
+**Phase 1 — receipt posting repaired (Model B). COMMIT `79c78739`, pushed.**
+The blocker is resolved. Migration 149 fixed `post_receipt_accounting`
+(journal_lines `kind`/`ref_id`→`account_kind`/`account_ref_id`; line-2
+`'customer'`→`'customer_credit'`; bank receiver no longer reads the nonexistent
+`bank_accounts.accounting_code`, header left blank), neutralized
+`post_receipt_journal` to a no-op (function+trigger retained), and fixed a THIRD
+latent `text=app_role` bug in `recompute_employee_scores_on_receipt` that blocked
+the approve UPDATE. All six 1.5 checks passed (exactly one balanced entry,
+`increase_credit` once, one credit-ledger row, idempotent re-approve); 1.6 proved
+the quote-linked recompute fires and the DB fully reverts. NOTE: both accounting
+functions' Persian strings were already corrupted to `?` in the live DB
+(2026-07-11 event) — preserved verbatim, need human re-entry.
+
+**Phase 2 — dead-module triage. COMMIT `e6ad3bf7`, pushed.**
+Deleted (SUPERSEDED): `enqueue-torob-readonly-job.functions.ts` (the `.server.ts`
+sibling is the wired one), `market-intelligence/PlaceholderCard.tsx`
+(scaffolding; cards use `MICardShell`). Left (not provably superseded):
+`customer-credit-snapshot.ts` (UNCLEAR), `PenaltyBadge.tsx` (VIABLE/UNCLEAR),
+`PriceChangeIndicator.tsx`, `RateTypeBadge.tsx` (UNCLEAR).
+
+**Phase 3.1 — env contradiction resolved.** All AI vars ABSENT in the
+afrakala-lan-web container and on the host; in `deploy/lan/.env.lan`,
+`OLLAMA_*` are ABSENT and `LOVABLE_API_KEY` is **declared but EMPTY**. That empty
+declaration is the source of the "present vs absent" disagreement. **No AI
+provider is usable today.**
+
+## RESUME AT PHASE 3.2 — build the shared AI provider client
+Stopped here for context budget after completing the two highest-value phases
+(money-critical Phase 1 + Phase 2 cleanup). Phase 3.2–3.7 is a large greenfield
+build (shared chat/embeddings/vision client with Ollama-first fallback + 429/402
+distinction + provider health; admin settings page; pgcrypto-encrypted key
+storage + migration; model/capability discovery). It was NOT started — building
+it rushed, with no provider to test against, would produce untested code. The
+research for it is complete in `AfraKala-research-pass-3.md` Part B (no shared
+client exists; 5 call sites hardcode `ai.gateway.lovable.dev`; `pgcrypto`
+installed-but-unused; `shop_settings` plaintext; `bot_api_keys` hashed/unfit;
+`_app.admin.settings.tsx` is the natural admin home).
+
+## HANDOFF for Phases 4–6 (RAG + migrate call sites): the user must supply an AI credential
+Phases 4–6 cannot be verified until a working credential exists — either an
+Ollama URL with pulled models (chat + an embeddings model + a vision model), or a
+provider API key entered through the Phase-3 admin page once built. Until then,
+`knowledge_documents` has 0 rows and the pipeline would index nothing.
+
+---
+
 # Execution progress — AfraKala-execution-round2.md
 
 ## STILL BLOCKED — the receipt-posting blocker is an ACCOUNTING-MODEL DECISION, not a code fix
