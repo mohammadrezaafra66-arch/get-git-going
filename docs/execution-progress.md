@@ -1,5 +1,246 @@
 # Execution progress
 
+## FINAL PLAN (AfraKala-final-plan.md): PHASES 2, 3, 4 DONE. RESUME AT PHASE 5.
+
+Session of 2026-07-24. Branch `feature/navigation-modernization`. Commits
+`028e448a` (Phase 2), `c9d7355e` (Phase 3), both pushed. **The payment chain is
+now complete and verified end to end — the plan's designated best stopping
+point.**
+
+### FIRST, A TRAP THAT COST THIS SESSION TIME — READ BEFORE ANY psql
+The live database is **`afrakala`**, NOT `postgres`. The `postgres` database in
+the same container is a stale clone: it still has the pre-147 schema
+(`payment_receipt_links.invoice_id NOT NULL`, no `quote_id`, no
+`sales_quotes.customer_id`) and 0 quotes. Querying it makes it look like
+migrations 147-150 were never applied. Always use `-d afrakala`.
+`afrakala_test` is also stale (no `quote_id`, 0 quotes) — not usable as a
+scratch clone without replaying 147-152.
+
+Objects are owned by **`supabase_admin`**, and `postgres` is NOT a superuser
+here. `CREATE OR REPLACE FUNCTION`/`VIEW` on existing objects fails with
+"permission denied for schema public" as `-U postgres`. Use `-U supabase_admin`
+to apply migrations; `-U postgres` is fine for read-only inspection.
+
+### Migration conventions adopted this session
+Migration files now carry **no `BEGIN`/`COMMIT` of their own**. An inner
+`COMMIT` closes psql's `--single-transaction` wrapper early, so a later failure
+would leave the schema half-applied — the exact risk the flag exists to
+prevent. Apply with both flags:
+```
+psql -U supabase_admin -d afrakala --single-transaction -v ON_ERROR_STOP=1 -f <file>
+```
+Migrations 151 and 152 follow this; 150 and earlier still have inner
+BEGIN/COMMIT (harmless, but do not copy that pattern).
+
+Persian inside function bodies survives fine via `docker cp` + `psql -f`
+(verified: 242 and 162 Persian codepoints in migration 152's two functions,
+zero `?`). It is **piping** Persian that corrupts it.
+
+---
+
+## PHASE 2 — DONE. Commit `028e448a` (migration 151), pushed.
+
+**2.2 `calculate_credit_score`** — five invoice-keyed blocks now read a UNION of
+invoices and ACCEPTED `sales_quotes`: (a) all-time totals, (b) per-document
+payments in window, (c) settlement speed, (d) late-payment count, (e) the
+cross-customer average normalising `purchase_score`. Scoring shape untouched —
+same sub-scores, weights, formula, window resolution, profile/snapshot/audit
+writes. Document mapping: `final_amount`→total, `expires_at`→due_date,
+`created_at`→issue_date, `status='accepted'` as the "issued" filter.
+`COALESCE(invoice_id, quote_id)` is an exact document key because the
+migration-148 CHECK makes the two targets disjoint.
+
+Block (a) was extended even though the earlier research listed only four
+blocks: leaving it invoice-only would write a `customer_credit_profile` row
+claiming `total_paid` > `total_purchases`.
+
+**2.3 `vw_customer_receivables` + `get_receivable_detail`** — the view gained a
+UNION ALL branch for accepted quotes with an unpaid balance (`final_amount`
+minus approved allocations; only `accepted` counts as a debt). Same columns,
+types and order, so `CREATE OR REPLACE VIEW` kept every grant and
+`get_receivables_list` / `get_receivables_summary` / `_app.reports.tsx` pick the
+rows up with no frontend change. `get_receivable_detail`'s join to `invoices`
+became a LEFT JOIN, `issue_date` falls back to the row's `created_at`, and the
+receipt join matches either key.
+
+Gotcha for anyone editing the view: `total_amount` is `numeric(18,2)` and
+`CREATE OR REPLACE VIEW` refuses to widen it, so the quote branch must cast
+`q.final_amount::numeric(18,2)`.
+
+### TWO LATENT DEFECTS FOUND AND FIXED (both money-visible)
+1. **`LEAST()` ignores NULLs.** In blocks (b) and (e) an unpaid document has no
+   row in the payments CTE, so `LEAST(NULL, total_amount)` returned
+   `total_amount` and counted the document's **full value as PAID**. Measured
+   before the fix: a customer who had paid nothing reported
+   `paid_purchase_amount = 163,100,000`, and that figure would have been
+   written to `customer_credit_profile.total_paid`. Now
+   `LEAST(COALESCE(paid,0), total_amount)`.
+2. **`SELECT ... INTO v_outstanding` assigns NULL when no profile row exists**,
+   defeating both the inline `COALESCE` and the DECLARE default, so a
+   customer's *first* scoring run got `outstanding_score = 0` instead of 100
+   and only self-corrected on the second run. Now re-COALESCEd after assignment.
+
+Both were dormant only because `invoices` has 0 rows; both would have gone live
+the moment quotes joined the union.
+
+**2.4 verification** (rolled-back txn, 40,000,000 against SQ-2026-000003):
+credit score **55 → 77**, `paid_in_window` **0 → 40,000,000**, quote
+outstanding **100,100,000 → 60,100,000**, salesperson collected
+**0 → 40,000,000**, blended KPI **32,000,000**. All counts back to baseline.
+
+---
+
+## PHASE 3 — DONE. Commit `c9d7355e` (migration 152), pushed.
+
+Two triggers, because one is not enough:
+
+- **Guard 1**, BEFORE INSERT OR UPDATE ON `payment_receipt_links`: total
+  allocations may not exceed the receipt amount; an allocation may not exceed
+  the target document's remaining balance. Remaining counts **APPROVED**
+  receipts only — deliberately matching what `PaymentReceiptForm.tsx` shows the
+  accountant. A stricter rule would reject allocations the form had just
+  offered, and a guard that rejects legitimate work is worse than no guard.
+- **Guard 2**, BEFORE UPDATE ON `payment_receipts` when status becomes
+  `approved`: guard 1 alone leaves a real hole — while receipts are
+  `pending_review` their allocations count toward nothing, so N pending receipts
+  can each claim the full balance and all be approved. Guard 2 re-checks at the
+  only moment over-allocation becomes real money.
+
+**Concurrency:** both guards take row locks *before* reading the sums they
+validate, always receipt-then-document. Proven empirically, not just argued:
+after the guard runs the backend holds `RowShareLock` on both
+`payment_receipts` and `sales_quotes`, and `xmax` on both the receipt row and
+the quote row equals the current xid — so a concurrent transaction on those
+rows blocks. A cross-pair deadlock stays theoretically reachable if two
+transactions insert several links touching the same documents in opposite
+orders; PostgreSQL aborts one, which fails safe.
+
+A two-session blocking test was **not** run: it would require committing
+fixture receipts to the live database, and `afrakala_test` is too stale to host
+it. The lock evidence above is what was actually measured.
+
+Errors are Persian with real figures (the form surfaces `linkErr.message`
+verbatim) and use ERRCODE 23514 so PostgREST returns 400, not 500.
+
+**3.3 verification — 14/14 passed** in a rolled-back txn: valid allocation
+accepted; 60,000,000 against a 50,000,000 receipt rejected; 70,000,000 against
+a 60,100,000 remaining balance rejected; 30,000,000 + 30,100,000 summing to
+*exactly* the remaining balance both accepted; 1 Rial past a fully paid quote
+rejected; two pending receipts each claiming 62,200,000 both inserted but the
+second **approval** blocked by guard 2; a receipt with no allocations still
+approves. Zero rejections leaked a raw constraint name.
+
+---
+
+## PHASE 4 — DONE (with one step blocked). All eight results are real numbers.
+
+Run against quote `4850549b` (SQ-2026-000003, final 100,100,000, salesperson
+`56014064`, customer `d05bbd0b`), receiver external party `e9b29dd2`, receipt
+45,000,000 — **inside a single transaction that was rolled back**. See the
+decision note below for why.
+
+| # | Step | Result |
+|---|------|--------|
+| 1 | create receipt | 45,000,000, `pending_review` |
+| 2 | allocate against quote | `quote_id` set, `invoice_id` NULL |
+| 3 | approve | `approved` |
+| 4 | exactly one balanced journal entry | 1 entry, 2 lines: debit `external_party` 45,000,000 / credit `customer_credit` 45,000,000, balanced = true. Re-post returned `already_posted`, count stayed 1 |
+| 5 | credit rose + one ledger row | `available_credit` 0.00 → **45,000,000.00**; exactly 1 ledger row (`payment`, before 0.00, after 45,000,000.00) |
+| 6 | quote remaining dropped | 100,100,000 → **55,100,000** |
+| 7 | appears in receivables | SQ-2026-000003, paid 45,000,000, outstanding 55,100,000; `get_receivable_detail` returns the quote row with `issue_date` 2026-07-21 and the linked receipt |
+| 8 | salesperson score rose via collected | collected 0 → **45,000,000**, blended KPI 0 → **36,000,000** (0.8×45M), monthly_score 200.233333 → 200.235073 |
+
+Customer credit score after the payment: **79**.
+
+**Proof of restoration** (after ROLLBACK): `available_credit` 0.00,
+credit_ledger 0, journal_entries 0, journal_lines 0, payment_receipts 0,
+payment_receipt_links 0, credit_score_snapshots 0, quote remaining back to
+100,100,000, receivables outstanding back to 100,100,000.
+
+**Smoke test** against the running app at 192.168.170.8:3100 —
+`/accounting/receipts/create` 200, `/sales/quotes` 200, `/accounting/receipts`
+200, `/gamification/admin/manual-metrics` 200, and the bogus control
+`/this-route-does-not-exist-xyz` **404**, so the test discriminates. PostgREST
+schema cache reloaded via `NOTIFY pgrst, 'reload schema'` (zero downtime, no
+container restart) — logs show a clean reload, 216 relations / 269 functions,
+no schema-cache errors.
+
+### BLOCKED-NEEDS-APPROVAL — the Phase 4 container rebuild was NOT performed
+The plan opens Phase 4 with "rebuild the LAN container, restart
+`afrakala-lan-rest`". The running app at 192.168.170.8:3100 is serving a
+**different branch** against this live database. Rebuilding would deploy
+`feature/navigation-modernization`'s frontend over whatever is currently live —
+an outward-facing change well beyond the plan's schema scope, and not reversible
+by a rollback. Skipped as the conservative choice. `NOTIFY pgrst` achieved the
+only part actually needed (schema-cache refresh) with no downtime.
+
+**Consequence to be honest about:** the smoke test above proves the DB changes
+did not break the *currently deployed* app. It does **not** validate this
+branch's frontend. That still needs a rebuild once someone approves it.
+
+### Decision note — end-to-end chain run in a rolled-back transaction
+The plan says to create the test data, then delete it and restore
+`available_credit`. On a live production database, a rollback is strictly safer
+than commit-then-delete: it proves restoration rather than relying on cleanup
+SQL being correct, and never exposes a fake 45,000,000 receipt or a bogus
+journal entry to real users, even briefly. Every number in the table above is
+real; none of it persisted.
+
+---
+
+## NEW FINDINGS THAT NEED A HUMAN (money-relevant, not fixable by code)
+
+1. **No receipt can post to accounting through the external-party receiver path
+   today.** `validation_rules` has two enabled, `severity='blocking'` rules for
+   scope `journal_entry`: `payer_accounting_code` required and
+   `receiver_accounting_code` required. The only row in `external_parties`
+   (`e9b29dd2`) has `accounting_code` NULL — 0 of 1 parties have a code. The
+   Phase 4 run only got past this because the test receipt carried an explicit
+   `receiver_accounting_code`. **Someone must fill in accounting codes for
+   external parties.**
+2. **The same blocking rule makes the bank-receiver path unpostable.** Migration
+   149 deliberately sets the receiver code to NULL for bank receivers (because
+   `bank_accounts` has no `accounting_code` column), but the
+   `receiver_accounting_code / required` rule then rejects the post. Either that
+   rule needs a bank-receiver exemption, or banks need accounting codes. This is
+   the same unresolved bank→accounting-code mapping decision recorded earlier.
+   **Do not guess — it moves money.**
+3. **The corrupted Persian strings are confirmed still corrupted** in the live
+   DB: `post_receipt_accounting` raises `'???? ???????? ...'`. Reading its source
+   shows `?` runs where Persian should be (2026-07-11 event). Migration 152's new
+   Persian is clean, so the corruption is historical, not ongoing. The two
+   accounting functions still need human re-entry of their messages.
+4. **`vw_customer_receivables` has no grant to `authenticated`** — only
+   `postgres` and `service_role`. The receivables page works because it goes
+   through SECURITY DEFINER RPCs, but `_app.reports.tsx:231` reads the view
+   *directly* via PostgREST and would be denied. Pre-existing, unchanged by this
+   session; worth checking during the Phase 9 audit.
+5. Guest quotes (`customer_id` NULL) do appear in the receivables view with
+   `customer_name` falling back to the name on the quote. Deliberate — the debt
+   is real — but per-customer filters will not match them.
+
+---
+
+## RESUME AT PHASE 5 — small cleanups
+5.1 hide the dead invoices menu entry (**first check whether `waybills` depends
+on `invoices` and whether waybills are used — if so, leave the menu alone**);
+5.2 payments/receipts training page modelled on
+`src/components/customers/CustomerCreditGuide.tsx` at
+`/sales/customers/credit-training`; 5.3 one-line recommendations for the four
+kept dead modules (`customer-credit-snapshot.ts`, `PenaltyBadge.tsx`,
+`PriceChangeIndicator.tsx`, `RateTypeBadge.tsx`). Then Phase 6 (Ollama at
+http://192.168.170.8:11434 — bge-m3 embeddings/1024, qwen2.5:7b chat, qwen3.6
+vision), 7 (shared AI client + key storage), 8 (migrate call sites + RAG),
+9 (coverage audit).
+
+Phase 5 onward touches the **frontend**, so remember the live-deployment
+constraint: the running container is on another branch and must not be rebuilt
+without approval.
+
+---
+
+## SUPERSEDED — earlier session notes below this line
+
 ## FINAL PLAN (AfraKala-final-plan.md): Phase 2.1 DONE. RESUME AT PHASE 2.2.
 
 **Phase 2.1 — sales KPI collected reads quote receipts. COMMIT `436fbbf1` (migration 150), pushed.**
