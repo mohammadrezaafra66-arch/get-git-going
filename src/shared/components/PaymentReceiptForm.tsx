@@ -854,7 +854,9 @@ export function PaymentReceiptForm() {
       } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
-      // Front-end allocation validation (server has no constraint).
+      // Front-end allocation validation. Since migration 152 the database
+      // enforces the same limits with triggers; this stays as the first line of
+      // defence so the accountant gets the error before a round trip.
       // Only invoice_payment carries invoice links — the other three types are
       // recorded without any allocation.
       if (requiresInvoiceLinks(values.receipt_type)) {

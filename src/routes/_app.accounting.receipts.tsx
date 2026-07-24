@@ -1,7 +1,15 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Loader2, Check, ChevronsUpDown, Eye, FileSpreadsheet } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  Check,
+  ChevronsUpDown,
+  Eye,
+  FileSpreadsheet,
+  GraduationCap,
+} from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -282,6 +290,12 @@ function ReceiptsListPage() {
         description="مدیریت و بررسی فیش‌های واریزی مشتریان"
         actions={
           <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link to="/accounting/receipts/training">
+                <GraduationCap className="ml-2 h-4 w-4" />
+                آموزش
+              </Link>
+            </Button>
             <Button
               type="button"
               variant="outline"

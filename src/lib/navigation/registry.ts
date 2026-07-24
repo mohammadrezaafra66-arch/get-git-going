@@ -323,6 +323,16 @@ const NAVIGATION_SEEDS = [
     group: "sales-customers",
     subgroup: "sc-customers",
   },
+  // The route already existed with a `sales/view` guard but was only reachable
+  // from a button on /sales/customers.
+  {
+    to: "/sales/customers/credit-training",
+    label: "آموزش اعتبار مشتریان",
+    icon: GraduationCap,
+    module: "sales",
+    group: "sales-customers",
+    subgroup: "sc-customers",
+  },
 
   // ۵) مالی و حسابداری
   // UI-NAV.4 — همگی به ماژول جدید «accounting» منتقل شدند تا برای فروشنده/بیننده پنهان شوند.
@@ -330,6 +340,13 @@ const NAVIGATION_SEEDS = [
     to: "/accounting/receipts",
     label: "فیش‌های واریزی",
     icon: Receipt,
+    module: "accounting",
+    group: "finance",
+  },
+  {
+    to: "/accounting/receipts/training",
+    label: "آموزش فیش‌های واریزی",
+    icon: GraduationCap,
     module: "accounting",
     group: "finance",
   },
@@ -884,10 +901,12 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/sales/stock-alerts",
     "/sales/credit-customers",
     "/sales/credit-rules",
+    "/sales/customers/credit-training",
     "/sales/send-queue",
   ],
   finance: [
     "/accounting/receipts",
+    "/accounting/receipts/training",
     "/accounting/receivables",
     "/accounting/payables",
     "/accounting/purchase-payments",

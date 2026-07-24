@@ -181,6 +181,7 @@ import { Route as AppGamificationAdminKpiRulesRouteImport } from './routes/_app.
 import { Route as AppGamificationAdminAnalyticsRouteImport } from './routes/_app.gamification.admin.analytics'
 import { Route as AppGamificationAdminAchievementsRouteImport } from './routes/_app.gamification.admin.achievements'
 import { Route as AppAdminGamificationAchievementsRouteImport } from './routes/_app.admin.gamification.achievements'
+import { Route as AppAccountingReceiptsTrainingRouteImport } from './routes/_app.accounting.receipts_.training'
 import { Route as AppAccountingReceiptsCreateRouteImport } from './routes/_app.accounting.receipts.create'
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
@@ -1106,6 +1107,12 @@ const AppAdminGamificationAchievementsRoute =
     path: '/achievements',
     getParentRoute: () => AppAdminGamificationRoute,
   } as any)
+const AppAccountingReceiptsTrainingRoute =
+  AppAccountingReceiptsTrainingRouteImport.update({
+    id: '/accounting/receipts_/training',
+    path: '/accounting/receipts/training',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAccountingReceiptsCreateRoute =
   AppAccountingReceiptsCreateRouteImport.update({
     id: '/create',
@@ -1358,6 +1365,7 @@ export interface FileRoutesByFullPath {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/accounting/receipts/training': typeof AppAccountingReceiptsTrainingRoute
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
@@ -1545,6 +1553,7 @@ export interface FileRoutesByTo {
   '/academy/$courseId/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/accounting/receipts/training': typeof AppAccountingReceiptsTrainingRoute
   '/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
@@ -1737,6 +1746,7 @@ export interface FileRoutesById {
   '/_app/academy_/$courseId_/$lessonId': typeof AppAcademyCourseIdLessonIdRoute
   '/_app/accounting/receipts/$receiptId': typeof AppAccountingReceiptsReceiptIdRoute
   '/_app/accounting/receipts/create': typeof AppAccountingReceiptsCreateRoute
+  '/_app/accounting/receipts_/training': typeof AppAccountingReceiptsTrainingRoute
   '/_app/admin/gamification/achievements': typeof AppAdminGamificationAchievementsRoute
   '/_app/gamification/admin/achievements': typeof AppGamificationAdminAchievementsRoute
   '/_app/gamification/admin/analytics': typeof AppGamificationAdminAnalyticsRoute
@@ -1929,6 +1939,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/accounting/receipts/training'
     | '/admin/gamification/achievements'
     | '/gamification/admin/achievements'
     | '/gamification/admin/analytics'
@@ -2116,6 +2127,7 @@ export interface FileRouteTypes {
     | '/academy/$courseId/$lessonId'
     | '/accounting/receipts/$receiptId'
     | '/accounting/receipts/create'
+    | '/accounting/receipts/training'
     | '/admin/gamification/achievements'
     | '/gamification/admin/achievements'
     | '/gamification/admin/analytics'
@@ -2307,6 +2319,7 @@ export interface FileRouteTypes {
     | '/_app/academy_/$courseId_/$lessonId'
     | '/_app/accounting/receipts/$receiptId'
     | '/_app/accounting/receipts/create'
+    | '/_app/accounting/receipts_/training'
     | '/_app/admin/gamification/achievements'
     | '/_app/gamification/admin/achievements'
     | '/_app/gamification/admin/analytics'
@@ -3584,6 +3597,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminGamificationAchievementsRouteImport
       parentRoute: typeof AppAdminGamificationRoute
     }
+    '/_app/accounting/receipts_/training': {
+      id: '/_app/accounting/receipts_/training'
+      path: '/accounting/receipts/training'
+      fullPath: '/accounting/receipts/training'
+      preLoaderRoute: typeof AppAccountingReceiptsTrainingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/receipts/create': {
       id: '/_app/accounting/receipts/create'
       path: '/create'
@@ -4016,6 +4036,7 @@ interface AppRouteChildren {
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
+  AppAccountingReceiptsTrainingRoute: typeof AppAccountingReceiptsTrainingRoute
   AppPersonsPersonIdEditRoute: typeof AppPersonsPersonIdEditRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
@@ -4144,6 +4165,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
+  AppAccountingReceiptsTrainingRoute: AppAccountingReceiptsTrainingRoute,
   AppPersonsPersonIdEditRoute: AppPersonsPersonIdEditRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,

@@ -98,6 +98,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales/stock-alerts",
       "/sales/credit-customers",
       "/sales/credit-rules",
+      "/sales/customers/credit-training",
       "/sales/send-queue",
     ],
   },
@@ -108,6 +109,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
     defaultTo: "/accounting/receipts",
     paths: [
       "/accounting/receipts",
+      "/accounting/receipts/training",
       "/accounting/receivables",
       "/accounting/payables",
       "/accounting/purchase-payments",
