@@ -1,8 +1,9 @@
-// Phase 6 — Server route SSE برای دستیار هوشمند (Ollama self-hosted)
+// Server route SSE برای دستیار هوشمند — ارائه‌دهنده از رجیستری هوش مصنوعی می‌آید.
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
+import { recordProviderHealth, resolveProviderForCapability } from "@/lib/ai/client.server";
 
 const bodySchema = z.object({
   group_id: z.string().uuid().nullable().optional(),
@@ -113,8 +114,17 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           content: parsed.message,
         });
 
-        const apiUrl = process.env.OLLAMA_API_URL?.trim();
-        const model = process.env.OLLAMA_MODEL?.trim() || "llama3.2:8b";
+        // Provider comes from the registry, not from env: same ordering, same
+        // vaulted key and same health reporting as every other AI call site.
+        //
+        // This route resolves the provider itself instead of calling aiChat()
+        // because it streams — buffering the whole answer to reuse the shared
+        // helper would delete the token-by-token UX. The trade-off is no
+        // automatic failover here; a failure is reported to the same health
+        // table so it still shows on the admin page.
+        const target = await resolveProviderForCapability("chat");
+        const apiUrl = target?.provider.base_url.trim();
+        const model = target?.provider.chat_model?.trim() || "qwen2.5:7b";
 
         const sseHeaders = {
           "Content-Type": "text/event-stream; charset=utf-8",
@@ -146,14 +156,22 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
         const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
         const ollamaHeaders: Record<string, string> = { "Content-Type": "application/json" };
-        const ollamaApiKey = process.env.OLLAMA_API_KEY?.trim();
-        if (ollamaApiKey) {
-          ollamaHeaders.Authorization = `Bearer ${ollamaApiKey}`;
+        if (target?.key) {
+          ollamaHeaders.Authorization = `Bearer ${target.key}`;
         }
+
+        const startedAt = Date.now();
+        const base = apiUrl.replace(/\/+$/, "");
+        // Ollama speaks /api/chat; an OpenAI-compatible gateway speaks
+        // /chat/completions. Only the former streams in this route's NDJSON
+        // shape, so a non-Ollama provider is rejected rather than silently
+        // producing garbage.
+        const isOllama = target?.provider.kind === "ollama";
 
         let ollamaRes: Response;
         try {
-          ollamaRes = await fetch(apiUrl.replace(/\/+$/, "") + "/api/chat", {
+          if (!isOllama) throw new Error("streaming_unsupported_provider");
+          ollamaRes = await fetch(base + "/api/chat", {
             method: "POST",
             headers: ollamaHeaders,
             body: JSON.stringify({ model, messages, stream: true }),
@@ -161,7 +179,21 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           });
         } catch (e) {
           clearTimeout(timer);
-          const reason = (e as Error)?.name === "AbortError" ? "timeout" : "fetch_failed";
+          const reason =
+            (e as Error)?.message === "streaming_unsupported_provider"
+              ? "streaming_unsupported"
+              : (e as Error)?.name === "AbortError"
+                ? "timeout"
+                : "fetch_failed";
+          if (target) {
+            await recordProviderHealth(
+              target.provider.id,
+              "chat",
+              reason === "timeout" ? "timeout" : "unreachable",
+              reason,
+              Date.now() - startedAt,
+            );
+          }
           const stream = new ReadableStream({
             start(c) {
               c.enqueue(new TextEncoder().encode(sseEvent({ error: reason })));
@@ -176,6 +208,21 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           clearTimeout(timer);
           const status = ollamaRes.status;
           const error = status === 403 ? "ollama_forbidden" : `http_${status}`;
+          if (target) {
+            await recordProviderHealth(
+              target.provider.id,
+              "chat",
+              status === 429
+                ? "rate_limited"
+                : status === 402
+                  ? "credit_exhausted"
+                  : status >= 500
+                    ? "server_error"
+                    : "unauthorized",
+              error,
+              Date.now() - startedAt,
+            );
+          }
           const stream = new ReadableStream({
             start(c) {
               c.enqueue(new TextEncoder().encode(sseEvent({ error })));
@@ -247,6 +294,15 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
                   content: finalText,
                   model,
                 });
+              }
+              if (target) {
+                await recordProviderHealth(
+                  target.provider.id,
+                  "chat",
+                  finalText ? "ok" : "empty_response",
+                  null,
+                  Date.now() - startedAt,
+                );
               }
               c.close();
             }
