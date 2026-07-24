@@ -1,5 +1,41 @@
 # Execution progress
 
+## FINAL PLAN (AfraKala-final-plan.md): Phase 2.1 DONE. RESUME AT PHASE 2.2.
+
+**Phase 2.1 — sales KPI collected reads quote receipts. COMMIT `436fbbf1` (migration 150), pushed.**
+`calculate_employee_score` collected (hardcoded 0 by 146) now sums APPROVED
+receipt allocations against the salesperson's ACCEPTED quotes, 6-month window,
+capped per quote at final_amount. 0.8/0.2 blend unchanged. Verified: collected
+0→40,000,000; blended total_sales 32,000,000. `calculate_salesperson_collected_sales`
+(separate, invoice-based, not called by scoring) left unchanged.
+
+## RESUME AT PHASE 2.2 / 2.3 — credit score + receivables (money-critical, do carefully)
+Stopped for budget; these are larger rewrites across money-critical objects. All
+three are ASCII (no Persian). Research done:
+- **2.2 `calculate_credit_score`** — has FOUR invoice-keyed sub-blocks (all yield 0
+  since invoices=0): paid-in-window (lines ~74-94: `inv AS (…invoices…)` ⋈
+  `pay AS (prl.invoice_id…)`), an events block (~103-109 `JOIN invoices`), a
+  last-payment block (~134-148), and a total block (~155-163). Each must UNION
+  quote-linked APPROVED-receipt payments (join `payment_receipt_links.quote_id →
+  sales_quotes` for accepted quotes of the customer). Preserve the scoring shape.
+- **2.3 `vw_customer_receivables`** — invoice-based (`WITH paid AS (…prl.invoice_id…)
+  … FROM invoices i … WHERE i.commitment_confirmed AND outstanding>0`). UNION ALL a
+  quote branch: map q.id→invoice_id, q.quote_number→invoice_number,
+  'sales_quote'→invoice_type, q.status→invoice_status, q.expires_at→due_date,
+  q.final_amount→total_amount, deposit 0, paid = SUM(approved links by quote_id),
+  outstanding = GREATEST(final_amount−paid,0); only `status='accepted'` and
+  outstanding>0. **`get_receivable_detail`** then needs its `JOIN public.invoices i
+  ON i.id = v.invoice_id` changed to LEFT JOIN (quote rows have no invoice) and
+  `i.issue_date` COALESCE'd (quotes have no issue_date; use created_at), and the
+  receipt LEFT JOIN extended to also match `prl.quote_id = v.invoice_id`.
+- **2.4** verify before/after for score (done for collected), credit, receivables.
+
+Then Phase 3 (over-allocation trigger), Phase 4 (end-to-end + rebuild — THE key
+stopping point), Phases 5-9 per the plan. Ollama reachable at
+http://192.168.170.8:11434 (bge-m3 emb/1024, qwen2.5:7b chat, qwen3.6 vision).
+
+---
+
 ## ROUND 4 (AfraKala-execution-round4.md): Phase 1 DONE. RESUME AT PHASE 2.
 
 **Phase 1 — receipt form allocates against quotes. COMMITS `5dd21ac4` + `ac6fb438`, pushed.**
