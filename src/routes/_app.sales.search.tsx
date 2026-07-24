@@ -78,6 +78,7 @@ import {
   type ObservatorySnippet,
 } from "@/lib/sales/observatory-snippets";
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
+import { fetchProductOwnersForProducts, type ProductOwnerLite } from "@/lib/sales/product-owners";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => {
@@ -404,6 +405,21 @@ function SalesSearchPage() {
     );
   }
   const snippetMap = observatorySnippetsQuery.data ?? {};
+
+  // ---------- 125: authoritative product owners (from assignments) ----------
+  // Read-only sidecar, batched (no N+1). The responsible person comes from
+  // product_owner_assignments + profiles, never inferred from a label. Access
+  // is governed by the table's existing RLS: when it returns nothing the card
+  // shows "بدون مسئول" rather than a fabricated guard.
+  const ownersQuery = useQuery({
+    enabled: productIdsForSnippets.length > 0,
+    queryKey: ["sales-search-product-owners", productIdsForSnippets],
+    queryFn: () => fetchProductOwnersForProducts(productIdsForSnippets),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+  const ownersMap = ownersQuery.data ?? {};
 
   // ---------- label-mode total count (only enabled in label-mode) ----------
   const labelModeCountQuery = useQuery({
@@ -845,6 +861,7 @@ function SalesSearchPage() {
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
                     observatorySnippet={snippetMap[p.id] ?? null}
+                    owners={ownersMap[p.id] ?? []}
                     thumbnailUrl={thumbnailFor(p.id)}
                     onRecalcDone={() => {
                       queryClient.invalidateQueries({ queryKey: ["sales-search-products-rpc"] });
@@ -945,6 +962,7 @@ interface ProductCardProps {
   isPrivileged: boolean;
   canRecalcPrice: boolean;
   observatorySnippet?: ObservatorySnippet | null;
+  owners?: ProductOwnerLite[];
   thumbnailUrl?: string;
   onRecalcDone: () => void;
   onOpenChart: (salePriceTypeId?: string) => void;
@@ -956,6 +974,7 @@ function ProductCard({
   searchSessionId,
   canRecalcPrice,
   observatorySnippet,
+  owners = [],
   thumbnailUrl,
   onRecalcDone,
   onOpenChart,
@@ -1189,6 +1208,21 @@ function ProductCard({
                   ))}
                 </div>
               )}
+              {/* 125 — authoritative "مسئول" from product_owner_assignments,
+                  independent of any person-named label. */}
+              <div className="flex items-center gap-1 pt-1 text-xs">
+                <span className="text-muted-foreground">مسئول:</span>
+                {owners.length > 0 ? (
+                  <span
+                    className="truncate font-medium text-foreground"
+                    title={owners.map((o) => o.full_name ?? o.user_id).join("، ")}
+                  >
+                    {owners.map((o) => o.full_name ?? o.user_id.slice(0, 6)).join("، ")}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">بدون مسئول</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
