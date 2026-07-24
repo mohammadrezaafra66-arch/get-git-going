@@ -258,7 +258,7 @@ type InvoiceOption = {
 };
 
 type InvoiceAllocation = {
-  invoice_id: string;
+  quote_id: string;
   number: string | null;
   total_amount: number;
   remaining: number;
@@ -632,53 +632,55 @@ export function PaymentReceiptForm() {
     queryKey: ["receipt-form-invoices", watchedCustomerId],
     enabled: !!watchedCustomerId && requiresInvoiceLinks(watchedReceiptType),
     queryFn: async () => {
-      const { data: invs, error } = await supabase
-        .from("invoices")
-        .select("id, number, total_amount, status, issue_date, due_date")
-        .eq("customer_id", watchedCustomerId)
-        .eq("type", "pre_invoice")
-        .in("status", ["draft", "final", "partially_paid"])
+      const { data: qs, error } = await supabase
+        .from("sales_quotes")
+        .select("id, quote_number, final_amount, status, created_at, expires_at")
+        .eq("customer_id" as never, watchedCustomerId)
+        .eq("status", "accepted")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      const list = (invs ?? []) as Array<{
+      const list = (qs ?? []) as Array<{
         id: string;
-        number: string | null;
-        total_amount: number;
+        quote_number: string | null;
+        final_amount: number;
         status: string;
-        issue_date: string | null;
-        due_date: string | null;
+        created_at: string | null;
+        expires_at: string | null;
       }>;
       if (list.length === 0) return [];
 
-      const ids = list.map((i) => i.id);
+      const ids = list.map((q) => q.id);
       const { data: links, error: linkErr } = await supabase
         .from("payment_receipt_links")
-        .select("invoice_id, amount, receipt:payment_receipts!inner(status)")
-        .in("invoice_id", ids);
+        .select("quote_id, amount, receipt:payment_receipts!inner(status)")
+        .in("quote_id" as never, ids);
       if (linkErr) throw linkErr;
       const paidMap = new Map<string, number>();
-      for (const l of (links ?? []) as Array<{
-        invoice_id: string;
+      for (const l of (links ?? []) as unknown as Array<{
+        quote_id: string;
         amount: number;
         receipt: { status: string } | null;
       }>) {
         if (l.receipt?.status === "approved") {
-          paidMap.set(l.invoice_id, (paidMap.get(l.invoice_id) ?? 0) + Number(l.amount));
+          paidMap.set(l.quote_id, (paidMap.get(l.quote_id) ?? 0) + Number(l.amount));
         }
       }
-      return list.map((i) => {
-        const paid = paidMap.get(i.id) ?? 0;
-        return {
-          id: i.id,
-          number: i.number,
-          total_amount: Number(i.total_amount),
-          paid_so_far: paid,
-          remaining: Math.max(0, Number(i.total_amount) - paid),
-          issue_date: i.issue_date ?? null,
-          due_date: i.due_date ?? null,
-        };
-      });
+      // Only accepted quotes with a remaining balance > 0 are allocatable.
+      return list
+        .map((q) => {
+          const paid = paidMap.get(q.id) ?? 0;
+          return {
+            id: q.id,
+            number: q.quote_number,
+            total_amount: Number(q.final_amount),
+            paid_so_far: paid,
+            remaining: Math.max(0, Number(q.final_amount) - paid),
+            issue_date: q.created_at ?? null,
+            due_date: q.expires_at ?? null,
+          };
+        })
+        .filter((o) => o.remaining > 0.001);
     },
     staleTime: 30_000,
   });
@@ -691,7 +693,7 @@ export function PaymentReceiptForm() {
     inv: InvoiceOption,
     opts?: { amount?: number; suggestion?: InvoiceAllocation["suggestion"] },
   ) => {
-    if (allocations.some((a) => a.invoice_id === inv.id)) return;
+    if (allocations.some((a) => a.quote_id === inv.id)) return;
     const remainingForReceipt = Math.max(0, watchedAmount - totalAllocated);
     const suggested =
       opts?.amount !== undefined
@@ -700,7 +702,7 @@ export function PaymentReceiptForm() {
     setAllocations((prev) => [
       ...prev,
       {
-        invoice_id: inv.id,
+        quote_id: inv.id,
         number: inv.number,
         total_amount: inv.total_amount,
         remaining: inv.remaining,
@@ -775,11 +777,11 @@ export function PaymentReceiptForm() {
   }, [watchedReceiptType, watchedCustomerId, watchedAmount, customerInvoices, watchedPaymentDate]);
 
   const removeAllocation = (invoiceId: string) => {
-    setAllocations((prev) => prev.filter((a) => a.invoice_id !== invoiceId));
+    setAllocations((prev) => prev.filter((a) => a.quote_id !== invoiceId));
   };
 
   const setAllocationAmount = (invoiceId: string, amount: number) => {
-    setAllocations((prev) => prev.map((a) => (a.invoice_id === invoiceId ? { ...a, amount } : a)));
+    setAllocations((prev) => prev.map((a) => (a.quote_id === invoiceId ? { ...a, amount } : a)));
   };
 
   // Optional lookups for bank accounts and external parties (Phase 11.9B)
@@ -952,7 +954,7 @@ export function PaymentReceiptForm() {
       if (requiresInvoiceLinks(values.receipt_type) && allocs.length > 0) {
         const linkRows = allocs.map((a) => ({
           receipt_id: receiptId,
-          invoice_id: a.invoice_id,
+          quote_id: a.quote_id,
           amount: Number(a.amount),
         }));
         const { error: linkErr } = await supabase
@@ -987,11 +989,11 @@ export function PaymentReceiptForm() {
           linked_invoices:
             requiresInvoiceLinks(values.receipt_type)
               ? allocs.map((a) => ({
-                  invoice_id: a.invoice_id,
+                  quote_id: a.quote_id,
                   amount: Number(a.amount),
                   ...(a.suggestion
                     ? {
-                        matched_invoice_id: a.invoice_id,
+                        matched_quote_id: a.quote_id,
                         suggested_confidence: a.suggestion.confidence,
                         suggested_reason: a.suggestion.reason,
                         allocated_amount: Number(a.amount),
@@ -1225,7 +1227,7 @@ export function PaymentReceiptForm() {
                     </p>
                     <div className="space-y-2">
                       {suggestions.map((s) => {
-                        const already = allocations.some((a) => a.invoice_id === s.invoice.id);
+                        const already = allocations.some((a) => a.quote_id === s.invoice.id);
                         const confidenceLabel =
                           s.confidence === "high"
                             ? "اطمینان بالا"
@@ -1300,12 +1302,12 @@ export function PaymentReceiptForm() {
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0" align="end">
                       <Command>
-                        <CommandInput placeholder="جستجو شماره فاکتور..." />
+                        <CommandInput placeholder="جستجو شماره پیش‌فاکتور..." />
                         <CommandList>
                           <CommandEmpty>پیش‌فاکتور بازی یافت نشد</CommandEmpty>
                           <CommandGroup>
                             {customerInvoices
-                              .filter((i) => !allocations.some((a) => a.invoice_id === i.id))
+                              .filter((i) => !allocations.some((a) => a.quote_id === i.id))
                               .map((inv) => (
                                 <CommandItem
                                   key={inv.id}
@@ -1333,7 +1335,15 @@ export function PaymentReceiptForm() {
                   <p className="text-xs text-muted-foreground">ابتدا مشتری را انتخاب کنید.</p>
                 )}
 
-                {watchedCustomerId && allocations.length === 0 && (
+                {watchedCustomerId &&
+                  requiresInvoiceLinks(watchedReceiptType) &&
+                  customerInvoices.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      این مشتری پیش‌فاکتور پذیرفته‌شده با ماندهٔ باز ندارد؛ امکان اتصال وجود ندارد.
+                    </p>
+                  )}
+
+                {watchedCustomerId && customerInvoices.length > 0 && allocations.length === 0 && (
                   <p className="text-xs text-muted-foreground">هنوز پیش‌فاکتوری انتخاب نشده است.</p>
                 )}
 
@@ -1341,12 +1351,12 @@ export function PaymentReceiptForm() {
                   <div className="space-y-2">
                     {allocations.map((a) => (
                       <div
-                        key={a.invoice_id}
+                        key={a.quote_id}
                         className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center"
                       >
                         <div className="flex-1 space-y-0.5">
                           <div className="text-sm font-medium" dir="ltr">
-                            {toFaDigits(a.number ?? a.invoice_id.slice(0, 8))}
+                            {toFaDigits(a.number ?? a.quote_id.slice(0, 8))}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             مبلغ کل: {formatNumber(a.total_amount)} • مانده:{" "}
@@ -1361,7 +1371,7 @@ export function PaymentReceiptForm() {
                             max={a.remaining}
                             value={a.amount || ""}
                             onChange={(e) =>
-                              setAllocationAmount(a.invoice_id, Number(e.target.value) || 0)
+                              setAllocationAmount(a.quote_id, Number(e.target.value) || 0)
                             }
                             className="w-36"
                           />
@@ -1369,7 +1379,7 @@ export function PaymentReceiptForm() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => removeAllocation(a.invoice_id)}
+                            onClick={() => removeAllocation(a.quote_id)}
                             aria-label="حذف"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
