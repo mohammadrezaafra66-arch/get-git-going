@@ -2,7 +2,18 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Search, Save, Package, FileText, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Search,
+  Save,
+  Package,
+  FileText,
+  Sparkles,
+  UserCheck,
+  UserPlus,
+} from "lucide-react";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -52,6 +63,13 @@ function NewQuotePage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerNote, setCustomerNote] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
+  // The customer picked from the registry (search or quick-add). Kept only to
+  // decide whether the quote links to a registered customer; see linkedCustomerId.
+  const [selectedCustomer, setSelectedCustomer] = useState<{
+    id: string;
+    name: string;
+    phone: string;
+  } | null>(null);
   const [expiresAt, setExpiresAt] = useState("");
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
   const [settlementTypeId, setSettlementTypeId] = useState<string>("");
@@ -75,6 +93,20 @@ function NewQuotePage() {
   });
 
   const totals = useMemo(() => computeTotals(items), [items]);
+
+  // MONEY-SAFETY: keep the customer link only while the name and phone still
+  // match the picked customer. Compare on normalized values (trim name, strip
+  // non-digits from phone) so harmless reformatting does not drop a correct
+  // link, but any real divergence clears the id — a stale id must never attach
+  // a payment to the wrong customer. Re-matching the fields restores the link.
+  const linkedCustomerId = useMemo(() => {
+    if (!selectedCustomer) return null;
+    const nameMatches = selectedCustomer.name.trim() === customerName.trim();
+    const phoneMatches =
+      selectedCustomer.phone.replace(/\D/g, "") === customerPhone.replace(/\D/g, "");
+    return nameMatches && phoneMatches ? selectedCustomer.id : null;
+  }, [selectedCustomer, customerName, customerPhone]);
+
   const debouncedCustomerSearch = useDebounce(customerSearch, 350);
   const customerSearchTerm = debouncedCustomerSearch.trim();
 
@@ -95,9 +127,10 @@ function NewQuotePage() {
     staleTime: 30_000,
   });
 
-  const selectCustomer = (customer: { name: string; phone: string | null }) => {
+  const selectCustomer = (customer: { id: string; name: string; phone: string | null }) => {
     setCustomerName(customer.name);
     setCustomerPhone(customer.phone ?? "");
+    setSelectedCustomer({ id: customer.id, name: customer.name, phone: customer.phone ?? "" });
     setCustomerSearch("");
   };
 
@@ -172,6 +205,8 @@ function NewQuotePage() {
         p_final_amount: totals.final_amount,
         p_items: itemsPayload,
         p_settlement_type_id: settlementTypeId,
+        // Null unless the fields still match the picked customer (money-safety).
+        p_customer_id: linkedCustomerId,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
@@ -273,6 +308,7 @@ function NewQuotePage() {
                 onCreated={(c) => {
                   setCustomerName(c.name);
                   setCustomerPhone(c.phone ?? "");
+                  setSelectedCustomer({ id: c.id, name: c.name, phone: c.phone ?? "" });
                   setCustomerSearch("");
                 }}
               />
@@ -297,6 +333,20 @@ function NewQuotePage() {
                 dir="ltr"
                 placeholder="09xxxxxxxxx"
               />
+            </div>
+            <div className="md:col-span-2">
+              {linkedCustomerId ? (
+                <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                  <UserCheck className="h-3 w-3" /> متصل به مشتری ثبت‌شده
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-[11px] font-normal text-muted-foreground"
+                >
+                  <UserPlus className="h-3 w-3" /> مشتری مهمان (بدون اتصال به پرونده)
+                </Badge>
+              )}
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
