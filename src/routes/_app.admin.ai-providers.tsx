@@ -1,0 +1,576 @@
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Loader2, Plus, RefreshCw, Trash2, Plug, Save } from "lucide-react";
+import { toast } from "sonner";
+
+import { requireAdmin } from "@/lib/rbac/route-guards";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  deleteAiProvider,
+  discoverAiModels,
+  listAiProviders,
+  testAiProvider,
+  upsertAiProvider,
+} from "@/lib/ai/providers.functions";
+import {
+  AI_CAPABILITIES,
+  AI_CAPABILITY_FA,
+  type AiCapability,
+  type AiProvider,
+  type AiProviderHealth,
+} from "@/lib/ai/types";
+import { formatDateFa } from "@/lib/i18n/formatters";
+
+export const Route = createFileRoute("/_app/admin/ai-providers")({
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
+  component: AiProvidersPage,
+});
+
+const STATUS_FA: Record<string, string> = {
+  ok: "سالم",
+  error: "خطا",
+  rate_limited: "محدودشده (شلوغ)",
+  credit_exhausted: "اعتبار تمام شده",
+  unavailable: "در دسترس نیست",
+};
+
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  ok: "default",
+  error: "destructive",
+  rate_limited: "secondary",
+  credit_exhausted: "destructive",
+  unavailable: "outline",
+};
+
+type HealthRow = AiProviderHealth;
+
+type Draft = {
+  id: string | null;
+  name: string;
+  label: string;
+  kind: "ollama" | "openai_compatible";
+  base_url: string;
+  is_active: boolean;
+  priority: number;
+  chat_model: string;
+  embed_model: string;
+  vision_model: string;
+  capabilities: AiCapability[];
+  api_key: string;
+  /** Distinguishes "left the key field alone" from "cleared it deliberately". */
+  api_key_touched: boolean;
+  notes: string;
+};
+
+function emptyDraft(): Draft {
+  return {
+    id: null,
+    name: "",
+    label: "",
+    kind: "openai_compatible",
+    base_url: "",
+    is_active: true,
+    priority: 100,
+    chat_model: "",
+    embed_model: "",
+    vision_model: "",
+    capabilities: ["chat"],
+    api_key: "",
+    api_key_touched: false,
+    notes: "",
+  };
+}
+
+function draftFrom(p: AiProvider): Draft {
+  return {
+    id: p.id,
+    name: p.name,
+    label: p.label,
+    kind: p.kind,
+    base_url: p.base_url,
+    is_active: p.is_active,
+    priority: p.priority,
+    chat_model: p.chat_model ?? "",
+    embed_model: p.embed_model ?? "",
+    vision_model: p.vision_model ?? "",
+    capabilities: p.capabilities,
+    api_key: "",
+    api_key_touched: false,
+    notes: p.notes ?? "",
+  };
+}
+
+function AiProvidersPage() {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  const q = useQuery({
+    queryKey: ["ai-providers"],
+    queryFn: () => listAiProviders(),
+  });
+
+  const providers = (q.data?.providers ?? []) as AiProvider[];
+
+  const healthByProvider = useMemo(() => {
+    const health = (q.data?.health ?? []) as HealthRow[];
+    const m = new Map<string, HealthRow[]>();
+    for (const h of health) {
+      const list = m.get(h.provider_id) ?? [];
+      list.push(h);
+      m.set(h.provider_id, list);
+    }
+    return m;
+  }, [q.data?.health]);
+
+  const saveM = useMutation({
+    mutationFn: async (d: Draft) => {
+      if (d.capabilities.length === 0) {
+        throw new Error("حداقل یک قابلیت را انتخاب کنید.");
+      }
+      return upsertAiProvider({
+        data: {
+          id: d.id,
+          name: d.name.trim(),
+          label: d.label.trim() || d.name.trim(),
+          kind: d.kind,
+          base_url: d.base_url.trim(),
+          is_active: d.is_active,
+          priority: d.priority,
+          chat_model: d.chat_model.trim() || null,
+          embed_model: d.embed_model.trim() || null,
+          vision_model: d.vision_model.trim() || null,
+          capabilities: d.capabilities,
+          // Untouched key field => null => the stored key is left alone.
+          api_key: d.api_key_touched ? d.api_key : null,
+          notes: d.notes.trim() || null,
+        },
+      });
+    },
+    onSuccess: async () => {
+      toast.success("ارائه‌دهنده ذخیره شد.");
+      setDraft(null);
+      await qc.invalidateQueries({ queryKey: ["ai-providers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در ذخیره."),
+  });
+
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteAiProvider({ data: { id } }),
+    onSuccess: async () => {
+      toast.success("ارائه‌دهنده حذف شد.");
+      await qc.invalidateQueries({ queryKey: ["ai-providers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در حذف."),
+  });
+
+  const discoverM = useMutation({
+    mutationFn: (id: string) => discoverAiModels({ data: { id } }),
+    onSuccess: (r) => {
+      if (!r.ok) {
+        toast.error(r.messageFa);
+        return;
+      }
+      if (r.models.length === 0) {
+        toast.info("مدلی گزارش نشد.");
+        return;
+      }
+      const known = r.models.filter((m) => m.capabilitiesKnown);
+      toast.success(
+        known.length > 0
+          ? `${r.models.length} مدل یافت شد؛ قابلیت ${known.length} مدل توسط سرویس گزارش شد.`
+          : `${r.models.length} مدل یافت شد. این سرویس قابلیت مدل‌ها را گزارش نمی‌کند؛ انتخاب با شماست.`,
+      );
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در دریافت مدل‌ها."),
+  });
+
+  async function runTest(id: string, capability: AiCapability) {
+    setTesting(`${id}:${capability}`);
+    try {
+      const r = await testAiProvider({ data: { id, capability } });
+      if (r.ok) {
+        toast.success(
+          `${AI_CAPABILITY_FA[capability]}: ${r.messageFa} (${r.ms ?? "?"} میلی‌ثانیه)`,
+        );
+      } else {
+        toast.error(`${AI_CAPABILITY_FA[capability]}: ${r.messageFa}`);
+      }
+      await qc.invalidateQueries({ queryKey: ["ai-providers"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در آزمایش اتصال.");
+    } finally {
+      setTesting(null);
+    }
+  }
+
+  return (
+    <div className="space-y-5" dir="rtl">
+      <PageHeader
+        title="ارائه‌دهندگان هوش مصنوعی"
+        description="مدیریت سرویس‌های هوش مصنوعی، کلیدها، قابلیت‌ها و وضعیت سلامت"
+        actions={
+          <Button onClick={() => setDraft(emptyDraft())}>
+            <Plus className="ml-2 h-4 w-4" />
+            افزودن ارائه‌دهنده
+          </Button>
+        }
+      />
+
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>درباره نگهداری کلیدها</AlertTitle>
+        <AlertDescription className="text-sm leading-7">
+          کلید هر سرویس رمزنگاری‌شده در Vault دیتابیس ذخیره می‌شود و هرگز در این صفحه، در گزارش
+          تغییرات یا در پیام‌های خطا نمایش داده نمی‌شود؛ فقط چند حرف ابتدایی آن دیده می‌شود. کلید
+          رمزگشایی خارج از دیتابیس نگهداری می‌شود، بنابراین یک نسخهٔ پشتیبان از دیتابیس به‌تنهایی
+          کلیدها را فاش نمی‌کند — اما به همان دلیل، بازگردانی دیتابیس روی سروری دیگر کلیدها را
+          غیرقابل‌بازیابی می‌کند و باید دوباره وارد شوند.
+        </AlertDescription>
+      </Alert>
+
+      {q.isLoading ? (
+        <Skeleton className="h-64 w-full" />
+      ) : q.isError ? (
+        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+          خطا در بارگذاری ارائه‌دهندگان.
+        </div>
+      ) : providers.length === 0 ? (
+        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+          هنوز هیچ ارائه‌دهنده‌ای ثبت نشده است.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {providers.map((p) => {
+            const rows = healthByProvider.get(p.id) ?? [];
+            return (
+              <Card key={p.id}>
+                <CardHeader>
+                  <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                    <Plug className="h-4 w-4 text-primary" />
+                    <span>{p.label}</span>
+                    <span className="text-xs text-muted-foreground" dir="ltr">
+                      {p.name}
+                    </span>
+                    {p.is_active ? (
+                      <Badge variant="default" className="text-xs font-normal">
+                        فعال
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs font-normal">
+                        غیرفعال
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs font-normal">
+                      اولویت {p.priority}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2 text-sm md:grid-cols-2">
+                    <div dir="ltr" className="text-muted-foreground">
+                      {p.base_url}
+                    </div>
+                    <div>
+                      کلید:{" "}
+                      {p.has_key ? (
+                        <span dir="ltr" className="font-mono">
+                          {p.key_prefix}…
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">ثبت نشده</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {AI_CAPABILITIES.map((c) => {
+                      const enabled = p.capabilities.includes(c);
+                      const h = rows.find((r) => r.capability === c);
+                      return (
+                        <div
+                          key={c}
+                          className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs"
+                        >
+                          <span className={enabled ? "" : "text-muted-foreground line-through"}>
+                            {AI_CAPABILITY_FA[c]}
+                          </span>
+                          {h && (
+                            <Badge
+                              variant={STATUS_VARIANT[h.last_status] ?? "outline"}
+                              className="text-[10px] font-normal"
+                            >
+                              {STATUS_FA[h.last_status] ?? h.last_status}
+                            </Badge>
+                          )}
+                          {enabled && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-[11px]"
+                              disabled={testing === `${p.id}:${c}`}
+                              onClick={() => runTest(p.id, c)}
+                            >
+                              {testing === `${p.id}:${c}` ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                "آزمایش"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {rows.length > 0 && (
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {rows.map((h) => (
+                        <div key={h.capability}>
+                          {AI_CAPABILITY_FA[h.capability]} — آخرین موفقیت:{" "}
+                          {h.last_ok_at ? formatDateFa(h.last_ok_at) : "—"}
+                          {h.last_error_at && (
+                            <>
+                              {" "}
+                              | آخرین خطا: {formatDateFa(h.last_error_at)}
+                              {h.last_error_code ? ` (${h.last_error_code})` : ""}
+                            </>
+                          )}
+                          {h.last_latency_ms != null && <> | {h.last_latency_ms} میلی‌ثانیه</>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {p.notes && <p className="text-xs leading-6 text-muted-foreground">{p.notes}</p>}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setDraft(draftFrom(p))}>
+                      ویرایش
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={discoverM.isPending}
+                      onClick={() => discoverM.mutate(p.id)}
+                    >
+                      {discoverM.isPending ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="ml-2 h-4 w-4" />
+                      )}
+                      مدل‌های موجود
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteM.isPending}
+                      onClick={() => deleteM.mutate(p.id)}
+                    >
+                      <Trash2 className="ml-2 h-4 w-4" />
+                      حذف
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {draft && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {draft.id ? "ویرایش ارائه‌دهنده" : "ارائه‌دهنده جدید"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="ap-name">شناسه (انگلیسی، بدون فاصله)</Label>
+                <Input
+                  id="ap-name"
+                  dir="ltr"
+                  value={draft.name}
+                  onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                  placeholder="lovable"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-label">نام نمایشی</Label>
+                <Input
+                  id="ap-label"
+                  value={draft.label}
+                  onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+                  placeholder="سرویس ابری"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>نوع</Label>
+                <Select
+                  value={draft.kind}
+                  onValueChange={(v) => setDraft({ ...draft, kind: v as Draft["kind"] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ollama">اولاما (محلی)</SelectItem>
+                    <SelectItem value="openai_compatible">سازگار با OpenAI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-url">آدرس پایه</Label>
+                <Input
+                  id="ap-url"
+                  dir="ltr"
+                  value={draft.base_url}
+                  onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
+                  placeholder="https://ai.gateway.lovable.dev/v1"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-priority">اولویت (کمتر = زودتر امتحان می‌شود)</Label>
+                <Input
+                  id="ap-priority"
+                  type="number"
+                  dir="ltr"
+                  value={draft.priority}
+                  onChange={(e) => setDraft({ ...draft, priority: Number(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-6">
+                <Switch
+                  id="ap-active"
+                  checked={draft.is_active}
+                  onCheckedChange={(v) => setDraft({ ...draft, is_active: v })}
+                />
+                <Label htmlFor="ap-active">فعال</Label>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-chat">مدل گفت‌وگو</Label>
+                <Input
+                  id="ap-chat"
+                  dir="ltr"
+                  value={draft.chat_model}
+                  onChange={(e) => setDraft({ ...draft, chat_model: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-embed">مدل بردار معنایی</Label>
+                <Input
+                  id="ap-embed"
+                  dir="ltr"
+                  value={draft.embed_model}
+                  onChange={(e) => setDraft({ ...draft, embed_model: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-vision">مدل خواندن تصویر</Label>
+                <Input
+                  id="ap-vision"
+                  dir="ltr"
+                  value={draft.vision_model}
+                  onChange={(e) => setDraft({ ...draft, vision_model: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ap-key">کلید سرویس</Label>
+                <Input
+                  id="ap-key"
+                  dir="ltr"
+                  type="password"
+                  autoComplete="new-password"
+                  value={draft.api_key}
+                  onChange={(e) =>
+                    setDraft({ ...draft, api_key: e.target.value, api_key_touched: true })
+                  }
+                  placeholder={draft.id ? "برای حفظ کلید فعلی خالی بگذارید" : ""}
+                />
+                {draft.id && (
+                  <p className="text-xs text-muted-foreground">
+                    اگر این فیلد را دست نزنید کلید فعلی حفظ می‌شود. برای حذف کلید، داخل آن کلیک کنید
+                    و خالی ذخیره کنید.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>قابلیت‌ها</Label>
+              <div className="flex flex-wrap gap-4">
+                {AI_CAPABILITIES.map((c) => (
+                  <label key={c} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={draft.capabilities.includes(c)}
+                      onCheckedChange={(v) =>
+                        setDraft({
+                          ...draft,
+                          capabilities: v
+                            ? [...draft.capabilities, c]
+                            : draft.capabilities.filter((x) => x !== c),
+                        })
+                      }
+                    />
+                    {AI_CAPABILITY_FA[c]}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                فقط قابلیت‌هایی را تیک بزنید که به این سرویس اعتماد دارید. وجود داشتن یک مدل به
+                معنای مناسب بودن آن نیست.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="ap-notes">یادداشت</Label>
+              <Textarea
+                id="ap-notes"
+                rows={2}
+                value={draft.notes}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDraft(null)}>
+                انصراف
+              </Button>
+              <Button disabled={saveM.isPending} onClick={() => saveM.mutate(draft)}>
+                {saveM.isPending ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="ml-2 h-4 w-4" />
+                )}
+                ذخیره
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

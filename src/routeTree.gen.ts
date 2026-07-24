@@ -141,6 +141,7 @@ import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.docum
 import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAdminAuditRouteImport } from './routes/_app.admin.audit'
+import { Route as AppAdminAiProvidersRouteImport } from './routes/_app.admin.ai-providers'
 import { Route as AppAccountingSalespersonCapitalAllocationsRouteImport } from './routes/_app.accounting.salesperson-capital-allocations'
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
@@ -881,6 +882,11 @@ const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
   path: '/admin/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminAiProvidersRoute = AppAdminAiProvidersRouteImport.update({
+  id: '/admin/ai-providers',
+  path: '/admin/ai-providers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingSalespersonCapitalAllocationsRoute =
   AppAccountingSalespersonCapitalAllocationsRouteImport.update({
     id: '/accounting/salesperson-capital-allocations',
@@ -1270,6 +1276,7 @@ export interface FileRoutesByFullPath {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -1459,6 +1466,7 @@ export interface FileRoutesByTo {
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -1651,6 +1659,7 @@ export interface FileRoutesById {
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/_app/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
+  '/_app/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
   '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -1844,6 +1853,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/ai-providers'
     | '/admin/audit'
     | '/admin/automation'
     | '/admin/delivery-receipts'
@@ -2033,6 +2043,7 @@ export interface FileRouteTypes {
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
+    | '/admin/ai-providers'
     | '/admin/audit'
     | '/admin/automation'
     | '/admin/delivery-receipts'
@@ -2224,6 +2235,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/receipts'
     | '/_app/accounting/receivables'
     | '/_app/accounting/salesperson-capital-allocations'
+    | '/_app/admin/ai-providers'
     | '/_app/admin/audit'
     | '/_app/admin/automation'
     | '/_app/admin/delivery-receipts'
@@ -3317,6 +3329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/ai-providers': {
+      id: '/_app/admin/ai-providers'
+      path: '/admin/ai-providers'
+      fullPath: '/admin/ai-providers'
+      preLoaderRoute: typeof AppAdminAiProvidersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/salesperson-capital-allocations': {
       id: '/_app/accounting/salesperson-capital-allocations'
       path: '/accounting/salesperson-capital-allocations'
@@ -3963,6 +3982,7 @@ interface AppRouteChildren {
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
   AppAccountingSalespersonCapitalAllocationsRoute: typeof AppAccountingSalespersonCapitalAllocationsRoute
+  AppAdminAiProvidersRoute: typeof AppAdminAiProvidersRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
   AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
@@ -4092,6 +4112,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingReceivablesRoute: AppAccountingReceivablesRoute,
   AppAccountingSalespersonCapitalAllocationsRoute:
     AppAccountingSalespersonCapitalAllocationsRoute,
+  AppAdminAiProvidersRoute: AppAdminAiProvidersRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,
   AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,

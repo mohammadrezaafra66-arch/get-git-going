@@ -153,6 +153,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/recent-purchase-settings",
       "/admin/workflow-stages",
       "/admin/validation-rules",
+      "/admin/ai-providers",
       "/pricing/currencies",
       "/pricing/currency-sources",
       "/pricing/currency-rates",
