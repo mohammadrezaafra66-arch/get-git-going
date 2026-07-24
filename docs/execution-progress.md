@@ -1,5 +1,33 @@
 # Execution progress
 
+## ROUND 4 (AfraKala-execution-round4.md): Phase 1 DONE. RESUME AT PHASE 2.
+
+**Phase 1 — receipt form allocates against quotes. COMMITS `5dd21ac4` + `ac6fb438`, pushed.**
+`PaymentReceiptForm.tsx` now lists the customer's ACCEPTED `sales_quotes` with
+remaining > 0 (was the dead `invoices.type='pre_invoice'`), links via `quote_id`,
+computes remaining = `final_amount` − sum of APPROVED-receipt link amounts
+(client-side; accountant has RLS SELECT on sales_quotes). Allocation field
+renamed `invoice_id`→`quote_id`; clear "no eligible pre-invoices" message; casts
+for `customer_id`/`quote_id` columns missing from stale generated types
+(147/148). Verified in a rolled-back txn: link `quote_id` set / `invoice_id`
+null; both-set CHECK rejected; partial allocation dropped remaining 100.1M→60.1M,
+second receipt →30.1M. Typecheck 70, lint 0. NOTE: over-allocation rejection is
+client-side (existing design; no DB constraint) — flagged.
+
+## RESUME AT PHASE 2 — surface collected payments (scoring / credit / receivables)
+Stopped for context budget; Phase 1 is a complete verified deliverable. Phase 2
+edits three money-adjacent DB objects (needs careful work, not a rushed pass):
+2.1 `calculate_employee_score` collected (hardcoded 0 by migration 146) → read
+quote-linked APPROVED receipts, preserve 0.8/0.2; check
+`calculate_salesperson_collected_sales`. The recompute triggers that invoke it
+are already fixed (148/149). 2.2 `calculate_credit_score` count quote payments.
+2.3 `vw_customer_receivables` + `get_receivable_detail` show accepted-quote unpaid
+balance. 2.4 before/after verify. Then Phase 3 (end-to-end + rebuild) finishes the
+payment work; Phases 4–7 (Ollama at http://192.168.170.8:11434 — bge-m3 emb/1024,
+qwen2.5:7b chat, qwen3.6 vision; shared AI client; call-site migration; RAG).
+
+---
+
 ## ROUND 3 (AfraKala-execution-round3.md): Phase 1 + Phase 2 DONE. RESUME AT PHASE 3.2.
 
 **Phase 1 — receipt posting repaired (Model B). COMMIT `79c78739`, pushed.**
