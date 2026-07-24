@@ -986,21 +986,20 @@ export function PaymentReceiptForm() {
             accounting_code: values.receiver_accounting_code || null,
           },
           status: "pending_review",
-          linked_invoices:
-            requiresInvoiceLinks(values.receipt_type)
-              ? allocs.map((a) => ({
-                  quote_id: a.quote_id,
-                  amount: Number(a.amount),
-                  ...(a.suggestion
-                    ? {
-                        matched_quote_id: a.quote_id,
-                        suggested_confidence: a.suggestion.confidence,
-                        suggested_reason: a.suggestion.reason,
-                        allocated_amount: Number(a.amount),
-                      }
-                    : {}),
-                }))
-              : [],
+          linked_invoices: requiresInvoiceLinks(values.receipt_type)
+            ? allocs.map((a) => ({
+                quote_id: a.quote_id,
+                amount: Number(a.amount),
+                ...(a.suggestion
+                  ? {
+                      matched_quote_id: a.quote_id,
+                      suggested_confidence: a.suggestion.confidence,
+                      suggested_reason: a.suggestion.reason,
+                      allocated_amount: Number(a.amount),
+                    }
+                  : {}),
+              }))
+            : [],
         },
       } as never);
 
@@ -1911,9 +1910,11 @@ export function PaymentReceiptForm() {
                 برای پرداخت پیش‌فاکتور، حداقل یک پیش‌فاکتور انتخاب کنید.
               </p>
             )}
-            {requiresInvoiceLinks(watchedReceiptType) && allocations.length > 0 && overAllocated && (
-              <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
-            )}
+            {requiresInvoiceLinks(watchedReceiptType) &&
+              allocations.length > 0 &&
+              overAllocated && (
+                <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
+              )}
           </div>
         </div>
       </form>
