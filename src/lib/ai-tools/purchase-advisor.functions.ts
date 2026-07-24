@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { aiChat } from "@/lib/ai/client.server";
 
 const InputSchema = z.object({
   productId: z.string().uuid(),
@@ -8,8 +9,6 @@ const InputSchema = z.object({
   urgency: z.enum(["normal", "urgent", "critical"]),
   note: z.string().max(1000).optional().nullable(),
 });
-
-const MODEL = "anthropic/claude-sonnet-4-5";
 
 const URGENCY_FA: Record<string, string> = {
   normal: "عادی",
@@ -30,9 +29,6 @@ export const generatePurchaseAdvice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { supabase } = context;
 
     const { data: product, error: productErr } = await supabase
@@ -121,35 +117,19 @@ ${rateLines}
 ۴. ریسک‌های احتمالی
 ۵. جمع‌بندی نهایی`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": apiKey,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const result = await aiChat({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.3,
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      if (res.status === 429)
-        throw new Error("محدودیت تعداد درخواست. لطفاً کمی بعد تلاش کنید.");
-      if (res.status === 402) throw new Error("اعتبار هوش مصنوعی به پایان رسیده است.");
-      throw new Error(`خطای سرویس هوش مصنوعی (${res.status}): ${text.slice(0, 200)}`);
-    }
+    // The shared client already separates 429 (busy, retry) from 402 (credit
+    // exhausted) and carries the right Persian message for each.
+    if (!result.ok) throw new Error(result.messageFa);
 
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const advice = (json.choices?.[0]?.message?.content ?? "").trim();
+    const advice = result.value.trim();
     if (!advice) throw new Error("پاسخی از سرویس هوش مصنوعی دریافت نشد.");
 
     return { advice, productName: product.name as string };
