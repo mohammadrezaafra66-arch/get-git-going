@@ -12,6 +12,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { aiVision } from "@/lib/ai/client.server";
 
 export type OcrBytesMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
 
@@ -146,98 +147,45 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
           reason: "ocr_disabled",
         } satisfies OcrBytesResult;
       }
-      const apiKey = process.env.LOVABLE_API_KEY;
-      if (!apiKey) {
-        return {
-          raw_text: "",
-          method: "unsupported" as const,
-          warnings: ["LOVABLE_API_KEY در سرور تنظیم نشده."],
-          ok: false,
-          disabled: true,
-          reason: "ocr_disabled",
-        } satisfies OcrBytesResult;
-      }
+      // Shared client, which only ever picks a provider that DECLARES vision.
+      // The LAN Ollama deliberately does not: the 2026-07-24 probe showed
+      // qwen3.6 reads Persian prose perfectly but misreads Persian digits
+      // reproducibly (45,000,000 read as 25,000,000). Receipt OCR therefore
+      // stays on a keyed provider, enforced by the registry, not by a branch.
+      //
+      // The safety property is unchanged either way: this output is only ever
+      // a SUGGESTION. PaymentReceiptForm fills empty fields with it, leaves
+      // anything the accountant typed alone, and nothing is written to a
+      // financial record until the accountant submits the form.
+      const vision = await aiVision({
+        prompt: OCR_PROMPT,
+        imageBase64: data.base64,
+        mimeType: mime,
+        timeoutMs: externalApiTimeoutMs(),
+      });
 
-      const dataUrl = `data:${mime};base64,${data.base64}`;
-      // SH-RA.2B: bound external call with AbortController + EXTERNAL_API_TIMEOUT_MS.
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), externalApiTimeoutMs());
-      let aiResp: Response;
-      try {
-        aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            temperature: 0,
-            messages: [
-              {
-                role: "system",
-                content: "You are an OCR engine. Output only raw visible text from the image.",
-              },
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: OCR_PROMPT },
-                  { type: "image_url", image_url: { url: dataUrl } },
-                ],
-              },
-            ],
-          }),
-          signal: ctrl.signal,
-        });
-      } catch (err) {
-        const isAbort = (err as { name?: string } | null)?.name === "AbortError";
-        if (isAbort) {
+      if (!vision.ok) {
+        if (vision.reason === "no_provider") {
           return {
             raw_text: "",
-            method: "image_ocr" as const,
-            warnings: ["موتور OCR در زمان مقرر پاسخ نداد (timeout)."],
+            method: "unsupported" as const,
+            warnings: ["موتور OCR تصویری در این محیط فعال نیست."],
             ok: false,
-            reason: "ocr_timeout",
+            disabled: true,
+            reason: "ocr_disabled",
           } satisfies OcrBytesResult;
         }
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[ocr-bytes] external fetch failed:", msg);
         return {
           raw_text: "",
           method: "image_ocr" as const,
-          warnings: ["خطا در ارتباط با موتور OCR خارجی."],
+          warnings: [vision.messageFa],
           ok: false,
-          reason: "ocr_network_error",
+          reason: vision.reason === "timeout" ? "ocr_timeout" : "ocr_network_error",
         } satisfies OcrBytesResult;
-      } finally {
-        clearTimeout(timer);
       }
 
-      if (aiResp.status === 429) {
-        return {
-          raw_text: "",
-          method: "image_ocr" as const,
-          warnings: ["محدودیت نرخ موتور OCR — بعد دوباره تلاش کنید."],
-        } satisfies OcrBytesResult;
-      }
-      if (aiResp.status === 402) {
-        return {
-          raw_text: "",
-          method: "image_ocr" as const,
-          warnings: ["اعتبار موتور OCR کافی نیست."],
-        } satisfies OcrBytesResult;
-      }
-      if (!aiResp.ok) {
-        const body = await aiResp.text().catch(() => "");
-        console.error(`[ocr-bytes] AI gateway error ${aiResp.status}:`, body.slice(0, 500));
-        throw new Response("OCR engine unavailable", { status: 502 });
-      }
-      const ai = (await aiResp.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const text = ai.choices?.[0]?.message?.content ?? "";
       return {
-        raw_text: typeof text === "string" ? text : "",
+        raw_text: vision.value,
         method: "image_ocr" as const,
         warnings: [],
       } satisfies OcrBytesResult;
