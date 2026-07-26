@@ -48,6 +48,9 @@
   Plug,
   Upload,
   XCircle,
+  Warehouse,
+  ArrowLeftRight,
+  ScrollText as ScrollTextIcon,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -255,6 +258,28 @@ const NAVIGATION_SEEDS = [
     label: "پنل خرید",
     icon: ShoppingBag,
     module: "purchases",
+    group: "purchasing",
+  },
+  // Phase 8 — چندانباره (۱۷۳–۱۷۹، ۱۸۳). ماژول `warehouse` در migration 209 seed شد.
+  {
+    to: "/warehouses",
+    label: "انبارها",
+    icon: Warehouse,
+    module: "warehouse",
+    group: "purchasing",
+  },
+  {
+    to: "/warehouses/transfers",
+    label: "انتقال بین‌انباری",
+    icon: ArrowLeftRight,
+    module: "warehouse",
+    group: "purchasing",
+  },
+  {
+    to: "/warehouses/kardex",
+    label: "گزارش کاردکس",
+    icon: ScrollTextIcon,
+    module: "warehouse",
     group: "purchasing",
   },
 

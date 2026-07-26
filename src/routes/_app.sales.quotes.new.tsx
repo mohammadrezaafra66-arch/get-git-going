@@ -42,6 +42,7 @@ import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,8 @@ function NewQuotePage() {
   const [expiresAt, setExpiresAt] = useState("");
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
   const [settlementTypeId, setSettlementTypeId] = useState<string>("");
+  // Item 178 — warehouse the goods will be deducted from. null = default warehouse.
+  const [warehouseId, setWarehouseId] = useState<string | null>(null);
   const [stockConfirmed, setStockConfirmed] = useState(false);
   // Item 152 — the refusal dialog: the reason the DB/validation gave, plus a
   // one-line note the salesperson may add before it is logged.
@@ -224,6 +227,19 @@ function NewQuotePage() {
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
       if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
+
+      // Item 178 — the creation RPC has no warehouse parameter, so the chosen
+      // warehouse is written right after. Safe: the quote is created as `draft`
+      // and stock only moves when it reaches `accepted`. It stays editable at
+      // confirm time (179).
+      if (warehouseId) {
+        const { error: whErr } = await supabase
+          .from("sales_quotes")
+          .update({ warehouse_id: warehouseId } as never)
+          .eq("id", result.id);
+        if (whErr) throw new Error(whErr.message);
+      }
+
       return result;
     },
     onSuccess: (quote) => {
@@ -400,6 +416,15 @@ function NewQuotePage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Item 178 — source warehouse. Hidden until warehouses exist. */}
+            <div className="space-y-1.5 md:col-span-1">
+              <WarehouseSelect
+                label="انبار"
+                value={warehouseId}
+                onChange={setWarehouseId}
+                hint="هنگام قطعی‌کردن، کالا از این انبار کسر می‌شود. در مرحلهٔ قطعی هم قابل تغییر است."
+              />
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="customer_note">توضیحات مشتری</Label>

@@ -40,6 +40,8 @@ import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { checkQuoteStockAvailability } from "@/lib/warehouses/queries";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -367,10 +369,37 @@ function QuoteActionButtons({
   const [reason, setReason] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Items 175/179 — at confirm time the operator may switch warehouse, and sees
+  // the availability check for whichever warehouse is selected.
+  const [confirmWarehouseId, setConfirmWarehouseId] = useState<string | null>(null);
+
+  const isAccepting = confirm?.next === "accepted";
+
+  const stockCheckQ = useQuery({
+    queryKey: ["quote-stock-check", quote.id, confirmWarehouseId],
+    enabled: isAccepting,
+    queryFn: () => checkQuoteStockAvailability(quote.id, confirmWarehouseId),
+    staleTime: 0,
+  });
+
+  const shortages = (stockCheckQ.data ?? []).filter((r) => !r.is_sufficient);
 
   const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
-    mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
+    mutationFn: async (payload: {
+      next: SalesQuoteStatus;
+      reason?: string;
+      warehouseId?: string | null;
+    }) => {
+      // 179 — persist the warehouse override BEFORE the status change, because
+      // the deduction trigger reads sales_quotes.warehouse_id at that moment.
+      if (payload.next === "accepted" && payload.warehouseId) {
+        const { error } = await supabase
+          .from("sales_quotes")
+          .update({ warehouse_id: payload.warehouseId } as never)
+          .eq("id", quote.id);
+        if (error) throw new Error(error.message);
+      }
       await updateQuoteStatusFn({
         data: { id: quote.id, next: payload.next, reason: payload.reason },
       });
@@ -515,14 +544,51 @@ function QuoteActionButtons({
               />
             </div>
           )}
+
+          {/* Items 175/179 — warehouse override + availability check before confirming. */}
+          {isAccepting && (
+            <div className="space-y-3 py-2">
+              <WarehouseSelect
+                label="انبار کسر موجودی"
+                value={confirmWarehouseId}
+                onChange={setConfirmWarehouseId}
+                hint="می‌توانید انبار انتخاب‌شدهٔ پیش‌فاکتور را همین حالا تغییر دهید."
+              />
+
+              {stockCheckQ.isLoading ? (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> بررسی موجودی…
+                </p>
+              ) : (stockCheckQ.data ?? []).length === 0 ? null : shortages.length === 0 ? (
+                <p className="rounded-md border border-emerald-500/40 bg-emerald-50 p-2 text-xs leading-6 dark:bg-emerald-950/20">
+                  موجودی همهٔ کالاهای این پیش‌فاکتور در انبار انتخاب‌شده کافی است.
+                </p>
+              ) : (
+                <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs leading-6">
+                  <div className="font-medium text-destructive">
+                    موجودی کافی نیست — قطعی‌کردن انجام نمی‌شود:
+                  </div>
+                  {shortages.map((s) => (
+                    <div key={s.product_id}>
+                      {s.product_name}: نیاز {formatNumber(s.required)} / موجود{" "}
+                      {formatNumber(s.available)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
+              disabled={isAccepting && shortages.length > 0}
               onClick={() => {
                 if (!confirm) return;
                 mutation.mutate({
                   next: confirm.next,
                   reason: confirm.needsReason ? reason.trim() || undefined : undefined,
+                  warehouseId: confirm.next === "accepted" ? confirmWarehouseId : null,
                 });
                 setConfirm(null);
               }}

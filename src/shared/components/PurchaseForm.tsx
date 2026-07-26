@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -71,6 +72,8 @@ const schema = z.object({
     .number({ message: "قیمت نقدی نامعتبر است" })
     .positive("قیمت نقدی باید مثبت باشد")
     .optional(),
+  // Item 173 — destination warehouse. null = default warehouse.
+  warehouse_id: z.string().uuid().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -85,6 +88,7 @@ const defaultValues: FormValues = {
   purchase_date: new Date(),
   notes: "",
   cash_price: undefined,
+  warehouse_id: null,
 };
 
 export function PurchaseForm() {
@@ -178,6 +182,9 @@ export function PurchaseForm() {
           created_by: user.id,
           total_amount: lineTotal,
           status: "received",
+          // Item 173 — the purchase_items trigger reads this to decide which
+          // warehouse receives the goods; null falls back to the default.
+          warehouse_id: values.warehouse_id ?? null,
         } as never)
         .select("id")
         .single();
@@ -452,6 +459,14 @@ export function PurchaseForm() {
           <p className="text-xs text-destructive">{errors.purchase_date.message}</p>
         )}
       </div>
+
+      {/* انبار مقصد (۱۷۳) — اگر انباری تعریف نشده باشد، رندر نمی‌شود. */}
+      <WarehouseSelect
+        label="انبار مقصد"
+        value={form.watch("warehouse_id") ?? null}
+        onChange={(id) => form.setValue("warehouse_id", id, { shouldDirty: true })}
+        hint="کالای این خرید به همین انبار اضافه می‌شود و یک ردیف کاردکس «ورود» ثبت می‌گردد."
+      />
 
       {/* توضیحات */}
       <div className="space-y-2">

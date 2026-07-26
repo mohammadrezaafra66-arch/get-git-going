@@ -20,6 +20,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiVersionRouteImport } from './routes/api.version'
 import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
+import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
@@ -58,6 +59,8 @@ import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-ke
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
+import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.warehouses_.transfers'
+import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouses_.kardex'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
 import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
@@ -259,6 +262,11 @@ const ApiHealthzRoute = ApiHealthzRouteImport.update({
   path: '/api/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWarehousesRoute = AppWarehousesRouteImport.update({
+  id: '/warehouses',
+  path: '/warehouses',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -450,6 +458,16 @@ const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
   id: '/api/messenger/ai-chat',
   path: '/api/messenger/ai-chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppWarehousesTransfersRoute = AppWarehousesTransfersRouteImport.update({
+  id: '/warehouses_/transfers',
+  path: '/warehouses/transfers',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWarehousesKardexRoute = AppWarehousesKardexRouteImport.update({
+  id: '/warehouses_/kardex',
+  path: '/warehouses/kardex',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppUsersPendingRoute = AppUsersPendingRouteImport.update({
   id: '/pending',
@@ -1287,6 +1305,7 @@ export interface FileRoutesByFullPath {
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
+  '/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1390,6 +1409,8 @@ export interface FileRoutesByFullPath {
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
+  '/warehouses/kardex': typeof AppWarehousesKardexRoute
+  '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1481,6 +1502,7 @@ export interface FileRoutesByTo {
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
   '/users': typeof AppUsersRouteWithChildren
+  '/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1583,6 +1605,8 @@ export interface FileRoutesByTo {
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
+  '/warehouses/kardex': typeof AppWarehousesKardexRoute
+  '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1678,6 +1702,7 @@ export interface FileRoutesById {
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
   '/_app/users': typeof AppUsersRouteWithChildren
+  '/_app/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/api/version': typeof ApiVersionRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -1781,6 +1806,8 @@ export interface FileRoutesById {
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
+  '/_app/warehouses_/kardex': typeof AppWarehousesKardexRoute
+  '/_app/warehouses_/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
@@ -1876,6 +1903,7 @@ export interface FileRouteTypes {
     | '/sales'
     | '/suppliers'
     | '/users'
+    | '/warehouses'
     | '/api/healthz'
     | '/api/version'
     | '/.lovable/oauth/consent'
@@ -1979,6 +2007,8 @@ export interface FileRouteTypes {
     | '/suppliers/$supplierId'
     | '/users/$userId'
     | '/users/pending'
+    | '/warehouses/kardex'
+    | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
@@ -2070,6 +2100,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/suppliers'
     | '/users'
+    | '/warehouses'
     | '/api/healthz'
     | '/api/version'
     | '/.lovable/oauth/consent'
@@ -2172,6 +2203,8 @@ export interface FileRouteTypes {
     | '/suppliers/$supplierId'
     | '/users/$userId'
     | '/users/pending'
+    | '/warehouses/kardex'
+    | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
@@ -2266,6 +2299,7 @@ export interface FileRouteTypes {
     | '/_app/sales'
     | '/_app/suppliers'
     | '/_app/users'
+    | '/_app/warehouses'
     | '/api/healthz'
     | '/api/version'
     | '/.lovable/oauth/consent'
@@ -2369,6 +2403,8 @@ export interface FileRouteTypes {
     | '/_app/suppliers_/$supplierId'
     | '/_app/users/$userId'
     | '/_app/users/pending'
+    | '/_app/warehouses_/kardex'
+    | '/_app/warehouses_/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
@@ -2531,6 +2567,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/healthz'
       preLoaderRoute: typeof ApiHealthzRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/warehouses': {
+      id: '/_app/warehouses'
+      path: '/warehouses'
+      fullPath: '/warehouses'
+      preLoaderRoute: typeof AppWarehousesRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/users': {
       id: '/_app/users'
@@ -2797,6 +2840,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/messenger/ai-chat'
       preLoaderRoute: typeof ApiMessengerAiChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/warehouses_/transfers': {
+      id: '/_app/warehouses_/transfers'
+      path: '/warehouses/transfers'
+      fullPath: '/warehouses/transfers'
+      preLoaderRoute: typeof AppWarehousesTransfersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/warehouses_/kardex': {
+      id: '/_app/warehouses_/kardex'
+      path: '/warehouses/kardex'
+      fullPath: '/warehouses/kardex'
+      preLoaderRoute: typeof AppWarehousesKardexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/users/pending': {
       id: '/_app/users/pending'
@@ -4049,6 +4106,7 @@ interface AppRouteChildren {
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
   AppUsersRoute: typeof AppUsersRouteWithChildren
+  AppWarehousesRoute: typeof AppWarehousesRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
@@ -4133,6 +4191,8 @@ interface AppRouteChildren {
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSalesInvoicesRoute: typeof AppSalesInvoicesRoute
   AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
+  AppWarehousesKardexRoute: typeof AppWarehousesKardexRoute
+  AppWarehousesTransfersRoute: typeof AppWarehousesTransfersRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
   AppPricingIndexRoute: typeof AppPricingIndexRoute
   AppProductsIndexRoute: typeof AppProductsIndexRoute
@@ -4181,6 +4241,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
   AppUsersRoute: AppUsersRouteWithChildren,
+  AppWarehousesRoute: AppWarehousesRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
   AppAccountingBankAccountsRoute: AppAccountingBankAccountsRoute,
@@ -4267,6 +4328,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSalesInvoicesRoute: AppSalesInvoicesRoute,
   AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
+  AppWarehousesKardexRoute: AppWarehousesKardexRoute,
+  AppWarehousesTransfersRoute: AppWarehousesTransfersRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
   AppPricingIndexRoute: AppPricingIndexRoute,
   AppProductsIndexRoute: AppProductsIndexRoute,

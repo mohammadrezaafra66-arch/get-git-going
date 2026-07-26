@@ -134,7 +134,8 @@
 - یادداشت بازیابی: این فاز وسط کار با خطای ۵۲۹ سرور قطع شد. در نشست بعد تأیید شد هر دو migration از قبل روی DB اعمال شده‌اند (ستون، CHECK، ویو، تابع، دو ردیف KPI، دو تریگر، ایندکس، و شاخهٔ CASE) پس **دوباره اجرا نشدند**؛ فقط سیم‌کشی فرانت ۷.ج تکمیل شد.
 
 ## Phase 8 — چندانباره کامل
-- status: IN-PROGRESS (۸.۱–۸.۵ DONE و commit شده؛ بعدی: ۸.۶ UI مدیریت انبار)
+- status: DONE
+- commit: (this commit؛ ۸.۱–۸.۵ در commit قبلی `f7e57f44`)
 - migrations: `20260726140000_209_phase8_1_warehouse_tables.sql`, `20260726141000_210_phase8_2_5_stock_engine.sql`, `20260726142000_211_phase8_5_fix_stock_notify.sql`
 - ۸.۱ جداول + RLS + seed ماژول — DONE
   - پنج جدول: `warehouses`, `warehouse_stock`, `stock_movements`, `stock_transfers`, `stock_transfer_items`.
@@ -163,6 +164,29 @@
   - ۸.۵ دوطرفه: `in 5` → available، `out 5` → unavailable ✓
   - `adjust` علامت‌دار: `+7` → qty ۷ (delta +۷)؛ `-5` → qty ۲ (quantity ۵، delta −۵)؛ `-99` رد شد و موجودی دست‌نخورده ماند ✓
   - `warehouse_stock.quantity < 0` → ۰ ردیف (غیرممکن) ✓
+- ۸.۶ UI مدیریت انبار — DONE
+  - `src/lib/warehouses/queries.ts`: `fetchWarehouses`, `createWarehouse`, `updateWarehouse`, `deleteWarehouse`, `getWarehouseDeleteBlockers`, `fetchProductStockByWarehouse`, `adjustWarehouseStock`, `checkQuoteStockAvailability`, `fetchStockMovements`.
+  - route `_app.warehouses.tsx` با گارد `requireAnyRole([admin,manager])` (هم‌تراز policy نوشتن RLS): فهرست + ساخت/ویرایش + تعیین انبار پیش‌فرض + حذف محافظت‌شده.
+  - **حذف محافظت‌شده:** قبل از حذف، تعداد موجودی/حرکت کاردکس/سند انتقال شمرده و نمایش داده می‌شود. اگر سابقه دارد، دکمه به «غیرفعال کن» تبدیل می‌شود (FKها `ON DELETE RESTRICT` هستند و DB هم اجازه نمی‌داد). فقط انبار خالیِ بی‌سابقه حذف قطعی می‌شود.
+  - هشدار درون‌صفحه اگر هیچ انبار پیش‌فرضی تعیین نشده باشد (چون در آن حالت اسناد بدون انبارِ مشخص موجودی را جابه‌جا نمی‌کنند).
+  - `ProductStockByWarehouse` روی صفحهٔ محصول (۱۷۶): موجودی به تفکیک انبار + مجموع. اگر محصول ردیف انباری ندارد رندر نمی‌شود.
+- ۸.۷ UI انتخاب انبار در خرید و پیش‌فاکتور — DONE
+  - `WarehouseSelect` مشترک؛ گزینهٔ اول همیشه «انبار پیش‌فرض (نام)». اگر هیچ انباری تعریف نشده باشد **هیچ چیز رندر نمی‌کند** (چون تریگرها هم no-op‌اند و فیلد خالی کاربر را گیج می‌کرد).
+  - خرید (۱۷۳): `warehouse_id` به schema/defaults/insert `PurchaseForm` اضافه شد. تریگر روی `purchase_items` مقدار `purchases.warehouse_id` را می‌خواند، و PurchaseForm همیشه ردیف `purchase_items` را mirror می‌کند.
+  - پیش‌فاکتور (۱۷۸): RPC `create_sales_quote_with_items` پارامتر انبار ندارد. **تصمیم:** به‌جای دست‌زدن به یک RPC مسیر پول، `warehouse_id` بلافاصله بعد از ساخت با UPDATE ست می‌شود — بی‌خطر چون سند `draft` ساخته می‌شود و موجودی فقط در `accepted` حرکت می‌کند.
+  - تغییر انبار هنگام قطعی (۱۷۹) + چک موجودی (۱۷۵): در دیالوگ «پذیرش» صفحهٔ `$quoteId`، `WarehouseSelect` برای بازنویسی انبار + نتیجهٔ زندهٔ `check_quote_stock_availability`. اگر کمبود باشد دکمهٔ تأیید **disabled** می‌شود و ردیف‌های کمبود با «نیاز/موجود» نشان داده می‌شوند. انبار **قبل از** تغییر وضعیت ذخیره می‌شود چون تریگر کسر در همان لحظه `sales_quotes.warehouse_id` را می‌خواند.
+- ۸.۸ UI انتقال + گزارش کاردکس — DONE
+  - `src/lib/warehouses/transfers.ts` + route `_app.warehouses_.transfers.tsx`: ساخت سند draft، افزودن/حذف کالا (با پیام فارسی برای تکراری بودن محصول در یک سند)، قطعی‌کردن، حذف فقط draft. سند قطعی‌شده فقط‌خواندنی است چون کاردکسش سند حسابرسی است.
+  - route `_app.warehouses_.kardex.tsx` (۱۸۳): فیلتر انبار + نوع حرکت + بازهٔ تاریخ **شمسی** (`JalaliDateInput`) + جستجوی نام کالا، کارت‌های مجموع ورود/خروج/خالص، و ستون مقدار با علامت +/− از `delta`.
+  - مرتب‌سازی کاردکس با tie-break روی `id` انجام می‌شود چون ردیف‌های ساخته‌شده در یک transaction `created_at` یکسان دارند.
+- ثبت در ناوبری: سه route در `registry.ts` زیر گروه `purchasing` با ماژول `warehouse`.
+- **`ModuleKey` و `AppRole`:** ماژول `warehouse` به `ModuleKey` و `PERMISSIONS` اضافه شد (هم‌تراز RLS و seed). ضمناً `AppRole` فرانت `purchase_specialist` و `site` را نداشت در حالی که enum دیتابیس و `role_permissions` دارند (فاز ۱ همین پلن نام seed را از `purchasing_expert` به `purchase_specialist` اصلاح کرد)، پس گاردها نمی‌توانستند نامشان را ببرند. هر دو به type و `ROLE_LABELS` اضافه شدند ولی **عمداً به `ALL_ROLES` اضافه نشدند** چون آن لیست UI انتخاب نقش را می‌سازد و باید همان ۵ نقش سیستمی بماند.
+- `src/integrations/supabase/types.ts` دستی برای پنج جدول جدید (Row/Insert/Update) به‌روز شد.
+- tests نهایی فاز ۸:
+  - هر دو تست SQL پلن سبز (۵ جدول + `module='warehouse'`).
+  - **جریان کامل E2E** (transaction با ROLLBACK): ۳ انبار → خرید ۲۰ عدد دقیقاً از مسیری که `PurchaseForm` می‌نویسد → پیش‌فاکتور ۶ عدد قطعی → انتقال ۵ عدد. نتیجه: WH-C=۹ (۲۰−۶−۵)، WH-N=۵ ✓
+  - **تراز دفتر:** `SUM(delta)` کل کاردکس = ۱۴ = `SUM(quantity)` کل `warehouse_stock` → `ledger_balances=t` ✓
+  - `npm run build` سبز؛ هر سه route در `routeTree.gen.ts`؛ `eslint --fix` روی همهٔ فایل‌ها بدون خطا؛ `tsc --noEmit` = ۷۰ = baseline.
 
 ## Phase 9 — خزانه: سند پرداخت خروجی + صندوق + گزارش + چک
 - status: TODO

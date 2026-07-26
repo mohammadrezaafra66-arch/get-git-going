@@ -34,6 +34,7 @@ import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OwnerAssignDialog } from "@/components/products/OwnerAssignDialog";
 import { ProductSupplierManager } from "@/shared/components/ProductSupplierManager";
+import { ProductStockByWarehouse } from "@/components/warehouses/ProductStockByWarehouse";
 import { ProductPublishPricesCard } from "@/components/products/ProductPublishPricesCard";
 import { ProductForm } from "@/components/products/ProductForm";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
@@ -633,6 +634,10 @@ function ProductDetailPage() {
         existingUserIds={data.owners.map((o) => o.user_id)}
         onAssigned={refetch}
       />
+
+      {/* Item 176 / 8.6 — per-warehouse stock. Renders nothing until the product
+          has warehouse_stock rows. */}
+      <ProductStockByWarehouse productId={id} />
 
       <ProductSupplierManager productId={id} />
 

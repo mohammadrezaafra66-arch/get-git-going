@@ -2,7 +2,23 @@ import { getCachedRolePermissions } from "./permissions-cache";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "manager" | "sales" | "accountant" | "viewer";
+/**
+ * Mirrors the `app_role` enum in the database.
+ *
+ * `purchase_specialist` and `site` exist in the DB enum and in
+ * `role_permissions` (phase 1 of the 140-193 plan fixed the seeded name from
+ * `purchasing_expert` to `purchase_specialist`), but were missing here, so
+ * guards could not name them. They are intentionally NOT added to `ALL_ROLES`:
+ * that list drives the role-picker UI and stays the five fixed system roles.
+ */
+export type AppRole =
+  | "admin"
+  | "manager"
+  | "sales"
+  | "accountant"
+  | "viewer"
+  | "purchase_specialist"
+  | "site";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: "مدیر کل",
@@ -10,6 +26,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   sales: "فروشنده",
   accountant: "حسابدار",
   viewer: "بیننده",
+  purchase_specialist: "کارشناس خرید",
+  site: "سایت",
 };
 
 export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "accountant", "viewer"];
@@ -66,7 +84,8 @@ export type ModuleKey =
   | "academy"
   | "hr"
   | "market-rates"
-  | "persons";
+  | "persons"
+  | "warehouse";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -166,6 +185,14 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     create: ["admin", "manager"],
     update: ["admin", "manager"],
     delete: ["admin"],
+  },
+  // Phase 8 — mirrors the warehouse RLS policies and the role_permissions seed
+  // in migration 209: operational roles read, admin/manager manage.
+  warehouse: {
+    view: ["admin", "manager", "accountant", "sales", "purchase_specialist"],
+    create: ["admin", "manager"],
+    update: ["admin", "manager"],
+    delete: ["admin", "manager"],
   },
   // UI-NAV.4 — ماژول جداگانه برای منوهای «مالی و حسابداری».
   // فروشنده/بیننده دسترسی پیش‌فرض ندارند تا منوهای مالی برایشان پنهان شود.
