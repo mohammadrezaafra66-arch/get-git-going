@@ -7160,6 +7160,7 @@ export type Database = {
           name: string
           primary_spec: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          promotion_weight: number
           received_at: string | null
           sku: string | null
           status: Database["public"]["Enums"]["product_status"]
@@ -7187,6 +7188,7 @@ export type Database = {
           name: string
           primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          promotion_weight?: number
           received_at?: string | null
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]
@@ -7214,6 +7216,7 @@ export type Database = {
           name?: string
           primary_spec?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          promotion_weight?: number
           received_at?: string | null
           sku?: string | null
           status?: Database["public"]["Enums"]["product_status"]

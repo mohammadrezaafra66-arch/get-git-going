@@ -43,6 +43,8 @@ function NewProductPage() {
           description: v.description || null,
           technical_notes: v.technical_notes || null,
           barcode: v.barcode?.trim() ? v.barcode.trim() : null,
+          // Item 166 — standalone promotion weight (1 = neutral).
+          promotion_weight: v.promotion_weight ?? 1,
         })
         .select("id")
         .single();

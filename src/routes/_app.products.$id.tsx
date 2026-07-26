@@ -57,8 +57,7 @@ export const Route = createFileRoute("/_app/products/$id")({
     await requirePermission("products", "view");
   },
   validateSearch: (search: Record<string, unknown>): { edit?: 1 } => {
-    const edit =
-      search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined;
+    const edit = search.edit === 1 || search.edit === "1" || search.edit === true ? 1 : undefined;
     return edit ? { edit } : {};
   },
   component: ProductDetailPage,
@@ -122,7 +121,7 @@ function ProductDetailPage() {
         .select(
           `
           id, name, sku, description, technical_notes, unit, color, capacity, model, primary_spec,
-          product_type, base_currency, stock_status, status, barcode,
+          product_type, base_currency, stock_status, status, barcode, promotion_weight,
           created_at, updated_at,
           brand:brands(id,name), category:categories(id,name,primary_spec_label),
           product_label_links(label:product_labels(id,title,color))
@@ -256,6 +255,8 @@ function ProductDetailPage() {
           description: v.description || null,
           technical_notes: v.technical_notes || null,
           barcode: v.barcode?.trim() ? v.barcode.trim() : null,
+          // Item 166 — standalone promotion weight (1 = neutral).
+          promotion_weight: v.promotion_weight ?? 1,
         })
         .eq("id", id);
       if (error) throw error;
@@ -428,6 +429,7 @@ function ProductDetailPage() {
     description: p.description ?? "",
     technical_notes: p.technical_notes ?? "",
     barcode: p.barcode ?? "",
+    promotion_weight: Number((p as { promotion_weight?: number | null }).promotion_weight ?? 1),
     label_ids: editDataQ.data?.labelIds ?? labels.map((l: any) => l.id),
   };
 
@@ -495,9 +497,7 @@ function ProductDetailPage() {
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-3 border-primary/30 bg-primary/5">
             <CardContent className="flex items-center justify-between gap-3 p-4">
-              <div className="text-sm text-muted-foreground">
-                قیمت پیشنهادی بر اساس مدت نگهداری
-              </div>
+              <div className="text-sm text-muted-foreground">قیمت پیشنهادی بر اساس مدت نگهداری</div>
               <div className="text-base font-semibold tabular-nums">
                 {adjustedPriceQ.isLoading ? (
                   <Skeleton className="h-5 w-28" />
@@ -642,9 +642,7 @@ function ProductDetailPage() {
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
             <h3 className="text-sm font-semibold">ابزارهای هوش مصنوعی</h3>
-            <p className="text-xs text-muted-foreground">
-              تولید سریع متن تبلیغاتی برای این محصول
-            </p>
+            <p className="text-xs text-muted-foreground">تولید سریع متن تبلیغاتی برای این محصول</p>
           </div>
           <AdCopyGenerator
             productId={id}
@@ -700,15 +698,12 @@ function ProductDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>تغییرات ذخیره‌نشده دارید</AlertDialogTitle>
             <AlertDialogDescription>
-              تغییراتی که در فرم محصول واردکرده‌اید هنوز ذخیره نشده است. می‌خواهید چه کاری انجام دهید؟
+              تغییراتی که در فرم محصول واردکرده‌اید هنوز ذخیره نشده است. می‌خواهید چه کاری انجام
+              دهید؟
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => blocker.reset?.()}
-              disabled={saving}
-            >
+            <Button variant="outline" onClick={() => blocker.reset?.()} disabled={saving}>
               بازگشت به ویرایش
             </Button>
             <Button
@@ -932,12 +927,31 @@ function ProductStatsCard({ productId }: { productId: string }) {
           <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <StatBox label="میانگین قیمت استعلام" value={data?.avg_price != null ? `${formatNumber(Number(data.avg_price))} تومان` : "—"} />
-            <StatBox label="آخرین قیمت استعلام" value={data?.last_price != null ? `${formatNumber(Number(data.last_price))} تومان` : "—"} />
-            <StatBox label="تعداد استعلام (کل)" value={formatNumber(data?.inquiry_count_total ?? 0)} />
-            <StatBox label="تعداد استعلام (۳۰ روز)" value={formatNumber(data?.inquiry_count_month ?? 0)} />
+            <StatBox
+              label="میانگین قیمت استعلام"
+              value={
+                data?.avg_price != null ? `${formatNumber(Number(data.avg_price))} تومان` : "—"
+              }
+            />
+            <StatBox
+              label="آخرین قیمت استعلام"
+              value={
+                data?.last_price != null ? `${formatNumber(Number(data.last_price))} تومان` : "—"
+              }
+            />
+            <StatBox
+              label="تعداد استعلام (کل)"
+              value={formatNumber(data?.inquiry_count_total ?? 0)}
+            />
+            <StatBox
+              label="تعداد استعلام (۳۰ روز)"
+              value={formatNumber(data?.inquiry_count_month ?? 0)}
+            />
             <StatBox label="تعداد خرید" value={formatNumber(data?.purchase_count ?? 0)} />
-            <StatBox label="آخرین تاریخ خرید" value={data?.last_purchase_date ? formatDateFa(data.last_purchase_date) : "—"} />
+            <StatBox
+              label="آخرین تاریخ خرید"
+              value={data?.last_purchase_date ? formatDateFa(data.last_purchase_date) : "—"}
+            />
           </div>
         )}
       </CardContent>

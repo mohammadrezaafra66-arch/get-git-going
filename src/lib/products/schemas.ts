@@ -21,6 +21,13 @@ export const productSchema = z.object({
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   technical_notes: z.string().trim().max(4000).optional().or(z.literal("")),
   barcode: z.string().trim().max(64, "حداکثر ۶۴ کاراکتر").optional().or(z.literal("")),
+  // Item 166 — standalone promotion weight. 1 = neutral; mirrors
+  // products_promotion_weight_chk (migration 207).
+  promotion_weight: z.coerce
+    .number()
+    .min(0, "وزن تبلیغ نمی‌تواند منفی باشد")
+    .max(100, "حداکثر وزن تبلیغ ۱۰۰ است")
+    .default(1),
   label_ids: z.array(z.string().uuid()).default([]),
 });
 

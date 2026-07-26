@@ -102,7 +102,36 @@
   - route جدید `_app.my-rejected-quotes.tsx` + ثبت در `registry.ts` (گروه فروش).
 
 ## Phase 7 — مارکتینگ: سقف رندوم کانال + گیمیفیکیشن + وزن محصول
-- status: TODO
+- status: DONE
+- migrations: `20260726130000_207_phase7_marketing.sql`, `20260726131000_208_phase7_promotion_kpi_score.sql`
+- commit: (this commit)
+- summary: سقف کانال از گیت بولی به «انتخاب رندومِ پایدارِ روزانه» تغییر کرد؛ وزن مستقل محصول (`products.promotion_weight`) در فرمول تبلیغات ضرب شد و در فرم محصول قابل ویرایش است؛ استفاده از پیشنهاد و نامزدی محصول حالا رویداد امتیاز می‌سازند و در لیدربرد شمرده می‌شوند.
+- tests: همه سبز —
+  - سقف per-channel: کانال با `daily_quota=5` دقیقاً ۵ ردیف برمی‌گرداند (`within_quota=t`). **نکته:** در فراخوانی `(NULL,0,200)` شمارش per-channel به‌خاطر LIMIT سراسری بریده می‌شود (۳+۸۶+۱۱۱=۲۰۰)، پس تست معتبر، فراخوانی per-channel با limit بزرگ است.
+  - پایداری روزانه: دو فراخوانی متوالی همان مجموعه → `only_in_a=0, only_in_b=0, shared=5`.
+  - واجدشرایطی: `score<=0 OR stock_factor<=0` → ۰ نقض.
+  - `event_key='promotion_completed'` در `gamification_kpi_rules` موجود.
+  - زنجیرهٔ گیمیفیکیشن: درج `audit_logs(action='promotion_suggestion_used')` → تریگر → ردیف `employee_score_events` (`from_audit=1`) → `calculate_employee_score` breakdown: `{"value":1,"weight":2,"contribution":2}` یعنی در لیدربرد دیده می‌شود (۱۶۸). تریگر نامزدی هم تست شد (`from_nominations=1`).
+  - وزن محصول: `promotion_weight=2` → `market_score` دقیقاً دو برابر (`doubled_exactly=t`)؛ `=0` → محصول از پیشنهادها خارج می‌شود؛ هر ۳۵۴ محصول روی مقدار خنثی ۱ هستند پس **هیچ regression روی رفتار موجود نیست**.
+  - همهٔ تست‌های نوشتاری داخل transaction با ROLLBACK اجرا شدند: `leaked=0`, `non_neutral_left=0` — هیچ دادهٔ آزمایشی باقی نماند.
+  - `npm run build` سبز؛ `eslint` بدون خطا؛ `tsc --noEmit` = ۷۰ = baseline.
+- ۷.الف — سقف رندوم کانال (۱۶۴/۱۶۵):
+  - `compute_promotion_scores` بازنویسی شد: گیت قبلی `used_today < daily_quota` (بولی روی کل کانال) حذف و جایش `ROW_NUMBER() OVER (PARTITION BY channel_id ORDER BY md5(channel_id || تاریخ تهران || product_id))` با فیلتر `rn <= daily_quota` آمد.
+  - «رندوم پایدار» = کلید مرتب‌سازی در طول یک روز ثابت است، پس refresh همان مجموعه را می‌دهد. تاریخ تهران استفاده شد تا با مرز `used_today` در ویو هم‌راستا باشد.
+  - شرط `stock_factor > 0` صریح اضافه شد (طبق پلن) تا ناموجودها هرگز انتخاب نشوند.
+  - `daily_quota` تهی یا صفر = بی‌نهایت (رفتار قبلی حفظ شد).
+- ۷.ب — اتصال تبلیغ/نامزدی به گیمیفیکیشن (۱۶۷/۱۶۸):
+  - `gamification_kpi_rules`: ردیف `promotion_completed` (xp=15) — کلید مورد انتظار تست پلن.
+  - `gamification_kpis`: ردیف `promotions_completed` (weight=2، مقیاس شمارشی مثل `deals_registered`) — این جدولی است که واقعاً در محاسبهٔ امتیاز خوانده می‌شود.
+  - دو تریگر `SECURITY DEFINER`: روی `audit_logs` (فقط `WHEN action='promotion_suggestion_used'`) و روی `promotion_nominations` (AFTER INSERT) که ردیف `employee_score_events(event_type='promotion_completed')` می‌سازند و بلافاصله `calculate_employee_score` را صدا می‌زنند تا امتیاز در لیدربرد تازه شود.
+  - migration 208: `calculate_employee_score` با سه تغییر حداقلی بازتعریف شد — شمارنده‌های `_promo_d/w/m/t`، یک SELECT شمارش رویدادها در بازه‌های روز/هفته/ماه/کل، و شاخهٔ CASE برای `promotions_completed`. بقیهٔ بدنه بیت‌به‌بیت همان قبلی است، پس هیچ KPI موجودی تغییر محاسبه نداد.
+  - ایندکس partial `idx_employee_score_events_promotion` برای شمارش سریع.
+- ۷.ج — وزن مستقل محصول (۱۶۶):
+  - `product_recommendation_overrides` **استفاده نشد** چون ساختارش cross-sell محصول→محصول است (۱۵۳۵ ردیف، ستون `recommended_product_id`) و ضریب وزن نیست. طبق اجازهٔ پلن یک ستون سبک ساخته شد: `products.promotion_weight numeric NOT NULL DEFAULT 1` + CHECK `[0,100]`.
+  - در ویو `v_promotion_suggestions` در هر سه عبارت (`score`, `market_score`, `final_score`) به‌صورت `COALESCE(p.promotion_weight, 1)` ضرب شد. پیش‌فرض ۱ = خنثی، پس محصولات بدون تنظیم دقیقاً مثل قبل رفتار می‌کنند.
+  - FE: `promotion_weight` به `productSchema` (`z.coerce.number().min(0).max(100).default(1)`)، به `DEFAULTS` فرم، به فیلد عددی جدید «وزن تبلیغ محصول» در `ProductForm.tsx` با توضیح فارسی، و به مسیر load/save در `_app.products.$id.tsx` و `_app.products.new.tsx` اضافه شد.
+  - `src/integrations/supabase/types.ts` دستی به‌روز شد (Row/Insert/Update برای `products`) — همان روشی که برای `bank_accounts.accounting_code` در migration 155 استفاده شده بود؛ بدون آن دو خطای TS جدید می‌ماند.
+- یادداشت بازیابی: این فاز وسط کار با خطای ۵۲۹ سرور قطع شد. در نشست بعد تأیید شد هر دو migration از قبل روی DB اعمال شده‌اند (ستون، CHECK، ویو، تابع، دو ردیف KPI، دو تریگر، ایندکس، و شاخهٔ CASE) پس **دوباره اجرا نشدند**؛ فقط سیم‌کشی فرانت ۷.ج تکمیل شد.
 
 ## Phase 8 — چندانباره کامل
 - status: TODO

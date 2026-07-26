@@ -79,6 +79,7 @@ const DEFAULTS: ProductFormValues = {
   description: "",
   technical_notes: "",
   barcode: "",
+  promotion_weight: 1,
   label_ids: [],
 };
 
@@ -163,10 +164,7 @@ export function ProductForm({
     if (!draftHydratedRef.current) return;
     const t = setTimeout(() => {
       try {
-        window.sessionStorage.setItem(
-          draftKey,
-          JSON.stringify({ values, dynValues }),
-        );
+        window.sessionStorage.setItem(draftKey, JSON.stringify({ values, dynValues }));
         draftRestoredRef.current = true;
         onDirtyChange?.(true);
       } catch {
@@ -843,6 +841,26 @@ export function ProductForm({
               </p>
             </Field>
           )}
+
+          {/* Item 166 — standalone promotion weight, independent of label weights. */}
+          <Field label="وزن تبلیغ محصول" error={errors.promotion_weight}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0}
+              max={100}
+              dir="ltr"
+              className="text-left"
+              value={String(values.promotion_weight ?? 1)}
+              onChange={(e) => set("promotion_weight", Number(e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">
+              ضریب مستقل این محصول در امتیاز پیشنهادهای تبلیغاتی. ۱ یعنی خنثی (رفتار پیش‌فرض)،
+              بزرگ‌تر از ۱ محصول را بالاتر می‌آورد و ۰ آن را از پیشنهادها خارج می‌کند. این ضریب جدا
+              از مجموع وزن برچسب‌هاست.
+            </p>
+          </Field>
         </CardContent>
       </Card>
 
@@ -1031,12 +1049,7 @@ function DynamicAttrField({
       );
       break;
     case "date":
-      control = (
-        <PersianDatePicker
-          value={value || null}
-          onChange={(v) => onChange(v ?? "")}
-        />
-      );
+      control = <PersianDatePicker value={value || null} onChange={(v) => onChange(v ?? "")} />;
       break;
     case "text":
     default:
