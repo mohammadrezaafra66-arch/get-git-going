@@ -99,6 +99,7 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.attention'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
+import { Route as AppPersonsImportRouteImport } from './routes/_app.persons_.import'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
@@ -665,6 +666,11 @@ const AppPricingAminHozoorBoardRoute =
     path: '/pricing/amin-hozoor-board',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPersonsImportRoute = AppPersonsImportRouteImport.update({
+  id: '/persons_/import',
+  path: '/persons/import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonsCreateRoute = AppPersonsCreateRouteImport.update({
   id: '/persons_/create',
   path: '/persons/create',
@@ -1334,6 +1340,7 @@ export interface FileRoutesByFullPath {
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
+  '/persons/import': typeof AppPersonsImportRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1526,6 +1533,7 @@ export interface FileRoutesByTo {
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
+  '/persons/import': typeof AppPersonsImportRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1721,6 +1729,7 @@ export interface FileRoutesById {
   '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
+  '/_app/persons_/import': typeof AppPersonsImportRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/attention': typeof AppPricingAttentionRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1917,6 +1926,7 @@ export interface FileRouteTypes {
     | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/create'
+    | '/persons/import'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
     | '/pricing/calculator'
@@ -2109,6 +2119,7 @@ export interface FileRouteTypes {
     | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/create'
+    | '/persons/import'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
     | '/pricing/calculator'
@@ -2303,6 +2314,7 @@ export interface FileRouteTypes {
     | '/_app/operations/receipts'
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
+    | '/_app/persons_/import'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/attention'
     | '/_app/pricing/calculator'
@@ -3059,6 +3071,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/amin-hozoor-board'
       fullPath: '/pricing/amin-hozoor-board'
       preLoaderRoute: typeof AppPricingAminHozoorBoardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/persons_/import': {
+      id: '/_app/persons_/import'
+      path: '/persons/import'
+      fullPath: '/persons/import'
+      preLoaderRoute: typeof AppPersonsImportRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/persons_/create': {
@@ -4060,6 +4079,7 @@ interface AppRouteChildren {
   AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
+  AppPersonsImportRoute: typeof AppPersonsImportRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingAttentionRoute: typeof AppPricingAttentionRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -4192,6 +4212,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
+  AppPersonsImportRoute: AppPersonsImportRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingAttentionRoute: AppPricingAttentionRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,

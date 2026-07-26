@@ -46,6 +46,7 @@
   FileCheck,
   ClipboardList,
   Plug,
+  Upload,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -315,6 +316,15 @@ const NAVIGATION_SEEDS = [
     to: "/persons",
     label: "اشخاص",
     icon: UserSquare2,
+    module: "persons",
+    group: "sales-customers",
+    subgroup: "sc-customers",
+  },
+  // Item 170 — Excel import for persons (admin/manager only, matches persons RLS).
+  {
+    to: "/persons/import",
+    label: "ایمپورت اشخاص",
+    icon: Upload,
     module: "persons",
     group: "sales-customers",
     subgroup: "sc-customers",
@@ -1091,6 +1101,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/gamification/admin/missions": ["admin", "manager"],
   "/gamification/admin/purchase-settings": ["admin", "manager", "accountant"],
   "/gamification/admin/rewards": ["admin", "manager"],
+  "/persons/import": ["admin", "manager"],
   "/pricing/market-intelligence": ["admin", "manager", "accountant"],
   "/pricing/product-recommendations": ["admin", "manager"],
   "/roles": ["admin"],

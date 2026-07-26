@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Loader2, Pencil } from "lucide-react";
+import { Plus, Search, Loader2, Pencil, Upload } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -109,11 +109,18 @@ function PersonsListPage() {
         description="مدیریت پرونده یکپارچه اشخاص (حقیقی و حقوقی)"
         actions={
           canManage ? (
-            <Button asChild>
-              <Link to="/persons/create">
-                <Plus className="ml-2 h-4 w-4" /> شخص جدید
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link to="/persons/import">
+                  <Upload className="ml-2 h-4 w-4" /> ایمپورت اکسل
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link to="/persons/create">
+                  <Plus className="ml-2 h-4 w-4" /> شخص جدید
+                </Link>
+              </Button>
+            </div>
           ) : null
         }
       />

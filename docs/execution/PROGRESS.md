@@ -65,7 +65,22 @@
   - دکمهٔ «راهنما» در بالای `manual-metrics.tsx` + ثبت در `registry.ts` (زیرگروه `adm-gamification` + ردیف `ROUTE_ROLE_OVERRIDES`).
 
 ## Phase 5 — اشخاص: پل customer↔person + ایمپورت اشخاص
-- status: TODO
+- status: DONE
+- migrations: — (بک‌اند از قبل آماده بود؛ فقط UI)
+- commit: (this commit)
+- summary: بخش «اتصال به پروندهٔ شخص» به فرم ویرایش مشتری اضافه شد (PersonPicker + اتصال/قطع اتصال)؛ route ایمپورت اکسل اشخاص با فرم سه‌مرحله‌ای ساخته و در منو ثبت شد.
+- tests: `npm run build` سبز؛ route جدید در `routeTree.gen.ts` (`AppPersonsImportRouteImport`, `'/persons/import'`)؛ `eslint` روی فایل‌های تغییرکرده بدون خطا؛ `tsc --noEmit` = ۷۰ = baseline. تأیید DB: `customer_set_person`/`customer_clear_person` موجود، `customers.person_id uuid` موجود، جداول `persons`/`person_identifiers`/`person_context_links` موجود.
+- ۵.۱ — پل customer↔person (۱۶۹):
+  - `src/components/customers/CustomerPersonLink.tsx` جدید: اگر `person_id` خالی است جستجوی شخص (`searchPersons`، حداقل ۲ کاراکتر، debounce ۳۵۰ms) + دکمهٔ «اتصال» → `linkCustomerToPerson`؛ اگر متصل است نمایش `getPerson` + دکمهٔ «قطع اتصال» → `unlinkCustomerFromPerson`.
+  - `_app.sales_.customers_.$customerId.edit.tsx`: `person_id` به select اضافه شد و کارت جدید بالای فرم رندر می‌شود.
+  - بک‌اند دست‌نخورده ماند (RPCهای `customer_set_person`/`customer_clear_person` که ساخت ردیف `person_context_links` را هم انجام می‌دهند).
+- ۵.۲ — ایمپورت اکسل اشخاص (۱۷۰):
+  - `src/components/persons/PersonImportForm.tsx` (الگوی `CustomerImportForm`): SheetJS، سقف ۱۰۰۰ ردیف، حدس خودکار نگاشت از عنوان ستون (فارسی/انگلیسی)، پیش‌نمایش ۵ ردیف، نوار پیشرفت.
+  - ستون‌های قابل نگاشت: `display_name*`, `legal_name`, `kind` (حقیقی/حقوقی)، `notes` + چهار شناسه: موبایل، کد ملی، شناسه اقتصادی، ایمیل.
+  - درج از طریق serverFnهای موجود `createPerson` و `createPersonIdentifier` انجام می‌شود تا RLS، نرمال‌سازی شناسه و گارد تکراری بین‌اشخاص حفظ شود (نه insert مستقیم).
+  - شناسه‌ها best-effort‌اند: شناسهٔ نامعتبر باعث دورانداختن شخصِ ساخته‌شده نمی‌شود و در جدول «هشدارها» گزارش می‌گردد.
+  - `audit_logs` با `action:"persons_imported"` (شامل success/failed/total/تعداد هشدار شناسه/نام فایل).
+  - route `_app.persons_.import.tsx` با `requireAnyRole([admin,manager])` + ثبت در `registry.ts` و `ROUTE_ROLE_OVERRIDES` + دکمهٔ «ایمپورت اکسل» در هدر صفحهٔ `/persons`.
 
 ## Phase 6 — یکی‌سازی پیش‌فاکتور + فیش بدون لینک
 - status: TODO
