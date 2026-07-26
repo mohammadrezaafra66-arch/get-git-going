@@ -14,6 +14,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +41,7 @@ type BankAccount = {
   account_no: string | null;
   card_no: string | null;
   currency: string;
+  account_type: "bank" | "cash";
   opening_balance: number;
   is_active: boolean;
   notes: string | null;
@@ -47,6 +55,8 @@ const schema = z.object({
   account_no: z.string().trim().max(50).optional().or(z.literal("")),
   card_no: z.string().trim().max(50).optional().or(z.literal("")),
   currency: z.string().trim().min(2).max(10),
+  // Item 181 — cash box vs bank account (migration 212).
+  account_type: z.enum(["bank", "cash"]),
   opening_balance: z.number(),
   // Same shape as external_parties.accounting_code: optional, max 50.
   accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
@@ -67,7 +77,7 @@ function BankAccountsPage() {
       const { data, error } = await supabase
         .from("bank_accounts")
         .select(
-          "id, title, bank_name, iban, account_no, card_no, currency, opening_balance, is_active, notes, accounting_code",
+          "id, title, bank_name, iban, account_no, card_no, currency, account_type, opening_balance, is_active, notes, accounting_code",
         )
         .order("is_active", { ascending: false })
         .order("title", { ascending: true });
@@ -145,6 +155,7 @@ function BankAccountsPage() {
                     <th className="p-3">شبا</th>
                     <th className="p-3">کد حسابداری</th>
                     <th className="p-3">ارز</th>
+                    <th className="p-3">نوع</th>
                     <th className="p-3">وضعیت</th>
                     {canWrite && <th className="p-3">عملیات</th>}
                   </tr>
@@ -167,6 +178,11 @@ function BankAccountsPage() {
                         {r.accounting_code ?? "—"}
                       </td>
                       <td className="p-3">{r.currency}</td>
+                      <td className="p-3">
+                        <Badge variant={r.account_type === "cash" ? "default" : "outline"}>
+                          {r.account_type === "cash" ? "صندوق نقدی" : "حساب بانکی"}
+                        </Badge>
+                      </td>
                       <td className="p-3">
                         <Badge variant={r.is_active ? "default" : "secondary"}>
                           {r.is_active ? "فعال" : "غیرفعال"}
@@ -243,6 +259,7 @@ function BankAccountForm({
       account_no: initial?.account_no ?? "",
       card_no: initial?.card_no ?? "",
       currency: initial?.currency ?? "IRR",
+      account_type: initial?.account_type ?? "bank",
       opening_balance: Number(initial?.opening_balance ?? 0),
       accounting_code: initial?.accounting_code ?? "",
       notes: initial?.notes ?? "",
@@ -258,6 +275,7 @@ function BankAccountForm({
         account_no: v.account_no || null,
         card_no: v.card_no || null,
         currency: v.currency || "IRR",
+        account_type: v.account_type,
         opening_balance: Number(v.opening_balance) || 0,
         // Empty string -> NULL, so a cleared field really clears the code
         // instead of storing "" and passing the not-blank check in
@@ -338,6 +356,24 @@ function BankAccountForm({
         <div className="space-y-1">
           <Label>ارز</Label>
           <Input dir="ltr" {...form.register("currency")} />
+        </div>
+        {/* Item 181 — distinguishes a cash box from a bank account. */}
+        <div className="space-y-1">
+          <Label>نوع حساب</Label>
+          <Select
+            value={form.watch("account_type")}
+            onValueChange={(v) =>
+              form.setValue("account_type", v as "bank" | "cash", { shouldDirty: true })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bank">حساب بانکی</SelectItem>
+              <SelectItem value="cash">صندوق نقدی</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1">
           <Label>مانده افتتاحیه</Label>

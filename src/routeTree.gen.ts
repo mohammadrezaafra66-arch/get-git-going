@@ -147,11 +147,13 @@ import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admi
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAdminAuditRouteImport } from './routes/_app.admin.audit'
 import { Route as AppAdminAiProvidersRouteImport } from './routes/_app.admin.ai-providers'
+import { Route as AppAccountingTreasuryRouteImport } from './routes/_app.accounting.treasury'
 import { Route as AppAccountingSalespersonScoringRouteImport } from './routes/_app.accounting.salesperson-scoring'
 import { Route as AppAccountingSalespersonCapitalAllocationsRouteImport } from './routes/_app.accounting.salesperson-capital-allocations'
 import { Route as AppAccountingReceivablesRouteImport } from './routes/_app.accounting.receivables'
 import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.accounting.receipts'
 import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app.accounting.purchase-payments'
+import { Route as AppAccountingPaymentVouchersRouteImport } from './routes/_app.accounting.payment-vouchers'
 import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
 import { Route as AppAccountingDynamicCapitalRouteImport } from './routes/_app.accounting.dynamic-capital'
@@ -919,6 +921,11 @@ const AppAdminAiProvidersRoute = AppAdminAiProvidersRouteImport.update({
   path: '/admin/ai-providers',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountingTreasuryRoute = AppAccountingTreasuryRouteImport.update({
+  id: '/accounting/treasury',
+  path: '/accounting/treasury',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingSalespersonScoringRoute =
   AppAccountingSalespersonScoringRouteImport.update({
     id: '/accounting/salesperson-scoring',
@@ -946,6 +953,12 @@ const AppAccountingPurchasePaymentsRoute =
   AppAccountingPurchasePaymentsRouteImport.update({
     id: '/accounting/purchase-payments',
     path: '/accounting/purchase-payments',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAccountingPaymentVouchersRoute =
+  AppAccountingPaymentVouchersRouteImport.update({
+    id: '/accounting/payment-vouchers',
+    path: '/accounting/payment-vouchers',
     getParentRoute: () => AppRoute,
   } as any)
 const AppAccountingPayablesRoute = AppAccountingPayablesRouteImport.update({
@@ -1318,11 +1331,13 @@ export interface FileRoutesByFullPath {
   '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
+  '/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
+  '/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
@@ -1515,11 +1530,13 @@ export interface FileRoutesByTo {
   '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
+  '/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
+  '/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
@@ -1715,11 +1732,13 @@ export interface FileRoutesById {
   '/_app/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
   '/_app/accounting/payables': typeof AppAccountingPayablesRoute
+  '/_app/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/_app/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
   '/_app/accounting/receipts': typeof AppAccountingReceiptsRouteWithChildren
   '/_app/accounting/receivables': typeof AppAccountingReceivablesRoute
   '/_app/accounting/salesperson-capital-allocations': typeof AppAccountingSalespersonCapitalAllocationsRoute
   '/_app/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
+  '/_app/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/_app/admin/ai-providers': typeof AppAdminAiProvidersRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
@@ -1916,11 +1935,13 @@ export interface FileRouteTypes {
     | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
+    | '/accounting/payment-vouchers'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
     | '/accounting/salesperson-scoring'
+    | '/accounting/treasury'
     | '/admin/ai-providers'
     | '/admin/audit'
     | '/admin/automation'
@@ -2113,11 +2134,13 @@ export interface FileRouteTypes {
     | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
     | '/accounting/payables'
+    | '/accounting/payment-vouchers'
     | '/accounting/purchase-payments'
     | '/accounting/receipts'
     | '/accounting/receivables'
     | '/accounting/salesperson-capital-allocations'
     | '/accounting/salesperson-scoring'
+    | '/accounting/treasury'
     | '/admin/ai-providers'
     | '/admin/audit'
     | '/admin/automation'
@@ -2312,11 +2335,13 @@ export interface FileRouteTypes {
     | '/_app/accounting/dynamic-capital'
     | '/_app/accounting/external-parties'
     | '/_app/accounting/payables'
+    | '/_app/accounting/payment-vouchers'
     | '/_app/accounting/purchase-payments'
     | '/_app/accounting/receipts'
     | '/_app/accounting/receivables'
     | '/_app/accounting/salesperson-capital-allocations'
     | '/_app/accounting/salesperson-scoring'
+    | '/_app/accounting/treasury'
     | '/_app/admin/ai-providers'
     | '/_app/admin/audit'
     | '/_app/admin/automation'
@@ -3457,6 +3482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminAiProvidersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/treasury': {
+      id: '/_app/accounting/treasury'
+      path: '/accounting/treasury'
+      fullPath: '/accounting/treasury'
+      preLoaderRoute: typeof AppAccountingTreasuryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/salesperson-scoring': {
       id: '/_app/accounting/salesperson-scoring'
       path: '/accounting/salesperson-scoring'
@@ -3490,6 +3522,13 @@ declare module '@tanstack/react-router' {
       path: '/accounting/purchase-payments'
       fullPath: '/accounting/purchase-payments'
       preLoaderRoute: typeof AppAccountingPurchasePaymentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/accounting/payment-vouchers': {
+      id: '/_app/accounting/payment-vouchers'
+      path: '/accounting/payment-vouchers'
+      fullPath: '/accounting/payment-vouchers'
+      preLoaderRoute: typeof AppAccountingPaymentVouchersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/accounting/payables': {
@@ -4115,11 +4154,13 @@ interface AppRouteChildren {
   AppAccountingDynamicCapitalRoute: typeof AppAccountingDynamicCapitalRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
   AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
+  AppAccountingPaymentVouchersRoute: typeof AppAccountingPaymentVouchersRoute
   AppAccountingPurchasePaymentsRoute: typeof AppAccountingPurchasePaymentsRoute
   AppAccountingReceiptsRoute: typeof AppAccountingReceiptsRouteWithChildren
   AppAccountingReceivablesRoute: typeof AppAccountingReceivablesRoute
   AppAccountingSalespersonCapitalAllocationsRoute: typeof AppAccountingSalespersonCapitalAllocationsRoute
   AppAccountingSalespersonScoringRoute: typeof AppAccountingSalespersonScoringRoute
+  AppAccountingTreasuryRoute: typeof AppAccountingTreasuryRoute
   AppAdminAiProvidersRoute: typeof AppAdminAiProvidersRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
@@ -4251,12 +4292,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingDynamicCapitalRoute: AppAccountingDynamicCapitalRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
   AppAccountingPayablesRoute: AppAccountingPayablesRoute,
+  AppAccountingPaymentVouchersRoute: AppAccountingPaymentVouchersRoute,
   AppAccountingPurchasePaymentsRoute: AppAccountingPurchasePaymentsRoute,
   AppAccountingReceiptsRoute: AppAccountingReceiptsRouteWithChildren,
   AppAccountingReceivablesRoute: AppAccountingReceivablesRoute,
   AppAccountingSalespersonCapitalAllocationsRoute:
     AppAccountingSalespersonCapitalAllocationsRoute,
   AppAccountingSalespersonScoringRoute: AppAccountingSalespersonScoringRoute,
+  AppAccountingTreasuryRoute: AppAccountingTreasuryRoute,
   AppAdminAiProvidersRoute: AppAdminAiProvidersRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,

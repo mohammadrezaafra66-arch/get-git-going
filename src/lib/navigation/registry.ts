@@ -435,6 +435,21 @@ const NAVIGATION_SEEDS = [
     module: "accounting",
     group: "finance",
   },
+  // Phase 9 — خزانه (۱۸۰/۱۸۱/۱۸۲).
+  {
+    to: "/accounting/treasury",
+    label: "خزانه و ماندهٔ صندوق",
+    icon: Wallet,
+    module: "accounting",
+    group: "finance",
+  },
+  {
+    to: "/accounting/payment-vouchers",
+    label: "اسناد پرداخت",
+    icon: Receipt,
+    module: "accounting",
+    group: "finance",
+  },
   {
     to: "/accounting/external-parties",
     label: "طرف‌های حساب",
@@ -1020,6 +1035,8 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/accounting/payables",
     "/accounting/purchase-payments",
     "/accounting/bank-accounts",
+    "/accounting/treasury",
+    "/accounting/payment-vouchers",
     "/accounting/external-parties",
     "/accounting/dynamic-capital",
   ],

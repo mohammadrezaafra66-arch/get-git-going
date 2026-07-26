@@ -527,6 +527,8 @@ export type Database = {
       bank_accounts: {
         Row: {
           account_no: string | null
+          account_type: string
+          accounting_code: string | null
           bank_name: string
           card_no: string | null
           created_at: string
@@ -541,6 +543,8 @@ export type Database = {
         }
         Insert: {
           account_no?: string | null
+          account_type?: string
+          accounting_code?: string | null
           bank_name: string
           card_no?: string | null
           created_at?: string
@@ -555,6 +559,8 @@ export type Database = {
         }
         Update: {
           account_no?: string | null
+          account_type?: string
+          accounting_code?: string | null
           bank_name?: string
           card_no?: string | null
           created_at?: string
@@ -8955,6 +8961,78 @@ export type Database = {
           scope?: string
           severity?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_vouchers: {
+        Row: {
+          amount: number
+          cheque_due_date: string | null
+          cheque_number: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          document_channel: string
+          id: string
+          payee_customer_id: string | null
+          payee_name: string | null
+          payee_party_id: string | null
+          payee_supplier_id: string | null
+          payee_type: string
+          payment_date: string
+          payment_time: string | null
+          purchase_id: string | null
+          source_bank_account_id: string
+          status: string
+          tracking_number: string | null
+          updated_at: string
+          voucher_number: string | null
+        }
+        Insert: {
+          amount: number
+          cheque_due_date?: string | null
+          cheque_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_channel: string
+          id?: string
+          payee_customer_id?: string | null
+          payee_name?: string | null
+          payee_party_id?: string | null
+          payee_supplier_id?: string | null
+          payee_type: string
+          payment_date: string
+          payment_time?: string | null
+          purchase_id?: string | null
+          source_bank_account_id: string
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          voucher_number?: string | null
+        }
+        Update: {
+          amount?: number
+          cheque_due_date?: string | null
+          cheque_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          document_channel?: string
+          id?: string
+          payee_customer_id?: string | null
+          payee_name?: string | null
+          payee_party_id?: string | null
+          payee_supplier_id?: string | null
+          payee_type?: string
+          payment_date?: string
+          payment_time?: string | null
+          purchase_id?: string | null
+          source_bank_account_id?: string
+          status?: string
+          tracking_number?: string | null
+          updated_at?: string
+          voucher_number?: string | null
         }
         Relationships: []
       }

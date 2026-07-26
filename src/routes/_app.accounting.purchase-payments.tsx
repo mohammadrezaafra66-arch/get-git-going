@@ -8,7 +8,7 @@ import { CalendarIcon, Loader2, CheckCircle2, Wallet, Search, X } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
-import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
+import { toFaDigits, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -36,6 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
+import {
+  ACCOUNT_TYPE_FA,
+  VOUCHER_CHANNELS,
+  fetchAccountBalances,
+  payPurchaseWithVoucher,
+} from "@/lib/treasury/queries";
+
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -45,6 +53,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+/** Sentinel: Radix Select cannot hold an empty string value. */
+const NO_ACCOUNT = "__no_account__";
 
 export const Route = createFileRoute("/_app/accounting/purchase-payments")({
   beforeLoad: async () => {
@@ -87,6 +98,18 @@ function PurchasePaymentsPage() {
   const [tab, setTab] = useState<"unpaid" | "paid">("unpaid");
   const [target, setTarget] = useState<Row | null>(null);
   const [paidAt, setPaidAt] = useState<Date>(new Date());
+  // Item 180 / 9.2 — optional treasury source. Empty keeps the pre-phase-9
+  // behaviour (stamp paid_at only, no voucher).
+  const [sourceAccountId, setSourceAccountId] = useState<string>("");
+  const [voucherChannel, setVoucherChannel] = useState<string>("cash");
+  const [chequeNumber, setChequeNumber] = useState("");
+  const [chequeDueDate, setChequeDueDate] = useState("");
+
+  const accountsQ = useQuery({
+    queryKey: ["account-balances", "purchase-payment"],
+    queryFn: () => fetchAccountBalances({ includeInactive: false }),
+    staleTime: 60_000,
+  });
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<
@@ -120,6 +143,24 @@ function PurchasePaymentsPage() {
   const markPaid = useMutation({
     mutationFn: async () => {
       if (!target || !user?.id) throw new Error("کاربر یا خرید نامشخص");
+
+      // Item 180 / 9.2 — when a source account is chosen, the payment goes
+      // through pay_purchase_with_voucher so money leaving the treasury gets a
+      // real document. That function stamps paid_at itself, atomically.
+      if (sourceAccountId) {
+        await payPurchaseWithVoucher({
+          purchaseId: target.id,
+          sourceBankAccountId: sourceAccountId,
+          paymentDate: paidAt.toISOString().slice(0, 10),
+          documentChannel: voucherChannel,
+          chequeNumber: voucherChannel === "cheque" ? chequeNumber : null,
+          chequeDueDate: voucherChannel === "cheque" ? chequeDueDate || null : null,
+          description: "پرداخت خرید",
+        });
+        return;
+      }
+
+      // Fallback: mark paid without a voucher (behaviour before phase 9).
       const { error } = await supabase
         .from("purchases")
         .update({ paid_at: paidAt.toISOString(), paid_by: user.id })
@@ -127,9 +168,20 @@ function PurchasePaymentsPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("پرداخت ثبت شد و امتیاز محاسبه گردید");
+      toast.success(
+        sourceAccountId
+          ? "پرداخت ثبت شد، سند پرداخت ساخته شد و از ماندهٔ حساب کسر گردید."
+          : "پرداخت ثبت شد و امتیاز محاسبه گردید",
+      );
       setTarget(null);
+      setSourceAccountId("");
+      setVoucherChannel("cash");
+      setChequeNumber("");
+      setChequeDueDate("");
       qc.invalidateQueries({ queryKey: ["purchase-payments"] });
+      qc.invalidateQueries({ queryKey: ["account-balances"] });
+      qc.invalidateQueries({ queryKey: ["payment-vouchers"] });
+      qc.invalidateQueries({ queryKey: ["account-ledger"] });
     },
     onError: (e: Error) => toast.error(`ثبت پرداخت ناموفق: ${e.message}`),
   });
@@ -411,6 +463,81 @@ function PurchasePaymentsPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {/* Item 180 / 9.2 — choosing a source account creates a payment
+                  voucher so the outflow is recorded in the treasury. */}
+              <div className="space-y-2">
+                <Label>از حساب / صندوق (اختیاری)</Label>
+                <Select
+                  value={sourceAccountId || NO_ACCOUNT}
+                  onValueChange={(v) => setSourceAccountId(v === NO_ACCOUNT ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ACCOUNT}>بدون سند خزانه (فقط علامت پرداخت)</SelectItem>
+                    {(accountsQ.data ?? []).map((a) => (
+                      <SelectItem key={a.account_id} value={a.account_id}>
+                        {a.title} — {ACCOUNT_TYPE_FA[a.account_type] ?? a.account_type} (مانده:{" "}
+                        {formatNumber(a.current_balance)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  اگر حساب را انتخاب کنید، یک «سند پرداخت» ساخته می‌شود و مبلغ از ماندهٔ آن حساب کسر
+                  می‌گردد. در غیر این صورت فقط خرید پرداخت‌شده علامت می‌خورد.
+                </p>
+              </div>
+
+              {sourceAccountId && (
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                  <div className="space-y-2">
+                    <Label>روش پرداخت</Label>
+                    <Select
+                      value={voucherChannel}
+                      onValueChange={(v) => {
+                        setVoucherChannel(v);
+                        if (v !== "cheque") {
+                          setChequeNumber("");
+                          setChequeDueDate("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VOUCHER_CHANNELS.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {voucherChannel === "cheque" && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label>
+                          شمارهٔ چک <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          dir="ltr"
+                          className="text-left font-mono"
+                          value={chequeNumber}
+                          onChange={(e) => setChequeNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>سررسید چک</Label>
+                        <JalaliDateInput value={chequeDueDate} onChange={setChequeDueDate} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -418,7 +545,13 @@ function PurchasePaymentsPage() {
             <Button variant="ghost" onClick={() => setTarget(null)}>
               انصراف
             </Button>
-            <Button onClick={() => markPaid.mutate()} disabled={markPaid.isPending}>
+            <Button
+              onClick={() => markPaid.mutate()}
+              disabled={
+                markPaid.isPending ||
+                (!!sourceAccountId && voucherChannel === "cheque" && !chequeNumber.trim())
+              }
+            >
               {markPaid.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ثبت پرداخت
             </Button>
