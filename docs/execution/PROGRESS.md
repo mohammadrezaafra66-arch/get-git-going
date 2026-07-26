@@ -134,7 +134,35 @@
 - یادداشت بازیابی: این فاز وسط کار با خطای ۵۲۹ سرور قطع شد. در نشست بعد تأیید شد هر دو migration از قبل روی DB اعمال شده‌اند (ستون، CHECK، ویو، تابع، دو ردیف KPI، دو تریگر، ایندکس، و شاخهٔ CASE) پس **دوباره اجرا نشدند**؛ فقط سیم‌کشی فرانت ۷.ج تکمیل شد.
 
 ## Phase 8 — چندانباره کامل
-- status: TODO
+- status: IN-PROGRESS (۸.۱–۸.۵ DONE و commit شده؛ بعدی: ۸.۶ UI مدیریت انبار)
+- migrations: `20260726140000_209_phase8_1_warehouse_tables.sql`, `20260726141000_210_phase8_2_5_stock_engine.sql`, `20260726142000_211_phase8_5_fix_stock_notify.sql`
+- ۸.۱ جداول + RLS + seed ماژول — DONE
+  - پنج جدول: `warehouses`, `warehouse_stock`, `stock_movements`, `stock_transfers`, `stock_transfer_items`.
+  - ایندکس یکتای partial `uq_warehouses_single_default` → تنها یک انبار پیش‌فرض.
+  - RLS روی هر پنج جدول فعال (۴ policy برای warehouses، ۲ برای بقیه). خواندن: admin/manager/accountant/sales/purchase_specialist؛ نوشتن: admin/manager. کاردکس از دید کاربر فقط‌خواندنی است.
+  - ماژول `warehouse` در `role_permissions` برای ۵ نقش seed شد (قبلاً seed نبود و fallback می‌زد).
+  - tests: هر ۵ جدول موجود؛ `module='warehouse'` موجود؛ `relrowsecurity=t` روی همه.
+- ۸.۲–۸.۵ موتور حرکت موجودی — DONE
+  - **قاعدهٔ مرکزی:** هیچ‌کس مستقیم `warehouse_stock` را دست نمی‌زند؛ همه از `apply_stock_movement()` رد می‌شوند تا موجودی و کاردکس همیشه یکی بمانند. `SELECT ... FOR UPDATE` جلوی race در کسر همزمان را می‌گیرد.
+  - **ستون `stock_movements.delta` (تصمیم طراحی):** `quantity` طبق CHECK فاز ۸.۱ همیشه مثبت است و جهت از `movement_type` می‌آید — ولی نوع `adjust` هر دو جهت را دارد و با movement_type قابل تفسیر نبود. باگ واقعی: `adjust_warehouse_stock` مقدار منفی پاس می‌داد و به CHECK می‌خورد. راه‌حل: ستون `delta` اثر علامت‌دار را نگه می‌دارد، `quantity = abs(delta)`. کاردکس برای هر پنج نوع خودتوصیف شد.
+  - ۸.۲ (۱۷۳): ستون `purchases.warehouse_id` (nullable) + تریگر `trg_purchase_items_stock_in` روی `purchase_items` → افزایش موجودی + کاردکس `in`.
+  - ۸.۳ (۱۷۴/۱۷۵): ستون `sales_quotes.warehouse_id` + تریگر روی گذار `status → 'accepted'` → کسر + کاردکس `out`. چک موجودی داخل `apply_stock_movement` است، پس کسر ناکافی کل UPDATE را رد می‌کند و پیش‌فاکتور accepted **نمی‌شود**. تابع `check_quote_stock_availability(quote, warehouse)` برای پیش‌نمایش در UI (خطا نمی‌دهد، گزارش می‌دهد). گارد دوباره‌کسر: اگر کاردکس `sale_quote_confirm` برای آن سند وجود داشته باشد، رد می‌شود.
+  - ۸.۴ (۱۷۷): تریگر روی گذار `status → 'confirmed'` → دو ردیف کاردکس (`transfer_out` مبدأ اول، تا اگر موجودی کافی نبود کل تراکنش رد شود، سپس `transfer_in` مقصد).
+  - ۸.۵: `sync_product_stock_status()` مجموع موجودی همهٔ انبارها را می‌بیند → `available`/`unavailable`. **محافظ داده:** محصولی که هیچ ردیف `warehouse_stock` ندارد دست‌نخورده می‌ماند تا وضعیت دستی موجود تخریب نشود.
+  - **سازگاری با گذشته:** اگر هیچ انباری تعریف نشده باشد (`default_warehouse_id()` تهی) و سند انبار نداشته باشد، همهٔ تریگرها no-op می‌کنند. یعنی تا لحظه‌ای که کاربر انبار نسازد، جریان خرید/فروش موجود دقیقاً مثل قبل کار می‌کند.
+  - `adjust_warehouse_stock()` برای تعدیل دستی (گارد admin/manager).
+- **باگ کشف‌شده و رفع‌شده (migration 211):** `notify_on_stock_available` به `spt.name` ارجاع می‌داد ولی `sale_price_types` ستون `name` ندارد (واقعی: `title`). خطا در بلوک `EXCEPTION` بلعیده می‌شد، پس «اعلان موجود شدن کالا به کارشناس» **هرگز** کار نکرده بود. چون ۸.۵ از این پس `stock_status` را خودکار عوض می‌کند و همین تریگر مرتب آتش می‌گیرد، بدون این اصلاح خروجی ۸.۵ روی کاغذ درست ولی در عمل خاموش می‌ماند. اصلاح با `replace()` روی `pg_get_functiondef` انجام شد (نه بازتایپ بدنه) تا رشته‌های فارسی در معرض خرابی encoding نروند.
+- tests (جریان کامل پلن، همه داخل transaction با ROLLBACK — هیچ دادهٔ آزمایشی باقی نماند):
+  1. ساخت ۳ انبار ✓
+  2. خرید با انتخاب انبار → موجودی ۱۰، کاردکس `in`/delta ۱۰، `stock_status='available'` ✓
+  3. پیش‌فاکتور با همان محصول → قطعی (`draft→sent→accepted`، طبق validator موجود) → موجودی ۱۰−۴=۶، کاردکس `out`/delta −۴ ✓
+  4. قطعی با موجودی ناکافی (۵ از ۳) → **رد شد** با پیام فارسی نام‌بردهٔ محصول/انبار/موجود/درخواست؛ پیش‌فاکتور accepted نشد ✓
+  5. انتقال ۲ عدد WH-C→WH-N → ۴ و ۲، دو ردیف کاردکس ✓
+  6. کاردکس کامل محصول (۴ حرکت) ✓
+  - `check_quote_stock_availability`: کافی → `is_sufficient=t`؛ ناکافی (۵ از ۳) → `f` ✓
+  - ۸.۵ دوطرفه: `in 5` → available، `out 5` → unavailable ✓
+  - `adjust` علامت‌دار: `+7` → qty ۷ (delta +۷)؛ `-5` → qty ۲ (quantity ۵، delta −۵)؛ `-99` رد شد و موجودی دست‌نخورده ماند ✓
+  - `warehouse_stock.quantity < 0` → ۰ ردیف (غیرممکن) ✓
 
 ## Phase 9 — خزانه: سند پرداخت خروجی + صندوق + گزارش + چک
 - status: TODO
