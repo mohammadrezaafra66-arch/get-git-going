@@ -189,5 +189,30 @@
   - `npm run build` سبز؛ هر سه route در `routeTree.gen.ts`؛ `eslint --fix` روی همهٔ فایل‌ها بدون خطا؛ `tsc --noEmit` = ۷۰ = baseline.
 
 ## Phase 9 — خزانه: سند پرداخت خروجی + صندوق + گزارش + چک
-- status: TODO
+- status: IN-PROGRESS (DB فاز ۹.۱–۹.۴ DONE و commit شده؛ بعدی: UI خزانه)
+- migrations: `20260726150000_212_phase9_1_payment_vouchers.sql`, `20260726151000_213_phase9_2_4_treasury.sql`
+- ۹.۱ صندوق + سند پرداخت خروجی + RLS — DONE
+  - `bank_accounts.account_type` (`bank` | `cash`) با پیش‌فرض `'bank'` → حساب موجود دقیقاً مثل قبل رفتار می‌کند (تأیید شد: تنها حساب موجود `bank` ماند). طبق پلن این از جدول مستقل صندوق کم‌ریسک‌تر است.
+  - جدول `payment_vouchers`: مبلغ/تاریخ/ساعت، `payee_type` چهارگانه با FKهای nullable، `document_channel` شامل `cheque`، `source_bank_account_id`، فیلدهای چک، `status`، و `purchase_id` اختیاری.
+  - سه CHECK نگهبان: دریافت‌کننده باید با نوعش بخواند (قرینهٔ `payment_receipts_receiver_exclusive_chk`)؛ فیلدهای چک فقط برای کانال چک؛ شمارهٔ چک برای کانال چک الزامی.
+  - شمارهٔ سند خودکار `PV-<سال>-<۵رقمی>` با sequence + تریگر BEFORE INSERT.
+  - RLS مثل `payment_receipts`: خواندن admin/manager/accountant، نوشتن admin/accountant، حذف فقط admin.
+- ۹.۲ اتصال پرداخت خرید به سند خروجی — DONE
+  - `pay_purchase_with_voucher(...)` اتمیک: سند `approved` می‌سازد و `purchases.paid_at` را ست می‌کند. مبلغ پیش‌فرض `cash_price` وگرنه `total_amount`. گارد دوباره‌پرداخت: اگر سند approved برای آن خرید هست، رد می‌شود.
+  - `purchases.paid_at` برای سازگاری می‌ماند ولی منبع حقیقتِ خروج پول `payment_vouchers` است.
+- ۹.۳ ماندهٔ حساب/صندوق (۱۸۱) — DONE
+  - ویو `vw_account_balances`: `opening_balance + ورودی‌های approved − خروجی‌های approved`. اسناد `pending_review`/`rejected` در مانده اثر ندارند (پول تأییدنشده جزو دارایی خزانه نیست).
+  - RPC `get_account_balances(p_account_type, p_include_inactive)` با `SECURITY DEFINER` + `has_any_role`.
+- ۹.۴ گزارش ورود/خروج با ماندهٔ تجمعی (۱۸۲) — DONE
+  - RPC `get_account_ledger(account, from, to)`: ورودی‌ها از `payment_receipts` و خروجی‌ها از `payment_vouchers` در یک UNION، مرتب بر `(تاریخ, created_at, id)`، با `running_balance` به‌صورت window function.
+  - **ماندهٔ ابتدای بازه** درست محاسبه می‌شود: `opening_balance` حساب + همهٔ حرکات تأییدشدهٔ **قبل از** `p_from_date`، پس گزارش یک بازهٔ وسط سال از ماندهٔ واقعی شروع می‌کند نه از صفر.
+- **باگ خودم که تست گرفتش:** در `get_account_ledger` به `external_parties.name` ارجاع داده بودم ولی ستون واقعی `full_name` است. نکتهٔ روش‌شناختی: اجرای تست با کاربر `supabase_admin` اول `forbidden` می‌داد (چون `auth.uid()` تهی است) و همین خطای واقعی را پنهان می‌کرد؛ با `SET LOCAL request.jwt.claims` و شبیه‌سازی یک admin واقعی، گارد **اجرا** شد و باگ بیرون افتاد. تست‌های گارد‌دار باید با JWT شبیه‌سازی‌شده اجرا شوند، نه با دور زدن گارد.
+- tests (همه داخل transaction با ROLLBACK؛ هیچ دادهٔ آزمایشی باقی نماند):
+  - دو تست SQL پلن: جدول `payment_vouchers` موجود ✓؛ ستون `bank_accounts.account_type` با default `'bank'` ✓
+  1. تعریف صندوق نقدی (`account_type='cash'`, opening ۱٬۰۰۰٬۰۰۰) ✓
+  2. سند پرداخت خروجی ۲۵۰٬۰۰۰ → شمارهٔ خودکار `PV-2026-00001`، مانده ۷۵۰٬۰۰۰ ✓
+  3. دریافت ۴۰۰٬۰۰۰ به همان صندوق → مانده ۱٬۱۵۰٬۰۰۰ ✓
+  4. گزارش دوطرفه: سه ردیف با ماندهٔ تجمعی ۷۵۰٬۰۰۰ → ۱٬۱۵۰٬۰۰۰ → ۱٬۰۵۰٬۰۰۰؛ `last_running == current_balance == ۱٬۰۵۰٬۰۰۰` ✓؛ فیلتر بازهٔ «فقط امروز» از ماندهٔ ۱٬۱۵۰٬۰۰۰ شروع کرد (روز قبل در opening لحاظ شد) ✓
+  5. پرداخت با کانال «چک» + شمارهٔ چک + سررسید ✓
+  - نام طرف حساب در گزارش از supplier/external_party/customer/payee_name درست resolve شد ✓
 </content>
