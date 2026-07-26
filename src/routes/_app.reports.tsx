@@ -227,24 +227,24 @@ function FinanceReportTab({ range }: { range: number }) {
     queryKey: ["report-finance-receivables", range],
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vw_customer_receivables")
-        .select("total_receivables, overdue_receivables, due_today_receivables, future_receivables")
-        .limit(500);
+      // Use the shared summary RPC (same one the receivables page uses) instead of
+      // selecting columns that do not exist on vw_customer_receivables.
+      const { data, error } = await supabase.rpc("get_receivables_summary", {
+        p_from_date: undefined,
+        p_to_date: undefined,
+        p_customer_id: undefined,
+      });
       if (error) throw error;
-      const rows = (data ?? []) as unknown as Array<{
-        total_receivables: number | null;
-        overdue_receivables: number | null;
-        due_today_receivables: number | null;
-        future_receivables: number | null;
-      }>;
-      const totalReceivables = rows.reduce((s, r) => s + Number(r.total_receivables ?? 0), 0);
-      const overdueReceivables = rows.reduce((s, r) => s + Number(r.overdue_receivables ?? 0), 0);
-      const dueTodayReceivables = rows.reduce(
-        (s, r) => s + Number(r.due_today_receivables ?? 0),
-        0,
-      );
-      return { totalReceivables, overdueReceivables, dueTodayReceivables };
+      const row = (data as Array<{
+        total_outstanding: number | null;
+        overdue_outstanding: number | null;
+        due_today: number | null;
+      }> | null)?.[0];
+      return {
+        totalReceivables: Number(row?.total_outstanding ?? 0),
+        overdueReceivables: Number(row?.overdue_outstanding ?? 0),
+        dueTodayReceivables: Number(row?.due_today ?? 0),
+      };
     },
   });
 

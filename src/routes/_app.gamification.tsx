@@ -80,7 +80,8 @@ function useWeeklyScoreSeries(employeeId: string) {
 function GamificationProfile() {
   const { user, profile } = useAuth();
   const { roles } = useAuth();
-  const isAdminOrManager = hasAnyRole(roles, ["admin", "manager"]);
+  // KPI-weights page is admin-only (matches its route guard); align the hub link.
+  const isAdmin = hasAnyRole(roles, ["admin"]);
   const employeeId = user?.id ?? "";
   const fullName = profile?.full_name ?? "کاربر";
 
@@ -212,7 +213,7 @@ function GamificationProfile() {
             همه نشان‌ها
           </Link>
         </Button>
-        {isAdminOrManager && (
+        {isAdmin && (
           <Button asChild size="lg" variant="secondary" className="h-16 gap-2 text-base md:col-span-2">
             <Link to="/gamification/settings">
               <Settings className="h-5 w-5" />

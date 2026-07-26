@@ -408,6 +408,16 @@ const NAVIGATION_SEEDS = [
     module: "accounting",
     group: "finance",
   },
+  {
+    // Item 141/153 — lets the accountant enter salesperson scores (feeds the
+    // capital-allocation chain). Guarded by requireAnyRole([admin,accountant]);
+    // keeps the admin-only /users/$userId page untouched.
+    to: "/accounting/salesperson-scoring",
+    label: "امتیازدهی کارشناسان فروش",
+    icon: Coins,
+    module: "accounting",
+    group: "finance",
+  },
 
   // ۶) عملیات داخلی
   {
@@ -452,6 +462,16 @@ const NAVIGATION_SEEDS = [
     icon: BarChart3,
     module: "dashboard",
     group: "operations",
+  },
+  {
+    // Item 162 — KPI weighting page. Was reachable only from the hub; register it
+    // in nav and keep it admin-only (matches the route's requireAnyRole(["admin"]) guard).
+    to: "/gamification/settings",
+    label: "تنظیمات وزن KPIها",
+    icon: Settings,
+    module: "dashboard",
+    group: "operations",
+    adminOnly: true,
   },
 
   // ۷) گزارش‌ها
