@@ -19,7 +19,18 @@
   - FE: `_app.reports.tsx` FinanceReportTab از RPC `get_receivables_summary` استفاده می‌کند (به‌جای ستون‌های ناموجود ویو).
 
 ## Phase 2 — یکسان‌سازی واحد پول به تومان
-- status: TODO
+- status: DONE
+- migrations: `20260726090000_202_phase2_currency_toman.sql`
+- commit: (this commit)
+- summary: پیش‌فرض `formatCurrency` تومان شد؛ همهٔ برچسب‌های «ریال» در ۹ فایل UI به «تومان»؛ شاخهٔ برچسب‌دار OCR رسید حالا مثل fallback ریال→تومان تبدیل می‌کند؛ پیام‌های خطای دو تریگر DB هم تومان شد.
+- tests: `rg ریال` روی سه فایل بحرانی خالی (PASS)؛ `npm run build` سبز (۳۳s)؛ verify SQL: هر دو تابع `has_rial=f, has_toman=t`.
+- کارهای انجام‌شده:
+  - `src/lib/i18n/formatters.ts:12` پیش‌فرض `currency = "تومان"`.
+  - برچسب‌ها: `InvoiceForm.tsx`, `AdvancePaymentSection.tsx`, `PaymentReceiptDocuments.tsx`, `DynamicScoringSection.tsx`, `_app.accounting.dynamic-capital.tsx`, `_app.products.$id.tsx`, `_app.sales_.customers_.$customerId.credit.tsx`, `_app.sales_.invoices_.$invoiceId.tsx`, `_app.gamification.settings.tsx`.
+  - `_app.operations.receipts.tsx` از پیش‌فرض جدید `formatCurrency` تومان می‌گیرد.
+  - `src/lib/accounting/receipt-extraction.ts` شاخهٔ `amountLabeled`: واحد capture شد؛ اگر «ریال»/`rial` بود `Math.round(n/10)` + هشدار.
+  - DB: `enforce_payment_receipt_link_limits`, `enforce_receipt_approval_allocation_limits` — فقط رشتهٔ واحد در پیام خطا.
+- تأیید عدم تغییر داده: هیچ UPDATE/محاسبهٔ عددی روی داده انجام نشد؛ migration فقط بدنهٔ دو تابع را با `replace()` بازتعریف کرد.
 
 ## Phase 3 — گزارش‌های سررسیدی aging (۱۵۰/۱۵۱)
 - status: TODO

@@ -9,7 +9,7 @@ export function formatNumber(n: number | null | undefined): string {
   return toFaDigits(n.toLocaleString("en-US"));
 }
 
-export function formatCurrency(n: number | null | undefined, currency = "ریال"): string {
+export function formatCurrency(n: number | null | undefined, currency = "تومان"): string {
   if (n === null || n === undefined) return "—";
   return `${formatNumber(n)} ${currency}`;
 }

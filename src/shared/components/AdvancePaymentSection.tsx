@@ -39,7 +39,7 @@ export function AdvancePaymentSection({
     (!hasDeposit
       ? "مبلغ بیعانه الزامی است"
       : !meetsMin
-        ? `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${formatNumber(minRequired)} ریال) باشد`
+        ? `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${formatNumber(minRequired)} تومان) باشد`
         : null);
   const commitmentError =
     showErrors && !commitmentConfirmed ? "تأیید تعهد فروشنده الزامی است" : null;
@@ -54,7 +54,7 @@ export function AdvancePaymentSection({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label htmlFor="deposit_amount" className="text-xs">
-            مبلغ بیعانه (ریال) <span className="text-destructive">*</span>
+            مبلغ بیعانه (تومان) <span className="text-destructive">*</span>
           </Label>
           <Input
             id="deposit_amount"
@@ -83,7 +83,7 @@ export function AdvancePaymentSection({
         <div className="space-y-1">
           <Label className="text-xs">جمع کل پیش‌فاکتور</Label>
           <div className="h-9 flex items-center px-3 rounded-md border bg-background text-sm">
-            {formatNumber(totalAmount)} ریال
+            {formatNumber(totalAmount)} تومان
           </div>
         </div>
       </div>
@@ -110,7 +110,7 @@ export function AdvancePaymentSection({
         <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-900 dark:text-amber-200 text-xs">
-            مبلغ بیعانه کمتر از حداقل ۳۰٪ ({formatNumber(minRequired)} ریال) است.
+            مبلغ بیعانه کمتر از حداقل ۳۰٪ ({formatNumber(minRequired)} تومان) است.
           </AlertDescription>
         </Alert>
       )}

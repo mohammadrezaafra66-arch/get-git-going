@@ -932,8 +932,8 @@ function ProductStatsCard({ productId }: { productId: string }) {
           <p className="text-xs text-muted-foreground">در حال بارگذاری...</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <StatBox label="میانگین قیمت استعلام" value={data?.avg_price != null ? `${formatNumber(Number(data.avg_price))} ریال` : "—"} />
-            <StatBox label="آخرین قیمت استعلام" value={data?.last_price != null ? `${formatNumber(Number(data.last_price))} ریال` : "—"} />
+            <StatBox label="میانگین قیمت استعلام" value={data?.avg_price != null ? `${formatNumber(Number(data.avg_price))} تومان` : "—"} />
+            <StatBox label="آخرین قیمت استعلام" value={data?.last_price != null ? `${formatNumber(Number(data.last_price))} تومان` : "—"} />
             <StatBox label="تعداد استعلام (کل)" value={formatNumber(data?.inquiry_count_total ?? 0)} />
             <StatBox label="تعداد استعلام (۳۰ روز)" value={formatNumber(data?.inquiry_count_month ?? 0)} />
             <StatBox label="تعداد خرید" value={formatNumber(data?.purchase_count ?? 0)} />
@@ -1015,7 +1015,7 @@ function ProductTimelineCard({ productId }: { productId: string }) {
                   <span>{row.description ?? "—"}</span>
                   {row.amount != null && (
                     <span className="text-xs font-semibold">
-                      {formatNumber(Number(row.amount))} ریال
+                      {formatNumber(Number(row.amount))} تومان
                     </span>
                   )}
                 </div>

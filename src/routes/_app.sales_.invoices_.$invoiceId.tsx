@@ -718,7 +718,7 @@ function InvoiceDetailPage() {
             >
               <span>جمع کل</span>
               <span style={{ direction: "ltr" }}>
-                {formatNumber(Number(invoice?.total_amount ?? 0))} ریال
+                {formatNumber(Number(invoice?.total_amount ?? 0))} تومان
               </span>
             </div>
           </div>

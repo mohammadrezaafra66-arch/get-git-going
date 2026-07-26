@@ -351,7 +351,7 @@ function NewKpiDialog({ onCreated }: { onCreated: () => void }) {
             </div>
             <div>
               <Label>واحد</Label>
-              <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="ریال، عدد، درصد…" />
+              <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="تومان، عدد، درصد…" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

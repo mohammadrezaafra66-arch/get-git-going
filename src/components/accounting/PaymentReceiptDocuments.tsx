@@ -251,7 +251,7 @@ function effectiveExtractedValue(
 function displayValue(key: ApplyFieldKey, v: string | number | undefined | null): string {
   if (v == null || v === "") return "—";
   if (key === "amount" && typeof v === "number") {
-    return `${toFaDigits(v.toLocaleString("en-US"))} ریال`;
+    return `${toFaDigits(v.toLocaleString("en-US"))} تومان`;
   }
   if (key === "document_channel") {
     return CHANNEL_LABELS[v as DocumentChannel] ?? String(v);
@@ -1110,7 +1110,7 @@ export function ReceiptDocumentsList({
                         label="مبلغ"
                         value={
                           extracted.amount != null
-                            ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال`
+                            ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} تومان`
                             : null
                         }
                       />

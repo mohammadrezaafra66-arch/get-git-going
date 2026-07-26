@@ -320,7 +320,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             p_commitment_confirmed: !!values.commitment_confirmed,
           });
           throw new Error(
-            `این مشتری دارای مانده معوق است و تا زمان تسویه، امکان صدور فاکتور یا پیش‌فاکتور جدید ندارد. مبلغ معوق: ${amt.toLocaleString("fa-IR")} ریال، تعداد فاکتور معوق: ${cnt}${oldest ? `، قدیمی‌ترین سررسید: ${oldest}` : ""}. مشاهده گزارش: /accounting/receivables`,
+            `این مشتری دارای مانده معوق است و تا زمان تسویه، امکان صدور فاکتور یا پیش‌فاکتور جدید ندارد. مبلغ معوق: ${amt.toLocaleString("fa-IR")} تومان، تعداد فاکتور معوق: ${cnt}${oldest ? `، قدیمی‌ترین سررسید: ${oldest}` : ""}. مشاهده گزارش: /accounting/receivables`,
           );
         }
       }
@@ -363,7 +363,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
         }
         if (depositAmt < minRequired) {
           throw new Error(
-            `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${minRequired.toLocaleString("fa-IR")} ریال) باشد`,
+            `مبلغ بیعانه باید حداقل ۳۰٪ مبلغ کل (${minRequired.toLocaleString("fa-IR")} تومان) باشد`,
           );
         }
         if (!commitment) {
@@ -595,16 +595,16 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <span className="text-muted-foreground">اعتبار قابل استفاده: </span>
-                  <span className="font-semibold">{formatNumber(availableCredit)} ریال</span>
+                  <span className="font-semibold">{formatNumber(availableCredit)} تومان</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">بدهی جاری: </span>
-                  <span className="font-semibold">{formatNumber(outstanding)} ریال</span>
+                  <span className="font-semibold">{formatNumber(outstanding)} تومان</span>
                 </div>
                 {heldCredit > 0 && (
                   <div>
                     <span className="text-muted-foreground">اعتبار مسدودشده: </span>
-                    <span className="font-semibold">{formatNumber(heldCredit)} ریال</span>
+                    <span className="font-semibold">{formatNumber(heldCredit)} تومان</span>
                   </div>
                 )}
               </div>
@@ -614,7 +614,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
             <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-900 dark:text-amber-200">
-                مبلغ فاکتور ({formatNumber(totalAmount)} ریال) به همراه بدهی جاری از سقف اعتبار
+                مبلغ فاکتور ({formatNumber(totalAmount)} تومان) به همراه بدهی جاری از سقف اعتبار
                 مشتری فراتر می‌رود.
               </AlertDescription>
             </Alert>
@@ -805,7 +805,7 @@ export function InvoiceForm({ initialAdvance }: InvoiceFormProps = {}) {
 
           <div className="flex items-center justify-between border-t pt-3">
             <span className="text-sm text-muted-foreground">جمع کل</span>
-            <span className="text-lg font-bold">{formatNumber(totalAmount)} ریال</span>
+            <span className="text-lg font-bold">{formatNumber(totalAmount)} تومان</span>
           </div>
         </CardContent>
       </Card>

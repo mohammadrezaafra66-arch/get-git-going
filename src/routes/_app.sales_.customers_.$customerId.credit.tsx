@@ -101,7 +101,7 @@ function CustomerCreditPage() {
                 )}
               </span>
             }
-            hint="ریال"
+            hint="تومان"
           />
           <MetricCard
             icon={<TrendingUp className="h-5 w-5" />}

@@ -312,7 +312,7 @@ function DynamicCapitalPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>سرمایه کل (ریال)</Label>
+              <Label>سرمایه کل (تومان)</Label>
               <Input
                 inputMode="numeric"
                 placeholder="مثلاً ۱,۰۰۰,۰۰۰,۰۰۰"
@@ -325,7 +325,7 @@ function DynamicCapitalPage() {
                 className="text-left"
               />
               {totalCapitalNum > 0 ? (
-                <p className="text-xs text-muted-foreground">{fmtMoney(totalCapitalNum)} ریال</p>
+                <p className="text-xs text-muted-foreground">{fmtMoney(totalCapitalNum)} تومان</p>
               ) : alreadyExists ? (
                 <p className="text-xs text-red-600">برای بازنویسی ابتدا سرمایه جدید را وارد کنید</p>
               ) : null}
@@ -346,7 +346,7 @@ function DynamicCapitalPage() {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">
                 snapshot موجود — سرمایه ثبت‌شده: {fmtMoney(Number(existing.data.total_capital))}{" "}
-                ریال
+                تومان
               </span>
               <Button
                 size="sm"
@@ -466,7 +466,7 @@ function DynamicCapitalPage() {
                       className={cn(activeSettingId === row.id && "bg-muted/40")}
                     >
                       <TableCell>{formatDateFa(row.capital_date)}</TableCell>
-                      <TableCell>{fmtMoney(Number(row.total_capital))} ریال</TableCell>
+                      <TableCell>{fmtMoney(Number(row.total_capital))} تومان</TableCell>
                       <TableCell className="text-muted-foreground text-xs max-w-xs truncate">
                         {row.notes ?? "—"}
                       </TableCell>
@@ -498,7 +498,7 @@ function DynamicCapitalPage() {
             <SheetTitle>مشتریان کارشناس: {selectedSalesperson?.full_name ?? "بدون نام"}</SheetTitle>
             <SheetDescription>
               سهم کارشناس:{" "}
-              {selectedSalesperson ? fmtMoney(selectedSalesperson.allocated_capital) : "۰"} ریال
+              {selectedSalesperson ? fmtMoney(selectedSalesperson.allocated_capital) : "۰"} تومان
               {" • "}
               امتیاز وزنی:{" "}
               {selectedSalesperson
@@ -631,12 +631,12 @@ function ResultSection({
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <SummaryCard label="تعداد کارشناسان" value={toFaDigits(salespersonRows.length)} />
-        <SummaryCard label="مجموع تخصیص" value={`${fmtMoney(totalAllocated)} ریال`} />
+        <SummaryCard label="مجموع تخصیص" value={`${fmtMoney(totalAllocated)} تومان`} />
         <SummaryCard
           label="میانگین به ازای کارشناس"
           value={
             salespersonRows.length
-              ? `${fmtMoney(totalAllocated / salespersonRows.length)} ریال`
+              ? `${fmtMoney(totalAllocated / salespersonRows.length)} تومان`
               : "—"
           }
         />
@@ -676,7 +676,7 @@ function ResultSection({
                       <TableCell>{toFaDigits(r.weighted_score.toFixed(3))}</TableCell>
                       <TableCell>{toFaDigits((r.share_ratio * 100).toFixed(2))}٪</TableCell>
                       <TableCell className="font-medium">
-                        {fmtMoney(r.allocated_capital)} ریال
+                        {fmtMoney(r.allocated_capital)} تومان
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         مشاهده مشتریان ←

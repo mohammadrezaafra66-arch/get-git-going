@@ -265,7 +265,7 @@ export function DynamicScoringSection({
             </div>
             <div className="text-2xl font-bold text-primary">
               {formatNumber(realtimeQ.data.final_limit)}
-              <span className="text-sm font-normal text-muted-foreground mr-2">ریال</span>
+              <span className="text-sm font-normal text-muted-foreground mr-2">تومان</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span>
