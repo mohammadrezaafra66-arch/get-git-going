@@ -32,6 +32,7 @@ import { Route as AppPresenceRouteImport } from './routes/_app.presence'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppMyRejectedQuotesRouteImport } from './routes/_app.my-rejected-quotes'
 import { Route as AppMyPenaltiesRouteImport } from './routes/_app.my-penalties'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMarketMatchesRouteImport } from './routes/_app.market-matches'
@@ -316,6 +317,11 @@ const AppPersonsRoute = AppPersonsRouteImport.update({
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMyRejectedQuotesRoute = AppMyRejectedQuotesRouteImport.update({
+  id: '/my-rejected-quotes',
+  path: '/my-rejected-quotes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMyPenaltiesRoute = AppMyPenaltiesRouteImport.update({
@@ -1268,6 +1274,7 @@ export interface FileRoutesByFullPath {
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
   '/my-penalties': typeof AppMyPenaltiesRoute
+  '/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1462,6 +1469,7 @@ export interface FileRoutesByTo {
   '/market-matches': typeof AppMarketMatchesRoute
   '/messages': typeof AppMessagesRoute
   '/my-penalties': typeof AppMyPenaltiesRoute
+  '/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/notifications': typeof AppNotificationsRoute
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
@@ -1657,6 +1665,7 @@ export interface FileRoutesById {
   '/_app/market-matches': typeof AppMarketMatchesRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/my-penalties': typeof AppMyPenaltiesRoute
+  '/_app/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
@@ -1854,6 +1863,7 @@ export interface FileRouteTypes {
     | '/market-matches'
     | '/messages'
     | '/my-penalties'
+    | '/my-rejected-quotes'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -2048,6 +2058,7 @@ export interface FileRouteTypes {
     | '/market-matches'
     | '/messages'
     | '/my-penalties'
+    | '/my-rejected-quotes'
     | '/notifications'
     | '/persons'
     | '/popup-center'
@@ -2242,6 +2253,7 @@ export interface FileRouteTypes {
     | '/_app/market-matches'
     | '/_app/messages'
     | '/_app/my-penalties'
+    | '/_app/my-rejected-quotes'
     | '/_app/notifications'
     | '/_app/persons'
     | '/_app/popup-center'
@@ -2602,6 +2614,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/my-rejected-quotes': {
+      id: '/_app/my-rejected-quotes'
+      path: '/my-rejected-quotes'
+      fullPath: '/my-rejected-quotes'
+      preLoaderRoute: typeof AppMyRejectedQuotesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/my-penalties': {
@@ -4017,6 +4036,7 @@ interface AppRouteChildren {
   AppMarketMatchesRoute: typeof AppMarketMatchesRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppMyPenaltiesRoute: typeof AppMyPenaltiesRoute
+  AppMyRejectedQuotesRoute: typeof AppMyRejectedQuotesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
@@ -4148,6 +4168,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketMatchesRoute: AppMarketMatchesRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppMyPenaltiesRoute: AppMyPenaltiesRoute,
+  AppMyRejectedQuotesRoute: AppMyRejectedQuotesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,

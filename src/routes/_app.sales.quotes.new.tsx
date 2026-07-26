@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserCheck,
   UserPlus,
+  XCircle,
 } from "lucide-react";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
@@ -41,6 +42,14 @@ import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -74,6 +83,10 @@ function NewQuotePage() {
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
   const [settlementTypeId, setSettlementTypeId] = useState<string>("");
   const [stockConfirmed, setStockConfirmed] = useState(false);
+  // Item 152 — the refusal dialog: the reason the DB/validation gave, plus a
+  // one-line note the salesperson may add before it is logged.
+  const [rejection, setRejection] = useState<{ reason: string; note: string } | null>(null);
+  const [loggingRejection, setLoggingRejection] = useState(false);
   // Reset the out-of-stock confirmation whenever the item set changes.
   useEffect(() => {
     setStockConfirmed(false);
@@ -219,7 +232,14 @@ function NewQuotePage() {
       });
       navigate({ to: "/sales/quotes" });
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور."),
+    // Item 152 — a refused registration must leave a trace the salesperson can
+    // read later, with a one-line reason they can annotate. Instead of a toast
+    // that disappears, open the rejection dialog.
+    onError: (e: unknown) => {
+      const reason = e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور.";
+      toast.error(reason);
+      setRejection({ reason, note: "" });
+    },
   });
 
   // J-4: soft out-of-stock guard — warn once, then allow an explicit re-click
@@ -542,6 +562,83 @@ function NewQuotePage() {
           }}
         />
       )}
+
+      {/* Item 152 — refusal dialog: shows why the quote was refused and lets the
+          salesperson attach a one-line note before it is recorded. */}
+      <Dialog
+        open={rejection !== null}
+        onOpenChange={(o) => {
+          if (!o) setRejection(null);
+        }}
+      >
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              ثبت پیش‌فاکتور انجام نشد
+            </DialogTitle>
+            <DialogDescription>
+              دلیل رد شدن در زیر آمده است. می‌توانید یک توضیح یک‌خطی اضافه کنید تا در «درخواست‌های
+              رد شدهٔ من» ثبت شود و بعداً قابل پیگیری باشد.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm leading-6">
+              {rejection?.reason}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="rejection_note">توضیح شما (اختیاری)</Label>
+              <Textarea
+                id="rejection_note"
+                rows={2}
+                value={rejection?.note ?? ""}
+                onChange={(e) => setRejection((r) => (r ? { ...r, note: e.target.value } : r))}
+                placeholder="مثلاً: مشتری اصرار داشت، با مدیر هماهنگ شود."
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" onClick={() => setRejection(null)} disabled={loggingRejection}>
+              بستن بدون ثبت
+            </Button>
+            <Button
+              disabled={loggingRejection}
+              onClick={async () => {
+                if (!rejection || !user?.id) return;
+                setLoggingRejection(true);
+                try {
+                  const { error } = await supabase.from("audit_logs").insert({
+                    actor_id: user.id,
+                    entity_type: "sales_quote",
+                    entity_id: null,
+                    action: "sales_quote_rejected",
+                    diff: {
+                      reason: rejection.reason,
+                      note: rejection.note.trim() || null,
+                      customer_name: customerName.trim() || null,
+                      final_amount: totals.final_amount,
+                    },
+                  } as never);
+                  if (error) throw error;
+                  toast.success(
+                    "دلیل رد شدن ثبت شد و در «درخواست‌های رد شدهٔ من» قابل مشاهده است.",
+                  );
+                  setRejection(null);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "ثبت دلیل ناموفق بود.");
+                } finally {
+                  setLoggingRejection(false);
+                }
+              }}
+            >
+              {loggingRejection && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              ثبت دلیل
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -83,7 +83,23 @@
   - route `_app.persons_.import.tsx` با `requireAnyRole([admin,manager])` + ثبت در `registry.ts` و `ROUTE_ROLE_OVERRIDES` + دکمهٔ «ایمپورت اکسل» در هدر صفحهٔ `/persons`.
 
 ## Phase 6 — یکی‌سازی پیش‌فاکتور + فیش بدون لینک
-- status: TODO
+- status: DONE
+- migrations: `20260726110000_205_phase6_cheque_receive_side.sql`, `20260726120000_206_phase6_quote_rejections.sql`
+- commit: (this commit)
+- summary: کارت «فاکتورهای فروش» از هاب فروش حذف شد (جدول `invoices` صفر ردیف)؛ کانال «چک» + فیلدهای چک در سمت دریافت اضافه شد؛ مسیر «دریافت بدون پیش‌فاکتور» در UI صریح شد؛ رد شدن پیش‌فاکتور با دلیل ثبت و در صفحهٔ «درخواست‌های رد شدهٔ من» نمایش داده می‌شود.
+- tests: `SELECT count(*) FROM invoices` = ۰ (حذف کارت امن بود)؛ CHECK کانال شامل `cheque`؛ ستون‌های `cheque_number`/`cheque_due_date` موجود؛ `get_my_rejected_quotes` با امضای درست موجود؛ INSERT با `document_channel='cash'` + `cheque_number` توسط `payment_receipts_cheque_fields_chk` رد شد (تست منفی سبز، هیچ ردیف آزمایشی باقی نماند)؛ `post_receipt_accounting` شامل `increase_credit` است. `npm run build` سبز؛ `eslint` بدون خطا؛ `tsc --noEmit` = ۷۰ = baseline.
+- ۶.الف — یکی‌سازی پیش‌فاکتور (۱۴۷):
+  - `_app.sales.index.tsx`: کارت «فاکتورهای فروش» حذف شد (با کامنت توضیح چرایی). قبل از حذف تأیید شد `invoices` صفر ردیف دارد.
+  - جدول `invoices` **drop نشد** و routeها/گاردها دست‌نخورده ماندند (گزارش‌ها و `payment_receipt_links` هنوز به آن ارجاع می‌دهند). ورودی‌های منو از قبل `hiddenFromMenu: true` بودند، پس کارت هاب آخرین نقطهٔ ورود قابل‌دید بود.
+- ۶.ب — فیش/چک بدون لینک (۱۴۸/۱۵۲):
+  - یافته: اعتبارسنجی از قبل روی `requiresInvoiceLinks()` گیت شده بود، پس `positive_credit`/`prepayment`/`debt_payment` بدون پیش‌فاکتور کار می‌کردند — مشکل «کشف‌ناپذیری» بود نه انسداد. راهنمای صریح فارسی در زیر انتخاب نوع فیش اضافه شد (هر دو حالت: نوع بدون‌لینک انتخاب‌شده / پیشنهاد سوییچ به «اعتبار مثبت مستقل»).
+  - تأیید اتصال اعتبار: `post_receipt_accounting` → `increase_credit` → `customer_credit_balance.available_credit` + ردیف `customer_credit_ledger`. یعنی ثبت `positive_credit` پس از تأیید و «ثبت حسابداری» واقعاً ما را به مشتری بدهکار می‌کند. اتصال ناقص نبود؛ چیزی اضافه نشد.
+  - چک: migration 205 مقدار `cheque` را به CHECK کانال سند افزود و دو ستون nullable `cheque_number`/`cheque_due_date` + CHECK نگهبان (اگر کانال چک نیست، این دو باید NULL باشند). UI: گزینهٔ «چک» در فهرست روش انتقال، فیلدهای شمارهٔ چک (اجباری) و سررسید چک (`JalaliDateInput`) فقط در همان حالت، و پاک‌سازی خودکار هنگام تعویض کانال. زod schema آینهٔ همان دو CHECK است.
+- ۶.ج — پیش‌فاکتور رد شده با دلیل (۱۵۲):
+  - طبق «تصمیم ساده‌سازی» پلن، جدول جدید ساخته نشد؛ از `audit_logs` با `action='sales_quote_rejected'` استفاده شد.
+  - `_app.sales.quotes.new.tsx`: `onError` به‌جای toast تنها، دیالوگ رد را باز می‌کند — دلیل سیستمی + فیلد توضیح یک‌خطی + دکمهٔ «ثبت دلیل» که در `audit_logs` می‌نویسد (reason/note/customer_name/final_amount).
+  - نکتهٔ RLS: `audit_logs` فقط به admin اجازهٔ SELECT می‌دهد. به‌جای بازکردن policy (که کل تاریخچهٔ کاربر را افشا می‌کرد)، migration 206 یک تابع باریک `get_my_rejected_quotes(p_limit)` با `SECURITY DEFINER` ساخت که فقط ردیف‌های `action='sales_quote_rejected'` و `actor_id = auth.uid()` را برمی‌گرداند + ایندکس partial.
+  - route جدید `_app.my-rejected-quotes.tsx` + ثبت در `registry.ts` (گروه فروش).
 
 ## Phase 7 — مارکتینگ: سقف رندوم کانال + گیمیفیکیشن + وزن محصول
 - status: TODO

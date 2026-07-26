@@ -165,6 +165,8 @@ const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
   { value: "pol", label: "پل" },
   { value: "satna", label: "ساتنا" },
   { value: "cash", label: "نقدی" },
+  // Item 148 — cheque is a document channel on the receive side too (migration 205).
+  { value: "cheque", label: "چک" },
   { value: "other", label: "سایر" },
 ];
 
@@ -230,9 +232,11 @@ const schema = z
       .optional()
       .or(z.literal("")),
     document_channel: z.union([
-      z.enum(["card_to_card", "paya", "pol", "satna", "cash", "other"]),
+      z.enum(["card_to_card", "paya", "pol", "satna", "cash", "cheque", "other"]),
       z.literal(""),
     ]),
+    cheque_number: z.string().trim().max(50).optional().or(z.literal("")),
+    cheque_due_date: z.string().trim().optional().or(z.literal("")),
     is_typed_receipt: z.boolean(),
     receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
     description: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -243,6 +247,15 @@ const schema = z
   .refine((v) => Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id), {
     message: "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
     path: ["receiver_party_id"],
+  })
+  // Mirrors payment_receipts_cheque_fields_chk (migration 205).
+  .refine((v) => v.document_channel === "cheque" || (!v.cheque_number && !v.cheque_due_date), {
+    message: "شماره و سررسید چک فقط وقتی روش انتقال «چک» است قابل ثبت‌اند.",
+    path: ["cheque_number"],
+  })
+  .refine((v) => v.document_channel !== "cheque" || Boolean(v.cheque_number), {
+    message: "برای روش انتقال «چک»، شمارهٔ چک الزامی است.",
+    path: ["cheque_number"],
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -320,6 +333,8 @@ export function PaymentReceiptForm() {
       has_perforation: false,
       receipt_time: "",
       document_channel: "",
+      cheque_number: "",
+      cheque_due_date: "",
       is_typed_receipt: false,
       receipt_image_url: "",
       description: "",
@@ -933,6 +948,11 @@ export function PaymentReceiptForm() {
         has_perforation: values.has_perforation,
         receipt_time: values.receipt_time || null,
         document_channel: values.document_channel || null,
+        // Cheque fields are only meaningful for the cheque channel; the DB CHECK
+        // (migration 205) rejects them otherwise, so null them out defensively.
+        cheque_number: values.document_channel === "cheque" ? values.cheque_number || null : null,
+        cheque_due_date:
+          values.document_channel === "cheque" ? values.cheque_due_date || null : null,
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
@@ -1211,6 +1231,24 @@ export function PaymentReceiptForm() {
               <p className="text-xs text-muted-foreground">
                 {RECEIPT_TYPE_HINT_FA[watchedReceiptType]}
               </p>
+              {/*
+                Item 148 — "دریافت بدون پیش‌فاکتور". Only invoice_payment demands
+                links; the other three types are already unlinked. Spell that out
+                so the accountant does not think the form is blocking them.
+              */}
+              {!requiresInvoiceLinks(watchedReceiptType) ? (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs leading-6">
+                  دریافت بدون پیش‌فاکتور: نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان
+                  اعتبار/طلب مشتری ثبت می‌شود، یعنی ما به او بدهکار می‌شویم و در خرید بعدی از همین
+                  اعتبار استفاده می‌کند. مانده اعتبار پس از «ثبت حسابداری» فیش تأییدشده به‌روز
+                  می‌شود.
+                </div>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-2 text-xs leading-6 text-muted-foreground">
+                  اگر مشتری بدون بدهی و بدون پیش‌فاکتور پول یا چک داده است، نوع فیش را روی «اعتبار
+                  مثبت مستقل» بگذارید تا بدون اتصال به پیش‌فاکتور ثبت شود.
+                </div>
+              )}
             </div>
 
             {/* اتصال به پیش‌فاکتورها — فقط برای پرداخت پیش‌فاکتور */}
@@ -1807,13 +1845,26 @@ export function PaymentReceiptForm() {
                   <Label>روش انتقال</Label>
                   <Select
                     value={form.watch("document_channel") || undefined}
-                    onValueChange={(v) =>
+                    onValueChange={(v) => {
                       form.setValue(
                         "document_channel",
-                        v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
-                        { shouldDirty: true },
-                      )
-                    }
+                        v as
+                          | "card_to_card"
+                          | "paya"
+                          | "pol"
+                          | "satna"
+                          | "cash"
+                          | "cheque"
+                          | "other",
+                        { shouldDirty: true, shouldValidate: true },
+                      );
+                      // Leaving the cheque channel must clear the cheque fields,
+                      // otherwise the DB CHECK rejects the insert.
+                      if (v !== "cheque") {
+                        form.setValue("cheque_number", "", { shouldValidate: true });
+                        form.setValue("cheque_due_date", "", { shouldValidate: true });
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="انتخاب کنید" />
@@ -1827,6 +1878,31 @@ export function PaymentReceiptForm() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Item 148 — cheque details, only for the cheque channel */}
+                {form.watch("document_channel") === "cheque" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label>
+                        شمارهٔ چک <span className="text-destructive">*</span>
+                      </Label>
+                      <Input dir="ltr" className="text-left" {...form.register("cheque_number")} />
+                      {errors.cheque_number && (
+                        <p className="text-xs text-destructive">{errors.cheque_number.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>تاریخ سررسید چک</Label>
+                      <JalaliDateInput
+                        value={form.watch("cheque_due_date") || ""}
+                        onChange={(v) => form.setValue("cheque_due_date", v, { shouldDirty: true })}
+                      />
+                      {errors.cheque_due_date && (
+                        <p className="text-xs text-destructive">{errors.cheque_due_date.message}</p>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-1">
                   <Label>نام واریزکننده روی فیش</Label>

@@ -47,6 +47,7 @@
   ClipboardList,
   Plug,
   Upload,
+  XCircle,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -295,6 +296,15 @@ const NAVIGATION_SEEDS = [
     group: "sales-customers",
     subgroup: "sc-sales",
     hiddenFromMenu: true,
+  },
+  // Item 152 — the salesperson's own list of refused pre-invoice attempts.
+  {
+    to: "/my-rejected-quotes",
+    label: "درخواست‌های رد شدهٔ من",
+    icon: XCircle,
+    module: "sales",
+    group: "sales-customers",
+    subgroup: "sc-sales",
   },
   {
     to: "/sales/stock-alerts",
@@ -969,6 +979,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/sales/customers",
     "/persons",
     "/sales/quotes",
+    "/my-rejected-quotes",
     "/sales/invoices",
     "/invoices",
     "/sales/stock-alerts",
