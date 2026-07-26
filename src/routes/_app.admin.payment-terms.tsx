@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { requireAdmin } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -346,5 +347,13 @@ function PaymentTermsPage() {
 }
 
 export const Route = createFileRoute("/_app/admin/payment-terms")({
+  // This route had no beforeLoad guard, unlike every other /admin/* route.
+  // Writes were still blocked by the payment_terms RLS policy, so this was not
+  // a write leak — but the page itself was reachable by any signed-in user.
+  // requireAdmin() matches both the dominant /admin/* pattern and this route's
+  // own `adminOnly: true` declaration in src/lib/navigation/registry.ts.
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
   component: PaymentTermsPage,
 });
