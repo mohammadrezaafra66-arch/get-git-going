@@ -33,7 +33,19 @@
 - تأیید عدم تغییر داده: هیچ UPDATE/محاسبهٔ عددی روی داده انجام نشد؛ migration فقط بدنهٔ دو تابع را با `replace()` بازتعریف کرد.
 
 ## Phase 3 — گزارش‌های سررسیدی aging (۱۵۰/۱۵۱)
-- status: TODO
+- status: DONE
+- migrations: `20260726100000_203_phase3_aging_buckets.sql`, `20260726101000_204_phase3_aging_lists.sql`
+- commit: (this commit)
+- summary: ستون `aging_bucket` به دو ویو مطالبات/بدهی‌ها اضافه شد؛ توابع summary جمع و تعداد هر سطل را برمی‌گردانند؛ توابع list ستون سطل را برمی‌گردانند و `p_due_filter` مقادیر سطل را می‌پذیرد؛ UI هر دو صفحه کارت‌های سطل سنی (کلیک‌پذیر) + ستون/بَج سطل گرفت.
+- tests: هر ۴ تست SQL سبز (ستون روی دو ویو؛ `bucket_d90_plus` در خروجی دو تابع summary؛ `aging_bucket` در خروجی دو تابع list؛ اجرای group-by بدون خطا). `npm run build` سبز. `eslint` روی فایل‌های تغییرکرده بدون خطا/هشدار. `tsc --noEmit`: ۷۰ خطا در baseline (`HEAD` قبل از تغییر) و ۷۰ خطا بعد از تغییر — هیچ خطای جدیدی در فایل‌های دست‌خورده نیست (خطاهای موجود در `src/lib/*/functions.ts` و `types.ts` از قبل بوده‌اند).
+- سطل‌بندی: `current` (سررسید نشده یا امروز) · `d1_30` · `d31_60` · `d61_90` · `d90_plus`، بر مبنای `CURRENT_DATE - due_date`. برای payables سررسید = `purchase_date + payment_terms.days` و ردیف پرداخت‌شده در `current` می‌ماند تا آمار سنی را منحرف نکند.
+- کارهای انجام‌شده:
+  - DB: `CREATE OR REPLACE VIEW vw_customer_receivables` / `vw_supplier_payables` — فقط ستون جدید در انتها (بدون DROP، بدون ویوی وابسته).
+  - DB: `get_receivables_summary` / `get_payables_summary` بازساخته شدند (تغییر `RETURNS TABLE` نیاز به DROP داشت) + ۱۰ ستون جدید (۵ مبلغ + ۵ تعداد) + GRANT مجدد.
+  - DB: `get_receivables_list` / `get_payables_list` + ستون `aging_bucket` + پذیرش سطل در `p_due_filter`.
+  - FE: `src/lib/accounting/aging.ts` (ثابت‌ها/نوع سطل)، `src/components/accounting/AgingBuckets.tsx` (`AgingBucketCards`، `AgingBucketBadge`).
+  - FE: `_app.accounting.receivables.tsx` و `_app.accounting.payables.tsx` — ردیف کارت سطل سنی، ستون «سطل سنی» در جدول دسکتاپ، بَج در کارت موبایل، و ۵ گزینهٔ سطل در فیلتر «وضعیت سررسید».
+- خارج از دامنه (طبق پلن): پرداخت جزئی خرید اضافه نشد؛ مانده تأمین‌کننده همچنان همه‌یا‌هیچ است.
 
 ## Phase 4 — UX کوچک: کپی گروهی فروش + آموزش درون‌صفحه
 - status: TODO
