@@ -194,6 +194,7 @@ import { Route as AppSalesInvoicesInvoiceIdWaybillRouteImport } from './routes/_
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
+import { Route as AppGamificationAdminManualMetricsGuideRouteImport } from './routes/_app.gamification_.admin_.manual-metrics_.guide'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotMarketMatchesCandidatesUpsertRouteImport } from './routes/api.public.bot.market-matches.candidates.upsert'
 import { Route as ApiPublicBotDynamicTablesBySlugSlugRouteImport } from './routes/api.public.bot.dynamic-tables.by-slug.$slug'
@@ -1186,6 +1187,12 @@ const AppPricingSaleListsListIdPublishRoute =
     path: '/publish',
     getParentRoute: () => AppPricingSaleListsListIdRoute,
   } as any)
+const AppGamificationAdminManualMetricsGuideRoute =
+  AppGamificationAdminManualMetricsGuideRouteImport.update({
+    id: '/gamification_/admin_/manual-metrics_/guide',
+    path: '/gamification/admin/manual-metrics/guide',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAcademyCourseIdLessonIdQuizRoute =
   AppAcademyCourseIdLessonIdQuizRouteImport.update({
     id: '/academy_/$courseId_/$lessonId_/quiz',
@@ -1408,6 +1415,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
+  '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -1598,6 +1606,7 @@ export interface FileRoutesByTo {
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
+  '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -1793,6 +1802,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
+  '/_app/gamification_/admin_/manual-metrics_/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
@@ -1988,6 +1998,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
+    | '/gamification/admin/manual-metrics/guide'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -2178,6 +2189,7 @@ export interface FileRouteTypes {
     | '/gamification/admin'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
+    | '/gamification/admin/manual-metrics/guide'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/edit'
@@ -2372,6 +2384,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
+    | '/_app/gamification_/admin_/manual-metrics_/guide'
     | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/edit'
@@ -3713,6 +3726,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
       parentRoute: typeof AppPricingSaleListsListIdRoute
     }
+    '/_app/gamification_/admin_/manual-metrics_/guide': {
+      id: '/_app/gamification_/admin_/manual-metrics_/guide'
+      path: '/gamification/admin/manual-metrics/guide'
+      fullPath: '/gamification/admin/manual-metrics/guide'
+      preLoaderRoute: typeof AppGamificationAdminManualMetricsGuideRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/$courseId_/$lessonId_/quiz': {
       id: '/_app/academy_/$courseId_/$lessonId_/quiz'
       path: '/academy/$courseId/$lessonId/quiz'
@@ -4087,6 +4107,7 @@ interface AppRouteChildren {
   AppSalesInvoicesInvoiceIdRoute: typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   AppSalesInvoicesCreateRoute: typeof AppSalesInvoicesCreateRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
+  AppGamificationAdminManualMetricsGuideRoute: typeof AppGamificationAdminManualMetricsGuideRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
@@ -4219,6 +4240,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesInvoicesInvoiceIdRoute: AppSalesInvoicesInvoiceIdRouteWithChildren,
   AppSalesInvoicesCreateRoute: AppSalesInvoicesCreateRoute,
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
+  AppGamificationAdminManualMetricsGuideRoute:
+    AppGamificationAdminManualMetricsGuideRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,

@@ -910,6 +910,16 @@ const NAVIGATION_SEEDS = [
     subgroup: "adm-gamification",
     adminOnly: true,
   },
+  // Item 143 — in-page guide for the manual-metrics form.
+  {
+    to: "/gamification/admin/manual-metrics/guide",
+    label: "راهنمای ثبت دستی عملکرد",
+    icon: BookOpen,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-gamification",
+    adminOnly: true,
+  },
 ] satisfies NavigationEntrySeed[];
 
 const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
@@ -1077,6 +1087,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/gamification/admin/kpi-rules": ["admin", "manager"],
   "/gamification/admin/leagues": ["admin", "manager"],
   "/gamification/admin/manual-metrics": ["admin", "manager", "accountant"],
+  "/gamification/admin/manual-metrics/guide": ["admin", "manager", "accountant"],
   "/gamification/admin/missions": ["admin", "manager"],
   "/gamification/admin/purchase-settings": ["admin", "manager", "accountant"],
   "/gamification/admin/rewards": ["admin", "manager"],

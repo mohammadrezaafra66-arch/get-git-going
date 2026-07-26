@@ -80,6 +80,19 @@ import {
 import { ObservatoryBadges } from "@/components/sales/ObservatoryBadges";
 import { fetchProductOwnersForProducts, type ProductOwnerLite } from "@/lib/sales/product-owners";
 import { PromotionNominateButton } from "@/components/sales/PromotionNominateButton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  buildBulkSalesText,
+  buildProductSpecChips,
+  collectPriceModes,
+} from "@/lib/sales/bulk-sales-text";
 
 export const Route = createFileRoute("/_app/sales/search")({
   beforeLoad: async () => {
@@ -383,6 +396,60 @@ function SalesSearchPage() {
   // Thumbnails for visible search results (shared pattern with /products admin list)
   const visibleProductIds = useMemo(() => products.map((p) => p.id), [products]);
   const { thumbnailFor } = useProductThumbnails(visibleProductIds);
+
+  // ---------- 146: bulk sales-text copy ----------
+  // Parallel path to the per-card copy button. Selecting the first product opens
+  // the price-mode picker so the seller decides which settlement terms appear in
+  // the text; `null` in `bulkPriceModeKeys` means «همه».
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [bulkPriceModeKeys, setBulkPriceModeKeys] = useState<Set<string> | null>(null);
+  const [priceModeDialogOpen, setPriceModeDialogOpen] = useState(false);
+  const [priceModeDraft, setPriceModeDraft] = useState<Set<string> | null>(null);
+
+  const availablePriceModes = useMemo(() => collectPriceModes(products), [products]);
+
+  const openPriceModeDialog = () => {
+    setPriceModeDraft(bulkPriceModeKeys === null ? null : new Set(bulkPriceModeKeys));
+    setPriceModeDialogOpen(true);
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        // First selection → ask which price modes belong in the copied text.
+        if (next.size === 0) openPriceModeDialog();
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  const allVisibleSelected =
+    products.length > 0 && products.every((p) => selectedProductIds.has(p.id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedProductIds(new Set());
+      return;
+    }
+    if (selectedProductIds.size === 0) openPriceModeDialog();
+    setSelectedProductIds(new Set(products.map((p) => p.id)));
+  };
+
+  const handleBulkCopySalesText = async () => {
+    const chosen = products.filter((p) => selectedProductIds.has(p.id));
+    if (chosen.length === 0) return;
+    const text = buildBulkSalesText(chosen, bulkPriceModeKeys, STOCK_LABEL);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`متن فروش ${formatNumber(chosen.length)} محصول کپی شد`);
+    } catch {
+      toast.error("کپی انجام نشد");
+    }
+  };
 
   // ---------- DT.7H: Observatory snippets for current page of results ----------
   // Read-only sidecar query. Never blocks/replaces the main search.
@@ -850,6 +917,45 @@ function SalesSearchPage() {
         </div>
       ) : (
         <>
+          {/* 146 — bulk selection toolbar */}
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={toggleSelectAllVisible} />
+              انتخاب همه
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {formatNumber(selectedProductIds.size)} محصول انتخاب شده
+            </span>
+            <div className="ms-auto flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openPriceModeDialog}
+                disabled={selectedProductIds.size === 0}
+              >
+                <DollarSign className="ml-1 h-4 w-4" />
+                حالت‌های قیمت
+                <span className="ms-1 text-xs text-muted-foreground">
+                  ({bulkPriceModeKeys === null ? "همه" : formatNumber(bulkPriceModeKeys.size)})
+                </span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkCopySalesText}
+                disabled={selectedProductIds.size === 0}
+              >
+                <Copy className="ml-1 h-4 w-4" />
+                کپی گروهی
+              </Button>
+              {selectedProductIds.size > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedProductIds(new Set())}>
+                  <X className="ml-1 h-4 w-4" />
+                  پاک کردن انتخاب
+                </Button>
+              )}
+            </div>
+          </div>
+
           <RecentPurchaseGroup productIds={products.map((p) => p.id)}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {products.map((p) => {
@@ -857,6 +963,8 @@ function SalesSearchPage() {
                   <ProductCard
                     key={p.id}
                     product={p}
+                    isSelected={selectedProductIds.has(p.id)}
+                    onToggleSelected={() => toggleProductSelection(p.id)}
                     primarySalePriceTypeId={salePriceTypeId}
                     searchSessionId={searchSessionId}
                     isPrivileged={isPrivileged}
@@ -942,6 +1050,79 @@ function SalesSearchPage() {
         </div>
       )}
 
+      {/* 146 — price-mode picker for the bulk copy text */}
+      <Dialog open={priceModeDialogOpen} onOpenChange={setPriceModeDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>کدام حالت‌های قیمت در متن بیاید؟</DialogTitle>
+            <DialogDescription>
+              برای هر محصول انتخاب‌شده، فقط قیمت حالت‌های تیک‌خورده در متن کپی گروهی نوشته می‌شود.
+            </DialogDescription>
+          </DialogHeader>
+
+          {availablePriceModes.length === 0 ? (
+            <div className="py-4 text-sm text-muted-foreground">
+              برای نتایج فعلی هیچ حالت قیمتی ثبت نشده است.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <Checkbox
+                  checked={priceModeDraft === null}
+                  onCheckedChange={(v) => setPriceModeDraft(v ? null : new Set())}
+                />
+                همه حالت‌ها
+              </label>
+              <ScrollArea className="max-h-64 pe-2">
+                <div className="space-y-2">
+                  {availablePriceModes.map((m) => (
+                    <label key={m.key} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={priceModeDraft === null || priceModeDraft.has(m.key)}
+                        onCheckedChange={() =>
+                          setPriceModeDraft((prev) => {
+                            // Leaving "all" mode materialises the full set first,
+                            // so unticking one item keeps the other modes.
+                            const base =
+                              prev === null
+                                ? new Set(availablePriceModes.map((x) => x.key))
+                                : new Set(prev);
+                            if (base.has(m.key)) base.delete(m.key);
+                            else base.add(m.key);
+                            return base;
+                          })
+                        }
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" onClick={() => setPriceModeDialogOpen(false)}>
+              انصراف
+            </Button>
+            <Button
+              onClick={() => {
+                const next =
+                  priceModeDraft !== null &&
+                  priceModeDraft.size === availablePriceModes.length &&
+                  availablePriceModes.length > 0
+                    ? null
+                    : priceModeDraft;
+                setBulkPriceModeKeys(next);
+                setPriceModeDialogOpen(false);
+              }}
+            >
+              تأیید
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ProductPriceHistoryDrawer
         open={!!chartCtx}
         onOpenChange={(v) => {
@@ -958,6 +1139,9 @@ function SalesSearchPage() {
 
 interface ProductCardProps {
   product: ProductRow;
+  /** 146 — bulk sales-text copy selection */
+  isSelected: boolean;
+  onToggleSelected: () => void;
   primarySalePriceTypeId: string;
   searchSessionId: string | null;
   isPrivileged: boolean;
@@ -971,6 +1155,8 @@ interface ProductCardProps {
 
 function ProductCard({
   product,
+  isSelected,
+  onToggleSelected,
   primarySalePriceTypeId,
   searchSessionId,
   canRecalcPrice,
@@ -1069,19 +1255,7 @@ function ProductCard({
         : "قیمت فروش هنوز محاسبه نشده است"
     : null;
 
-  const specChips: Array<{ label: string; value: string }> = [];
-  if (product.primary_spec) specChips.push({ label: "ظرفیت", value: product.primary_spec });
-  else if (product.capacity) specChips.push({ label: "ظرفیت", value: product.capacity });
-  if (product.model) specChips.push({ label: "مدل", value: product.model });
-  if (product.color) specChips.push({ label: "رنگ", value: product.color });
-  if (product.brand?.name) specChips.push({ label: "برند", value: product.brand.name });
-  if (product.category?.name) specChips.push({ label: "دسته", value: product.category.name });
-  if (product.product_type === "iranian" || product.product_type === "foreign") {
-    specChips.push({
-      label: "نوع",
-      value: product.product_type === "foreign" ? "خارجی" : "ایرانی",
-    });
-  }
+  const specChips = buildProductSpecChips(product);
 
   const handleCopySalesText = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1147,6 +1321,17 @@ function ProductCard({
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-3">
+            <span
+              className="pt-1"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={onToggleSelected}
+                aria-label="انتخاب برای کپی گروهی"
+              />
+            </span>
             {thumbnailUrl ? (
               <img
                 src={thumbnailUrl}

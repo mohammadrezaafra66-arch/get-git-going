@@ -48,7 +48,21 @@
 - خارج از دامنه (طبق پلن): پرداخت جزئی خرید اضافه نشد؛ مانده تأمین‌کننده همچنان همه‌یا‌هیچ است.
 
 ## Phase 4 — UX کوچک: کپی گروهی فروش + آموزش درون‌صفحه
-- status: TODO
+- status: DONE
+- migrations: — (فقط فرانت)
+- commit: (this commit)
+- summary: در `/sales/search` انتخاب چندتایی محصول + دیالوگ انتخاب حالت‌های قیمت + «کپی گروهی» اضافه شد؛ صفحهٔ راهنمای متریک دستی ساخته و از فرم و منو قابل دسترسی شد.
+- tests: `npm run build` سبز؛ route جدید در `routeTree.gen.ts` کامپایل شد (`AppGamificationAdminManualMetricsGuideRouteImport`)؛ `eslint` روی همهٔ فایل‌های تغییرکرده بدون خطا (فقط هشدارهای از پیش موجود در `_app.sales.search.tsx`)؛ `tsc --noEmit` = ۷۰ خطا، دقیقاً برابر baseline.
+- ۴.الف — کپی گروهی فروش (۱۴۶):
+  - `src/lib/sales/bulk-sales-text.ts` جدید: `buildProductSpecChips`, `priceModeKey`, `priceModeLabel`, `collectPriceModes`, `buildBulkSalesText`.
+  - `_app.sales.search.tsx`: state `selectedProductIds: Set<string>`، چک‌باکس روی هر کارت، نوار ابزار «انتخاب همه / N انتخاب شده / حالت‌های قیمت / کپی گروهی / پاک کردن انتخاب».
+  - با انتخاب اولین محصول، دیالوگ «کدام حالت‌های قیمت در متن بیاید؟» باز می‌شود؛ گزینهٔ «همه حالت‌ها» + چک‌باکس هر حالت (نوع قیمت × نوع تسویه). انتخابِ همهٔ موارد به‌صورت داخلی به «همه» نرمال می‌شود.
+  - قالب متن: نام نمایشی، برند، دسته، نوع کالا، مشخصات کوتاه با ` • `، وضعیت، سپس «قیمت‌ها:» فقط برای حالت‌های انتخاب‌شده؛ بین محصولات خط جداکننده.
+  - تابع تک‌محصولی `handleCopySalesText` دست‌نخورده ماند (فقط `specChips` به helper مشترک منتقل شد تا منطق دوتکه نشود).
+- ۴.ب — آموزش درون‌صفحهٔ متریک دستی (۱۴۳):
+  - `src/components/gamification/ManualMetricsGuide.tsx` (الگوی `CustomerCreditGuide`): ۶ بخش کارت‌محور — این فرم چیست، بازهٔ ویرایش ۵ روزه، سوییچ خودکار/دستی فروش، وزن متریک‌ها، مسیر گام‌به‌گام، خطاهای رایج + هشدار «چرا امتیاز تغییر نکرد؟».
+  - route `_app.gamification_.admin_.manual-metrics_.guide.tsx` با همان گارد فرم (`requireAnyRole([admin,manager,accountant])`).
+  - دکمهٔ «راهنما» در بالای `manual-metrics.tsx` + ثبت در `registry.ts` (زیرگروه `adm-gamification` + ردیف `ROUTE_ROLE_OVERRIDES`).
 
 ## Phase 5 — اشخاص: پل customer↔person + ایمپورت اشخاص
 - status: TODO

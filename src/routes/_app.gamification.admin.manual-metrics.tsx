@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, Save } from "lucide-react";
+import { AlertTriangle, BookOpen, Loader2, Save } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -265,9 +265,7 @@ function ManualMetricsPage() {
           className="text-left font-mono"
           disabled={locked || save.isPending || forceDisabled}
           value={money && form[key] ? Number(num(form[key])).toLocaleString("en-US") : form[key]}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d.]/g, "") }))
-          }
+          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value.replace(/[^\d.]/g, "") }))}
         />
         <span className="whitespace-nowrap text-xs text-muted-foreground">{unit}</span>
       </div>
@@ -279,6 +277,15 @@ function ManualMetricsPage() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link to="/gamification/admin/manual-metrics/guide">
+            <BookOpen className="ml-2 h-4 w-4" />
+            راهنما
+          </Link>
+        </Button>
+      </div>
+
       <PageHeader
         title="ثبت دستی عملکرد روزانه"
         description="ثبت فروش، سود، تماس‌ها و دقایق مکالمهٔ هر کارشناس برای یک روز مشخص"
@@ -315,8 +322,8 @@ function ManualMetricsPage() {
                     : "مبلغ فروش هر کارشناس از مقادیر واردشده در این صفحه محاسبه می‌شود. برای جبرانِ روزهای گذشته از همین فرم استفاده کنید."}
                 </p>
                 <p className="text-[10px] leading-5 text-muted-foreground">
-                  سود همیشه دستی است (پیش‌فاکتور بهای تمام‌شده را ذخیره نمی‌کند). تماس‌ها و
-                  دقایق مکالمه در هر دو حالت دستی هستند.
+                  سود همیشه دستی است (پیش‌فاکتور بهای تمام‌شده را ذخیره نمی‌کند). تماس‌ها و دقایق
+                  مکالمه در هر دو حالت دستی هستند.
                 </p>
               </div>
               <div className="flex flex-col items-center gap-1">
