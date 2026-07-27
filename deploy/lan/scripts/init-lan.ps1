@@ -25,7 +25,13 @@ $kongFile    = Join-Path $kongDir "kong.yml"
 $kongExample = Join-Path $repoRoot "deploy\supabase\kong.yml.example"
 
 # --- 1. Get IP ---
-$defaultIp = "192.168.170.10"
+# Default is the DEV machine (192.168.170.8), not the production laptop.
+# It used to default to 192.168.170.10 (production). On a fresh setup - when
+# .env.lan does not exist yet - pressing Enter would have pointed this
+# environment at the production Supabase/database. See the production guard
+# below, which now also refuses that IP without an explicit confirmation.
+$productionIp = "192.168.170.10"
+$defaultIp = "192.168.170.8"
 if (Test-Path $envFile) {
     $existingIpLine = Select-String -Path $envFile -Pattern '^\s*LAN_HOST_IP=(.*)$' | Select-Object -First 1
     if ($existingIpLine) {
@@ -40,6 +46,24 @@ if ($inputIp -notmatch '^\d{1,3}(\.\d{1,3}){3}$') {
     Write-Host ("Invalid IP: {0}" -f $inputIp) -ForegroundColor Red
     exit 1
 }
+
+# --- 1b. Production guard ---
+# Pointing a dev/test environment at the production laptop makes the app read
+# and WRITE the real users' database. Never allow that on a bare Enter.
+if ($inputIp -eq $productionIp) {
+    Write-Host ""
+    Write-Host ("WARNING: {0} is the PRODUCTION laptop." -f $productionIp) -ForegroundColor Red
+    Write-Host "Continuing will point this environment at the live Supabase/database," -ForegroundColor Red
+    Write-Host "so anything you do here can read and WRITE real user data." -ForegroundColor Red
+    Write-Host "If you meant the development machine, abort and enter 192.168.170.8 instead." -ForegroundColor Yellow
+    $confirm = Read-Host "Type EXACTLY 'I-KNOW-THIS-IS-PRODUCTION' to continue, or anything else to abort"
+    if ($confirm -ne "I-KNOW-THIS-IS-PRODUCTION") {
+        Write-Host "Aborted. Nothing was changed." -ForegroundColor Green
+        exit 1
+    }
+    Write-Host "Confirmed. Proceeding with the PRODUCTION IP." -ForegroundColor Yellow
+}
+
 $lanIp = $inputIp
 
 # --- 2. Create .env.lan from example ---
