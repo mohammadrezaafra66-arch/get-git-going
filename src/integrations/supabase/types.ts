@@ -8316,6 +8316,7 @@ export type Database = {
           deposit_amount: number | null
           list_price_snapshot: number | null
           reject_reason: string | null
+          visitor_id: string | null
           canceled_at: string | null
           canceled_by: string | null
           created_at: string
@@ -8347,6 +8348,7 @@ export type Database = {
           deposit_amount?: number | null
           list_price_snapshot?: number | null
           reject_reason?: string | null
+          visitor_id?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string
@@ -8378,6 +8380,7 @@ export type Database = {
           deposit_amount?: number | null
           list_price_snapshot?: number | null
           reject_reason?: string | null
+          visitor_id?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string
@@ -9081,6 +9084,45 @@ export type Database = {
           quantity?: number
           updated_at?: string
           warehouse_id?: string
+        }
+        Relationships: []
+      }
+      visitors: {
+        Row: {
+          code: string | null
+          created_at: string
+          created_by: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }

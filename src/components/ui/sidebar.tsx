@@ -25,6 +25,12 @@ const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
+// AfraKala: drag-resize (item 209) ------------------------------------------
+const SIDEBAR_WIDTH_STORAGE_KEY = "sidebar_width";
+const SIDEBAR_MIN_WIDTH_PX = 200;
+const SIDEBAR_MAX_WIDTH_PX = 384; // 24rem
+// ---------------------------------------------------------------------------
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
@@ -33,6 +39,11 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  // AfraKala: drag-resize (item 209)
+  width: string | null;
+  setWidth: (w: string | null) => void;
+  isResizing: boolean;
+  setIsResizing: (v: boolean) => void;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -88,6 +99,32 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open],
     );
 
+    // AfraKala: drag-resize (item 209). Width lives in state so the handle can
+    // move it, and is restored in an effect rather than during render --
+    // reading localStorage while rendering would not match what the server
+    // produced and would trip hydration.
+    const [width, _setWidth] = React.useState<string | null>(null);
+    const [isResizing, setIsResizing] = React.useState(false);
+
+    React.useEffect(() => {
+      try {
+        const saved = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+        if (saved) _setWidth(saved);
+      } catch {
+        /* storage unavailable (private mode) — keep the default width */
+      }
+    }, []);
+
+    const setWidth = React.useCallback((w: string | null) => {
+      _setWidth(w);
+      try {
+        if (w) window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, w);
+        else window.localStorage.removeItem(SIDEBAR_WIDTH_STORAGE_KEY);
+      } catch {
+        /* storage unavailable — the width still applies for this session */
+      }
+    }, []);
+
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
@@ -119,8 +156,23 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        width,
+        setWidth,
+        isResizing,
+        setIsResizing,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+      [
+        state,
+        open,
+        setOpen,
+        isMobile,
+        openMobile,
+        setOpenMobile,
+        toggleSidebar,
+        width,
+        setWidth,
+        isResizing,
+      ],
     );
 
     return (
@@ -132,6 +184,9 @@ const SidebarProvider = React.forwardRef<
                 "--sidebar-width": SIDEBAR_WIDTH,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
+                // AfraKala: drag-resize (item 209) — a width the user dragged
+                // wins over both the default and any provider-level override.
+                ...(width ? { "--sidebar-width": width } : {}),
               } as React.CSSProperties
             }
             className={cn(
@@ -169,7 +224,7 @@ const Sidebar = React.forwardRef<
     },
     ref,
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+    const { isMobile, state, openMobile, setOpenMobile, isResizing } = useSidebar();
 
     if (collapsible === "none") {
       return (
@@ -222,7 +277,9 @@ const Sidebar = React.forwardRef<
         {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
-            "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+            "relative w-(--sidebar-width) bg-transparent duration-200 ease-linear",
+            // AfraKala: drag-resize (item 209) — an animated width lags the pointer.
+            isResizing ? "transition-none" : "transition-[width]",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -232,7 +289,9 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
+            "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) duration-200 ease-linear md:flex",
+            // AfraKala: drag-resize (item 209)
+            isResizing ? "transition-none" : "transition-[left,right,width]",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -310,6 +369,80 @@ const SidebarRail = React.forwardRef<HTMLButtonElement, React.ComponentProps<"bu
   },
 );
 SidebarRail.displayName = "SidebarRail";
+
+/**
+ * AfraKala: drag-resize (item 209).
+ *
+ * SidebarRail looks like a resizer -- it even sets a col-resize cursor -- but
+ * it is only a toggle button, and it was never mounted. This is the real
+ * thing: a thin strip on the sidebar's inner edge that drags the width.
+ *
+ * The app runs dir="rtl" with the sidebar on the right, so dragging left must
+ * make it wider. That is the opposite sign from an LTR layout, hence reading
+ * the side off the DOM rather than assuming.
+ */
+const SidebarResizeHandle = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
+  ({ className, ...props }, ref) => {
+    const { setWidth, isMobile, setIsResizing } = useSidebar();
+
+    // The mobile sidebar is a Sheet with its own width; resizing is meaningless.
+    if (isMobile) return null;
+
+    const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const sidebar = el.closest("[data-side]") as HTMLElement | null;
+      const onRight = sidebar?.dataset.side !== "left";
+      const startX = e.clientX;
+      const startWidth =
+        sidebar?.getBoundingClientRect().width ??
+        parseFloat(getComputedStyle(document.documentElement).fontSize) * 16;
+
+      setIsResizing(true);
+      el.setPointerCapture(e.pointerId);
+
+      const onMove = (ev: PointerEvent) => {
+        const delta = onRight ? startX - ev.clientX : ev.clientX - startX;
+        const next = Math.min(
+          SIDEBAR_MAX_WIDTH_PX,
+          Math.max(SIDEBAR_MIN_WIDTH_PX, startWidth + delta),
+        );
+        setWidth(`${Math.round(next)}px`);
+      };
+      const onUp = () => {
+        setIsResizing(false);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
+
+    return (
+      <div
+        ref={ref}
+        data-sidebar="resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="تغییر عرض نوار کناری"
+        title="برای تغییر عرض بکشید — دوبار کلیک برای بازگشت به حالت پیش‌فرض"
+        onPointerDown={onPointerDown}
+        onDoubleClick={() => setWidth(null)}
+        className={cn(
+          "absolute inset-y-0 z-30 hidden w-1.5 cursor-col-resize touch-none select-none",
+          "transition-colors hover:bg-sidebar-border/70 active:bg-sidebar-border md:block",
+          // Sits on the edge that faces the content, either way round.
+          "group-data-[side=right]:left-0 group-data-[side=left]:right-0",
+          // Nothing to drag when the sidebar is collapsed to icons.
+          "group-data-[collapsible=icon]:hidden",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
+SidebarResizeHandle.displayName = "SidebarResizeHandle";
 
 const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main">>(
   ({ className, ...props }, ref) => {
@@ -738,6 +871,7 @@ export {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarResizeHandle,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,

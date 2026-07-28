@@ -64,6 +64,8 @@ interface QuoteDetail {
   customer_note: string | null;
   salesperson_id: string | null;
   salesperson_name: string | null;
+  visitor_id: string | null;
+  visitor_name: string | null;
   status: SalesQuoteStatus;
   subtotal_amount: number;
   discount_amount: number;
@@ -104,7 +106,7 @@ function QuoteDetailPage() {
       const { data, error } = await supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
         )
         .eq("id", quoteId)
         .maybeSingle();
@@ -119,7 +121,22 @@ function QuoteDetailPage() {
           .maybeSingle();
         salesperson_name = (sr.data?.full_name as string | null) ?? null;
       }
-      return { ...(data as Omit<QuoteDetail, "salesperson_name">), salesperson_name };
+      // Item 203 — resolve the visitor's name for display and the PDF.
+      let visitor_name: string | null = null;
+      const visitorId = (data as { visitor_id?: string | null }).visitor_id ?? null;
+      if (visitorId) {
+        const vr = await supabase
+          .from("visitors")
+          .select("full_name")
+          .eq("id", visitorId)
+          .maybeSingle();
+        visitor_name = ((vr.data as { full_name?: string } | null)?.full_name as string) ?? null;
+      }
+      return {
+        ...(data as Omit<QuoteDetail, "salesperson_name" | "visitor_name">),
+        salesperson_name,
+        visitor_name,
+      };
     },
   });
 
@@ -200,6 +217,7 @@ function QuoteDetailPage() {
               <Field label="نام مشتری" value={quote.customer_name} />
               <Field label="شماره تماس" value={<span dir="ltr">{quote.customer_phone}</span>} />
               <Field label="فروشنده" value={quote.salesperson_name ?? "—"} />
+              {quote.visitor_name && <Field label="ویزیتور" value={quote.visitor_name} />}
               <Field label="تاریخ ایجاد" value={formatDateTimeFa(quote.created_at)} />
               <Field
                 label="اعتبار تا"
@@ -488,6 +506,7 @@ function QuoteActionButtons({
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone,
         salesperson_name: quote.salesperson_name,
+        visitor_name: quote.visitor_name,
         created_at: quote.created_at,
         expires_at: quote.expires_at,
         status_label: STATUS_LABELS_FA[quote.status] ?? quote.status,

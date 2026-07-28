@@ -27,6 +27,7 @@
   TrendingUp,
   Trophy,
   Wallet,
+  UserRound,
   Coins,
   Plus,
   Tag,
@@ -736,6 +737,16 @@ const NAVIGATION_SEEDS = [
     subgroup: "adm-settings",
     adminOnly: true,
   },
+  // Item 203 — the visitor registry feeds the picker on the quote form.
+  {
+    to: "/admin/visitors",
+    label: "ویزیتورها",
+    icon: UserRound,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
   {
     to: "/admin/waybill-fields",
     label: "فیلدهای بیجک",
@@ -1058,6 +1069,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/admin/settings",
     "/admin/marketing-channels",
     "/admin/payment-terms",
+    "/admin/visitors",
     "/admin/waybill-fields",
     "/admin/receipt-fields",
     "/admin/recent-purchase-settings",

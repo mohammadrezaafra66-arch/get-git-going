@@ -98,6 +98,9 @@ function NewQuotePage() {
   // not cover the quote.
   const [depositAmount, setDepositAmount] = useState<number | null>(null);
   const [commitmentConfirmed, setCommitmentConfirmed] = useState(false);
+  // Item 203 — the visitor credited with the deal, separate from the
+  // salesperson issuing it. "" means none.
+  const [visitorId, setVisitorId] = useState<string>("");
   // Item 152 — the refusal dialog: the reason the DB/validation gave, plus a
   // one-line note the salesperson may add before it is logged.
   const [rejection, setRejection] = useState<{ reason: string; note: string } | null>(null);
@@ -116,6 +119,27 @@ function NewQuotePage() {
         .order("sort_order");
       if (error) throw error;
       return data ?? [];
+    },
+    staleTime: 10 * 60_000,
+  });
+
+  // Item 203 — active visitors for the picker. Optional: quotes issued before
+  // visitors existed have none, and a walk-in may genuinely have none.
+  const { data: visitors = [] } = useQuery({
+    queryKey: ["visitors-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visitors")
+        .select("id, full_name, code")
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("full_name");
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        full_name: string;
+        code: string | null;
+      }>;
     },
     staleTime: 10 * 60_000,
   });
@@ -271,6 +295,7 @@ function NewQuotePage() {
         p_below_list_ack: belowListAck,
         p_deposit_amount: depositAmount,
         p_commitment_confirmed: commitmentConfirmed,
+        p_visitor_id: visitorId || null,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
@@ -465,6 +490,30 @@ function NewQuotePage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Item 203 — visitor. Optional; hidden until at least one exists
+                so the form does not grow an empty control for nothing. */}
+            {visitors.length > 0 && (
+              <div className="space-y-1.5 md:col-span-1">
+                <Label htmlFor="visitor">ویزیتور</Label>
+                <Select
+                  value={visitorId || "__none"}
+                  onValueChange={(v) => setVisitorId(v === "__none" ? "" : v)}
+                >
+                  <SelectTrigger id="visitor">
+                    <SelectValue placeholder="انتخاب ویزیتور (اختیاری)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">— بدون ویزیتور —</SelectItem>
+                    {visitors.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.full_name}
+                        {v.code ? ` (${v.code})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {/* Item 178 — source warehouse. Hidden until warehouses exist. */}
             <div className="space-y-1.5 md:col-span-1">
               <WarehouseSelect

@@ -2,7 +2,13 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarResizeHandle,
+} from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   PRIMARY_MODULES,
@@ -295,6 +301,8 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={120}>
       <Sidebar side="right" collapsible="icon" className="border-l-0">
+        {/* Item 209 — drag the inner edge to resize; double-click resets. */}
+        <SidebarResizeHandle />
         <SidebarHeader className="border-b border-sidebar-border p-0">
           <div className="flex items-center gap-2 px-3 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">

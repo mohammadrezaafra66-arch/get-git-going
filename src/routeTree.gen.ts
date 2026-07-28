@@ -130,6 +130,7 @@ import { Route as AppBotApiKeysDocsRouteImport } from './routes/_app.bot-api-key
 import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.workflow-stages'
 import { Route as AppAdminWorkflowSettingsRouteImport } from './routes/_app.admin.workflow-settings'
 import { Route as AppAdminWaybillFieldsRouteImport } from './routes/_app.admin.waybill-fields'
+import { Route as AppAdminVisitorsRouteImport } from './routes/_app.admin.visitors'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminSalesRemindersRouteImport } from './routes/_app.admin.sales-reminders'
@@ -833,6 +834,11 @@ const AppAdminWaybillFieldsRoute = AppAdminWaybillFieldsRouteImport.update({
   path: '/admin/waybill-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminVisitorsRoute = AppAdminVisitorsRouteImport.update({
+  id: '/admin/visitors',
+  path: '/admin/visitors',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminValidationRulesRoute = AppAdminValidationRulesRouteImport.update({
   id: '/admin/validation-rules',
   path: '/admin/validation-rules',
@@ -1355,6 +1361,7 @@ export interface FileRoutesByFullPath {
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
+  '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
@@ -1554,6 +1561,7 @@ export interface FileRoutesByTo {
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
+  '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
@@ -1756,6 +1764,7 @@ export interface FileRoutesById {
   '/_app/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
+  '/_app/admin/visitors': typeof AppAdminVisitorsRoute
   '/_app/admin/waybill-fields': typeof AppAdminWaybillFieldsRoute
   '/_app/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
   '/_app/admin/workflow-stages': typeof AppAdminWorkflowStagesRoute
@@ -1959,6 +1968,7 @@ export interface FileRouteTypes {
     | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/validation-rules'
+    | '/admin/visitors'
     | '/admin/waybill-fields'
     | '/admin/workflow-settings'
     | '/admin/workflow-stages'
@@ -2158,6 +2168,7 @@ export interface FileRouteTypes {
     | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/validation-rules'
+    | '/admin/visitors'
     | '/admin/waybill-fields'
     | '/admin/workflow-settings'
     | '/admin/workflow-stages'
@@ -2359,6 +2370,7 @@ export interface FileRouteTypes {
     | '/_app/admin/sales-reminders'
     | '/_app/admin/settings'
     | '/_app/admin/validation-rules'
+    | '/_app/admin/visitors'
     | '/_app/admin/waybill-fields'
     | '/_app/admin/workflow-settings'
     | '/_app/admin/workflow-stages'
@@ -3363,6 +3375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminWaybillFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/visitors': {
+      id: '/_app/admin/visitors'
+      path: '/admin/visitors'
+      fullPath: '/admin/visitors'
+      preLoaderRoute: typeof AppAdminVisitorsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/validation-rules': {
       id: '/_app/admin/validation-rules'
       path: '/admin/validation-rules'
@@ -4178,6 +4197,7 @@ interface AppRouteChildren {
   AppAdminSalesRemindersRoute: typeof AppAdminSalesRemindersRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
+  AppAdminVisitorsRoute: typeof AppAdminVisitorsRoute
   AppAdminWaybillFieldsRoute: typeof AppAdminWaybillFieldsRoute
   AppAdminWorkflowSettingsRoute: typeof AppAdminWorkflowSettingsRoute
   AppAdminWorkflowStagesRoute: typeof AppAdminWorkflowStagesRoute
@@ -4317,6 +4337,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminSalesRemindersRoute: AppAdminSalesRemindersRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
+  AppAdminVisitorsRoute: AppAdminVisitorsRoute,
   AppAdminWaybillFieldsRoute: AppAdminWaybillFieldsRoute,
   AppAdminWorkflowSettingsRoute: AppAdminWorkflowSettingsRoute,
   AppAdminWorkflowStagesRoute: AppAdminWorkflowStagesRoute,
