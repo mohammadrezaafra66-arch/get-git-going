@@ -103,7 +103,12 @@ export const updateQuoteStatus = createServerFn({ method: "POST" })
       const { data: rows, error } = await supabase.rpc("update_sales_quote_status", {
         p_quote_id: data.id,
         p_next: data.next,
-        p_reason: data.next === "canceled" ? (data.reason ?? undefined) : undefined,
+        // Item 195 — a rejection carries a reason too, so it can no longer be
+        // dropped here. The RPC decides which column it lands in.
+        p_reason:
+          data.next === "canceled" || data.next === "rejected"
+            ? (data.reason ?? undefined)
+            : undefined,
       });
       if (error) throw mapPgError(error.code, error.message);
       const row = Array.isArray(rows) ? rows[0] : rows;

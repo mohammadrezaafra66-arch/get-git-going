@@ -14,6 +14,7 @@ import {
   UserCheck,
   UserPlus,
   XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
@@ -51,6 +52,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AdvancePaymentSection } from "@/shared/components/AdvancePaymentSection";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -86,6 +89,15 @@ function NewQuotePage() {
   // Item 178 — warehouse the goods will be deducted from. null = default warehouse.
   const [warehouseId, setWarehouseId] = useState<string | null>(null);
   const [stockConfirmed, setStockConfirmed] = useState(false);
+  // Items 194/196 — going under the settlement floor is allowed only as a
+  // deliberate, recorded act. The checkbox opens a warning dialog first; only
+  // confirming it there arms the override and unlocks the price field.
+  const [belowListAck, setBelowListAck] = useState(false);
+  const [belowListDialogOpen, setBelowListDialogOpen] = useState(false);
+  // Items 197/198 — the deposit route, used when the customer's credit will
+  // not cover the quote.
+  const [depositAmount, setDepositAmount] = useState<number | null>(null);
+  const [commitmentConfirmed, setCommitmentConfirmed] = useState(false);
   // Item 152 — the refusal dialog: the reason the DB/validation gave, plus a
   // one-line note the salesperson may add before it is logged.
   const [rejection, setRejection] = useState<{ reason: string; note: string } | null>(null);
@@ -110,6 +122,7 @@ function NewQuotePage() {
 
   const totals = useMemo(() => computeTotals(items), [items]);
 
+
   // MONEY-SAFETY: keep the customer link only while the name and phone still
   // match the picked customer. Compare on normalized values (trim name, strip
   // non-digits from phone) so harmless reformatting does not drop a correct
@@ -122,6 +135,38 @@ function NewQuotePage() {
       selectedCustomer.phone.replace(/\D/g, "") === customerPhone.replace(/\D/g, "");
     return nameMatches && phoneMatches ? selectedCustomer.id : null;
   }, [selectedCustomer, customerName, customerPhone]);
+
+  // Items 197/198 — the customer's live credit. Guests have no credit file, so
+  // there is nothing to fetch and nothing to enforce.
+  const { data: creditInfo } = useQuery({
+    enabled: !!linkedCustomerId,
+    queryKey: ["quote-credit-info", linkedCustomerId],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_customer_dynamic_credit", {
+        p_customer_id: linkedCustomerId as string,
+      } as never);
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        available_credit?: number;
+        has_allocation?: boolean;
+      } | null;
+      return {
+        availableCredit: Number(row?.available_credit ?? 0),
+        hasAllocation: Boolean(row?.has_allocation),
+      };
+    },
+  });
+
+  // The deposit route only opens when a limit actually exists and falls short.
+  // A customer with no allocation has no configured limit at all — treating
+  // that as a limit of zero would demand a deposit on every sale.
+  const creditShortfall = Boolean(
+    linkedCustomerId &&
+      creditInfo?.hasAllocation &&
+      creditInfo.availableCredit < totals.final_amount,
+  );
+  const minDeposit = Math.ceil(totals.final_amount * 0.3);
 
   const debouncedCustomerSearch = useDebounce(customerSearch, 350);
   const customerSearchTerm = debouncedCustomerSearch.trim();
@@ -223,6 +268,9 @@ function NewQuotePage() {
         p_settlement_type_id: settlementTypeId,
         // Null unless the fields still match the picked customer (money-safety).
         p_customer_id: linkedCustomerId,
+        p_below_list_ack: belowListAck,
+        p_deposit_amount: depositAmount,
+        p_commitment_confirmed: commitmentConfirmed,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
@@ -503,7 +551,12 @@ function NewQuotePage() {
                           min={0}
                           className="w-32"
                           value={it.unit_price}
-                          disabled={it.source === "product_price" && !canEditPriceFreely}
+                          // Items 194/196 — sales still cannot retype a product
+                          // price at will, but acknowledging personal
+                          // responsibility unlocks it for this quote.
+                          disabled={
+                            it.source === "product_price" && !canEditPriceFreely && !belowListAck
+                          }
                           onChange={(e) =>
                             updateItem(it.key, { unit_price: Number(e.target.value) || 0 })
                           }
@@ -541,6 +594,50 @@ function NewQuotePage() {
       {/* totals + save */}
       <Card>
         <CardContent className="p-4 space-y-3">
+          {/* Items 194/196 — the personal-responsibility override. */}
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="below_list_ack"
+                checked={belowListAck}
+                onCheckedChange={(v) => {
+                  // Ticking must go through the warning; unticking is free.
+                  if (v === true) setBelowListDialogOpen(true);
+                  else setBelowListAck(false);
+                }}
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="below_list_ack"
+                className="cursor-pointer text-xs leading-relaxed font-normal"
+              >
+                فروش زیر قیمت لیست — «با مسئولیت خودم»
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  قیمت بالاتر یا مساوی لیست آزاد است و این گزینه را لازم ندارد. فقط برای ثبت زیر
+                  کف مجاز آن را بزنید.
+                </span>
+              </Label>
+            </div>
+          </div>
+
+          {/* Items 197/198 — shown only when a real limit falls short. */}
+          {creditShortfall && (
+            <AdvancePaymentSection
+              totalAmount={totals.final_amount}
+              depositAmount={depositAmount}
+              onDepositChange={setDepositAmount}
+              commitmentConfirmed={commitmentConfirmed}
+              onCommitmentChange={setCommitmentConfirmed}
+            />
+          )}
+          {creditShortfall && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs leading-6">
+              اعتبار قابل استفادهٔ این مشتری ({formatNumber(creditInfo?.availableCredit ?? 0)}{" "}
+              تومان) کمتر از مبلغ این پیش‌فاکتور است. برای صدور، بیعانه‌ای دست‌کم{" "}
+              {formatNumber(minDeposit)} تومان (۳۰٪) ثبت کنید و تعهد را تأیید کنید.
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <div className="flex items-center justify-between gap-6">
@@ -587,6 +684,42 @@ function NewQuotePage() {
           }}
         />
       )}
+
+      {/* Items 194/196 — the warning that must be read before the override is
+          armed. Wording is fixed by the requirement. */}
+      <Dialog open={belowListDialogOpen} onOpenChange={setBelowListDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              فروش زیر قیمت لیست
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm leading-7">
+            از این گزینه فقط در صورتی که ۱۰۰٪ از مدیر مربوط تأییدیه گرفته‌اید استفاده نمایید؛ در
+            غیر این صورت عواقب این تصمیم به عهدهٔ شخص صادرکنندهٔ پیش‌فاکتور است
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setBelowListAck(false);
+                setBelowListDialogOpen(false);
+              }}
+            >
+              انصراف
+            </Button>
+            <Button
+              onClick={() => {
+                setBelowListAck(true);
+                setBelowListDialogOpen(false);
+              }}
+            >
+              می‌پذیرم و ادامه می‌دهم
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Item 152 — refusal dialog: shows why the quote was refused and lets the
           salesperson attach a one-line note before it is recorded. */}

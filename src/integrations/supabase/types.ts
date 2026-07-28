@@ -8308,6 +8308,14 @@ export type Database = {
           accounting_sent_at: string | null
           accounting_sent_by: string | null
           cancel_reason: string | null
+          below_list_price_ack: boolean
+          below_list_price_ack_at: string | null
+          below_list_price_ack_by: string | null
+          commitment_confirmed: boolean
+          credit_check_snapshot: Json | null
+          deposit_amount: number | null
+          list_price_snapshot: number | null
+          reject_reason: string | null
           canceled_at: string | null
           canceled_by: string | null
           created_at: string
@@ -8331,6 +8339,14 @@ export type Database = {
           accounting_sent_at?: string | null
           accounting_sent_by?: string | null
           cancel_reason?: string | null
+          below_list_price_ack?: boolean
+          below_list_price_ack_at?: string | null
+          below_list_price_ack_by?: string | null
+          commitment_confirmed?: boolean
+          credit_check_snapshot?: Json | null
+          deposit_amount?: number | null
+          list_price_snapshot?: number | null
+          reject_reason?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string
@@ -8354,6 +8370,14 @@ export type Database = {
           accounting_sent_at?: string | null
           accounting_sent_by?: string | null
           cancel_reason?: string | null
+          below_list_price_ack?: boolean
+          below_list_price_ack_at?: string | null
+          below_list_price_ack_by?: string | null
+          commitment_confirmed?: boolean
+          credit_check_snapshot?: Json | null
+          deposit_amount?: number | null
+          list_price_snapshot?: number | null
+          reject_reason?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string

@@ -70,6 +70,11 @@ interface QuoteDetail {
   final_amount: number;
   expires_at: string | null;
   cancel_reason: string | null;
+  reject_reason: string | null;
+  below_list_price_ack: boolean | null;
+  list_price_snapshot: number | null;
+  deposit_amount: number | null;
+  commitment_confirmed: boolean | null;
   created_at: string;
 }
 
@@ -99,7 +104,7 @@ function QuoteDetailPage() {
       const { data, error } = await supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
         )
         .eq("id", quoteId)
         .maybeSingle();
@@ -211,6 +216,38 @@ function QuoteDetailPage() {
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs">
                 <div className="mb-1 text-destructive">دلیل لغو</div>
                 <div className="whitespace-pre-wrap">{quote.cancel_reason}</div>
+              </div>
+            )}
+            {/* Item 195 */}
+            {quote.status === "rejected" && quote.reject_reason && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs">
+                <div className="mb-1 text-destructive">دلیل رد</div>
+                <div className="whitespace-pre-wrap">{quote.reject_reason}</div>
+              </div>
+            )}
+            {/* Items 194/196 — a quote issued under the floor must say so on
+                its face, with the floor it was measured against. */}
+            {quote.below_list_price_ack && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <div className="mb-1 font-medium text-amber-700 dark:text-amber-400">
+                  زیر قیمت لیست — با مسئولیت صادرکننده
+                </div>
+                <div>
+                  کف مجاز در زمان صدور:{" "}
+                  {quote.list_price_snapshot != null
+                    ? `${formatNumber(quote.list_price_snapshot)} تومان`
+                    : "—"}
+                </div>
+              </div>
+            )}
+            {/* Items 197/198 — the deposit that made issuing possible. */}
+            {quote.deposit_amount != null && quote.deposit_amount > 0 && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                <div className="mb-1 font-medium">بیعانه دریافتی</div>
+                <div>
+                  {formatNumber(quote.deposit_amount)} تومان
+                  {quote.commitment_confirmed ? " — تعهد فروشنده تأیید شده است." : ""}
+                </div>
               </div>
             )}
           </CardContent>
@@ -492,7 +529,10 @@ function QuoteActionButtons({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}
+          onClick={() => {
+            setReason("");
+            setConfirm({ next: "rejected", label: "رد پیش‌فاکتور", needsReason: true });
+          }}
           disabled={mutation.isPending}
         >
           <XCircle className="ml-1 h-3.5 w-3.5" /> رد
@@ -545,11 +585,17 @@ function QuoteActionButtons({
           </AlertDialogHeader>
           {confirm?.needsReason && (
             <div className="space-y-2 py-2">
-              <label className="text-xs text-muted-foreground">دلیل لغو (اختیاری)</label>
+              <label className="text-xs text-muted-foreground">
+                {confirm.next === "rejected" ? "دلیل رد *" : "دلیل لغو *"}
+              </label>
               <Input
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="دلیل لغو"
+                placeholder={
+                  confirm.next === "rejected"
+                    ? "مثلاً: مشتری قیمت را نپذیرفت"
+                    : "دلیل لغو"
+                }
               />
             </div>
           )}
@@ -591,7 +637,12 @@ function QuoteActionButtons({
           <AlertDialogFooter>
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isAccepting && shortages.length > 0}
+              disabled={
+                (isAccepting && shortages.length > 0) ||
+                // Items 195 — both cancelling and rejecting now require a
+                // reason, and the RPC refuses without one.
+                Boolean(confirm?.needsReason && !reason.trim())
+              }
               onClick={() => {
                 if (!confirm) return;
                 mutation.mutate({
