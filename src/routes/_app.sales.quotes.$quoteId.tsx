@@ -30,6 +30,7 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
+import { toPersianAmountWords } from "@/lib/i18n/number-to-words";
 import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import {
   SALES_QUOTE_SOURCE_LABELS,
@@ -231,6 +232,14 @@ function QuoteDetailPage() {
                 {formatNumber(quote.final_amount)}{" "}
                 <span className="text-xs font-normal text-muted-foreground">تومان</span>
               </span>
+            </div>
+            {/* Item 203 — the amount in Persian letters, the way a financial
+                document spells it out to remove any doubt about the figure. */}
+            <div className="rounded-md border bg-muted/30 p-2">
+              <div className="text-[11px] text-muted-foreground">مبلغ به حروف</div>
+              <div className="text-xs leading-6">
+                {toPersianAmountWords(quote.final_amount) || "—"}
+              </div>
             </div>
           </CardContent>
         </Card>

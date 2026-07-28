@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
@@ -14,7 +14,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <PopupCenterProvider>
       <PriceChangePopupListener />
       <OwnerRemindersListener />
-      <SidebarProvider>
+      {/* Item 209 — 16rem truncated most Persian menu labels, which is what
+          made options hard to find. Overridden here rather than in
+          components/ui/sidebar.tsx so the generated shadcn file stays clean;
+          the provider merges this into its own style. */}
+      <SidebarProvider style={{ "--sidebar-width": "20rem" } as CSSProperties}>
         <div dir="rtl" className="flex min-h-screen w-full bg-background">
           <AppSidebar />
           <SidebarInset className="flex min-w-0 flex-1 flex-col">

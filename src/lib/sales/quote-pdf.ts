@@ -1,6 +1,22 @@
 // Client-side PDF generation for sales quotes.
-// Uses pdfmake (self-hosted) + local Vazirmatn TTF fonts under /fonts/vazirmatn/.
-// No external CDN, no server roundtrip, no realtime.
+//
+// History: this module used pdfmake with the local Vazirmatn TTFs. Two things
+// broke it. pdfmake 0.3 dropped the `pdfMake.vfs = {...}` registration this
+// file used, so the font never reached the virtual filesystem; and the failure
+// surfaced inside an un-awaited async `download()`, so the caller's try/catch
+// never saw it and the button silently did nothing. Underneath both sat a
+// third, unfixable problem: pdfmake's text engine implements neither Arabic
+// shaping nor the Unicode BiDi algorithm, so Persian came out as disconnected,
+// reversed letters. src/lib/pdf/sale-list-pdf.ts hit the same wall and moved
+// off pdfmake for exactly this reason.
+//
+// So the document is now built as a self-contained RTL HTML page using the
+// locally-hosted Vazirmatn webfont, rendered in a hidden iframe, snapshotted
+// with html2canvas-pro and sliced into A4 pages with jsPDF. The browser's own
+// text engine does the shaping and BiDi, which is the only implementation that
+// gets Persian right. Self-host friendly: no CDN, no server roundtrip.
+
+import { toPersianAmountWords } from "@/lib/i18n/number-to-words";
 
 export interface QuotePdfItem {
   title: string;
@@ -16,6 +32,8 @@ export interface QuotePdfPayload {
   customer_name: string;
   customer_phone: string;
   salesperson_name?: string | null;
+  /** Item 203 — the visitor credited for the deal, when one is assigned. */
+  visitor_name?: string | null;
   created_at: string; // ISO
   expires_at?: string | null; // ISO
   status_label: string;
@@ -27,39 +45,41 @@ export interface QuotePdfPayload {
 }
 
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+
 function toFaDigits(input: string | number): string {
   return String(input).replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
 }
+
 function fmtNum(n: number): string {
   const safe = Number.isFinite(n) ? n : 0;
   return toFaDigits(Math.round(safe).toLocaleString("en-US"));
 }
-// Money amounts must be LTR-safe English digits with comma grouping.
-// Do not apply Persian digit conversion here — mixing RTL digits with
-// commas and currency labels causes visual reordering in PDF viewers.
-function formatMoneyPdf(n: number): string {
+
+// Money stays in Latin digits with comma grouping. Persian digits mixed with
+// commas and a currency label reorder visually inside an RTL run.
+function formatMoney(n: number): string {
   const safe = Number.isFinite(n) ? n : 0;
   return Math.round(safe).toLocaleString("en-US");
 }
+
 function fmtDate(iso?: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
     return toFaDigits(
       new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-      }).format(d),
+      }).format(new Date(iso)),
     );
   } catch {
     return "—";
   }
 }
+
 function fmtDateTime(iso?: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
     return toFaDigits(
       new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         year: "numeric",
@@ -67,65 +87,164 @@ function fmtDateTime(iso?: string | null): string {
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
-      }).format(d),
+      }).format(new Date(iso)),
     );
   } catch {
     return "—";
   }
 }
 
-let vfsLoaded = false;
-
-async function fetchTtfAsBase64(url: string): Promise<string> {
-  const res = await fetch(url, { cache: "force-cache" });
-  if (!res.ok) throw new Error(`Failed to load font: ${url}`);
-  const buf = new Uint8Array(await res.arrayBuffer());
-  // Avoid huge call stack for ~120KB
-  let bin = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < buf.length; i += chunk) {
-    bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)));
-  }
-  return btoa(bin);
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-async function loadPdfMake() {
-  // Lazy import so the main bundle stays light.
-  const mod = await import("pdfmake/build/pdfmake");
-  // pdfmake's default export shape varies depending on bundler.
-  // Treat as a permissive object — typing for runtime is best-effort here.
-  type PdfMakeRuntime = {
-    vfs?: Record<string, string>;
-    fonts?: Record<
-      string,
-      { normal: string; bold: string; italics?: string; bolditalics?: string }
-    >;
-    createPdf: (def: unknown) => { download: (filename: string) => void };
-  };
-  const pdfMake =
-    (mod as unknown as { default: PdfMakeRuntime }).default ?? (mod as unknown as PdfMakeRuntime);
+function buildQuoteHtml(payload: QuotePdfPayload): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  if (!vfsLoaded) {
-    const [reg, bold] = await Promise.all([
-      fetchTtfAsBase64("/fonts/vazirmatn/Vazirmatn-Regular.ttf"),
-      fetchTtfAsBase64("/fonts/vazirmatn/Vazirmatn-Bold.ttf"),
-    ]);
-    pdfMake.vfs = {
-      ...(pdfMake.vfs ?? {}),
-      "Vazirmatn-Regular.ttf": reg,
-      "Vazirmatn-Bold.ttf": bold,
-    };
-    pdfMake.fonts = {
-      Vazirmatn: {
-        normal: "Vazirmatn-Regular.ttf",
-        bold: "Vazirmatn-Bold.ttf",
-        italics: "Vazirmatn-Regular.ttf",
-        bolditalics: "Vazirmatn-Bold.ttf",
-      },
-    };
-    vfsLoaded = true;
+  const infoRow = (label: string, value: string) =>
+    `<div class="info"><span class="lbl">${escapeHtml(label)}:</span> <span>${escapeHtml(value)}</span></div>`;
+
+  const itemRows = payload.items
+    .map(
+      (it, i) => `<tr>
+      <td class="c">${toFaDigits(i + 1)}</td>
+      <td>${escapeHtml(it.title || "—")}</td>
+      <td class="sku">${escapeHtml(it.sku ?? "—")}</td>
+      <td class="c">${fmtNum(it.quantity)}</td>
+      <td class="m">${formatMoney(it.unit_price)}</td>
+      <td class="m">${formatMoney(it.discount_amount)}</td>
+      <td class="m strong">${formatMoney(it.line_total)}</td>
+    </tr>`,
+    )
+    .join("");
+
+  // Item 203 — the amount in Persian letters. Kept in its own full-width block
+  // rather than inside the totals table: an RTL sentence sitting next to Latin
+  // digits in a narrow cell reorders visually.
+  const amountWords = toPersianAmountWords(payload.final_amount);
+
+  return `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(`پیش‌فاکتور ${payload.quote_number}`)}</title>
+<style>
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("${origin}/fonts/vazirmatn/Vazirmatn-400.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
   }
-  return pdfMake;
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("${origin}/fonts/vazirmatn/Vazirmatn-700.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: "Vazirmatn", Tahoma, Arial, sans-serif;
+    color: #111827; background: #ffffff; direction: rtl;
+    font-size: 13px; line-height: 1.7;
+  }
+  .page { padding: 22px 24px; max-width: 1024px; margin: 0 auto; background: #fff; }
+  h1 { font-size: 21px; margin: 0 0 6px; color: #111827; }
+  .qnum { font-size: 14px; margin-bottom: 10px; }
+  .lbl { font-weight: 700; color: #374151; }
+  hr { border: 0; border-top: 1px solid #d1d5db; margin: 12px 0; }
+  h2 { font-size: 14px; margin: 16px 0 6px; color: #111827; }
+  .info { margin-bottom: 3px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { border: 1px solid #d1d5db; padding: 7px 8px; text-align: right; vertical-align: top; }
+  th { background: #f3f4f6; font-weight: 700; font-size: 12.5px; }
+  td { font-size: 12.5px; }
+  td.c { text-align: center; }
+  td.m { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
+  td.strong { font-weight: 700; }
+  td.sku { font-size: 11.5px; color: #374151; direction: ltr; text-align: left; }
+  .totals { margin-top: 16px; width: 100%; }
+  .totals td { border: 1px solid #d1d5db; padding: 8px 10px; }
+  .totals .tl { text-align: right; color: #374151; }
+  .totals .tv { text-align: left; direction: ltr; font-weight: 700; width: 150px; }
+  .totals .tc { text-align: right; width: 52px; color: #374151; }
+  .grand td { background: #f3f4f6; font-size: 15px; font-weight: 700; }
+  .words { margin-top: 12px; border: 1px solid #d1d5db; background: #f9fafb; padding: 10px 12px; border-radius: 4px; }
+  .words .lbl { display: block; margin-bottom: 2px; font-size: 12px; }
+  .note { margin-top: 14px; }
+  .note-body { border: 1px solid #d1d5db; background: #f9fafb; padding: 9px 11px; white-space: pre-wrap; border-radius: 4px; }
+  .foot { margin-top: 20px; padding-top: 8px; border-top: 1px solid #d1d5db; font-size: 11px; color: #6b7280; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>پیش‌فاکتور فروش</h1>
+  <div class="qnum"><span class="lbl">شماره پیش‌فاکتور:</span> ${escapeHtml(toFaDigits(payload.quote_number))}</div>
+  <hr />
+
+  <h2>اطلاعات مشتری</h2>
+  ${infoRow("نام مشتری", payload.customer_name || "—")}
+  ${infoRow("شماره تماس", toFaDigits(payload.customer_phone || "—"))}
+
+  <h2>اطلاعات سند</h2>
+  ${infoRow("فروشنده", payload.salesperson_name || "—")}
+  ${payload.visitor_name ? infoRow("ویزیتور", payload.visitor_name) : ""}
+  ${infoRow("تاریخ صدور", fmtDateTime(payload.created_at))}
+  ${infoRow("اعتبار تا", fmtDate(payload.expires_at))}
+  ${infoRow("وضعیت", payload.status_label)}
+
+  <h2>اقلام پیش‌فاکتور</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:34px">ردیف</th>
+        <th>عنوان کالا</th>
+        <th style="width:90px">SKU</th>
+        <th style="width:52px">تعداد</th>
+        <th style="width:104px">قیمت واحد (تومان)</th>
+        <th style="width:88px">تخفیف (تومان)</th>
+        <th style="width:104px">جمع خط (تومان)</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <table class="totals">
+    <tbody>
+      <tr>
+        <td class="tl">جمع جزء</td>
+        <td class="tv">${formatMoney(payload.subtotal_amount)}</td>
+        <td class="tc">تومان</td>
+      </tr>
+      <tr>
+        <td class="tl">تخفیف</td>
+        <td class="tv">${formatMoney(payload.discount_amount)}</td>
+        <td class="tc">تومان</td>
+      </tr>
+      <tr class="grand">
+        <td class="tl">مبلغ نهایی قابل پرداخت</td>
+        <td class="tv">${formatMoney(payload.final_amount)}</td>
+        <td class="tc">تومان</td>
+      </tr>
+    </tbody>
+  </table>
+
+  ${amountWords ? `<div class="words"><span class="lbl">مبلغ به حروف:</span>${escapeHtml(amountWords)}</div>` : ""}
+
+  ${
+    payload.customer_note
+      ? `<div class="note"><h2>یادداشت مشتری</h2><div class="note-body">${escapeHtml(payload.customer_note)}</div></div>`
+      : ""
+  }
+
+  <div class="foot">این سند پیش‌فاکتور است و فاکتور رسمی محسوب نمی‌شود.</div>
+</div>
+</body>
+</html>`;
 }
 
 export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> {
@@ -136,197 +255,121 @@ export async function downloadQuotePdf(payload: QuotePdfPayload): Promise<void> 
     throw new Error("این پیش‌فاکتور آیتمی ندارد.");
   }
 
-  const pdfMake = await loadPdfMake();
+  const html = buildQuoteHtml(payload);
+  const fileName = `quote-${payload.quote_number.replace(/[\\/:*?"<>|]+/g, "_")}.pdf`;
 
-  // Natural Persian column order, all right-aligned for visual consistency.
-  // No reversal tricks — column meaning matches header text directly.
-  const itemsHeader = [
-    { text: "ردیف", style: "th" },
-    { text: "عنوان کالا", style: "th" },
-    { text: "SKU", style: "th" },
-    { text: "تعداد", style: "th" },
-    { text: "قیمت واحد (تومان)", style: "th" },
-    { text: "تخفیف (تومان)", style: "th" },
-    { text: "جمع خط (تومان)", style: "th" },
-  ];
-  const itemRows = payload.items.map((it, idx) => [
-    { text: toFaDigits(idx + 1), style: "td" },
-    { text: it.title || "—", style: "td" },
-    { text: it.sku ? it.sku : "—", style: "tdSku" },
-    { text: fmtNum(it.quantity), style: "td" },
-    { text: formatMoneyPdf(it.unit_price), style: "tdMoney" },
-    { text: formatMoneyPdf(it.discount_amount), style: "tdMoney" },
-    { text: formatMoneyPdf(it.line_total), style: "tdMoneyStrong" },
-  ]);
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.left = "-10000px";
+  iframe.style.top = "0";
+  iframe.style.width = "1024px";
+  iframe.style.height = "1px";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
 
-  const infoLine = (label: string, value: string) => ({
-    text: [{ text: `${label}: `, bold: true, color: "#374151" }, { text: value }],
-    margin: [0, 0, 0, 3] as [number, number, number, number],
-  });
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc) throw new Error("سند داخلی برای ساخت PDF ساخته نشد.");
+    doc.open();
+    doc.write(html);
+    doc.close();
 
-  const docDefinition = {
-    pageSize: "A4",
-    pageMargins: [36, 40, 36, 50] as [number, number, number, number],
-    defaultStyle: {
-      font: "Vazirmatn",
-      fontSize: 10,
-      alignment: "right" as const,
-      lineHeight: 1.3,
-    },
-    info: {
-      title: `Quote ${payload.quote_number}`,
-      author: "AFK",
-      creator: "AFK",
-    },
-    content: [
-      // Title
-      { text: "پیش‌فاکتور فروش", style: "title" },
-      // Quote number
-      {
-        text: [
-          { text: "شماره پیش‌فاکتور: ", bold: true, color: "#374151" },
-          { text: toFaDigits(payload.quote_number) },
-        ],
-        margin: [0, 4, 0, 8] as [number, number, number, number],
-      },
-      // Divider
-      {
-        canvas: [
-          { type: "line", x1: 0, y1: 0, x2: 523, y2: 0, lineWidth: 0.6, lineColor: "#d1d5db" },
-        ],
-        margin: [0, 0, 0, 10] as [number, number, number, number],
-      },
-      // Stacked info section (no two-column layout to avoid RTL issues)
-      { text: "اطلاعات مشتری", style: "sectionTitle" },
-      infoLine("نام مشتری", payload.customer_name || "—"),
-      infoLine("شماره تماس", toFaDigits(payload.customer_phone || "—")),
+    // Wait for the document, then for the webfont: snapshotting before
+    // Vazirmatn loads bakes a fallback face into the PDF.
+    await new Promise<void>((resolve) => {
+      if (iframe.contentWindow?.document.readyState === "complete") resolve();
+      else iframe.onload = () => resolve();
+    });
+    try {
+      await (iframe.contentDocument as Document & { fonts?: FontFaceSet })?.fonts?.ready;
+    } catch {
+      /* font loading API unavailable — fall through to the settle delay */
+    }
+    await new Promise((r) => setTimeout(r, 250));
 
-      {
-        text: "اطلاعات سند",
-        style: "sectionTitle",
-        margin: [0, 8, 0, 4] as [number, number, number, number],
-      },
-      infoLine("فروشنده", payload.salesperson_name || "—"),
-      infoLine("تاریخ صدور", fmtDateTime(payload.created_at)),
-      infoLine("اعتبار تا", fmtDate(payload.expires_at)),
-      infoLine("وضعیت", payload.status_label),
+    const target =
+      (iframe.contentDocument?.querySelector(".page") as HTMLElement | null) ??
+      (iframe.contentDocument?.body as HTMLElement);
 
-      // Items table
-      {
-        text: "اقلام پیش‌فاکتور",
-        style: "sectionTitle",
-        margin: [0, 12, 0, 6] as [number, number, number, number],
-      },
-      {
-        table: {
-          headerRows: 1,
-          dontBreakRows: true,
-          // Total ≈ 523pt content width (A4 595 − 36*2 margins).
-          // 26 + * + 70 + 36 + 80 + 65 + 80 = 357 + flexible "*" for title.
-          widths: [26, "*", 70, 36, 80, 65, 80],
-          body: [itemsHeader, ...itemRows],
-        },
-        layout: {
-          fillColor: (rowIndex: number) => (rowIndex === 0 ? "#f3f4f6" : null),
-          hLineColor: () => "#d1d5db",
-          vLineColor: () => "#d1d5db",
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          paddingLeft: () => 5,
-          paddingRight: () => 5,
-          paddingTop: () => 5,
-          paddingBottom: () => 5,
-        },
-      },
+    const html2canvasMod = await import("html2canvas-pro");
+    const html2canvas =
+      (html2canvasMod as unknown as { default?: unknown }).default ?? html2canvasMod;
+    const { jsPDF } = await import("jspdf");
 
-      // Totals box — full-width simple table, all right-aligned, final row strong
-      {
-        margin: [0, 14, 0, 0] as [number, number, number, number],
-        table: {
-          widths: ["*", 110, 30],
-          body: [
-            [
-              { text: "جمع جزء", style: "totalLabel" },
-              { text: formatMoneyPdf(payload.subtotal_amount), style: "totalValue" },
-              { text: "تومان", style: "totalCurrency" },
-            ],
-            [
-              { text: "تخفیف", style: "totalLabel" },
-              { text: formatMoneyPdf(payload.discount_amount), style: "totalValue" },
-              { text: "تومان", style: "totalCurrency" },
-            ],
-            [
-              { text: "مبلغ نهایی قابل پرداخت", style: "grandLabel" },
-              { text: formatMoneyPdf(payload.final_amount), style: "grandValue" },
-              { text: "تومان", style: "grandCurrency" },
-            ],
-          ],
-        },
-        layout: {
-          fillColor: (rowIndex: number, node: { table: { body: unknown[] } }) =>
-            rowIndex === node.table.body.length - 1 ? "#f3f4f6" : null,
-          hLineColor: () => "#d1d5db",
-          vLineColor: () => "#d1d5db",
-          hLineWidth: () => 0.5,
-          vLineWidth: () => 0.5,
-          paddingLeft: () => 8,
-          paddingRight: () => 8,
-          paddingTop: () => 6,
-          paddingBottom: () => 6,
-        },
-      },
+    const canvas: HTMLCanvasElement = await (
+      html2canvas as (el: HTMLElement, o: Record<string, unknown>) => Promise<HTMLCanvasElement>
+    )(target, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    });
 
-      ...(payload.customer_note
-        ? [
-            {
-              text: "یادداشت مشتری",
-              style: "sectionTitle",
-              margin: [0, 14, 0, 4] as [number, number, number, number],
-            },
-            { text: payload.customer_note },
-          ]
-        : []),
-    ],
-    footer: (currentPage: number, pageCount: number) => ({
-      columns: [
-        {
-          text: `صفحه ${toFaDigits(currentPage)} از ${toFaDigits(pageCount)}`,
-          alignment: "right",
-          fontSize: 8,
-          color: "#6b7280",
-          margin: [36, 14, 0, 0],
-        },
-        {
-          text: "این سند پیش‌فاکتور است و فاکتور رسمی محسوب نمی‌شود.",
-          alignment: "right",
-          fontSize: 8,
-          color: "#6b7280",
-          margin: [0, 14, 36, 0],
-        },
-      ],
-    }),
-    styles: {
-      title: { fontSize: 16, bold: true, color: "#111827" },
-      sectionTitle: {
-        fontSize: 11,
-        bold: true,
-        color: "#111827",
-        margin: [0, 0, 0, 4] as [number, number, number, number],
-      },
-      th: { bold: true, fontSize: 10, color: "#111827", alignment: "right" as const },
-      td: { fontSize: 10, color: "#111827", alignment: "right" as const },
-      tdSku: { fontSize: 9, color: "#374151", alignment: "right" as const },
-      tdStrong: { fontSize: 10, bold: true, color: "#111827", alignment: "right" as const },
-      tdMoney: { fontSize: 10, color: "#111827", alignment: "left" as const },
-      tdMoneyStrong: { fontSize: 10, bold: true, color: "#111827", alignment: "left" as const },
-      totalLabel: { fontSize: 10, color: "#374151", alignment: "right" as const },
-      totalValue: { fontSize: 10, bold: true, color: "#111827", alignment: "left" as const },
-      totalCurrency: { fontSize: 10, color: "#374151", alignment: "right" as const },
-      grandLabel: { fontSize: 12, bold: true, color: "#111827", alignment: "right" as const },
-      grandValue: { fontSize: 13, bold: true, color: "#111827", alignment: "left" as const },
-      grandCurrency: { fontSize: 11, bold: true, color: "#111827", alignment: "right" as const },
-    },
-  };
+    const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    const pageWidthMm = pdf.internal.pageSize.getWidth();
+    const pageHeightMm = pdf.internal.pageSize.getHeight();
+    const marginMm = 8;
+    const usableWidthMm = pageWidthMm - marginMm * 2;
+    const usableHeightMm = pageHeightMm - marginMm * 2;
 
-  pdfMake.createPdf(docDefinition).download(`quote-${payload.quote_number}.pdf`);
+    const pxPerMm = canvas.width / usableWidthMm;
+    const pageHeightPx = Math.floor(usableHeightMm * pxPerMm);
+
+    let renderedPx = 0;
+    let pageIndex = 0;
+    while (renderedPx < canvas.height) {
+      const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedPx);
+      const slice = document.createElement("canvas");
+      slice.width = canvas.width;
+      slice.height = sliceHeightPx;
+      const ctx = slice.getContext("2d");
+      if (!ctx) throw new Error("ساخت بوم تصویر برای PDF ممکن نشد.");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, slice.width, slice.height);
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedPx,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx,
+      );
+      const imgData = slice.toDataURL("image/jpeg", 0.92);
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(imgData, "JPEG", marginMm, marginMm, usableWidthMm, sliceHeightPx / pxPerMm);
+      renderedPx += sliceHeightPx;
+      pageIndex += 1;
+    }
+
+    // Blob + anchor click rather than pdf.save(): the latter can fail silently
+    // under strict popup blockers.
+    const blobUrl = URL.createObjectURL(pdf.output("blob"));
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        document.body.removeChild(a);
+      } catch {
+        /* already gone */
+      }
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
+  } finally {
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe);
+      } catch {
+        /* already gone */
+      }
+    }, 500);
+  }
 }
