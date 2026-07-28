@@ -1077,7 +1077,23 @@ export function PaymentReceiptForm() {
             // Async path: evaluate validation_rules then security warnings
             (async () => {
               const validCodes = await buildValidCodesSet(v);
-              const allRules = [...receiptRules, ...journalRules];
+              // Item 207 — mode 2 (an external party such as a صراف) is not one
+              // of our own accounts, so it often has no کد آسان at all. The
+              // `journal_entry` rule that demands one is written for mode 1
+              // (our own bank account) and knows nothing about the two modes,
+              // so it blocks mode 2 unconditionally. Drop just that rule while
+              // mode 2 is selected; mode 1 keeps requiring the code, and the
+              // server-side guard in post_receipt_accounting is untouched.
+              const receiverIsExternalParty = Boolean(v.receiver_party_id);
+              const allRules = [...receiptRules, ...journalRules].filter(
+                (r) =>
+                  !(
+                    receiverIsExternalParty &&
+                    r.scope === "journal_entry" &&
+                    r.field_key === "receiver_accounting_code" &&
+                    r.rule_type === "required"
+                  ),
+              );
               const fieldValues: Record<string, unknown> = {
                 receiver_name: v.receiver_name,
                 payer_name: v.payer_name,

@@ -108,9 +108,15 @@ export async function listProvidersFor(capability: AiCapability): Promise<AiProv
  */
 export async function resolveProviderForCapability(
   capability: AiCapability,
+  opts?: { kind?: AiProvider["kind"] },
 ): Promise<{ provider: AiProvider; key: string | null } | null> {
   const providers = await listProvidersFor(capability);
-  const provider = providers[0];
+  // Item 208 — a caller that can only speak one wire protocol must be able to
+  // ask for it. Taking providers[0] blindly hands the SSE chat route an
+  // OpenAI-compatible provider whenever one outranks Ollama on priority, and
+  // that route can only stream Ollama's NDJSON, so every message died as
+  // `streaming_unsupported` with no failover to fall back on.
+  const provider = opts?.kind ? providers.find((p) => p.kind === opts.kind) : providers[0];
   if (!provider) return null;
   return { provider, key: provider.has_key ? await getKey(provider.id) : null };
 }

@@ -122,7 +122,10 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
         // helper would delete the token-by-token UX. The trade-off is no
         // automatic failover here; a failure is reported to the same health
         // table so it still shows on the admin page.
-        const target = await resolveProviderForCapability("chat");
+        // Only Ollama streams in this route's NDJSON shape (see the isOllama
+        // check below), so ask for it by kind instead of taking whichever
+        // provider happens to rank first.
+        const target = await resolveProviderForCapability("chat", { kind: "ollama" });
         const apiUrl = target?.provider.base_url.trim();
         const model = target?.provider.chat_model?.trim() || "qwen2.5:7b";
 
