@@ -171,6 +171,59 @@ export function useCreatePurchaseRequest() {
   });
 }
 
+/**
+ * ویرایش یک درخواست خرید توسط خودِ درخواست‌دهنده، فقط در وضعیت «در انتظار تأیید».
+ *
+ * برخلاف تغییر وضعیت، اینجا RPC نداریم و مستقیم UPDATE می‌زنیم؛ مجوز را سیاست
+ * RLS جدول تعیین می‌کند (migration 219): شاخهٔ
+ * `requested_by = auth.uid() AND status = 'pending'` هم در USING و هم در
+ * WITH CHECK آمده، پس درخواست‌دهنده می‌تواند فیلدها را عوض کند ولی نمی‌تواند
+ * درخواست خودش را تأیید کند.
+ *
+ * عمداً `status` در فیلدهای قابل‌ارسال نیست تا مسیر تغییر وضعیت فقط از
+ * useUpdatePurchaseStatus بگذرد (که گذارهای مجاز را رعایت می‌کند).
+ */
+export function useUpdatePurchaseRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      request_id: string;
+      product_id: string;
+      quantity: number;
+      unit: string;
+      notes?: string | null;
+      expected_price?: number | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("purchase_requests")
+        .update({
+          product_id: input.product_id,
+          quantity: input.quantity,
+          unit: input.unit,
+          notes: input.notes ?? null,
+          expected_price: input.expected_price ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.request_id)
+        .eq("status", "pending")
+        .select("id");
+      if (error) throw new Error(error.message);
+      // RLS رد شدن را به‌صورت «صفر ردیف» برمی‌گرداند، نه خطا. بدون این بررسی،
+      // کاربر پیام موفقیت می‌دید در حالی که چیزی ذخیره نشده بود.
+      if (!data || data.length === 0) {
+        throw new Error(
+          "ویرایش انجام نشد. فقط درخواست‌دهنده و تنها تا پیش از تأیید می‌تواند درخواست را ویرایش کند.",
+        );
+      }
+    },
+    onSuccess: () => {
+      toast.success("درخواست خرید ویرایش شد");
+      invalidateAll(qc);
+    },
+    onError: (err: Error) => toast.error(`ویرایش ناموفق بود: ${err.message}`),
+  });
+}
+
 export function useUpdatePurchaseStatus() {
   const qc = useQueryClient();
   return useMutation({

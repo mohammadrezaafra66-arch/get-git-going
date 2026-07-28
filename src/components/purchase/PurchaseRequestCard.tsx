@@ -2,13 +2,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Upload, MessageSquare } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Upload, MessageSquare, Pencil } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -19,6 +14,8 @@ import {
 } from "@/lib/purchase/labels";
 import type { PurchaseRequestRow } from "@/hooks/purchase/usePurchase";
 import { PurchaseReceiptUploader } from "./PurchaseReceiptUploader";
+import { PurchaseRequestEditDialog } from "./PurchaseRequestEditDialog";
+import { PurchaseStatusActions } from "./PurchaseStatusActions";
 
 function formatMoney(n: number | null): string {
   if (n == null) return "—";
@@ -28,8 +25,12 @@ function formatMoney(n: number | null): string {
 export function PurchaseRequestCard({ request }: { request: PurchaseRequestRow }) {
   const { user } = useAuth();
   const [uploadOpen, setUploadOpen] = useState(false);
-  const canUpload =
-    request.status === "purchased" && !!user && request.assigned_to === user.id;
+  const [editOpen, setEditOpen] = useState(false);
+  const canUpload = request.status === "purchased" && !!user && request.assigned_to === user.id;
+  // هم‌راستا با سیاست RLS (migration 219): فقط درخواست‌دهنده و فقط تا پیش از
+  // تأیید. اگر گارد UI بازتر از RLS باشد، کاربر دکمه‌ای می‌بیند که بک‌اند ردش
+  // می‌کند.
+  const canEdit = request.status === "pending" && !!user && request.requested_by === user.id;
 
   return (
     <Card>
@@ -65,9 +66,7 @@ export function PurchaseRequestCard({ request }: { request: PurchaseRequestRow }
           </div>
         </div>
 
-        {request.notes && (
-          <div className="rounded-md bg-muted/40 p-2 text-xs">{request.notes}</div>
-        )}
+        {request.notes && <div className="rounded-md bg-muted/40 p-2 text-xs">{request.notes}</div>}
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span>{formatJalaliDateTime(request.created_at)}</span>
@@ -81,9 +80,13 @@ export function PurchaseRequestCard({ request }: { request: PurchaseRequestRow }
               </Button>
             )}
             {request.receipt_count > 0 && (
-              <Badge variant="secondary">
-                {toPersianDigits(request.receipt_count)} رسید
-              </Badge>
+              <Badge variant="secondary">{toPersianDigits(request.receipt_count)} رسید</Badge>
+            )}
+            {canEdit && (
+              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="ml-1 h-4 w-4" />
+                ویرایش
+              </Button>
             )}
             {canUpload && (
               <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}>
@@ -93,6 +96,16 @@ export function PurchaseRequestCard({ request }: { request: PurchaseRequestRow }
             )}
           </div>
         </div>
+
+        {/*
+          گذار وضعیت تا امروز فقط در «مدیریت خرید» (/admin/purchase، ویژهٔ ادمین)
+          رندر می‌شد. نتیجه‌اش این بود که درخواستی که از همین صفحه ثبت می‌شد
+          هیچ‌وقت به «خرید انجام شد» نمی‌رسید، و چون دکمهٔ آپلود رسید به همان
+          وضعیت گره خورده، عملاً هرگز ظاهر نمی‌شد.
+          خودِ کامپوننت با isManager || isAssignee محافظت می‌شود و برای بقیه
+          null برمی‌گرداند، پس رندر کردنش اینجا دسترسی جدیدی باز نمی‌کند.
+        */}
+        <PurchaseStatusActions request={request} />
       </CardContent>
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
@@ -103,6 +116,10 @@ export function PurchaseRequestCard({ request }: { request: PurchaseRequestRow }
           <PurchaseReceiptUploader requestId={request.id} />
         </DialogContent>
       </Dialog>
+
+      {canEdit && (
+        <PurchaseRequestEditDialog request={request} open={editOpen} onOpenChange={setEditOpen} />
+      )}
     </Card>
   );
 }

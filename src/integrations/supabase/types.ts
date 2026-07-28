@@ -11911,6 +11911,10 @@ export type Database = {
         Args: { p_note?: string; p_status: string; p_tick_id: string }
         Returns: undefined
       }
+      set_primary_product_image: {
+        Args: { p_image_id: string }
+        Returns: undefined
+      }
       set_profile_field_value: {
         Args: { _field_name: string; _user_id: string; _value: Json }
         Returns: undefined
