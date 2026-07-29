@@ -8313,10 +8313,19 @@ export type Database = {
           below_list_price_ack_by: string | null
           commitment_confirmed: boolean
           credit_check_snapshot: Json | null
+          customer_id: string | null
           deposit_amount: number | null
           list_price_snapshot: number | null
+          quote_exception_amount: number | null
+          quote_exception_confirmed_at: string | null
+          quote_exception_confirmed_by: string | null
+          quote_exception_minutes: number | null
+          quote_exception_snapshot: Json | null
+          quote_exception_text: string | null
+          quote_exception_type: string | null
           reject_reason: string | null
           visitor_id: string | null
+          warehouse_id: string | null
           canceled_at: string | null
           canceled_by: string | null
           created_at: string
@@ -8345,10 +8354,19 @@ export type Database = {
           below_list_price_ack_by?: string | null
           commitment_confirmed?: boolean
           credit_check_snapshot?: Json | null
+          customer_id?: string | null
           deposit_amount?: number | null
           list_price_snapshot?: number | null
+          quote_exception_amount?: number | null
+          quote_exception_confirmed_at?: string | null
+          quote_exception_confirmed_by?: string | null
+          quote_exception_minutes?: number | null
+          quote_exception_snapshot?: Json | null
+          quote_exception_text?: string | null
+          quote_exception_type?: string | null
           reject_reason?: string | null
           visitor_id?: string | null
+          warehouse_id?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string
@@ -8377,10 +8395,19 @@ export type Database = {
           below_list_price_ack_by?: string | null
           commitment_confirmed?: boolean
           credit_check_snapshot?: Json | null
+          customer_id?: string | null
           deposit_amount?: number | null
           list_price_snapshot?: number | null
+          quote_exception_amount?: number | null
+          quote_exception_confirmed_at?: string | null
+          quote_exception_confirmed_by?: string | null
+          quote_exception_minutes?: number | null
+          quote_exception_snapshot?: Json | null
+          quote_exception_text?: string | null
+          quote_exception_type?: string | null
           reject_reason?: string | null
           visitor_id?: string | null
+          warehouse_id?: string | null
           canceled_at?: string | null
           canceled_by?: string | null
           created_at?: string
@@ -10407,14 +10434,25 @@ export type Database = {
       }
       create_sales_quote_with_items: {
         Args: {
+          p_below_list_ack?: boolean
+          p_commitment_confirmed?: boolean
+          p_customer_id?: string
           p_customer_name: string
           p_customer_note: string
           p_customer_phone: string
+          p_deposit_amount?: number
           p_discount_amount: number
           p_expires_at: string
           p_final_amount: number
           p_items: Json
+          p_quote_exception_amount?: number
+          p_quote_exception_minutes?: number
+          p_quote_exception_text?: string
+          p_quote_exception_type?: string
+          p_settlement_type_id?: string
           p_subtotal_amount: number
+          p_visitor_id?: string
+          p_warehouse_id?: string
         }
         Returns: Json
       }

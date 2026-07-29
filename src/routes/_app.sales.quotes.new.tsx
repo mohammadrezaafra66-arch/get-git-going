@@ -53,7 +53,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AdvancePaymentSection } from "@/shared/components/AdvancePaymentSection";
+import {
+  QuoteCreationBlockDialog,
+  type QuoteBlockReason,
+  type QuoteExceptionType,
+} from "@/components/sales/quotes/QuoteCreationBlockDialog";
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -88,16 +92,20 @@ function NewQuotePage() {
   const [settlementTypeId, setSettlementTypeId] = useState<string>("");
   // Item 178 — warehouse the goods will be deducted from. null = default warehouse.
   const [warehouseId, setWarehouseId] = useState<string | null>(null);
-  const [stockConfirmed, setStockConfirmed] = useState(false);
   // Items 194/196 — going under the settlement floor is allowed only as a
   // deliberate, recorded act. The checkbox opens a warning dialog first; only
   // confirming it there arms the override and unlocks the price field.
   const [belowListAck, setBelowListAck] = useState(false);
   const [belowListDialogOpen, setBelowListDialogOpen] = useState(false);
-  // Items 197/198 — the deposit route, used when the customer's credit will
-  // not cover the quote.
-  const [depositAmount, setDepositAmount] = useState<number | null>(null);
-  const [commitmentConfirmed, setCommitmentConfirmed] = useState(false);
+  // Items 197/198/212 — exception routes used when a quote cannot be issued
+  // normally because of credit, overdue balance, or accounting approval.
+  const [quoteException, setQuoteException] = useState<{
+    type: QuoteExceptionType;
+    minutes?: number | null;
+    amount?: number | null;
+    text: string;
+  } | null>(null);
+  const [blockReason, setBlockReason] = useState<QuoteBlockReason | null>(null);
   // Item 203 — the visitor credited with the deal, separate from the
   // salesperson issuing it. "" means none.
   const [visitorId, setVisitorId] = useState<string>("");
@@ -105,10 +113,6 @@ function NewQuotePage() {
   // one-line note the salesperson may add before it is logged.
   const [rejection, setRejection] = useState<{ reason: string; note: string } | null>(null);
   const [loggingRejection, setLoggingRejection] = useState(false);
-  // Reset the out-of-stock confirmation whenever the item set changes.
-  useEffect(() => {
-    setStockConfirmed(false);
-  }, [items]);
   const { data: settlementTypes = [] } = useQuery({
     queryKey: ["settlement-types-active"],
     queryFn: async () => {
@@ -146,7 +150,6 @@ function NewQuotePage() {
 
   const totals = useMemo(() => computeTotals(items), [items]);
 
-
   // MONEY-SAFETY: keep the customer link only while the name and phone still
   // match the picked customer. Compare on normalized values (trim name, strip
   // non-digits from phone) so harmless reformatting does not drop a correct
@@ -162,7 +165,7 @@ function NewQuotePage() {
 
   // Items 197/198 — the customer's live credit. Guests have no credit file, so
   // there is nothing to fetch and nothing to enforce.
-  const { data: creditInfo } = useQuery({
+  const { data: creditInfo, isFetching: creditInfoLoading } = useQuery({
     enabled: !!linkedCustomerId,
     queryKey: ["quote-credit-info", linkedCustomerId],
     staleTime: 30_000,
@@ -174,23 +177,35 @@ function NewQuotePage() {
       const row = (Array.isArray(data) ? data[0] : data) as {
         available_credit?: number;
         has_allocation?: boolean;
+        has_overdue?: boolean;
+        overdue_since?: string | null;
+        binding_constraint?: string | null;
       } | null;
       return {
         availableCredit: Number(row?.available_credit ?? 0),
         hasAllocation: Boolean(row?.has_allocation),
+        hasOverdue: Boolean(row?.has_overdue) || row?.binding_constraint === "overdue",
+        overdueSince: row?.overdue_since ?? null,
+        bindingConstraint: row?.binding_constraint ?? null,
       };
     },
   });
 
-  // The deposit route only opens when a limit actually exists and falls short.
-  // A customer with no allocation has no configured limit at all — treating
-  // that as a limit of zero would demand a deposit on every sale.
+  // Item 212 — ordinary creation is blocked when the customer is overdue,
+  // has no usable credit file, or the quote exceeds the usable credit. The
+  // previous deposit route remains visible for context but it is no longer a
+  // silent bypass; the salesperson must choose an explicit exception route.
   const creditShortfall = Boolean(
     linkedCustomerId &&
-      creditInfo?.hasAllocation &&
-      creditInfo.availableCredit < totals.final_amount,
+    creditInfo?.hasAllocation &&
+    creditInfo.availableCredit < totals.final_amount,
   );
-  const minDeposit = Math.ceil(totals.final_amount * 0.3);
+  const creditShortage = Math.max(totals.final_amount - (creditInfo?.availableCredit ?? 0), 0);
+
+  // Reset one-shot exception confirmations whenever the business payload changes.
+  useEffect(() => {
+    setQuoteException(null);
+  }, [items, linkedCustomerId, totals.final_amount]);
 
   const debouncedCustomerSearch = useDebounce(customerSearch, 350);
   const customerSearchTerm = debouncedCustomerSearch.trim();
@@ -243,7 +258,15 @@ function NewQuotePage() {
   const removeItem = (key: string) => setItems((prev) => prev.filter((it) => it.key !== key));
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (
+      overrideException?: {
+        type: QuoteExceptionType;
+        minutes?: number | null;
+        amount?: number | null;
+        text: string;
+      } | null,
+    ) => {
+      const activeException = overrideException ?? quoteException;
       if (!user) throw new Error("کاربر معتبر نیست.");
       const errs = validateQuote(
         {
@@ -293,25 +316,18 @@ function NewQuotePage() {
         // Null unless the fields still match the picked customer (money-safety).
         p_customer_id: linkedCustomerId,
         p_below_list_ack: belowListAck,
-        p_deposit_amount: depositAmount,
-        p_commitment_confirmed: commitmentConfirmed,
+        p_deposit_amount: null,
+        p_commitment_confirmed: false,
         p_visitor_id: visitorId || null,
+        p_warehouse_id: warehouseId,
+        p_quote_exception_type: activeException?.type ?? null,
+        p_quote_exception_minutes: activeException?.minutes ?? null,
+        p_quote_exception_amount: activeException?.amount ?? null,
+        p_quote_exception_text: activeException?.text ?? null,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
       if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
-
-      // Item 178 — the creation RPC has no warehouse parameter, so the chosen
-      // warehouse is written right after. Safe: the quote is created as `draft`
-      // and stock only moves when it reaches `accepted`. It stays editable at
-      // confirm time (179).
-      if (warehouseId) {
-        const { error: whErr } = await supabase
-          .from("sales_quotes")
-          .update({ warehouse_id: warehouseId } as never)
-          .eq("id", result.id);
-        if (whErr) throw new Error(whErr.message);
-      }
 
       return result;
     },
@@ -331,35 +347,145 @@ function NewQuotePage() {
     },
   });
 
-  // J-4: soft out-of-stock guard — warn once, then allow an explicit re-click
-  // (e.g. deliberately quoting in-transit goods).
-  const handleSubmit = async () => {
-    if (!stockConfirmed) {
-      const pids = items
-        .filter((it) => it.source === "product_price" && it.product_id)
-        .map((it) => it.product_id as string);
-      if (pids.length > 0) {
-        const { data: stockRows } = await supabase
-          .from("products")
-          .select("id, name, stock_status")
-          .in("id", pids);
-        const unavailable = (stockRows ?? []).filter(
-          (r) => (r as { stock_status?: string }).stock_status === "unavailable",
-        );
-        if (unavailable.length > 0) {
-          toast.warning(
-            `کالای ناموجود: ${unavailable
-              .map((r) => (r as { name?: string }).name ?? "؟")
-              .join(
-                "، ",
-              )}. اگر عمداً (مثلاً کالای در راه) ثبت می‌کنید، دوباره «ثبت پیش‌فاکتور» را بزنید.`,
-          );
-          setStockConfirmed(true);
-          return;
-        }
-      }
+  const findStockBlocker = async (): Promise<QuoteBlockReason | null> => {
+    const productNeeds = new Map<string, { productName: string; required: number }>();
+    for (const item of items) {
+      if (item.source !== "product_price" || !item.product_id) continue;
+      const current = productNeeds.get(item.product_id) ?? {
+        productName: item.title_snapshot,
+        required: 0,
+      };
+      current.required += Number(item.quantity || 0);
+      productNeeds.set(item.product_id, current);
     }
-    saveMutation.mutate();
+
+    const productIds = Array.from(productNeeds.keys());
+    if (productIds.length === 0) return null;
+
+    let effectiveWarehouseId = warehouseId;
+    if (!effectiveWarehouseId) {
+      const { data: defaultWarehouse } = await supabase
+        .from("warehouses")
+        .select("id")
+        .eq("is_active", true)
+        .eq("is_default", true)
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+      effectiveWarehouseId = (defaultWarehouse?.id as string | null | undefined) ?? null;
+    }
+
+    if (!effectiveWarehouseId) {
+      return {
+        kind: "stock",
+        items: Array.from(productNeeds.values()).map((item) => ({
+          productName: item.productName,
+          required: item.required,
+          available: 0,
+        })),
+      };
+    }
+
+    const { data: stockRows, error } = await supabase
+      .from("warehouse_stock")
+      .select("product_id, quantity")
+      .eq("warehouse_id", effectiveWarehouseId)
+      .in("product_id", productIds);
+    if (error) throw new Error(error.message);
+
+    const availableByProduct = new Map(
+      (stockRows ?? []).map((row) => [
+        row.product_id as string,
+        Number((row as { quantity?: number | null }).quantity ?? 0),
+      ]),
+    );
+    const insufficient = Array.from(productNeeds.entries())
+      .map((entry) => {
+        const [productId, need] = entry;
+        return {
+          productName: need.productName,
+          required: need.required,
+          available: availableByProduct.get(productId) ?? 0,
+        };
+      })
+      .filter((item) => item.available < item.required);
+
+    return insufficient.length > 0 ? { kind: "stock", items: insufficient } : null;
+  };
+
+  const findCreditBlocker = (): QuoteBlockReason | null => {
+    if (totals.final_amount <= 0) return null;
+    if (linkedCustomerId && creditInfoLoading) {
+      return {
+        kind: "no_credit",
+        finalAmount: totals.final_amount,
+        detail: "اعتبار مشتری هنوز از سرور دریافت نشده است.",
+      };
+    }
+    if (creditInfo?.hasOverdue) {
+      return {
+        kind: "overdue",
+        availableCredit: creditInfo.availableCredit,
+        finalAmount: totals.final_amount,
+        overdueSince: creditInfo.overdueSince,
+      };
+    }
+    if (!linkedCustomerId) {
+      return {
+        kind: "no_credit",
+        finalAmount: totals.final_amount,
+        detail: "این پیش‌فاکتور به پرونده مشتری ثبت‌شده وصل نیست و اعتبار مالی قابل بررسی ندارد.",
+      };
+    }
+    if (!creditInfo?.hasAllocation || creditInfo.availableCredit <= 0) {
+      return {
+        kind: "no_credit",
+        finalAmount: totals.final_amount,
+        detail: "برای این مشتری اعتبار قابل استفاده یا تخصیص سرمایه فعال ثبت نشده است.",
+      };
+    }
+    if (creditInfo.availableCredit < totals.final_amount) {
+      return {
+        kind: "credit_shortfall",
+        availableCredit: creditInfo.availableCredit,
+        finalAmount: totals.final_amount,
+        shortage: Math.max(totals.final_amount - creditInfo.availableCredit, 0),
+      };
+    }
+    return null;
+  };
+
+  const exceptionMatchesBlocker = (blocker: QuoteBlockReason | null) => {
+    if (!blocker) return true;
+    if (blocker.kind === "stock") return false;
+    if (blocker.kind === "overdue") {
+      return quoteException?.type === "overdue_salesperson_commitment";
+    }
+    if (blocker.kind === "credit_shortfall") {
+      return quoteException?.type === "credit_shortfall_salesperson_commitment";
+    }
+    if (blocker.kind === "no_credit") return quoteException?.type === "accounting_approval";
+    return false;
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const stockBlocker = await findStockBlocker();
+      if (stockBlocker) {
+        setBlockReason(stockBlocker);
+        return;
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "خطا در بررسی موجودی انبار.");
+      return;
+    }
+
+    const creditBlocker = findCreditBlocker();
+    if (!exceptionMatchesBlocker(creditBlocker)) {
+      setBlockReason(creditBlocker);
+      return;
+    }
+    saveMutation.mutate(null);
   };
 
   return (
@@ -662,28 +788,19 @@ function NewQuotePage() {
               >
                 فروش زیر قیمت لیست — «با مسئولیت خودم»
                 <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                  قیمت بالاتر یا مساوی لیست آزاد است و این گزینه را لازم ندارد. فقط برای ثبت زیر
-                  کف مجاز آن را بزنید.
+                  قیمت بالاتر یا مساوی لیست آزاد است و این گزینه را لازم ندارد. فقط برای ثبت زیر کف
+                  مجاز آن را بزنید.
                 </span>
               </Label>
             </div>
           </div>
 
-          {/* Items 197/198 — shown only when a real limit falls short. */}
-          {creditShortfall && (
-            <AdvancePaymentSection
-              totalAmount={totals.final_amount}
-              depositAmount={depositAmount}
-              onDepositChange={setDepositAmount}
-              commitmentConfirmed={commitmentConfirmed}
-              onCommitmentChange={setCommitmentConfirmed}
-            />
-          )}
           {creditShortfall && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs leading-6">
               اعتبار قابل استفادهٔ این مشتری ({formatNumber(creditInfo?.availableCredit ?? 0)}{" "}
-              تومان) کمتر از مبلغ این پیش‌فاکتور است. برای صدور، بیعانه‌ای دست‌کم{" "}
-              {formatNumber(minDeposit)} تومان (۳۰٪) ثبت کنید و تعهد را تأیید کنید.
+              تومان) کمتر از مبلغ این پیش‌فاکتور است. ثبت عادی انجام نمی‌شود. هنگام ذخیره، سیستم
+              پیام توقف را نمایش می‌دهد و فقط با تعهد کارشناس فروش برای واریز کسری{" "}
+              {formatNumber(creditShortage)} تومان تا پایان روز کاری اجازه ادامه می‌دهد.
             </div>
           )}
 
@@ -745,8 +862,8 @@ function NewQuotePage() {
             </DialogTitle>
           </DialogHeader>
           <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm leading-7">
-            از این گزینه فقط در صورتی که ۱۰۰٪ از مدیر مربوط تأییدیه گرفته‌اید استفاده نمایید؛ در
-            غیر این صورت عواقب این تصمیم به عهدهٔ شخص صادرکنندهٔ پیش‌فاکتور است
+            از این گزینه فقط در صورتی که ۱۰۰٪ از مدیر مربوط تأییدیه گرفته‌اید استفاده نمایید؛ در غیر
+            این صورت عواقب این تصمیم به عهدهٔ شخص صادرکنندهٔ پیش‌فاکتور است
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
@@ -846,6 +963,15 @@ function NewQuotePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <QuoteCreationBlockDialog
+        reason={blockReason}
+        onClose={() => setBlockReason(null)}
+        onConfirmException={(exception) => {
+          setQuoteException(exception);
+          setBlockReason(null);
+          saveMutation.mutate(exception);
+        }}
+      />
     </div>
   );
 }
