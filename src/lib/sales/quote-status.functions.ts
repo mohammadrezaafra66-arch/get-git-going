@@ -1,8 +1,8 @@
 /**
  * SF-1.b — Quote status hardening
  *
- * Authenticated serverFn that updates `sales_quotes.status` (and clears /
- * sets `cancel_reason`) on behalf of the signed-in user. Uses the
+ * Authenticated serverFn that updates `sales_quotes.status` and forwards the
+ * required reason for cancel/reject transitions on behalf of the signed-in user. Uses the
  * user-scoped Supabase client from `requireSupabaseAuth` so all existing
  * defenses keep applying as-is:
  *
@@ -15,7 +15,7 @@
  *  - import `supabaseAdmin` / use the service role,
  *  - insert into `audit_logs` from JS (DB trigger covers it),
  *  - touch `sales_quote_items`, send-queue, or share logs,
- *  - accept any patch field other than `status` and `cancel_reason`.
+ *  - accept any patch field other than `status` and the transition reason.
  */
 
 import { createServerFn, createMiddleware } from "@tanstack/react-start";
@@ -96,8 +96,8 @@ export const updateQuoteStatus = createServerFn({ method: "POST" })
       // authenticated session (so `auth.uid()` is available to the audit
       // and validate-status triggers) while enabling a future revoke of
       // direct UPDATE on `public.sales_quotes` from the `authenticated`
-      // role. Authorization, cancel-reason requirement, and the
-      // sales-owner target-status whitelist are enforced inside the RPC
+      // role. Authorization, reason requirements, accounting rejection
+      // notification, and the sales-owner target-status whitelist are enforced inside the RPC
       // and mirror the existing RLS policies. Transition validity and
       // audit logging stay in the existing DB triggers.
       const { data: rows, error } = await supabase.rpc("update_sales_quote_status", {

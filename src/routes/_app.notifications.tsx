@@ -79,6 +79,8 @@ function NotificationsPage() {
     }
     if (n.reference_type === "stock_alert_request") {
       navigate({ to: "/sales/stock-alerts" });
+    } else if (n.reference_type === "sales_quote" && n.reference_id) {
+      navigate({ to: "/sales/quotes/$quoteId", params: { quoteId: n.reference_id } });
     }
   };
 
@@ -115,6 +117,7 @@ function NotificationsPage() {
             <SelectItem value="system">سیستم</SelectItem>
             <SelectItem value="task">کار</SelectItem>
             <SelectItem value="payment">پرداخت</SelectItem>
+            <SelectItem value="quote_rejected">رد پیش‌فاکتور</SelectItem>
           </SelectContent>
         </Select>
         <Select

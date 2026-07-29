@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -87,6 +88,7 @@ interface QuoteRow {
   accounting_sent_by: string | null;
   accounting_registered_by_name?: string | null;
   accounting_sent_by_name?: string | null;
+  reject_reason?: string | null;
   salesperson?: { id: string; full_name: string | null } | null;
 }
 
@@ -95,6 +97,7 @@ function QuotesListPage() {
   const isPrivileged =
     roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
   const isManagerial = roles.includes("admin") || roles.includes("manager");
+  const isAccountant = roles.includes("accountant");
   const isSalesOnly = !isPrivileged && roles.includes("sales");
   const canCreate = roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
 
@@ -137,7 +140,7 @@ function QuotesListPage() {
       let q = supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, salesperson_id, status, final_amount, expires_at, created_at, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by",
+          "id, quote_number, customer_name, customer_phone, salesperson_id, status, final_amount, expires_at, created_at, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by, reject_reason",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -179,10 +182,10 @@ function QuotesListPage() {
       const rows: QuoteRow[] = baseRows.map((r) => ({
         ...r,
         accounting_registered_by_name: r.accounting_registered_by
-          ? profileMap.get(r.accounting_registered_by) ?? null
+          ? (profileMap.get(r.accounting_registered_by) ?? null)
           : null,
         accounting_sent_by_name: r.accounting_sent_by
-          ? profileMap.get(r.accounting_sent_by) ?? null
+          ? (profileMap.get(r.accounting_sent_by) ?? null)
           : null,
         salesperson: r.salesperson_id
           ? { id: r.salesperson_id, full_name: profileMap.get(r.salesperson_id) ?? null }
@@ -309,6 +312,7 @@ function QuotesListPage() {
                           key={r.id}
                           row={r}
                           isManagerial={isManagerial}
+                          isAccountant={isAccountant}
                           isOwner={r.salesperson_id === user?.id}
                         />
                       ))}
@@ -324,6 +328,7 @@ function QuotesListPage() {
                 key={r.id}
                 row={r}
                 isManagerial={isManagerial}
+                isAccountant={isAccountant}
                 isOwner={r.salesperson_id === user?.id}
               />
             ))}
@@ -362,10 +367,16 @@ function QuotesListPage() {
 interface RowProps {
   row: QuoteRow;
   isManagerial: boolean;
+  isAccountant: boolean;
   isOwner: boolean;
 }
 
-function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean) {
+function useStatusActions(
+  row: QuoteRow,
+  isManagerial: boolean,
+  isAccountant: boolean,
+  isOwner: boolean,
+) {
   const qc = useQueryClient();
   const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
@@ -383,22 +394,25 @@ function useStatusActions(row: QuoteRow, isManagerial: boolean, isOwner: boolean
 
   const canSend = (isManagerial || isOwner) && row.status === "draft";
   const canAccept = isManagerial && row.status === "sent";
-  const canReject = (isManagerial || isOwner) && row.status === "sent";
+  const canReject = (isManagerial || isAccountant || isOwner) && row.status === "sent";
   const canCancel = (isManagerial || isOwner) && (row.status === "draft" || row.status === "sent");
 
   return { mutation, canSend, canAccept, canReject, canCancel };
 }
 
-function RowActions({ row, isManagerial, isOwner }: RowProps) {
+function RowActions({ row, isManagerial, isAccountant, isOwner }: RowProps) {
   const { mutation, canSend, canAccept, canReject, canCancel } = useStatusActions(
     row,
     isManagerial,
+    isAccountant,
     isOwner,
   );
   const [confirm, setConfirm] = useState<null | {
     next: SalesQuoteStatus;
     label: string;
     needsReason?: boolean;
+    reasonLabel?: string;
+    reasonPlaceholder?: string;
   }>(null);
   const [reason, setReason] = useState("");
 
@@ -439,7 +453,17 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
             size="sm"
             variant="outline"
             disabled={mutation.isPending}
-            onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}
+            onClick={() => {
+              setReason("");
+              setConfirm({
+                next: "rejected",
+                label: "رد پیش‌فاکتور",
+                needsReason: true,
+                reasonLabel: "دلیل رد پیش‌فاکتور *",
+                reasonPlaceholder:
+                  "دلیل کامل رد را بنویسید؛ این متن برای کارشناس فروش نمایش داده می‌شود.",
+              });
+            }}
           >
             <XCircle className="ml-1 h-3.5 w-3.5" /> رد
           </Button>
@@ -451,7 +475,13 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
             disabled={mutation.isPending}
             onClick={() => {
               setReason("");
-              setConfirm({ next: "canceled", label: "لغو پیش‌فاکتور", needsReason: true });
+              setConfirm({
+                next: "canceled",
+                label: "لغو پیش‌فاکتور",
+                needsReason: true,
+                reasonLabel: "دلیل لغو پیش‌فاکتور *",
+                reasonPlaceholder: "دلیل لغو را بنویسید.",
+              });
             }}
           >
             <Ban className="ml-1 h-3.5 w-3.5" /> لغو
@@ -474,17 +504,23 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
           </AlertDialogHeader>
           {confirm?.needsReason && (
             <div className="space-y-2 py-2">
-              <label className="text-xs text-muted-foreground">دلیل لغو (اختیاری)</label>
-              <Input
+              <label className="text-xs text-muted-foreground">{confirm.reasonLabel}</label>
+              <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="دلیل لغو"
+                placeholder={confirm.reasonPlaceholder}
+                rows={5}
+                maxLength={2000}
               />
+              <div className="text-[11px] text-muted-foreground">
+                این توضیح در جزئیات پیش‌فاکتور ذخیره می‌شود.
+              </div>
             </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
+              disabled={Boolean(confirm?.needsReason && !reason.trim())}
               onClick={() => {
                 if (!confirm) return;
                 mutation.mutate({
@@ -503,7 +539,7 @@ function RowActions({ row, isManagerial, isOwner }: RowProps) {
   );
 }
 
-function QuoteRowDesktop({ row, isManagerial, isOwner }: RowProps) {
+function QuoteRowDesktop({ row, isManagerial, isAccountant, isOwner }: RowProps) {
   return (
     <tr className="hover:bg-muted/30">
       <td className="p-3 align-top font-mono text-xs">{row.quote_number}</td>
@@ -530,13 +566,18 @@ function QuoteRowDesktop({ row, isManagerial, isOwner }: RowProps) {
         {row.expires_at ? formatDateFa(row.expires_at) : "—"}
       </td>
       <td className="p-3 align-top">
-        <RowActions row={row} isManagerial={isManagerial} isOwner={isOwner} />
+        <RowActions
+          row={row}
+          isManagerial={isManagerial}
+          isAccountant={isAccountant}
+          isOwner={isOwner}
+        />
       </td>
     </tr>
   );
 }
 
-function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
+function QuoteCardMobile({ row, isManagerial, isAccountant, isOwner }: RowProps) {
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -558,7 +599,12 @@ function QuoteCardMobile({ row, isManagerial, isOwner }: RowProps) {
           <span>{row.salesperson?.full_name ?? "—"}</span>
           <span>{formatDateTimeFa(row.created_at)}</span>
         </div>
-        <RowActions row={row} isManagerial={isManagerial} isOwner={isOwner} />
+        <RowActions
+          row={row}
+          isManagerial={isManagerial}
+          isAccountant={isAccountant}
+          isOwner={isOwner}
+        />
       </CardContent>
     </Card>
   );

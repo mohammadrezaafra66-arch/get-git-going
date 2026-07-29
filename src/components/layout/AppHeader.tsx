@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/shared/components/NotificationBell";
+import { QuoteRejectionNoticeDialog } from "@/shared/components/QuoteRejectionNoticeDialog";
 import { ClockInOutButton } from "@/components/attendance/ClockInOutButton";
 import { OnlineDot } from "@/components/presence/OnlineDot";
 
@@ -33,6 +34,7 @@ export function AppHeader() {
       <SidebarTrigger />
       <div className="flex-1" />
       <ClockInOutButton />
+      <QuoteRejectionNoticeDialog />
       <NotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -16,7 +16,7 @@ import {
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,6 +97,7 @@ function QuoteDetailPage() {
   const { quoteId } = Route.useParams();
   const { user, roles } = useAuth();
   const isManagerial = roles.includes("admin") || roles.includes("manager");
+  const isAccountant = roles.includes("accountant");
 
   const quoteQuery = useQuery({
     queryKey: ["sales-quote-detail", quoteId],
@@ -201,7 +202,12 @@ function QuoteDetailPage() {
                 <ArrowRight className="ml-1 h-4 w-4" /> بازگشت به لیست
               </Link>
             </Button>
-            <QuoteActionButtons quote={quote} isManagerial={isManagerial} isOwner={isOwner} />
+            <QuoteActionButtons
+              quote={quote}
+              isManagerial={isManagerial}
+              isAccountant={isAccountant}
+              isOwner={isOwner}
+            />
           </div>
         }
       />
@@ -400,7 +406,12 @@ function QuoteDetailPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:hidden">
-        <QuoteActionButtons quote={quote} isManagerial={isManagerial} isOwner={isOwner} />
+        <QuoteActionButtons
+          quote={quote}
+          isManagerial={isManagerial}
+          isAccountant={isAccountant}
+          isOwner={isOwner}
+        />
       </div>
     </div>
   );
@@ -418,10 +429,12 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 function QuoteActionButtons({
   quote,
   isManagerial,
+  isAccountant,
   isOwner,
 }: {
   quote: QuoteDetail;
   isManagerial: boolean;
+  isAccountant: boolean;
   isOwner: boolean;
 }) {
   const qc = useQueryClient();
@@ -478,7 +491,7 @@ function QuoteActionButtons({
 
   const canSend = (isManagerial || isOwner) && quote.status === "draft";
   const canAccept = isManagerial && quote.status === "sent";
-  const canReject = (isManagerial || isOwner) && quote.status === "sent";
+  const canReject = (isManagerial || isAccountant || isOwner) && quote.status === "sent";
   const canCancel =
     (isManagerial || isOwner) && (quote.status === "draft" || quote.status === "sent");
 
@@ -607,15 +620,20 @@ function QuoteActionButtons({
               <label className="text-xs text-muted-foreground">
                 {confirm.next === "rejected" ? "دلیل رد *" : "دلیل لغو *"}
               </label>
-              <Input
+              <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder={
                   confirm.next === "rejected"
-                    ? "مثلاً: مشتری قیمت را نپذیرفت"
+                    ? "دلیل کامل رد را بنویسید؛ این متن برای کارشناس فروش نمایش داده می‌شود."
                     : "دلیل لغو"
                 }
+                rows={5}
+                maxLength={2000}
               />
+              <div className="text-[11px] text-muted-foreground">
+                این توضیح در جزئیات پیش‌فاکتور ذخیره می‌شود.
+              </div>
             </div>
           )}
 
