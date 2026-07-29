@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { aiChat } from "@/lib/ai/client.server";
+import {
+  getWhatsappProductSellersSnapshot,
+  getWhatsappTopProductsSnapshot,
+} from "@/lib/management/whatsapp-top-products.functions";
 
 const InputSchema = z.object({
   productId: z.string().uuid(),
@@ -23,6 +27,13 @@ function formatDateFa(iso: string | null | undefined): string {
   } catch {
     return String(iso);
   }
+}
+
+function normalizeSearchText(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("fa-IR");
 }
 
 export const generatePurchaseAdvice = createServerFn({ method: "POST" })
@@ -82,6 +93,63 @@ export const generatePurchaseAdvice = createServerFn({ method: "POST" })
           .join("\n")
       : "— سابقه خریدی ثبت نشده است.";
 
+    const topProducts = await getWhatsappTopProductsSnapshot({ range: 30, limit: 150 });
+    const normalizedProductName = normalizeSearchText(product.name as string);
+    const whatsappMatch =
+      topProducts.ok && topProducts.products.length > 0
+        ? (topProducts.products.find((p) => p.product_id === data.productId) ??
+          topProducts.products.find(
+            (p) => normalizeSearchText(p.product_name) === normalizedProductName,
+          ) ??
+          topProducts.products.find((p) => {
+            const n = normalizeSearchText(p.product_name);
+            return n.includes(normalizedProductName) || normalizedProductName.includes(n);
+          }) ??
+          null)
+        : null;
+
+    const whatsappSellers = whatsappMatch
+      ? await getWhatsappProductSellersSnapshot({
+          productName: whatsappMatch.product_name,
+          range: 30,
+          limit: 10,
+        })
+      : null;
+
+    const whatsappDemandLines = whatsappMatch
+      ? [
+          `- رتبه در جدول واتساپ: ${whatsappMatch.rank.toLocaleString("fa-IR")}`,
+          `- تعداد تکرار در ۳۰ روز: ${whatsappMatch.mention_count.toLocaleString("fa-IR")}`,
+          `- تعداد گروه: ${whatsappMatch.group_count.toLocaleString("fa-IR")}`,
+          `- تعداد فرستنده: ${whatsappMatch.sender_count.toLocaleString("fa-IR")}`,
+          `- وضعیت در دستیار: ${
+            whatsappMatch.assistant_status ??
+            (whatsappMatch.in_assistant ? "در دستیار داریم" : "خارج از دستیار")
+          }`,
+          `- آخرین ذکر: ${whatsappMatch.last_mentioned_shamsi ?? "نامشخص"}`,
+        ].join("\n")
+      : topProducts.ok
+        ? "— این محصول در جدول محصولات پرتکرار واتساپ ۳۰ روز اخیر پیدا نشد."
+        : `— اتصال به گزارش واتساپ برقرار نشد: ${topProducts.reason}`;
+
+    const whatsappSellerLines =
+      whatsappSellers && whatsappSellers.ok && whatsappSellers.mentioners.length > 0
+        ? whatsappSellers.mentioners
+            .slice(0, 10)
+            .map((s, i) => {
+              const contacts =
+                s.all_contacts.length > 0
+                  ? s.all_contacts
+                  : [s.sender_phone, s.sender_phone_secondary].filter(Boolean);
+              return `${i + 1}. فروشنده/فرستنده: ${s.sender_display_name ?? "نامشخص"} — گروه: ${s.group_name ?? "نامشخص"} — تماس: ${contacts.join(" / ") || "نامشخص"} — زمان: ${s.timestamp_shamsi ?? "نامشخص"}${s.message_preview ? ` — نمونه پیام: ${s.message_preview}` : ""}`;
+            })
+            .join("\n")
+        : whatsappSellers && whatsappSellers.ok
+          ? "— برای این محصول فروشنده/فرستنده اخیر در گزارش واتساپ پیدا نشد."
+          : whatsappSellers && !whatsappSellers.ok
+            ? `— دریافت فروشندگان واتساپ ناموفق بود: ${whatsappSellers.reason}`
+            : "— چون محصول در جدول واتساپ پیدا نشد، فروشنده‌ای از واتساپ هم بازیابی نشد.";
+
     const rateLines = [
       usd
         ? `USD: ${Number(usd.rate_to_toman).toLocaleString("fa-IR")} تومان (${formatDateFa(usd.effective_at as string | null)})`
@@ -110,12 +178,19 @@ ${priceLines}
 نرخ ارز فعلی:
 ${rateLines}
 
+تقاضای واقعی مشتریان در واتساپ برای همین محصول:
+${whatsappDemandLines}
+
+فروشندگان/فرستندگان اخیر همین محصول در گزارش واتساپ:
+${whatsappSellerLines}
+
 لطفاً توصیه‌ی خرید کاملی شامل موارد زیر ارائه بده:
 ۱. تامین‌کننده پیشنهادی و دلیل
 ۲. زمان‌بندی خرید (اکنون یا صبر)
 ۳. تحلیل روند قیمت
 ۴. ریسک‌های احتمالی
-۵. جمع‌بندی نهایی`;
+۵. فروشندگان یا فرستندگان اخیر واتساپ را اگر داده معتبر وجود دارد نام ببر و بگو از کدام گروه/شماره آمده‌اند
+۶. جمع‌بندی نهایی`;
 
     const result = await aiChat({
       usageKey: "purchase_advisor.chat",

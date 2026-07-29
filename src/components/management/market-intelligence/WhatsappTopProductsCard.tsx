@@ -40,9 +40,9 @@ export function WhatsappTopProductsCard() {
   const q = useQuery({
     queryKey: ["wa-top-products"],
     queryFn: () => topFn({ data: {} }),
-    // Same live-refresh cadence as the rest of the dashboards (2 min).
-    refetchInterval: 120_000,
-    staleTime: 60_000,
+    // Near-live mirror of the separate WhatsApp reporting page.
+    refetchInterval: 30_000,
+    staleTime: 15_000,
   });
   const [selected, setSelected] = useState<WhatsappTopProduct | null>(null);
   const [scope, setScope] = useState<ScopeFilter>("all");
@@ -104,6 +104,7 @@ export function WhatsappTopProductsCard() {
                   <th className="p-2 font-medium">تعداد تکرار</th>
                   <th className="p-2 font-medium">تعداد گروه</th>
                   <th className="p-2 font-medium">تعداد فرستنده</th>
+                  <th className="p-2 font-medium">منابع</th>
                   <th className="p-2 font-medium">آخرین ذکر</th>
                   <th className="p-2"></th>
                 </tr>
@@ -136,6 +137,9 @@ export function WhatsappTopProductsCard() {
                     </td>
                     <td className="p-2 tabular-nums">{formatNumber(p.group_count)}</td>
                     <td className="p-2 tabular-nums">{formatNumber(p.sender_count)}</td>
+                    <td className="p-2 text-xs text-muted-foreground" dir="ltr">
+                      {p.sources.length > 0 ? p.sources.join(" / ") : "—"}
+                    </td>
                     <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">
                       {fmtWhen(p.last_mentioned_at, p.last_mentioned_shamsi)}
                     </td>

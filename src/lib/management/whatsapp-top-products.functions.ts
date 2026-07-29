@@ -31,9 +31,10 @@ export interface WhatsappTopProduct {
   sender_count: number;
   last_mentioned_at: string | null;
   last_mentioned_shamsi: string | null;
+  sources: string[];
 }
 
-export interface WhatsappMentioner {
+export interface WhatsappProductSeller {
   timestamp: string | null;
   timestamp_shamsi: string | null;
   group_name: string | null;
@@ -49,7 +50,7 @@ export type WhatsappTopProductsResult =
   | { ok: false; reason: string };
 
 export type WhatsappMentionersResult =
-  | { ok: true; product_name: string; mentioners: WhatsappMentioner[] }
+  | { ok: true; product_name: string; mentioners: WhatsappProductSeller[] }
   | { ok: false; reason: string };
 
 /** Defense-in-depth: the page already guards admin/manager/accountant, but a
@@ -80,7 +81,10 @@ async function getJson(url: string): Promise<unknown> {
   }
 }
 
-type RawTopProduct = Partial<WhatsappTopProduct> & { product_name?: string };
+type RawTopProduct = Partial<WhatsappTopProduct> & {
+  product_name?: string;
+  last_mention_shamsi?: string | null;
+};
 
 /** Tolerate the pre-fix upstream shape, which had no assistant-match fields:
  *  only an explicit `false` marks a row as non-catalog, so an older platform
@@ -96,8 +100,89 @@ function normalizeTopProduct(p: RawTopProduct): WhatsappTopProduct {
     group_count: Number(p.group_count ?? 0),
     sender_count: Number(p.sender_count ?? 0),
     last_mentioned_at: p.last_mentioned_at ?? null,
-    last_mentioned_shamsi: p.last_mentioned_shamsi ?? null,
+    last_mentioned_shamsi: p.last_mentioned_shamsi ?? p.last_mention_shamsi ?? null,
+    sources: Array.isArray(p.sources) ? p.sources.map(String) : [],
   };
+}
+
+function normalizeSeller(raw: Record<string, unknown>): WhatsappProductSeller {
+  const contacts = raw.all_contacts;
+  return {
+    timestamp: typeof raw.timestamp === "string" ? raw.timestamp : null,
+    timestamp_shamsi:
+      (typeof raw.timestamp_shamsi === "string" && raw.timestamp_shamsi) ||
+      (typeof raw.time_shamsi === "string" && raw.time_shamsi) ||
+      null,
+    group_name: typeof raw.group_name === "string" ? raw.group_name : null,
+    sender_display_name:
+      (typeof raw.sender_display_name === "string" && raw.sender_display_name) ||
+      (typeof raw.sender_name === "string" && raw.sender_name) ||
+      null,
+    sender_phone: typeof raw.sender_phone === "string" ? raw.sender_phone : null,
+    sender_phone_secondary:
+      typeof raw.sender_phone_secondary === "string" ? raw.sender_phone_secondary : null,
+    all_contacts: Array.isArray(contacts) ? contacts.map(String) : [],
+    message_preview: typeof raw.message_preview === "string" ? raw.message_preview : null,
+  };
+}
+
+export async function getWhatsappTopProductsSnapshot(input?: {
+  range?: number;
+  limit?: number;
+  search?: string | null;
+}): Promise<WhatsappTopProductsResult> {
+  const range = input?.range ?? 30;
+  const limit = input?.limit ?? 150;
+  const params = new URLSearchParams({
+    days: String(range),
+    limit: String(limit),
+  });
+  if (input?.search?.trim()) params.set("search", input.search.trim());
+
+  try {
+    // Mirror the source page's own reporting endpoint exactly. The older
+    // /reports/top-products endpoint is a compatibility API with a different
+    // shape and is not the table the user sees on /reporting.
+    const json = (await getJson(`${baseUrl()}/api/v1/reporting/top-products?${params}`)) as {
+      generated_at?: string;
+      products?: RawTopProduct[];
+    };
+    return {
+      ok: true,
+      generated_at: json.generated_at ?? null,
+      products: Array.isArray(json.products) ? json.products.map(normalizeTopProduct) : [],
+    };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
+  }
+}
+
+export async function getWhatsappProductSellersSnapshot(input: {
+  productName: string;
+  range?: number;
+  limit?: number;
+}): Promise<WhatsappMentionersResult> {
+  const range = input.range ?? 30;
+  const limit = input.limit ?? 100;
+  const params = new URLSearchParams({
+    product_name: input.productName,
+    days: String(range),
+    limit: String(limit),
+  });
+
+  try {
+    const json = (await getJson(`${baseUrl()}/api/v1/reporting/product-sellers?${params}`)) as {
+      product_name?: string;
+      sellers?: Record<string, unknown>[];
+    };
+    return {
+      ok: true,
+      product_name: json.product_name ?? input.productName,
+      mentioners: Array.isArray(json.sellers) ? json.sellers.map(normalizeSeller) : [],
+    };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
+  }
 }
 
 export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
@@ -112,24 +197,7 @@ export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<WhatsappTopProductsResult> => {
     await assertAllowed(context.userId);
-    const range = data.range ?? 30;
-    // The platform reports EVERY product mentioned in real messages — both
-    // catalog matches and non-catalog/competitor items ("خارج از دستیار"), which
-    // sit in the low-mention tail. A small limit silently truncates that tail and
-    // makes the card look catalog-only, so mirror the platform page's own default.
-    const limit = data.limit ?? 150;
-    try {
-      const json = (await getJson(
-        `${baseUrl()}/api/v1/reports/top-products?range=${range}&limit=${limit}`,
-      )) as { generated_at?: string; products?: RawTopProduct[] };
-      return {
-        ok: true,
-        generated_at: json.generated_at ?? null,
-        products: Array.isArray(json.products) ? json.products.map(normalizeTopProduct) : [],
-      };
-    } catch (e) {
-      return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
-    }
+    return getWhatsappTopProductsSnapshot({ range: data.range, limit: data.limit });
   });
 
 export const fetchWhatsappMentioners = createServerFn({ method: "POST" })
@@ -145,20 +213,9 @@ export const fetchWhatsappMentioners = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<WhatsappMentionersResult> => {
     await assertAllowed(context.userId);
-    const range = data.range ?? 30;
-    const limit = data.limit ?? 100;
-    // {product_name} is the product's NAME STRING — always URL-encode it.
-    const seg = encodeURIComponent(data.productName);
-    try {
-      const json = (await getJson(
-        `${baseUrl()}/api/v1/reports/top-products/${seg}/mentioners?range=${range}&limit=${limit}`,
-      )) as { product_name?: string; mentioners?: WhatsappMentioner[] };
-      return {
-        ok: true,
-        product_name: json.product_name ?? data.productName,
-        mentioners: Array.isArray(json.mentioners) ? json.mentioners : [],
-      };
-    } catch (e) {
-      return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
-    }
+    return getWhatsappProductSellersSnapshot({
+      productName: data.productName,
+      range: data.range,
+      limit: data.limit,
+    });
   });
