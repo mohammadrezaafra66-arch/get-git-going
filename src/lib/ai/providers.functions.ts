@@ -19,12 +19,15 @@ import {
   type AiCapability,
   type AiProvider,
   type AiProviderHealth,
+  type AiUsageRoute,
 } from "./types";
 import { discoverModels, testProviderCapability, type DiscoveredModel } from "./client.server";
+import { AI_USAGE_KEYS } from "./usages";
 
 export interface AiProvidersPayload {
   providers: AiProvider[];
   health: AiProviderHealth[];
+  usageRoutes: AiUsageRoute[];
 }
 
 async function assertAdmin(userId: string): Promise<void> {
@@ -58,6 +61,13 @@ const UpsertSchema = z.object({
   notes: z.string().max(1000).nullable(),
 });
 
+const UsageRouteSchema = z.object({
+  service_key: z.enum(AI_USAGE_KEYS),
+  provider_id: z.string().uuid().nullable(),
+  is_enabled: z.boolean(),
+  fallback_enabled: z.boolean(),
+});
+
 export const listAiProviders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   // Explicit return type: without it TypeScript tries to infer this handler
@@ -78,6 +88,13 @@ export const listAiProviders = createServerFn({ method: "GET" })
       .select(
         "provider_id,capability,last_status,last_ok_at,last_error_at,last_error_code,last_error_message,last_latency_ms,updated_at",
       );
+
+    const { data: usageRoutes } = await supabaseAdmin
+      .from("ai_usage_routes" as never)
+      .select(
+        "service_key,capability,provider_id,is_enabled,fallback_enabled,updated_at,updated_by",
+      )
+      .order("service_key", { ascending: true });
 
     const providers: AiProvider[] = (
       (data ?? []) as unknown as (Omit<AiProvider, "capabilities" | "has_key"> & {
@@ -103,7 +120,11 @@ export const listAiProviders = createServerFn({ method: "GET" })
       notes: row.notes,
     }));
 
-    return { providers, health: (health ?? []) as unknown as AiProviderHealth[] };
+    return {
+      providers,
+      health: (health ?? []) as unknown as AiProviderHealth[],
+      usageRoutes: (usageRoutes ?? []) as unknown as AiUsageRoute[],
+    };
   });
 
 export const upsertAiProvider = createServerFn({ method: "POST" })
@@ -180,3 +201,47 @@ export const discoverAiModels = createServerFn({ method: "POST" })
       return discoverModels(data.id);
     },
   );
+
+export const updateAiUsageRoute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => UsageRouteSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const capability = AI_USAGE_KEYS.includes(data.service_key)
+      ? data.service_key.endsWith(".embeddings")
+        ? "embeddings"
+        : data.service_key.endsWith(".vision")
+          ? "vision"
+          : "chat"
+      : "chat";
+
+    if (data.provider_id) {
+      const { data: provider, error: providerErr } = await supabaseAdmin
+        .from("ai_providers" as never)
+        .select("id,capabilities")
+        .eq("id", data.provider_id)
+        .maybeSingle();
+      if (providerErr || !provider) {
+        throw new Error("ارائه‌دهنده انتخاب‌شده پیدا نشد.");
+      }
+      const capabilities = ((provider as unknown as { capabilities: string[] | null })
+        .capabilities ?? []) as string[];
+      if (!capabilities.includes(capability)) {
+        throw new Error("این ارائه‌دهنده قابلیت لازم برای این بخش را ندارد.");
+      }
+    }
+
+    const { error } = await supabaseAdmin.from("ai_usage_routes" as never).upsert(
+      {
+        service_key: data.service_key,
+        capability,
+        provider_id: data.provider_id,
+        is_enabled: data.is_enabled,
+        fallback_enabled: data.fallback_enabled,
+        updated_by: context.userId,
+      } as never,
+      { onConflict: "service_key" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

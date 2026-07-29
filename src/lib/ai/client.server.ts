@@ -39,6 +39,7 @@ import {
   type AiResult,
   type AiVisionOptions,
 } from "./types";
+import type { AiUsageKey } from "./usages";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -57,6 +58,14 @@ interface ProviderRow {
   key_prefix: string | null;
   secret_id: string | null;
   notes: string | null;
+}
+
+interface UsageRouteRow {
+  service_key: string;
+  capability: string;
+  provider_id: string | null;
+  is_enabled: boolean;
+  fallback_enabled: boolean;
 }
 
 function toProvider(row: ProviderRow): AiProvider {
@@ -80,8 +89,38 @@ function toProvider(row: ProviderRow): AiProvider {
   };
 }
 
+async function getUsageRoute(
+  usageKey: AiUsageKey | undefined,
+  capability: AiCapability,
+): Promise<UsageRouteRow | null> {
+  if (!usageKey) return null;
+  const { data, error } = await supabaseAdmin
+    .from("ai_usage_routes" as never)
+    .select("service_key,capability,provider_id,is_enabled,fallback_enabled")
+    .eq("service_key", usageKey)
+    .eq("capability", capability)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as unknown as UsageRouteRow;
+}
+
+function applyUsageRoute(providers: AiProvider[], route: UsageRouteRow | null): AiProvider[] {
+  if (!route) return providers;
+  if (!route.is_enabled) return [];
+  if (!route.provider_id) return providers;
+
+  const selected = providers.find((p) => p.id === route.provider_id);
+  if (!selected) return route.fallback_enabled ? providers : [];
+  if (!route.fallback_enabled) return [selected];
+
+  return [selected, ...providers.filter((p) => p.id !== selected.id)];
+}
+
 /** Providers that declare `capability`, active, best priority first. */
-export async function listProvidersFor(capability: AiCapability): Promise<AiProvider[]> {
+export async function listProvidersFor(
+  capability: AiCapability,
+  opts?: { usageKey?: AiUsageKey },
+): Promise<AiProvider[]> {
   const { data, error } = await supabaseAdmin
     .from("ai_providers" as never)
     .select(
@@ -91,9 +130,11 @@ export async function listProvidersFor(capability: AiCapability): Promise<AiProv
     .order("priority", { ascending: true });
 
   if (error || !data) return [];
-  return (data as unknown as ProviderRow[])
+  const providers = (data as unknown as ProviderRow[])
     .map(toProvider)
     .filter((p) => p.capabilities.includes(capability));
+  const route = await getUsageRoute(opts?.usageKey, capability);
+  return applyUsageRoute(providers, route);
 }
 
 /**
@@ -108,9 +149,9 @@ export async function listProvidersFor(capability: AiCapability): Promise<AiProv
  */
 export async function resolveProviderForCapability(
   capability: AiCapability,
-  opts?: { kind?: AiProvider["kind"] },
+  opts?: { kind?: AiProvider["kind"]; usageKey?: AiUsageKey },
 ): Promise<{ provider: AiProvider; key: string | null } | null> {
-  const providers = await listProvidersFor(capability);
+  const providers = await listProvidersFor(capability, { usageKey: opts?.usageKey });
   // Item 208 — a caller that can only speak one wire protocol must be able to
   // ask for it. Taking providers[0] blindly hands the SSE chat route an
   // OpenAI-compatible provider whenever one outranks Ollama on priority, and
@@ -259,8 +300,9 @@ async function runWithFailover<T>(
   capability: AiCapability,
   attempt: (provider: AiProvider, key: string | null) => Promise<CallOutcome<T>>,
   modelOf: (provider: AiProvider) => string | null,
+  usageKey?: AiUsageKey,
 ): Promise<AiResult<T>> {
-  const providers = await listProvidersFor(capability);
+  const providers = await listProvidersFor(capability, { usageKey });
   if (providers.length === 0) {
     return {
       ok: false,
@@ -364,6 +406,7 @@ export async function aiChat(opts: AiChatOptions): Promise<AiResult<string>> {
         : { ok: false, reason: "empty_response", status: 200, detail: null };
     },
     (p) => opts.model ?? p.chat_model,
+    opts.usageKey,
   );
 }
 
@@ -421,6 +464,7 @@ export async function aiEmbed(opts: AiEmbedOptions): Promise<AiResult<AiEmbedRes
       };
     },
     (p) => opts.model ?? p.embed_model,
+    opts.usageKey,
   );
 }
 
@@ -488,6 +532,7 @@ export async function aiVision(opts: AiVisionOptions): Promise<AiResult<string>>
         : { ok: false, reason: "empty_response", status: 200, detail: null };
     },
     (p) => opts.model ?? p.vision_model,
+    opts.usageKey,
   );
 }
 

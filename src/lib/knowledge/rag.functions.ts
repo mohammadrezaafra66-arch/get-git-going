@@ -103,6 +103,7 @@ export const reindexKnowledgeDocuments = createServerFn({ method: "POST" })
       }
 
       const embedded = await aiEmbed({
+        usageKey: "knowledge_index.embeddings",
         input: chunks.map((c) => c.content),
         requiredDimension: CHUNK_EMBEDDING_DIMENSION,
       });
@@ -159,6 +160,7 @@ export const askKnowledge = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<AskResult> => {
     const embedded = await aiEmbed({
+      usageKey: "knowledge_ask.embeddings",
       input: data.question,
       requiredDimension: CHUNK_EMBEDDING_DIMENSION,
     });
@@ -203,6 +205,7 @@ export const askKnowledge = createServerFn({ method: "POST" })
     ].join(" ");
 
     const answer = await aiChat({
+      usageKey: "knowledge_ask.chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `متن‌های موجود:\n\n${contextBlock}\n\nپرسش: ${data.question}` },

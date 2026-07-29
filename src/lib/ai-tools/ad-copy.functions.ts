@@ -45,6 +45,7 @@ ${data.description ? `توضیحات: ${data.description}` : ""}
 مخاطب هدف: ${audienceFa}`;
 
     const result = await aiChat({
+      usageKey: "product_ad_copy.chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

@@ -110,12 +110,15 @@ export interface AiChatOptions {
   timeoutMs?: number;
   /** Override the provider's configured chat model. */
   model?: string;
+  /** Optional product/module-level route for provider selection. */
+  usageKey?: import("./usages").AiUsageKey;
 }
 
 export interface AiEmbedOptions {
   input: string | string[];
   timeoutMs?: number;
   model?: string;
+  usageKey?: import("./usages").AiUsageKey;
   /**
    * Width the caller's target column actually is. A provider returning any
    * other width is skipped and the walk continues, instead of handing back a
@@ -137,6 +140,7 @@ export interface AiVisionOptions {
   mimeType: string;
   timeoutMs?: number;
   model?: string;
+  usageKey?: import("./usages").AiUsageKey;
 }
 
 export interface AiProviderHealth {
@@ -149,6 +153,16 @@ export interface AiProviderHealth {
   last_error_message: string | null;
   last_latency_ms: number | null;
   updated_at: string;
+}
+
+export interface AiUsageRoute {
+  service_key: import("./usages").AiUsageKey;
+  capability: AiCapability;
+  provider_id: string | null;
+  is_enabled: boolean;
+  fallback_enabled: boolean;
+  updated_at: string | null;
+  updated_by: string | null;
 }
 
 /** Maps a failure reason onto the health vocabulary stored in the database. */

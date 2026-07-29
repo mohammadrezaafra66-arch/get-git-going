@@ -118,6 +118,7 @@ ${rateLines}
 ۵. جمع‌بندی نهایی`;
 
     const result = await aiChat({
+      usageKey: "purchase_advisor.chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

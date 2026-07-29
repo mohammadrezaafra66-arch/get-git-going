@@ -51,6 +51,7 @@ async function callEmbedding(
   text: string,
 ): Promise<{ vec?: number[]; model?: string; reason?: string }> {
   const r = await aiEmbed({
+    usageKey: "messenger_semantic_search.embeddings",
     input: text,
     timeoutMs: EMBED_TIMEOUT_MS,
     requiredDimension: MESSAGE_EMBEDDING_DIMENSION,

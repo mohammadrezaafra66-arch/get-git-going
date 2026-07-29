@@ -158,6 +158,7 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
       // anything the accountant typed alone, and nothing is written to a
       // financial record until the accountant submits the form.
       const vision = await aiVision({
+        usageKey: "receipt_ocr.vision",
         prompt: OCR_PROMPT,
         imageBase64: data.base64,
         mimeType: mime,

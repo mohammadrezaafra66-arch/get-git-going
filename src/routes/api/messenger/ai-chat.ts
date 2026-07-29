@@ -114,18 +114,13 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           content: parsed.message,
         });
 
-        // Provider comes from the registry, not from env: same ordering, same
-        // vaulted key and same health reporting as every other AI call site.
-        //
-        // This route resolves the provider itself instead of calling aiChat()
-        // because it streams — buffering the whole answer to reuse the shared
-        // helper would delete the token-by-token UX. The trade-off is no
-        // automatic failover here; a failure is reported to the same health
-        // table so it still shows on the admin page.
-        // Only Ollama streams in this route's NDJSON shape (see the isOllama
-        // check below), so ask for it by kind instead of taking whichever
-        // provider happens to rank first.
-        const target = await resolveProviderForCapability("chat", { kind: "ollama" });
+        // Provider comes from the usage router. Ollama streams token-by-token;
+        // OpenAI-compatible providers are sent as one final delta so the same
+        // drawer remains usable when admins route messenger chat away from
+        // local Ollama.
+        const target = await resolveProviderForCapability("chat", {
+          usageKey: "messenger_chat.chat",
+        });
         const apiUrl = target?.provider.base_url.trim();
         const model = target?.provider.chat_model?.trim() || "qwen2.5:7b";
 
@@ -165,29 +160,26 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
 
         const startedAt = Date.now();
         const base = apiUrl.replace(/\/+$/, "");
-        // Ollama speaks /api/chat; an OpenAI-compatible gateway speaks
-        // /chat/completions. Only the former streams in this route's NDJSON
-        // shape, so a non-Ollama provider is rejected rather than silently
-        // producing garbage.
-        const isOllama = target?.provider.kind === "ollama";
-
         let ollamaRes: Response;
         try {
-          if (!isOllama) throw new Error("streaming_unsupported_provider");
-          ollamaRes = await fetch(base + "/api/chat", {
-            method: "POST",
-            headers: ollamaHeaders,
-            body: JSON.stringify({ model, messages, stream: true }),
-            signal: controller.signal,
-          });
+          if (target?.provider.kind === "ollama") {
+            ollamaRes = await fetch(base + "/api/chat", {
+              method: "POST",
+              headers: ollamaHeaders,
+              body: JSON.stringify({ model, messages, stream: true }),
+              signal: controller.signal,
+            });
+          } else {
+            ollamaRes = await fetch(base + "/chat/completions", {
+              method: "POST",
+              headers: ollamaHeaders,
+              body: JSON.stringify({ model, messages, temperature: 0.2 }),
+              signal: controller.signal,
+            });
+          }
         } catch (e) {
           clearTimeout(timer);
-          const reason =
-            (e as Error)?.message === "streaming_unsupported_provider"
-              ? "streaming_unsupported"
-              : (e as Error)?.name === "AbortError"
-                ? "timeout"
-                : "fetch_failed";
+          const reason = (e as Error)?.name === "AbortError" ? "timeout" : "fetch_failed";
           if (target) {
             await recordProviderHealth(
               target.provider.id,
@@ -245,35 +237,53 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
           async start(c) {
             let buffer = "";
             try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
-                let nl = buffer.indexOf("\n");
-                while (nl !== -1) {
-                  const line = buffer.slice(0, nl).trim();
-                  buffer = buffer.slice(nl + 1);
-                  if (line) {
-                    try {
-                      const j = JSON.parse(line) as {
-                        message?: { content?: string };
-                        done?: boolean;
-                        error?: string;
-                      };
-                      if (j.error) {
-                        c.enqueue(encoder.encode(sseEvent({ error: j.error })));
-                      } else {
-                        const chunk = j.message?.content ?? "";
-                        if (chunk) {
-                          assistantFull += chunk;
-                          c.enqueue(encoder.encode(sseEvent({ delta: chunk })));
+              if (target?.provider.kind === "ollama") {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                  let nl = buffer.indexOf("\n");
+                  while (nl !== -1) {
+                    const line = buffer.slice(0, nl).trim();
+                    buffer = buffer.slice(nl + 1);
+                    if (line) {
+                      try {
+                        const j = JSON.parse(line) as {
+                          message?: { content?: string };
+                          done?: boolean;
+                          error?: string;
+                        };
+                        if (j.error) {
+                          c.enqueue(encoder.encode(sseEvent({ error: j.error })));
+                        } else {
+                          const chunk = j.message?.content ?? "";
+                          if (chunk) {
+                            assistantFull += chunk;
+                            c.enqueue(encoder.encode(sseEvent({ delta: chunk })));
+                          }
                         }
+                      } catch {
+                        // ignore malformed line
                       }
-                    } catch {
-                      // ignore malformed line
                     }
+                    nl = buffer.indexOf("\n");
                   }
-                  nl = buffer.indexOf("\n");
+                }
+              } else {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                }
+                const json = JSON.parse(buffer) as {
+                  choices?: { message?: { content?: string } }[];
+                  error?: { message?: string };
+                };
+                if (json.error?.message) {
+                  c.enqueue(encoder.encode(sseEvent({ error: json.error.message })));
+                } else {
+                  assistantFull = json.choices?.[0]?.message?.content?.trim() ?? "";
+                  if (assistantFull) c.enqueue(encoder.encode(sseEvent({ delta: assistantFull })));
                 }
               }
               c.enqueue(encoder.encode("event: done\ndata: {}\n\n"));

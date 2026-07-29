@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Loader2, Plus, RefreshCw, Trash2, Plug, Save } from "lucide-react";
@@ -28,6 +28,7 @@ import {
   discoverAiModels,
   listAiProviders,
   testAiProvider,
+  updateAiUsageRoute,
   upsertAiProvider,
 } from "@/lib/ai/providers.functions";
 import {
@@ -36,7 +37,9 @@ import {
   type AiCapability,
   type AiProvider,
   type AiProviderHealth,
+  type AiUsageRoute,
 } from "@/lib/ai/types";
+import { AI_USAGE_DEFINITIONS, type AiUsageKey } from "@/lib/ai/usages";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/admin/ai-providers")({
@@ -63,6 +66,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 type HealthRow = AiProviderHealth;
+type UsageRow = AiUsageRoute;
 
 type Draft = {
   id: string | null;
@@ -131,6 +135,7 @@ function AiProvidersPage() {
   });
 
   const providers = (q.data?.providers ?? []) as AiProvider[];
+  const usageRoutes = (q.data?.usageRoutes ?? []) as UsageRow[];
 
   const healthByProvider = useMemo(() => {
     const health = (q.data?.health ?? []) as HealthRow[];
@@ -205,6 +210,15 @@ function AiProvidersPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در دریافت مدل‌ها."),
   });
 
+  const usageM = useMutation({
+    mutationFn: (row: UsageDraft) => updateAiUsageRoute({ data: row }),
+    onSuccess: async () => {
+      toast.success("مسیر مصرف هوش مصنوعی ذخیره شد.");
+      await qc.invalidateQueries({ queryKey: ["ai-providers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در ذخیره مسیر مصرف."),
+  });
+
   async function runTest(id: string, capability: AiCapability) {
     setTesting(`${id}:${capability}`);
     try {
@@ -248,6 +262,14 @@ function AiProvidersPage() {
           غیرقابل‌بازیابی می‌کند و باید دوباره وارد شوند.
         </AlertDescription>
       </Alert>
+
+      <AiUsageRoutingSection
+        providers={providers}
+        usageRoutes={usageRoutes}
+        savingKey={usageM.variables?.service_key ?? null}
+        saving={usageM.isPending}
+        onSave={(row) => usageM.mutate(row)}
+      />
 
       {q.isLoading ? (
         <Skeleton className="h-64 w-full" />
@@ -572,5 +594,182 @@ function AiProvidersPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+type UsageDraft = {
+  service_key: AiUsageKey;
+  provider_id: string | null;
+  is_enabled: boolean;
+  fallback_enabled: boolean;
+};
+
+function AiUsageRoutingSection({
+  providers,
+  usageRoutes,
+  savingKey,
+  saving,
+  onSave,
+}: {
+  providers: AiProvider[];
+  usageRoutes: UsageRow[];
+  savingKey: AiUsageKey | null;
+  saving: boolean;
+  onSave: (row: UsageDraft) => void;
+}) {
+  const [drafts, setDrafts] = useState<Record<AiUsageKey, UsageDraft>>(
+    () =>
+      Object.fromEntries(
+        AI_USAGE_DEFINITIONS.map((u) => [
+          u.key,
+          {
+            service_key: u.key,
+            provider_id: null,
+            is_enabled: true,
+            fallback_enabled: true,
+          },
+        ]),
+      ) as Record<AiUsageKey, UsageDraft>,
+  );
+
+  useEffect(() => {
+    setDrafts(
+      Object.fromEntries(
+        AI_USAGE_DEFINITIONS.map((u) => {
+          const row = usageRoutes.find((r) => r.service_key === u.key);
+          return [
+            u.key,
+            {
+              service_key: u.key,
+              provider_id: row?.provider_id ?? null,
+              is_enabled: row?.is_enabled ?? true,
+              fallback_enabled: row?.fallback_enabled ?? true,
+            },
+          ];
+        }),
+      ) as Record<AiUsageKey, UsageDraft>,
+    );
+  }, [usageRoutes]);
+
+  const updateDraft = (key: AiUsageKey, patch: Partial<UsageDraft>) => {
+    setDrafts((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  };
+
+  const providerLabel = (id: string | null) => {
+    if (!id) return "خودکار بر اساس اولویت";
+    return providers.find((p) => p.id === id)?.label ?? "ارائه‌دهنده نامعتبر";
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">مسیرهای مصرف هوش مصنوعی در سیستم</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Alert>
+          <AlertTitle>این بخش مشخص می‌کند هر قسمت سیستم از کدام AI جواب بگیرد.</AlertTitle>
+          <AlertDescription className="text-sm leading-7">
+            اگر گزینه روی حالت خودکار باشد، سیستم مثل قبل provider فعال با اولویت بهتر را انتخاب
+            می‌کند. اگر یک provider مشخص انتخاب شود، همان بخش اول سراغ همان سرویس می‌رود. با خاموش
+            کردن fallback، همان بخش فقط از provider انتخاب‌شده استفاده می‌کند.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-3">
+          {AI_USAGE_DEFINITIONS.map((usage) => {
+            const draft = drafts[usage.key];
+            const capableProviders = providers.filter(
+              (p) => p.is_active && p.capabilities.includes(usage.capability),
+            );
+            const isSaving = saving && savingKey === usage.key;
+            return (
+              <div key={usage.key} className="rounded-lg border p-3">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.9fr)_auto]">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-semibold">{usage.label}</h3>
+                      <Badge variant="outline" className="text-[11px]">
+                        {AI_CAPABILITY_FA[usage.capability]}
+                      </Badge>
+                      {!draft?.is_enabled && (
+                        <Badge variant="secondary" className="text-[11px]">
+                          غیرفعال
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs leading-6 text-muted-foreground">{usage.description}</p>
+                    <p className="text-[11px] text-muted-foreground" dir="ltr">
+                      {usage.key}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">ارائه‌دهنده این بخش</Label>
+                    <Select
+                      value={draft?.provider_id ?? "__auto__"}
+                      disabled={!draft?.is_enabled}
+                      onValueChange={(v) =>
+                        updateDraft(usage.key, {
+                          provider_id: v === "__auto__" ? null : v,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="انتخاب ارائه‌دهنده">
+                          {providerLabel(draft?.provider_id ?? null)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__auto__">خودکار بر اساس اولویت</SelectItem>
+                        {capableProviders.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.label} — اولویت {p.priority}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {capableProviders.length === 0 && (
+                      <p className="text-xs text-destructive">
+                        هیچ provider فعالی برای این قابلیت وجود ندارد.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-3 lg:min-w-48">
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span>فعال</span>
+                      <Switch
+                        checked={draft?.is_enabled ?? true}
+                        onCheckedChange={(v) => updateDraft(usage.key, { is_enabled: v })}
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span>fallback در صورت خطا</span>
+                      <Switch
+                        checked={draft?.fallback_enabled ?? true}
+                        disabled={!draft?.is_enabled || !draft?.provider_id}
+                        onCheckedChange={(v) => updateDraft(usage.key, { fallback_enabled: v })}
+                      />
+                    </label>
+                    <Button
+                      size="sm"
+                      disabled={isSaving || !draft}
+                      onClick={() => draft && onSave(draft)}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="ml-2 h-4 w-4" />
+                      )}
+                      ذخیره این بخش
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

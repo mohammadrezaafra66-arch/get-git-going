@@ -202,6 +202,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       // 25,000,000). So receipt OCR stays on a keyed provider, and that is
       // enforced by the provider registry rather than by a branch here.
       const vision = await aiVision({
+        usageKey: "receipt_ocr.vision",
         prompt: OCR_PROMPT,
         imageBase64: b64,
         mimeType: fileType,
