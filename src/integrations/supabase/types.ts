@@ -5328,6 +5328,7 @@ export type Database = {
           document_channel: string | null
           has_perforation: boolean
           id: string
+          is_mobile_bank_screenshot: boolean
           is_typed_receipt: boolean
           payer_accounting_code: string | null
           payer_name: string
@@ -5367,6 +5368,7 @@ export type Database = {
           document_channel?: string | null
           has_perforation?: boolean
           id?: string
+          is_mobile_bank_screenshot?: boolean
           is_typed_receipt?: boolean
           payer_accounting_code?: string | null
           payer_name: string
@@ -5406,6 +5408,7 @@ export type Database = {
           document_channel?: string | null
           has_perforation?: boolean
           id?: string
+          is_mobile_bank_screenshot?: boolean
           is_typed_receipt?: boolean
           payer_accounting_code?: string | null
           payer_name?: string

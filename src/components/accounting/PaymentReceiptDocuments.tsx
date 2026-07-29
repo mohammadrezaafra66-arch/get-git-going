@@ -881,7 +881,7 @@ export function ReceiptDocumentsList({
       const { data: receiptRow, error: rErr } = await supabase
         .from("payment_receipts")
         .select(
-          "id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, security_warnings",
+          "id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, is_mobile_bank_screenshot, security_warnings",
         )
         .eq("id", doc.receipt_id)
         .single();
@@ -924,6 +924,7 @@ export function ReceiptDocumentsList({
         payer_name_on_receipt: (merged.payer_name_on_receipt as string | null) ?? null,
         has_perforation: (merged.has_perforation as boolean | null) ?? null,
         is_typed_receipt: (merged.is_typed_receipt as boolean | null) ?? null,
+        is_mobile_bank_screenshot: (merged.is_mobile_bank_screenshot as boolean | null) ?? null,
         extracted_data: ex,
         extraction_confidence: doc.extraction_confidence,
       });

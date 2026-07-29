@@ -112,7 +112,8 @@ function ReceiptsListPage() {
           `id, amount, payment_date, payment_time, receipt_time, tracking_number, status,
            receipt_type, posting_status, posted_at, description, rejection_reason, bank_name,
            source_bank, destination_bank, payer_name, payer_phone, payer_accounting_code,
-           receiver_name, receiver_phone, receiver_accounting_code, created_at, created_by,
+           receiver_name, receiver_phone, receiver_accounting_code, is_mobile_bank_screenshot,
+           created_at, created_by,
            customer:customers(id, name, phone, accounting_code),
            destination_bank_account:bank_accounts!payment_receipts_destination_bank_account_id_fkey(id, title),
            receiver_party:external_parties!payment_receipts_receiver_party_id_fkey(id, full_name)`,
@@ -154,6 +155,7 @@ function ReceiptsListPage() {
         receiver_name: string;
         receiver_phone: string | null;
         receiver_accounting_code: string | null;
+        is_mobile_bank_screenshot: boolean | null;
         created_at: string;
         created_by: string | null;
         customer: {
@@ -213,6 +215,7 @@ function ReceiptsListPage() {
           "مبلغ (تومان)": Number(r.amount),
           "شماره پیگیری": r.tracking_number,
           "نوع فیش": receiptTypeLabel(r.receipt_type),
+          "رسید اسکرین‌شات همراه بانک": r.is_mobile_bank_screenshot ? "بله" : "خیر",
           وضعیت: STATUS_FA[r.status] ?? r.status,
           "وضعیت ثبت سند": r.posting_status ?? "",
           "تاریخ ثبت سند (شمسی)": r.posted_at ? isoToJalaliDisplay(r.posted_at.slice(0, 10)) : "",

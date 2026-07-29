@@ -97,6 +97,7 @@ type ReceiptRow = {
   payer_name_on_receipt: string | null;
   has_perforation: boolean | null;
   is_typed_receipt: boolean | null;
+  is_mobile_bank_screenshot: boolean | null;
   security_warnings: unknown;
   customer: { id: string; name: string; phone: string | null } | null;
 };
@@ -225,7 +226,7 @@ function ReceiptDetailPage() {
       const { data, error } = await supabase
         .from("payment_receipts")
         .select(
-          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, document_channel, payer_name_on_receipt, has_perforation, is_typed_receipt, security_warnings, customer:customers(id, name, phone)",
+          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, document_channel, payer_name_on_receipt, has_perforation, is_typed_receipt, is_mobile_bank_screenshot, security_warnings, customer:customers(id, name, phone)",
         )
         .eq("id", receiptId)
         .maybeSingle();
@@ -507,6 +508,7 @@ function ReceiptDetailPage() {
                         payer_name_on_receipt: receipt.payer_name_on_receipt,
                         has_perforation: receipt.has_perforation,
                         is_typed_receipt: receipt.is_typed_receipt,
+                        is_mobile_bank_screenshot: receipt.is_mobile_bank_screenshot,
                       });
                 if (warnings.length === 0) {
                   return (
@@ -551,6 +553,9 @@ function ReceiptDetailPage() {
                   <Field label="بانک مقصد">{receipt.bank_name}</Field>
                   <Field label="ساعت فیش" dir="ltr">
                     {receipt.receipt_time ? toFaDigits(receipt.receipt_time) : ""}
+                  </Field>
+                  <Field label="رسید اسکرین‌شات همراه بانک">
+                    {receipt.is_mobile_bank_screenshot ? "بله" : "خیر"}
                   </Field>
                 </div>
 

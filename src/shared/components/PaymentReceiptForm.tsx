@@ -182,6 +182,7 @@ function evaluateFormWarnings(values: {
   payer_name_on_receipt?: string;
   has_perforation: boolean;
   is_typed_receipt: boolean;
+  is_mobile_bank_screenshot: boolean;
 }): ReceiptSecurityWarning[] {
   return evaluateReceiptSecurityWarnings({
     payment_date: values.payment_date,
@@ -191,6 +192,7 @@ function evaluateFormWarnings(values: {
     payer_name_on_receipt: values.payer_name_on_receipt,
     has_perforation: values.has_perforation,
     is_typed_receipt: values.is_typed_receipt,
+    is_mobile_bank_screenshot: values.is_mobile_bank_screenshot,
   });
 }
 
@@ -225,6 +227,7 @@ const schema = z
     payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
     receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
     has_perforation: z.boolean(),
+    is_mobile_bank_screenshot: z.boolean(),
     receipt_time: z
       .string()
       .trim()
@@ -331,6 +334,7 @@ export function PaymentReceiptForm() {
       payer_name_on_receipt: "",
       receiver_name_on_receipt: "",
       has_perforation: false,
+      is_mobile_bank_screenshot: false,
       receipt_time: "",
       document_channel: "",
       cheque_number: "",
@@ -946,6 +950,7 @@ export function PaymentReceiptForm() {
         payer_name_on_receipt: values.payer_name_on_receipt || null,
         receiver_name_on_receipt: values.receiver_name_on_receipt || null,
         has_perforation: values.has_perforation,
+        is_mobile_bank_screenshot: values.is_mobile_bank_screenshot,
         receipt_time: values.receipt_time || null,
         document_channel: values.document_channel || null,
         // Cheque fields are only meaningful for the cheque channel; the DB CHECK
@@ -1115,6 +1120,7 @@ export function PaymentReceiptForm() {
                 payer_name_on_receipt: v.payer_name_on_receipt,
                 has_perforation: v.has_perforation,
                 is_typed_receipt: v.is_typed_receipt,
+                is_mobile_bank_screenshot: v.is_mobile_bank_screenshot,
               });
               if (warnings.length > 0 || ruleWarnings.length > 0) {
                 setPendingWarnings(warnings);
@@ -1948,6 +1954,17 @@ export function PaymentReceiptForm() {
                       }
                     />
                     فیش تایپی است؟
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.watch("is_mobile_bank_screenshot")}
+                      onCheckedChange={(c) =>
+                        form.setValue("is_mobile_bank_screenshot", c === true, {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+                    رسید اسکرین‌شات از همراه بانک است؟
                   </label>
                 </div>
               </div>
