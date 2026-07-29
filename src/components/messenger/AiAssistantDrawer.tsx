@@ -242,19 +242,31 @@ function Bubble({
   streaming?: boolean;
 }) {
   const mine = role === "user";
+  const displayContent = mine ? content : normalizeAssistantText(content);
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div
+        dir="rtl"
         className={cn(
-          "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm leading-6",
+          "max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-right text-sm leading-7 [unicode-bidi:plaintext]",
           mine
             ? "bg-primary text-primary-foreground rounded-tr-sm"
             : "bg-muted text-foreground rounded-tl-sm",
           streaming && "opacity-90",
         )}
       >
-        {content}
+        {displayContent}
       </div>
     </div>
   );
+}
+
+function normalizeAssistantText(text: string) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^\s*(\d+)\.\s+/gm, (_, n: string) => `${toPersianDigits(n)}) `);
+}
+
+function toPersianDigits(input: string) {
+  return input.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)] ?? d);
 }
