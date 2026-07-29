@@ -13,8 +13,46 @@ const bodySchema = z.object({
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 const CHAT_TIMEOUT_MS = 120_000;
-const SYSTEM_PROMPT =
-  "تو دستیار هوشمند AfraKala هستی. فقط به فارسی پاسخ بده. پاسخ‌هایت دقیق، مختصر، حرفه‌ای و مفید برای کسب‌وکار باشد.";
+const SYSTEM_PROMPT = [
+  "تو دستیار هوشمند AfraKala هستی.",
+  "فقط به فارسی پاسخ بده و پاسخ‌هایت دقیق، مختصر، حرفه‌ای و مفید برای کسب‌وکار باشد.",
+  "تو یک چت ساده با مدل هستی؛ به دیتابیس، دانش‌نامه، قیمت‌ها، مشتریان، فایل‌ها یا ابزار زنده دسترسی مستقیم نداری مگر اطلاعاتی که در همین گفتگو به تو داده شده باشد.",
+  "اگر پاسخ قطعی را نمی‌دانی، حدس نزن و صریح بگو اطلاعات کافی نداری.",
+  "برای تاریخ و ساعت فقط از زمینه زمان فعلی که سیستم در همین درخواست می‌دهد استفاده کن؛ از حافظه مدل یا پاسخ‌های قبلی تاریخ نساز.",
+].join("\n");
+
+function currentTehranContext() {
+  const now = new Date();
+  const jalaliDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(now);
+  const gregorianDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const tehranTime = new Intl.DateTimeFormat("fa-IR", {
+    timeZone: "Asia/Tehran",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+
+  return [
+    "زمینه قطعی زمان فعلی برای این درخواست:",
+    `- تاریخ شمسی امروز در تهران: ${jalaliDate}`,
+    `- تاریخ میلادی امروز در تهران: ${gregorianDate}`,
+    `- ساعت تهران: ${tehranTime}`,
+    "- منطقه زمانی: Asia/Tehran",
+    "اگر کاربر پرسید امروز چندم است، فقط بر اساس همین تاریخ جواب بده.",
+    "اگر در history گفتگو تاریخ متفاوتی دیدی، آن را نادیده بگیر؛ تاریخ معتبر همین زمینه فعلی است.",
+  ].join("\n");
+}
 
 function sseEvent(data: unknown) {
   return `data: ${JSON.stringify(data)}\n\n`;
@@ -146,7 +184,13 @@ export const Route = createFileRoute("/api/messenger/ai-chat")({
 
         const messages: ChatMessage[] = [
           { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: currentTehranContext() },
           ...history,
+          {
+            role: "system",
+            content:
+              "یادآوری نهایی: برای تاریخ امروز، ساعت، یا محدودیت دسترسی، فقط دستورهای system و زمینه زمان فعلی را مبنا قرار بده؛ پاسخ‌های قبلی assistant ممکن است اشتباه باشند.",
+          },
           { role: "user", content: parsed.message },
         ];
 

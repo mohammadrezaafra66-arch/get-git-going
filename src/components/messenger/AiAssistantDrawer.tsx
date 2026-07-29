@@ -168,7 +168,7 @@ export function AiAssistantDrawer({
             دستیار هوشمند AfraKala
           </SheetTitle>
           <SheetDescription className="text-xs">
-            گفتگو با مدل محلی روی سرور خودتان. هیچ داده‌ای به خارج ارسال نمی‌شود.
+            گفتگو با ارائه‌دهنده هوش مصنوعی تنظیم‌شده در پنل مدیریت.
           </SheetDescription>
         </SheetHeader>
         <ScrollArea className="flex-1 px-3 py-4">
