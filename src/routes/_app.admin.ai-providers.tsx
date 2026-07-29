@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { HelpHint } from "@/components/common/HelpHint";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,6 +69,68 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 type HealthRow = AiProviderHealth;
 type UsageRow = AiUsageRoute;
 
+const FIELD_HELP = {
+  name: [
+    "شناسه نام فنی provider است و بهتر است انگلیسی، کوتاه و بدون فاصله باشد.",
+    "مثال: openai-main، gemini-cloud، ollama-local.",
+    "این مقدار برای تشخیص داخلی استفاده می‌شود؛ بعد از استفاده در تنظیمات بهتر است تغییر نکند.",
+  ].join("\n"),
+  label: [
+    "نامی است که کاربران داخل صفحه می‌بینند.",
+    "اینجا اسم واضح و انسانی بنویسید؛ مثلا GPT شرکت، Gemini، یا Ollama داخلی.",
+    "اگر خالی بماند، سیستم از همان شناسه استفاده می‌کند.",
+  ].join("\n"),
+  kind: [
+    "نوع مشخص می‌کند سیستم با چه پروتکلی به سرویس وصل شود.",
+    "OpenAI سازگار: برای OpenAI، Gemini از مسیر سازگار، OpenRouter، یا هر سرویس دارای /chat/completions.",
+    "Ollama: برای مدل‌های محلی روی سرور، مثل qwen یا llama.",
+  ].join("\n"),
+  baseUrl: [
+    "آدرس پایه همان endpoint اصلی سرویس است.",
+    "برای OpenAI-compatible معمولا شبیه https://api.openai.com/v1 یا https://ai.gateway.lovable.dev/v1 است.",
+    "برای Ollama معمولا شبیه http://192.168.170.8:11434 است. آخر آدرس مسیر مدل را ننویسید.",
+  ].join("\n"),
+  priority: [
+    "عدد کمتر یعنی این provider زودتر امتحان می‌شود.",
+    "مثلا 10 قبل از 100 استفاده می‌شود.",
+    "اگر برای یک بخش provider خاص انتخاب نشده باشد، سیستم از providerهای فعال با همین اولویت استفاده می‌کند.",
+  ].join("\n"),
+  active: [
+    "اگر فعال باشد، سیستم اجازه دارد از این provider استفاده کند.",
+    "اگر خاموش شود، حتی اگر در مسیرهای مصرف AI انتخاب شده باشد استفاده نمی‌شود.",
+    "برای تست یا توقف موقت یک سرویس، این گزینه را خاموش کنید.",
+  ].join("\n"),
+  chatModel: [
+    "مدلی که برای پاسخ متنی و گفت‌وگو استفاده می‌شود.",
+    "برای دستیار خرید، دانش‌نامه، پیام‌رسان AI و متن تبلیغاتی کاربرد دارد.",
+    "مثال OpenAI/Gateway: gpt-4o-mini. مثال Ollama: qwen2.5:7b.",
+  ].join("\n"),
+  embedModel: [
+    "مدلی که متن را به بردار معنایی تبدیل می‌کند.",
+    "برای جستجوی معنایی پیام‌ها و دانش‌نامه استفاده می‌شود.",
+    "اگر provider قرار نیست embedding بدهد، این فیلد را خالی بگذارید و قابلیت بردار معنایی را تیک نزنید.",
+  ].join("\n"),
+  visionModel: [
+    "مدلی که تصویر را می‌خواند.",
+    "برای OCR فیش واریزی یا هر قابلیت تصویری استفاده می‌شود.",
+    "اگر سرویس تصویر نمی‌خواند، این فیلد را خالی بگذارید و قابلیت خواندن تصویر را تیک نزنید.",
+  ].join("\n"),
+  apiKey: [
+    "کلید محرمانه سرویس را اینجا وارد کنید.",
+    "برای Ollama داخلی معمولا کلید لازم نیست و می‌تواند خالی بماند.",
+    "برای سرویس‌های ابری معمولا کلید اجباری است. هنگام ویرایش، اگر فیلد را دست نزنید کلید قبلی حفظ می‌شود.",
+  ].join("\n"),
+  capabilities: [
+    "اینجا مشخص می‌کنید به کدام توانایی‌های این provider اعتماد دارید.",
+    "گفت‌وگو یعنی پاسخ متنی؛ بردار معنایی یعنی embedding؛ خواندن تصویر یعنی vision/OCR.",
+    "فقط قابلیت‌هایی را تیک بزنید که مدل مربوط به آن را واقعا وارد کرده‌اید و تستش موفق است.",
+  ].join("\n"),
+  notes: [
+    "برای توضیح داخلی مدیران است و روی عملکرد سیستم اثر مستقیم ندارد.",
+    "مثلا بنویسید این provider برای تست است، هزینه‌اش بالاست، یا فقط برای دانش‌نامه استفاده شود.",
+  ].join("\n"),
+} as const;
+
 type Draft = {
   id: string | null;
   name: string;
@@ -122,6 +185,23 @@ function draftFrom(p: AiProvider): Draft {
     api_key_touched: false,
     notes: p.notes ?? "",
   };
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  help,
+}: {
+  htmlFor?: string;
+  children: string;
+  help: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={htmlFor}>{children}</Label>
+      <HelpHint text={help} ariaLabel={`راهنمای ${children}`} />
+    </div>
+  );
 }
 
 function AiProvidersPage() {
@@ -431,7 +511,9 @@ function AiProvidersPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="ap-name">شناسه (انگلیسی، بدون فاصله)</Label>
+                <FieldLabel htmlFor="ap-name" help={FIELD_HELP.name}>
+                  شناسه (انگلیسی، بدون فاصله)
+                </FieldLabel>
                 <Input
                   id="ap-name"
                   dir="ltr"
@@ -441,7 +523,9 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-label">نام نمایشی</Label>
+                <FieldLabel htmlFor="ap-label" help={FIELD_HELP.label}>
+                  نام نمایشی
+                </FieldLabel>
                 <Input
                   id="ap-label"
                   value={draft.label}
@@ -450,7 +534,7 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>نوع</Label>
+                <FieldLabel help={FIELD_HELP.kind}>نوع</FieldLabel>
                 <Select
                   value={draft.kind}
                   onValueChange={(v) => setDraft({ ...draft, kind: v as Draft["kind"] })}
@@ -465,7 +549,9 @@ function AiProvidersPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-url">آدرس پایه</Label>
+                <FieldLabel htmlFor="ap-url" help={FIELD_HELP.baseUrl}>
+                  آدرس پایه
+                </FieldLabel>
                 <Input
                   id="ap-url"
                   dir="ltr"
@@ -475,7 +561,9 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-priority">اولویت (کمتر = زودتر امتحان می‌شود)</Label>
+                <FieldLabel htmlFor="ap-priority" help={FIELD_HELP.priority}>
+                  اولویت (کمتر = زودتر امتحان می‌شود)
+                </FieldLabel>
                 <Input
                   id="ap-priority"
                   type="number"
@@ -490,10 +578,14 @@ function AiProvidersPage() {
                   checked={draft.is_active}
                   onCheckedChange={(v) => setDraft({ ...draft, is_active: v })}
                 />
-                <Label htmlFor="ap-active">فعال</Label>
+                <FieldLabel htmlFor="ap-active" help={FIELD_HELP.active}>
+                  فعال
+                </FieldLabel>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-chat">مدل گفت‌وگو</Label>
+                <FieldLabel htmlFor="ap-chat" help={FIELD_HELP.chatModel}>
+                  مدل گفت‌وگو
+                </FieldLabel>
                 <Input
                   id="ap-chat"
                   dir="ltr"
@@ -502,7 +594,9 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-embed">مدل بردار معنایی</Label>
+                <FieldLabel htmlFor="ap-embed" help={FIELD_HELP.embedModel}>
+                  مدل بردار معنایی
+                </FieldLabel>
                 <Input
                   id="ap-embed"
                   dir="ltr"
@@ -511,7 +605,9 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-vision">مدل خواندن تصویر</Label>
+                <FieldLabel htmlFor="ap-vision" help={FIELD_HELP.visionModel}>
+                  مدل خواندن تصویر
+                </FieldLabel>
                 <Input
                   id="ap-vision"
                   dir="ltr"
@@ -520,7 +616,9 @@ function AiProvidersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="ap-key">کلید سرویس</Label>
+                <FieldLabel htmlFor="ap-key" help={FIELD_HELP.apiKey}>
+                  کلید سرویس
+                </FieldLabel>
                 <Input
                   id="ap-key"
                   dir="ltr"
@@ -542,7 +640,7 @@ function AiProvidersPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>قابلیت‌ها</Label>
+              <FieldLabel help={FIELD_HELP.capabilities}>قابلیت‌ها</FieldLabel>
               <div className="flex flex-wrap gap-4">
                 {AI_CAPABILITIES.map((c) => (
                   <label key={c} className="flex items-center gap-2 text-sm">
@@ -568,7 +666,9 @@ function AiProvidersPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="ap-notes">یادداشت</Label>
+              <FieldLabel htmlFor="ap-notes" help={FIELD_HELP.notes}>
+                یادداشت
+              </FieldLabel>
               <Textarea
                 id="ap-notes"
                 rows={2}
