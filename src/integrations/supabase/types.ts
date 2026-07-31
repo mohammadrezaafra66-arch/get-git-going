@@ -5759,7 +5759,13 @@ export type Database = {
           person_id: string
           status?: string
           updated_at?: string
-          value_normalized: string
+          /**
+           * Optional since migration 228: trg_person_identifiers_normalize
+           * computes it from (kind, value_raw) BEFORE INSERT, so it behaves as
+           * a defaulted column even though it is NOT NULL. Supplying a value
+           * here is accepted but ignored — the trigger overwrites it.
+           */
+          value_normalized?: string
           value_raw: string
           verified_at?: string | null
           verified_by?: string | null

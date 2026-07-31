@@ -18,6 +18,8 @@ import {
   type PersonKind,
   type PersonVisibilityScope,
 } from "@/lib/persons/schemas";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
 
 export interface PersonFormValues {
   kind: PersonKind;
@@ -61,6 +63,23 @@ export function PersonForm({
   });
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Blocker B1 — visibility_scope must not be freely selectable.
+   *
+   * RLS (`persons_insert_identity_authors`, migration 226) lets sales and
+   * accountant create persons ONLY at visibility_scope='internal_general'.
+   * Offering them the full three-way picker guarantees a 42501 the moment they
+   * choose anything else — an error the user cannot act on.
+   *
+   * Note this reads the CURRENT value rather than forcing 'internal_general':
+   * an accountant can legitimately SEE a restricted_finance person, and blindly
+   * overwriting the field would silently DOWNGRADE that person's visibility.
+   * (persons UPDATE is admin/manager-only anyway, so the edit path is not
+   * reachable for them — this is defence in depth, not decoration.)
+   */
+  const { roles } = useAuth();
+  const canSetVisibilityScope = hasAnyRole(roles, ["admin", "manager"]);
+
   function set<K extends keyof PersonFormValues>(k: K, v: PersonFormValues[K]) {
     setValues((prev) => ({ ...prev, [k]: v }));
   }
@@ -95,21 +114,35 @@ export function PersonForm({
         </div>
         <div className="space-y-2">
           <Label>سطح دسترسی</Label>
-          <Select
-            value={values.visibility_scope}
-            onValueChange={(v) => set("visibility_scope", v as PersonVisibilityScope)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PERSON_VISIBILITY_SCOPES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {SCOPE_LABEL[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {canSetVisibilityScope ? (
+            <Select
+              value={values.visibility_scope}
+              onValueChange={(v) => set("visibility_scope", v as PersonVisibilityScope)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERSON_VISIBILITY_SCOPES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SCOPE_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <>
+              <div
+                className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground"
+                aria-readonly="true"
+              >
+                {SCOPE_LABEL[values.visibility_scope]}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                تغییر سطح دسترسی فقط توسط مدیر سیستم انجام می‌شود.
+              </p>
+            </>
+          )}
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label>نام نمایشی *</Label>

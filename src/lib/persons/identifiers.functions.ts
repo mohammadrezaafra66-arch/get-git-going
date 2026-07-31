@@ -63,14 +63,37 @@ export type PersonIdentifierDTO = {
 };
 
 /**
- * S12 — Cross-person duplicate guard (D2).
+ * Identifiers whose value genuinely designates ONE party, so a collision is a
+ * real conflict even before verification. Mirrors the DB partial unique index
+ * `uq_person_identifiers_strong_active` (migration 228) — keep the two in sync.
+ */
+const STRONG_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
+  "national_id_ir",
+  "tax_id_ir",
+  "company_reg_id_ir",
+  "iban",
+]);
+
+/**
+ * Cross-person duplicate guard.
  *
- * Reject when another person already has a non-revoked identifier with the
- * same (kind, value_normalized). Admin/manager (the only roles allowed to
- * insert/update identifiers per S06 RLS) can SELECT all persons across
- * visibility scopes, so RLS does not hide rows from this check.
+ * Originally (S12) this rejected ANY non-revoked cross-person duplicate. That
+ * matched the old `uq_person_identifiers_active_kind_value` index, which
+ * migration 228 removed as blocker B3: two family members could not both
+ * register a shared landline, and a mistyped provisional phone permanently
+ * blocked its real owner.
  *
- * Returns the Persian rejection message if a conflict exists, otherwise null.
+ * The rule now mirrors the database exactly:
+ *   strong kinds (national/tax/company/IBAN) — conflict on any non-revoked row
+ *   weak kinds  (mobile/landline/email/custom) — conflict only when BOTH the
+ *                incoming row and the existing row are 'confirmed'
+ *
+ * Leaving the old behaviour here would have made the app stricter than the
+ * schema, so B3 would have looked fixed in SQL while still failing in the UI.
+ *
+ * NOTE: the lookup uses the TypeScript-normalized value. Since migration 228
+ * the DB normalizes authoritatively via trigger, so this probe is advisory —
+ * the unique indexes remain the real guarantee.
  */
 async function findCrossPersonDuplicate(
   supabase: import("@supabase/supabase-js").SupabaseClient,
@@ -78,9 +101,15 @@ async function findCrossPersonDuplicate(
     kind: IdentifierKind;
     value_normalized: string;
     person_id: string;
+    status: "provisional" | "confirmed" | "revoked";
     excludeId?: string;
   },
 ): Promise<string | null> {
+  const isStrong = STRONG_IDENTIFIER_KINDS.has(args.kind);
+
+  // A weak identifier that is not being confirmed cannot collide with anything.
+  if (!isStrong && args.status !== "confirmed") return null;
+
   let q = supabase
     .from("person_identifiers")
     .select("id, person_id, status")
@@ -89,11 +118,16 @@ async function findCrossPersonDuplicate(
     .neq("status", "revoked")
     .neq("person_id", args.person_id)
     .limit(1);
+  // Weak identifiers only conflict with an already-CONFIRMED holder.
+  if (!isStrong) q = q.eq("status", "confirmed");
   if (args.excludeId) q = q.neq("id", args.excludeId);
+
   const { data, error } = await q;
   if (error) throw mapPgError(error.code, error.message);
   if (data && data.length > 0) {
-    return "این شناسه قبلاً برای شخص دیگری ثبت شده است.";
+    return isStrong
+      ? "این شناسه قبلاً برای شخص دیگری ثبت شده است."
+      : "این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است.";
   }
   return null;
 }
@@ -136,16 +170,20 @@ export const createPersonIdentifier = createServerFn({ method: "POST" })
       kind: data.kind,
       value_normalized: norm.value_normalized,
       person_id: data.person_id,
+      status: data.status,
     });
     if (dupMsg) throw new Error(dupMsg);
 
+    // value_normalized is intentionally NOT sent: trg_person_identifiers_normalize
+    // (migration 228) computes it from (kind, value_raw) on every write path, so
+    // the database is the single authority. normalizeIdentifier() above is kept
+    // for fast validation feedback and for the duplicate probe.
     const { data: row, error } = await supabase
       .from("person_identifiers")
       .insert({
         person_id: data.person_id,
         kind: data.kind,
         value_raw: data.value_raw.trim(),
-        value_normalized: norm.value_normalized,
         status: data.status,
         is_primary: data.is_primary,
       })
@@ -207,6 +245,8 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
 
       if (data.kind !== undefined) patch.kind = data.kind;
       if (data.value_raw !== undefined) patch.value_raw = data.value_raw.trim();
+      // Not patched into the row — trg_person_identifiers_normalize recomputes
+      // it (migration 228). Held locally only for the duplicate probe below.
       patch.value_normalized = norm.value_normalized;
     }
 
@@ -228,6 +268,7 @@ export const updatePersonIdentifier = createServerFn({ method: "POST" })
           kind: effectiveKind,
           value_normalized: effectiveValueNormalized,
           person_id: cur.person_id,
+          status: effectiveStatus as "provisional" | "confirmed" | "revoked",
           excludeId: data.id,
         });
         if (dupMsg) throw new Error(dupMsg);
