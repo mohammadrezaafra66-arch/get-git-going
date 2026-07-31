@@ -58,6 +58,7 @@ import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-table
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
+import { Route as ApiPersonsImportRouteImport } from './routes/api.persons.import'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.warehouses_.transfers'
 import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouses_.kardex'
@@ -455,6 +456,11 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
 const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
   id: '/api/public/products',
   path: '/api/public/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPersonsImportRoute = ApiPersonsImportRouteImport.update({
+  id: '/api/persons/import',
+  path: '/api/persons/import',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
@@ -1434,6 +1440,7 @@ export interface FileRoutesByFullPath {
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -1633,6 +1640,7 @@ export interface FileRoutesByTo {
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
@@ -1837,6 +1845,7 @@ export interface FileRoutesById {
   '/_app/warehouses_/kardex': typeof AppWarehousesKardexRoute
   '/_app/warehouses_/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
+  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -2041,6 +2050,7 @@ export interface FileRouteTypes {
     | '/warehouses/kardex'
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
+    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
@@ -2240,6 +2250,7 @@ export interface FileRouteTypes {
     | '/warehouses/kardex'
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
+    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
@@ -2443,6 +2454,7 @@ export interface FileRouteTypes {
     | '/_app/warehouses_/kardex'
     | '/_app/warehouses_/transfers'
     | '/api/messenger/ai-chat'
+    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
@@ -2514,6 +2526,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
+  ApiPersonsImportRoute: typeof ApiPersonsImportRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
@@ -2869,6 +2882,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/products'
       fullPath: '/api/public/products'
       preLoaderRoute: typeof ApiPublicProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/persons/import': {
+      id: '/api/persons/import'
+      path: '/api/persons/import'
+      fullPath: '/api/persons/import'
+      preLoaderRoute: typeof ApiPersonsImportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/messenger/ai-chat': {
@@ -4465,6 +4485,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
+  ApiPersonsImportRoute: ApiPersonsImportRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,

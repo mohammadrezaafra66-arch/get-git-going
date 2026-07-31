@@ -11562,6 +11562,14 @@ export type Database = {
         }
         Returns: Json
       }
+      person_backfill_existing: {
+        Args: {
+          p_default_kind?: string | null
+          p_limit?: number | null
+          p_table: string
+        }
+        Returns: Json
+      }
       person_create_inline: {
         Args: {
           p_accounting_code?: string | null
@@ -11573,6 +11581,14 @@ export type Database = {
           p_notes?: string | null
           p_visibility_scope?: string
         }
+        Returns: Json
+      }
+      person_find_by_identifiers: {
+        Args: { p_identifiers: Json }
+        Returns: Json
+      }
+      person_import_batch: {
+        Args: { p_rows: Json }
         Returns: Json
       }
       post_receipt_accounting: {
