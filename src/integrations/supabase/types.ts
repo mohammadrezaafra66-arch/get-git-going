@@ -11562,6 +11562,19 @@ export type Database = {
         }
         Returns: Json
       }
+      person_create_inline: {
+        Args: {
+          p_accounting_code?: string | null
+          p_city?: string | null
+          p_context_kind: string
+          p_display_name: string
+          p_identifiers?: Json
+          p_kind?: string
+          p_notes?: string | null
+          p_visibility_scope?: string
+        }
+        Returns: Json
+      }
       post_receipt_accounting: {
         Args: { p_receipt_id: string; p_user_id: string }
         Returns: Json

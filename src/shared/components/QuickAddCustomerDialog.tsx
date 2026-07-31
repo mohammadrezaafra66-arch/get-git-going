@@ -97,24 +97,38 @@ export function QuickAddCustomerDialog({
       if (!token) {
         throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
       }
-      const { data: row, error } = await supabase
-        .from("customers")
-        .insert(payload)
-        .select("id, name, phone, accounting_code")
-        .single();
+      // Item 229 — this used to INSERT straight into `customers`, which was one
+      // of four uncoordinated customer write paths and produced rows with no
+      // person record behind them. It now goes through person_create_inline,
+      // which creates the person, its normalized identifiers, the `customers`
+      // mirror row and a provenance link in ONE transaction.
+      //
+      // The returned `id` is deliberately the CUSTOMERS id, not the person id:
+      // callers assign it to sales_quotes.customer_id, which still FKs to
+      // `customers`. Changing that is the FK-transition phase, not this one.
+      const { data, error } = await supabase.rpc("person_create_inline", {
+        p_display_name: payload.name,
+        p_context_kind: "customer",
+        p_kind: "individual",
+        p_identifiers: [{ kind: "mobile_e164", value_raw: payload.phone, is_primary: true }],
+        p_city: payload.city,
+        p_notes: payload.notes,
+        p_accounting_code: payload.accounting_code,
+      });
 
       if (error) {
         throw error;
       }
-      if (!row) {
+      const row = data as { legacy_id: string | null } | null;
+      if (!row?.legacy_id) {
         throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
       }
 
       return {
-        id: row.id,
-        name: row.name,
-        phone: row.phone ?? payload.phone,
-        accounting_code: row.accounting_code ?? payload.accounting_code ?? null,
+        id: row.legacy_id,
+        name: payload.name,
+        phone: payload.phone,
+        accounting_code: payload.accounting_code ?? null,
       } satisfies QuickAddCustomerResult;
     },
     onSuccess: (c) => {

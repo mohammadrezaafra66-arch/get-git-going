@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Loader2, Coins } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Loader2, Coins, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { PersonModal } from "@/components/persons/PersonModal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -95,6 +96,7 @@ export function PurchaseForm() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [personModalOpen, setPersonModalOpen] = useState(false);
   const [productOpen, setProductOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const debouncedSearch = useDebounce(productSearch, 300);
@@ -124,7 +126,7 @@ export function PurchaseForm() {
     staleTime: 30_000,
   });
 
-  const { data: suppliers = [] } = useQuery({
+  const { data: suppliers = [], refetch: refetchSuppliers } = useQuery({
     queryKey: ["purchase-form-suppliers"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -299,7 +301,25 @@ export function PurchaseForm() {
 
       {/* تأمین‌کننده */}
       <div className="space-y-2">
-        <Label>تأمین‌کننده</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label>تأمین‌کننده</Label>
+          {/*
+            Item 229 — inline creation. Before this, a purchase from a supplier
+            that did not exist yet forced the user to abandon the form, go to
+            /suppliers, create the row, and start over. person_create_inline
+            writes the person AND the suppliers row in one transaction, so the
+            new supplier is selectable here immediately.
+          */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPersonModalOpen(true)}
+          >
+            <Plus className="ml-1 h-3 w-3" />
+            تأمین‌کنندهٔ جدید
+          </Button>
+        </div>
         <Select
           value={form.watch("supplier_id") ?? SUPPLIER_UNKNOWN}
           onValueChange={(v) => form.setValue("supplier_id", v === SUPPLIER_UNKNOWN ? null : v)}
@@ -317,6 +337,20 @@ export function PurchaseForm() {
           </SelectContent>
         </Select>
       </div>
+
+      <PersonModal
+        open={personModalOpen}
+        onOpenChange={setPersonModalOpen}
+        context="supplier"
+        onSuccess={async (result) => {
+          // Refetch before selecting: the <Select> only accepts a value that
+          // exists among its items, so selecting first would silently no-op.
+          await refetchSuppliers();
+          if (result.legacy_id) {
+            form.setValue("supplier_id", result.legacy_id, { shouldDirty: true });
+          }
+        }}
+      />
 
       {/* زمان تسویه */}
       <div className="space-y-2">
