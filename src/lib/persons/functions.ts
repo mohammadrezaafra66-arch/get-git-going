@@ -37,6 +37,7 @@ import {
   type SearchPersonsInput,
   type UpdatePersonInput,
 } from "./schemas";
+import { normalizeIdentifier } from "./identifiers-normalize";
 
 const GetPersonInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
@@ -193,6 +194,11 @@ export async function validateRequiredPersonFields(
   return missing.length === 0 ? { ok: true } : { ok: false, missing };
 }
 
+/**
+ * @deprecated Superseded by public.person_create_full() (item 226). createPerson
+ * no longer issues separate field-value INSERTs. Retained only because removing
+ * it is out of scope for this phase; delete once no caller remains.
+ */
 async function insertFieldValues(
   // Loosely typed — matches the authenticated client from middleware context.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,6 +222,24 @@ async function insertFieldValues(
 
 /* ---------- createPerson ---------- */
 
+/**
+ * Atomic person creation — item 226.
+ *
+ * Delegates the whole write to `public.person_create_full()`, which inserts
+ * persons + person_identifiers + person_field_values + an optional
+ * person_context_links observation inside ONE function body, i.e. one
+ * transaction. This closes the partial-write window described in the module
+ * header: previously the person row and its field values were separate round
+ * trips and a failure on the second left an orphan person behind.
+ *
+ * Division of responsibility (deliberate — do not "fix" by duplicating):
+ *   - Normalization of identifier values: TypeScript only (normalizeIdentifier).
+ *   - Uniqueness + required-field enforcement + authorization: database only.
+ *
+ * The old client-side required-field pre-check was dropped so the rule has a
+ * single implementation. `validateRequiredPersonFields` is still used by
+ * updatePerson and remains exported.
+ */
 export const createPerson = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
   .inputValidator((input) => CreatePersonInputSchema.parse(input))
@@ -224,43 +248,60 @@ export const createPerson = createServerFn({ method: "POST" })
       const input: CreatePersonInput = data;
       const { supabase } = context;
 
-      // Required-field pre-check (best-effort: not atomic with INSERTs).
-      const check = await validateRequiredPersonFields(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        supabase as any,
-        input.kind,
-        input.field_values,
-      );
-      if (!check.ok) {
-        const labels = check.missing.map((m) => m.label).join("، ");
-        throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
-      }
+      // Normalize before any write, so an invalid identifier fails fast and
+      // never leaves a half-created person behind.
+      const identifiers = input.identifiers.map((idf) => {
+        const norm = normalizeIdentifier(idf.kind, idf.value_raw);
+        if (!norm.ok) throw new Error(norm.message_fa);
+        return {
+          kind: idf.kind,
+          value_raw: idf.value_raw,
+          value_normalized: norm.value_normalized,
+          is_primary: idf.is_primary,
+          status: idf.status,
+        };
+      });
 
-      const { data: personRow, error: personErr } = await supabase
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc("person_create_full", {
+        p_display_name: input.display_name,
+        p_kind: input.kind,
+        p_legal_name: input.legal_name ?? null,
+        p_visibility_scope: input.visibility_scope,
+        p_notes: input.notes ?? null,
+        p_is_active: input.is_active,
+        p_identifiers: identifiers,
+        p_field_values: input.field_values,
+        p_context_kind: input.context_kind ?? null,
+        p_context_ref_table: input.context_ref_table ?? null,
+        p_context_ref_id: input.context_ref_id ?? null,
+        p_context_note: input.context_note ?? null,
+      });
+      if (rpcErr) throw mapPgError(rpcErr.code, rpcErr.message);
+
+      const personId = (rpcRes as { person_id?: string } | null)?.person_id;
+      if (!personId) throw new Error("ایجاد شخص ناموفق بود — شناسه‌ای بازگردانده نشد");
+
+      // Read back the committed row (and any field values) for the DTO.
+      const { data: personRow, error: readErr } = await supabase
         .from("persons")
-        .insert({
-          kind: input.kind,
-          display_name: input.display_name,
-          legal_name: input.legal_name ?? null,
-          visibility_scope: input.visibility_scope,
-          is_active: input.is_active,
-          notes: input.notes ?? null,
-          created_by: context.userId,
-        })
         .select(
           "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
         )
+        .eq("id", personId)
         .single();
-      if (personErr) throw mapPgError(personErr.code, personErr.message);
+      if (readErr) throw mapPgError(readErr.code, readErr.message);
       if (!personRow) throw new Error("ایجاد شخص ناموفق بود — رکوردی بازگردانده نشد");
 
-      const person = personRow as PersonDTO;
-      if (!person.id) {
-        throw new Error("ایجاد شخص ناموفق بود — شناسه‌ای بازگردانده نشد");
-      }
-      const values = await insertFieldValues(supabase, person.id, input.field_values);
+      const { data: fvRows, error: fvErr } = await supabase
+        .from("person_field_values")
+        .select("id, person_id, field_definition_id, value, updated_at")
+        .eq("person_id", personId);
+      if (fvErr) throw mapPgError(fvErr.code, fvErr.message);
 
-      return { ...person, field_values: values };
+      return {
+        ...(personRow as PersonDTO),
+        field_values: (fvRows as PersonFieldValueDTO[] | null) ?? [],
+      };
     } catch (e) {
       throw toServerError(e);
     }

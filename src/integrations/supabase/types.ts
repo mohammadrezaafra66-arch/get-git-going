@@ -11539,6 +11539,23 @@ export type Database = {
       next_sales_quote_number: { Args: { _year: number }; Returns: string }
       normalize_fa: { Args: { input: string }; Returns: string }
       normalize_fa_text: { Args: { input: string }; Returns: string }
+      person_create_full: {
+        Args: {
+          p_context_kind?: string | null
+          p_context_note?: string | null
+          p_context_ref_id?: string | null
+          p_context_ref_table?: string | null
+          p_display_name: string
+          p_field_values?: Json
+          p_identifiers?: Json
+          p_is_active?: boolean
+          p_kind?: string
+          p_legal_name?: string | null
+          p_notes?: string | null
+          p_visibility_scope?: string
+        }
+        Returns: Json
+      }
       post_receipt_accounting: {
         Args: { p_receipt_id: string; p_user_id: string }
         Returns: Json
