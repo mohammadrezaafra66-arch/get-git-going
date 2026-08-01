@@ -542,7 +542,18 @@ function RowActions({ row, isManagerial, isAccountant, isOwner }: RowProps) {
 function QuoteRowDesktop({ row, isManagerial, isAccountant, isOwner }: RowProps) {
   return (
     <tr className="hover:bg-muted/30">
-      <td className="p-3 align-top font-mono text-xs">{row.quote_number}</td>
+      <td className="p-3 align-top font-mono text-xs">
+        {/* Phase 6.6 — the detail route existed but nothing linked to it, so the
+            page was unreachable by clicking. Only the number navigates; the five
+            status-action buttons in the last column are left alone. */}
+        <Link
+          to="/sales/quotes/$quoteId"
+          params={{ quoteId: row.id }}
+          className="text-primary hover:underline"
+        >
+          {row.quote_number}
+        </Link>
+      </td>
       <td className="p-3 align-top">
         <div className="font-medium">{row.customer_name}</div>
         <div className="text-xs text-muted-foreground" dir="ltr">
@@ -583,7 +594,13 @@ function QuoteCardMobile({ row, isManagerial, isAccountant, isOwner }: RowProps)
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="font-mono text-xs text-muted-foreground">{row.quote_number}</div>
+            <Link
+              to="/sales/quotes/$quoteId"
+              params={{ quoteId: row.id }}
+              className="font-mono text-xs text-primary hover:underline"
+            >
+              {row.quote_number}
+            </Link>
             <div className="font-medium truncate">{row.customer_name}</div>
             <div className="text-[11px] text-muted-foreground" dir="ltr">
               {row.customer_phone}

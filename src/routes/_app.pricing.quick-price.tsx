@@ -1,8 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Calculator, Loader2, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
-import { ensureAuthReady } from "@/lib/auth/session";
+import { requireAnyRole } from "@/lib/rbac/route-guards";
 import type { AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,13 +30,8 @@ export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "accountant", "sale
 
 export const Route = createFileRoute("/_app/pricing/quick-price")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (!auth.user) throw redirect({ to: "/login" });
-    if (auth.rolesLoading || auth.profileLoading || auth.loading) return;
-    const roles = (auth.roles ?? []) as AppRole[];
-    if (!roles.some((r) => ALLOWED_ROLES.includes(r))) {
-      throw redirect({ to: "/unauthorized" });
-    }
+    // Phase 6.7 — same SSR redirect bug as /sales/quotes/new.
+    await requireAnyRole(ALLOWED_ROLES);
   },
   component: QuickPricePage,
 });

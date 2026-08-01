@@ -1,9 +1,9 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, ArrowRight, Pencil, Power } from "lucide-react";
-import { ensureAuthReady } from "@/lib/auth/session";
+import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -22,11 +22,8 @@ export const ALLOWED: AppRole[] = ["admin", "accountant"];
 
 export const Route = createFileRoute("/_app/pricing/settlement-types")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (!auth.user) throw redirect({ to: "/login" });
-    if (auth.rolesLoading || auth.profileLoading || auth.loading) return;
-    const roles = auth.roles as AppRole[];
-    if (!roles.some((r) => ALLOWED.includes(r))) throw redirect({ to: "/unauthorized" });
+    // Phase 6.7 — same SSR redirect bug as /sales/quotes/new.
+    await requireAnyRole(ALLOWED);
   },
   component: SettlementTypesPage,
 });

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ import {
   XCircle,
   AlertTriangle,
 } from "lucide-react";
-import { ensureAuthReady } from "@/lib/auth/session";
+import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
@@ -63,10 +63,9 @@ export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
 export const Route = createFileRoute("/_app/sales/quotes/new")({
   beforeLoad: async () => {
-    const auth = await ensureAuthReady();
-    if (!auth.user) throw redirect({ to: "/login" });
-    const roles = auth.roles as AppRole[];
-    if (!hasAnyRole(roles, ALLOWED_ROLES)) throw redirect({ to: "/unauthorized" });
+    // Phase 6.7 — was a hand-rolled ensureAuthReady() guard, which redirected
+    // authenticated users to /login on any server-rendered navigation.
+    await requireAnyRole(ALLOWED_ROLES);
   },
   component: NewQuotePage,
 });
@@ -347,72 +346,6 @@ function NewQuotePage() {
     },
   });
 
-  const findStockBlocker = async (): Promise<QuoteBlockReason | null> => {
-    const productNeeds = new Map<string, { productName: string; required: number }>();
-    for (const item of items) {
-      if (item.source !== "product_price" || !item.product_id) continue;
-      const current = productNeeds.get(item.product_id) ?? {
-        productName: item.title_snapshot,
-        required: 0,
-      };
-      current.required += Number(item.quantity || 0);
-      productNeeds.set(item.product_id, current);
-    }
-
-    const productIds = Array.from(productNeeds.keys());
-    if (productIds.length === 0) return null;
-
-    let effectiveWarehouseId = warehouseId;
-    if (!effectiveWarehouseId) {
-      const { data: defaultWarehouse } = await supabase
-        .from("warehouses")
-        .select("id")
-        .eq("is_active", true)
-        .eq("is_default", true)
-        .order("created_at")
-        .limit(1)
-        .maybeSingle();
-      effectiveWarehouseId = (defaultWarehouse?.id as string | null | undefined) ?? null;
-    }
-
-    if (!effectiveWarehouseId) {
-      return {
-        kind: "stock",
-        items: Array.from(productNeeds.values()).map((item) => ({
-          productName: item.productName,
-          required: item.required,
-          available: 0,
-        })),
-      };
-    }
-
-    const { data: stockRows, error } = await supabase
-      .from("warehouse_stock")
-      .select("product_id, quantity")
-      .eq("warehouse_id", effectiveWarehouseId)
-      .in("product_id", productIds);
-    if (error) throw new Error(error.message);
-
-    const availableByProduct = new Map(
-      (stockRows ?? []).map((row) => [
-        row.product_id as string,
-        Number((row as { quantity?: number | null }).quantity ?? 0),
-      ]),
-    );
-    const insufficient = Array.from(productNeeds.entries())
-      .map((entry) => {
-        const [productId, need] = entry;
-        return {
-          productName: need.productName,
-          required: need.required,
-          available: availableByProduct.get(productId) ?? 0,
-        };
-      })
-      .filter((item) => item.available < item.required);
-
-    return insufficient.length > 0 ? { kind: "stock", items: insufficient } : null;
-  };
-
   const findCreditBlocker = (): QuoteBlockReason | null => {
     if (totals.final_amount <= 0) return null;
     if (linkedCustomerId && creditInfoLoading) {
@@ -469,17 +402,6 @@ function NewQuotePage() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const stockBlocker = await findStockBlocker();
-      if (stockBlocker) {
-        setBlockReason(stockBlocker);
-        return;
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "خطا در بررسی موجودی انبار.");
-      return;
-    }
-
     const creditBlocker = findCreditBlocker();
     if (!exceptionMatchesBlocker(creditBlocker)) {
       setBlockReason(creditBlocker);
@@ -505,6 +427,7 @@ function NewQuotePage() {
                 <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="existing_customer_search"
+                  data-testid="quote-customer-search"
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   placeholder="نام یا شماره تماس مشتری را جست‌وجو کنید..."
@@ -523,6 +446,7 @@ function NewQuotePage() {
                     {(customersQuery.data ?? []).map((customer) => (
                       <button
                         key={customer.id}
+                        data-testid={`quote-customer-result-${customer.id}`}
                         type="button"
                         onClick={() => selectCustomer(customer)}
                         className="flex w-full items-center justify-between gap-3 p-2 text-right hover:bg-muted/40"
@@ -604,7 +528,7 @@ function NewQuotePage() {
                   }
                 }}
               >
-                <SelectTrigger id="settlement_type">
+                <SelectTrigger id="settlement_type" data-testid="quote-settlement-select">
                   <SelectValue placeholder="انتخاب نوع تسویه" />
                 </SelectTrigger>
                 <SelectContent>
@@ -646,6 +570,7 @@ function NewQuotePage() {
                 label="انبار"
                 value={warehouseId}
                 onChange={setWarehouseId}
+                triggerTestId="quote-warehouse-select"
                 hint="هنگام قطعی‌کردن، کالا از این انبار کسر می‌شود. در مرحلهٔ قطعی هم قابل تغییر است."
               />
             </div>
@@ -668,7 +593,7 @@ function NewQuotePage() {
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-medium">آیتم‌ها</div>
-            <Button size="sm" onClick={() => setPickerOpen(true)}>
+            <Button size="sm" onClick={() => setPickerOpen(true)} data-testid="quote-add-item">
               <Plus className="ml-1 h-4 w-4" /> افزودن آیتم
             </Button>
           </div>
@@ -826,6 +751,7 @@ function NewQuotePage() {
               <Button
                 onClick={handleSubmit}
                 disabled={saveMutation.isPending || items.length === 0}
+                data-testid="quote-save"
               >
                 {saveMutation.isPending ? (
                   <Loader2 className="ml-1 h-4 w-4 animate-spin" />
@@ -1153,6 +1079,7 @@ function ProductTab(props: {
           <div className="relative">
             <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              data-testid="quote-product-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="جستجوی نام محصول، SKU یا بارکد (حداقل ۲ حرف)"
@@ -1207,6 +1134,7 @@ function ProductTab(props: {
                     return (
                       <div key={p.id} className="p-2 space-y-2 hover:bg-muted/40">
                         <button
+                          data-testid={`quote-product-result-${p.id}`}
                           type="button"
                           onClick={() => setSelected({ id: p.id, name: p.name, sku: p.sku })}
                           className="flex w-full items-start justify-between gap-2 text-right"
@@ -1372,7 +1300,7 @@ function ProductTab(props: {
             <div className="space-y-1.5">
               <Label>نوع قیمت فروش</Label>
               <Select value={salePriceTypeId} onValueChange={setSalePriceTypeId}>
-                <SelectTrigger>
+                <SelectTrigger data-testid="quote-item-price-type">
                   <SelectValue placeholder="انتخاب نوع قیمت" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1387,6 +1315,7 @@ function ProductTab(props: {
             <div className="space-y-1.5">
               <Label>تعداد</Label>
               <Input
+                data-testid="quote-item-quantity"
                 type="number"
                 min={0}
                 value={quantity}
@@ -1396,6 +1325,7 @@ function ProductTab(props: {
             <div className="space-y-1.5">
               <Label>قیمت واحد (تومان)</Label>
               <Input
+                data-testid="quote-item-unit-price"
                 type="number"
                 min={0}
                 value={unitPrice}
@@ -1419,6 +1349,7 @@ function ProductTab(props: {
           )}
           <div className="flex justify-end">
             <Button
+              data-testid="quote-item-add-confirm"
               disabled={!canSubmit}
               onClick={() => {
                 if (!selected || !salePriceTypeId) return;
