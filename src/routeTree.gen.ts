@@ -104,6 +104,7 @@ import { Route as AppPricingChangeReasonsRouteImport } from './routes/_app.prici
 import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.calculator'
 import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.attention'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
+import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merge'
 import { Route as AppPersonsImportRouteImport } from './routes/_app.persons_.import'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
@@ -699,6 +700,11 @@ const AppPricingAminHozoorBoardRoute =
     path: '/pricing/amin-hozoor-board',
     getParentRoute: () => AppRoute,
   } as any)
+const AppPersonsMergeRoute = AppPersonsMergeRouteImport.update({
+  id: '/persons_/merge',
+  path: '/persons/merge',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPersonsImportRoute = AppPersonsImportRouteImport.update({
   id: '/persons_/import',
   path: '/persons/import',
@@ -1395,6 +1401,7 @@ export interface FileRoutesByFullPath {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/import': typeof AppPersonsImportRoute
+  '/persons/merge': typeof AppPersonsMergeRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1596,6 +1603,7 @@ export interface FileRoutesByTo {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/import': typeof AppPersonsImportRoute
+  '/persons/merge': typeof AppPersonsMergeRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
   '/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -1800,6 +1808,7 @@ export interface FileRoutesById {
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/persons_/import': typeof AppPersonsImportRoute
+  '/_app/persons_/merge': typeof AppPersonsMergeRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/attention': typeof AppPricingAttentionRoute
   '/_app/pricing/calculator': typeof AppPricingCalculatorRoute
@@ -2005,6 +2014,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/persons/import'
+    | '/persons/merge'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
     | '/pricing/calculator'
@@ -2206,6 +2216,7 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/create'
     | '/persons/import'
+    | '/persons/merge'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
     | '/pricing/calculator'
@@ -2409,6 +2420,7 @@ export interface FileRouteTypes {
     | '/_app/operations/tasks'
     | '/_app/persons_/create'
     | '/_app/persons_/import'
+    | '/_app/persons_/merge'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/attention'
     | '/_app/pricing/calculator'
@@ -3204,6 +3216,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing/amin-hozoor-board'
       fullPath: '/pricing/amin-hozoor-board'
       preLoaderRoute: typeof AppPricingAminHozoorBoardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/persons_/merge': {
+      id: '/_app/persons_/merge'
+      path: '/persons/merge'
+      fullPath: '/persons/merge'
+      preLoaderRoute: typeof AppPersonsMergeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/persons_/import': {
@@ -4239,6 +4258,7 @@ interface AppRouteChildren {
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPersonsImportRoute: typeof AppPersonsImportRoute
+  AppPersonsMergeRoute: typeof AppPersonsMergeRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingAttentionRoute: typeof AppPricingAttentionRoute
   AppPricingCalculatorRoute: typeof AppPricingCalculatorRoute
@@ -4379,6 +4399,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPersonsImportRoute: AppPersonsImportRoute,
+  AppPersonsMergeRoute: AppPersonsMergeRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingAttentionRoute: AppPricingAttentionRoute,
   AppPricingCalculatorRoute: AppPricingCalculatorRoute,

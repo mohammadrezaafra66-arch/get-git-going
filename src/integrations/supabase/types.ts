@@ -10044,6 +10044,10 @@ export type Database = {
         Args: { p_group_id: string; p_role?: string; p_user_id: string }
         Returns: string
       }
+      set_messenger_group_member_role: {
+        Args: { p_group_id: string; p_user_id: string; p_role: string }
+        Returns: undefined
+      }
       admin_gamification_overview: { Args: never; Returns: Json }
       api_dynamic_table_query_rows: {
         Args: {
@@ -11708,6 +11712,36 @@ export type Database = {
       }
       person_import_batch: {
         Args: { p_rows: Json }
+        Returns: Json
+      }
+      /**
+       * Migration 239 (Phase 8.1). Merges the losing person into the winning
+       * one: repoints every FK referencing persons, moves identifiers/aliases/
+       * context links with de-duplication, deactivates the loser and writes a
+       * person_merge_log row. Raises when both sides own a customer or both own
+       * a supplier. Admin/manager only.
+       */
+      person_merge: {
+        Args: { p_loser_id: string; p_reason?: string | null; p_winner_id: string }
+        Returns: Json
+      }
+      /**
+       * Migration 239b (Phase 8.1). Read-only evidence feed for the duplicate
+       * review page: both sides of every pending candidate pair, with
+       * identifiers, aliases, contexts, ownership flags, reference counts and
+       * blocked_reason when person_merge's cardinality guard would refuse.
+       */
+      person_merge_candidates_overview: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      /**
+       * Migration 239 (Phase 8.1). Marks a candidate pair as dismissed - a
+       * human confirmed the two records are different people. Mutates no
+       * person data. Admin/manager only.
+       */
+      person_merge_dismiss: {
+        Args: { p_candidate_id: string; p_reason?: string | null }
         Returns: Json
       }
       post_receipt_accounting: {
