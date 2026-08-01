@@ -75,14 +75,16 @@ const STRONG_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
 ]);
 
 /**
- * Contact identifiers, globally unique for every non-revoked row since Phase
- * 8.4 (migration 241, Decision 2). Mirrors `uq_person_identifiers_contact_global`.
+ * Contact identifiers that designate a PERSON, so they are globally unique for
+ * every non-revoked row (Phase 8.4, migration 241, Decision 2).
+ * Mirrors `uq_person_identifiers_contact_global`.
+ *
+ * `landline` was deliberately removed from this set in migration 245: a landline
+ * identifies a place, not a person, and two colleagues on one office line must
+ * be able to record it. It is confirmed-scoped instead — see
+ * `uq_person_identifiers_landline_confirmed`.
  */
-const CONTACT_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
-  "mobile_e164",
-  "landline",
-  "email",
-]);
+const CONTACT_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set(["mobile_e164", "email"]);
 
 /**
  * Cross-person duplicate guard.
@@ -103,8 +105,14 @@ const CONTACT_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
  *
  * The rule now mirrors the database exactly:
  *   strong kinds  (national/tax/company/IBAN) — conflict on any non-revoked row
- *   contact kinds (mobile/landline/email)     — conflict on any non-revoked row
- *   custom                                    — conflict only between confirmed rows
+ *   contact kinds (mobile/email)              — conflict on any non-revoked row
+ *   landline, custom                          — conflict only between confirmed rows
+ *
+ * landline sits in the confirmed-only group since migration 245. Leaving it in
+ * the always-conflicts group would have made the APP stricter than the SCHEMA —
+ * the exact mirror of the defect this function carried before 241, and it would
+ * have silently defeated the point of 245: shared office lines would still be
+ * refused, just by TypeScript instead of by an index.
  *
  * This guard runs on the REQUEST-SCOPED client, so RLS applies and it only sees
  * conflicts the caller is allowed to see. That is deliberate and it composes
@@ -129,10 +137,12 @@ async function findCrossPersonDuplicate(
 ): Promise<string | null> {
   const isStrong = STRONG_IDENTIFIER_KINDS.has(args.kind);
   const isContact = CONTACT_IDENTIFIER_KINDS.has(args.kind);
+  const isLandline = args.kind === "landline";
   const alwaysConflicts = isStrong || isContact;
 
-  // Only 'custom' is still confirmed-scoped; it keeps
-  // uq_person_identifiers_custom_confirmed as its database counterpart.
+  // 'landline' and 'custom' are confirmed-scoped, backed by
+  // uq_person_identifiers_landline_confirmed and
+  // uq_person_identifiers_custom_confirmed respectively.
   if (!alwaysConflicts && args.status !== "confirmed") return null;
 
   // Revoked rows release the value on both sides — that is what keeps a
@@ -166,6 +176,11 @@ async function findCrossPersonDuplicate(
         ? `این شناسه قبلاً برای شخص «${name}» ثبت شده است.`
         : "این شناسه قبلاً برای شخص دیگری ثبت شده است.";
     }
+    if (isLandline) {
+      return name
+        ? `این شمارهٔ تلفن ثابت قبلاً به‌صورت تأییدشده برای شخص «${name}» ثبت شده است.`
+        : "این شمارهٔ تلفن ثابت قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است.";
+    }
     return "این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است.";
   }
   return null;
@@ -194,6 +209,9 @@ function mapPgError(code: string | undefined, message: string): Error {
       return new Error(
         "این شماره قبلاً برای شخص دیگری ثبت شده است. هر شماره فقط به یک شخص تعلق دارد.",
       );
+    }
+    if (message.includes("uq_person_identifiers_landline_confirmed")) {
+      return new Error("این شمارهٔ تلفن ثابت قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است");
     }
     if (message.includes("uq_person_identifiers_custom_confirmed")) {
       return new Error("این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است");
