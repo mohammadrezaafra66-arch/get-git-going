@@ -213,7 +213,11 @@ export function PersonModal({ open, onOpenChange, context, onSuccess, initialNam
       // Keep the modal OPEN so the user can correct and retry without retyping.
       const raw = err instanceof Error ? err.message : String(err ?? "");
       const code = (err as { code?: string } | null)?.code;
-      if (code === "23505" || raw.includes("قبلاً در سیستم ثبت شده")) {
+      // Phase 8.4 (241) rewords the duplicate-contact error to «این شماره قبلاً
+      // برای شخص ... ثبت شده است», so match the shared «قبلاً» stem rather than
+      // the old sentence. The message itself is always shown verbatim below;
+      // this branch only picks the fallback text when the DB sent none.
+      if (code === "23505" || raw.includes("قبلاً")) {
         setServerError(raw || "این شناسه قبلاً برای شخص دیگری ثبت شده است.");
       } else if (code === "42501" || raw.includes("دسترسی")) {
         setServerError("دسترسی لازم برای ثبت شخص جدید را ندارید.");
