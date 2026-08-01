@@ -12,6 +12,7 @@ import {
   FileDown,
   MessageCircle,
   Eye,
+  UserRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +63,8 @@ interface QuoteDetail {
   customer_name: string;
   customer_phone: string;
   customer_note: string | null;
+  /** Item 231 — the unified person behind this quote's customer, if linked. */
+  customer_person_id: string | null;
   salesperson_id: string | null;
   salesperson_name: string | null;
   visitor_id: string | null;
@@ -107,7 +110,7 @@ function QuoteDetailPage() {
       const { data, error } = await supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
         )
         .eq("id", quoteId)
         .maybeSingle();
@@ -220,7 +223,25 @@ function QuoteDetailPage() {
               <QuoteStatusBadge status={quote.status} />
             </div>
             <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <Field label="نام مشتری" value={quote.customer_name} />
+              <Field
+                label="نام مشتری"
+                value={
+                  /* Item 231 — quotes now carry the unified person behind the
+                     customer, so the identity record is one click away. */
+                  quote.customer_person_id ? (
+                    <Link
+                      to="/persons/$personId/edit"
+                      params={{ personId: quote.customer_person_id }}
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <UserRound className="h-3.5 w-3.5" />
+                      {quote.customer_name}
+                    </Link>
+                  ) : (
+                    quote.customer_name
+                  )
+                }
+              />
               <Field label="شماره تماس" value={<span dir="ltr">{quote.customer_phone}</span>} />
               <Field label="فروشنده" value={quote.salesperson_name ?? "—"} />
               {quote.visitor_name && <Field label="ویزیتور" value={quote.visitor_name} />}

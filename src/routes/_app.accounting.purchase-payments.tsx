@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -77,6 +77,8 @@ type Row = {
   paid_by: string | null;
   product: { name: string | null } | null;
   supplier: { name: string | null } | null;
+  /** Item 231 — the unified person behind this purchase's supplier, if linked. */
+  supplier_person_id: string | null;
   payment_term: { name: string | null; days: number | null } | null;
 };
 
@@ -125,7 +127,7 @@ function PurchasePaymentsPage() {
         .select(
           `
           id, number, purchase_date, purchase_price, cash_price, quantity,
-          total_amount, currency, paid_at, paid_by,
+          total_amount, currency, paid_at, paid_by, supplier_person_id,
           product:products(name),
           supplier:suppliers(name),
           payment_term:payment_terms(name, days)
@@ -349,7 +351,21 @@ function PurchasePaymentsPage() {
                           <TableRow key={r.id}>
                             <TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
                             <TableCell>{r.product?.name ?? "—"}</TableCell>
-                            <TableCell>{r.supplier?.name ?? "—"}</TableCell>
+                            <TableCell>
+                              {/* Item 231 — link through to the unified person
+                                  record when the supplier is linked to one. */}
+                              {r.supplier_person_id ? (
+                                <Link
+                                  to="/persons/$personId/edit"
+                                  params={{ personId: r.supplier_person_id }}
+                                  className="text-primary hover:underline"
+                                >
+                                  {r.supplier?.name ?? "—"}
+                                </Link>
+                              ) : (
+                                (r.supplier?.name ?? "—")
+                              )}
+                            </TableCell>
                             <TableCell>
                               {toFaDigits(formatDateFa(new Date(r.purchase_date)))}
                             </TableCell>

@@ -7705,6 +7705,11 @@ export type Database = {
           quantity: number
           status: string
           supplier_id: string | null
+          /**
+           * Migration 231 (Phase 5): the unified person behind supplier_id.
+           * Derived by trg_purchases_derive_person — read it, never write it.
+           */
+          supplier_person_id: string | null
           total_amount: number
           updated_at: string
         }
@@ -7726,6 +7731,12 @@ export type Database = {
           quantity?: number
           status?: string
           supplier_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by trg_purchases_derive_person
+           * from supplier_id. Supplying a value here is accepted but ignored —
+           * the trigger overwrites it.
+           */
+          supplier_person_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -7747,6 +7758,12 @@ export type Database = {
           quantity?: number
           status?: string
           supplier_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by trg_purchases_derive_person
+           * from supplier_id. Supplying a value here is accepted but ignored —
+           * the trigger overwrites it.
+           */
+          supplier_person_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -8323,6 +8340,11 @@ export type Database = {
           commitment_confirmed: boolean
           credit_check_snapshot: Json | null
           customer_id: string | null
+          /**
+           * Migration 231 (Phase 5): the unified person behind customer_id.
+           * Derived by trg_sales_quotes_derive_person — read it, never write it.
+           */
+          customer_person_id: string | null
           deposit_amount: number | null
           list_price_snapshot: number | null
           quote_exception_amount: number | null
@@ -8364,6 +8386,13 @@ export type Database = {
           commitment_confirmed?: boolean
           credit_check_snapshot?: Json | null
           customer_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by trg_sales_quotes_derive_person
+           * from customer_id. Supplying a value here is accepted but ignored —
+           * the trigger overwrites it. Same contract as
+           * person_identifiers.value_normalized (migration 228).
+           */
+          customer_person_id?: string | null
           deposit_amount?: number | null
           list_price_snapshot?: number | null
           quote_exception_amount?: number | null
@@ -8405,6 +8434,13 @@ export type Database = {
           commitment_confirmed?: boolean
           credit_check_snapshot?: Json | null
           customer_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by trg_sales_quotes_derive_person
+           * from customer_id. Supplying a value here is accepted but ignored —
+           * the trigger overwrites it. Same contract as
+           * person_identifiers.value_normalized (migration 228).
+           */
+          customer_person_id?: string | null
           deposit_amount?: number | null
           list_price_snapshot?: number | null
           quote_exception_amount?: number | null
@@ -9040,6 +9076,13 @@ export type Database = {
           payee_customer_id: string | null
           payee_name: string | null
           payee_party_id: string | null
+          /**
+           * Migration 231 (Phase 5): the unified person behind a supplier or
+           * customer payee. Derived by trg_payment_vouchers_derive_person —
+           * read it, never write it. Always null for payee_type
+           * 'external_party' and 'other', which have no person behind them.
+           */
+          payee_person_id: string | null
           payee_supplier_id: string | null
           payee_type: string
           payment_date: string
@@ -9063,6 +9106,12 @@ export type Database = {
           payee_customer_id?: string | null
           payee_name?: string | null
           payee_party_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by
+           * trg_payment_vouchers_derive_person from the supplier/customer
+           * payee. Supplying a value here is accepted but ignored.
+           */
+          payee_person_id?: string | null
           payee_supplier_id?: string | null
           payee_type: string
           payment_date: string
@@ -9086,6 +9135,12 @@ export type Database = {
           payee_customer_id?: string | null
           payee_name?: string | null
           payee_party_id?: string | null
+          /**
+           * Migration 231 (Phase 5): derived by
+           * trg_payment_vouchers_derive_person from the supplier/customer
+           * payee. Supplying a value here is accepted but ignored.
+           */
+          payee_person_id?: string | null
           payee_supplier_id?: string | null
           payee_type?: string
           payment_date?: string
@@ -11586,6 +11641,18 @@ export type Database = {
       person_find_by_identifiers: {
         Args: { p_identifiers: Json }
         Returns: Json
+      }
+      /**
+       * Migration 231 (Phase 5). Returns one row per table whose derived
+       * *_person_id column disagrees with its legacy FK. An empty result is
+       * the healthy state.
+       */
+      person_fk_drift_report: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          drifted_rows: number
+          table_name: string
+        }[]
       }
       person_import_batch: {
         Args: { p_rows: Json }
