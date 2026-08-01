@@ -190,15 +190,40 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         return (row as { id: string }).id;
       }
 
-      const { data: row, error } = await supabase
-        .from("customers")
-        .insert(payload as never)
-        .select("id")
-        .single();
+      // Phase 6.2 — creation goes through person_create_inline so a customer can
+      // never exist without a person. The duplicate guard above still runs first;
+      // it protects the legacy accounting_code/phone uniqueness rules, which are
+      // separate from the person-level identifier uniqueness of migration 228.
+      const { data: rpcRow, error: rpcError } = await supabase.rpc("person_create_inline", {
+        p_display_name: payload.name,
+        p_context_kind: "customer",
+        p_identifiers: payload.phone
+          ? [
+              {
+                kind: "mobile_e164",
+                value_raw: payload.phone,
+                is_primary: true,
+                status: "provisional",
+              },
+            ]
+          : [],
+        p_city: payload.city,
+        p_notes: payload.notes,
+        p_accounting_code: payload.accounting_code,
+        // Customer-only columns, applied by the RPC whitelist (migration 232).
+        p_legacy_fields: {
+          responsible_id: payload.responsible_id,
+          link_group: payload.link_group,
+          birth_date: payload.birth_date,
+        },
+      });
 
-      if (error) throw new Error(error.message);
-      if (!row) throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
-      return (row as { id: string }).id;
+      if (rpcError) throw new Error(rpcError.message);
+      const created = rpcRow as { legacy_id: string | null } | null;
+      if (!created?.legacy_id) {
+        throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
+      }
+      return created.legacy_id;
     },
     onSuccess: () => {
       toast.success(customerId ? "مشتری ویرایش شد" : "مشتری ثبت شد");

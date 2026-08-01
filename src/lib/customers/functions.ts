@@ -121,6 +121,20 @@ function toServerError(e: unknown): Error {
  * createCustomer does NOT accept `person_id`. See note in
  * `schemas.ts → CreateCustomerInputSchema`. To attach a person after
  * creation, call `linkCustomerToPerson` with the returned id.
+ *
+ * @deprecated Phase 6.2. This inserts into `customers` directly and therefore
+ * creates a row with `person_id = NULL` — the exact hole Phase 6 closes. It has
+ * no callers (verified by grep; the only other mention is a comment in
+ * QuickAddCustomerDialog, which already uses `person_create_inline`).
+ *
+ * Use `supabase.rpc("person_create_inline", { p_context_kind: "customer", ... })`
+ * instead — see `CustomerForm.tsx` for the reference call, including
+ * `p_legacy_fields` for customer-only columns.
+ *
+ * Left in place rather than rewritten because rule 15 forbids reworking code
+ * nothing calls. Note that after migration 233 makes `customers.person_id`
+ * NOT NULL this function will fail loudly at runtime, which is the intended
+ * outcome: no silent person-less customer.
  */
 export const createCustomer = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
