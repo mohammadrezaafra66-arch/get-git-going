@@ -20,6 +20,10 @@ import {
 } from "@/lib/persons/schemas";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import {
+  PersonIdentifiersForm,
+  type DraftIdentifier,
+} from "@/components/persons/PersonIdentifiersForm";
 
 export interface PersonFormValues {
   kind: PersonKind;
@@ -28,6 +32,12 @@ export interface PersonFormValues {
   visibility_scope: PersonVisibilityScope;
   is_active: boolean;
   notes: string;
+  /**
+   * Phase 6.4 — identifiers collected on the CREATE page, so a person can be
+   * created with a mobile/national-id in one flow instead of create-then-edit.
+   * Empty on the edit page, where identifiers are managed against a saved row.
+   */
+  identifiers: DraftIdentifier[];
 }
 
 const KIND_LABEL: Record<PersonKind, string> = {
@@ -46,12 +56,20 @@ export function PersonForm({
   submitLabel,
   onSubmit,
   onCancel,
+  allowIdentifiers = false,
 }: {
   initial?: Partial<PersonFormValues>;
   submitting?: boolean;
   submitLabel: string;
   onSubmit: (values: PersonFormValues) => void;
   onCancel?: () => void;
+  /**
+   * Phase 6.4 — render the identifiers section inline. Only the create page
+   * sets this: on the edit page identifiers are managed separately against a
+   * persisted person, and showing a draft list there would be two sources of
+   * truth for the same data.
+   */
+  allowIdentifiers?: boolean;
 }) {
   const [values, setValues] = useState<PersonFormValues>({
     kind: initial?.kind ?? "individual",
@@ -60,6 +78,7 @@ export function PersonForm({
     visibility_scope: initial?.visibility_scope ?? "internal_general",
     is_active: initial?.is_active ?? true,
     notes: initial?.notes ?? "",
+    identifiers: initial?.identifiers ?? [],
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -98,9 +117,12 @@ export function PersonForm({
     <form dir="rtl" onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>نوع شخص</Label>
+          {/* Phase 6.5 — labels wired to their controls (htmlFor/id), matching
+              the convention PersonModal already used. Radix Select needs the id
+              on the trigger, which is the element exposed to assistive tech. */}
+          <Label htmlFor="pf-kind">نوع شخص</Label>
           <Select value={values.kind} onValueChange={(v) => set("kind", v as PersonKind)}>
-            <SelectTrigger>
+            <SelectTrigger id="pf-kind">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -113,13 +135,13 @@ export function PersonForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label>سطح دسترسی</Label>
+          <Label htmlFor="pf-scope">سطح دسترسی</Label>
           {canSetVisibilityScope ? (
             <Select
               value={values.visibility_scope}
               onValueChange={(v) => set("visibility_scope", v as PersonVisibilityScope)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="pf-scope">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -145,8 +167,9 @@ export function PersonForm({
           )}
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label>نام نمایشی *</Label>
+          <Label htmlFor="pf-display-name">نام نمایشی *</Label>
           <Input
+            id="pf-display-name"
             value={values.display_name}
             onChange={(e) => set("display_name", e.target.value)}
             maxLength={255}
@@ -154,16 +177,18 @@ export function PersonForm({
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label>نام رسمی / قانونی</Label>
+          <Label htmlFor="pf-legal-name">نام رسمی / قانونی</Label>
           <Input
+            id="pf-legal-name"
             value={values.legal_name}
             onChange={(e) => set("legal_name", e.target.value)}
             maxLength={255}
           />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <Label>یادداشت</Label>
+          <Label htmlFor="pf-notes">یادداشت</Label>
           <Textarea
+            id="pf-notes"
             value={values.notes}
             onChange={(e) => set("notes", e.target.value)}
             maxLength={2000}
@@ -179,6 +204,30 @@ export function PersonForm({
           <Label htmlFor="is_active">فعال</Label>
         </div>
       </div>
+
+      {allowIdentifiers && (
+        <div className="space-y-3 rounded-md border p-4">
+          <div>
+            <h3 className="text-sm font-medium">شناسه‌ها</h3>
+            <p className="text-xs text-muted-foreground">
+              شناسه‌ها همراه با ثبت شخص ذخیره و روی سرور نرمال‌سازی می‌شوند.
+            </p>
+          </div>
+          <PersonIdentifiersForm
+            identifiers={[]}
+            canManage
+            draft={{
+              items: values.identifiers,
+              onAdd: (item) => set("identifiers", [...values.identifiers, item]),
+              onRemove: (index) =>
+                set(
+                  "identifiers",
+                  values.identifiers.filter((_, i) => i !== index),
+                ),
+            }}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">

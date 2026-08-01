@@ -30,7 +30,11 @@ import {
   revokePersonIdentifier,
   type PersonIdentifierDTO,
 } from "@/lib/persons/identifiers.functions";
-import { IDENTIFIER_KINDS, type IdentifierKind } from "@/lib/persons/identifiers-normalize";
+import {
+  IDENTIFIER_KINDS,
+  normalizeIdentifier,
+  type IdentifierKind,
+} from "@/lib/persons/identifiers-normalize";
 
 const KIND_LABEL: Record<IdentifierKind, string> = {
   mobile_e164: "موبایل",
@@ -72,15 +76,44 @@ function statusBadge(s: PersonIdentifierDTO["status"]) {
   return <Badge className="bg-amber-500 text-white hover:bg-amber-500">{STATUS_LABEL[s]}</Badge>;
 }
 
+/** An identifier collected before the person exists (create page, Phase 6.4). */
+export interface DraftIdentifier {
+  kind: IdentifierKind;
+  value_raw: string;
+  status: "provisional" | "confirmed";
+  is_primary: boolean;
+}
+
+/**
+ * Two modes, one component (Phase 6.4).
+ *
+ * PERSISTED — `personId` is set. Adding or revoking hits the server immediately.
+ *             This is the person edit page and is the original behaviour.
+ * DRAFT     — `personId` is undefined and `draft` is supplied. The person does
+ *             not exist yet, so there is nothing to attach to: rows accumulate
+ *             in the parent's state and are sent with person_create_full when
+ *             the form is submitted, which creates and normalizes them in one
+ *             transaction.
+ *
+ * A second component was deliberately not built. The picker, the kind list, the
+ * validation and the table must not drift apart between create and edit.
+ */
 export function PersonIdentifiersForm({
   personId,
   identifiers,
   canManage,
+  draft,
 }: {
-  personId: string;
+  personId?: string;
   identifiers: PersonIdentifierDTO[];
   canManage: boolean;
+  draft?: {
+    items: DraftIdentifier[];
+    onAdd: (item: DraftIdentifier) => void;
+    onRemove: (index: number) => void;
+  };
 }) {
+  const isDraft = !personId && !!draft;
   const qc = useQueryClient();
   const createFn = useServerFn(createPersonIdentifier);
   const revokeFn = useServerFn(revokePersonIdentifier);
@@ -163,7 +196,29 @@ export function PersonIdentifiersForm({
           </div>
           <Button
             type="button"
-            onClick={() => createMut.mutate()}
+            onClick={() => {
+              if (isDraft) {
+                // Validate client-side so the user is not told "invalid" only
+                // after submitting the whole form. The DB re-normalizes and
+                // remains authoritative (migration 228).
+                const norm = normalizeIdentifier(kind, value);
+                if (!norm.ok) {
+                  toast.error(norm.message_fa);
+                  return;
+                }
+                draft!.onAdd({
+                  kind,
+                  value_raw: value.trim(),
+                  status: confirmed ? "confirmed" : "provisional",
+                  is_primary: isPrimary,
+                });
+                setValue("");
+                setIsPrimary(false);
+                setConfirmed(false);
+                return;
+              }
+              createMut.mutate();
+            }}
             disabled={createMut.isPending || !value.trim()}
           >
             {createMut.isPending ? (
@@ -202,7 +257,30 @@ export function PersonIdentifiersForm({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {identifiers.length === 0 ? (
+            {/* Draft rows: not saved yet, so the normalized value shown here is
+                the client-side preview. The server recomputes it on submit. */}
+            {isDraft &&
+              draft!.items.map((d, i) => {
+                const preview = normalizeIdentifier(d.kind, d.value_raw);
+                return (
+                  <TableRow key={`draft-${i}`}>
+                    <TableCell>{KIND_LABEL[d.kind]}</TableCell>
+                    <TableCell dir="ltr" className="font-mono text-sm">
+                      {preview.ok ? preview.value_normalized : d.value_raw}
+                    </TableCell>
+                    <TableCell>{statusBadge(d.status)}</TableCell>
+                    <TableCell>{d.is_primary ? "بله" : "—"}</TableCell>
+                    {canManage && (
+                      <TableCell>
+                        <Button variant="outline" size="sm" onClick={() => draft!.onRemove(i)}>
+                          <Trash2 className="ml-1 h-3 w-3" /> حذف
+                        </Button>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            {identifiers.length === 0 && (!isDraft || draft!.items.length === 0) ? (
               <TableRow>
                 <TableCell
                   colSpan={canManage ? 5 : 4}

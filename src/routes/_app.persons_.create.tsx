@@ -55,6 +55,10 @@ function PersonCreatePage() {
             is_active: values.is_active,
             notes: values.notes.trim() ? values.notes.trim() : null,
             field_values: [],
+            // Phase 6.4 — identifiers collected on this page are created and
+            // normalized inside person_create_full's transaction, so there is
+            // no window where the person exists without them.
+            identifiers: values.identifiers,
           },
         }),
       );
@@ -122,6 +126,7 @@ function PersonCreatePage() {
           <PersonForm
             submitLabel="ایجاد شخص"
             submitting={mut.isPending}
+            allowIdentifiers
             onSubmit={(values) => mut.mutate(values)}
             onCancel={() => navigate({ to: "/persons" })}
           />
