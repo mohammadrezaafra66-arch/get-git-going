@@ -5322,6 +5322,11 @@ export type Database = {
           created_by: string
           custom_data: Json
           customer_id: string
+          /**
+           * Phase 7: unified person behind customer_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          customer_person_id: string | null
           description: string | null
           destination_bank: string | null
           destination_bank_account_id: string | null
@@ -5345,6 +5350,11 @@ export type Database = {
           receiver_name: string
           receiver_name_on_receipt: string | null
           receiver_party_id: string | null
+          /**
+           * Phase 7 (migrations 235-238): unified person behind receiver_party_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          receiver_party_person_id: string | null
           receiver_phone: string | null
           rejection_reason: string | null
           security_warnings: Json
@@ -5362,6 +5372,11 @@ export type Database = {
           created_by: string
           custom_data?: Json
           customer_id: string
+          /**
+           * Phase 7: unified person behind customer_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          customer_person_id?: string | null
           description?: string | null
           destination_bank?: string | null
           destination_bank_account_id?: string | null
@@ -5385,6 +5400,11 @@ export type Database = {
           receiver_name: string
           receiver_name_on_receipt?: string | null
           receiver_party_id?: string | null
+          /**
+           * Phase 7: unified person behind receiver_party_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          receiver_party_person_id?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
           security_warnings?: Json
@@ -5402,6 +5422,11 @@ export type Database = {
           created_by?: string
           custom_data?: Json
           customer_id?: string
+          /**
+           * Phase 7: unified person behind customer_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          customer_person_id?: string | null
           description?: string | null
           destination_bank?: string | null
           destination_bank_account_id?: string | null
@@ -5425,6 +5450,11 @@ export type Database = {
           receiver_name?: string
           receiver_name_on_receipt?: string | null
           receiver_party_id?: string | null
+          /**
+           * Phase 7: unified person behind receiver_party_id.
+           * Derived by trg_payment_receipts_derive_person - supplying a value is accepted but ignored.
+           */
+          receiver_party_person_id?: string | null
           receiver_phone?: string | null
           rejection_reason?: string | null
           security_warnings?: Json
@@ -7113,6 +7143,11 @@ export type Database = {
           notes: string | null
           product_id: string
           supplier_id: string
+          /**
+           * Phase 7: unified person behind supplier_id.
+           * Derived by trg_product_suppliers_derive_person - supplying a value is accepted but ignored.
+           */
+          supplier_person_id: string
         }
         Insert: {
           auto_added?: boolean
@@ -7122,6 +7157,11 @@ export type Database = {
           notes?: string | null
           product_id: string
           supplier_id: string
+          /**
+           * Phase 7: unified person behind supplier_id.
+           * Derived by trg_product_suppliers_derive_person - supplying a value is accepted but ignored.
+           */
+          supplier_person_id?: string
         }
         Update: {
           auto_added?: boolean
@@ -7131,6 +7171,11 @@ export type Database = {
           notes?: string | null
           product_id?: string
           supplier_id?: string
+          /**
+           * Phase 7: unified person behind supplier_id.
+           * Derived by trg_product_suppliers_derive_person - supplying a value is accepted but ignored.
+           */
+          supplier_person_id?: string
         }
         Relationships: [
           {
