@@ -11633,6 +11633,13 @@ export type Database = {
           p_display_name: string
           p_identifiers?: Json
           p_kind?: string
+          /**
+           * Migration 232 (Phase 6.1): fields that live only on the legacy
+           * suppliers/customers row. Applied through a per-table whitelist —
+           * suppliers: contact_name, trust_level, status; customers:
+           * responsible_id, link_group, birth_date. Unknown keys are ignored.
+           */
+          p_legacy_fields?: Json
           p_notes?: string | null
           p_visibility_scope?: string
         }

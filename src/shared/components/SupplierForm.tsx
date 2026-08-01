@@ -49,7 +49,9 @@ interface Props {
 export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { roles, user } = useAuth();
+  // `user` is no longer needed: person_create_inline stamps created_by from
+  // auth.uid() server-side (Phase 6.1).
+  const { roles } = useAuth();
   const canSetActive = hasAnyRole(roles, ["admin", "accountant"]);
   const canEdit = hasAnyRole(roles, ["admin", "accountant"]);
 
@@ -82,6 +84,8 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
         status: finalStatus,
       };
       if (supplierId) {
+        // Editing an existing supplier does not create identity, so it stays a
+        // plain UPDATE. Only creation has to go through the person RPC.
         const { error } = await supabase
           .from("suppliers")
           .update(payload as never)
@@ -89,18 +93,51 @@ export function SupplierForm({ supplierId, defaultValues, hideStatus }: Props) {
         if (error) throw error;
         return supplierId;
       }
-      const { data, error } = await supabase
-        .from("suppliers")
-        .insert({ ...payload, created_by: user?.id ?? null } as never)
-        .select("id")
-        .single();
+
+      // Phase 6.1 — creation goes through person_create_inline so a supplier can
+      // never exist without a person. The RPC writes person + identifiers +
+      // suppliers row + context link in ONE transaction; a direct insert here
+      // would recreate the person_id=NULL hole this phase exists to close.
+      const identifiers = payload.phone
+        ? [
+            {
+              kind: "mobile_e164",
+              value_raw: payload.phone,
+              is_primary: true,
+              status: "provisional",
+            },
+          ]
+        : [];
+
+      const { data, error } = await supabase.rpc("person_create_inline", {
+        p_display_name: payload.name,
+        p_context_kind: "supplier",
+        p_kind: "organization",
+        p_identifiers: identifiers,
+        p_city: payload.city,
+        p_notes: payload.notes,
+        // Fields that live only on the suppliers row. Applied by the RPC through
+        // a whitelist (migration 232) so nothing this form collects is dropped.
+        p_legacy_fields: {
+          contact_name: payload.contact_name,
+          trust_level: payload.trust_level,
+          status: payload.status,
+        },
+      });
       if (error) throw error;
-      return (data as { id: string }).id;
+
+      const row = data as { legacy_id: string | null } | null;
+      if (!row?.legacy_id) {
+        throw new Error("ثبت تأمین‌کننده ناموفق بود — شناسه‌ای بازگردانده نشد");
+      }
+      return row.legacy_id;
     },
     onSuccess: () => {
       toast.success(supplierId ? "تأمین‌کننده ویرایش شد" : "تأمین‌کننده ثبت شد");
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["supplier", supplierId] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["persons"] });
       navigate({ to: "/suppliers" });
     },
     onError: (err: unknown) => {
