@@ -288,30 +288,34 @@ function ExternalPartyForm({
   return (
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        {/* Phase 8.5: labels wired to their inputs with htmlFor/id. They were
+            bare <Label> elements with no association, so a screen reader read
+            the fields as unlabelled and getByLabel could not reach them. Same
+            a11y lesson Phase 6.5 applied to PersonForm. */}
         <div className="space-y-1 col-span-2">
-          <Label>
+          <Label htmlFor="ep-full-name">
             نام و نام‌خانوادگی <span className="text-destructive">*</span>
           </Label>
-          <Input {...form.register("full_name")} />
+          <Input id="ep-full-name" {...form.register("full_name")} />
           {form.formState.errors.full_name && (
             <p className="text-xs text-destructive">{form.formState.errors.full_name.message}</p>
           )}
         </div>
         <div className="space-y-1">
-          <Label>کد ملی</Label>
-          <Input dir="ltr" {...form.register("national_id")} />
+          <Label htmlFor="ep-national-id">کد ملی</Label>
+          <Input id="ep-national-id" dir="ltr" {...form.register("national_id")} />
         </div>
         <div className="space-y-1">
-          <Label>شماره موبایل</Label>
-          <Input dir="ltr" {...form.register("phone")} />
+          <Label htmlFor="ep-phone">شماره موبایل</Label>
+          <Input id="ep-phone" dir="ltr" {...form.register("phone")} />
         </div>
         <div className="space-y-1 col-span-2">
-          <Label>کد حسابداری</Label>
-          <Input dir="ltr" {...form.register("accounting_code")} />
+          <Label htmlFor="ep-accounting-code">کد حسابداری</Label>
+          <Input id="ep-accounting-code" dir="ltr" {...form.register("accounting_code")} />
         </div>
         <div className="space-y-1 col-span-2">
-          <Label>توضیحات</Label>
-          <Textarea rows={2} {...form.register("notes")} />
+          <Label htmlFor="ep-notes">توضیحات</Label>
+          <Textarea id="ep-notes" rows={2} {...form.register("notes")} />
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">

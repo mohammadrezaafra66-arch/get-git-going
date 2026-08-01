@@ -75,21 +75,43 @@ const STRONG_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
 ]);
 
 /**
+ * Contact identifiers, globally unique for every non-revoked row since Phase
+ * 8.4 (migration 241, Decision 2). Mirrors `uq_person_identifiers_contact_global`.
+ */
+const CONTACT_IDENTIFIER_KINDS: ReadonlySet<IdentifierKind> = new Set([
+  "mobile_e164",
+  "landline",
+  "email",
+]);
+
+/**
  * Cross-person duplicate guard.
  *
- * Originally (S12) this rejected ANY non-revoked cross-person duplicate. That
- * matched the old `uq_person_identifiers_active_kind_value` index, which
- * migration 228 removed as blocker B3: two family members could not both
- * register a shared landline, and a mistyped provisional phone permanently
- * blocked its real owner.
+ * HISTORY, because this rule has now flipped twice and the reason matters.
+ *   S12 rejected ANY non-revoked cross-person duplicate.
+ *   Migration 228 (blocker B3) relaxed contact kinds to conflict only once
+ *     CONFIRMED, so a mistyped provisional phone could not permanently block
+ *     its real owner. This function was relaxed to match.
+ *   Phase 8.4 (migration 241, Decision 2) reversed B3: one mobile = one person,
+ *     globally, provisional or confirmed. This function is tightened to match.
+ *
+ * Keeping the B3 logic here after 241 was a real defect, not a cosmetic one,
+ * and an end-to-end test is what caught it: the DATABASE correctly refused the
+ * duplicate, but this guard waved it through, so the rejection arrived as a
+ * bare unique_violation that mapPgError flattened to «مقدار تکراری است». The
+ * user was told the truth in the least useful possible way.
  *
  * The rule now mirrors the database exactly:
- *   strong kinds (national/tax/company/IBAN) — conflict on any non-revoked row
- *   weak kinds  (mobile/landline/email/custom) — conflict only when BOTH the
- *                incoming row and the existing row are 'confirmed'
+ *   strong kinds  (national/tax/company/IBAN) — conflict on any non-revoked row
+ *   contact kinds (mobile/landline/email)     — conflict on any non-revoked row
+ *   custom                                    — conflict only between confirmed rows
  *
- * Leaving the old behaviour here would have made the app stricter than the
- * schema, so B3 would have looked fixed in SQL while still failing in the UI.
+ * This guard runs on the REQUEST-SCOPED client, so RLS applies and it only sees
+ * conflicts the caller is allowed to see. That is deliberate and it composes
+ * with the trigger added in 241: when the owner is visible, the caller gets a
+ * message naming them; when the owner is not, this probe finds nothing and the
+ * database raises the generic «برای شخص دیگری» message instead. Neither path
+ * discloses a person the caller could not already have found.
  *
  * NOTE: the lookup uses the TypeScript-normalized value. Since migration 228
  * the DB normalizes authoritatively via trigger, so this probe is advisory —
@@ -106,28 +128,45 @@ async function findCrossPersonDuplicate(
   },
 ): Promise<string | null> {
   const isStrong = STRONG_IDENTIFIER_KINDS.has(args.kind);
+  const isContact = CONTACT_IDENTIFIER_KINDS.has(args.kind);
+  const alwaysConflicts = isStrong || isContact;
 
-  // A weak identifier that is not being confirmed cannot collide with anything.
-  if (!isStrong && args.status !== "confirmed") return null;
+  // Only 'custom' is still confirmed-scoped; it keeps
+  // uq_person_identifiers_custom_confirmed as its database counterpart.
+  if (!alwaysConflicts && args.status !== "confirmed") return null;
 
+  // Revoked rows release the value on both sides — that is what keeps a
+  // mistyped number correctable now that provisional rows also collide.
   let q = supabase
     .from("person_identifiers")
-    .select("id, person_id, status")
+    .select("id, person_id, status, persons!inner(display_name)")
     .eq("kind", args.kind)
     .eq("value_normalized", args.value_normalized)
     .neq("status", "revoked")
     .neq("person_id", args.person_id)
     .limit(1);
-  // Weak identifiers only conflict with an already-CONFIRMED holder.
-  if (!isStrong) q = q.eq("status", "confirmed");
+  if (!alwaysConflicts) q = q.eq("status", "confirmed");
   if (args.excludeId) q = q.neq("id", args.excludeId);
 
   const { data, error } = await q;
   if (error) throw mapPgError(error.code, error.message);
   if (data && data.length > 0) {
-    return isStrong
-      ? "این شناسه قبلاً برای شخص دیگری ثبت شده است."
-      : "این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است.";
+    // RLS already limited this row to one the caller may see, so naming the
+    // owner here discloses nothing they could not have found by searching.
+    const owner = (data[0] as { persons?: { display_name?: string } | null }).persons;
+    const name = owner?.display_name?.trim();
+
+    if (isContact) {
+      return name
+        ? `این شماره قبلاً برای شخص «${name}» ثبت شده است. هر شماره فقط به یک شخص تعلق دارد.`
+        : "این شماره قبلاً برای شخص دیگری ثبت شده است. هر شماره فقط به یک شخص تعلق دارد.";
+    }
+    if (isStrong) {
+      return name
+        ? `این شناسه قبلاً برای شخص «${name}» ثبت شده است.`
+        : "این شناسه قبلاً برای شخص دیگری ثبت شده است.";
+    }
+    return "این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است.";
   }
   return null;
 }
@@ -137,10 +176,30 @@ async function findCrossPersonDuplicate(
  * Never echoes value_raw back.
  */
 function mapPgError(code: string | undefined, message: string): Error {
+  // The database now raises its own Persian sentences — validate_person_identifier
+  // (migration 241) turns a contact-uniqueness violation into a message that
+  // names the conflicting person when the caller is allowed to know. Those are
+  // strictly better than anything mapped here, and flattening them to
+  // «مقدار تکراری است» is what made the 8.4 rejection unreadable in the UI.
+  // Postgres's own errors are English, so a Persian message is by construction
+  // one we wrote deliberately: pass it through untouched.
+  if (/[؀-ۿ]/.test(message)) return new Error(message);
+
   // Postgres unique_violation
   if (code === "23505") {
-    if (message.includes("uq_person_identifiers_confirmed_kind_value")) {
+    // uq_person_identifiers_contact_global replaced
+    // uq_person_identifiers_confirmed_kind_value for contact kinds in 241;
+    // the confirmed-only index now covers 'custom' alone.
+    if (message.includes("uq_person_identifiers_contact_global")) {
+      return new Error(
+        "این شماره قبلاً برای شخص دیگری ثبت شده است. هر شماره فقط به یک شخص تعلق دارد.",
+      );
+    }
+    if (message.includes("uq_person_identifiers_custom_confirmed")) {
       return new Error("این شناسه قبلاً به‌صورت تأییدشده برای شخص دیگری ثبت شده است");
+    }
+    if (message.includes("uq_person_identifiers_strong_active")) {
+      return new Error("این شناسه قبلاً برای شخص دیگری ثبت شده است");
     }
     if (message.includes("uq_person_identifiers_primary_active")) {
       return new Error("برای این شخص از قبل یک شناسه‌ی اصلی فعال از همین نوع وجود دارد");

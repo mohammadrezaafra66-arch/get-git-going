@@ -17,8 +17,21 @@ import { E2E_PREFIX } from "../helpers/app";
  */
 
 const NAME = `تست نرمال ${E2E_PREFIX}${Date.now()}`;
-const RAW_MOBILE = "09121234567";
-const EXPECTED_NORMALIZED = "+989121234567";
+
+// Phase 8.4 (Decision 2) made mobile_e164 globally unique for every ACTIVE
+// identifier, not just confirmed ones — reversing migration 228's B3 split.
+// This spec used to hardcode 09121234567, which the unrelated pre-existing
+// person «تست 2.1» already holds; under the old rule two provisional copies of
+// a number were allowed, so it passed. Under the new rule the second one is
+// correctly refused with «این شماره قبلاً برای شخص دیگری ثبت شده است».
+//
+// The number is therefore derived per run so it cannot collide with real data
+// or with a previous run. The test is about NORMALIZATION (09... -> +98...),
+// which any valid mobile exercises equally well; pinning a specific value was
+// never part of what it asserts.
+const MOBILE_SUFFIX = String(Date.now()).slice(-7);
+const RAW_MOBILE = `0912${MOBILE_SUFFIX}`;
+const EXPECTED_NORMALIZED = `+98912${MOBILE_SUFFIX}`;
 
 function cleanup(): void {
   dbExecE2e(`
