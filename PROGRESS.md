@@ -14,7 +14,7 @@
 - **برنچ کاری:** `feature/navigation-modernization`
 - **محیط کار:** فقط `192.168.170.8` (تست). تولید `192.168.170.10` هرگز لمس نشود.
 - **دیتابیس:** `afrakala` در کانتینر `afrakala-lan-db`
-- **آخرین rebuild موفق:** `0201160e-dirty` (تأییدشده از `APP_GIT_SHA` کانتینر وب)
+- **آخرین rebuild موفق:** `885d2ddb-dirty` (تأییدشده از `APP_GIT_SHA` کانتینر وب؛ پسوند dirty به‌خاطر کارهای commit‌نشدهٔ Codex در working tree است)
 - **دانش سازمانی:** ۱۳۹ chunk نمایه‌سازی شده
 - **ارائه‌دهندگان AI:** `gpt-messenger` (اولویت ۱، فعال) · `ollama` (اولویت ۱۰، فعال)
 
@@ -22,6 +22,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-01 | Claude Code | اشخاص یکپارچه فاز ۵ (۲۳۱): کلید خارجی بر پایهٔ شخص روی سه جدول کسب‌وکاری — `sales_quotes.customer_person_id`، `purchases.supplier_person_id`، `payment_vouchers.payee_person_id`. این ستون‌ها **مشتق** هستند: تریگر `BEFORE INSERT/UPDATE` آن‌ها را از کلید قدیمی بازمی‌سازد (همان قرارداد «دیتابیس مرجع است» در ۲۲۸)، بنابراین **هیچ مسیر نوشتنی تغییر نکرد** و `create_sales_quote_with_items` و `pay_purchase_with_voucher` دست‌نخورده کار می‌کنند. پرکردن: ۴۷ از ۴۸ پیش‌فاکتور و ۶ از ۶ خرید (فاکتور پرداخت خالی است). `NOT NULL` عمداً اعمال نشد — دلیل کامل در بالای فایل migration. تابع `person_fk_drift_report()` برای پایش. ۶ تست دود پاس، backup پیش از اجرا گرفته شد، rollback در `docs/verification/231-down.sql` | `885d2ddb` |
 | 2026-08-01 | Claude Code | اشخاص یکپارچه فاز ۴ (۲۳۰): ورود یکپارچهٔ اشخاص (`person_import_batch`) + تطبیق هویت بر پایهٔ شناسه‌های نرمال‌شده، اندپوینت `POST /api/persons/import`، انتقال ایمپورت مشتریان به همان مسیر، و **پرکردن `person_id`**: ۱۳ تأمین‌کننده و ۱۲ مشتری همگی به ۲۵ شخص تازه وصل شدند (۲۵ لینک زمینه، بدون یتیم). ۵۱ تست در چهار فاز پاس، deploy روی LAN | `18b88720` |
 | 2026-07-31 | Claude Code | اشخاص یکپارچه فاز ۳ (۲۲۹): ثبت شخص به‌صورت درجا از داخل فرم خرید — افزودن `suppliers.person_id`، RPC اتمیک `person_create_inline` (شخص + شناسه + ردیف قدیمی + لینک زمینه در یک تراکنش)، کامپوننت `PersonModal`، دکمهٔ «تأمین‌کنندهٔ جدید» در `PurchaseForm`، انتقال `QuickAddCustomerDialog` به همان RPC، هم‌راستاسازی گارد تکراری شناسه با قانون جدید یکتایی؛ ۱۳ تست پاس، deploy روی LAN | `9a828d97` |
 | 2026-07-31 | Claude Code | اشخاص یکپارچه فاز ۲ (۲۲۸): جدول `person_aliases` با تطبیق بدون‌حساسیت به نیم‌فاصله، تابع `normalize_identifier` در plpgsql + تریگر (دیتابیس مرجع نهایی نرمال‌سازی)، اصلاح یکتایی شناسه‌ها (کد ملی/اقتصادی/شبا سراسری، موبایل/ایمیل فقط پس از تأیید)، محدودکردن انتخاب سطح دسترسی در `PersonForm`، هشدار روی `is_required`؛ ۲۶ تست پاس، deploy روی LAN با `APP_GIT_SHA=0201160e-dirty` | `cf3bb9a5` |
@@ -51,3 +52,4 @@
 ## کارهای دستی باقی‌مانده (فقط کاربر می‌تواند انجام دهد)
 - **موجودی انبار:** `warehouse_stock` تقریباً خالی است (۴ ردیف برای ۳ انبار) ⇒ «قطعی‌کردن» اکثر پیش‌فاکتورها با «موجودی کافی نیست» شکست می‌خورد. دادهٔ کسب‌وکاری است.
 - **تخصیص سرمایهٔ مشتریان:** هیچ مشتری‌ای تخصیص ندارد ⇒ قانون اعتبار/بیعانه (۱۹۷/۱۹۸) ساخته شده ولی تا تعریف تخصیص، خودبه‌خود فعال نمی‌شود.
+- **فاز ۶ اشخاص (بعد از ۲۳۱):** چهار فرم هنوز بدون `person_id` در `customers`/`suppliers` درج می‌کنند — `CustomerForm.tsx`، `SupplierForm.tsx`، `SupplierReferralModal.tsx`، `lib/customers/functions.ts`. تا انتقال آن‌ها به `person_create_inline`، نمی‌توان `customers.person_id`/`suppliers.person_id` را `NOT NULL` کرد. ۲۰ کلید خارجی دیگر (credit_*، invoices، payment_receipts، delivery_receipts، product_suppliers، purchase_prices و …) هنوز مشتری/تأمین‌کننده‌محور هستند.
