@@ -59,6 +59,11 @@ services:
       # Rows loaded by the «محصولات پرتکرار واتساپ» card. Empty = 1000 (the upstream
       # ceiling). Runtime-only, so lowering it needs a restart, not a rebuild.
       WHATSAPP_TOP_PRODUCTS_LIMIT: ${WHATSAPP_TOP_PRODUCTS_LIMIT:-}
+      # Phase 10 (224) — bearer token for the recurring marketing task cron
+      # endpoint (POST /api/public/hooks/generate-marketing-tasks). Server-only,
+      # never VITE_ prefixed. Empty = the endpoint answers 500 and generates
+      # nothing, which is the correct default for an unconfigured install.
+      MARKETING_TASKS_WORKER_TOKEN: ${MARKETING_TASKS_WORKER_TOKEN:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
