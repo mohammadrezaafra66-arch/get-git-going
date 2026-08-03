@@ -314,6 +314,7 @@ function DynamicCapitalPage() {
             <div className="space-y-2">
               <Label>سرمایه کل (تومان)</Label>
               <Input
+                data-testid="dynamic-capital-total-input"
                 inputMode="numeric"
                 placeholder="مثلاً ۱,۰۰۰,۰۰۰,۰۰۰"
                 value={totalCapital}
@@ -373,7 +374,12 @@ function DynamicCapitalPage() {
           )}
 
           <div className="flex items-center gap-3">
-            <Button onClick={handleRun} disabled={!canRun} size="lg">
+            <Button
+              data-testid="dynamic-capital-run-button"
+              onClick={handleRun}
+              disabled={!canRun}
+              size="lg"
+            >
               {runMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 ml-2 animate-spin" />

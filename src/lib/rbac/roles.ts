@@ -92,9 +92,20 @@ export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
 
 /** ماتریس دسترسی نقش-محور. */
 export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
-  dashboard: { view: ALL_ROLES, create: [], update: [], delete: [] },
+  // P0/5 — the static fallback must agree with role_permissions, which grants
+  // purchase_specialist view on dashboard/products/messages. A fallback that is
+  // STRICTER than the table hides a menu the backend would have allowed, which
+  // is the mirror of the C5 failure noted on `purchases` below.
+  // ALL_ROLES itself is left alone: it drives the role-picker UI and must stay
+  // the five fixed system roles.
+  dashboard: {
+    view: [...ALL_ROLES, "purchase_specialist"],
+    create: [],
+    update: [],
+    delete: [],
+  },
   products: {
-    view: ALL_ROLES,
+    view: [...ALL_ROLES, "purchase_specialist"],
     create: ["admin", "manager"],
     update: ["admin", "manager"],
     delete: ["admin"],
@@ -105,8 +116,19 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     update: ["admin", "manager", "accountant"],
     delete: ["admin"],
   },
+  // Issue 219 / C5 — kept in step with the `purchases` rows in role_permissions,
+  // which is what actually decides at runtime. This static copy is only the
+  // fallback for when the dynamic cache has not loaded, and a fallback that
+  // disagrees with the table is how a menu ends up offering something the
+  // backend refuses.
+  //
+  // `view` includes sales and purchase_specialist because /purchase — the
+  // request space, where a salesperson raises a request and a specialist works
+  // the ones assigned to them — is gated on it. `create` gates exactly one
+  // thing, the /purchases/create route, and only admin and manager may register
+  // a standalone purchase document.
   purchases: {
-    view: ["admin", "manager", "accountant", "viewer"],
+    view: ["admin", "manager", "accountant", "viewer", "sales", "purchase_specialist"],
     create: ["admin", "manager"],
     update: ["admin", "manager"],
     delete: ["admin"],
@@ -139,7 +161,13 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     delete: ["admin"],
   },
   feedback: { view: ALL_ROLES, create: ALL_ROLES, update: ["admin", "manager"], delete: ["admin"] },
-  messages: { view: ALL_ROLES, create: ALL_ROLES, update: ALL_ROLES, delete: ["admin"] },
+  // P0/5 — role_permissions grants purchase_specialist can_view AND can_create here.
+  messages: {
+    view: [...ALL_ROLES, "purchase_specialist"],
+    create: [...ALL_ROLES, "purchase_specialist"],
+    update: ALL_ROLES,
+    delete: ["admin"],
+  },
   "audit-logs": { view: ["admin"], create: [], update: [], delete: [] },
   "data-tables": {
     view: ["admin", "manager", "accountant", "viewer"],

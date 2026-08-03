@@ -17,6 +17,10 @@ export type DocumentChannel =
   | "other"
   | "unknown";
 
+/** Re-export canonical structured OCR type (strict JSON schema). */
+export type { ReceiptOcrResult as ReceiptStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
+import type { ReceiptOcrResult } from "@/lib/accounting/receipt-ocr-structured";
+
 export interface ReceiptExtractionResult {
   raw_text: string;
   tracking_number: string | null;
@@ -30,6 +34,8 @@ export interface ReceiptExtractionResult {
   document_channel: DocumentChannel;
   detected_keywords: string[];
   warnings: string[];
+  /** Full vision JSON when structured OCR succeeded. */
+  structured?: ReceiptOcrResult | null;
 }
 
 export const EMPTY_EXTRACTION: ReceiptExtractionResult = {

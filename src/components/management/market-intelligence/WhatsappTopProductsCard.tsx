@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/use-debounce";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MICardShell } from "./CardShell";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
@@ -35,11 +37,29 @@ const SCOPES: Array<{ v: ScopeFilter; l: string }> = [
   { v: "out", l: "خارج از دستیار" },
 ];
 
+/** null = let the server decide (WHATSAPP_TOP_PRODUCTS_LIMIT, default 1000). */
+const LIMITS: Array<{ v: number | null; l: string }> = [
+  { v: null, l: "پیش‌فرض" },
+  { v: 150, l: "۱۵۰" },
+  { v: 500, l: "۵۰۰" },
+  { v: 1000, l: "۱۰۰۰" },
+];
+
 export function WhatsappTopProductsCard() {
   const topFn = useServerFn(fetchWhatsappTopProducts);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+  const [limit, setLimit] = useState<number | null>(null);
+
   const q = useQuery({
-    queryKey: ["wa-top-products"],
-    queryFn: () => topFn({ data: {} }),
+    queryKey: ["wa-top-products", debouncedSearch, limit],
+    queryFn: () =>
+      topFn({
+        data: {
+          ...(limit != null ? { limit } : {}),
+          ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+        },
+      }),
     // Near-live mirror of the separate WhatsApp reporting page.
     refetchInterval: 30_000,
     staleTime: 15_000,
@@ -72,97 +92,137 @@ export function WhatsappTopProductsCard() {
         </div>
       ) : unreachable ? (
         <p className="py-6 text-center text-sm text-amber-600">{UNREACHABLE}</p>
-      ) : products.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">داده‌ای برای نمایش نیست.</p>
       ) : (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {SCOPES.map((s) => {
-              const n = s.v === "all" ? products.length : s.v === "in" ? inCount : outCount;
-              return (
+        <div className="space-y-2" data-testid="whatsapp-top-products-card">
+          {/* Kept mounted even when the result set is empty. If these controls
+              lived inside the non-empty branch, a search that matched nothing
+              would remove the very box needed to clear it. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جست‌وجو در نام محصول (روی کل داده، نه فقط این صفحه)"
+              className="h-8 w-full sm:w-80"
+              data-testid="whatsapp-top-products-search"
+            />
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">تعداد:</span>
+              {LIMITS.map((o) => (
                 <Button
-                  key={s.v}
+                  key={o.l}
                   type="button"
                   size="sm"
-                  variant={scope === s.v ? "default" : "outline"}
+                  variant={limit === o.v ? "default" : "outline"}
                   className="h-7 text-xs"
-                  onClick={() => setScope(s.v)}
+                  onClick={() => setLimit(o.v)}
+                  data-testid={`whatsapp-limit-${o.v ?? "default"}`}
                 >
-                  {s.l} ({formatNumber(n)})
+                  {o.l}
                 </Button>
-              );
-            })}
+              ))}
+            </div>
           </div>
 
-          <div className="max-h-[28rem] overflow-auto rounded-md border">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 border-b bg-muted/50 text-right text-xs text-muted-foreground">
-                <tr>
-                  <th className="p-2 font-medium">رتبه</th>
-                  <th className="p-2 font-medium">نام محصول</th>
-                  <th className="p-2 font-medium">وضعیت</th>
-                  <th className="p-2 font-medium">تعداد تکرار</th>
-                  <th className="p-2 font-medium">تعداد گروه</th>
-                  <th className="p-2 font-medium">تعداد فرستنده</th>
-                  <th className="p-2 font-medium">منابع</th>
-                  <th className="p-2 font-medium">آخرین ذکر</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((p) => (
-                  <tr
-                    key={`${p.rank}-${p.product_name}`}
-                    className="border-b last:border-0 hover:bg-muted/30"
-                  >
-                    <td className="p-2 tabular-nums text-muted-foreground">
-                      {formatNumber(p.rank)}
-                    </td>
-                    <td className="p-2 font-medium">{p.product_name}</td>
-                    <td className="p-2">
-                      <Badge
-                        variant="outline"
-                        className={`whitespace-nowrap text-[10px] ${
-                          p.in_assistant
-                            ? "border-emerald-200 text-emerald-700"
-                            : "border-amber-200 text-amber-700"
-                        }`}
+          {products.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {debouncedSearch.trim()
+                ? "برای این جست‌وجو نتیجه‌ای یافت نشد."
+                : "داده‌ای برای نمایش نیست."}
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {SCOPES.map((s) => {
+                  const n = s.v === "all" ? products.length : s.v === "in" ? inCount : outCount;
+                  return (
+                    <Button
+                      key={s.v}
+                      type="button"
+                      size="sm"
+                      variant={scope === s.v ? "default" : "outline"}
+                      className="h-7 text-xs"
+                      onClick={() => setScope(s.v)}
+                    >
+                      {s.l} ({formatNumber(n)})
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <div className="max-h-[28rem] overflow-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 border-b bg-muted/50 text-right text-xs text-muted-foreground">
+                    <tr>
+                      <th className="p-2 font-medium">رتبه</th>
+                      <th className="p-2 font-medium">نام محصول</th>
+                      <th className="p-2 font-medium">وضعیت</th>
+                      <th className="p-2 font-medium">تعداد تکرار</th>
+                      <th className="p-2 font-medium">تعداد گروه</th>
+                      <th className="p-2 font-medium">تعداد فرستنده</th>
+                      <th className="p-2 font-medium">منابع</th>
+                      <th className="p-2 font-medium">آخرین ذکر</th>
+                      <th className="p-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visible.map((p) => (
+                      <tr
+                        key={`${p.rank}-${p.product_name}`}
+                        data-testid="whatsapp-top-product-row"
+                        data-product-name={p.product_name}
+                        className="border-b last:border-0 hover:bg-muted/30"
                       >
-                        {p.assistant_status ??
-                          (p.in_assistant ? "در دستیار داریم" : "خارج از دستیار")}
-                      </Badge>
-                    </td>
-                    <td className="p-2 font-bold tabular-nums text-emerald-700">
-                      {formatNumber(p.mention_count)}
-                    </td>
-                    <td className="p-2 tabular-nums">{formatNumber(p.group_count)}</td>
-                    <td className="p-2 tabular-nums">{formatNumber(p.sender_count)}</td>
-                    <td className="p-2 text-xs text-muted-foreground" dir="ltr">
-                      {p.sources.length > 0 ? p.sources.join(" / ") : "—"}
-                    </td>
-                    <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">
-                      {fmtWhen(p.last_mentioned_at, p.last_mentioned_shamsi)}
-                    </td>
-                    <td className="p-2 text-left">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 gap-1 whitespace-nowrap text-xs"
-                        onClick={() => setSelected(p)}
-                      >
-                        <Users className="h-3.5 w-3.5" /> مشاهده فروشندگان اخیر
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {visible.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                در این دسته موردی نیست.
-              </p>
-            )}
-          </div>
+                        <td className="p-2 tabular-nums text-muted-foreground">
+                          {formatNumber(p.rank)}
+                        </td>
+                        <td className="p-2 font-medium">{p.product_name}</td>
+                        <td className="p-2">
+                          <Badge
+                            variant="outline"
+                            className={`whitespace-nowrap text-[10px] ${
+                              p.in_assistant
+                                ? "border-emerald-200 text-emerald-700"
+                                : "border-amber-200 text-amber-700"
+                            }`}
+                          >
+                            {p.assistant_status ??
+                              (p.in_assistant ? "در دستیار داریم" : "خارج از دستیار")}
+                          </Badge>
+                        </td>
+                        <td className="p-2 font-bold tabular-nums text-emerald-700">
+                          {formatNumber(p.mention_count)}
+                        </td>
+                        <td className="p-2 tabular-nums">{formatNumber(p.group_count)}</td>
+                        <td className="p-2 tabular-nums">{formatNumber(p.sender_count)}</td>
+                        <td className="p-2 text-xs text-muted-foreground" dir="ltr">
+                          {p.sources.length > 0 ? p.sources.join(" / ") : "—"}
+                        </td>
+                        <td className="whitespace-nowrap p-2 text-xs text-muted-foreground">
+                          {fmtWhen(p.last_mentioned_at, p.last_mentioned_shamsi)}
+                        </td>
+                        <td className="p-2 text-left">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            data-testid="whatsapp-product-sellers-button"
+                            className="h-7 gap-1 whitespace-nowrap text-xs"
+                            onClick={() => setSelected(p)}
+                          >
+                            <Users className="h-3.5 w-3.5" /> مشاهده فروشندگان اخیر
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {visible.length === 0 && (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    در این دسته موردی نیست.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -210,7 +270,10 @@ function MentionersDialog({
         ) : mentioners.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">فروشنده‌ای یافت نشد.</p>
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto rounded-md border">
+          <div
+            className="max-h-[60vh] overflow-y-auto rounded-md border"
+            data-testid="whatsapp-mentioners-dialog"
+          >
             <table className="w-full text-sm">
               <thead className="sticky top-0 border-b bg-muted/50 text-right text-xs text-muted-foreground">
                 <tr>

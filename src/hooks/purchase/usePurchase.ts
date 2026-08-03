@@ -4,6 +4,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
+/**
+ * Issue 219 / C3 — one entry per purchase document linked to a request.
+ *
+ * The financial keys are OPTIONAL by design: get_purchase_requests omits them
+ * entirely for roles that may not see purchase economics (sales), so absence
+ * here is the masking working, not missing data.
+ */
+export type PurchaseSummaryEntry = {
+  purchase_id: string;
+  short_id: string;
+  purchase_date: string;
+  purchased_quantity: number;
+  allocated_quantity: number;
+  is_over_allocation: boolean;
+  warehouse_name?: string | null;
+  purchase_price?: number | null;
+  currency?: string | null;
+  total_amount?: number | null;
+  supplier_name?: string | null;
+};
+
 export type PurchaseRequestRow = {
   id: string;
   product_id: string;
@@ -21,6 +42,16 @@ export type PurchaseRequestRow = {
   notes: string | null;
   created_at: string;
   receipt_count: number;
+  // Issue 219 / C3 — fulfillment summary. NULL on legacy rows means "unknown",
+  // deliberately not zero.
+  legacy_no_fulfillment?: boolean;
+  supplied_quantity?: number | null;
+  effective_supplied?: number | null;
+  remaining_quantity?: number | null;
+  fulfillment_state?: "none" | "partial" | "complete" | "legacy_unknown";
+  purchase_count?: number;
+  has_over_allocation?: boolean;
+  purchase_summaries?: PurchaseSummaryEntry[];
 };
 
 export type PurchaseReceipt = {
@@ -39,6 +70,13 @@ type ListFilters = {
   productId?: string | null;
   limit?: number;
   offset?: number;
+  /**
+   * Issue 219 / C4 — show only requests nobody owns. Not a status: the status
+   * CHECK constraint would reject one, so the server takes its own parameter.
+   * Only admin/manager get rows back; for anyone else the visibility rule
+   * inside the RPC already makes the answer empty.
+   */
+  unassignedOnly?: boolean;
 };
 
 async function fetchPurchaseRequests(f: ListFilters): Promise<PurchaseRequestRow[]> {
@@ -47,15 +85,16 @@ async function fetchPurchaseRequests(f: ListFilters): Promise<PurchaseRequestRow
     p_product_id: f.productId ?? undefined,
     p_limit: f.limit ?? 50,
     p_offset: f.offset ?? 0,
+    p_unassigned_only: f.unassignedOnly ?? false,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as PurchaseRequestRow[];
 }
 
-export function useMyPurchaseRequests(status?: string | null) {
+export function useMyPurchaseRequests(status?: string | null, unassignedOnly = false) {
   return useQuery({
-    queryKey: ["purchase-requests", "me", status ?? "all"],
-    queryFn: () => fetchPurchaseRequests({ status, limit: 100 }),
+    queryKey: ["purchase-requests", "me", status ?? "all", unassignedOnly],
+    queryFn: () => fetchPurchaseRequests({ status, limit: 100, unassignedOnly }),
     staleTime: 30_000,
   });
 }
@@ -224,6 +263,34 @@ export function useUpdatePurchaseRequest() {
   });
 }
 
+/**
+ * Issue 219 / C5 — Persian text for the machine codes update_purchase_status
+ * puts in PostgreSQL's HINT field.
+ *
+ * Keyed on HINT rather than on the message so the wording can change on either
+ * side without a raw database error reaching the screen.
+ */
+const STATUS_ERROR_MESSAGES: Record<string, string> = {
+  AUTH_REQUIRED: "برای این کار باید وارد شوید.",
+  PURCHASE_STATUS_DERIVED: "وضعیت خرید فقط پس از ثبت سند خرید واقعی تغییر می‌کند.",
+  PURCHASE_FINAL_PRICE_DERIVED: "قیمت نهایی از روی اسناد خرید محاسبه می‌شود و دستی ثبت نمی‌شود.",
+  PURCHASE_TRANSITION_INVALID: "این تغییر وضعیت مجاز نیست.",
+  PURCHASE_STATUS_INVALID: "وضعیت انتخاب‌شده معتبر نیست.",
+  PURCHASE_PERMISSION_DENIED: "شما اجازه تغییر وضعیت این درخواست را ندارید.",
+  REQUEST_NOT_FOUND: "درخواست خرید پیدا نشد.",
+};
+
+export function purchaseStatusErrorMessage(err: unknown): string {
+  const e = err as { hint?: string; message?: string } | null;
+  const byHint = e?.hint ? STATUS_ERROR_MESSAGES[e.hint] : undefined;
+  if (byHint) return byHint;
+  if (e?.message && /Failed to fetch|NetworkError|fetch failed/i.test(e.message)) {
+    return "ارتباط با سرور برقرار نشد. دوباره تلاش کنید.";
+  }
+  // Never surface the raw database text.
+  return "تغییر وضعیت ناموفق بود.";
+}
+
 export function useUpdatePurchaseStatus() {
   const qc = useQueryClient();
   return useMutation({
@@ -231,21 +298,22 @@ export function useUpdatePurchaseStatus() {
       request_id: string;
       new_status: string;
       note?: string | null;
-      final_price?: number | null;
+      // C5: `final_price` is deliberately not accepted here. It is derived from
+      // the purchase documents, and the RPC now rejects the parameter outright.
     }) => {
       const { error } = await supabase.rpc("update_purchase_status", {
         p_request_id: input.request_id,
         p_new_status: input.new_status,
         p_note: input.note ?? undefined,
-        p_final_price: input.final_price ?? undefined,
       });
-      if (error) throw new Error(error.message);
+      // Thrown as-is so the hint survives; the message is resolved in onError.
+      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("وضعیت درخواست به‌روزرسانی شد");
       invalidateAll(qc);
     },
-    onError: (err: Error) => toast.error(`تغییر وضعیت ناموفق بود: ${err.message}`),
+    onError: (err: unknown) => toast.error(purchaseStatusErrorMessage(err)),
   });
 }
 

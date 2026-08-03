@@ -150,6 +150,22 @@ export const generatePurchaseAdvice = createServerFn({ method: "POST" })
             ? `— دریافت فروشندگان واتساپ ناموفق بود: ${whatsappSellers.reason}`
             : "— چون محصول در جدول واتساپ پیدا نشد، فروشنده‌ای از واتساپ هم بازیابی نشد.";
 
+    const whatsappSellerAppendix =
+      whatsappSellers && whatsappSellers.ok && whatsappSellers.mentioners.length > 0
+        ? [
+            "",
+            "",
+            "فروشندگان اخیر واتساپ برای این محصول:",
+            ...whatsappSellers.mentioners.slice(0, 5).map((s, i) => {
+              const contacts =
+                s.all_contacts.length > 0
+                  ? s.all_contacts
+                  : [s.sender_phone, s.sender_phone_secondary].filter(Boolean);
+              return `${i + 1}. ${s.sender_display_name ?? "نامشخص"} — گروه: ${s.group_name ?? "نامشخص"} — تماس: ${contacts.join(" / ") || "نامشخص"}`;
+            }),
+          ].join("\n")
+        : "";
+
     const rateLines = [
       usd
         ? `USD: ${Number(usd.rate_to_toman).toLocaleString("fa-IR")} تومان (${formatDateFa(usd.effective_at as string | null)})`
@@ -205,7 +221,7 @@ ${whatsappSellerLines}
     // exhausted) and carries the right Persian message for each.
     if (!result.ok) throw new Error(result.messageFa);
 
-    const advice = result.value.trim();
+    const advice = `${result.value.trim()}${whatsappSellerAppendix}`;
     if (!advice) throw new Error("پاسخی از سرویس هوش مصنوعی دریافت نشد.");
 
     return { advice, productName: product.name as string };

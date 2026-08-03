@@ -50,7 +50,7 @@ function SalespersonScoringPage() {
         </CardHeader>
         <CardContent>
           <Select value={selectedId ?? undefined} onValueChange={(v) => setSelectedId(v)}>
-            <SelectTrigger className="w-full sm:w-96">
+            <SelectTrigger className="w-full sm:w-96" data-testid="salesperson-scoring-select">
               <SelectValue placeholder={usersQ.isLoading ? "در حال بارگذاری…" : "یک کارشناس را انتخاب کنید"} />
             </SelectTrigger>
             <SelectContent>

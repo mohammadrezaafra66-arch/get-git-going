@@ -12,6 +12,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { RECEIPT_OCR_PROMPT } from "@/lib/accounting/receipt-ocr-prompt";
+import { tryStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
+import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
 import { aiVision } from "@/lib/ai/client.server";
 
 export type OcrBytesMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
@@ -20,6 +23,10 @@ export interface OcrBytesResult {
   raw_text: string;
   method: OcrBytesMethod;
   warnings: string[];
+  /** Mapped form fields when structured JSON OCR succeeded. */
+  structured?: ReceiptExtractionResult | null;
+  /** Engine confidence in [0,1] when structured OCR provided it. */
+  engine_confidence?: number | null;
   /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
   ok?: boolean;
   disabled?: boolean;
@@ -39,15 +46,6 @@ function externalApiTimeoutMs(): number {
   if (!Number.isFinite(raw) || raw < 15000) return 15000;
   return Math.floor(raw);
 }
-
-const OCR_PROMPT = [
-  "Extract only visible text from this payment receipt.",
-  "Do not guess values.",
-  "Return raw text only.",
-  "Do not invent bank names, amounts, dates, or tracking numbers.",
-  "Preserve original line breaks and Persian/Arabic digits as-is.",
-  "Do not add explanations or commentary.",
-].join(" ");
 
 const InputSchema = z.object({
   file_name: z.string().min(1).max(300),
@@ -159,7 +157,7 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
       // financial record until the accountant submits the form.
       const vision = await aiVision({
         usageKey: "receipt_ocr.vision",
-        prompt: OCR_PROMPT,
+        prompt: RECEIPT_OCR_PROMPT,
         imageBase64: data.base64,
         mimeType: mime,
         timeoutMs: externalApiTimeoutMs(),
@@ -185,10 +183,26 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
         } satisfies OcrBytesResult;
       }
 
+      const structured = tryStructuredExtraction(vision.value);
+      if (structured) {
+        const confPct = structured.structured?.confidence ?? 0;
+        return {
+          raw_text: structured.raw_text,
+          method: "image_ocr" as const,
+          warnings: structured.warnings,
+          structured,
+          engine_confidence: confPct > 0 ? confPct / 100 : null,
+        } satisfies OcrBytesResult;
+      }
+
       return {
         raw_text: vision.value,
         method: "image_ocr" as const,
-        warnings: [],
+        warnings: [
+          "استخراج خودکار JSON ناموفق بود. تصویر حفظ شد؛ لطفاً فیلدها را دستی وارد کنید.",
+          "پاسخ مدل JSON معتبر نبود؛ در صورت امکان استخراج متنی/regex اعمال می‌شود.",
+        ],
+        structured: null,
       } satisfies OcrBytesResult;
     }
 

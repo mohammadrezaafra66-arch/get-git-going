@@ -25,6 +25,7 @@ import {
 } from "@/components/accounting/PaymentReceiptDocuments";
 import { extractReceiptFromBytes } from "@/lib/receipt-ocr-bytes.functions";
 import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
+import { toHtmlTimeValue } from "@/lib/accounting/receipt-ocr-structured";
 import {
   RECEIPT_TYPES,
   RECEIPT_TYPE_FA,
@@ -310,6 +311,8 @@ export function PaymentReceiptForm() {
   const [customData, setCustomData] = useState<CustomData>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
   const [autoFilling, setAutoFilling] = useState(false);
+  const [ocrAssistNotice, setOcrAssistNotice] = useState(false);
+  const [ocrReviewWarnings, setOcrReviewWarnings] = useState<string[]>([]);
   const autoExtractedRef = useRef<Set<string>>(new Set());
 
   const form = useForm<FormValues>({
@@ -325,8 +328,10 @@ export function PaymentReceiptForm() {
       receiver_accounting_code: "",
       beneficiary_accounting_code: "",
       amount: undefined as unknown as number,
-      payment_date: today,
-      payment_time: new Date().toTimeString().slice(0, 5),
+      // «تاریخ روی فیش» — empty until OCR or manual; never default to today.
+      payment_date: "",
+      // «ساعت واریز» — empty until OCR receipt_time or manual; never default to now.
+      payment_time: "",
       tracking_number: "",
       bank_name: "",
       source_bank: "",
@@ -410,15 +415,34 @@ export function PaymentReceiptForm() {
             toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
             continue;
           }
-          if (!ocr || !ocr.raw_text || !ocr.raw_text.trim()) {
+          if (!ocr || (!ocr.structured && !(ocr.raw_text || "").trim())) {
             const warnings = ocr?.warnings ?? [];
             if (warnings.length > 0) {
               toast.info(warnings[0]);
             }
             continue;
           }
-          const parsed = parseReceiptText(ocr.raw_text);
+          // Primary: structured JSON. Fallback: legacy free-text regex only.
+          let parsed;
+          if (ocr.structured) {
+            parsed = { ...ocr.structured, warnings: [...ocr.structured.warnings] };
+          } else {
+            toast.warning(
+              "استخراج ساختاریافته JSON ناموفق بود. تصویر حفظ شد؛ در صورت امکان استخراج متنی اعمال می‌شود.",
+            );
+            parsed = parseReceiptText(ocr.raw_text);
+            if (ocr.warnings?.length) {
+              parsed.warnings = [...ocr.warnings, ...parsed.warnings];
+            }
+          }
+          if (ocr.structured && ocr.warnings?.length) {
+            parsed.warnings = [...new Set([...ocr.warnings, ...parsed.warnings])];
+          }
           const filled: string[] = [];
+          setOcrAssistNotice(true);
+          if (parsed.warnings.length > 0 || parsed.structured?.needs_manual_review) {
+            setOcrReviewWarnings(parsed.warnings);
+          }
 
           // Only fill empty fields to avoid overriding manual edits.
           // گارد اضافی: مبالغ غیرمنطقی (مثل شماره کارت تشخیص داده‌شده اشتباه) را نادیده بگیر.
@@ -438,20 +462,27 @@ export function PaymentReceiptForm() {
             });
             filled.push("شماره پیگیری");
           }
-          if (parsed.receipt_date) {
+          // «تاریخ روی فیش واریزی» ← receipt_date only (never «تاریخ ثبت فیش» / today).
+          if (parsed.receipt_date && !form.getValues("payment_date")) {
             const iso = parseDateToGregorianIso(parsed.receipt_date);
-            if (iso && iso <= today && !form.getValues("payment_date")) {
+            if (iso && iso <= today) {
               form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true });
-              filled.push("تاریخ واریز");
+              filled.push("تاریخ روی فیش");
             }
           }
-          if (parsed.receipt_time && !form.getValues("payment_time")) {
-            const tm = /^(\d{1,2}):(\d{2})/.exec(parsed.receipt_time);
+          // «ساعت روی فیش» ← receipt_time only. Never use upload/current time.
+          if (parsed.receipt_time) {
+            const tm = toHtmlTimeValue(parsed.receipt_time);
             if (tm) {
-              const hh = tm[1].padStart(2, "0");
-              form.setValue("payment_time", `${hh}:${tm[2]}`, { shouldDirty: true });
-              form.setValue("receipt_time", `${hh}:${tm[2]}`, { shouldDirty: true });
-              filled.push("ساعت");
+              if (!form.getValues("receipt_time")) {
+                form.setValue("receipt_time", tm, { shouldDirty: true, shouldValidate: true });
+                filled.push("ساعت روی فیش");
+              }
+              // Assistive fill for required «ساعت واریز» from receipt time (not clock-now).
+              if (!form.getValues("payment_time")) {
+                form.setValue("payment_time", tm, { shouldDirty: true, shouldValidate: true });
+                filled.push("ساعت واریز");
+              }
             }
           }
           if (parsed.source_bank && !form.getValues("source_bank")) {
@@ -466,11 +497,13 @@ export function PaymentReceiptForm() {
             form.setValue("payer_name_on_receipt", parsed.payer_name_on_receipt, {
               shouldDirty: true,
             });
+            filled.push("نام واریزکننده روی فیش");
           }
           if (parsed.receiver_name_on_receipt && !form.getValues("receiver_name_on_receipt")) {
             form.setValue("receiver_name_on_receipt", parsed.receiver_name_on_receipt, {
               shouldDirty: true,
             });
+            filled.push("نام گیرنده روی فیش");
           }
           if (
             parsed.document_channel &&
@@ -478,6 +511,20 @@ export function PaymentReceiptForm() {
             !form.getValues("document_channel")
           ) {
             form.setValue("document_channel", parsed.document_channel, { shouldDirty: true });
+            filled.push("روش انتقال");
+          }
+          // Keep transaction_number / status in description assistively when empty.
+          const structured = parsed.structured;
+          if (structured && !form.getValues("description")) {
+            const bits: string[] = [];
+            if (structured.transaction_number) bits.push(`شماره تراکنش: ${structured.transaction_number}`);
+            if (structured.status && structured.status !== "UNKNOWN") {
+              bits.push(`وضعیت تراکنش روی فیش: ${structured.status}`);
+            }
+            if (structured.description) bits.push(structured.description);
+            if (bits.length) {
+              form.setValue("description", bits.join(" | "), { shouldDirty: true });
+            }
           }
 
           if (filled.length > 0) {
@@ -1788,15 +1835,18 @@ export function PaymentReceiptForm() {
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <Label>
-                  ساعت واریز <span className="text-destructive">*</span>
-                </Label>
-                <Input type="time" {...form.register("payment_time")} />
-                {errors.payment_time && (
-                  <p className="text-xs text-destructive">{errors.payment_time.message}</p>
-                )}
-              </div>
+                <div className="space-y-1">
+                  <Label>
+                    ساعت واریز <span className="text-destructive">*</span>
+                  </Label>
+                  <Input type="time" {...form.register("payment_time")} />
+                  {errors.payment_time && (
+                    <p className="text-xs text-destructive">{errors.payment_time.message}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    در صورت OCR، از «ساعت روی فیش» پر می‌شود — نه از ساعت آپلود/سیستم.
+                  </p>
+                </div>
             </div>
 
             <div className="space-y-1">
@@ -1812,6 +1862,19 @@ export function PaymentReceiptForm() {
                   در صورت آپلود تصویر فیش، این فیلدها به‌صورت خودکار از روی فیش پر می‌شوند. در صورت
                   نیاز قابل ویرایش دستی هستند.
                 </p>
+                {ocrAssistNotice && (
+                  <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 rounded-md px-2 py-1.5 mt-1">
+                    اطلاعات زیر به‌صورت خودکار از روی تصویر فیش استخراج شده‌اند. لطفاً پیش از ثبت،
+                    آن‌ها را بررسی کنید.
+                  </p>
+                )}
+                {ocrReviewWarnings.length > 0 && (
+                  <ul className="text-xs text-amber-900 dark:text-amber-100 list-disc pr-4 space-y-0.5 mt-1">
+                    {ocrReviewWarnings.slice(0, 6).map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -27,9 +27,9 @@ export function ChatWindow({
   const [aiOpen, setAiOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "inquiries">("chat");
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { data: myRole } = useGroupRole(groupId, user?.id ?? null);
-  const isAdmin = myRole === "admin";
+  const isAdmin = myRole === "admin" || roles.includes("admin");
   const { data: inquiries } = useInquiries(groupId);
   const urgentCount = (inquiries ?? []).filter((i) => URGENT_STATUSES.has(i.status)).length;
 

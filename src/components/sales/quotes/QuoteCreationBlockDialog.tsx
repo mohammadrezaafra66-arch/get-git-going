@@ -85,7 +85,7 @@ export function QuoteCreationBlockDialog({
 
   return (
     <Dialog open={!!reason} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent dir="rtl" className="max-w-2xl">
+      <DialogContent dir="rtl" className="max-w-2xl" data-testid="quote-block-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -136,6 +136,7 @@ export function QuoteCreationBlockDialog({
                 <Label htmlFor="overdue_commitment_minutes">مهلت تسویه معوقه</Label>
                 <Input
                   id="overdue_commitment_minutes"
+                  data-testid="quote-overdue-minutes"
                   type="number"
                   min={1}
                   max={240}
@@ -187,6 +188,7 @@ export function QuoteCreationBlockDialog({
           </Button>
           {reason.kind === "overdue" && (
             <Button
+              data-testid="quote-confirm-overdue"
               onClick={() =>
                 onConfirmException({
                   type: "overdue_salesperson_commitment",
@@ -201,6 +203,7 @@ export function QuoteCreationBlockDialog({
           )}
           {reason.kind === "credit_shortfall" && (
             <Button
+              data-testid="quote-confirm-shortfall"
               onClick={() =>
                 onConfirmException({
                   type: "credit_shortfall_salesperson_commitment",
@@ -215,6 +218,7 @@ export function QuoteCreationBlockDialog({
           )}
           {reason.kind === "no_credit" && (
             <Button
+              data-testid="quote-confirm-accounting-approval"
               onClick={() =>
                 onConfirmException({
                   type: "accounting_approval",

@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, ShoppingCart, UserX } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useMyPurchaseRequests } from "@/hooks/purchase/usePurchase";
 import { PurchaseRequestCard } from "@/components/purchase/PurchaseRequestCard";
 import { PurchaseRequestForm } from "@/components/purchase/PurchaseRequestForm";
@@ -30,16 +32,20 @@ const ALL = "__all__";
 function PurchasePage() {
   const [status, setStatus] = useState<string>(ALL);
   const [tab, setTab] = useState("list");
-  const { data: rows = [], isLoading, error } = useMyPurchaseRequests(
-    status === ALL ? null : status,
-  );
+  // Issue 219 / C4 — only admin/manager can act on ownerless requests, and the
+  // RPC returns nothing for anyone else, so the control is theirs alone.
+  const { roles } = useAuth();
+  const isManager = roles.includes("admin") || roles.includes("manager");
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
+  const {
+    data: rows = [],
+    isLoading,
+    error,
+  } = useMyPurchaseRequests(status === ALL ? null : status, isManager && unassignedOnly);
 
   return (
     <div className="space-y-4" dir="rtl">
-      <PageHeader
-        title="فضای خرید"
-        description="ثبت درخواست خرید و پیگیری وضعیت درخواست‌های خود"
-      />
+      <PageHeader title="فضای خرید" description="ثبت درخواست خرید و پیگیری وضعیت درخواست‌های خود" />
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
@@ -49,8 +55,8 @@ function PurchasePage() {
 
         <TabsContent value="list" className="space-y-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="max-w-xs space-y-1">
+            <CardContent className="flex flex-wrap items-end gap-4 p-4">
+              <div className="min-w-[12rem] max-w-xs flex-1 space-y-1">
                 <Label>فیلتر وضعیت</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
@@ -66,6 +72,19 @@ function PurchasePage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {isManager && (
+                <Button
+                  type="button"
+                  variant={unassignedOnly ? "default" : "outline"}
+                  onClick={() => setUnassignedOnly((v) => !v)}
+                  data-testid="filter-unassigned"
+                  aria-pressed={unassignedOnly}
+                >
+                  <UserX className="ml-1 h-4 w-4" />
+                  فقط بدون مسئول
+                </Button>
+              )}
             </CardContent>
           </Card>
 

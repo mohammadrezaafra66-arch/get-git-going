@@ -11,6 +11,8 @@ export default defineConfig({
     /business-flows\/.*\.spec\.ts/,
     // Phase 3-5 unified-persons UI suite.
     /persons\/.*\.spec\.ts/,
+    // Issue 219 — purchase request/document suites.
+    /purchase\/.*\.spec\.ts/,
   ],
   timeout: 45_000,
   expect: {

@@ -160,23 +160,47 @@ export function useUpsertEntityScore() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpsertEntityScoreInput) => {
+      const payload = {
+        entity_type: input.entity_type,
+        entity_id: input.entity_id,
+        parameter_id: input.parameter_id,
+        raw_score: input.raw_score,
+        actual_value: input.actual_value,
+        is_clipped: input.is_clipped ?? false,
+        period_month: input.period_month,
+        note: input.note ?? null,
+        scored_by: input.scored_by ?? null,
+        scored_at: new Date().toISOString(),
+      };
+
+      const keyFilter = {
+        entity_type: input.entity_type,
+        entity_id: input.entity_id,
+        parameter_id: input.parameter_id,
+        period_month: input.period_month,
+      };
+
+      const existing = await supabase
+        .from("dynamic_entity_scores")
+        .select("id")
+        .match(keyFilter)
+        .maybeSingle();
+      if (existing.error) throw existing.error;
+
+      if (!existing.data) {
+        const { data, error } = await supabase
+          .from("dynamic_entity_scores")
+          .insert(payload)
+          .select()
+          .single();
+        if (error) throw error;
+        return data as EntityScore;
+      }
+
       const { data, error } = await supabase
         .from("dynamic_entity_scores")
-        .upsert(
-          {
-            entity_type: input.entity_type,
-            entity_id: input.entity_id,
-            parameter_id: input.parameter_id,
-            raw_score: input.raw_score,
-            actual_value: input.actual_value,
-            is_clipped: input.is_clipped ?? false,
-            period_month: input.period_month,
-            note: input.note ?? null,
-            scored_by: input.scored_by ?? null,
-            scored_at: new Date().toISOString(),
-          },
-          { onConflict: "entity_type,entity_id,parameter_id,period_month" },
-        )
+        .update(payload)
+        .match(keyFilter)
         .select()
         .single();
       if (error) throw error;

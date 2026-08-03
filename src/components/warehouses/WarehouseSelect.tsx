@@ -25,12 +25,14 @@ export function WarehouseSelect({
   label = "انبار",
   hint,
   disabled,
+  triggerTestId,
 }: {
   value: string | null;
   onChange: (warehouseId: string | null) => void;
   label?: string;
   hint?: string;
   disabled?: boolean;
+  triggerTestId?: string;
 }) {
   const whQ = useQuery({
     queryKey: ["warehouse-options"],
@@ -51,7 +53,7 @@ export function WarehouseSelect({
         onValueChange={(v) => onChange(v === DEFAULT_SENTINEL ? null : v)}
         disabled={disabled}
       >
-        <SelectTrigger>
+        <SelectTrigger data-testid={triggerTestId}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

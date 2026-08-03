@@ -17,6 +17,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { RECEIPT_OCR_PROMPT } from "@/lib/accounting/receipt-ocr-prompt";
+import { tryStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
+import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
 import { aiVision } from "@/lib/ai/client.server";
 
 export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "pdf_image_ocr" | "unsupported";
@@ -27,6 +30,8 @@ export interface OcrResult {
   warnings: string[];
   /** Optional engine-supplied confidence in [0,1]; null if not provided. */
   engine_confidence: number | null;
+  /** Mapped form fields when structured JSON OCR succeeded. */
+  structured?: ReceiptExtractionResult | null;
   /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
   ok?: boolean;
   disabled?: boolean;
@@ -53,16 +58,6 @@ function externalApiTimeoutMs(): number {
   if (!Number.isFinite(raw) || raw < 15000) return 15000;
   return Math.floor(raw);
 }
-
-const OCR_PROMPT = [
-  "Extract only visible text from this payment receipt.",
-  "Do not guess values.",
-  "Return raw text only.",
-  "Do not invent bank names, amounts, dates, or tracking numbers.",
-  "If text is unclear, leave it unclear in raw text.",
-  "Preserve original line breaks and Persian/Arabic digits as-is.",
-  "Do not add explanations or commentary.",
-].join(" ");
 
 const InputSchema = z.object({
   document_id: z.string().uuid(),
@@ -203,7 +198,7 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
       // enforced by the provider registry rather than by a branch here.
       const vision = await aiVision({
         usageKey: "receipt_ocr.vision",
-        prompt: OCR_PROMPT,
+        prompt: RECEIPT_OCR_PROMPT,
         imageBase64: b64,
         mimeType: fileType,
         timeoutMs: externalApiTimeoutMs(),
@@ -233,11 +228,27 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
         } satisfies OcrResult;
       }
 
+      const structured = tryStructuredExtraction(vision.value);
+      if (structured) {
+        const confPct = structured.structured?.confidence ?? 0;
+        return {
+          raw_text: structured.raw_text,
+          method: "image_ocr" as const,
+          warnings: structured.warnings,
+          engine_confidence: confPct > 0 ? confPct / 100 : null,
+          structured,
+        } satisfies OcrResult;
+      }
+
       return {
         raw_text: vision.value,
         method: "image_ocr" as const,
-        warnings: [],
+        warnings: [
+          "استخراج خودکار JSON ناموفق بود. تصویر حفظ شد؛ لطفاً فیلدها را دستی وارد کنید.",
+          "پاسخ مدل JSON معتبر نبود؛ در صورت امکان استخراج متنی/regex اعمال می‌شود.",
+        ],
         engine_confidence: null,
+        structured: null,
       } satisfies OcrResult;
     }
 

@@ -223,7 +223,7 @@ export function DynamicScoringSection({
   const loading = paramsQ.isLoading || scoresQ.isLoading;
 
   return (
-    <Card>
+    <Card data-testid={`dynamic-score-card-${entityType}`}>
       <CardHeader>
         <CardTitle className="text-base inline-flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -263,7 +263,7 @@ export function DynamicScoringSection({
                 زنده
               </Badge>
             </div>
-            <div className="text-2xl font-bold text-primary">
+            <div className="text-2xl font-bold text-primary" data-testid="customer-realtime-credit-final-limit">
               {formatNumber(realtimeQ.data.final_limit)}
               <span className="text-sm font-normal text-muted-foreground mr-2">تومان</span>
             </div>
@@ -278,6 +278,7 @@ export function DynamicScoringSection({
               </span>
               <span>·</span>
               <Badge
+                data-testid="customer-credit-binding-constraint"
                 className={`text-[10px] ${bindingLabel(realtimeQ.data.binding_constraint).cls}`}
               >
                 {bindingLabel(realtimeQ.data.binding_constraint).label}
@@ -318,7 +319,14 @@ export function DynamicScoringSection({
               <Sparkles className="h-3.5 w-3.5" />
               امتیاز وزنی کل
             </div>
-            <div className="text-lg font-bold">{toFaDigits(weighted.toFixed(3))}</div>
+            <div
+              className="text-lg font-bold"
+              data-testid={
+                entityType === "customer" ? "customer-weighted-score" : "salesperson-weighted-score"
+              }
+            >
+              {toFaDigits(weighted.toFixed(3))}
+            </div>
             <Progress value={weightedPct} className="h-2" />
           </div>
         </div>
@@ -394,6 +402,7 @@ export function DynamicScoringSection({
                       {p.input_type === "score_input" && (
                         <div className="space-y-1">
                           <Input
+                            data-testid={`score-input-${p.code}`}
                             type="text"
                             inputMode="numeric"
                             dir="ltr"
@@ -416,6 +425,7 @@ export function DynamicScoringSection({
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <Input
+                              data-testid={`score-input-${p.code}`}
                               type="text"
                               inputMode="numeric"
                               dir="ltr"
@@ -466,6 +476,7 @@ export function DynamicScoringSection({
                       )}
                       {canEdit && (
                         <Button
+                          data-testid={`score-save-${p.code}`}
                           size="sm"
                           variant={dirty ? "default" : "outline"}
                           disabled={!dirty || upsert.isPending}

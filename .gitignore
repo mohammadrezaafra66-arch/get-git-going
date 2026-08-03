@@ -92,3 +92,21 @@ deploy/lan/**/*.key
 deploy/lan/**/*.crt
 !deploy/lan/.env.lan.example
 #
+
+e2e/auth/*.storage.json
+# Local-only interactive helpers (must never be committed with secrets/output)
+e2e/auth/local-only/
+
+# Playwright runtime evidence (screenshots, videos, traces, reports)
+test-results/
+playwright-report/
+traces/
+screenshots/
+
+# Database dumps and backup output — rule 4: never commit backups or dumps.
+# Root-anchored on purpose. A bare `backups/` would also match deploy/backups/,
+# whose scripts/ and README.md ARE tracked; new files added there would then be
+# silently invisible to git status.
+/backups/
+*.dump
+*.sql.gz

@@ -17,8 +17,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { parseDateToGregorianIso } from "@/lib/i18n/jalali";
 import { cn } from "@/lib/utils";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { toHtmlTimeValue } from "@/lib/accounting/receipt-ocr-structured";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -190,14 +192,9 @@ const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
   document_channel: "document_channel",
 };
 
-function normalizeGregorianDate(s: string): string | null {
-  // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
-  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
-  if (!m) return null;
-  const yyyy = m[1];
-  const mm = m[2].padStart(2, "0");
-  const dd = m[3].padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function normalizeExtractedPaymentDate(s: string): string | null {
+  // Jalali (e.g. 1405/04/23) or Gregorian → ISO YYYY-MM-DD.
+  return parseDateToGregorianIso(s);
 }
 
 function normalizeReceiptTime(s: string): string | null {
@@ -225,12 +222,13 @@ function effectiveExtractedValue(
       return extracted.amount != null && extracted.amount > 0 ? extracted.amount : undefined;
     case "receipt_date": {
       if (!extracted.receipt_date) return undefined;
-      const norm = normalizeGregorianDate(extracted.receipt_date);
+      const norm = normalizeExtractedPaymentDate(extracted.receipt_date);
       return norm ?? undefined;
     }
     case "receipt_time": {
       if (!extracted.receipt_time) return undefined;
-      return normalizeReceiptTime(extracted.receipt_time) ?? undefined;
+      const tm = toHtmlTimeValue(extracted.receipt_time) || normalizeReceiptTime(extracted.receipt_time);
+      return tm || undefined;
     }
     case "source_bank":
       return extracted.source_bank?.trim() || undefined;
@@ -619,8 +617,16 @@ export function ReceiptDocumentsList({
           (ocr as { reason?: string }).reason === "ocr_disabled";
 
         const text = ocr.raw_text || "";
-        const parsed = parseReceiptText(text);
-        parsed.warnings = [...(ocr.warnings ?? []), ...parsed.warnings];
+        const parsed =
+          ocr.structured ??
+          (() => {
+            const p = parseReceiptText(text);
+            p.warnings = [...(ocr.warnings ?? []), ...p.warnings];
+            return p;
+          })();
+        if (ocr.structured && ocr.warnings?.length) {
+          parsed.warnings = [...ocr.warnings, ...parsed.warnings];
+        }
 
         let confidence = scoreExtraction(parsed);
         // Conservative blend: never above field-derived score; if engine
@@ -628,7 +634,7 @@ export function ReceiptDocumentsList({
         if (ocr.engine_confidence != null) {
           confidence = Math.min(confidence, Math.max(0, Math.min(1, ocr.engine_confidence)));
         }
-        const status = decideStatus(parsed, Boolean(text.trim()));
+        const status = decideStatus(parsed, Boolean(text.trim() || parsed.amount != null));
 
         const method = ocr.method as OcrMethod;
         const methodNote =

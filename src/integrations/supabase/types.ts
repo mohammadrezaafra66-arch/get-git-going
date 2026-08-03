@@ -10536,6 +10536,7 @@ export type Database = {
       }
       create_purchase_request: {
         Args: {
+          p_assigned_to?: string
           p_expected_price?: number
           p_inquiry_id?: string
           p_notes?: string
@@ -10543,7 +10544,7 @@ export type Database = {
           p_quantity: number
           p_unit: string
         }
-        Returns: string
+        Returns: Json
       }
       create_sales_quote_with_items: {
         Args: {
@@ -11159,29 +11160,69 @@ export type Database = {
           reference_type: string
         }[]
       }
+      assign_purchase_request: {
+        Args: {
+          p_assignee_id?: string
+          p_expect_provided?: boolean
+          p_expected_current_assignee_id?: string
+          p_note?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      get_default_purchase_assignee: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_purchase_assignee_options: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          full_name: string
+          is_default: boolean
+          roles: string[]
+          user_id: string
+        }[]
+      }
+      is_valid_purchase_assignee: {
+        Args: { _user: string }
+        Returns: boolean
+      }
+      set_default_purchase_assignee: {
+        Args: { p_user_id?: string }
+        Returns: Json
+      }
       get_purchase_requests: {
         Args: {
           p_limit?: number
           p_offset?: number
           p_product_id?: string
           p_status?: string
+          p_unassigned_only?: boolean
         }
         Returns: {
           assigned_to: string
           assignee_name: string
           created_at: string
+          effective_supplied: number
           expected_price: number
           final_price: number
+          fulfillment_state: string
+          has_over_allocation: boolean
           id: string
           inquiry_id: string
+          legacy_no_fulfillment: boolean
           notes: string
           product_id: string
           product_name: string
+          purchase_count: number
+          purchase_summaries: Json
           quantity: number
           receipt_count: number
+          remaining_quantity: number
           requested_by: string
           requester_name: string
           status: string
+          supplied_quantity: number
           unit: string
         }[]
       }
@@ -11709,6 +11750,37 @@ export type Database = {
           drifted_rows: number
           table_name: string
         }[]
+      }
+      /**
+       * Issue 219 (migration 251). Atomically creates a purchase document and
+       * its line in one transaction, replacing the two client-side inserts.
+       * All existing triggers (inventory, audit, gamification, supplier person
+       * derivation) still fire. Validation, permission and derived values are
+       * enforced server-side; created_by comes from auth.uid(). Admin/manager
+       * only, mirroring the RLS policy on purchases.
+       *
+       * The p_request_id family is reserved for the request-linking phase and
+       * is currently rejected.
+       */
+      create_purchase: {
+        Args: {
+          p_product_id: string
+          p_payment_term_id: string
+          p_purchase_price: number
+          p_currency: string
+          p_quantity: number
+          p_purchase_date: string
+          p_supplier_id?: string | null
+          p_cash_price?: number | null
+          p_warehouse_id?: string | null
+          p_notes?: string | null
+          p_request_id?: string | null
+          p_allocate_quantity?: number | null
+          p_allow_over_allocation?: boolean | null
+          p_over_allocation_note?: string | null
+          p_idempotency_key?: string | null
+        }
+        Returns: Json
       }
       person_import_batch: {
         Args: { p_rows: Json }

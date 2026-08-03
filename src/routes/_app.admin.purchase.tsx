@@ -22,12 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ShoppingCart, ClipboardList, CheckCircle2, Truck } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -45,6 +40,7 @@ import {
 } from "@/lib/purchase/labels";
 import { PurchaseStatusActions } from "@/components/purchase/PurchaseStatusActions";
 import { PurchaseReceiptUploader } from "@/components/purchase/PurchaseReceiptUploader";
+import { DefaultPurchaseAssigneeCard } from "@/components/purchase/DefaultPurchaseAssigneeCard";
 
 export const Route = createFileRoute("/_app/admin/purchase")({
   beforeLoad: async () => {
@@ -81,10 +77,10 @@ function AdminPurchasePage() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <PageHeader
-        title="مدیریت خرید"
-        description="مشاهده و رسیدگی به همه درخواست‌های خرید"
-      />
+      <PageHeader title="مدیریت خرید" description="مشاهده و رسیدگی به همه درخواست‌های خرید" />
+
+      {/* Issue 219 / C4 — who new requests go to when nobody is named. */}
+      <DefaultPurchaseAssigneeCard />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card>
@@ -170,13 +166,9 @@ function AdminPurchasePage() {
               <Loader2 className="ms-2 h-4 w-4 animate-spin" /> در حال بارگذاری...
             </div>
           ) : error ? (
-            <div className="p-4 text-sm text-destructive">
-              خطا: {(error as Error).message}
-            </div>
+            <div className="p-4 text-sm text-destructive">خطا: {(error as Error).message}</div>
           ) : rows.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              موردی یافت نشد.
-            </div>
+            <div className="py-10 text-center text-sm text-muted-foreground">موردی یافت نشد.</div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -201,10 +193,7 @@ function AdminPurchasePage() {
                       <TableCell>{r.requester_name ?? "—"}</TableCell>
                       <TableCell>{r.assignee_name ?? "—"}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={purchaseStatusBadgeClass(r.status)}
-                        >
+                        <Badge variant="outline" className={purchaseStatusBadgeClass(r.status)}>
                           {purchaseStatusLabel(r.status)}
                         </Badge>
                       </TableCell>
@@ -212,11 +201,7 @@ function AdminPurchasePage() {
                         {formatJalaliDateTime(r.created_at)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setActive(r)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => setActive(r)}>
                           مشاهده و اقدام
                         </Button>
                       </TableCell>
@@ -230,9 +215,7 @@ function AdminPurchasePage() {
       </Card>
 
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">
-          صفحه {toPersianDigits(page + 1)}
-        </span>
+        <span className="text-muted-foreground">صفحه {toPersianDigits(page + 1)}</span>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -256,9 +239,7 @@ function AdminPurchasePage() {
       <Dialog open={active !== null} onOpenChange={(o) => !o && setActive(null)}>
         <DialogContent dir="rtl" className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              {active ? `درخواست خرید: ${active.product_name}` : ""}
-            </DialogTitle>
+            <DialogTitle>{active ? `درخواست خرید: ${active.product_name}` : ""}</DialogTitle>
           </DialogHeader>
           {active && (
             <div className="space-y-4">
@@ -269,10 +250,7 @@ function AdminPurchasePage() {
                 </div>
                 <div>
                   <span className="block text-xs text-muted-foreground">وضعیت</span>
-                  <Badge
-                    variant="outline"
-                    className={purchaseStatusBadgeClass(active.status)}
-                  >
+                  <Badge variant="outline" className={purchaseStatusBadgeClass(active.status)}>
                     {purchaseStatusLabel(active.status)}
                   </Badge>
                 </div>
