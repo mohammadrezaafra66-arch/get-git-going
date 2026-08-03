@@ -1,6 +1,6 @@
 # Data integrity, gamification wiring, and knowledge RAG — progress
 
-Task source: `AfraKala-data-gamification-rag.md` (repo root).
+Task source: `docs/research/AfraKala-data-gamification-rag.md` (repo root).
 Branch: `feature/navigation-modernization`.
 
 | Phase | Status |

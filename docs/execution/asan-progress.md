@@ -24,6 +24,9 @@ Last e2e: not yet run this program (documented baseline 155 green / 6 red / 4 sk
 - [x] M1.3 restrict the `viewer` role — migration 281 — viewer-readable relations 58 → 28;
       88 restrictive policies, 8 views guarded, 4 tables that had RLS switched off closed;
       new spec `e2e/security/viewer-restrictions.spec.ts` 40/40 green.
+- [x] M1.4 clean the repository — 3 strays deleted, 2 Asan workbooks moved to
+      `docs/asan/reference/`, 27 root markdown files relocated under `docs/`, `.claude/`
+      ignored. Typecheck still exactly 70.
 
 ## M1.1 detail
 
@@ -159,11 +162,47 @@ account and would be the only place in this codebase where gaining a role remove
 `role_permissions.viewer.products.can_view` was already `false` before this phase. Granting it
 is a widening, so it was not done inside a restriction phase.
 
+## M1.4 detail — clean the repository
+
+**Deleted** (untracked, and stray by the phase's own definition — not config, not referenced by
+build tooling, not imported by source, not documentation of this project):
+`homemarkett_audit_dashboard.html`, `photo_6016924066016595302_y.jpg` (a photo of a Docker
+error), `docs/execution/files.zip` (the delivery archive; its seven files are extracted and
+committed). `homemarkett-checklist.xlsx` did not exist.
+
+**Moved to `docs/asan/reference/` and kept tracked:** `اشخاص.xlsx` (489 rows × 29 columns) and
+`کالا.xlsx` (7 257 rows × 23 columns). Both verified to open with `openpyxl`. `*.xlsx`/`*.xls`
+added to `.gitattributes` as `binary` so no end-of-line normalisation can corrupt the zip
+container. **Later missions read the workbooks from `docs/asan/reference/`.**
+
+**Renamed:** `docs/research/New Text Document.txt` → `docs/research/exec-prompt-194-209.md`.
+
+**Relocated 27 root-level markdown files**, all documentation of this project rather than
+strays, so they were moved rather than deleted:
+- `docs/research/` — 9 research briefs (`AfraKala-*-research*.md`, `-research-pass-*`,
+  `-ai-research-codex`, `-data-gamification-rag`, `-prod-banner-research`)
+- `docs/audits/` — `AfraKala-audit-211-218-codex.md`
+- `docs/execution/` — 13 execution plans/prompts plus `EXECUTION_P1_D8.md` and
+  `PHASE_6/7/8_COMPLETE.md`
+- `docs/asan/` — `ASAN_BRIDGE.md`
+
+`git mv` was used so history follows the files. 28 files carried references to the old paths
+and were rewritten, including one comment block in `src/lib/export/export-modes.ts`.
+`PROGRESS.md`, `AGENTS.md`, `CLAUDE.md`, `README.md` and `CONTRIBUTING.md` stay at the root —
+`AGENTS.md`/`CLAUDE.md` name `PROGRESS.md` as the root coordination notebook.
+
+**`.gitignore`:** added `.claude/`. `.cursor/` (4 files) and `.lovable/` (2 files) are tracked
+and deliberately left alone; `backups/`, `.output`, `.tanstack/**`, `.wrangler/`,
+`test-results/` were already covered.
+
+**Phase test.**
+- `git status --porcelain` clean after commit.
+- `npx tsc --noEmit` → **exactly 70 errors**, the documented baseline. Unchanged.
+- `npx prettier --check src/lib/export/export-modes.ts` → clean.
+- Both Asan workbooks open with `openpyxl` at the new path.
+
 ## HANDOFF STATE
-Next action: M1 Phase 1.4 — clean the repository. Delete `homemarkett_audit_dashboard.html`,
-the stray root image and `docs/execution/files.zip`; move `اشخاص.xlsx` and `کالا.xlsx` to
-`docs/asan/reference/` and keep them tracked; rename
-`docs/research/New Text Document.txt` → `docs/research/exec-prompt-194-209.md`; add `.claude/`
-to `.gitignore`.
+Next action: M1 Phase 1.5 — add the uncommitted-tree guard to `deploy/lan/build.ps1`
+(and `up.ps1` if it also builds), then test dirty / `-Force` / clean without deploying.
 Blocked on: nothing
 Files in flight: none

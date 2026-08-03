@@ -8,7 +8,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-execution-plan-140-193.md completely and execute it phase by phase, autonomously, to the end.
+> Read docs/execution/AfraKala-execution-plan-140-193.md completely and execute it phase by phase, autonomously, to the end.
 > ```
 
 ---

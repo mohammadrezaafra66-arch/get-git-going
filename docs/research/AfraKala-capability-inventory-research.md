@@ -11,7 +11,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-capability-inventory-research.md completely and execute it. Read-only — no code, no migrations, no DB writes, no builds. Write the report to docs/research/capability-inventory.md.
+> Read docs/research/AfraKala-capability-inventory-research.md completely and execute it. Read-only — no code, no migrations, no DB writes, no builds. Write the report to docs/research/capability-inventory.md.
 > ```
 
 ---

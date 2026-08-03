@@ -299,10 +299,10 @@ $ git branch --show-current
 feature/navigation-modernization
 
 $ git status --short
-?? AfraKala-infra-map-research.md              ← بریف ورودی
-?? AfraKala-settlement-encoding-fix.md         ← از مأموریت قبلی
-?? AfraKala-settlement-encoding-research.md    ← از مأموریت قبلی
-?? AfraKala-verification-prompt-140-193.md     ← از مأموریت قبلی
+?? docs/research/AfraKala-infra-map-research.md              ← بریف ورودی
+?? docs/execution/AfraKala-settlement-encoding-fix.md         ← از مأموریت قبلی
+?? docs/research/AfraKala-settlement-encoding-research.md    ← از مأموریت قبلی
+?? docs/execution/AfraKala-verification-prompt-140-193.md     ← از مأموریت قبلی
 ?? docs/research/settlement-encoding-diagnosis.md
 ?? docs/research/infra-map.md                  ← همین گزارش
 ?? docs/verification/

@@ -1,6 +1,6 @@
 # AfraKala — Continuation after the Phase 1 corruption audit
 
-Resume the work from `docs/AfraKala-data-gamification-rag.md`.
+Resume the work from `docs/docs/research/AfraKala-data-gamification-rag.md`.
 Phase 1 is complete and its findings are accepted. This document **replaces**
 Phases 2, 3, and 4 of that file. Where the two conflict, this one wins.
 

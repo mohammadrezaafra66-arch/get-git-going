@@ -10,7 +10,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-deploy-hardening-fix.md completely and execute Parts A and B. Do NOT run init-lan.ps1, do NOT rebuild/restart/stop the stack, do NOT touch the database.
+> Read docs/execution/AfraKala-deploy-hardening-fix.md completely and execute Parts A and B. Do NOT run init-lan.ps1, do NOT rebuild/restart/stop the stack, do NOT touch the database.
 > ```
 
 ---

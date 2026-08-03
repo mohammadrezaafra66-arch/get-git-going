@@ -54,7 +54,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-settlement-encoding-fix.md completely and execute ONLY Part B. Follow the UTF-8-safe execution method exactly.
+> Read docs/execution/AfraKala-settlement-encoding-fix.md completely and execute ONLY Part B. Follow the UTF-8-safe execution method exactly.
 > ```
 
 ## B.0 — قواعد اجرا

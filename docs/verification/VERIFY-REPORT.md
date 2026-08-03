@@ -2,7 +2,7 @@
 
 > **نوع مأموریت:** فقط‌خواندنی. هیچ کد، migration، یا نوشتنی روی DB انجام نشد.
 > **تاریخ:** 2026-07-26 · **برنچ:** `feature/navigation-modernization` · **DB:** `afrakala`
-> **HEAD:** `8538924b` · **git status:** پاک (تنها فایل untracked: `AfraKala-verification-prompt-140-193.md`)
+> **HEAD:** `8538924b` · **git status:** پاک (تنها فایل untracked: `docs/execution/AfraKala-verification-prompt-140-193.md`)
 > **روش اتصال:** `psql -U supabase_admin -d afrakala` روی کانتینر `afrakala-lan-db`.
 
 ---
@@ -289,7 +289,7 @@ $ git branch --show-current
 feature/navigation-modernization
 
 $ git status --short
-?? AfraKala-verification-prompt-140-193.md      ← تنها فایل untracked (خودِ پرامپت)
+?? docs/execution/AfraKala-verification-prompt-140-193.md      ← تنها فایل untracked (خودِ پرامپت)
 
 $ git log --oneline -11
 8538924b feat(treasury): treasury UI, payment voucher form and purchase-payment link (9.5)

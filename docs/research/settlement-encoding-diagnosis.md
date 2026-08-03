@@ -260,8 +260,8 @@ $ git branch --show-current
 feature/navigation-modernization
 
 $ git status --short
-?? AfraKala-settlement-encoding-research.md        ← بریف ورودی (untracked)
-?? AfraKala-verification-prompt-140-193.md         ← از مأموریت قبلی (untracked)
+?? docs/research/AfraKala-settlement-encoding-research.md        ← بریف ورودی (untracked)
+?? docs/execution/AfraKala-verification-prompt-140-193.md         ← از مأموریت قبلی (untracked)
 ?? docs/research/settlement-encoding-diagnosis.md  ← همین گزارش
 ?? docs/verification/                              ← از مأموریت قبلی
 ```

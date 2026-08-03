@@ -99,7 +99,7 @@
 
 - `find /d/AfraKalaTest -maxdepth 2 -iname "*ocr*"` → هیچ دایرکتوری‌ای برنگرداند؛ `ls ocr-service/` در ریشه و در `app/` → موجود نیست.
 - `find ... -name "setup_db.py"` و `find ... -name "*.py"` → **هیچ فایل پایتونی** در مخزن نیست. پس «آیا setup_db.py اجرا شده؟» موضوعیت ندارد (اسکریپت و جدول‌های مختصِ آن سرویس وجود ندارند).
-- تنها ارجاع متنی به `ocr-service` در فایل `AfraKala-research-brief-140-193.md:345` (خودِ سند پژوهش) است، نه در کد/کانفیگ.
+- تنها ارجاع متنی به `ocr-service` در فایل `docs/research/AfraKala-research-brief-140-193.md:345` (خودِ سند پژوهش) است، نه در کد/کانفیگ.
 - docker-compose: فقط `docker-compose.yml.bak` در ریشه هست؛ compose فعالِ نسخه‌دار در مخزن اپ نیست و سرویسی به‌نام ocr در آن تعریف نشده.
 - فراخوانی از فرانت: grep روی `ocr-service`/`ocr_service` در `src` هیچ نتیجه‌ای نداشت؛ کل مسیر OCR از طریق `src/lib/receipt-ocr.functions.ts` و کلاینت مشترک AI است.
 

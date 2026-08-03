@@ -39,10 +39,10 @@ Remote: origin https://github.com/mohammadrezaafra66-arch/get-git-going.git
 Existing untracked files recorded and left untouched:
 
 - .claude/
-- AfraKala-continuation-after-audit.md
-- AfraKala-data-gamification-rag.md
-- AfraKala-navigation-codex-FINAL.md
-- AfraKala-weight-fix-continuation.md
+- docs/execution/AfraKala-continuation-after-audit.md
+- docs/research/AfraKala-data-gamification-rag.md
+- docs/execution/AfraKala-navigation-codex-FINAL.md
+- docs/execution/AfraKala-weight-fix-continuation.md
 - docs/AfraKala-fix-weight-validity.md
 - supabase/migrations/20260722230000_142_fix_weight_validity_month_start.sql
 

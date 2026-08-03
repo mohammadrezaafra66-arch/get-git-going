@@ -38,7 +38,7 @@
 ## روش و محدودیت ممیزی
 
 روش:
-- خواندن `AfraKala-audit-211-218-codex.md`
+- خواندن `docs/audits/AfraKala-audit-211-218-codex.md`
 - خواندن `PROGRESS.md`
 - ثبت branch/status/log
 - trace کد از Route تا Component/Hook/RPC/DB

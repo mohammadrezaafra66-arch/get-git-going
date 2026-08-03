@@ -62,3 +62,7 @@ docker-compose*.yml                        text eol=lf
 *.otf   binary
 *.woff  binary
 *.woff2 binary
+# Asan reference workbooks under docs/asan/reference/ — a normalisation pass
+# would corrupt the zip container.
+*.xlsx  binary
+*.xls   binary

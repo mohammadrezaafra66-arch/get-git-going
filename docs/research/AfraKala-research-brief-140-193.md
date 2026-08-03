@@ -3,7 +3,7 @@
 > **این سند یک مأموریت تحقیق است، نه مأموریت اجرا.**
 > هدف: تولید یک گزارش مستند و قابل‌اتکا که وضعیت واقعی هر ۵۴ آیتم را مشخص کند، تا بر پایه‌اش پرامپت اجرایی نوشته شود.
 > نحوه استفاده: این فایل را در ریشه پروژه ذخیره کن و به Claude Code بگو:
-> `Read AfraKala-research-brief-140-193.md completely and execute it. Research only — write no application code.`
+> `Read docs/research/AfraKala-research-brief-140-193.md completely and execute it. Research only — write no application code.`
 
 ---
 

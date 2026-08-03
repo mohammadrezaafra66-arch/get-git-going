@@ -12,7 +12,7 @@
  *   - "asan" is NOT implemented, on purpose. See ASAN_LAYOUT_UNAVAILABLE below.
  *
  * Why an adapter interface at all, rather than a boolean and an `if`: the Asan
- * bridge (ASAN_BRIDGE.md, section B5) defines FIVE separate layouts — sales
+ * bridge (docs/asan/ASAN_BRIDGE.md, section B5) defines FIVE separate layouts — sales
  * invoices, purchase invoices, double-entry vouchers, bank receipts and bank
  * payments. They differ only in column mapping, so the seam belongs at "given
  * these records, produce these columns", which is what AsanExportAdapter is.
@@ -92,7 +92,7 @@ export class AsanLayoutNotConfiguredError extends Error {
  *     nothing about the column order Asan expects when importing FROM us.
  *   - The only untracked image in the root is an unrelated photo of a Docker
  *     error, not the Asan screenshots the specification refers to.
- *   - ASAN_BRIDGE.md section B5 DOES list candidate columns (A–R for sales and
+ *   - docs/asan/ASAN_BRIDGE.md section B5 DOES list candidate columns (A–R for sales and
  *     purchase, A–F for the voucher). That text is transcribed from screenshots
  *     this session has never seen, and B5 itself still says the bank layout
  *     must be "verified against the live Asan dialog before finalising".
@@ -100,8 +100,8 @@ export class AsanLayoutNotConfiguredError extends Error {
  * So a layout description exists, but nothing that can be VERIFIED against.
  * Wiring it in blind would produce a file that looks authoritative and imports
  * silently into the owner's live accounting software — the precise failure the
- * brief forbids. Whether to adopt the ASAN_BRIDGE.md layout is the owner's
- * call, and ASAN_BRIDGE.md is itself a separate mission that requires the
+ * brief forbids. Whether to adopt the docs/asan/ASAN_BRIDGE.md layout is the owner's
+ * call, and docs/asan/ASAN_BRIDGE.md is itself a separate mission that requires the
  * owner's approval before any of it is built.
  */
 export function createUnconfiguredAsanAdapter(
@@ -118,7 +118,7 @@ export function createUnconfiguredAsanAdapter(
   };
 }
 
-/** The five layouts ASAN_BRIDGE.md B5 names. All unconfigured today. */
+/** The five layouts docs/asan/ASAN_BRIDGE.md B5 names. All unconfigured today. */
 export const ASAN_ADAPTERS = {
   sales_invoice: createUnconfiguredAsanAdapter("sales_invoice", "فاکتور فروش آسان"),
   purchase_invoice: createUnconfiguredAsanAdapter("purchase_invoice", "فاکتور خرید آسان"),

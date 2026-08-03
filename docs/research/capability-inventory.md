@@ -472,13 +472,13 @@ $ git branch --show-current
 feature/navigation-modernization
 
 $ git status --short
-?? AfraKala-capability-inventory-research.md   ← بریف ورودی
-?? AfraKala-deploy-hardening-fix.md            ← از مأموریت‌های قبلی
-?? AfraKala-infra-map-research.md
-?? AfraKala-prod-banner-research.md
-?? AfraKala-settlement-encoding-fix.md
-?? AfraKala-settlement-encoding-research.md
-?? AfraKala-verification-prompt-140-193.md
+?? docs/research/AfraKala-capability-inventory-research.md   ← بریف ورودی
+?? docs/execution/AfraKala-deploy-hardening-fix.md            ← از مأموریت‌های قبلی
+?? docs/research/AfraKala-infra-map-research.md
+?? docs/research/AfraKala-prod-banner-research.md
+?? docs/execution/AfraKala-settlement-encoding-fix.md
+?? docs/research/AfraKala-settlement-encoding-research.md
+?? docs/execution/AfraKala-verification-prompt-140-193.md
 ?? docs/research/capability-inventory.md        ← همین گزارش
 ?? docs/research/infra-map.md
 ?? docs/research/settlement-encoding-diagnosis.md

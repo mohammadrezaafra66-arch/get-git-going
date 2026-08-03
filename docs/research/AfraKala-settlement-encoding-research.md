@@ -9,7 +9,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-settlement-encoding-research.md completely and execute it. Research only — no code, no migrations, no DB writes. Write the report to docs/research/settlement-encoding-diagnosis.md.
+> Read docs/research/AfraKala-settlement-encoding-research.md completely and execute it. Research only — no code, no migrations, no DB writes. Write the report to docs/research/settlement-encoding-diagnosis.md.
 > ```
 
 ---

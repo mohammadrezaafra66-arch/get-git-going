@@ -20,9 +20,12 @@ dist-ssr
 .wrangler/
 .dev.vars
 
-# Editor directories and files
+# Editor and agent-tool directories
 .vscode/*
 !.vscode/extensions.json
+# Claude Code's per-machine settings and local session state. .cursor/ and
+# .lovable/ are deliberately NOT ignored — both are tracked and shared.
+.claude/
 .idea
 .DS_Store
 *.suo

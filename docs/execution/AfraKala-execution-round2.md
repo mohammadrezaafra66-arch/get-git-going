@@ -1,7 +1,7 @@
 # AfraKala — Execution round 2
 ## Codex, 9 phases, unattended
 
-Resume the work from `AfraKala-execution-integrated.md`, which completed
+Resume the work from `docs/execution/AfraKala-execution-integrated.md`, which completed
 Phases 1–4 and stopped at Phase 5. This document replaces its Phases 5–7 and
 adds new work.
 

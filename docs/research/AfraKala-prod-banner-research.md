@@ -9,7 +9,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-prod-banner-research.md completely and execute it. Read-only — no code changes, no builds, no DB writes. Report inline (no file needed).
+> Read docs/research/AfraKala-prod-banner-research.md completely and execute it. Read-only — no code changes, no builds, no DB writes. Report inline (no file needed).
 > ```
 
 ---

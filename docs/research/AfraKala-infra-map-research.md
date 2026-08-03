@@ -9,7 +9,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-infra-map-research.md completely and execute it. Read-only — no code, no migrations, no DB writes, and do NOT restart/rebuild/stop any container or service. Write the report to docs/research/infra-map.md.
+> Read docs/research/AfraKala-infra-map-research.md completely and execute it. Read-only — no code, no migrations, no DB writes, and do NOT restart/rebuild/stop any container or service. Write the report to docs/research/infra-map.md.
 > ```
 
 ---

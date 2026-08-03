@@ -1,6 +1,6 @@
 # AfraKala — Phase 2: complete the payment chain for quotes
 
-Resume `AfraKala-execution-round2.md` at Phase 2 implementation. The research
+Resume `docs/execution/AfraKala-execution-round2.md` at Phase 2 implementation. The research
 gate is already done and recorded in `docs/execution-progress.md` — read that
 file first; it contains the full blast-radius analysis.
 
@@ -243,7 +243,7 @@ Confirm no PostgREST "relation does not exist" or schema-cache errors in logs.
 7. Anything you decided on your own that needs review
 8. What still requires a human, with the Persian menu path for each
 9. Update `docs/execution-progress.md`: mark Phase 2 complete and set the
-   RESUME marker to Phase 3 of `AfraKala-execution-round2.md`
+   RESUME marker to Phase 3 of `docs/execution/AfraKala-execution-round2.md`
 
 ## START NOW
 Read `docs/execution-progress.md`, then begin at Phase 2A.

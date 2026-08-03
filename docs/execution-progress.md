@@ -1,6 +1,6 @@
 # Execution progress
 
-## FINAL PLAN (AfraKala-final-plan.md): ALL NINE PHASES DONE (2026-07-24)
+## FINAL PLAN (docs/execution/AfraKala-final-plan.md): ALL NINE PHASES DONE (2026-07-24)
 
 Phases 5–9 completed in this session on `feature/navigation-modernization`.
 Commits: `223f3cd8` (hide invoices menu), `5244ab0f` (payments training page),
@@ -331,7 +331,7 @@ without approval.
 
 ## SUPERSEDED — earlier session notes below this line
 
-## FINAL PLAN (AfraKala-final-plan.md): Phase 2.1 DONE. RESUME AT PHASE 2.2.
+## FINAL PLAN (docs/execution/AfraKala-final-plan.md): Phase 2.1 DONE. RESUME AT PHASE 2.2.
 
 **Phase 2.1 — sales KPI collected reads quote receipts. COMMIT `436fbbf1` (migration 150), pushed.**
 `calculate_employee_score` collected (hardcoded 0 by 146) now sums APPROVED
@@ -367,7 +367,7 @@ http://192.168.170.8:11434 (bge-m3 emb/1024, qwen2.5:7b chat, qwen3.6 vision).
 
 ---
 
-## ROUND 4 (AfraKala-execution-round4.md): Phase 1 DONE. RESUME AT PHASE 2.
+## ROUND 4 (docs/execution/AfraKala-execution-round4.md): Phase 1 DONE. RESUME AT PHASE 2.
 
 **Phase 1 — receipt form allocates against quotes. COMMITS `5dd21ac4` + `ac6fb438`, pushed.**
 `PaymentReceiptForm.tsx` now lists the customer's ACCEPTED `sales_quotes` with
@@ -395,7 +395,7 @@ qwen2.5:7b chat, qwen3.6 vision; shared AI client; call-site migration; RAG).
 
 ---
 
-## ROUND 3 (AfraKala-execution-round3.md): Phase 1 + Phase 2 DONE. RESUME AT PHASE 3.2.
+## ROUND 3 (docs/execution/AfraKala-execution-round3.md): Phase 1 + Phase 2 DONE. RESUME AT PHASE 3.2.
 
 **Phase 1 — receipt posting repaired (Model B). COMMIT `79c78739`, pushed.**
 The blocker is resolved. Migration 149 fixed `post_receipt_accounting`
@@ -430,7 +430,7 @@ build (shared chat/embeddings/vision client with Ollama-first fallback + 429/402
 distinction + provider health; admin settings page; pgcrypto-encrypted key
 storage + migration; model/capability discovery). It was NOT started — building
 it rushed, with no provider to test against, would produce untested code. The
-research for it is complete in `AfraKala-research-pass-3.md` Part B (no shared
+research for it is complete in `docs/research/AfraKala-research-pass-3.md` Part B (no shared
 client exists; 5 call sites hardcode `ai.gateway.lovable.dev`; `pgcrypto`
 installed-but-unused; `shop_settings` plaintext; `bot_api_keys` hashed/unfit;
 `_app.admin.settings.tsx` is the natural admin home).
@@ -443,7 +443,7 @@ provider API key entered through the Phase-3 admin page once built. Until then,
 
 ---
 
-# Execution progress — AfraKala-execution-round2.md
+# Execution progress — docs/execution/AfraKala-execution-round2.md
 
 ## STILL BLOCKED — the receipt-posting blocker is an ACCOUNTING-MODEL DECISION, not a code fix
 
@@ -498,7 +498,7 @@ decided.
 
 ## STOPPED in Phase 2A — pre-existing money-posting blocker. RESUME AT Phase 2A.4 (posting) after fixing `post_receipt_journal`.
 
-**Done and pushed this session (`AfraKala-phase2-payment-chain.md`):**
+**Done and pushed this session (`docs/execution/AfraKala-phase2-payment-chain.md`):**
 - `b03d0d83` — migration 148 (Phase 2A schema + recompute trigger). Applied,
   verified, committed. Schema: `payment_receipt_links.quote_id` (nullable FK,
   indexed), `invoice_id` nullable, XOR CHECK exactly-one (both-set and

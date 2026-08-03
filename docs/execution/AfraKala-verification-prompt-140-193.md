@@ -1,7 +1,7 @@
 # پرامپت تأیید و تست — افراکالا (آیتم‌های ۱۴۰ تا ۱۹۳)
 
 > **این سند یک مأموریت تأیید (verification) است، نه اجرا.**
-> هدف: بررسی اینکه هر چیزی که در `AfraKala-execution-plan-140-193.md` قرار بود ساخته شود، **واقعاً و درست** ساخته شده یا نه.
+> هدف: بررسی اینکه هر چیزی که در `docs/execution/AfraKala-execution-plan-140-193.md` قرار بود ساخته شود، **واقعاً و درست** ساخته شده یا نه.
 > این مأموریت **فقط‌خواندنی** است: هیچ کد، migration، یا نوشتنی روی دیتابیس.
 >
 > **نحوهٔ استفاده:**
@@ -10,7 +10,7 @@
 > claude
 > ```
 > ```
-> Read AfraKala-verification-prompt-140-193.md completely and execute it. Verify only — write no application code, no migrations, no DB writes. Produce the report at docs/verification/VERIFY-REPORT.md.
+> Read docs/execution/AfraKala-verification-prompt-140-193.md completely and execute it. Verify only — write no application code, no migrations, no DB writes. Produce the report at docs/verification/VERIFY-REPORT.md.
 > ```
 
 ---
