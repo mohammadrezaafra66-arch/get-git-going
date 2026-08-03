@@ -48,6 +48,8 @@ type TaskKpiRow = {
   done_count: NumericValue;
   blocked_count: NumericValue;
   canceled_count: NumericValue;
+  /** Added by migration 277 (phase 10) — unfinished recurring tasks that expired. */
+  expired_count: NumericValue;
   overdue_count: NumericValue;
   due_soon_count: NumericValue;
   avg_completion_hours: NumericValue;
@@ -69,6 +71,11 @@ function statusLabel(s: string) {
       return "متوقف";
     case "canceled":
       return "لغو";
+    // Phase 10 (224): a recurring marketing task that was not ticked on its own
+    // day. It is never carried forward, so it settles here rather than staying
+    // "pending" forever.
+    case "expired":
+      return "منقضی (ناتمام)";
     default:
       return s;
   }
@@ -84,6 +91,8 @@ function queueLabel(q: string | null) {
       return "فروشگاه/انبار";
     case "accounting":
       return "حسابداری";
+    case "marketing":
+      return "بازاریابی";
     default:
       return "—";
   }
@@ -161,6 +170,7 @@ function KpiTable({ title, rows }: { title: string; rows: TaskKpiRow[] }) {
               <th className="px-3 py-2 text-right">معوق</th>
               <th className="px-3 py-2 text-right">نزدیک موعد</th>
               <th className="px-3 py-2 text-right">انجام‌شده</th>
+              <th className="px-3 py-2 text-right">منقضی</th>
               <th className="px-3 py-2 text-right">نرخ تکمیل</th>
               <th className="px-3 py-2 text-right">نرخ معوق</th>
               <th className="px-3 py-2 text-right">قدیمی‌ترین باز</th>
@@ -175,6 +185,7 @@ function KpiTable({ title, rows }: { title: string; rows: TaskKpiRow[] }) {
                 <td className="px-3 py-2">{formatNumber(r.overdue_count)}</td>
                 <td className="px-3 py-2">{formatNumber(r.due_soon_count)}</td>
                 <td className="px-3 py-2">{formatNumber(r.done_count)}</td>
+                <td className="px-3 py-2">{formatNumber(r.expired_count)}</td>
                 <td className="px-3 py-2">{formatPercent(r.completion_rate)}</td>
                 <td className="px-3 py-2">{formatPercent(r.overdue_rate)}</td>
                 <td className="px-3 py-2">{formatDateOnly(r.oldest_open_at)}</td>
@@ -314,7 +325,9 @@ function TasksBoardPage() {
         </div>
 
         {kpiLoading ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">در حال بارگذاری گزارش...</div>
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            در حال بارگذاری گزارش...
+          </div>
         ) : kpiRows.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
             هنوز داده‌ای برای گزارش عملکرد وظایف وجود ندارد.
@@ -370,6 +383,7 @@ function TasksBoardPage() {
             <SelectItem value="in_progress">در حال انجام</SelectItem>
             <SelectItem value="done">انجام‌شده</SelectItem>
             <SelectItem value="blocked">متوقف</SelectItem>
+            <SelectItem value="expired">منقضی (ناتمام)</SelectItem>
           </SelectContent>
         </Select>
       </div>

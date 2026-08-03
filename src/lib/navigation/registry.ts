@@ -19,6 +19,7 @@
   Factory,
   GraduationCap,
   CheckSquare,
+  CalendarClock,
   Workflow,
   Settings,
   Heart,
@@ -589,6 +590,18 @@ const NAVIGATION_SEEDS = [
     module: "reports",
     group: "reports",
   },
+  {
+    // Phase 10 (224) — the marketer's own daily checklist. Deliberately NOT
+    // admin-gated and NOT module-restricted beyond "reports": every staff
+    // member who can be assigned a recurring marketing task must be able to
+    // reach their own list on a phone. RLS on `tasks` already limits it to
+    // rows assigned to the caller.
+    to: "/marketing/my-tasks",
+    label: "وظایف بازاریابی من",
+    icon: CheckSquare,
+    module: "reports",
+    group: "reports",
+  },
 
   // ۸) دانش، آکادمی و ارتباطات
   {
@@ -736,6 +749,16 @@ const NAVIGATION_SEEDS = [
     to: "/admin/marketing-channels",
     label: "کانال‌های تبلیغاتی",
     icon: Megaphone,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    // Phase 10 (224) — recurring template management.
+    to: "/admin/marketing-task-templates",
+    label: "قالب وظایف بازاریابی",
+    icon: CalendarClock,
     module: "roles",
     group: "admin",
     subgroup: "adm-settings",
@@ -1023,6 +1046,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/pricing/price-alerts",
     "/marketing/suggestions",
     "/marketing/suggestions-history",
+    "/marketing/my-tasks",
     "/messages",
     "/knowledge",
     "/academy",
@@ -1090,6 +1114,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/admin/profile-fields",
     "/admin/settings",
     "/admin/marketing-channels",
+    "/admin/marketing-task-templates",
     "/admin/payment-terms",
     "/admin/visitors",
     "/admin/waybill-fields",

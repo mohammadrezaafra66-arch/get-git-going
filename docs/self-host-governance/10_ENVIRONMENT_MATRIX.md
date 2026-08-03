@@ -58,6 +58,7 @@
 | `MARKET_RATES_CRON_SECRET` | server | no (yes if scheduler on) | — | app | **yes** |
 | `MARKET_RATES_INGEST_INTERVAL_MINUTES` | server | no | `15` | app | no |
 | `PRICING_WORKER_TOKEN` | server | yes (for cron worker) | — | app | **yes** |
+| `MARKETING_TASKS_WORKER_TOKEN` | server | yes (for cron worker) | — | app | **yes** |
 | `NODE_ENV` | server | yes | `production` | app | no |
 | `HOST` | server | no | `0.0.0.0` | app | no |
 | `PORT` | server | no | `3000` | app | no |

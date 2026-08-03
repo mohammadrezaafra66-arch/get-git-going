@@ -116,6 +116,7 @@ import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operat
 import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
+import { Route as AppMarketingMyTasksRouteImport } from './routes/_app.marketing.my-tasks'
 import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_.manage'
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppIntegrationsDidarRouteImport } from './routes/_app.integrations.didar'
@@ -143,6 +144,7 @@ import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purcha
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
+import { Route as AppAdminMarketingTaskTemplatesRouteImport } from './routes/_app.admin.marketing-task-templates'
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.documents'
@@ -171,6 +173,7 @@ import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quo
 import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
+import { Route as ApiPublicHooksGenerateMarketingTasksRouteImport } from './routes/api/public/hooks/generate-marketing-tasks'
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
 import { Route as AppSalesInvoicesCreateRouteImport } from './routes/_app.sales_.invoices_.create'
 import { Route as AppSalesInvoicesInvoiceIdRouteImport } from './routes/_app.sales_.invoices_.$invoiceId'
@@ -763,6 +766,11 @@ const AppMarketingSuggestionsRoute = AppMarketingSuggestionsRouteImport.update({
   path: '/marketing/suggestions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMarketingMyTasksRoute = AppMarketingMyTasksRouteImport.update({
+  id: '/marketing/my-tasks',
+  path: '/marketing/my-tasks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKnowledgeManageRoute = AppKnowledgeManageRouteImport.update({
   id: '/knowledge_/manage',
   path: '/knowledge/manage',
@@ -902,6 +910,12 @@ const AppAdminPaymentTermsRoute = AppAdminPaymentTermsRouteImport.update({
   path: '/admin/payment-terms',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminMarketingTaskTemplatesRoute =
+  AppAdminMarketingTaskTemplatesRouteImport.update({
+    id: '/admin/marketing-task-templates',
+    path: '/admin/marketing-task-templates',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminMarketingChannelsRoute =
   AppAdminMarketingChannelsRouteImport.update({
     id: '/admin/marketing-channels',
@@ -1056,6 +1070,12 @@ const ApiPublicHooksIngestMarketRatesRoute =
   ApiPublicHooksIngestMarketRatesRouteImport.update({
     id: '/api/public/hooks/ingest-market-rates',
     path: '/api/public/hooks/ingest-market-rates',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGenerateMarketingTasksRoute =
+  ApiPublicHooksGenerateMarketingTasksRouteImport.update({
+    id: '/api/public/hooks/generate-marketing-tasks',
+    path: '/api/public/hooks/generate-marketing-tasks',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicBotProductsRoute = ApiPublicBotProductsRouteImport.update({
@@ -1363,6 +1383,7 @@ export interface FileRoutesByFullPath {
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -1390,6 +1411,7 @@ export interface FileRoutesByFullPath {
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
@@ -1481,6 +1503,7 @@ export interface FileRoutesByFullPath {
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
+  '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -1565,6 +1588,7 @@ export interface FileRoutesByTo {
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -1592,6 +1616,7 @@ export interface FileRoutesByTo {
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/knowledge/manage': typeof AppKnowledgeManageRoute
+  '/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
@@ -1682,6 +1707,7 @@ export interface FileRoutesByTo {
   '/sales/invoices/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/sales/invoices/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
+  '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
@@ -1770,6 +1796,7 @@ export interface FileRoutesById {
   '/_app/admin/documents': typeof AppAdminDocumentsRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
+  '/_app/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -1797,6 +1824,7 @@ export interface FileRoutesById {
   '/_app/integrations/didar': typeof AppIntegrationsDidarRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
   '/_app/knowledge_/manage': typeof AppKnowledgeManageRoute
+  '/_app/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
@@ -1888,6 +1916,7 @@ export interface FileRoutesById {
   '/_app/sales_/invoices_/$invoiceId': typeof AppSalesInvoicesInvoiceIdRouteWithChildren
   '/_app/sales_/invoices_/create': typeof AppSalesInvoicesCreateRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
+  '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -1976,6 +2005,7 @@ export interface FileRouteTypes {
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
+    | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/profile-fields'
@@ -2003,6 +2033,7 @@ export interface FileRouteTypes {
     | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/marketing/my-tasks'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/operations/api-keys'
@@ -2094,6 +2125,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/api/public/bot/products'
+    | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin/'
@@ -2178,6 +2210,7 @@ export interface FileRouteTypes {
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
+    | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/profile-fields'
@@ -2205,6 +2238,7 @@ export interface FileRouteTypes {
     | '/integrations/didar'
     | '/knowledge/$documentId'
     | '/knowledge/manage'
+    | '/marketing/my-tasks'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/operations/api-keys'
@@ -2295,6 +2329,7 @@ export interface FileRouteTypes {
     | '/sales/invoices/$invoiceId'
     | '/sales/invoices/create'
     | '/api/public/bot/products'
+    | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin'
@@ -2382,6 +2417,7 @@ export interface FileRouteTypes {
     | '/_app/admin/documents'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
+    | '/_app/admin/marketing-task-templates'
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
     | '/_app/admin/profile-fields'
@@ -2409,6 +2445,7 @@ export interface FileRouteTypes {
     | '/_app/integrations/didar'
     | '/_app/knowledge_/$documentId'
     | '/_app/knowledge_/manage'
+    | '/_app/marketing/my-tasks'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/operations/api-keys'
@@ -2500,6 +2537,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/invoices_/$invoiceId'
     | '/_app/sales_/invoices_/create'
     | '/api/public/bot/products'
+    | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/_app/gamification/admin/'
@@ -2542,6 +2580,7 @@ export interface RootRouteChildren {
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
+  ApiPublicHooksGenerateMarketingTasksRoute: typeof ApiPublicHooksGenerateMarketingTasksRoute
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
@@ -3302,6 +3341,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMarketingSuggestionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/marketing/my-tasks': {
+      id: '/_app/marketing/my-tasks'
+      path: '/marketing/my-tasks'
+      fullPath: '/marketing/my-tasks'
+      preLoaderRoute: typeof AppMarketingMyTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/knowledge_/manage': {
       id: '/_app/knowledge_/manage'
       path: '/knowledge/manage'
@@ -3489,6 +3535,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/payment-terms'
       fullPath: '/admin/payment-terms'
       preLoaderRoute: typeof AppAdminPaymentTermsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/marketing-task-templates': {
+      id: '/_app/admin/marketing-task-templates'
+      path: '/admin/marketing-task-templates'
+      fullPath: '/admin/marketing-task-templates'
+      preLoaderRoute: typeof AppAdminMarketingTaskTemplatesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/marketing-channels': {
@@ -3685,6 +3738,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/ingest-market-rates'
       fullPath: '/api/public/hooks/ingest-market-rates'
       preLoaderRoute: typeof ApiPublicHooksIngestMarketRatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/generate-marketing-tasks': {
+      id: '/api/public/hooks/generate-marketing-tasks'
+      path: '/api/public/hooks/generate-marketing-tasks'
+      fullPath: '/api/public/hooks/generate-marketing-tasks'
+      preLoaderRoute: typeof ApiPublicHooksGenerateMarketingTasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/bot/products': {
@@ -4226,6 +4286,7 @@ interface AppRouteChildren {
   AppAdminDocumentsRoute: typeof AppAdminDocumentsRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
+  AppAdminMarketingTaskTemplatesRoute: typeof AppAdminMarketingTaskTemplatesRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
@@ -4247,6 +4308,7 @@ interface AppRouteChildren {
   AppIntegrationsDidarRoute: typeof AppIntegrationsDidarRoute
   AppKnowledgeDocumentIdRoute: typeof AppKnowledgeDocumentIdRoute
   AppKnowledgeManageRoute: typeof AppKnowledgeManageRoute
+  AppMarketingMyTasksRoute: typeof AppMarketingMyTasksRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
   AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
@@ -4367,6 +4429,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminDocumentsRoute: AppAdminDocumentsRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,
+  AppAdminMarketingTaskTemplatesRoute: AppAdminMarketingTaskTemplatesRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
@@ -4388,6 +4451,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIntegrationsDidarRoute: AppIntegrationsDidarRoute,
   AppKnowledgeDocumentIdRoute: AppKnowledgeDocumentIdRoute,
   AppKnowledgeManageRoute: AppKnowledgeManageRoute,
+  AppMarketingMyTasksRoute: AppMarketingMyTasksRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
   AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
@@ -4510,6 +4574,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
+  ApiPublicHooksGenerateMarketingTasksRoute:
+    ApiPublicHooksGenerateMarketingTasksRoute,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
