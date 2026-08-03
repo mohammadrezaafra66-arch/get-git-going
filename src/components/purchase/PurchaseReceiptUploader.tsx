@@ -10,6 +10,7 @@ import {
   getSignedReceiptUrl,
 } from "@/hooks/purchase/usePurchase";
 import { toPersianDigits } from "@/lib/purchase/labels";
+import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
 
 function formatBytes(n: number | null): string {
   if (!n) return "—";
@@ -90,6 +91,18 @@ export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
         />
       </div>
 
+      <div className="flex justify-center">
+        <CameraCaptureButton
+          accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+          disabled={upload.isPending}
+          onFiles={(files) => {
+            const f = files?.[0];
+            if (f) handleFile(f);
+          }}
+          testId="purchase-receipt-camera"
+        />
+      </div>
+
       <div className="space-y-2">
         <div className="text-sm font-medium">رسیدهای آپلودشده</div>
         {isLoading ? (
@@ -127,7 +140,6 @@ export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
           </div>
         )}
       </div>
-
     </div>
   );
 }

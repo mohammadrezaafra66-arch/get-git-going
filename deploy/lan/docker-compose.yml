@@ -56,6 +56,9 @@ services:
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-}
       APP_SUPABASE_PUBLIC_URL: ${APP_SUPABASE_PUBLIC_URL:-}
       WHATSAPP_PLATFORM_BASE_URL: ${WHATSAPP_PLATFORM_BASE_URL:-http://192.168.170.8:8002}
+      # Rows loaded by the «محصولات پرتکرار واتساپ» card. Empty = 1000 (the upstream
+      # ceiling). Runtime-only, so lowering it needs a restart, not a rebuild.
+      WHATSAPP_TOP_PRODUCTS_LIMIT: ${WHATSAPP_TOP_PRODUCTS_LIMIT:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:

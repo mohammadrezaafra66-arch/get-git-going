@@ -12,10 +12,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useCreateDeliveryReceipt } from "@/hooks/delivery-receipts/useDeliveryReceipts";
 import { useWorkflowSettings } from "@/hooks/settings/useWorkflowSettings";
 import { formatMinutes } from "@/lib/settings/labels";
-import {
-  DELIVERY_RECEIPT_TYPE_FA,
-  formatFileSize,
-} from "@/lib/delivery-receipts/labels";
+import { DELIVERY_RECEIPT_TYPE_FA, formatFileSize } from "@/lib/delivery-receipts/labels";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,11 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -41,9 +34,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
 
-const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf", "mp4", "mov", "webm", "mkv"];
-const VIDEO_EXT = ["mp4", "mov", "webm", "mkv"];
+// Kept in step with the delivery-receipts bucket (migration 263). mkv was listed
+// here but never in the error message below and never in the bucket, so it is
+// dropped rather than added — accept, ALLOWED_EXT and the bucket now agree.
+const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf", "mp4", "mov", "webm"];
+const VIDEO_EXT = ["mp4", "mov", "webm"];
 const IMAGE_PDF_MAX = 20 * 1024 * 1024;
 const VIDEO_MAX = 100 * 1024 * 1024;
 
@@ -66,10 +63,7 @@ export function DeliveryReceiptUploadForm({
   defaultCustomerId,
 }: Props) {
   const { roles } = useAuth();
-  const allowed =
-    roles.includes("admin") ||
-    roles.includes("manager") ||
-    roles.includes("sales");
+  const allowed = roles.includes("admin") || roles.includes("manager") || roles.includes("sales");
 
   const mutation = useCreateDeliveryReceipt();
   const settingsQ = useWorkflowSettings();
@@ -79,16 +73,12 @@ export function DeliveryReceiptUploadForm({
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [invoiceId, setInvoiceId] = useState<string | null>(
-    defaultInvoiceId ?? null,
-  );
+  const [invoiceId, setInvoiceId] = useState<string | null>(defaultInvoiceId ?? null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const debouncedInvoiceSearch = useDebounce(invoiceSearch, 300);
 
-  const [customerId, setCustomerId] = useState<string | null>(
-    defaultCustomerId ?? null,
-  );
+  const [customerId, setCustomerId] = useState<string | null>(defaultCustomerId ?? null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const debouncedCustomerSearch = useDebounce(customerSearch, 300);
@@ -102,9 +92,7 @@ export function DeliveryReceiptUploadForm({
   const selectedType = form.watch("type");
 
   const timerMinutes = useMemo(() => {
-    const row = settingsQ.data?.find(
-      (s) => s.process_key === selectedType && s.is_active,
-    );
+    const row = settingsQ.data?.find((s) => s.process_key === selectedType && s.is_active);
     return row?.timer_minutes ?? null;
   }, [settingsQ.data, selectedType]);
 
@@ -124,9 +112,7 @@ export function DeliveryReceiptUploadForm({
       return (data ?? []).map((r) => ({
         id: r.id as string,
         label: (r.number as string | null) ?? `فاکتور ${String(r.id).slice(0, 8)}`,
-        videoRequired: Boolean(
-          (r as { product_video_required?: boolean }).product_video_required,
-        ),
+        videoRequired: Boolean((r as { product_video_required?: boolean }).product_video_required),
       }));
     },
     staleTime: 30_000,
@@ -155,16 +141,13 @@ export function DeliveryReceiptUploadForm({
   });
 
   const selectedInvoice = useMemo(
-    () => (invoiceId ? invoiceOptions.find((o) => o.id === invoiceId) ?? null : null),
+    () => (invoiceId ? (invoiceOptions.find((o) => o.id === invoiceId) ?? null) : null),
     [invoiceId, invoiceOptions],
   );
   const selectedInvoiceLabel = selectedInvoice?.label ?? null;
   const invoiceVideoRequired = selectedInvoice?.videoRequired ?? false;
   const selectedCustomerLabel = useMemo(
-    () =>
-      customerId
-        ? customerOptions.find((o) => o.id === customerId)?.label ?? null
-        : null,
+    () => (customerId ? (customerOptions.find((o) => o.id === customerId)?.label ?? null) : null),
     [customerId, customerOptions],
   );
 
@@ -174,9 +157,7 @@ export function DeliveryReceiptUploadForm({
     const isVideo = VIDEO_EXT.includes(ext) || f.type.startsWith("video/");
     const max = isVideo ? VIDEO_MAX : IMAGE_PDF_MAX;
     if (f.size > max) {
-      return isVideo
-        ? "حجم ویدئو بیش از ۱۰۰ مگابایت است"
-        : "حجم فایل بیش از ۲۰ مگابایت است";
+      return isVideo ? "حجم ویدئو بیش از ۱۰۰ مگابایت است" : "حجم فایل بیش از ۲۰ مگابایت است";
     }
     return null;
   };
@@ -217,8 +198,7 @@ export function DeliveryReceiptUploadForm({
     return (
       <Card>
         <CardContent className="p-4 text-sm text-muted-foreground" dir="rtl">
-          شما دسترسی آپلود رسید را ندارید. این عملیات فقط برای کارشناس فروش، مدیر و
-          ادمین فعال است.
+          شما دسترسی آپلود رسید را ندارید. این عملیات فقط برای کارشناس فروش، مدیر و ادمین فعال است.
         </CardContent>
       </Card>
     );
@@ -291,15 +271,13 @@ export function DeliveryReceiptUploadForm({
             ref={inputRef}
             type="file"
             className="hidden"
-            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm,.mkv,image/jpeg,image/png,application/pdf,video/*"
+            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm,image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/quicktime,video/webm"
             onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
           />
           {file ? (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-medium">{file.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({formatFileSize(file.size)})
-              </span>
+              <span className="text-xs text-muted-foreground">({formatFileSize(file.size)})</span>
               <Button
                 type="button"
                 size="icon"
@@ -321,6 +299,13 @@ export function DeliveryReceiptUploadForm({
               </div>
             </>
           )}
+        </div>
+        <div className="flex justify-center">
+          <CameraCaptureButton
+            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm,image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/quicktime,video/webm"
+            onFiles={(files) => onPickFile(files?.[0] ?? null)}
+            testId="delivery-receipt-camera"
+          />
         </div>
         {fileError && <p className="text-xs text-destructive">{fileError}</p>}
         {invoiceVideoRequired && (
@@ -361,10 +346,7 @@ export function DeliveryReceiptUploadForm({
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent
-              className="w-[--radix-popover-trigger-width] p-0"
-              align="start"
-            >
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
               <Command shouldFilter={false}>
                 <CommandInput
                   placeholder="جست‌وجو..."
@@ -417,9 +399,7 @@ export function DeliveryReceiptUploadForm({
                   !selectedCustomerLabel && "text-muted-foreground",
                 )}
               >
-                <span className="truncate">
-                  {selectedCustomerLabel ?? "جست‌وجوی نام مشتری..."}
-                </span>
+                <span className="truncate">{selectedCustomerLabel ?? "جست‌وجوی نام مشتری..."}</span>
                 <div className="flex items-center gap-1">
                   {customerId && (
                     <X
@@ -434,10 +414,7 @@ export function DeliveryReceiptUploadForm({
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent
-              className="w-[--radix-popover-trigger-width] p-0"
-              align="start"
-            >
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
               <Command shouldFilter={false}>
                 <CommandInput
                   placeholder="جست‌وجو..."

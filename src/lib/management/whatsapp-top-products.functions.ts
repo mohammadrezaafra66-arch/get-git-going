@@ -17,6 +17,22 @@ const baseUrl = () =>
 const TIMEOUT_MS = 5000;
 const ALLOWED_ROLES = ["admin", "manager", "accountant"];
 
+/**
+ * Upstream clamps at 1000 (product_reports.clamp_limit(limit, hi=1000)), so that
+ * is the hard ceiling here too — asking for more just wastes a round trip.
+ * Measured: limit=1000 returns 1000 rows, limit=5000 also returns 1000.
+ *
+ * The default is SERVER-SIDE and env-configurable on purpose: the row count must
+ * be changeable without a rebuild, unlike a VITE_* value. Empty env = 1000.
+ */
+const UPSTREAM_MAX_LIMIT = 1000;
+
+function defaultTopProductsLimit(): number {
+  const raw = Number(process.env.WHATSAPP_TOP_PRODUCTS_LIMIT);
+  if (!Number.isFinite(raw) || raw <= 0) return UPSTREAM_MAX_LIMIT;
+  return Math.min(Math.trunc(raw), UPSTREAM_MAX_LIMIT);
+}
+
 export interface WhatsappTopProduct {
   /** Set only when the platform matched the mention to a catalog product. */
   product_id: string | null;
@@ -132,7 +148,7 @@ export async function getWhatsappTopProductsSnapshot(input?: {
   search?: string | null;
 }): Promise<WhatsappTopProductsResult> {
   const range = input?.range ?? 30;
-  const limit = input?.limit ?? 150;
+  const limit = Math.min(input?.limit ?? defaultTopProductsLimit(), UPSTREAM_MAX_LIMIT);
   const params = new URLSearchParams({
     days: String(range),
     limit: String(limit),
@@ -191,13 +207,21 @@ export const fetchWhatsappTopProducts = createServerFn({ method: "POST" })
     z
       .object({
         range: z.number().int().positive().max(365).optional(),
-        limit: z.number().int().positive().max(300).optional(),
+        limit: z.number().int().positive().max(UPSTREAM_MAX_LIMIT).optional(),
+        // Searched UPSTREAM over the full merged set, BEFORE the limit is applied
+        // (product_reports.top_products_rows). Never filtered client-side here, so
+        // a match ranked below the visible window is still found.
+        search: z.string().trim().min(1).max(200).optional(),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }): Promise<WhatsappTopProductsResult> => {
     await assertAllowed(context.userId);
-    return getWhatsappTopProductsSnapshot({ range: data.range, limit: data.limit });
+    return getWhatsappTopProductsSnapshot({
+      range: data.range,
+      limit: data.limit,
+      search: data.search,
+    });
   });
 
 export const fetchWhatsappMentioners = createServerFn({ method: "POST" })

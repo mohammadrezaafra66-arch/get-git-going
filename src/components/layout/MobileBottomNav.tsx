@@ -39,6 +39,17 @@ const SHORTCUTS_BY_ROLE: Partial<Record<AppRole, ShortcutItem[]>> = {
     { to: "/notifications", label: "اعلان‌ها" },
     { to: "/messages", label: "پیام‌ها" },
   ],
+  // P0/5 — the owner's primary mobile role. NOT /purchases/create: purchases.create
+  // is admin/manager only, so that shortcut would land the user on a page the route
+  // guard refuses. /purchase is their actual workspace and only resolves because of
+  // the registry seed added alongside this — getNavigationEntryByRoute drops any
+  // shortcut it cannot resolve, silently.
+  purchase_specialist: [
+    { to: "/dashboard", label: "خانه" },
+    { to: "/purchase", label: "فضای خرید" },
+    { to: "/products", label: "محصولات" },
+    { to: "/messages", label: "پیام‌ها" },
+  ],
 };
 
 const MAX_SHORTCUTS = 4;

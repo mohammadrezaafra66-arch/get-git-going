@@ -23,11 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
   CommandEmpty,
@@ -36,6 +32,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
 
 const ALLOWED_EXT = ["jpg", "jpeg", "png", "pdf"];
 const MAX_SIZE = 25 * 1024 * 1024;
@@ -192,13 +189,11 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(Object.entries(DOCUMENT_TYPE_FA) as [FormValues["type"], string][]).map(
-              ([k, v]) => (
-                <SelectItem key={k} value={k}>
-                  {v}
-                </SelectItem>
-              ),
-            )}
+            {(Object.entries(DOCUMENT_TYPE_FA) as [FormValues["type"], string][]).map(([k, v]) => (
+              <SelectItem key={k} value={k}>
+                {v}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -235,9 +230,7 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
           {file ? (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-medium">{file.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({formatFileSize(file.size)})
-              </span>
+              <span className="text-xs text-muted-foreground">({formatFileSize(file.size)})</span>
               <Button
                 type="button"
                 size="icon"
@@ -254,11 +247,16 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
             <>
               <Upload className="h-6 w-6 text-muted-foreground" />
               <div className="text-sm">فایل را اینجا رها کنید یا کلیک کنید</div>
-              <div className="text-xs text-muted-foreground">
-                jpg، png، pdf — حداکثر ۲۵ مگابایت
-              </div>
+              <div className="text-xs text-muted-foreground">jpg، png، pdf — حداکثر ۲۵ مگابایت</div>
             </>
           )}
+        </div>
+        <div className="flex justify-center">
+          <CameraCaptureButton
+            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            onFiles={(files) => onPickFile(files?.[0] ?? null)}
+            testId="document-camera"
+          />
         </div>
         {fileError && <p className="text-xs text-destructive">{fileError}</p>}
       </div>
@@ -299,16 +297,11 @@ export function DocumentUploadForm({ onSuccess }: { onSuccess?: () => void }) {
                     !selectedRefLabel && "text-muted-foreground",
                   )}
                 >
-                  <span className="truncate">
-                    {selectedRefLabel ?? "جست‌وجو و انتخاب..."}
-                  </span>
+                  <span className="truncate">{selectedRefLabel ?? "جست‌وجو و انتخاب..."}</span>
                   <ChevronsUpDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent
-                className="w-[--radix-popover-trigger-width] p-0"
-                align="start"
-              >
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command shouldFilter={false}>
                   <CommandInput
                     placeholder="جست‌وجو..."

@@ -255,6 +255,18 @@ const NAVIGATION_SEEDS = [
     module: "suppliers",
     group: "purchasing",
   },
+  // P0/5 — «فضای خرید»: where a salesperson raises a purchase request and a
+  // purchase specialist works the ones assigned to them. It was reachable only
+  // from a card on /collaboration, so it appeared in no menu at all — for either
+  // role. purchases:view is granted to sales and purchase_specialist precisely
+  // for this page (see the note on `purchases` in lib/rbac/roles.ts).
+  {
+    to: "/purchase",
+    label: "فضای خرید",
+    icon: ClipboardList,
+    module: "purchases",
+    group: "purchasing",
+  },
   {
     to: "/purchases",
     label: "پنل خرید",

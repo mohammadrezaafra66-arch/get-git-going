@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
 
 interface ProductImageRow {
   id: string;
@@ -184,6 +185,15 @@ export function ProductImagesSection({ productId }: Props) {
             const f = e.target.files?.[0];
             if (f) void handleFile(f);
           }}
+        />
+        <CameraCaptureButton
+          accept="image/jpeg,image/png,image/webp"
+          disabled={uploading || atLimit}
+          onFiles={(files) => {
+            const f = files?.[0];
+            if (f) void handleFile(f);
+          }}
+          testId="product-image-camera"
         />
       </div>
       {imagesQ.isLoading ? (
