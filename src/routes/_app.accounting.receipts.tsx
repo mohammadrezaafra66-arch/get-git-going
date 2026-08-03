@@ -20,9 +20,24 @@ import { cn } from "@/lib/utils";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { receiptTypeLabel } from "@/lib/receipts/receipt-types";
+import {
+  ASAN_ADAPTERS,
+  AsanLayoutNotConfiguredError,
+  DEFAULT_EXPORT_OPTIONS,
+  EXPORT_MODE_LABELS,
+  type ExportMode,
+} from "@/lib/export/export-modes";
+import {
+  RECEIPT_STATUS_FA,
+  buildLineDetailReceiptRows,
+  buildStandardReceiptRows,
+  type ReceiptExportRecord,
+  type ReceiptLineDetail,
+} from "@/lib/export/receipt-export-rows";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,12 +110,16 @@ function ReceiptsListPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const debouncedCustomer = useDebounce(customerSearch, 350);
   const [exporting, setExporting] = useState(false);
+  // D8-6: export mode + line-detail toggle. Both default to the pre-phase-11
+  // behaviour, so an accountant who changes nothing gets the identical file.
+  const [exportMode, setExportMode] = useState<ExportMode>(DEFAULT_EXPORT_OPTIONS.mode);
+  const [includeLineDetail, setIncludeLineDetail] = useState(
+    DEFAULT_EXPORT_OPTIONS.includeLineDetail,
+  );
 
-  const STATUS_FA: Record<string, string> = {
-    pending_review: "در انتظار بررسی",
-    approved: "تأییدشده",
-    rejected: "ردشده",
-  };
+  // Moved to src/lib/export/receipt-export-rows.ts so the export mapping can be
+  // gate-tested outside React. Same values as before.
+  const STATUS_FA = RECEIPT_STATUS_FA;
 
   async function handleExportExcel() {
     setExporting(true);
@@ -133,43 +152,7 @@ function ReceiptsListPage() {
         return;
       }
 
-      type Row = {
-        id: string;
-        amount: number;
-        payment_date: string;
-        payment_time: string | null;
-        receipt_time: string | null;
-        tracking_number: string;
-        status: string;
-        receipt_type: string;
-        posting_status: string | null;
-        posted_at: string | null;
-        description: string | null;
-        rejection_reason: string | null;
-        bank_name: string | null;
-        source_bank: string | null;
-        destination_bank: string | null;
-        payer_name: string;
-        payer_phone: string | null;
-        payer_accounting_code: string | null;
-        receiver_name: string;
-        receiver_phone: string | null;
-        receiver_accounting_code: string | null;
-        is_mobile_bank_screenshot: boolean | null;
-        created_at: string;
-        created_by: string | null;
-        customer: {
-          name: string | null;
-          phone: string | null;
-          accounting_code: string | null;
-        } | null;
-        destination_bank_account: { title: string | null } | null;
-        // external_parties stores the display name in `full_name`; selecting
-        // `name` made the whole export query fail.
-        receiver_party: { full_name: string | null } | null;
-      };
-
-      const typed = data as unknown as Row[];
+      const typed = data as unknown as ReceiptExportRecord[];
 
       // Resolve creator names in a single batched query
       const creatorIds = Array.from(
@@ -189,41 +172,59 @@ function ReceiptsListPage() {
         });
       }
 
-      const rows = typed.map((r) => {
-        const receiverTarget = r.destination_bank_account?.title
-          ? `بانک ما: ${r.destination_bank_account.title}`
-          : r.receiver_party?.full_name
-            ? `طرف خارجی: ${r.receiver_party.full_name}`
-            : r.receiver_name || "—";
-        return {
-          "تاریخ ثبت (شمسی)": isoToJalaliDisplay(r.created_at?.slice(0, 10)),
-          "تاریخ فیش (شمسی)": isoToJalaliDisplay(r.payment_date),
-          "ساعت فیش": r.payment_time?.slice(0, 5) ?? "",
-          "ثبت‌کننده (کاربر)": (r.created_by && creatorMap.get(r.created_by)) || "—",
-          "مشتری مرتبط": r.customer?.name ?? "—",
-          "تلفن مشتری": r.customer?.phone ?? "",
-          "کد آسان مشتری": r.customer?.accounting_code ?? "",
-          "واریزکننده (نام)": r.payer_name,
-          "واریزکننده (تلفن)": r.payer_phone ?? "",
-          "واریزکننده (کد آسان)": r.payer_accounting_code ?? "",
-          "بانک مبدأ": r.source_bank ?? r.bank_name ?? "",
-          گیرنده: receiverTarget,
-          "گیرنده (نام روی فیش)": r.receiver_name,
-          "گیرنده (تلفن)": r.receiver_phone ?? "",
-          "گیرنده (کد آسان)": r.receiver_accounting_code ?? "",
-          "بانک مقصد": r.destination_bank ?? "",
-          "مبلغ (تومان)": Number(r.amount),
-          "شماره پیگیری": r.tracking_number,
-          "نوع فیش": receiptTypeLabel(r.receipt_type),
-          "رسید اسکرین‌شات همراه بانک": r.is_mobile_bank_screenshot ? "بله" : "خیر",
-          وضعیت: STATUS_FA[r.status] ?? r.status,
-          "وضعیت ثبت سند": r.posting_status ?? "",
-          "تاریخ ثبت سند (شمسی)": r.posted_at ? isoToJalaliDisplay(r.posted_at.slice(0, 10)) : "",
-          "علت رد": r.rejection_reason ?? "",
-          توضیحات: r.description ?? "",
-          "شناسه فیش": r.id,
+      // D8-6 — «خروجی آسان». Refuses rather than guessing a column layout that
+      // would import silently into the owner's live accounting software.
+      if (exportMode === "asan") {
+        throw new AsanLayoutNotConfiguredError(ASAN_ADAPTERS.bank_receipt.label);
+      }
+
+      // Decisions 44–45 — product line detail, fetched only when asked for, so
+      // the default path performs and behaves exactly as it did before.
+      let lines: ReceiptLineDetail[] = [];
+      if (includeLineDetail) {
+        const { data: linkRows, error: linkErr } = await supabase
+          .from("payment_receipt_links")
+          .select(
+            `receipt_id,
+             quote:sales_quotes(quote_number,
+               items:sales_quote_items(quantity, unit_price, line_total, title_snapshot,
+                 sku_snapshot, free_item_name))`,
+          )
+          .in(
+            "receipt_id",
+            typed.map((r) => r.id),
+          );
+        if (linkErr) throw linkErr;
+        type LinkRow = {
+          receipt_id: string;
+          quote: {
+            quote_number: string | null;
+            items: {
+              quantity: number | null;
+              unit_price: number | null;
+              line_total: number | null;
+              title_snapshot: string | null;
+              sku_snapshot: string | null;
+              free_item_name: string | null;
+            }[];
+          } | null;
         };
-      });
+        lines = ((linkRows ?? []) as unknown as LinkRow[]).flatMap((lr) =>
+          (lr.quote?.items ?? []).map((it) => ({
+            receipt_id: lr.receipt_id,
+            quote_number: lr.quote?.quote_number ?? null,
+            product_code: it.sku_snapshot,
+            product_name: it.title_snapshot ?? it.free_item_name,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            line_total: it.line_total,
+          })),
+        );
+      }
+
+      const rows = includeLineDetail
+        ? buildLineDetailReceiptRows(typed, creatorMap, lines)
+        : buildStandardReceiptRows(typed, creatorMap);
 
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = Object.keys(rows[0]).map((k) => ({
@@ -232,7 +233,12 @@ function ReceiptsListPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "فیش‌ها");
       const ts = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `payment-receipts-${ts}.xlsx`);
+      // The default file keeps its original name; only the opt-in variant is
+      // renamed, so an existing routine that expects this filename still works.
+      XLSX.writeFile(
+        wb,
+        includeLineDetail ? `payment-receipts-lines-${ts}.xlsx` : `payment-receipts-${ts}.xlsx`,
+      );
       toast.success(`خروجی اکسل آماده شد (${toFaDigits(String(rows.length))} ردیف)`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "خطای ناشناخته";
@@ -292,13 +298,35 @@ function ReceiptsListPage() {
         title="فیش‌های واریزی"
         description="مدیریت و بررسی فیش‌های واریزی مشتریان"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline">
               <Link to="/accounting/receipts/training">
                 <GraduationCap className="ml-2 h-4 w-4" />
                 آموزش
               </Link>
             </Button>
+
+            {/* D8-6 — export mode. «معمولی» is the default and is unchanged. */}
+            <Select value={exportMode} onValueChange={(v) => setExportMode(v as ExportMode)}>
+              <SelectTrigger className="w-40" aria-label="حالت خروجی">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">{EXPORT_MODE_LABELS.standard}</SelectItem>
+                <SelectItem value="asan">{EXPORT_MODE_LABELS.asan}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Decisions 44–45 — product line detail. */}
+            <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-xs">
+              <Checkbox
+                checked={includeLineDetail}
+                onCheckedChange={(v) => setIncludeLineDetail(v === true)}
+                aria-label="جزئیات ردیف کالا"
+              />
+              جزئیات ردیف کالا
+            </label>
+
             <Button
               type="button"
               variant="outline"
