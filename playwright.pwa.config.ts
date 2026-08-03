@@ -71,23 +71,12 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  projects: [
-    {
-      name: "chromium-pwa-secure",
-      use: {
-        ...devices["Desktop Chrome"],
-        launchOptions: {
-          args: [
-            `--unsafely-treat-insecure-origin-as-secure=${BASE_URL}`,
-            // Chromium ignores the flag above unless a user data dir is set.
-            "--user-data-dir=/tmp/afrakala-pwa-secure-profile",
-          ],
-        },
-      },
-    },
-    {
-      name: "chromium-pwa-plain",
-      use: { ...devices["Desktop Chrome"] },
-    },
-  ],
+  // ONE project. The suite adapts to the origin it is given: over http the
+  // service-worker tests skip themselves, over https the http-degradation test
+  // does. An earlier attempt used a second project with Chromium's
+  // --unsafely-treat-insecure-origin-as-secure to fake a secure origin; it was
+  // removed because the flag is NOT honoured by Playwright's bundled Chromium
+  // (window.isSecureContext stayed false), so it added complexity and proved
+  // nothing.
+  projects: [{ name: "chromium-pwa", use: { ...devices["Desktop Chrome"] } }],
 });
