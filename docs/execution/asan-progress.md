@@ -19,6 +19,8 @@ Last e2e: not yet run this program (documented baseline 155 green / 6 red / 4 sk
 - [x] M1.1 repair every corrupted Persian label — migration 279 — 702 findings scanned,
       687 repaired (421 row values + 266 observatory cells + 1 function literal),
       15 left for owner input. Re-scan shows zero A/B rows remaining.
+- [x] M1.2 remove the legacy capital allocation path — migration 280 — 2 empty tables,
+      8 functions, 1 stray trigger and 5 policies removed; 1 dynamic-path RLS policy repaired.
 
 ## M1.1 detail
 
@@ -78,9 +80,45 @@ difference between live and repo. Migration 279 fixes the function first, then r
    The mission asks for one migration per phase, and per-row guarded statements are safer and
    more reviewable than a clever set-based rewrite.
 
+## M1.2 detail — remove the legacy capital allocation path (migration 280)
+
+Plan written before any change, from live catalogue state:
+`docs/asan/legacy-capital-removal-plan.md`.
+
+**Removed.** `customer_capital_allocations` and `salesperson_capital_allocations` (both 0 rows,
+never used — `save_salesperson_capital_allocations` said so in its own body), their 6 indexes,
+5 RLS policies and 7 triggers; `trg_archive_prior_allocations` on the surviving
+`daily_capital_snapshots`; and 8 legacy-only functions.
+
+**Edited, not dropped.** `person_merge(uuid,uuid,text)` lost one registry line;
+`person_fk_drift_report()` lost one `UNION ALL` branch. Both rebuilt from live
+`pg_get_functiondef` output snapshotted into `docs/verification/pre-280/` (rule 2.3).
+
+**Kept deliberately.** `daily_capital_snapshots` (10 rows) and `daily_capital_inputs` (2 rows)
+hold live data — rule 3 forbids dropping them, and they are the input/snapshot chain rather
+than the allocation path. The three `/accounting/*-capital*` route stubs are kept because they
+only redirect to `/accounting/dynamic-capital`; deleting them would 404 existing bookmarks.
+
+**Surprise, chased down.** The first `DROP TABLE` was refused by a dependency:
+`capital_allocation_ledger.cal_select_sales`. That ledger belongs to the *dynamic* path; only
+its policy still pointed at the legacy tables, so since the dynamic path took over it had been
+returning zero ledger rows to every salesperson instead of erroring (rule 2.5). Repointed at
+the dynamic tables — an RLS widening for `sales`, recorded in the plan document.
+
+**Verification.**
+- Dry run in `BEGIN … ROLLBACK` ran the migration *and* `docs/verification/280-down.sql`:
+  after up — legacy tables 0, dynamic rows 182, drift report 0; after down — tables 2,
+  functions 8, policies 5. Both directions proven before applying anything.
+- After apply + `docker restart afrakala-lan-rest`: legacy tables 0, legacy functions 0,
+  dynamic rows 182, ledger policies 2, `person_fk_drift_report()` 0 rows.
+- `src/` grep for the legacy identifiers: only `_dynamic` hits remain.
+- `e2e/capital/no-override.spec.ts`: **6/6 green** (3 original + 3 added).
+- `e2e/persons/credit-uses-person.spec.ts`: 2 passed, 1 failed — the failure is the documented
+  red `persons-credit-uses-person` (a UI assertion), unchanged by this phase.
+
 ## HANDOFF STATE
-Next action: M1 Phase 1.2 — map the blast radius of the legacy capital allocation path
-(`salesperson_capital_allocations`, `customer_capital_allocations`, without `_dynamic`) into
-`docs/asan/legacy-capital-removal-plan.md` before changing anything.
+Next action: M1 Phase 1.3 — restrict the `viewer` role. Enumerate RLS policies,
+`role_permissions` rows and frontend guards into `docs/asan/viewer-restriction-plan.md`, then
+tighten `can_read_person(uuid)` (migration 264) rather than adding a fourth parallel policy.
 Blocked on: nothing
 Files in flight: none

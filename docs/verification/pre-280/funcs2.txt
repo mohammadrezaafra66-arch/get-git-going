@@ -1,0 +1,650 @@
+compute_customer_capital_allocations(uuid)
+CREATE OR REPLACE FUNCTION public.compute_customer_capital_allocations(p_salesperson_allocation_id uuid)
+ RETURNS TABLE(salesperson_allocation_id uuid, capital_snapshot_id uuid, capital_date date, salesperson_id uuid, salesperson_final_amount numeric, customer_id uuid, customer_score numeric, total_customer_score numeric, system_suggested_amount numeric)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_alloc record;
+  v_total numeric;
+BEGIN
+  IF NOT has_any_role(auth.uid(), ARRAY['admin'::text,'manager'::text,'accountant'::text]) THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT s.id, s.capital_snapshot_id, s.capital_date, s.salesperson_id, s.final_amount
+    INTO v_alloc
+  FROM public.salesperson_capital_allocations s
+  WHERE s.id = p_salesperson_allocation_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'salesperson_allocation not found' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COALESCE(SUM(COALESCE(ccp.credit_score,0)), 0) INTO v_total
+  FROM public.customers c
+  LEFT JOIN public.customer_credit_profile ccp
+    ON ccp.customer_id = c.id AND ccp.is_active = true
+  WHERE c.responsible_id = v_alloc.salesperson_id
+    AND c.is_active = true;
+
+  RETURN QUERY
+  SELECT
+    v_alloc.id,
+    v_alloc.capital_snapshot_id,
+    v_alloc.capital_date,
+    v_alloc.salesperson_id,
+    v_alloc.final_amount,
+    c.id,
+    COALESCE(ccp.credit_score, 0)::numeric,
+    v_total,
+    CASE
+      WHEN v_total > 0 AND COALESCE(ccp.credit_score,0) > 0
+        THEN ROUND(v_alloc.final_amount * COALESCE(ccp.credit_score,0)::numeric / v_total)
+      ELSE 0
+    END
+  FROM public.customers c
+  LEFT JOIN public.customer_credit_profile ccp
+    ON ccp.customer_id = c.id AND ccp.is_active = true
+  WHERE c.responsible_id = v_alloc.salesperson_id
+    AND c.is_active = true
+  ORDER BY COALESCE(ccp.credit_score,0) DESC, c.id;
+END;
+$function$
+
+-----
+save_salesperson_capital_allocations(uuid,jsonb)
+CREATE OR REPLACE FUNCTION public.save_salesperson_capital_allocations(p_capital_snapshot_id uuid, p_allocations jsonb)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_snap public.daily_capital_snapshots%ROWTYPE;
+  v_total numeric;
+  v_actor uuid := auth.uid();
+  v_count integer := 0;
+  v_item jsonb;
+  v_sp uuid;
+  v_requested numeric;
+  v_score numeric;
+  v_suggested numeric;
+  v_existing public.salesperson_capital_allocations%ROWTYPE;
+  v_alloc_id uuid;
+BEGIN
+  -- NOTE: the previous definition cast to `public.text[]`, which is not a real
+  -- type (text lives in pg_catalog), so this line raised
+  -- `type "public.text[]" does not exist` on EVERY call. That is why
+  -- salesperson_capital_allocations has 0 rows: this path never worked. Fixed
+  -- to text[] here rather than faithfully reproducing a fatal typo.
+  IF NOT public.has_any_role(v_actor, ARRAY['admin','manager','accountant']::text[]) THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_snap FROM public.daily_capital_snapshots WHERE id = p_capital_snapshot_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'daily capital snapshot not found' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_allocations IS NULL OR jsonb_typeof(p_allocations) <> 'array' THEN
+    RAISE EXCEPTION 'p_allocations must be a JSON array' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COALESCE(SUM(es.monthly_score), 0)
+    INTO v_total
+  FROM public.employee_scores es
+  JOIN public.user_roles ur ON ur.user_id = es.employee_id AND ur.role = 'sales';
+
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_allocations)
+  LOOP
+    v_sp        := NULLIF(v_item->>'salesperson_id','')::uuid;
+    v_requested := (v_item->>'final_amount')::numeric;   -- NULL when omitted
+
+    IF v_sp IS NULL THEN
+      RAISE EXCEPTION 'salesperson_id required' USING ERRCODE = '22023';
+    END IF;
+
+    SELECT es.monthly_score INTO v_score
+    FROM public.employee_scores es
+    JOIN public.user_roles ur ON ur.user_id = es.employee_id AND ur.role = 'sales'
+    WHERE es.employee_id = v_sp;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'user % is not a salesperson with score', v_sp USING ERRCODE = '22023';
+    END IF;
+
+    v_suggested := CASE
+      WHEN v_total > 0 THEN ROUND(v_snap.final_capital * (v_score / v_total))
+      ELSE 0
+    END;
+
+    -- D8-1: a supplied amount that differs from the computed one is refused,
+    -- not quietly replaced.
+    IF v_requested IS NOT NULL AND ROUND(v_requested) <> v_suggested THEN
+      RAISE EXCEPTION
+        'سقف سرمایهٔ کارشناس قابل تغییر دستی نیست. مقدار محاسبه‌شدهٔ سیستم % است (مقدار ارسالی: %).',
+        v_suggested, ROUND(v_requested)
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF (v_item ? 'override_reason') AND NULLIF(v_item->>'override_reason','') IS NOT NULL THEN
+      RAISE EXCEPTION
+        'ثبت «دلیل override» دیگر پذیرفته نمی‌شود؛ سقف سرمایه از تصمیم D8-1 به بعد فقط محاسبه‌شدنی است.'
+        USING ERRCODE = '42501';
+    END IF;
+
+    SELECT * INTO v_existing
+    FROM public.salesperson_capital_allocations
+    WHERE capital_snapshot_id = p_capital_snapshot_id AND salesperson_id = v_sp;
+
+    IF FOUND THEN
+      UPDATE public.salesperson_capital_allocations
+        SET score = v_score,
+            total_score = v_total,
+            system_suggested_amount = v_suggested,
+            final_amount = v_suggested,
+            override_reason = NULL,
+            status = 'approved',
+            approved_by = v_actor,
+            updated_at = now()
+        WHERE id = v_existing.id
+        RETURNING id INTO v_alloc_id;
+    ELSE
+      INSERT INTO public.salesperson_capital_allocations(
+        capital_snapshot_id, capital_date, salesperson_id,
+        score, total_score, system_suggested_amount, final_amount,
+        override_reason, status, created_by, approved_by
+      ) VALUES (
+        p_capital_snapshot_id, v_snap.capital_date, v_sp,
+        v_score, v_total, v_suggested, v_suggested,
+        NULL, 'approved', v_actor, v_actor
+      ) RETURNING id INTO v_alloc_id;
+    END IF;
+
+    INSERT INTO public.audit_logs(actor_id, entity_type, entity_id, action, diff)
+    VALUES (v_actor, 'salesperson_capital_allocation', v_alloc_id, 'allocation_saved',
+            jsonb_build_object('salesperson_id', v_sp,
+                               'system_suggested_amount', v_suggested,
+                               'final_amount', v_suggested,
+                               'capital_snapshot_id', p_capital_snapshot_id));
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$function$
+
+-----
+save_customer_capital_allocations(uuid,jsonb)
+CREATE OR REPLACE FUNCTION public.save_customer_capital_allocations(p_salesperson_allocation_id uuid, p_allocations jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_alloc record;
+  v_total numeric;
+  v_item jsonb;
+  v_customer_id uuid;
+  v_final numeric;
+  v_reason text;
+  v_score numeric;
+  v_suggested numeric;
+  v_existing record;
+  v_action text;
+  v_row_id uuid;
+  v_count int := 0;
+BEGIN
+  IF NOT has_any_role(auth.uid(), ARRAY['admin'::text,'manager'::text,'accountant'::text]) THEN
+    RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
+  END IF;
+
+  IF p_allocations IS NULL OR jsonb_typeof(p_allocations) <> 'array' THEN
+    RAISE EXCEPTION 'p_allocations must be a JSON array' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT s.id, s.capital_snapshot_id, s.capital_date, s.salesperson_id, s.final_amount
+    INTO v_alloc
+  FROM public.salesperson_capital_allocations s
+  WHERE s.id = p_salesperson_allocation_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'salesperson_allocation not found' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COALESCE(SUM(COALESCE(ccp.credit_score,0)), 0) INTO v_total
+  FROM public.customers c
+  LEFT JOIN public.customer_credit_profile ccp
+    ON ccp.customer_id = c.id AND ccp.is_active = true
+  WHERE c.responsible_id = v_alloc.salesperson_id
+    AND c.is_active = true;
+
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_allocations)
+  LOOP
+    v_customer_id := (v_item->>'customer_id')::uuid;
+    v_final := COALESCE((v_item->>'final_amount')::numeric, 0);
+    v_reason := NULLIF(btrim(COALESCE(v_item->>'override_reason','')), '');
+
+    IF v_customer_id IS NULL THEN
+      RAISE EXCEPTION 'customer_id required' USING ERRCODE = '22023';
+    END IF;
+    IF v_final < 0 THEN
+      RAISE EXCEPTION 'final_amount must be >= 0' USING ERRCODE = '22023';
+    END IF;
+
+    -- verify customer belongs to this salesperson (active); allow missing/zero score
+    SELECT COALESCE(ccp.credit_score, 0)::numeric INTO v_score
+    FROM public.customers c
+    LEFT JOIN public.customer_credit_profile ccp
+      ON ccp.customer_id = c.id AND ccp.is_active = true
+    WHERE c.id = v_customer_id
+      AND c.responsible_id = v_alloc.salesperson_id
+      AND c.is_active = true;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'customer % is not eligible for this salesperson', v_customer_id USING ERRCODE = '22023';
+    END IF;
+
+    v_suggested := CASE
+      WHEN v_total > 0 AND v_score > 0 THEN ROUND(v_alloc.final_amount * v_score / v_total)
+      ELSE 0
+    END;
+
+    -- detect existing for action classification
+    SELECT id INTO v_existing
+    FROM public.customer_capital_allocations
+    WHERE salesperson_allocation_id = v_alloc.id AND customer_id = v_customer_id;
+
+    INSERT INTO public.customer_capital_allocations (
+      salesperson_allocation_id, capital_snapshot_id, capital_date,
+      salesperson_id, customer_id,
+      customer_score, score_source, total_customer_score,
+      system_suggested_amount, final_amount, override_reason,
+      status, created_by, approved_by
+    ) VALUES (
+      v_alloc.id, v_alloc.capital_snapshot_id, v_alloc.capital_date,
+      v_alloc.salesperson_id, v_customer_id,
+      v_score, 'customer_credit_profile.credit_score', v_total,
+      v_suggested, v_final, v_reason,
+      'approved', auth.uid(), auth.uid()
+    )
+    ON CONFLICT (salesperson_allocation_id, customer_id) DO UPDATE
+      SET customer_score = EXCLUDED.customer_score,
+          total_customer_score = EXCLUDED.total_customer_score,
+          system_suggested_amount = EXCLUDED.system_suggested_amount,
+          final_amount = EXCLUDED.final_amount,
+          override_reason = EXCLUDED.override_reason,
+          status = 'approved',
+          approved_by = auth.uid(),
+          updated_at = now()
+    RETURNING id INTO v_row_id;
+
+    IF v_existing.id IS NULL THEN
+      v_action := 'create';
+    ELSIF ROUND(v_final) <> ROUND(v_suggested) THEN
+      v_action := 'override';
+    ELSE
+      v_action := 'update';
+    END IF;
+
+    INSERT INTO public.audit_logs (actor_id, entity_type, entity_id, action, diff)
+    VALUES (
+      auth.uid(),
+      'customer_capital_allocation',
+      v_row_id::text,
+      v_action,
+      jsonb_build_object(
+        'salesperson_allocation_id', v_alloc.id,
+        'capital_snapshot_id', v_alloc.capital_snapshot_id,
+        'capital_date', v_alloc.capital_date,
+        'salesperson_id', v_alloc.salesperson_id,
+        'customer_id', v_customer_id,
+        'customer_score', v_score,
+        'total_customer_score', v_total,
+        'suggested', v_suggested,
+        'final', v_final,
+        'override_reason', v_reason
+      )
+    );
+
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN jsonb_build_object('saved', v_count);
+END;
+$function$
+
+-----
+person_merge(uuid,uuid,text)
+CREATE OR REPLACE FUNCTION public.person_merge(p_winner_id uuid, p_loser_id uuid, p_reason text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _uid        uuid := auth.uid();
+  _winner     public.persons%ROWTYPE;
+  _loser      public.persons%ROWTYPE;
+  _repointed  jsonb := '{}'::jsonb;
+  _ids_moved  integer := 0;
+  _als_moved  integer := 0;
+  _lnk_moved  integer := 0;
+  _n          integer;
+  _key        text;
+  _mode       text;
+  _r          record;
+  _remaining  bigint;
+  _log_id     uuid;
+
+  -- POLICY REGISTRY -----------------------------------------------------------
+  -- "table.column" -> handling mode.
+  --   identity_root : the legacy mirror's own person_id. Repointed FIRST so the
+  --                   derived *_person_id columns stay consistent with it.
+  --   generic       : plain UPDATE ... SET col = winner WHERE col = loser.
+  --   special_move  : person-owned child rows, moved with de-duplication below.
+  --   special_keep  : deliberately keeps references to the loser.
+  --   skip          : audit trail; must never be repointed.
+  -- Anything in the catalog and NOT in this registry aborts the merge.
+  _registry constant jsonb := jsonb_build_object(
+    'customers.person_id',                                    'identity_root',
+    'suppliers.person_id',                                    'identity_root',
+    'external_parties.person_id',                             'identity_root',
+
+    -- D8-3 (migration 271): profiles.person_id, added by 270. It is 'generic'
+    -- and NOT 'identity_root': profiles.person_id has no unique constraint, so
+    -- two user accounts may legitimately point at one person, and a profile
+    -- carries no financial state -- unlike a customer or supplier file, merging
+    -- two of them mixes nothing that needs an accounting decision first. A
+    -- plain repoint is therefore correct and needs no both-sides guard.
+    'profiles.person_id',                                     'generic',
+
+    'credit_requests.customer_person_id',                     'generic',
+    'credit_score_snapshots.customer_person_id',              'generic',
+    'customer_capital_allocations.customer_person_id',        'generic',
+    'customer_capital_allocations_dynamic.customer_person_id','generic',
+    'customer_credit_balance.customer_person_id',             'generic',
+    'customer_credit_ledger.customer_person_id',              'generic',
+    'customer_credit_profile.customer_person_id',             'generic',
+    'delivery_receipts.customer_person_id',                   'generic',
+    'didar_activities.customer_person_id',                    'generic',
+    'invoices.customer_person_id',                            'generic',
+    'payment_receipts.customer_person_id',                    'generic',
+    'payment_receipts.receiver_party_person_id',              'generic',
+    'payment_vouchers.payee_person_id',                       'generic',
+    'product_suppliers.supplier_person_id',                   'generic',
+    'purchase_prices.supplier_person_id',                     'generic',
+    'purchases.supplier_person_id',                           'generic',
+    'sales_quotes.customer_person_id',                        'generic',
+
+    'person_identifiers.person_id',                           'special_move',
+    'person_aliases.person_id',                               'special_move',
+    'person_context_links.person_id',                         'special_move',
+    'person_field_values.person_id',                          'special_move',
+
+    'person_merge_candidates.person_id_a',                    'special_keep',
+    'person_merge_candidates.person_id_b',                    'special_keep',
+
+    'person_merge_log.winner_id',                             'skip',
+    'person_merge_log.loser_id',                              'skip'
+  );
+BEGIN
+  ---------------------------------------------------------------------------
+  -- Guard 1 + 2: authentication, role, existence, distinctness, active state.
+  ---------------------------------------------------------------------------
+  IF _uid IS NULL THEN
+    RAISE EXCEPTION 'احراز هویت لازم است.' USING ERRCODE = '42501';
+  END IF;
+
+  IF NOT public.has_any_role(_uid, ARRAY['admin','manager']::text[]) THEN
+    RAISE EXCEPTION 'ادغام اشخاص فقط برای مدیر سیستم یا مدیر مجاز است.'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF p_winner_id IS NULL OR p_loser_id IS NULL THEN
+    RAISE EXCEPTION 'شناسهٔ شخص برنده و بازنده هر دو الزامی است.' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_winner_id = p_loser_id THEN
+    RAISE EXCEPTION 'نمی‌توان یک شخص را با خودش ادغام کرد.' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO _winner FROM public.persons WHERE id = p_winner_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'شخص برندهٔ ادغام پیدا نشد.' USING ERRCODE = 'P0002';
+  END IF;
+
+  SELECT * INTO _loser FROM public.persons WHERE id = p_loser_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'شخص بازندهٔ ادغام پیدا نشد.' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF NOT _winner.is_active THEN
+    RAISE EXCEPTION 'شخص برنده غیرفعال است و نمی‌تواند مقصد ادغام باشد.' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT _loser.is_active THEN
+    RAISE EXCEPTION 'شخص بازنده از پیش غیرفعال است؛ احتمالاً قبلاً ادغام شده است.'
+      USING ERRCODE = '22023';
+  END IF;
+
+  ---------------------------------------------------------------------------
+  -- Guard 3: catalog completeness. Every FK column referencing persons must
+  -- have a registered merge policy, or this merge does not run at all.
+  ---------------------------------------------------------------------------
+  FOR _r IN
+    SELECT con.conrelid::regclass::text AS tbl, att.attname::text AS col
+    FROM pg_constraint con
+    JOIN pg_attribute att ON att.attrelid = con.conrelid
+                         AND att.attnum = ANY (con.conkey)
+    WHERE con.contype = 'f'
+      AND con.confrelid = 'public.persons'::regclass
+  LOOP
+    _key := _r.tbl || '.' || _r.col;
+    IF NOT (_registry ? _key) THEN
+      RAISE EXCEPTION
+        'ادغام متوقف شد: ستون «%» به جدول اشخاص ارجاع می‌دهد ولی سیاست ادغام برای آن تعریف نشده است. تا زمانی که این ستون در فهرست سیاست‌های تابع person_merge ثبت نشود، ادغام انجام نمی‌شود.',
+        _key
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  ---------------------------------------------------------------------------
+  -- Guard 7: cardinality. Two customer rows (or two supplier rows) is a
+  -- business reconciliation, not an identity merge.
+  ---------------------------------------------------------------------------
+  IF EXISTS (SELECT 1 FROM public.customers WHERE person_id = p_winner_id)
+     AND EXISTS (SELECT 1 FROM public.customers WHERE person_id = p_loser_id) THEN
+    RAISE EXCEPTION
+      'هر دو شخص پروندهٔ مشتری دارند. ادغام هویت این دو، مانده‌ها و سابقهٔ اعتباری دو مشتری را در هم می‌آمیزد. ابتدا باید دو پروندهٔ مشتری به‌صورت حسابداری تعیین تکلیف شوند؛ این کار از عهدهٔ ادغام هویت خارج است.'
+      USING ERRCODE = '23505';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.suppliers WHERE person_id = p_winner_id)
+     AND EXISTS (SELECT 1 FROM public.suppliers WHERE person_id = p_loser_id) THEN
+    RAISE EXCEPTION
+      'هر دو شخص پروندهٔ تأمین‌کننده دارند. ادغام هویت این دو، سابقهٔ خرید و پرداخت دو تأمین‌کننده را در هم می‌آمیزد. ابتدا باید دو پروندهٔ تأمین‌کننده تعیین تکلیف شوند؛ این کار از عهدهٔ ادغام هویت خارج است.'
+      USING ERRCODE = '23505';
+  END IF;
+
+  -- D8-2 (migration 269): the same guard for external parties. It matters now
+  -- that uq_external_parties_person_active exists: without this, merging two
+  -- people who each have an ACTIVE external party would fail deep inside Step A
+  -- with a raw unique_violation on the index instead of this explanation.
+  -- Mirrors the customers/suppliers guards above exactly.
+  IF EXISTS (SELECT 1 FROM public.external_parties WHERE person_id = p_winner_id AND is_active)
+     AND EXISTS (SELECT 1 FROM public.external_parties WHERE person_id = p_loser_id AND is_active) THEN
+    RAISE EXCEPTION
+      'هر دو شخص طرف حساب خارجیِ فعال دارند. طبق تصمیم «یک شخص = یک طرف حساب فعال»، ادغام هویت این دو تا وقتی هر دو طرف حساب فعال‌اند انجام نمی‌شود. ابتدا یکی از دو طرف حساب را غیرفعال کنید و سپس ادغام را تکرار کنید.'
+      USING ERRCODE = '23505';
+  END IF;
+
+  ---------------------------------------------------------------------------
+  -- Step A: identity roots first, then every generic reference.
+  ---------------------------------------------------------------------------
+  FOR _mode IN SELECT unnest(ARRAY['identity_root','generic']) LOOP
+    FOR _key IN
+      SELECT k.key FROM jsonb_each_text(_registry) k
+      WHERE k.value = _mode ORDER BY k.key
+    LOOP
+      _n := public._person_merge_repoint(
+        split_part(_key, '.', 1), split_part(_key, '.', 2), p_winner_id, p_loser_id);
+      IF _n > 0 THEN
+        _repointed := _repointed || jsonb_build_object(_key, _n);
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  ---------------------------------------------------------------------------
+  -- Step B: identifiers. Drop the loser's exact duplicates first, then demote
+  -- its is_primary flags where the winner already holds a primary of that kind
+  -- (uq_person_identifiers_primary_active is (person_id, kind) WHERE is_primary
+  -- AND status <> 'revoked'), then move the rest.
+  ---------------------------------------------------------------------------
+  DELETE FROM public.person_identifiers li
+  WHERE li.person_id = p_loser_id
+    AND EXISTS (
+      SELECT 1 FROM public.person_identifiers wi
+      WHERE wi.person_id = p_winner_id
+        AND wi.kind = li.kind
+        AND wi.value_normalized = li.value_normalized
+    );
+
+  UPDATE public.person_identifiers li
+  SET is_primary = false
+  WHERE li.person_id = p_loser_id
+    AND li.is_primary
+    AND EXISTS (
+      SELECT 1 FROM public.person_identifiers wi
+      WHERE wi.person_id = p_winner_id
+        AND wi.kind = li.kind
+        AND wi.is_primary
+        AND wi.status <> 'revoked'
+    );
+
+  UPDATE public.person_identifiers SET person_id = p_winner_id WHERE person_id = p_loser_id;
+  GET DIAGNOSTICS _ids_moved = ROW_COUNT;
+
+  ---------------------------------------------------------------------------
+  -- Step C: aliases. Same de-duplication, plus the loser's display_name is
+  -- preserved as an alias of the winner so search still finds the old name.
+  -- alias_normalized is a GENERATED column, so it is never written directly.
+  ---------------------------------------------------------------------------
+  DELETE FROM public.person_aliases la
+  WHERE la.person_id = p_loser_id
+    AND EXISTS (
+      SELECT 1 FROM public.person_aliases wa
+      WHERE wa.person_id = p_winner_id
+        AND wa.alias_normalized = la.alias_normalized
+    );
+
+  UPDATE public.person_aliases SET person_id = p_winner_id WHERE person_id = p_loser_id;
+  GET DIAGNOSTICS _als_moved = ROW_COUNT;
+
+  INSERT INTO public.person_aliases (person_id, alias, alias_kind, source, created_by)
+  VALUES (p_winner_id, _loser.display_name, 'former', 'person_merge', _uid)
+  ON CONFLICT DO NOTHING;
+
+  ---------------------------------------------------------------------------
+  -- Step D: context links, de-duplicated on the same key that
+  -- uq_pcl_active_ref enforces.
+  ---------------------------------------------------------------------------
+  DELETE FROM public.person_context_links ll
+  WHERE ll.person_id = p_loser_id
+    AND EXISTS (
+      SELECT 1 FROM public.person_context_links wl
+      WHERE wl.person_id = p_winner_id
+        AND wl.context_kind IS NOT DISTINCT FROM ll.context_kind
+        AND wl.ref_table   IS NOT DISTINCT FROM ll.ref_table
+        AND wl.ref_id      IS NOT DISTINCT FROM ll.ref_id
+    );
+
+  UPDATE public.person_context_links SET person_id = p_winner_id WHERE person_id = p_loser_id;
+  GET DIAGNOSTICS _lnk_moved = ROW_COUNT;
+
+  ---------------------------------------------------------------------------
+  -- Step E: custom field values. The winner's own value wins on collision
+  -- (person_field_values is UNIQUE on (person_id, field_definition_id)).
+  ---------------------------------------------------------------------------
+  DELETE FROM public.person_field_values lv
+  WHERE lv.person_id = p_loser_id
+    AND EXISTS (
+      SELECT 1 FROM public.person_field_values wv
+      WHERE wv.person_id = p_winner_id
+        AND wv.field_definition_id = lv.field_definition_id
+    );
+
+  UPDATE public.person_field_values SET person_id = p_winner_id WHERE person_id = p_loser_id;
+  GET DIAGNOSTICS _n = ROW_COUNT;
+  IF _n > 0 THEN
+    _repointed := _repointed || jsonb_build_object('person_field_values.person_id', _n);
+  END IF;
+
+  ---------------------------------------------------------------------------
+  -- Step F: VERIFICATION SWEEP. SECURITY INVOKER means an RLS-filtered UPDATE
+  -- matches nothing instead of raising. Prove no reference to the loser
+  -- survived, or abort the whole merge.
+  ---------------------------------------------------------------------------
+  FOR _key, _mode IN SELECT k.key, k.value FROM jsonb_each_text(_registry) k ORDER BY k.key LOOP
+    CONTINUE WHEN _mode IN ('special_keep', 'skip');
+    _remaining := public._person_merge_count_refs(
+      split_part(_key, '.', 1), split_part(_key, '.', 2), p_loser_id);
+
+    IF _remaining > 0 THEN
+      RAISE EXCEPTION
+        'ادغام ناتمام ماند: % ردیف در ستون «%» هنوز به شخص بازنده ارجاع می‌دهد (احتمالاً به دلیل محدودیت سطح دسترسی). کل عملیات لغو شد.',
+        _remaining, _key
+        USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  ---------------------------------------------------------------------------
+  -- Step G: deactivate the loser. Never hard-deleted — its id may appear in
+  -- audit_logs and in person_merge_log itself.
+  ---------------------------------------------------------------------------
+  UPDATE public.persons
+  SET is_active = false,
+      notes = COALESCE(NULLIF(btrim(COALESCE(notes, '')), '') || E'\n', '')
+              || 'ادغام‌شده در شخص ' || p_winner_id::text || ' در تاریخ ' || now()::date::text,
+      updated_at = now()
+  WHERE id = p_loser_id;
+
+  ---------------------------------------------------------------------------
+  -- Step H: audit + candidate queue.
+  ---------------------------------------------------------------------------
+  INSERT INTO public.person_merge_log (
+    winner_id, loser_id, reason, repointed,
+    identifiers_moved, aliases_moved, links_moved, merged_by
+  )
+  VALUES (
+    p_winner_id, p_loser_id, NULLIF(btrim(COALESCE(p_reason, '')), ''), _repointed,
+    _ids_moved, _als_moved, _lnk_moved, _uid
+  )
+  RETURNING id INTO _log_id;
+
+  -- Only the exact pair is resolved. Other pending pairs that involve the loser
+  -- are left untouched on purpose: marking them 'merged' would be false, and
+  -- silently re-pointing them at the winner could collide with an existing pair.
+  -- The merge UI filters those out by requiring both persons to be active.
+  UPDATE public.person_merge_candidates
+  SET status = 'merged', reviewed_by = _uid, reviewed_at = now(), updated_at = now()
+  WHERE status = 'pending'
+    AND ((person_id_a = p_winner_id AND person_id_b = p_loser_id)
+      OR (person_id_a = p_loser_id  AND person_id_b = p_winner_id));
+
+  RETURN jsonb_build_object(
+    'winner_id',         p_winner_id,
+    'loser_id',          p_loser_id,
+    'merge_log_id',      _log_id,
+    'repointed',         _repointed,
+    'identifiers_moved', _ids_moved,
+    'aliases_moved',     _als_moved,
+    'links_moved',       _lnk_moved
+  );
+END;
+$function$
+
+-----

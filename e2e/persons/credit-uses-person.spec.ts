@@ -54,7 +54,8 @@ test("credit tables are fully person-backed with zero drift", async ({}) => {
   const creditTables = [
     "credit_requests",
     "credit_score_snapshots",
-    "customer_capital_allocations",
+    // `customer_capital_allocations` (the legacy, always-empty twin) was dropped by
+    // migration 280; only the dynamic table remains.
     "customer_capital_allocations_dynamic",
     "customer_credit_balance",
     "customer_credit_ledger",

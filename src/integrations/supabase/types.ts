@@ -1464,94 +1464,6 @@ export type Database = {
         }
         Relationships: []
       }
-      customer_capital_allocations: {
-        Row: {
-          approved_by: string | null
-          capital_date: string
-          capital_snapshot_id: string
-          consumed_amount: number
-          created_at: string
-          created_by: string | null
-          customer_id: string
-          customer_score: number
-          final_amount: number
-          held_amount: number
-          id: string
-          override_reason: string | null
-          salesperson_allocation_id: string
-          salesperson_id: string
-          score_source: string
-          status: string
-          system_suggested_amount: number
-          total_customer_score: number
-          updated_at: string
-        }
-        Insert: {
-          approved_by?: string | null
-          capital_date: string
-          capital_snapshot_id: string
-          consumed_amount?: number
-          created_at?: string
-          created_by?: string | null
-          customer_id: string
-          customer_score?: number
-          final_amount?: number
-          held_amount?: number
-          id?: string
-          override_reason?: string | null
-          salesperson_allocation_id: string
-          salesperson_id: string
-          score_source?: string
-          status?: string
-          system_suggested_amount?: number
-          total_customer_score?: number
-          updated_at?: string
-        }
-        Update: {
-          approved_by?: string | null
-          capital_date?: string
-          capital_snapshot_id?: string
-          consumed_amount?: number
-          created_at?: string
-          created_by?: string | null
-          customer_id?: string
-          customer_score?: number
-          final_amount?: number
-          held_amount?: number
-          id?: string
-          override_reason?: string | null
-          salesperson_allocation_id?: string
-          salesperson_id?: string
-          score_source?: string
-          status?: string
-          system_suggested_amount?: number
-          total_customer_score?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_capital_allocations_capital_snapshot_id_fkey"
-            columns: ["capital_snapshot_id"]
-            isOneToOne: false
-            referencedRelation: "daily_capital_snapshots"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_capital_allocations_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_capital_allocations_salesperson_allocation_id_fkey"
-            columns: ["salesperson_allocation_id"]
-            isOneToOne: false
-            referencedRelation: "salesperson_capital_allocations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customer_capital_allocations_dynamic: {
         Row: {
           binding_constraint: string | null
@@ -8517,74 +8429,6 @@ export type Database = {
         }
         Relationships: []
       }
-      salesperson_capital_allocations: {
-        Row: {
-          approved_by: string | null
-          capital_date: string
-          capital_snapshot_id: string
-          consumed_amount: number
-          created_at: string
-          created_by: string | null
-          final_amount: number
-          held_amount: number
-          id: string
-          override_reason: string | null
-          salesperson_id: string
-          score: number
-          score_source: string
-          status: string
-          system_suggested_amount: number
-          total_score: number
-          updated_at: string
-        }
-        Insert: {
-          approved_by?: string | null
-          capital_date: string
-          capital_snapshot_id: string
-          consumed_amount?: number
-          created_at?: string
-          created_by?: string | null
-          final_amount?: number
-          held_amount?: number
-          id?: string
-          override_reason?: string | null
-          salesperson_id: string
-          score?: number
-          score_source?: string
-          status?: string
-          system_suggested_amount?: number
-          total_score?: number
-          updated_at?: string
-        }
-        Update: {
-          approved_by?: string | null
-          capital_date?: string
-          capital_snapshot_id?: string
-          consumed_amount?: number
-          created_at?: string
-          created_by?: string | null
-          final_amount?: number
-          held_amount?: number
-          id?: string
-          override_reason?: string | null
-          salesperson_id?: string
-          score?: number
-          score_source?: string
-          status?: string
-          system_suggested_amount?: number
-          total_score?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "salesperson_capital_allocations_capital_snapshot_id_fkey"
-            columns: ["capital_snapshot_id"]
-            isOneToOne: false
-            referencedRelation: "daily_capital_snapshots"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       salesperson_capital_allocations_dynamic: {
         Row: {
           allocated_capital: number | null
@@ -10373,20 +10217,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      compute_customer_capital_allocations: {
-        Args: { p_salesperson_allocation_id: string }
-        Returns: {
-          capital_date: string
-          capital_snapshot_id: string
-          customer_id: string
-          customer_score: number
-          salesperson_allocation_id: string
-          salesperson_final_amount: number
-          salesperson_id: string
-          system_suggested_amount: number
-          total_customer_score: number
-        }[]
-      }
       compute_daily_capital: {
         Args: { p_capital_date?: string }
         Returns: {
@@ -10440,18 +10270,6 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
-      }
-      compute_salesperson_capital_allocations: {
-        Args: { p_capital_snapshot_id: string }
-        Returns: {
-          capital_date: string
-          capital_snapshot_id: string
-          daily_final_capital: number
-          salesperson_id: string
-          score: number
-          system_suggested_amount: number
-          total_score: number
-        }[]
       }
       consume_capital_allocation: {
         Args: {
@@ -12148,10 +11966,6 @@ export type Database = {
         }
         Returns: Json
       }
-      save_customer_capital_allocations: {
-        Args: { p_allocations: Json; p_salesperson_allocation_id: string }
-        Returns: Json
-      }
       save_daily_capital_snapshot: {
         Args: {
           p_capital_date: string
@@ -12185,10 +11999,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      save_salesperson_capital_allocations: {
-        Args: { p_allocations: Json; p_capital_snapshot_id: string }
-        Returns: number
       }
       search_messenger_messages_semantic: {
         Args: {
