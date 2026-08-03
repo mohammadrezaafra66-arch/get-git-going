@@ -13,6 +13,16 @@ export default defineConfig({
     /persons\/.*\.spec\.ts/,
     // Issue 219 — purchase request/document suites.
     /purchase\/.*\.spec\.ts/,
+    // P1+D8 mission (phase 12) — one suite per phase's hard gate. These are
+    // API-level against the deployed stack: the rules they assert are enforced
+    // in the database precisely so that no client can dodge them, so the
+    // honest test is the one that tries to dodge them.
+    /security\/.*\.spec\.ts/,
+    /scoring\/.*\.spec\.ts/,
+    /capital\/.*\.spec\.ts/,
+    /warehouse\/.*\.spec\.ts/,
+    /marketing\/.*\.spec\.ts/,
+    /products\/.*\.spec\.ts/,
   ],
   timeout: 45_000,
   expect: {
