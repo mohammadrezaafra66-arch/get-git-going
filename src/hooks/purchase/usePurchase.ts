@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { uploadWithProgress, type UploadProgress } from "@/lib/storage/upload-with-progress";
 
 /**
  * Issue 219 / C3 — one entry per purchase document linked to a request.
@@ -325,9 +326,14 @@ export function useUploadPurchaseReceipt() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async (input: { request_id: string; file: File }) => {
+    mutationFn: async (input: {
+      request_id: string;
+      file: File;
+      /** Phase 8.4: real upload progress for weak mobile connections. */
+      onProgress?: (progress: UploadProgress) => void;
+    }) => {
       if (!user?.id) throw new Error("احراز هویت لازم است");
-      const { file, request_id } = input;
+      const { file, request_id, onProgress } = input;
       const ext = (file.name.split(".").pop() ?? "").toLowerCase();
       if (!ALLOWED_EXT.includes(ext) && !ALLOWED_MIME.includes(file.type)) {
         throw new Error("فرمت فایل مجاز نیست (jpg, png, pdf)");
@@ -336,10 +342,16 @@ export function useUploadPurchaseReceipt() {
         throw new Error("حجم فایل بیش از ۱۰ مگابایت است");
       }
       const path = `${request_id}/${safeRandomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("purchase-receipts")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw new Error(upErr.message);
+      // Phase 8.4: same Storage endpoint and headers as supabase-js, but over
+      // XHR so upload progress is observable and transient failures retry.
+      await uploadWithProgress({
+        bucket: "purchase-receipts",
+        path,
+        file,
+        contentType: file.type,
+        upsert: false,
+        onProgress,
+      });
 
       const { error: insErr } = await supabase.from("purchase_receipts").insert({
         request_id,

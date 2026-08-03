@@ -28,9 +28,18 @@ RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_SUPABASE_PROJECT_ID
+# Build identity. Also declared in the runtime stage below (a Dockerfile ARG is
+# scoped to one stage), but needed HERE too: vite.config.ts reads GIT_SHA and
+# BUILD_TIME at build time to derive the service worker's version, which is what
+# makes a deployed client notice a new build. Non-secret, already surfaced by
+# GET /api/version.
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
     VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME \
     NODE_ENV=production \
     SELF_HOST_NODE=1 \
     NITRO_PRESET=node-server \

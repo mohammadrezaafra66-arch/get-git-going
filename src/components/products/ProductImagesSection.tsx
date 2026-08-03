@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { uploadWithProgress } from "@/lib/storage/upload-with-progress";
 import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
 
 interface ProductImageRow {
@@ -32,6 +33,8 @@ export function ProductImagesSection({ productId }: Props) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
+  /** Phase 8.4: 0–100 while a file is in flight, so the user sees movement. */
+  const [uploadPercent, setUploadPercent] = useState(0);
 
   const imagesQ = useQuery({
     enabled: !!productId,
@@ -116,10 +119,15 @@ export function ProductImagesSection({ productId }: Props) {
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
       const path = `${productId}/${safeRandomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw upErr;
+      // Phase 8.4: XHR upload so progress is observable and transient failures retry.
+      await uploadWithProgress({
+        bucket: BUCKET,
+        path,
+        file,
+        contentType: file.type,
+        upsert: false,
+        onProgress: (p) => setUploadPercent(p.percent),
+      });
       const existing = imagesQ.data ?? [];
       const isFirst = existing.length === 0;
       const nextOrder = existing.length ? Math.max(...existing.map((r) => r.sort_order)) + 1 : 0;
@@ -137,6 +145,7 @@ export function ProductImagesSection({ productId }: Props) {
       toast.error(e?.message ?? "خطا در بارگذاری");
     } finally {
       setUploading(false);
+      setUploadPercent(0);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
@@ -174,7 +183,7 @@ export function ProductImagesSection({ productId }: Props) {
           ) : (
             <ImagePlus className="ms-1 h-4 w-4" />
           )}
-          افزودن تصویر
+          {uploading && uploadPercent > 0 ? `در حال ارسال… ٪${uploadPercent}` : "افزودن تصویر"}
         </Button>
         <input
           ref={fileRef}

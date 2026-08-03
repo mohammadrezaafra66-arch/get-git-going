@@ -16,6 +16,7 @@ import { NotificationBell } from "@/shared/components/NotificationBell";
 import { QuoteRejectionNoticeDialog } from "@/shared/components/QuoteRejectionNoticeDialog";
 import { ClockInOutButton } from "@/components/attendance/ClockInOutButton";
 import { OnlineDot } from "@/components/presence/OnlineDot";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 export function AppHeader() {
   const { user, roles, signOut } = useAuth();
@@ -33,6 +34,8 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4">
       <SidebarTrigger />
       <div className="flex-1" />
+      {/* Renders only when the browser offers an install (https). */}
+      <InstallAppButton />
       <ClockInOutButton />
       <QuoteRejectionNoticeDialog />
       <NotificationBell />

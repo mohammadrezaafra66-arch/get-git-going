@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { uploadWithProgress, type UploadProgress } from "@/lib/storage/upload-with-progress";
 
 export type DocumentRow = {
   id: string;
@@ -145,6 +146,8 @@ export function useCreateDocument() {
       reference_id?: string | null;
       reference_type?: string | null;
       notes?: string | null;
+      /** Phase 8.4: real upload progress for weak mobile connections. */
+      onProgress?: (progress: UploadProgress) => void;
     }) => {
       if (!user?.id) throw new Error("احراز هویت لازم است");
       const { file, type } = input;
@@ -156,10 +159,15 @@ export function useCreateDocument() {
         throw new Error("حجم فایل بیش از ۲۵ مگابایت است");
       }
       const path = `${type}/${safeRandomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("documents")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw new Error(upErr.message);
+      // Phase 8.4: XHR upload so progress is observable and transient failures retry.
+      await uploadWithProgress({
+        bucket: "documents",
+        path,
+        file,
+        contentType: file.type,
+        upsert: false,
+        onProgress: input.onProgress,
+      });
 
       const { data, error: rpcErr } = await supabase.rpc("create_document", {
         p_type: type,
@@ -209,9 +217,7 @@ export function useReviewDocument() {
 }
 
 export async function getSignedDocumentUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from("documents")
-    .createSignedUrl(path, 3600);
+  const { data, error } = await supabase.storage.from("documents").createSignedUrl(path, 3600);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

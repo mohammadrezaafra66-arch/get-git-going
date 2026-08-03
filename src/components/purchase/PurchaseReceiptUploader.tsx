@@ -22,11 +22,25 @@ function formatBytes(n: number | null): string {
 export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** Phase 8.4: 0–100 while the file is in flight. */
+  const [percent, setPercent] = useState(0);
+  /** Phase 8.4: the last failed file, so «تلاش دوباره» can resend it. */
+  const [failedFile, setFailedFile] = useState<File | null>(null);
   const { data: receipts = [], isLoading } = usePurchaseReceipts(requestId);
   const upload = useUploadPurchaseReceipt();
 
   const handleFile = (file: File) => {
-    upload.mutate({ request_id: requestId, file });
+    setPercent(0);
+    setFailedFile(null);
+    upload.mutate(
+      { request_id: requestId, file, onProgress: (p) => setPercent(p.percent) },
+      {
+        // The hook already toasts the reason; this only keeps the file around
+        // so the user does not have to re-photograph a receipt after a drop-out.
+        onError: () => setFailedFile(file),
+        onSettled: () => setPercent(0),
+      },
+    );
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +85,21 @@ export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
         {upload.isPending ? (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">در حال آپلود...</p>
+            <p className="text-sm text-muted-foreground">
+              {percent > 0 ? `در حال آپلود… ٪${percent}` : "در حال آپلود..."}
+            </p>
+            <div
+              className="h-1.5 w-full max-w-xs overflow-hidden rounded bg-muted"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+            >
+              <div
+                className="h-full bg-primary transition-[width] duration-200"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
           </>
         ) : (
           <>
@@ -90,6 +118,20 @@ export function PurchaseReceiptUploader({ requestId }: { requestId: string }) {
           onChange={onPick}
         />
       </div>
+
+      {/* Phase 8.4 — retry. The helper already retried transient failures
+          internally; this is the manual path for when it exhausted them, so a
+          weak connection does not cost the user another trip to the receipt. */}
+      {failedFile && !upload.isPending ? (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2">
+          <span className="truncate text-xs text-muted-foreground">
+            ارسال «{failedFile.name}» ناموفق بود.
+          </span>
+          <Button type="button" size="sm" variant="outline" onClick={() => handleFile(failedFile)}>
+            تلاش دوباره
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex justify-center">
         <CameraCaptureButton

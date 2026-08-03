@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { uploadWithProgress, type UploadProgress } from "@/lib/storage/upload-with-progress";
 
 export type DeliveryReceiptRow = {
   id: string;
@@ -43,10 +44,7 @@ async function fetchReceipts(f: ListFilters): Promise<DeliveryReceiptRow[]> {
   return (data ?? []) as unknown as DeliveryReceiptRow[];
 }
 
-export function useMyDeliveryReceipts(
-  type?: string | null,
-  status?: string | null,
-) {
+export function useMyDeliveryReceipts(type?: string | null, status?: string | null) {
   return useQuery({
     queryKey: ["delivery-receipts", "me", type ?? "all", status ?? "all"],
     queryFn: () => fetchReceipts({ type, status, limit: 100 }),
@@ -62,14 +60,7 @@ export function useAllDeliveryReceipts(filters: {
   limit?: number;
   offset?: number;
 }) {
-  const {
-    type,
-    status,
-    invoice_id,
-    search = "",
-    limit = 20,
-    offset = 0,
-  } = filters;
+  const { type, status, invoice_id, search = "", limit = 20, offset = 0 } = filters;
   return useQuery({
     queryKey: [
       "delivery-receipts",
@@ -107,9 +98,7 @@ export function usePendingDeliveryReceipts() {
     queryFn: async () => {
       const rows = await fetchReceipts({ status: "pending_review", limit: 100 });
       return [...rows].sort(
-        (a, b) =>
-          new Date(a.review_deadline).getTime() -
-          new Date(b.review_deadline).getTime(),
+        (a, b) => new Date(a.review_deadline).getTime() - new Date(b.review_deadline).getTime(),
       );
     },
     refetchInterval: 30_000,
@@ -189,6 +178,8 @@ export function useCreateDeliveryReceipt() {
       invoice_id?: string | null;
       customer_id?: string | null;
       notes?: string | null;
+      /** Phase 8.4: real upload progress for weak mobile connections. */
+      onProgress?: (progress: UploadProgress) => void;
     }) => {
       if (!user?.id) throw new Error("احراز هویت لازم است");
       const { file, type } = input;
@@ -199,30 +190,31 @@ export function useCreateDeliveryReceipt() {
       const max = isVideo(file) ? VIDEO_MAX : IMAGE_PDF_MAX;
       if (file.size > max) {
         throw new Error(
-          isVideo(file)
-            ? "حجم ویدئو بیش از ۱۰۰ مگابایت است"
-            : "حجم فایل بیش از ۲۰ مگابایت است",
+          isVideo(file) ? "حجم ویدئو بیش از ۱۰۰ مگابایت است" : "حجم فایل بیش از ۲۰ مگابایت است",
         );
       }
       const path = `${type}/${safeRandomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("delivery-receipts")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (upErr) throw new Error(upErr.message);
+      // Phase 8.4: XHR upload so progress is observable and transient failures
+      // retry. Matters most here — this bucket accepts 100 MB videos.
+      await uploadWithProgress({
+        bucket: "delivery-receipts",
+        path,
+        file,
+        contentType: file.type,
+        upsert: false,
+        onProgress: input.onProgress,
+      });
 
-      const { data, error: rpcErr } = await supabase.rpc(
-        "create_delivery_receipt",
-        {
-          p_type: type,
-          p_storage_path: path,
-          p_file_name: file.name,
-          p_file_size: file.size,
-          p_mime_type: file.type || "application/octet-stream",
-          p_invoice_id: input.invoice_id ?? undefined,
-          p_customer_id: input.customer_id ?? undefined,
-          p_notes: input.notes ?? undefined,
-        },
-      );
+      const { data, error: rpcErr } = await supabase.rpc("create_delivery_receipt", {
+        p_type: type,
+        p_storage_path: path,
+        p_file_name: file.name,
+        p_file_size: file.size,
+        p_mime_type: file.type || "application/octet-stream",
+        p_invoice_id: input.invoice_id ?? undefined,
+        p_customer_id: input.customer_id ?? undefined,
+        p_notes: input.notes ?? undefined,
+      });
       if (rpcErr) {
         await supabase.storage.from("delivery-receipts").remove([path]);
         throw new Error(rpcErr.message);

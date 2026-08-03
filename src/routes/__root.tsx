@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 import { initCacheBuster, forceHardReload } from "@/lib/cache-buster";
+import { registerServiceWorker } from "@/lib/pwa/register-sw";
 
 import appCss from "../styles.css?url";
 
@@ -181,12 +182,27 @@ export const Route = createRootRoute({
           "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png",
       },
       { name: "twitter:card", content: "summary_large_image" },
+      // PWA (Phase 8.1). theme-color paints the Android status bar and the
+      // standalone title bar; it matches --primary in src/styles.css.
+      { name: "theme-color", content: "#007d7e" },
+      { name: "application-name", content: "افراکالا" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "افراکالا" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      // PWA (Phase 8.1). All icons are local files under public/icons/ —
+      // self-host rules 2 and 13 forbid depending on a CDN for critical assets.
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icons/icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { rel: "icon", href: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
       {
         rel: "preload",
         href: "/fonts/vazirmatn/Vazirmatn-400.woff2",
@@ -330,6 +346,8 @@ function RootComponent() {
   );
   useEffect(() => {
     initCacheBuster();
+    // No-ops in dev and over plain http (LAN today) — see register-sw.ts.
+    registerServiceWorker();
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
