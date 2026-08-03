@@ -25,12 +25,26 @@
 #   ignored). /api/version tolerates the suffix - it slices the first 7 chars for
 #   commitShort, which is still the SHA.
 #
+# THE CLEAN-TREE GUARD
+#   docker-compose.yml builds the web image with "context: ../..", i.e. the whole
+#   working tree - not the commit. So anything uncommitted, tracked or not, is
+#   copied into the image and runs live, while APP_GIT_SHA reports the last
+#   commit. That gap let requirement-219 work run on the server for months while
+#   it was believed to be disabled.
+#
+#   The script therefore refuses to build a dirty tree. Use -Force when you
+#   genuinely mean to ship uncommitted code; the image is then stamped "-dirty"
+#   so at least the stamp does not lie.
+#
 # USAGE
 #   .\deploy\lan\build.ps1              # build every service that has a build
 #   .\deploy\lan\build.ps1 web          # build one service
 #   .\deploy\lan\build.ps1 --no-cache   # extra args pass straight through
+#   .\deploy\lan\build.ps1 -Force       # build anyway with a dirty tree
 #
 #   This script does NOT start anything. Run .\deploy\lan\up.ps1 afterwards.
+
+param([switch]$Force)
 #
 # NOTE ON PROMOTING TO PRODUCTION
 #   VITE_SUPABASE_URL is baked into the client bundle at build time from
@@ -43,6 +57,20 @@ $ErrorActionPreference = "Stop"
 $envFile     = Join-Path $PSScriptRoot ".env.lan"
 $composeFile = Join-Path $PSScriptRoot "docker-compose.yml"
 $repoRoot    = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+
+# --- refuse to ship an uncommitted working tree -------------------------------
+# Untracked files count. The build context is the whole tree, so an untracked
+# file ends up in the image just as surely as a modified tracked one.
+$dirty = (& git -C $repoRoot status --porcelain 2>$null)
+if ($dirty -and -not $Force) {
+    Write-Host "Working tree is not clean." -ForegroundColor Red
+    & git -C $repoRoot status --short
+    Write-Host ""
+    Write-Host "docker-compose builds from the working tree, so these files would ship" -ForegroundColor Yellow
+    Write-Host "to the server while APP_GIT_SHA still reports the last commit." -ForegroundColor Yellow
+    Write-Host "Commit them first, or re-run with -Force to deploy anyway."
+    exit 1
+}
 
 if (-not (Test-Path $composeFile)) {
     Write-Host "Compose file not found: $composeFile" -ForegroundColor Red

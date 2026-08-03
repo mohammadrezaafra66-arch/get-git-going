@@ -21,13 +21,37 @@
 # USAGE
 #   .\deploy\lan\up.ps1              # start / update the stack
 #   .\deploy\lan\up.ps1 --build      # extra args are passed straight through
+#   .\deploy\lan\up.ps1 --build -Force   # build a dirty tree anyway
 #
 # NOTE: this script never edits .env.lan. It only reads it.
+#
+# THE CLEAN-TREE GUARD
+#   This script normally only starts containers, which is safe with a dirty tree
+#   and is exactly what you want mid-development. But "--build" makes Compose
+#   rebuild from "context: ../..", i.e. the whole working tree, so uncommitted
+#   code would ship live while APP_GIT_SHA still reports the last commit. The
+#   guard therefore fires only when a build is actually being requested.
+
+param([switch]$Force)
 
 $ErrorActionPreference = "Stop"
 
 $envFile     = Join-Path $PSScriptRoot ".env.lan"
 $composeFile = Join-Path $PSScriptRoot "docker-compose.yml"
+$repoRoot    = Resolve-Path (Join-Path $PSScriptRoot "..\..")
+
+if (@($args) -contains "--build") {
+    $dirty = (& git -C $repoRoot status --porcelain 2>$null)
+    if ($dirty -and -not $Force) {
+        Write-Host "Working tree is not clean." -ForegroundColor Red
+        & git -C $repoRoot status --short
+        Write-Host ""
+        Write-Host "--build rebuilds from the working tree, so these files would ship to the" -ForegroundColor Yellow
+        Write-Host "server while APP_GIT_SHA still reports the last commit." -ForegroundColor Yellow
+        Write-Host "Commit them first, or re-run with -Force to deploy anyway."
+        exit 1
+    }
+}
 
 if (-not (Test-Path $composeFile)) {
     Write-Host "Compose file not found: $composeFile" -ForegroundColor Red
