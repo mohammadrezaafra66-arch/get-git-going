@@ -13,11 +13,7 @@ import { LevelBadge } from "@/components/gamification/LevelBadge";
 import { XpProgressBar } from "@/components/gamification/XpProgressBar";
 import { ScoreChart } from "@/components/gamification/ScoreChart";
 import { AchievementCard } from "@/components/gamification/AchievementCard";
-import {
-  useMyProgress,
-  useMyRank,
-  useMyAchievements,
-} from "@/hooks/gamification/useGamification";
+import { useMyProgress, useMyRank, useMyAchievements } from "@/hooks/gamification/useGamification";
 import { listKpis, type EmployeeScore } from "@/lib/operations/gamification";
 import { hasAnyRole } from "@/lib/rbac/roles";
 
@@ -173,18 +169,20 @@ function GamificationProfile() {
           ) : (
             <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
               {(achievementsQ.data ?? []).slice(0, 6).map((row) => {
-                const ach = (row as unknown as {
-                  id: string;
-                  unlocked_at: string;
-                  achievements: {
+                const ach = (
+                  row as unknown as {
                     id: string;
-                    key: string;
-                    title_fa: string;
-                    description: string | null;
-                    icon: string | null;
-                    xp_reward: number;
-                  };
-                }).achievements;
+                    unlocked_at: string;
+                    achievements: {
+                      id: string;
+                      key: string;
+                      title_fa: string;
+                      description: string | null;
+                      icon: string | null;
+                      xp_reward: number;
+                    };
+                  }
+                ).achievements;
                 return (
                   <AchievementCard
                     key={row.id}
@@ -214,7 +212,12 @@ function GamificationProfile() {
           </Link>
         </Button>
         {isAdmin && (
-          <Button asChild size="lg" variant="secondary" className="h-16 gap-2 text-base md:col-span-2">
+          <Button
+            asChild
+            size="lg"
+            variant="secondary"
+            className="h-16 gap-2 text-base md:col-span-2"
+          >
             <Link to="/gamification/settings">
               <Settings className="h-5 w-5" />
               تنظیمات وزن KPIها (مدیر)
@@ -230,9 +233,7 @@ function RankStat({ label, value }: { label: string; value: number | null | unde
   return (
     <div className="rounded-md border bg-muted/30 p-2 text-center">
       <div className="text-[10px] text-muted-foreground">{label}</div>
-      <div className="font-bold">
-        {value && value > 0 ? `#${toPersianDigits(value)}` : "—"}
-      </div>
+      <div className="font-bold">{value && value > 0 ? `#${toPersianDigits(value)}` : "—"}</div>
     </div>
   );
 }
@@ -267,7 +268,10 @@ function ScoreBreakdownCard({ employeeId }: { employeeId: string }) {
         .eq("employee_id", employeeId)
         .maybeSingle();
       if (error) throw error;
-      return data as unknown as Pick<EmployeeScore, "breakdown" | "total_score" | "monthly_score"> | null;
+      return data as unknown as Pick<
+        EmployeeScore,
+        "breakdown" | "total_score" | "monthly_score"
+      > | null;
     },
     staleTime: 60_000,
   });
@@ -307,11 +311,19 @@ function ScoreBreakdownCard({ employeeId }: { employeeId: string }) {
             {entries.map(([key, v]) => {
               const contribution = Number(v?.contribution ?? 0);
               const share = totalAbs > 0 ? (Math.abs(contribution) / totalAbs) * 100 : 0;
+              const isManual = key === "manual_adjustment";
+              // D8-5: a manual entry has to explain itself afterwards — how much
+              // of today's score it accounts for, and how long it still applies.
+              const activeManualEntries = isManual
+                ? (v?.entries ?? []).filter((e) => Number(e.factor) > 0)
+                : [];
               return (
                 <div key={key} className="space-y-1">
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{labelMap.get(key) ?? key}</span>
+                      <span className="font-medium">
+                        {isManual ? "تعدیل دستی" : (labelMap.get(key) ?? key)}
+                      </span>
                       <Badge variant="outline" className="text-[10px]">
                         {periodLabel(v?.period)}
                       </Badge>
@@ -321,6 +333,23 @@ function ScoreBreakdownCard({ employeeId }: { employeeId: string }) {
                     </span>
                   </div>
                   <Progress value={share} className="h-2" />
+                  {isManual && activeManualEntries.length > 0 && (
+                    <ul className="mt-1 space-y-1 pr-3 text-xs text-muted-foreground">
+                      {activeManualEntries.map((e) => (
+                        <li key={e.event_id} className="flex items-start justify-between gap-2">
+                          <span className="flex-1">
+                            {e.reason || "بدون توضیح"}
+                            {" — "}
+                            {toPersianDigits(e.months_remaining)} ماه باقی‌مانده از{" "}
+                            {toPersianDigits(e.effect_months)} ماه
+                          </span>
+                          <span className="tabular-nums" dir="ltr">
+                            {toPersianDigits(Number(e.effective_amount).toFixed(2))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
