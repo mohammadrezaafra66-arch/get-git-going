@@ -21,6 +21,9 @@ Last e2e: not yet run this program (documented baseline 155 green / 6 red / 4 sk
       15 left for owner input. Re-scan shows zero A/B rows remaining.
 - [x] M1.2 remove the legacy capital allocation path — migration 280 — 2 empty tables,
       8 functions, 1 stray trigger and 5 policies removed; 1 dynamic-path RLS policy repaired.
+- [x] M1.3 restrict the `viewer` role — migration 281 — viewer-readable relations 58 → 28;
+      88 restrictive policies, 8 views guarded, 4 tables that had RLS switched off closed;
+      new spec `e2e/security/viewer-restrictions.spec.ts` 40/40 green.
 
 ## M1.1 detail
 
@@ -116,9 +119,51 @@ the dynamic tables — an RLS widening for `sales`, recorded in the plan documen
 - `e2e/persons/credit-uses-person.spec.ts`: 2 passed, 1 failed — the failure is the documented
   red `persons-credit-uses-person` (a UI assertion), unchanged by this phase.
 
+## M1.3 detail — restrict the `viewer` role (migration 281)
+
+Plan, enumeration and result: `docs/asan/viewer-restriction-plan.md`.
+
+**Measured, not assumed.** A real JWT was minted and all 234 relations were requested through
+PostgREST. A viewer-only account could read **58**; it can now read **28**, and every survivor
+is a name, a lookup, learning material or an aggregate.
+
+**Method.** One `RESTRICTIVE` policy per denied table (88 tables), AND-ed with the existing
+permissive policies so it can only subtract and only for viewer-only users. Nothing existing
+was rewritten. Eight views that run with owner rights were re-created as their own unchanged
+definition wrapped in one guard.
+
+**Two surprises, both chased down.**
+1. *The first measurement was of the wrong account.* `where role='viewer' limit 1` returns the
+   owner's account, which also holds admin/manager/sales/accountant, so the "before" figure of
+   146 relations was an administrator's. Rule 2.9's trap in a different costume. The probe and
+   the spec now both assert the subject holds `viewer` and nothing else.
+2. *Four backup tables had RLS switched off entirely* —
+   `payment_receipts_backup_20260722`, `knowledge_documents_backup_20260722` and two
+   `dynamic_parameter_weights_backup_*`. No policy on them had any effect and every
+   authenticated user could read them whole. RLS enabled, admin-only read policy added, and
+   both the migration and the spec now assert zero tables in `public` lack RLS.
+
+**Decision.** The restriction keys on `public.is_viewer_only(uuid)` — sole role is `viewer` —
+not on "holds viewer". Rejected the literal reading because it would blind the owner's own
+account and would be the only place in this codebase where gaining a role removes access.
+
+**Verification.**
+- Dry run in `BEGIN … ROLLBACK` first; applied with `--single-transaction`; PostgREST restarted.
+- `e2e/security/viewer-restrictions.spec.ts` — **40 tests, all green**. It logs in as
+  `test.viewer@afrakala.local` through GoTrue exactly as the brief specifies, counts rows rather
+  than trusting status codes, checks the `persons → person_identifiers` embed, proves a
+  salesperson is unaffected, and proves the viewer cannot write.
+- Rollback: `docs/verification/281-down.sql`.
+
+**Left for the owner** (in the plan document): a viewer cannot see product listings because
+`role_permissions.viewer.products.can_view` was already `false` before this phase. Granting it
+is a widening, so it was not done inside a restriction phase.
+
 ## HANDOFF STATE
-Next action: M1 Phase 1.3 — restrict the `viewer` role. Enumerate RLS policies,
-`role_permissions` rows and frontend guards into `docs/asan/viewer-restriction-plan.md`, then
-tighten `can_read_person(uuid)` (migration 264) rather than adding a fourth parallel policy.
+Next action: M1 Phase 1.4 — clean the repository. Delete `homemarkett_audit_dashboard.html`,
+the stray root image and `docs/execution/files.zip`; move `اشخاص.xlsx` and `کالا.xlsx` to
+`docs/asan/reference/` and keep them tracked; rename
+`docs/research/New Text Document.txt` → `docs/research/exec-prompt-194-209.md`; add `.claude/`
+to `.gitignore`.
 Blocked on: nothing
 Files in flight: none
