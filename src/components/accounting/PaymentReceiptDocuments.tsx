@@ -113,6 +113,59 @@ export const ALLOWED_DOC_ACCEPT = [
 export const MAX_DOC_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 export const MAX_DOC_COUNT = 10;
 
+/**
+ * Extension -> MIME, used only when the browser reports nothing usable.
+ *
+ * Migration 267 gave payment-receipt-documents a MIME allowlist. Uploading with
+ * `application/octet-stream` (the old fallback) would now be rejected by
+ * Storage, and allowing octet-stream in the bucket instead would have made the
+ * allowlist meaningless since any file can be sent under that type. Phones
+ * routinely report an empty type for screenshots and forwarded files, which is
+ * exactly the case this table covers.
+ */
+const EXTENSION_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  heic: "image/heic",
+  heif: "image/heif",
+  svg: "image/svg+xml",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  rtf: "application/rtf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  zip: "application/zip",
+  rar: "application/vnd.rar",
+  "7z": "application/x-7z-compressed",
+};
+
+/**
+ * The Content-Type to upload a staged file under.
+ *
+ * Falls back to application/octet-stream only for an extension we do not know,
+ * which validateReceiptFile already rejects before upload — so that path means
+ * something unexpected got through and Storage should refuse it. Guessing a
+ * concrete type here (e.g. defaulting to PDF) would mislabel the object and
+ * defeat the point of the allowlist.
+ */
+function resolveUploadContentType(file: File): string {
+  const reported = (file.type || "").toLowerCase();
+  if (reported && reported !== "application/octet-stream") return reported;
+  const ext = file.name.toLowerCase().split(".").pop() ?? "";
+  return EXTENSION_MIME[ext] ?? "application/octet-stream";
+}
+
 export type ReceiptDocumentRow = {
   id: string;
   receipt_id: string;
@@ -227,7 +280,8 @@ function effectiveExtractedValue(
     }
     case "receipt_time": {
       if (!extracted.receipt_time) return undefined;
-      const tm = toHtmlTimeValue(extracted.receipt_time) || normalizeReceiptTime(extracted.receipt_time);
+      const tm =
+        toHtmlTimeValue(extracted.receipt_time) || normalizeReceiptTime(extracted.receipt_time);
       return tm || undefined;
     }
     case "source_bank":
@@ -312,8 +366,9 @@ export async function uploadReceiptDocuments(
   for (const file of files) {
     try {
       const path = `${receiptId}/${safeRandomUUID()}-${safeFileName(file.name)}`;
+      const contentType = resolveUploadContentType(file);
       const { error: upErr } = await supabase.storage.from(RECEIPT_DOCS_BUCKET).upload(path, file, {
-        contentType: file.type || "application/octet-stream",
+        contentType,
         upsert: false,
       });
       if (upErr) throw upErr;
@@ -324,7 +379,9 @@ export async function uploadReceiptDocuments(
           receipt_id: receiptId,
           storage_path: path,
           file_name: file.name,
-          file_type: file.type || "application/octet-stream",
+          // Record the type the object was actually stored under, so the
+          // viewer's isImage/PDF branches agree with Storage.
+          file_type: contentType,
           file_size: file.size,
           uploaded_by: userId,
         } as never)
@@ -344,7 +401,7 @@ export async function uploadReceiptDocuments(
         diff: {
           document_id: (row as { id: string }).id,
           file_name: file.name,
-          file_type: file.type,
+          file_type: contentType,
           file_size: file.size,
           storage_path: path,
         },

@@ -5,6 +5,7 @@ import { Loader2, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
@@ -37,9 +38,21 @@ interface Rule {
   id: string;
   code: string;
   label_fa: string;
+  /** The value the editor works on: the pending version if one is scheduled, otherwise the one in force. */
   weight: number;
   is_active: boolean;
   direction: string;
+  /** The weight actually in force today. */
+  currentWeight: number;
+  /** Set only when a change has been scheduled but has not taken effect yet (migration 266). */
+  pendingWeight: number | null;
+  pendingFrom: string | null;
+}
+
+/** What upsert_dynamic_parameter_weight returns since migration 266. */
+interface WeightUpsertResult {
+  outcome: "scheduled_next_period" | "pending_version_corrected" | "bootstrapped" | "unchanged";
+  effective_from: string | null;
 }
 
 // Item 141.2 — this page manages both scoring sides. Customer scores drive a
@@ -96,24 +109,51 @@ function CreditRulesPage() {
       if (pErr) throw pErr;
       const ids = (params ?? []).map((p) => p.id);
       if (ids.length === 0) return [];
+      // Since migration 266 a weight change no longer edits the row in force —
+      // it closes it and schedules a new version from the next period. So a
+      // parameter can legitimately have BOTH a version in force and a pending
+      // one, and filtering on `valid_to is null` would have shown only the
+      // pending value while labelling it as current.
       const { data: weights, error: wErr } = await supabase
         .from("dynamic_parameter_weights")
         .select("parameter_id, weight, valid_from, valid_to")
         .in("parameter_id", ids)
-        .is("valid_to", null);
+        .order("valid_from", { ascending: true });
       if (wErr) throw wErr;
-      const wMap = new Map<string, number>();
+
+      const today = new Date().toISOString().slice(0, 10);
+      const currentMap = new Map<string, number>();
+      const pendingMap = new Map<string, { weight: number; from: string }>();
       (weights ?? []).forEach((w) => {
-        wMap.set(w.parameter_id as string, Number(w.weight));
+        const pid = w.parameter_id as string;
+        const from = String(w.valid_from);
+        const to = w.valid_to ? String(w.valid_to) : null;
+        if (from <= today && (to === null || to >= today)) {
+          // Ascending order means the last match wins = the latest version in force.
+          currentMap.set(pid, Number(w.weight));
+        } else if (from > today && !pendingMap.has(pid)) {
+          // First match wins = the soonest scheduled version.
+          pendingMap.set(pid, { weight: Number(w.weight), from });
+        }
       });
-      return (params ?? []).map((p) => ({
-        id: p.id as string,
-        code: p.code as string,
-        label_fa: p.label_fa as string,
-        is_active: p.is_active as boolean,
-        direction: p.direction as string,
-        weight: wMap.get(p.id as string) ?? 0,
-      }));
+
+      return (params ?? []).map((p) => {
+        const id = p.id as string;
+        const currentWeight = currentMap.get(id) ?? 0;
+        const pending = pendingMap.get(id) ?? null;
+        return {
+          id,
+          code: p.code as string,
+          label_fa: p.label_fa as string,
+          is_active: p.is_active as boolean,
+          direction: p.direction as string,
+          // Edit the value that will actually apply going forward.
+          weight: pending ? pending.weight : currentWeight,
+          currentWeight,
+          pendingWeight: pending ? pending.weight : null,
+          pendingFrom: pending ? pending.from : null,
+        };
+      });
     },
   });
 
@@ -129,7 +169,7 @@ function CreditRulesPage() {
       weight: number;
       is_active: boolean;
     }) => {
-      const { error } = await supabase.rpc(
+      const { data, error } = await supabase.rpc(
         "upsert_dynamic_parameter_weight" as never,
         {
           _parameter_id: id,
@@ -138,9 +178,24 @@ function CreditRulesPage() {
         } as never,
       );
       if (error) throw error;
+      return data as unknown as WeightUpsertResult | null;
     },
-    onSuccess: () => {
-      toast.success("قانون به‌روزرسانی شد");
+    onSuccess: (result) => {
+      // Migration 266: a weight change never rewrites the period already in
+      // force, so the manager must be told which date it actually applies from
+      // — otherwise the change looks like it did nothing.
+      const from = result?.effective_from ? isoToJalaliDisplay(result.effective_from) : "";
+      if (result?.outcome === "scheduled_next_period" && from) {
+        toast.success(
+          `وزن جدید ثبت شد و از ${from} اعمال می‌شود (امتیازهای دورهٔ جاری تغییر نمی‌کند)`,
+        );
+      } else if (result?.outcome === "pending_version_corrected" && from) {
+        toast.success(`وزنِ در انتظار اصلاح شد؛ همچنان از ${from} اعمال می‌شود`);
+      } else if (result?.outcome === "unchanged") {
+        toast.success("قانون به‌روزرسانی شد");
+      } else {
+        toast.success("قانون به‌روزرسانی شد");
+      }
       queryClient.invalidateQueries({ queryKey: ["credit-rules", entityType] });
     },
     onError: (e: unknown) => {
@@ -200,7 +255,9 @@ function CreditRulesPage() {
               "این صفحه برای تنظیم پارامترهای امتیازدهی است.\n" +
               "زبانهٔ «مشتریان» امتیاز مشتری و زبانهٔ «کارشناسان فروش» امتیاز کارشناس را تنظیم می‌کند.\n" +
               "هر پارامتر یک «وزن» بین ۰ تا ۱ دارد؛ مجموع وزن‌های فعال هر زبانه باید ۱.۰۰ شود.\n" +
-              "برای فعال/غیرفعال‌کردن از کلید کناری استفاده کنید و سپس روی «ذخیره» بزنید."
+              "برای فعال/غیرفعال‌کردن از کلید کناری استفاده کنید و سپس روی «ذخیره» بزنید.\n" +
+              "تغییر وزن از ابتدای دورهٔ بعد اعمال می‌شود و امتیازهای محاسبه‌شدهٔ دورهٔ جاری را تغییر نمی‌دهد.\n" +
+              "تا پیش از رسیدن آن تاریخ می‌توانید همان مقدار را دوباره اصلاح کنید."
             }
           />
         }
@@ -317,6 +374,13 @@ function CreditRulesPage() {
                             }))
                           }
                         />
+                        {/* 266 — a scheduled change is not yet in force; say so. */}
+                        {r.pendingFrom && (
+                          <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-500">
+                            اکنون {r.currentWeight} · مقدار جدید از{" "}
+                            {isoToJalaliDisplay(r.pendingFrom)} اعمال می‌شود
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Switch
