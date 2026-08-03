@@ -44,6 +44,8 @@ import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/const
 import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { usePredictedLineServices } from "@/lib/sales/line-services";
+import { MandatoryServiceBadge } from "@/components/sales/quotes/MandatoryServiceBadge";
 import {
   Dialog,
   DialogContent,
@@ -146,6 +148,12 @@ function NewQuotePage() {
     },
     staleTime: 10 * 60_000,
   });
+
+  // Requirement 223 — predict the mandatory services for the products in the
+  // cart so the obligation is visible before the proforma is saved.
+  const predictedServices = usePredictedLineServices(
+    items.map((i) => i.product_id).filter((v): v is string => Boolean(v)),
+  );
 
   const totals = useMemo(() => computeTotals(items), [items]);
 
@@ -629,6 +637,19 @@ function NewQuotePage() {
                           <div className="text-[11px] text-muted-foreground font-mono">
                             {it.sku_snapshot}
                           </div>
+                        )}
+                        {/* Requirement 223 — shown BEFORE saving so the
+                            salesperson sees the obligation while quoting, not
+                            as a surprise afterwards. The database attaches and
+                            enforces it regardless of what is rendered here. */}
+                        {(it.product_id ? (predictedServices.get(it.product_id) ?? []) : []).map(
+                          (svc) => (
+                            <MandatoryServiceBadge
+                              key={svc.service_type_id}
+                              className="mt-1"
+                              text={svc.display_text}
+                            />
+                          ),
                         )}
                       </td>
                       <td className="p-2 align-top text-[11px] text-muted-foreground">

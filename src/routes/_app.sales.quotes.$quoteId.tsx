@@ -44,6 +44,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { checkQuoteStockAvailability } from "@/lib/warehouses/queries";
+import {
+  useQuoteLineServices,
+  fetchQuoteLineServices,
+  type QuoteLineService,
+} from "@/lib/sales/line-services";
+import { MandatoryServiceBadge } from "@/components/sales/quotes/MandatoryServiceBadge";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -161,6 +167,8 @@ function QuoteDetailPage() {
     },
   });
 
+  const lineServicesQuery = useQuoteLineServices(quoteId, !!user && !!quoteQuery.data);
+
   if (quoteQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
@@ -192,6 +200,8 @@ function QuoteDetailPage() {
 
   const isOwner = quote.salesperson_id === user?.id;
   const items = itemsQuery.data ?? [];
+  // Requirement 223 — mandatory services per line (migration 276).
+  const lineServices: Map<string, QuoteLineService[]> = lineServicesQuery.data ?? new Map();
 
   return (
     <div className="space-y-5">
@@ -361,7 +371,18 @@ function QuoteDetailPage() {
                         {items.map((it) => (
                           <tr key={it.id} className="hover:bg-muted/30">
                             <td className="p-3 align-top font-medium">
-                              {it.title_snapshot ?? it.free_item_name ?? "—"}
+                              <div>{it.title_snapshot ?? it.free_item_name ?? "—"}</div>
+                              {/* Requirement 223 — the obligation the database
+                                  attached to this line, shown as fact. */}
+                              {(lineServices.get(it.id) ?? [])
+                                .filter((s) => s.is_mandatory)
+                                .map((s) => (
+                                  <MandatoryServiceBadge
+                                    key={s.id}
+                                    className="mt-1"
+                                    text={s.display_text ?? s.service_name}
+                                  />
+                                ))}
                             </td>
                             <td className="p-3 align-top font-mono text-xs text-muted-foreground">
                               {it.sku_snapshot ?? "—"}
@@ -397,6 +418,16 @@ function QuoteDetailPage() {
                             {it.sku_snapshot}
                           </div>
                         )}
+                        {(lineServices.get(it.id) ?? [])
+                          .filter((s) => s.is_mandatory)
+                          .map((s) => (
+                            <MandatoryServiceBadge
+                              key={s.id}
+                              compact
+                              className="mt-1"
+                              text={s.display_text ?? s.service_name}
+                            />
+                          ))}
                       </div>
                       <span className="text-[11px] text-muted-foreground">
                         {SALES_QUOTE_SOURCE_LABELS[it.source]}
@@ -522,12 +553,17 @@ function QuoteActionButtons({
       const { data: itemRows, error } = await supabase
         .from("sales_quote_items")
         .select(
-          "title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
+          "id, title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
         )
         .eq("quote_id", quote.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
+      // Requirement 223 — the printed document must carry the obligation.
+      const svcByLine = await fetchQuoteLineServices(quote.id);
       const items = (itemRows ?? []).map((it) => ({
+        mandatory_services: (svcByLine.get(it.id as string) ?? [])
+          .filter((s) => s.is_mandatory)
+          .map((s) => s.display_text ?? s.service_name),
         title: (it.title_snapshot as string | null) ?? (it.free_item_name as string | null) ?? "—",
         sku: (it.sku_snapshot as string | null) ?? null,
         quantity: Number(it.quantity ?? 0),

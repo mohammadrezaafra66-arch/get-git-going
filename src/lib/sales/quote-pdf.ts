@@ -25,6 +25,13 @@ export interface QuotePdfItem {
   unit_price: number;
   discount_amount: number;
   line_total: number;
+  /**
+   * Requirement 223 — mandatory services attached to this line, e.g.
+   * «این کالا حتماً باید بسته‌بندی شود.». They must appear on the PRINTED
+   * document: the warehouse and the customer both work from paper, and an
+   * obligation that only exists on screen is not enforced in the real world.
+   */
+  mandatory_services?: string[];
 }
 
 export interface QuotePdfPayload {
@@ -112,7 +119,13 @@ function buildQuoteHtml(payload: QuotePdfPayload): string {
     .map(
       (it, i) => `<tr>
       <td class="c">${toFaDigits(i + 1)}</td>
-      <td>${escapeHtml(it.title || "—")}</td>
+      <td>${escapeHtml(it.title || "—")}${
+        (it.mandatory_services ?? []).length > 0
+          ? `<div class="svc">${(it.mandatory_services ?? [])
+              .map((t) => `▪ ${escapeHtml(t)}`)
+              .join("<br/>")}</div>`
+          : ""
+      }</td>
       <td class="sku">${escapeHtml(it.sku ?? "—")}</td>
       <td class="c">${fmtNum(it.quantity)}</td>
       <td class="m">${formatMoney(it.unit_price)}</td>
@@ -167,6 +180,8 @@ function buildQuoteHtml(payload: QuotePdfPayload): string {
   td.m { text-align: left; direction: ltr; font-variant-numeric: tabular-nums; }
   td.strong { font-weight: 700; }
   td.sku { font-size: 11.5px; color: #374151; direction: ltr; text-align: left; }
+  /* Requirement 223 — mandatory service note under the product name. */
+  .svc { margin-top: 3px; font-size: 11px; font-weight: 700; color: #92400e; }
   .totals { margin-top: 16px; width: 100%; }
   .totals td { border: 1px solid #d1d5db; padding: 8px 10px; }
   .totals .tl { text-align: right; color: #374151; }
