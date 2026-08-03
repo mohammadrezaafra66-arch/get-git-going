@@ -56,7 +56,11 @@ test.describe("Requirement 215 - quote stock rule at creation vs finalization", 
   test("quote detail source defines finalization stock preview messages", async () => {
     const detailSource = readFileSync("src/routes/_app.sales.quotes.$quoteId.tsx", "utf8");
     expect(detailSource).toContain("checkQuoteStockAvailability");
-    expect(detailSource).toContain("موجودی همهٔ کالاهای این پیش‌فاکتور در انبار انتخاب‌شده کافی است");
+    // Updated by phase 7 (D8-8, migrations 274/275). Warehouses are now chosen
+    // PER LINE, so «در انبار انتخاب‌شده» (one selected warehouse) became
+    // «در انبارهای مربوطه» (the relevant warehouses). The copy change is the
+    // intended consequence of the feature; this assertion was simply stale.
+    expect(detailSource).toContain("موجودی همهٔ کالاهای این پیش‌فاکتور در انبارهای مربوطه کافی است");
     expect(detailSource).toContain("موجودی کافی نیست — قطعی‌کردن انجام نمی‌شود");
   });
 
