@@ -294,6 +294,9 @@ function NewQuotePage() {
         discount_amount: it.discount_amount,
         line_total: lineTotal(it),
         source: it.source,
+        // D8-8 (275) — null means "fall back to the document warehouse", which
+        // is what every line did before line-level selection existed.
+        warehouse_id: it.warehouse_id ?? null,
       }));
 
       // Atomic RPC: creates quote + items + audit in a single DB transaction.
@@ -610,6 +613,7 @@ function NewQuotePage() {
                     <th className="p-2 text-right font-medium">کالا</th>
                     <th className="p-2 text-right font-medium">منبع</th>
                     <th className="p-2 text-right font-medium">تعداد</th>
+                    <th className="p-2 text-right font-medium">انبار</th>
                     <th className="p-2 text-right font-medium">قیمت واحد</th>
                     <th className="p-2 text-right font-medium">تخفیف</th>
                     <th className="p-2 text-right font-medium">جمع</th>
@@ -643,6 +647,19 @@ function NewQuotePage() {
                           onChange={(e) =>
                             updateItem(it.key, { quantity: Number(e.target.value) || 0 })
                           }
+                        />
+                      </td>
+                      {/* D8-8 — line-level warehouse. Defaults to «انبار سند»
+                          so the common single-warehouse proforma costs no extra
+                          interaction; changing it is possible but not the
+                          default interaction cost. */}
+                      <td className="p-2 align-top">
+                        <WarehouseSelect
+                          value={it.warehouse_id ?? null}
+                          onChange={(v) => updateItem(it.key, { warehouse_id: v })}
+                          placeholder="انبار سند"
+                          className="w-40"
+                          hideLabel
                         />
                       </td>
                       <td className="p-2 align-top">

@@ -662,10 +662,10 @@ function QuoteActionButtons({
           {isAccepting && (
             <div className="space-y-3 py-2">
               <WarehouseSelect
-                label="انبار کسر موجودی"
+                label="انبار پیش‌فرض کسر موجودی"
                 value={confirmWarehouseId}
                 onChange={setConfirmWarehouseId}
-                hint="می‌توانید انبار انتخاب‌شدهٔ پیش‌فاکتور را همین حالا تغییر دهید."
+                hint="فقط روی ردیف‌هایی اثر دارد که انبار مخصوص خودشان را ندارند؛ ردیفی که انبارش مشخص شده جابه‌جا نمی‌شود."
               />
 
               {stockCheckQ.isLoading ? (
@@ -674,17 +674,40 @@ function QuoteActionButtons({
                 </p>
               ) : (stockCheckQ.data ?? []).length === 0 ? null : shortages.length === 0 ? (
                 <p className="rounded-md border border-emerald-500/40 bg-emerald-50 p-2 text-xs leading-6 dark:bg-emerald-950/20">
-                  موجودی همهٔ کالاهای این پیش‌فاکتور در انبار انتخاب‌شده کافی است.
+                  موجودی همهٔ کالاهای این پیش‌فاکتور در انبارهای مربوطه کافی است.
                 </p>
               ) : (
                 <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs leading-6">
                   <div className="font-medium text-destructive">
                     موجودی کافی نیست — قطعی‌کردن انجام نمی‌شود:
                   </div>
+                  {/* D8-8: a generic "insufficient stock" is not acceptable here —
+                      the message must say WHICH product in WHICH warehouse. */}
                   {shortages.map((s) => (
-                    <div key={s.product_id}>
-                      {s.product_name}: نیاز {formatNumber(s.required)} / موجود{" "}
-                      {formatNumber(s.available)}
+                    <div key={`${s.product_id}:${s.warehouse_id ?? "none"}`}>
+                      {s.product_name} — انبار «{s.warehouse_name ?? "نامشخص"}»: نیاز{" "}
+                      {formatNumber(s.required)} / موجود {formatNumber(s.available)}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Per-warehouse availability for every line, not just shortages, so
+                  the accountant can see the split before confirming it. */}
+              {!stockCheckQ.isLoading && (stockCheckQ.data ?? []).length > 0 && (
+                <div className="space-y-1 rounded-md border p-2 text-xs leading-6">
+                  <div className="font-medium">تفکیک موجودی به‌ازای انبار</div>
+                  {(stockCheckQ.data ?? []).map((s) => (
+                    <div
+                      key={`avail:${s.product_id}:${s.warehouse_id ?? "none"}`}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="flex-1">
+                        {s.product_name} — «{s.warehouse_name ?? "نامشخص"}»
+                      </span>
+                      <span className={s.is_sufficient ? "text-emerald-600" : "text-destructive"}>
+                        {formatNumber(s.required)} / {formatNumber(s.available)}
+                      </span>
                     </div>
                   ))}
                 </div>

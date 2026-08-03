@@ -31,6 +31,14 @@ export interface DraftQuoteItem {
   quantity: number;
   unit_price: number;
   discount_amount: number;
+  /**
+   * D8-8 (274/275): the warehouse this LINE is drawn from, so one proforma can
+   * pull from several warehouses. `null` means "use the document's warehouse",
+   * which keeps the common single-warehouse case exactly as cheap to fill in as
+   * it was — the selector defaults to null, not to a warehouse the user must
+   * confirm on every line.
+   */
+  warehouse_id?: string | null;
 }
 
 export function lineTotal(

@@ -203,6 +203,14 @@ export async function adjustWarehouseStock(input: {
 export type QuoteStockCheckRow = {
   product_id: string;
   product_name: string;
+  /**
+   * D8-8 (274): availability is now reported per (product, warehouse), because
+   * one proforma may draw its lines from several warehouses. A quote whose
+   * lines all sit in one warehouse still returns one row per product, exactly
+   * as before.
+   */
+  warehouse_id: string | null;
+  warehouse_name: string | null;
   required: number;
   available: number;
   is_sufficient: boolean;
