@@ -55,6 +55,18 @@ export interface CalculatedScoreResult {
   weighted_score: number;
   total_active_weight: number;
   breakdown: CalculatedScoreBreakdownItem[];
+  /**
+   * D8-4 (migration 272): the score's band, resolved against the threshold
+   * version in force AT period_month -- not today's version, so a historical
+   * score keeps the label it had then. Null when no version covers that period
+   * (e.g. scores from before the thresholds were introduced); render nothing
+   * rather than inventing a band.
+   */
+  level_code: string | null;
+  level_label: string | null;
+  level_order: number | null;
+  /** weighted_score on the 0-100 scale the UI already displays. */
+  score_pct: number | null;
 }
 
 export interface CustomerLatestAllocation {

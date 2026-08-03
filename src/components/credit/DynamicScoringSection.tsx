@@ -176,6 +176,19 @@ export function DynamicScoringSection({
   const weighted = Number(calcQ.data?.weighted_score ?? 0);
   const weightedPct = Math.max(0, Math.min(100, weighted * 100));
 
+  // D8-4 (migration 272): the band comes from the DB, resolved against the
+  // threshold version in force at the score's own period. It is deliberately
+  // NOT recomputed here -- a second copy of the boundaries in the client would
+  // drift from the versioned table the moment an admin edits it.
+  const levelLabel = calcQ.data?.level_label ?? null;
+  const levelBadgeClass =
+    {
+      excellent: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200",
+      trusted: "bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-200",
+      medium: "bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200",
+      high_risk: "bg-destructive/15 text-destructive",
+    }[calcQ.data?.level_code ?? ""] ?? "bg-muted text-muted-foreground";
+
   // Normalize allocation data across entity types
   const allocView = (() => {
     if (entityType === "customer") {
@@ -263,7 +276,10 @@ export function DynamicScoringSection({
                 زنده
               </Badge>
             </div>
-            <div className="text-2xl font-bold text-primary" data-testid="customer-realtime-credit-final-limit">
+            <div
+              className="text-2xl font-bold text-primary"
+              data-testid="customer-realtime-credit-final-limit"
+            >
               {formatNumber(realtimeQ.data.final_limit)}
               <span className="text-sm font-normal text-muted-foreground mr-2">تومان</span>
             </div>
@@ -319,13 +335,24 @@ export function DynamicScoringSection({
               <Sparkles className="h-3.5 w-3.5" />
               امتیاز وزنی کل
             </div>
-            <div
-              className="text-lg font-bold"
-              data-testid={
-                entityType === "customer" ? "customer-weighted-score" : "salesperson-weighted-score"
-              }
-            >
-              {toFaDigits(weighted.toFixed(3))}
+            <div className="flex items-center gap-2">
+              <div
+                className="text-lg font-bold"
+                data-testid={
+                  entityType === "customer"
+                    ? "customer-weighted-score"
+                    : "salesperson-weighted-score"
+                }
+              >
+                {toFaDigits(weighted.toFixed(3))}
+              </div>
+              {/* D8-4: the band next to the number. Absent for periods with no
+                  threshold version -- we show nothing rather than guess. */}
+              {levelLabel && (
+                <Badge className={levelBadgeClass} data-testid="score-level-badge">
+                  {levelLabel}
+                </Badge>
+              )}
             </div>
             <Progress value={weightedPct} className="h-2" />
           </div>
