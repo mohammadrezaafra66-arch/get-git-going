@@ -1,0 +1,15 @@
+person_context_links :: person_context_links_delete_admin_manager :: DELETE :: USING has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+person_context_links :: person_context_links_insert_identity_authors :: INSERT :: USING -
+person_context_links :: person_context_links_select_via_person :: SELECT :: USING (EXISTS ( SELECT 1
+   FROM persons p
+  WHERE ((p.id = person_context_links.person_id) AND (((p.visibility_scope = 'internal_general'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text, 'sales'::text, 'viewer'::text])) OR ((p.visibility_scope = 'restricted_finance'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])) OR ((p.visibility_scope = 'restricted_executive'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]))))))
+person_context_links :: person_context_links_update_admin_manager :: UPDATE :: USING has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+person_identifiers :: person_identifiers_delete_admin_manager :: DELETE :: USING has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+person_identifiers :: person_identifiers_insert_identity_authors :: INSERT :: USING -
+person_identifiers :: person_identifiers_select_via_person :: SELECT :: USING (EXISTS ( SELECT 1
+   FROM persons p
+  WHERE ((p.id = person_identifiers.person_id) AND (((p.visibility_scope = 'internal_general'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text, 'sales'::text, 'viewer'::text])) OR ((p.visibility_scope = 'restricted_finance'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])) OR ((p.visibility_scope = 'restricted_executive'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]))))))
+person_identifiers :: person_identifiers_update_admin_manager :: UPDATE :: USING has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+persons :: persons_insert_identity_authors :: INSERT :: USING -
+persons :: persons_select_by_visibility_scope :: SELECT :: USING (((visibility_scope = 'internal_general'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text, 'sales'::text, 'viewer'::text])) OR ((visibility_scope = 'restricted_finance'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])) OR ((visibility_scope = 'restricted_executive'::text) AND has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])))
+persons :: persons_update_admin_manager :: UPDATE :: USING has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])

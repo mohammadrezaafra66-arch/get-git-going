@@ -1,0 +1,10 @@
+{
+  "gate": "1.1 AFTER fix (migration 264)",
+  "actor": "salesperson-a (role=sales)",
+  "A_unowned_persons": 0,
+  "B_unowned_identifiers": 0,
+  "C_owned_persons": 1,
+  "D_owned_identifiers": 1,
+  "E_total_persons_visible": 7,
+  "GATE": "PASS"
+}
