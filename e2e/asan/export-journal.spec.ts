@@ -280,24 +280,61 @@ test.describe("documents that must be blocked", () => {
     cleanupConstructed();
   });
 
-  test("one unresolvable line blocks the WHOLE document, not just that line", async () => {
-    const bank = dbScalar("select id from bank_accounts limit 1");
+  test("⛔ O4 — an invoice_ar line exports as 989 and the document still balances", async () => {
+    // The owner supplied the receivables control code in OWNER_ANSWERS_SUPPLEMENT_2.md. This is
+    // the assertion he asked for by name. Before migration 297 this same document was blocked.
+    const cust = dbScalar(
+      "select c.id from customers c join person_identifiers pi on pi.person_id = c.person_id and pi.kind = 'asan_person_code' limit 1",
+    );
     const id = makeEntry("INVOICE_AR", [
+      { kind: "invoice_ar", ref: null, desc: "بدهی مشتری", debit: 5000, credit: 0 },
+      { kind: "customer_credit", ref: cust, desc: "اعتبار مشتری", debit: 0, credit: 5000 },
+    ]);
+
+    const rows = (await listOk()).filter((r) => r.doc_id === id);
+    expect(rows.length).toBe(2);
+    expect(rows[0].blocked_reason, "no longer blocked — the code exists now").toBeNull();
+
+    const arLine = rows.find((r) => r.line_no === 1)!;
+    expect(arLine.account_code, "the owner's code, in column A").toBe("989");
+
+    const built = buildJournalRows({ lines: rows });
+    expect(built[0][0]).toBe("989");
+    const sumE = built.reduce((s, r) => s + (typeof r[4] === "number" ? r[4] : 0), 0);
+    const sumF = built.reduce((s, r) => s + (typeof r[5] === "number" ? r[5] : 0), 0);
+    expect(sumE, "debits equal credits").toBe(sumF);
+    expect(sumE, "and the amounts are still Toman x 10").toBe(50000);
+
+    // The number is configuration, not a literal buried in a function body — so the owner can
+    // find and correct the one value he is most likely to want to change.
+    expect(
+      dbScalar("select accounting_code from asan_control_accounts where account_kind='invoice_ar'"),
+    ).toBe("989");
+
+    cleanupConstructed();
+  });
+
+  test("a line whose party has no code still blocks the WHOLE document, not just that line", async () => {
+    // The general rule survives O4: only `invoice_ar` was resolved, and one unresolvable line
+    // still takes the whole document down, because a partial accounting document would enter
+    // Asan unbalanced.
+    const bank = dbScalar("select id from bank_accounts limit 1");
+    const partyId = dbScalar("select id from external_parties where accounting_code is null limit 1");
+    test.skip(!/[0-9a-f-]{36}/.test(partyId), "no external party without a code");
+
+    const id = makeEntry("PARTIAL", [
       { kind: "bank", ref: bank, desc: "ردیف قابل حل", debit: 500, credit: 0 },
-      { kind: "invoice_ar", ref: null, desc: "حساب کنترلی دریافتنی", debit: 0, credit: 500 },
+      { kind: "external_party", ref: partyId, desc: "شخص واسط بدون کد", debit: 0, credit: 500 },
     ]);
 
     const rows = (await listOk()).filter((r) => r.doc_id === id);
     expect(rows.length, "both lines are still listed").toBe(2);
-    // The resolvable line resolves — and the document is blocked anyway. That is the point: a
-    // partial accounting document would enter Asan unbalanced.
-    expect(rows.find((r) => r.line_no === 1)!.account_code).toBeTruthy();
+    expect(rows.find((r) => r.line_no === 1)!.account_code, "the good line resolves").toBeTruthy();
     for (const r of rows) {
       expect(r.blocked_reason, "the block is on the document, so every row carries it").toContain(
-        "invoice_ar",
+        "کد حساب آسان",
       );
     }
-    expect(rows[0].blocked_reason).toContain("اعلام نشده");
 
     cleanupConstructed();
   });

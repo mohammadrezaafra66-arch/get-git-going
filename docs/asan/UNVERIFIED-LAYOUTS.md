@@ -11,39 +11,39 @@ refreshed against `docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md`, which resolve
 seven questions that used to be listed here. The resolved ones are recorded at the bottom so
 nobody re-opens a settled question, but they are no longer blocking anything.
 
-**What is still needed from the owner, in one place.** Every item below is *surfaced in the
-export UI and blocks its own document* rather than being guessed:
+**What is still needed from the owner, in one place.** After
+`OWNER_ANSWERS_SUPPLEMENT_2.md` only **two** items still block anything, and both are surfaced
+in the export UI and block their own document rather than being guessed:
 
 | # | still needed | what it blocks today |
 |---|---|---|
-| 1 | the Asan `کد حساب` for `invoice_ar` | any accounting document containing such a line |
 | 2 | the definition and code for `other` | any accounting document containing such a line |
 | 3 | Asan codes for real external parties | that دوبل document, with the party **named** |
-| 6 | what Asan expects in `سریال کد کالا` (and whether `عوارض` is ever needed) | nothing — three optional columns stay empty |
-| 7 | whether purchase payments should be captured at all | nothing — three optional columns stay empty |
 
-Items 4 and 5 need nothing from the owner: the uncaptured radio options are confirmed out of
-scope, and the account called "12" is his to resolve when he chooses.
+Nothing else is blocking. Sections 4, 5, 6 and 7 are recorded for completeness: 4 is confirmed
+out of scope, 5 is the owner's to resolve when he chooses, and 6 and 7 are columns that stay
+empty **by decision** — they cost nothing and need no answer.
+
+Section 1 (`invoice_ar`) is **resolved**: it is `989`, applied by migration 297.
 
 ---
 
-## 1. The Asan `کد حساب` for the receivables control account (`invoice_ar`)
+## 1. ~~The Asan `کد حساب` for the receivables control account (`invoice_ar`)~~ — RESOLVED
 
-**Status:** owner confirmed the *meaning*, still owes the *number* · **Impact:** any Layout 3
-document containing an `invoice_ar` line
+**Status:** **RESOLVED by the owner, 2026-08-04** · code **`989`** · applied by migration 297
 
-The owner confirmed what this account is: the **total-of-debtors / receivables control**
-account — the aggregate of what every party owes. What is still missing is its Asan
-`کد حساب`.
+`OWNER_ANSWERS_SUPPLEMENT_2.md`: the receivables / debtors control account — «جمع بدهکاران»,
+where a credit sale posts the customer's debt — is Asan `کد حساب` **`989`**.
 
-This is an account in Asan's chart, not an AfraKala party, so no AfraKala row can supply it
-and neither reference workbook contains it.
+The number is stored in **`asan_control_accounts`**, not hard-coded in the row builder, so the
+one value the owner is most likely to want to correct is the easiest to find and needs no
+migration to change. Migration 297's gate refuses to apply if it is hard-coded in the function
+body instead.
 
-**What I need from you:** the Asan `کد حساب` for the receivables/debtors control account.
+An `invoice_ar` line now exports with `کد حساب = 989` and its document balances — asserted by
+name in `e2e/asan/export-journal.spec.ts`, which is the test the owner asked for.
 
-**Until then:** a document containing an `invoice_ar` line **fails loudly and is excluded from
-the file**, naming the account. A blank account code is never emitted, and the number is never
-guessed.
+Kept here rather than deleted so nobody re-opens a settled question.
 
 ---
 
@@ -141,17 +141,19 @@ page says so before download rather than leaving the accountant to notice:
 | O | `گروه حساب/کد۲` | AfraKala has no Asan account-group concept. |
 | P | `سریال کد کالا` | AfraKala products carry no serial number. |
 
-**P is the one worth a second look.** The tempting mapping is AfraKala's own SKU
-(`AFK-2026-00033`), which is right there in `sku_snapshot`. It was **not** used: that would put
-an AfraKala identifier into a field Asan means for a manufacturer's serial, and a plausible
-wrong value is worse than a blank one. If the owner confirms Asan treats `سریال کد کالا` as a
-free reference field, mapping the SKU there is a one-line change.
+**P `سریال کد کالا` is SETTLED — the owner confirmed it stays empty.**
+`OWNER_ANSWERS_SUPPLEMENT_2.md`: *"Leave it empty. Do not map AfraKala's SKU into
+`سریال کد کالا`. That column is meant for a manufacturer's serial number, and AfraKala products
+do not carry one."* The tempting mapping was AfraKala's own SKU (`AFK-2026-00033`), sitting right
+there in `sku_snapshot`; the owner's answer confirms the choice already made. Settled as
+intentionally empty, exactly like sales column K.
 
 Column **Q `بارکد کالا`** is mapped for real, and is empty in practice only because barcode is
 0 % populated on both sides (R1.5). If barcodes are ever entered, they flow with no code change.
 
-**What I need from you:** confirmation of what Asan expects in `سریال کد کالا`, and whether
-`عوارض` will ever be needed (it would require a new field on the pre-invoice first).
+**What I need from you:** nothing for `سریال کد کالا` — settled. Only, eventually, whether
+`عوارض` will ever be needed; that would require a new field on the pre-invoice first, so it is a
+future feature rather than an export question.
 
 ---
 
@@ -220,3 +222,5 @@ anything.
 | column K on the `فروش` tab | **nothing — intentionally blank** | owner answers, "SALES-TAB COLUMN K" |
 | which sales-quote status means finalized | **accountant-finalized AND stock-deducted**, established from the data rather than assumed from `status='accepted'`. Settled in M4.3 and implemented in migration 292: candidates are `status='accepted'` (the only status that deducts stock), finalization is `accounting_registered_at`, and the material evidence of deduction is a `stock_movements` row with `ref_type='sale_quote_confirm'`. **`accounting_registered_at` alone means nothing** — 32 `draft` quotes carry it | owner answers, "FINALIZED SALES-QUOTE STATUS"; migration 292 |
 | what to do with the 352 products having no Asan code | export proceeds with column D empty; Asan mints a code under group `101`. A missing product code never blocks a sales/purchase export | owner answers, "PRODUCT CODE STRATEGY" |
+| the `invoice_ar` control-account code | **`989`**, stored in `asan_control_accounts` and applied by migration 297. This was the last blocker on the accounting-document export | supplement 2, "invoice_ar — RESOLVED" |
+| `سریال کد کالا` on the sales/purchase tabs | **intentionally empty.** AfraKala's SKU must NOT be mapped there — that column means a manufacturer's serial, which AfraKala products do not have | supplement 2, "Serial column — RESOLVED" |
