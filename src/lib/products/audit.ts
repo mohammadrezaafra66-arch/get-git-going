@@ -33,6 +33,7 @@ export const FIELD_LABELS: Record<string, string> = {
   primary_spec: "مشخصه اصلی",
   description: "توضیحات",
   technical_notes: "یادداشت فنی",
+  accounting_code: "کد کالا در آسان",
 };
 
 function fmt(field: string, val: unknown): string | null {

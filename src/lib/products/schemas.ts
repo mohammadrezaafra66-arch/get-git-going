@@ -21,6 +21,15 @@ export const productSchema = z.object({
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   technical_notes: z.string().trim().max(4000).optional().or(z.literal("")),
   barcode: z.string().trim().max(64, "حداکثر ۶۴ کاراکتر").optional().or(z.literal("")),
+  // کد کالای آسان — اختیاری. یکتایی و نرمال‌سازی در دیتابیس اعمال می‌شود
+  // (ایندکس یکتای جزئی مهاجرت ۲۸۳ و تریگر مهاجرت ۲۸۹)، نه فقط اینجا.
+  accounting_code: z
+    .string()
+    .trim()
+    .max(32, "حداکثر ۳۲ کاراکتر")
+    .refine((v) => v === "" || !/\s/.test(v), "کد آسان نباید فاصله داشته باشد")
+    .optional()
+    .or(z.literal("")),
   // Item 166 — standalone promotion weight. 1 = neutral; mirrors
   // products_promotion_weight_chk (migration 207).
   promotion_weight: z.coerce

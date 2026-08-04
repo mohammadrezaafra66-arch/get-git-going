@@ -79,6 +79,7 @@ const DEFAULTS: ProductFormValues = {
   description: "",
   technical_notes: "",
   barcode: "",
+  accounting_code: "",
   promotion_weight: 1,
   label_ids: [],
 };
@@ -635,6 +636,19 @@ export function ProductForm({
               placeholder="بارکد محصول (اختیاری)"
               maxLength={64}
             />
+          </Field>
+          <Field label="کد کالا در آسان" error={errors.accounting_code}>
+            <Input
+              value={values.accounting_code ?? ""}
+              onChange={(e) => set("accounting_code", e.target.value)}
+              dir="ltr"
+              placeholder="کد کالا در نرم‌افزار آسان (اختیاری)"
+              maxLength={32}
+            />
+            <p className="text-xs text-muted-foreground">
+              کلید مشترک این کالا با نرم‌افزار آسان. اختیاری است؛ کالای بدون کد هم ذخیره می‌شود و
+              در خروجی فروش/خرید ستون «کد کالا» خالی می‌ماند تا آسان خودش کد بسازد.
+            </p>
           </Field>
 
           <Field label="برند">
