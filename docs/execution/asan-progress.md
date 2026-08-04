@@ -2,8 +2,8 @@
 
 ## Status
 Current mission: **M3 (build foundation)**
-Current phase: M3 phase 3.0 complete → next 3.1
-Last commit: `0dcf78e9`
+Current phase: M3 phases 3.0-3.2 complete → next 3.3
+Last commit: `5c4c0a12`
 Baseline typecheck: 70 (verified at the M1 gate)
 Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
 reds 6 → 5, no new red
@@ -36,6 +36,11 @@ reds 6 → 5, no new red
       e2e 202/5/4 with no new red.
 - [x] **M2 research complete, gate passed** — docs/asan/research-asan-bridge.md, 1067 lines,
       R1-R8 with evidence; 8 blocking issues and 7 owner questions recorded.
+- [x] M3.0 Asan layout specification — commit `a1ba226d` — 4 layouts VERIFIED, 8 open items.
+- [x] M3.1 Asan code fields — migration 283 — commit `2a9f47c0` — products.accounting_code,
+      person_identifiers kind asan_person_code, bank_accounts uniqueness; 11 + 3 backfilled.
+- [x] M3.2 phone normalization + collision queue — migration 284 — commit `5c4c0a12` —
+      9 triggers, 3 collisions queued exactly as predicted, spec 9/9 green.
 
 ## M1.1 detail
 
@@ -379,9 +384,81 @@ than quietly reporting a zero as if the strategy had been tried and found nothin
 
 Phase 3.4 also states "I have 374 products"; the live count is **355**.
 
+## M3.1 — Asan code fields (migration 283)
+
+- **`products.accounting_code`** added, nullable, partial unique index. `products.easy_code`
+  does not exist anywhere in the schema (R1.3), so there was nothing to extend.
+- **`person_identifiers` kind `asan_person_code`** — the code is a property of the person, not
+  the customer role (R2.2). CHECK extended, partial unique index added.
+- **`bank_accounts.accounting_code`** had **no uniqueness at all** — two accounts could have
+  claimed one code. Partial unique index added.
+- **`external_parties`** untouched: column and unique constraint already existed (R5.2).
+
+**Surprise, chased down.** The CHECK was not the only gate. `trg_person_identifiers_normalize`
+calls `normalize_identifier()`, whose `ELSE` branch rejected the new kind outright
+(`نوع شناسه پشتیبانی نمی‌شود`). That function was rebuilt from its **live** definition with one
+branch added (rule 2.3), and `src/lib/persons/identifiers-normalize.ts` — which deliberately
+mirrors it — got the matching branch plus a Persian label in `PersonIdentifiersForm`.
+
+**Backfill:** 11 person codes (`status='provisional'` — 6 of them do not appear in the Asan
+export, and phase 3.3 is what promotes a code to `confirmed`), 3 product codes.
+**Barcode backfill is absent because barcode is 0 % populated on both sides**, not because it
+was tried and found nothing.
+
+Dry run proved: duplicate product code rejected, duplicate person code rejected, 352 NULL codes
+coexist (the index really is partial), unknown kind still rejected, and `۶۰۱۵۰۶` → `601506`.
+
+## M3.2 — phone normalization + collision queue (migration 284)
+
+Canonical mobile form `09XXXXXXXXX`, enforced by a `BEFORE INSERT OR UPDATE` trigger on **nine
+tables** so a direct PostgREST `PATCH` cannot dodge it. `normalize_phone_local()` reuses
+`normalize_identifier()` rather than reimplementing parsing, and is **non-strict**: an
+unparseable value is returned untouched, because a phone column must never abort a sales quote.
+
+Deliberate exception, recorded so nobody "fixes" it later:
+**`person_identifiers.value_normalized` keeps `+989…`** — the kind is literally `mobile_e164`
+and the identity model's contract is E.164.
+
+`phone_collisions` table + `detect_phone_collisions()` + admin page
+`/admin/phone-collisions`. **The page has no merge button by design**; `/persons/merge` remains
+the only merge path. Detection found **exactly the three collisions R2.4 predicted**.
+
+The backfill **detects first, normalises second**, so it cannot abort halfway through a phone
+rewrite. It changed 0 rows — every phone was already canonical, which was a fact about the
+data and is now a property of the schema.
+
+`e2e/asan/phone-normalization.spec.ts` **9/9 green**; `e2e/asan/` registered in
+`playwright.config.ts`.
+
+### Two traps worth remembering
+- `e2e/helpers/db.ts` **refuses anything that is not a SELECT**. A `DELETE` handed to
+  `dbScalar` is silently ignored, so test cleanup must go through PostgREST. This left a stray
+  collision row and reddened a later test until fixed.
+- **Never run `prettier --write` on `src/integrations/supabase/types.ts`.** It is not in
+  `.prettierignore` but is unformatted in the repo, so a write reflows all ~11 500 lines
+  (10 762 insertions / 10 818 deletions). Edit it surgically. `eslint.config.js:15` already
+  ignores it.
+- The route tree is regenerated with
+  `node -e "import('@tanstack/router-generator').then(async m => { const c = await m.getConfig({}, process.cwd()); await new m.Generator({config:c, root:process.cwd()}).run(); })"`.
+
 ## HANDOFF STATE
-Next action: M3 phase 3.1 — Asan code fields for person, product, bank account and external
-party.
+Next action: **M3 phase 3.3 — import persons from Asan.** Parse
+`docs/asan/reference/اشخاص.xlsx` (488 accounts) **by header text**, never by column index.
+Required behaviour: staging table first, preview, commit only on explicit confirmation;
+classify each row `new` / `update` / `conflict`; conflicts never auto-resolved; updates never
+silently overwrite a non-empty AfraKala value; **idempotent** — a second import of the same
+file must produce zero changes. Admin + accountant only, with `role_permissions` seeded for
+**every** role (the `has_dynamic_permission` fallback opens unseeded modules to everyone).
+Then 3.4 (products, 7 256 rows, batched, **no auto-creation of AfraKala products**), the M3
+gate, M4 and M5.
+
+Expected classification from research, to check the implementation against: 5 match by Asan
+code, 4 by normalized mobile, 3 by normalized name; 6 AfraKala codes are absent from the
+workbook; `کد ملی` is 0 % populated so it cannot be a match key.
+
+Blocked on: nothing. Seven owner questions remain open in
+`docs/asan/UNVERIFIED-LAYOUTS.md`; four affect financial correctness and M4 must surface them
+rather than guess.
 Blocked on: nothing — but seven owner questions are recorded at the end of the research
 document, four of which (currency unit, Bank Mellat code, control-account codes, sales column K)
 affect financial correctness and must be surfaced in the UI rather than guessed.
