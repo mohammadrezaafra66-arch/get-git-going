@@ -3,8 +3,8 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: **M4 COMPLETE, gate passed.** M5.1 next
-Last commit: `ff0b942d`
+Current phase: **M5.3 — the final report.** M4 gate passed; O4, M5.1 and M5.2 complete
+Last commit: `f328dea3`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
 Last full e2e: **343 green / 6 red / 4 skip** — the M4 gate run. All six reds are documented
 baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
@@ -90,6 +90,16 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M4.8 single pre-invoice export from the quote detail page — no migration — commit
       `ff0b942d` — reuses the sales source and row builder, byte-identical to a range export;
       spec **6/6 green** on the deployed build (`APP_GIT_SHA=ff0b942d`).
+- [x] **M4 MISSION GATE PASSED** — commit `66118fc6` — typecheck 70, e2e **343/6/4**, zero new red.
+- [x] O4 the receivables control account is `989` — migration 297 — commit `3a1d8815` —
+      `asan_control_accounts`, the code held as configuration rather than a literal;
+      journal + receipts specs **22/22 green**.
+- [x] M5.1 product video chain — migration 296 — commit `c84bfd9b` — service row, chain +
+      event log, transition trigger, upload/advance RPCs, `/sales/product-videos`;
+      spec **13/13 green** on the deployed build (`APP_GIT_SHA=c84bfd9b`).
+- [x] M5.2 full-program verification — no migration — commit `f328dea3` — items 3, 4, 5, 7 and 8
+      written as standing assertions; four sample export files committed;
+      spec **12/12 green**.
 
 ## M1.1 detail
 
@@ -1331,6 +1341,135 @@ accounting document) and **one conversion point** for money.
 Persian exactly what is missing. The largest single unblocking action available to the owner is
 **supplier Asan codes**: that alone would move 289 purchase documents from blocked to exportable.
 
+## O4 — the receivables control account is `989` (migration 297)
+
+`OWNER_ANSWERS_SUPPLEMENT_2.md` arrived during the M4 gate's full-suite run and was committed
+unmodified before being acted on. It resolved the last blocker on the accounting-document export.
+
+**The interesting decision was where to put the number.** `989` is configuration the owner gave
+me, exactly like Mellat's `8` — and Mellat's lives in `bank_accounts.accounting_code`, where he
+can see and change it. Burying `989` in a function body would make the single number he is most
+likely to correct the hardest one to find, and would need a migration to change. It lives in
+`asan_control_accounts`, whose CHECK admits exactly the three control kinds, so `other` will be an
+INSERT rather than another migration of logic. **297's gate refuses to apply if `'989'` appears in
+the function body**, so the indirection cannot quietly be undone later.
+
+The indirection weakens nothing: a kind with no row still resolves to NULL and still blocks its
+document. `clearing` and `other` deliberately have no row, and the gate asserts they have none.
+
+The supplement also confirmed `سریال کد کالا` stays empty — AfraKala's SKU must not be mapped into
+a field that means a manufacturer's serial. That is the choice M4.3 had already made; it is now
+settled rather than open. `UNVERIFIED-LAYOUTS.md` is down to **two** blocking items.
+
+## M5.1 — the product video chain (migration 296)
+
+Six stages, each **recorded** rather than inferred, so "which sold TVs are still waiting for a
+video?" is one call to `product_videos_waiting()`.
+
+**Everything here extends something that already existed.** The migration-276 service model is
+already generic, so "video" is a **data row**, not a mechanism — a second category later is an
+INSERT. `tasks.proof_requirement` already allowed `product_video` and `tasks` held **0 rows**: the
+capability was modelled and never wired, in the very table mission control section 3 names as its
+example. The `delivery-receipts` bucket already accepted three video MIME types at 100 MB, and
+296's gate asserts that rather than trusting it.
+
+### ⛔ Three defects found while building, all by testing
+
+1. **The first draft wrote its own INSERT into `delivery_receipts`.** It failed outright —
+   `review_deadline` is NOT NULL with no default on the live table — but the deeper problem was
+   that **`create_delivery_receipt` already exists** and does three things a raw INSERT does not:
+   reads the review timer from `workflow_settings`, computes the deadline, and writes the
+   `delivery_receipt_status_history` row. Bypassing it would have been the parallel implementation
+   rule 14 forbids, and the history row would simply have been missing. The existing function is
+   now **extended**: its type whitelist patched from its **live** definition (rule 2.3), the anchor
+   asserted to match exactly once, the `?` count compared before and after. Snapshot in
+   `docs/verification/pre-296/`.
+2. **Event ordering used `now()`** — the *transaction* timestamp, identical for every row written
+   in one transaction. Two transitions land in one transaction routinely, and the history read
+   back in arbitrary order: the test saw `required > salesperson_notified > task_created >
+   video_uploaded`, which is not what happened. A chain whose whole point is "recorded, not
+   inferred" must be able to say what order things happened in, so the default is
+   `clock_timestamp()`, which advances within a transaction.
+3. **The spec could not build its fixture at all** at first, and each refusal was a real rule:
+   `source` is NOT NULL and `sales_quote_items_identity` requires `product_price` for a real
+   product; `draft → accepted` is not a legal transition (`sales_quotes_validate_status` demands
+   `draft → sent → accepted`); and the TV had 0 stock so `apply_stock_movement` refused.
+
+### Why the whole spec runs inside `BEGIN … ROLLBACK`
+
+Accepting a quote deducts **real inventory**, and this database has a default warehouse
+(`ایران ری`), so `effective_line_warehouse` always resolves and the deduction always happens.
+There is no way to accept a test quote without moving live stock, and reversing a stock movement
+by hand is exactly the "clean-up" that leaves inventory subtly wrong. So the acceptance path runs
+in a rolled-back transaction, with each verdict written into a temp table and `SELECT`ed back
+before the rollback — the probe shape migration 290's spec had to learn, because psql sends
+`RAISE NOTICE` to stderr where the helper cannot see it.
+
+Nothing survives: no quote, no task, no stock movement, no notification, no storage object. The
+`afterAll` asserts each count is unchanged rather than assuming it.
+
+### Decisions
+
+- **The task goes to the `sales` queue** — the brief's own fallback. It says to assign it to
+  whoever owns the physical delivery step and to fall back to the delivery-receipt owner if that
+  is genuinely ambiguous. It **is**: `delivery_receipts` holds 0 rows, so no owner can be
+  inferred. `sales` already holds the bucket's INSERT policy, and adding a new uploading role
+  would widen access with no evidence. One value plus one policy to change if the owner says
+  otherwise.
+- **All three records are kept**, which R6 listed as UNKNOWN: the `tasks` row is the **work item**,
+  the `delivery_receipts` row is the **file** and its review lifecycle, `product_video_chain` is
+  the **record of truth** for the stage. Collapsing them would mean either a task that cannot hold
+  a file or a file row that cannot express "notified but not yet sent".
+- **Transitions are enforced in a trigger**, so a direct PATCH cannot skip a stage — proven by
+  writing straight to the table and being refused three ways (skip, bogus value, backwards).
+- **Notification through `notification_events`**, the only one of the project's four notification
+  tables with a demonstrated write path.
+- **The camera button runs with `optimize={false}`.** That flag routes files through
+  `prepareCameraImages`, which compresses and de-rotates **photographs**; handing a video to an
+  image pipeline would corrupt it, and the failure would look like a bad upload rather than a
+  wrong flag.
+
+**Verified:** `e2e/asan/product-video-chain.spec.ts` **13/13 green** on the deployed build.
+
+### Honest limitation
+
+The **browser upload itself** is not exercised end to end by an automated test: the spec proves
+the RPC that records an upload, and the bucket's video capability is asserted at the catalogue,
+but no test pushes real video bytes through `uploadWithProgress`. Recording a video on a phone and
+watching it arrive is a **remaining manual step**, listed as such rather than implied.
+
+## M5.2 — full-program verification
+
+Items 3, 4, 5, 7 and 8 of phase 5.2 are written as **standing assertions** in
+`e2e/asan/final-verification.spec.ts`, so they run on every future regression rather than once:
+
+- **item 3** — all three modules (`asan-import`, `asan-export`, `product-videos`) seeded for every
+  role, walked rather than recalled, plus the exact view set each was built for; 0 tables in
+  `public` without RLS.
+- **item 4** — the RLS pass with real JWTs for viewer / sales / accountant / admin against **all
+  eight tables this program created**, **counting rows** rather than trusting status codes,
+  because RLS on SELECT never errors. Plus: the three write-free tables really refuse a direct
+  POST, again checked by counting, because PostgREST answers 2xx for a no-op.
+- **item 5** — zero test data survives, checked **per fixture**; catalogue re-counted.
+- **item 7** — no `asan_*` or `product_video*` function body contains an ASCII `?`, nor do the rows
+  this program inserted; the one bucket-C financial description M1.1 deliberately left alone is
+  still exactly one, neither silently "fixed" nor grown.
+- **item 8** — one document of each export type produced end to end and opened with **openpyxl**,
+  every header compared against `asan-layouts.md` itself. The four files are committed under
+  `docs/verification/m5-export-samples/` so the owner can open the real thing.
+
+**The purchase sample is header-only, and the test says so out loud**: every purchase is blocked
+because no supplier has an Asan code, which is the correct answer rather than a broken one. The
+test asserts there *are* purchases in range, so an empty file can never quietly read as "nothing
+to export".
+
+**A gap this pass found and closed:** migrations **284 and 285 had no down script** — the only two
+in the program. Both are now written, each carrying an explicit note about what it does *not*
+undo, and 285 warns that `287-down.sql` must run first or `person_merge` starts failing on every
+merge.
+
+**Verified:** **12/12 green**; typecheck exactly **70**.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -1357,12 +1496,13 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M5.1** (`docs/execution/M5_VIDEO_AND_FINAL.md`) — the product video chain — then
-5.2 full-program verification and 5.3 the final report, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
-with `docs/execution/asan-final-report.md`.
+Next action: **M5.3** — write `docs/execution/asan-final-report.md`, then stop and hand control
+back to the owner. That is the only point in the whole program where that happens
+(mission control §7).
 
-The suite now totals **353** tests: 245 at the M3 gate (incl. O2) + 108 across M4.1-M4.8.
-Measured, not projected: the gate run reported 343 + 6 + 4 = 353.
+The suite grew to **353** tests at the M4 gate (245 + 108 across M4.1–M4.8), then **+13** for
+M5.1 and **+12** for M5.2. Final totals are recorded in the M5 gate section below, measured
+rather than projected.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —

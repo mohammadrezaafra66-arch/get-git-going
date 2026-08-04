@@ -147,10 +147,24 @@ test.describe("224 — recurring marketing tasks", () => {
     const second = await runJob();
 
     expect(first.status).toBe(200);
-    expect(Number(first.body.generated)).toBe(1);
     // The whole point: a second run adds nothing.
     expect(Number(second.body.generated)).toBe(0);
-    expect(Number(second.body.skipped_existing)).toBe(1);
+
+    // ⛔ `generated` and `skipped_existing` are GLOBAL counters — the job runs for every active
+    // template, not just this spec's. They were asserted as absolute 1s when this spec was
+    // written, which was only true because `marketing_task_templates` happened to hold zero rows
+    // at the time. The owner has since configured a real template, so the absolutes became wrong
+    // the moment the feature was actually used — and the first failure then cascaded, because
+    // Playwright re-runs `beforeAll` (and therefore `cleanup()`) after a failure, wiping the
+    // fixture out from under the five tests that follow.
+    //
+    // What the test is really about is this spec's own template, so that is what is asserted
+    // exactly; the global counter is only required to be consistent with it.
+    expect(Number(second.body.skipped_existing)).toBeGreaterThanOrEqual(1);
+    expect(
+      Number(first.body.generated) + Number(first.body.skipped_existing ?? 0),
+      "the first run must have accounted for this template one way or the other",
+    ).toBeGreaterThanOrEqual(1);
 
     // The date is decided by the database in Asia/Tehran, not by the server clock.
     expect(first.body.for_date).toBe(today);
