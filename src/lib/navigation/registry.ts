@@ -51,6 +51,7 @@
   Plug,
   Upload,
   Download,
+  Video,
   XCircle,
   Warehouse,
   ArrowLeftRight,
@@ -345,6 +346,16 @@ const NAVIGATION_SEEDS = [
     label: "درخواست‌های رد شدهٔ من",
     icon: XCircle,
     module: "sales",
+    group: "sales-customers",
+    subgroup: "sc-sales",
+  },
+  {
+    // M5.1 — the product video chain. Its own module rather than `sales`, because migration 296
+    // seeds `role_permissions` for it and the two must agree (the M3.3 lesson).
+    to: "/sales/product-videos",
+    label: "ویدئوی محصول",
+    icon: Video,
+    module: "product-videos",
     group: "sales-customers",
     subgroup: "sc-sales",
   },
@@ -1231,6 +1242,7 @@ const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["act
 
 const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/accounting/dynamic-capital": ["admin", "accountant"],
+  "/sales/product-videos": ["admin", "manager", "sales", "accountant"],
   "/admin/asan-export": ["admin", "accountant"],
   "/admin/asan-import": ["admin", "accountant"],
   "/admin/audit": ["admin", "manager"],

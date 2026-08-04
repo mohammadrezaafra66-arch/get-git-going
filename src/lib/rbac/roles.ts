@@ -87,7 +87,8 @@ export type ModuleKey =
   | "persons"
   | "warehouse"
   | "asan-import"
-  | "asan-export";
+  | "asan-export"
+  | "product-videos";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -254,6 +255,15 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     view: ["admin", "accountant"],
     create: ["admin"],
     update: ["admin"],
+    delete: ["admin"],
+  },
+  // M5.1 — the product video chain. Mirrors migration 296's seed for every non-admin role:
+  // admin/manager/sales/accountant may view, and admin/manager/sales may act. Nothing here
+  // creates or deletes a chain row — the triggers do.
+  "product-videos": {
+    view: ["admin", "manager", "sales", "accountant"],
+    create: ["admin"],
+    update: ["admin", "manager", "sales"],
     delete: ["admin"],
   },
 };

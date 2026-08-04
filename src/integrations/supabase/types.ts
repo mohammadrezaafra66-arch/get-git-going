@@ -10244,6 +10244,34 @@ export type Database = {
           cheque_amount: number | null
         }[]
       }
+      product_video_advance: {
+        Args: { _chain_id: string; _to_stage: string; _note: string | null }
+        Returns: Json
+      }
+      product_video_mark_uploaded: {
+        Args: {
+          _chain_id: string
+          _storage_path: string
+          _file_name: string
+          _file_size: number
+          _mime_type: string
+        }
+        Returns: Json
+      }
+      product_videos_waiting: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          chain_id: string
+          quote_id: string
+          quote_number: string | null
+          customer_name: string | null
+          product_name: string | null
+          stage: string
+          task_id: string | null
+          accepted: boolean
+          created_at: string
+        }[]
+      }
       detect_phone_collisions: {
         Args: Record<PropertyKey, never>
         Returns: number
