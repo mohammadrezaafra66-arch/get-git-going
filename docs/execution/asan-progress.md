@@ -3,8 +3,8 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: M4.3 next (4.1 and 4.2 done)
-Last commit: `960abd2f`
+Current phase: M4.4 next (4.1-4.3 done)
+Last commit: `812dff79`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
 Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
 documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
@@ -72,6 +72,9 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M4.2 shared export shell — migration 291 — commit `960abd2f` — `/admin/asan-export`,
       the four layouts, the selection model, the Rial conversion, and a batch numbering RPC;
       spec **30/30 green** on the deployed build (`APP_GIT_SHA=960abd2f`).
+- [x] M4.3 export 1, sales invoices — migration 292 — commit `812dff79` — `asan_list_sales_export`,
+      the 18-column فروش mapping, cash/bank from allocated receipt amounts;
+      spec **20/20 green** on the deployed build (`APP_GIT_SHA=812dff79`), file verified with openpyxl.
 
 ## M1.1 detail
 
@@ -923,6 +926,113 @@ PostgREST restarted). Typecheck exactly **70**. Test data removed: the batch RPC
 mint numbers, so the phase really does give them back — `asan_export_numbers` holds **0** rows
 from this phase.
 
+## M4.3 — export 1, sales invoices (migration 292)
+
+One sheet row per invoice **line**, the invoice number repeating across its lines, in the
+verified 18-column `فروش` layout.
+
+### What "finalized" actually is — measured, because the owner said not to assume
+
+The owner asked for pre-invoices that are accountant-finalized **and** stock-deducted, and
+explicitly said not to key off `status='accepted'` without checking. From the live database:
+
+- **Stock deduction is bound to exactly one transition.** `trg_sales_quotes_stock_out` fires
+  `AFTER UPDATE OF status WHEN (new.status = 'accepted' AND old.status IS DISTINCT FROM
+  'accepted')` and writes `stock_movements` rows with `ref_type = 'sale_quote_confirm'`. So
+  `accepted` **is** the stock-deducting status, and the material evidence is the movement row.
+  The candidate set is `accepted` and nothing else: a draft has deducted nothing, and a cancelled
+  quote is void (migration 290 burned its number).
+- **Finalization is `accounting_registered_at`**, written only by
+  `set_quote_accounting_marker(..., 'registered', true)`, which is restricted to
+  admin/accountant/manager and refuses a cancelled quote. It is the only accountant-operated flag
+  on the table.
+- **On its own that marker means nothing.** 32 of the 50 quotes carry it while still in `draft`.
+  It is a finalization signal only in conjunction with `accepted` — which is precisely why the
+  owner asked for both conditions rather than either.
+
+**The two signals disagree for three quotes, and the disagreement is history rather than a bug.**
+SQ-2026-000003/4/5 were accepted on 2026-07-21 and 2026-07-23 — **before migration 210
+(2026-07-26) created the stock-out trigger** — so no movement was ever written for them and none
+ever will be. SQ-2026-000024 was accepted on 2026-07-28 and is the only accepted quote carrying
+one. Confirmed against `audit_logs`, not inferred from `updated_at` (all four were touched again
+on 2026-08-01).
+
+They are therefore **listed and blocked with that reason spelled out**, never silently omitted.
+The accountant must be able to see that three finalized invoices are being held back and why; a
+set that quietly shrinks from four to one is how an invoice goes missing. Today the export
+contains exactly **one** invoice and shows **three** blocked, with three different reasons.
+
+### ⛔ Two real defects the dry run caught
+
+1. **The payment columns summed the wrong amount.** They read `payment_receipts.amount` — the
+   receipt total — where they had to read `payment_receipt_links.amount`, the sum **allocated to
+   this invoice**. One receipt can settle several invoices, and on this database exactly that
+   happens: receipt `fd8194a5` totals **10 100 000 000** Toman of which **100 100 000** belongs
+   to SQ-2026-000003. The file would have carried a bank deposit **one hundred times** the
+   invoice into live accounting — the precise class of silent financial corruption this program
+   exists to prevent. The spec now asserts the two figures really do differ on this data, so the
+   test cannot quietly become vacuous.
+2. **`RETURNS TABLE` names collide with the query's own columns.** `quote_id`, `quantity`,
+   `line_total` and the rest are simultaneously plpgsql variables and column names, so the
+   function **created cleanly and raised `column reference is ambiguous` on first call**. Fixed
+   with `#variable_conflict use_column` plus explicit aliasing. A migration that applies without
+   error is not a migration that works.
+
+### Decisions worth keeping
+
+- **The rule lives in the database.** `asan_list_sales_export` is SECURITY DEFINER and refuses a
+  caller who is not admin or accountant **loudly** rather than returning zero rows — upstream,
+  zero rows reads as "there is nothing to export" (rule 2.5), which is the worst possible answer.
+- **`LEFT JOIN` to the line items, not `INNER`.** A finalized quote with no lines must still
+  appear, blocked and named; an inner join would delete it from the preview entirely, which is
+  the one outcome the 4.2 shell exists to prevent.
+- **Payment totals go on the first line only.** Repeating a document-level receipt on every line
+  would multiply it by the line count inside Asan.
+- **A zero amount is written as an empty cell, not `0`.** "No discount" and "a discount of zero"
+  are the same fact, and Asan's `بدون مبلغ حذف شود` drops zero-amount rows anyway.
+- **Three columns are deliberately empty**, recorded in `UNVERIFIED-LAYOUTS.md` section 6:
+  `عوارض` (AfraKala records no duty), `گروه حساب/کد۲` (no counterpart), `سریال کد کالا` (products
+  carry no serial). The tempting mapping for the last is AfraKala's own SKU, sitting right there
+  in `sku_snapshot`; it was **not** used, because that puts an AfraKala identifier into a field
+  Asan means for a manufacturer's serial, and a plausible wrong value is worse than a blank one.
+- **The mapping is split into `export-sales-rows.ts`**, free of the Supabase import — the same
+  split `receipt-export-rows.ts` got in P1+D8 phase 11 — so the spec exercises the **shipped**
+  mapping rather than a retyped copy. Retyping a mapping is exactly how the «ردشده» label bug
+  reached a file in that phase. Phase 4.8 reuses this module for the single-quote export.
+
+### ⛔ A mistake this phase made against live data, and what changed because of it
+
+The blocked-document test has to construct its case, because every accepted quote's customer
+already has an Asan code. The first draft deleted the code and restored it with
+`insert (person_id, kind, value)` — but `person_identifiers` has **no `value` column**. The
+insert threw *inside* `finally`, its failure was masked by the assertion failure it was cleaning
+up after, and **a real Asan person code stayed deleted** (11 → 10). It was restored from
+`customers.accounting_code`, the exact source migration 283 backfilled it from, and read back
+field by field.
+
+Three things changed so it cannot recur: the restore now runs the migration-283 backfill
+statement itself (idempotent by its own two `NOT EXISTS` guards); `beforeAll` **heals before
+asserting**, so a run that died mid-test does not redden every later test for an unrelated
+reason; and both `beforeAll` and `afterAll` assert the count is exactly **11**. The test also
+proves the restore source agrees with the row *before* deleting anything.
+
+### Verification
+
+`e2e/asan/export-sales.spec.ts` — **20/20 green** on the deployed build (`APP_GIT_SHA=812dff79`,
+`APP_BUILD_TIME=2026-08-04T15:06:02`, all three signals equal to HEAD; PostgREST restarted).
+
+The workbook is read back with **openpyxl**, an independent reader, because verifying a file with
+the same library that wrote it proves only that the library round-trips. The owner's headline
+assertion is made against a known live quote with the database as the oracle: `sum(H)` is exactly
+`final_amount * 10`, and per line `G * F = H` with every Rial amount ending in 0 — so a x10
+applied twice to one cell and once to another cannot pass. Also asserted: the header row matches
+`SALES_HEADERS` character for character through openpyxl, dates match `YYYY/MM/DD` in Latin
+digits, column K is empty, a line whose product has no Asan code still exports with column D
+empty, and the same selection exported twice is byte-identical.
+
+Test data removed: `asan_export_numbers` back to **0** rows for the quote the numbering test
+touched, `asan_person_code` back to **11**.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -949,11 +1059,12 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M4.3** (`docs/execution/M4_BUILD_EXPORT.md`) — export 1, sales invoices — then
-4.4 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
+Next action: **M4.4** (`docs/execution/M4_BUILD_EXPORT.md`) — export 2, purchase invoices — then
+4.5 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
 with `docs/execution/asan-final-report.md`.
 
-The suite now totals **283** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2.
+The suite now totals **303** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
+20 for M4.3.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
