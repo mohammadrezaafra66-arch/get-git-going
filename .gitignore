@@ -113,3 +113,7 @@ screenshots/
 /backups/
 *.dump
 *.sql.gz
+
+# Ad-hoc data exports downloaded into the repo (rule 4: no data dumps in git).
+# The verified Asan layout samples under docs/verification/ are deliberately NOT covered.
+docs/execution/*.xlsx
