@@ -3,8 +3,8 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: M4.4 next (4.1-4.3 done)
-Last commit: `812dff79`
+Current phase: M4.5 next (4.1-4.4 done)
+Last commit: `5d8849d3`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
 Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
 documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
@@ -75,6 +75,9 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M4.3 export 1, sales invoices — migration 292 — commit `812dff79` — `asan_list_sales_export`,
       the 18-column فروش mapping, cash/bank from allocated receipt amounts;
       spec **20/20 green** on the deployed build (`APP_GIT_SHA=812dff79`), file verified with openpyxl.
+- [x] M4.4 export 2, purchase invoices — migration 293 — commit `5d8849d3` —
+      `asan_list_purchase_export`, one shared row builder for both invoice tabs, fractional-amount
+      block; spec **14/14 green**, sales still **20/20** after the refactor (`APP_GIT_SHA=5d8849d3`).
 
 ## M1.1 detail
 
@@ -1033,6 +1036,85 @@ empty, and the same selection exported twice is byte-identical.
 Test data removed: `asan_export_numbers` back to **0** rows for the quote the numbering test
 touched, `asan_person_code` back to **11**.
 
+## M4.4 — export 2, purchase invoices (migration 293)
+
+### One row builder, not two
+
+The sales and purchase tabs are the **same eighteen columns** and differ in exactly three header
+texts — I (`دریافت نقد` / `پرداخت نقد`), J (`واریز به بانک` / `پرداخت از بانک`) and K (blank /
+`پرداخت چک`). So `buildInvoiceRows` serves both, and the difference between the two exports is
+**data rather than code**: a sales document never carries a cheque amount, so column K comes out
+blank exactly as the owner confirmed, and a purchase puts its cheque in the same slot. Writing a
+second mapper for eighteen identical columns is the parallel implementation rule 14 forbids, and
+it is how two files drift until only one is right.
+
+That sharing is why migration 293 also **renames migration 292's output**. 292 named its columns
+`quote_id`, `customer_name` and so on, which cannot describe a purchase. Rule 2.6 forbids editing
+292, so 293 is the sanctioned forward migration: `CREATE OR REPLACE` cannot change a function's
+output column names, so 292's function is **dropped and recreated on the identical
+`(date, date)` signature** — no overload is created (rule 5).
+
+The claim is enforced rather than asserted in prose. 293's gate compares `proargnames` of both
+functions and **refuses to apply if they differ**, and the spec re-checks it at the catalogue.
+The spec also feeds one identical row through the builder twice, once with a cheque amount and
+once without, and requires all seventeen other columns to be byte-equal.
+
+### Measured before building
+
+- **289 purchases, all `status='received'`, all `currency='toman'`.** `received` is the whole
+  candidate set: goods in, purchase real.
+- **`purchases.number` is NULL on all 289**, so the human label falls back to date + short id.
+  Column A carries the Asan number from 4.1 regardless, so nothing financial rides on that string.
+- **Only 8 purchases have a supplier, and not one supplier has an Asan person code.** So every
+  purchase is blocked today and the file is empty. That is the **correct** answer rather than a
+  broken one — per the owner, a missing party code blocks the document because Asan must know the
+  party — but it means the happy path exercises nothing, so the spec **constructs** its exportable
+  case (attach a code, assert, remove) the same way M3.4 did when the real product file exercised
+  no link.
+- **There is no purchase payment data anywhere.** `payment_receipt_links` has `quote_id` and
+  `invoice_id` but **no purchase column**; `purchase_receipts` holds uploaded images for purchase
+  requests; `paid_at` is NULL on all 289. Columns I, J and K are therefore empty. Filling
+  `پرداخت نقد` from `paid_at` was rejected: it asserts a payment method nobody recorded, and a
+  plausible wrong value in a financial column is worse than a blank one. Recorded in
+  `UNVERIFIED-LAYOUTS.md` section 7. `تخفیف` is empty for the same class of reason —
+  `purchase_items` has no discount column.
+
+### ⛔ The fractional-amount block, which sales did not need
+
+`tomanToRial` **refuses** a fractional Toman value rather than rounding it, because rounding money
+silently is worse than refusing. On `sales_quotes` that costs nothing: zero rows are fractional.
+On `purchases` **two rows are** — 24 999 999.99 and 24.95. Without a block, those two would make
+the row builder throw and take the **whole export** down with them: one bad row costing the
+accountant every other invoice.
+
+They are blocked and named instead, the same rule the 4.2 shell applies everywhere. Both source
+functions now carry the guard, and 293's gate refuses to apply if either loses it. The spec proves
+the reason really surfaces: it supplies a party code to one fractional purchase so that the
+missing-code reason stops winning, and asserts the message that remains is the fractional one.
+
+### The database caught the spec
+
+The first draft's fixture code was `E2E-SUP-1`. `normalize_identifier` (migration 283) rejected it
+with «کد حساب آسان باید فقط رقم باشد» — an Asan person code must be digits only. The constraint
+doing exactly its job, and a useful reminder that the identity rules apply to test data too. The
+fixture is now `99900001`, numeric and far outside the range the owner's real codes occupy
+(2 … 1 125 623), so it can neither be mistaken for a real code nor collide with 283's partial
+unique index.
+
+### Verification
+
+`e2e/asan/export-purchase.spec.ts` — **14/14 green**, and `export-sales.spec.ts` still **20/20**
+after the shared-builder refactor, both on the deployed build (`APP_GIT_SHA=5d8849d3`, all three
+signals equal to HEAD; PostgREST restarted). The purchase file is read back with **openpyxl**:
+eighteen headers character for character including `پرداخت چک` at K, `sum(H)` exactly
+`total_amount × 10`, dates `YYYY/MM/DD`, I/J/K empty, and the same selection exported twice
+byte-identical. The independent-register assertion the brief singles out is computed from the live
+high-water mark rather than hard-coded to 1, so a leftover row from another spec cannot make it
+fail for a reason that is not about registers being independent.
+
+Test data removed: the constructed supplier code is gone and `asan_person_code` is back to its
+baseline; `asan_export_numbers` is back to its baseline count.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -1059,12 +1141,12 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M4.4** (`docs/execution/M4_BUILD_EXPORT.md`) — export 2, purchase invoices — then
-4.5 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
+Next action: **M4.5** (`docs/execution/M4_BUILD_EXPORT.md`) — the shared accounting-document row
+builder — then 4.6 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
 with `docs/execution/asan-final-report.md`.
 
-The suite now totals **303** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
-20 for M4.3.
+The suite now totals **317** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
+20 for M4.3 + 14 for M4.4.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
