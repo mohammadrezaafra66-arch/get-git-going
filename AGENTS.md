@@ -227,3 +227,10 @@ Non-obvious gotchas (these will silently break the stack if missed):
   set `profiles.status='active'` and `insert into user_roles(user_id, role)
   values (<id>, 'admin')` via SQL. `app_role` enum = admin/manager/sales/
   accountant/viewer.
+
+## Auto-push after every commit (all AI agents)
+After every `git commit`, immediately run `git push origin HEAD`.
+This applies to every AI agent working in this repo — Claude Code, Codex, Cursor, or any other.
+The goal: GitHub must always mirror the local project's committed state.
+Push only after a commit (which happens at the end of a completed, tested phase), never mid-phase.
+If the push fails (e.g. non-fast-forward), stop and report it — do not force-push.
