@@ -1,11 +1,12 @@
 # ASAN Program Progress
 
 ## Status
-Current mission: M1
-Current phase: 1.1 complete → next 1.2
-Last commit: (see below)
-Baseline typecheck: 70 (not re-run in 1.1 — no TypeScript changed; mission gate will run it)
-Last e2e: not yet run this program (documented baseline 155 green / 6 red / 4 skip)
+Current mission: **M2 (research, read-only)**
+Current phase: M1 complete, gate passed → starting R1
+Last commit: `0dcf78e9`
+Baseline typecheck: 70 (verified at the M1 gate)
+Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
+reds 6 → 5, no new red
 
 ## Environment verified at bootstrap
 - Branch `feature/navigation-modernization`, HEAD `1b9f63ff` at start.
@@ -24,9 +25,15 @@ Last e2e: not yet run this program (documented baseline 155 green / 6 red / 4 sk
 - [x] M1.3 restrict the `viewer` role — migration 281 — viewer-readable relations 58 → 28;
       88 restrictive policies, 8 views guarded, 4 tables that had RLS switched off closed;
       new spec `e2e/security/viewer-restrictions.spec.ts` 40/40 green.
-- [x] M1.4 clean the repository — 3 strays deleted, 2 Asan workbooks moved to
-      `docs/asan/reference/`, 27 root markdown files relocated under `docs/`, `.claude/`
+- [x] M1.4 clean the repository — commit `cdc172be` — 3 strays deleted, 2 Asan workbooks moved
+      to `docs/asan/reference/`, 27 root markdown files relocated under `docs/`, `.claude/`
       ignored. Typecheck still exactly 70.
+- [x] M1.5 clean-tree guard on the LAN deploy scripts — commit `bf49fc7f` — 7 cases tested
+      with docker stubbed; nothing deployed during the test.
+- [x] M1.6 emergency admin dormant — migration 282 — commit `0dcf78e9` — harness repointed at
+      `test.admin@afrakala.local`, `page.pause()` trap retired; spec 4/4 green.
+- [x] **M1 MISSION GATE PASSED** — typecheck 70, tree clean, three deploy signals match HEAD,
+      e2e 202/5/4 with no new red.
 
 ## M1.1 detail
 
@@ -256,9 +263,68 @@ the `admin` role, so a direct PostgREST call would still be privileged. Closing 
 mean `banned_until` or removing the role — neither was asked for, and both would make the
 break-glass account harder to use in the emergency it exists for. Flagged, not done.
 
+## M1 MISSION GATE — PASSED
+
+| gate item | result |
+|---|---|
+| 1. typecheck exactly 70 | **70** |
+| 2. everything committed, tree clean | clean at `0dcf78e9` |
+| 3. build + deploy, three signals match HEAD | `APP_GIT_SHA=0dcf78e9`, `APP_BUILD_TIME=2026-08-04T06:02:15Z`, `git HEAD=0dcf78e9` |
+| 4. `docker restart afrakala-lan-rest` | done; web healthy, db-role-fix `Exited (0)`, all others `Up` |
+| 5. full e2e vs baseline 155/6/4 | **202 passed / 5 failed / 4 skipped** — no new red |
+
+The build was the first real exercise of the M1.5 guard: it ran against a clean tree and
+stamped `0dcf78e9` with no `-dirty` suffix.
+
+### Test arithmetic — why 202, and why 5 reds is not a regression
+
+Baseline 155 + 6 + 4 = 165 tests. Today 202 + 5 + 4 = 211. The difference is exactly the
+46 tests this mission added: `viewer-restrictions` 40, `emergency-admin-dormant` 4, and
+`no-override` net +2 (one legacy-RPC case replaced by three). 165 + 46 = 211. ✔
+
+Reds went **6 → 5**. Four are the named documented reds (`212`, `213`, `214-whatsapp`,
+`persons-credit-uses-person`); the documented flaky `business-flows/215` passed today.
+
+### The fifth red — `purchase/c5-permissions` E2E-9 — investigated, not mine
+
+The brief names 5 of the 6 baseline reds, so one was unnamed. This is it, and it fails for a
+reason that predates this mission:
+
+- The spec asserts the "آپلود رسید" button appears iff
+  `purchase_requests.assigned_to` is **non-empty**.
+- `PurchaseRequestCard.tsx:36` renders it iff `request.assigned_to === user.id` —
+  assigned **to me**, not assigned at all.
+- Every new request is auto-assigned to `shop_settings.default_purchase_assignee_id`, which on
+  this server is `4084224a-…` (`mohammadrezaafra66+old-restore@gmail.com`) — persistent live
+  configuration, restored intact by `c4-assignment` E2E-15 and its `afterAll` guard.
+- `4084224a` is neither the old harness admin (`48f7c9d5`, afra-admin) nor the new one
+  (`05098088`, test.admin), **so the button is absent under either** while the expectation
+  evaluates to 1 under either. The failure is independent of M1.6 by construction.
+
+The spec's own comment states its premise — "with no default assignee configured … the request
+is ownerless" — which is no longer true of this server.
+
+**Not fixed, deliberately.** The brief says documented reds are not mine to fix, and I cannot
+prove this was not one of the six. The one-line correction is ready if the owner wants it:
+compare `assigned_to` to the current user instead of to the empty string.
+
 ## HANDOFF STATE
-Next action: M1 mission gate — typecheck (expect exactly 70), deploy per rule 2.8 and verify
-all three signals, `docker restart afrakala-lan-rest`, then the full e2e suite against the
-155/6/4 baseline. Then start M2.
+Next action: M2 — read-only research into `docs/asan/research-asan-bridge.md`, sections R1→R8
+in order, writing each before starting the next. Write no migration, change no application
+code, apply nothing to the database.
 Blocked on: nothing
-Files in flight: none
+Files in flight: `docs/verification/asan/reference-extract.json` (M2 working artefact,
+extracted from the two reference workbooks)
+
+### M2 groundwork already done (inert, file-only)
+Both reference workbooks were read and their headers verified against the brief's mapping —
+it is correct: `اشخاص` AB=`کد حساب`, Z=`نام حساب`, I=`موبایل`, Y=`تلفن`, E=`کد ملی`,
+X=`آدرس`; `کالا` V=`کد کالا`, S=`شرح کالا`, T=`بارکدکـالا`, U=`سریال کـالا`, Q=`واحد 1`.
+
+Two findings that change R1.5 and R2.6 before they are written:
+- **`بارکدکـالا` is 0 % populated** across all 7 256 product rows. Barcode matching, one of
+  the three strategies R1.5 asks me to test, is **impossible from this export**.
+- **`کد ملی` is 0 % populated** across all 488 person rows, so national id cannot be a match
+  key either.
+- `کد حساب` 488/488 distinct and `کد کالا` 7 256/7 256 distinct — both are clean primary keys.
+- `موبایل` 342/488 filled, `تلفن` 180/488.
