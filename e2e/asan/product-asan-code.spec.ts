@@ -105,9 +105,7 @@ test.describe("the edit form", () => {
     await field.fill(EDIT_CODE);
     await page.getByRole("button", { name: "ذخیره" }).first().click();
 
-    await expect
-      .poll(() => codeOf(NAME_WITHOUT_CODE), { timeout: 20_000 })
-      .toBe(EDIT_CODE);
+    await expect.poll(() => codeOf(NAME_WITHOUT_CODE), { timeout: 20_000 }).toBe(EDIT_CODE);
 
     // The round trip the owner asked for: reload the page and the field still reads it back.
     await page.goto(`/products/${id}`);

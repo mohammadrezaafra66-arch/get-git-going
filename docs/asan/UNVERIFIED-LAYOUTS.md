@@ -6,29 +6,74 @@ may be emitted with a value until the owner resolves it.
 The verified specification is `docs/asan/asan-layouts.md`. This file is a strict subset of the
 open questions — it contains **no layout marked VERIFIED**.
 
-Kept current through M4.
+Kept current through M4. Last refreshed against
+`docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md`, which resolved five of the seven questions
+that used to be listed here. The resolved ones are recorded at the bottom so nobody re-opens
+a settled question, but they are no longer blocking anything.
 
 ---
 
-## 1. Column K on the sales tab — BLOCKS one cell, not the layout
+## 1. The Asan `کد حساب` for the receivables control account (`invoice_ar`)
 
-**Status:** unverified · **Impact:** one column of Layout 1 · **Current behaviour:** emitted empty
+**Status:** owner confirmed the *meaning*, still owes the *number* · **Impact:** any Layout 3
+document containing an `invoice_ar` line
 
-On the `خرید` (purchase) tab, position K is `پرداخت چک` — verified. On the `فروش` (sales) tab
-the same position appeared **blank** in the owner's screenshot. It is plausible that sales has a
-cheque column too, but plausible is not verified, and a cheque amount written into the wrong
-column would post a payment that never happened.
+The owner confirmed what this account is: the **total-of-debtors / receivables control**
+account — the aggregate of what every party owes. What is still missing is its Asan
+`کد حساب`.
 
-**What I need from you:** a screenshot of the `فروش` tab header row, or simply the answer —
-is K blank, `دریافت چک`, or something else?
+This is an account in Asan's chart, not an AfraKala party, so no AfraKala row can supply it
+and neither reference workbook contains it.
 
-**Until then:** M4 writes nothing in column K of the sales layout.
+**What I need from you:** the Asan `کد حساب` for the receivables/debtors control account.
+
+**Until then:** a document containing an `invoice_ar` line **fails loudly and is excluded from
+the file**, naming the account. A blank account code is never emitted, and the number is never
+guessed.
 
 ---
 
-## 2. Radio options on `ورود اطلاعات از Excel` that were not captured
+## 2. The Asan `کد حساب` for `other`
 
-**Status:** known to exist, layouts unknown · **Decision: deliberately unbuilt**
+**Status:** owner deferred it · **Impact:** any Layout 3 document containing an `other` line
+
+The owner's instruction is explicit: *"Skip `other` for now. If a document contains an `other`
+line, block that document from export and note it, rather than emitting a blank or guessed
+code. I will define `other` later."*
+
+**What I need from you:** what `other` should mean, and its Asan code — when you are ready.
+
+**Until then:** an `other` line blocks its whole document, with the reason named in the
+preview.
+
+---
+
+## 3. Asan codes for external parties in real دوبل documents
+
+**Status:** per-party data, not a layout question · **Impact:** Layout 3 third-party documents
+
+`external_parties.accounting_code` exists (it pre-dated this program) and Layout 3 places it in
+column A. But a real intermediary — the owner's example is *Sahar Shahmoradi*, someone he has
+only a name and an account number for — will normally have **no Asan code yet**.
+
+The rule here is deliberately **different from the product rule**, and the two must not be
+merged:
+
+| missing code | behaviour | why |
+|---|---|---|
+| product `کد کالا` | export proceeds, column D left empty | Asan mints a code under group `101` |
+| person / account / external party | **document blocked**, party named | a financial line with no account cannot post |
+
+**What I need from you:** the Asan code for each external party you actually want exported.
+They are listed by name in the export preview when they block a document.
+
+**Until then:** the document is excluded and the missing party is named in Persian.
+
+---
+
+## 4. Radio options on `ورود اطلاعات از Excel` that were not captured
+
+**Status:** known to exist, layouts unknown · **Decision: deliberately unbuilt, confirmed by the owner**
 
 The `نوع اطلاعات` radio group offers seven options. Only `واریزیهای بانکی` was captured and is
 built (Layout 4).
@@ -42,106 +87,68 @@ built (Layout 4).
 | `اسناد پرداختنی` | UNKNOWN | not built |
 | `اطلاعات فاکتور` | UNKNOWN | not built |
 
-These are **out of scope for this program by the owner's own instruction**: Layout 3 (the
-accounting document) covers the actual need for receipts, payments and third-party documents.
-Recorded here so nobody later mistakes their absence for an oversight.
+The owner re-confirmed these stay unbuilt: *"The six uncaptured radio options stay unbuilt. If
+I need one later I will ask. No action."* Layout 3 (the accounting document) covers the actual
+need for receipts, payments and third-party documents.
 
-**What I need from you:** nothing, unless you want one of them built later.
-
----
-
-## 3. Currency unit Asan expects — THE HIGHEST-RISK OPEN ITEM
-
-**Status:** UNKNOWN · **Impact:** every amount in every layout
-
-AfraKala is **provably Toman**: `products.base_currency` defaults to `'toman'` (214 rows
-explicitly toman, 140 usd, 1 aed), `purchases.cash_price_currency` is literally `'toman'` on a
-real row, and `market_indicators.unit` / `market_rate_ticks.unit` are `'toman'`.
-
-Asan's side is **inferred only**. `اشخاص.xlsx` has no unit label anywhere. Its balances have a
-median of 6 000 000 and a maximum of 101 676 374 980 — magnitudes that read naturally as Toman
-(6 million Toman ≈ a normal customer balance) and implausibly as Rial (600 000 Rial ≈ one
-dollar). Magnitude is evidence, not a unit label.
-
-**A ×10 error here is the worst outcome this program can produce.**
-
-**What I need from you:** open one invoice in Asan whose total you also know in AfraKala, and
-tell me the two numbers. One data point ends this permanently.
-
-**Until then:** M4 exposes the unit as an explicit, visible setting with no silent default, and
-refuses to generate a file until it has been confirmed once.
+**What I need from you:** nothing.
 
 ---
 
-## 4. `bank_accounts.accounting_code` is a placeholder
+## 5. The account called "12"
 
-**Status:** placeholder `TEMP-CHANGE-ME` · **Impact:** every `bank` line in Layout 3, and column F of Layout 4
-
-There is exactly one bank account in the system (`ملت`, id `32a4c282-85a3-485c-bbb4-dae3bb4febd6`)
-and its Asan code is the literal string `TEMP-CHANGE-ME`.
-
-**Strong candidate, not applied:** `اشخاص.xlsx` contains account **`3064`** whose `نام حساب` is
-exactly `ملت`, with no mobile and no address — the shape of a ledger account rather than a
-person. There is no competing `ملت` row.
-
-**What I need from you:** confirm `3064`, or give me the correct code.
-
-**Until then:** any export containing a bank line whose code is still `TEMP-CHANGE-ME` **fails
-loudly**, naming the account. It is never emitted.
-
----
-
-## 5. Asan codes for control accounts
-
-**Status:** UNKNOWN · **Impact:** Layout 3 lines whose `account_kind` is `invoice_ar`, `clearing` or `other`
-
-These are accounts in Asan's chart, not AfraKala parties, so no AfraKala row can supply them
-and neither reference workbook contains them.
-
-**What I need from you:** the Asan `کد حساب` for
-- receivables control (`invoice_ar`)
-- clearing / suspense (`clearing`)
-- anything you want `other` to map to
-
-**Until then:** a document containing such a line refuses to export rather than emitting a
-blank code.
-
----
-
-## 6. The account called "12"
-
-**Status:** unresolved, and reserved to you · **Impact:** one supplier's export identity
+**Status:** unresolved, and reserved to the owner · **Impact:** one supplier's export identity
 
 AfraKala has a supplier whose name is literally `12`, mobile `09903858654`. That mobile matches
 **no** account in `اشخاص.xlsx`, so the export cannot resolve who it is.
 
-This is also one of the two person matches mission control section 6 explicitly reserves for
-you ("ستایسا سعادت مبارکی" ⇒ "12"), so it is reported and **left untouched**.
+The owner's answer: *"Understood, no problem. Leave it exactly as is."* It remains one of the
+two person matches mission control section 6 reserves for him.
 
-**What I need from you:** the correct title and Asan code for this account.
+**What I need from you:** eventually, the correct title and Asan code. Nothing until then.
 
----
-
-## 7. Which sales-quote status means "finalized"
-
-**Status:** undefined · **Impact:** which documents the sales export includes
-
-Of 50 quotes: 35 `draft`, 9 `canceled`, **4 `accepted`**, 1 `rejected`, 1 `sent`. If `accepted`
-is the export gate, the first batch is four documents.
-
-**What I need from you:** one word — which status (or statuses) should be exported?
+**Until then:** untouched. If it appears in an export range its document is blocked for the
+ordinary missing-person-code reason, like any other party without a code.
 
 ---
 
-## 8. Product code strategy for the 352 unmatched products
+## MODEL GAPS
 
-**Status:** decision needed, not a layout question · **Impact:** column D of Layouts 1 and 2
+Recorded per the owner's instruction: where the current data model cannot represent something
+the requirements imply, it is written down rather than invented.
 
-Only **3 of 355** AfraKala products can be matched to an Asan product code, and fuzzy matching
-is unsafe (0.90-similarity pairs are demonstrably different products — R1.5).
+### The `clearing` account does not exist in Asan
 
-Asan's `گروه کدهای کالای جدید = 101` means Asan will **mint a new code** for any product it does
-not recognise, so a blank column D is a workable path rather than a blocker.
+The owner: *"There is no clearing/suspense account in Asan. Do not map `clearing` to any code
+and do not emit it."* His real-world flow is a **cash receipt and a cash payment recorded in
+the same moment**, not a suspense line.
 
-**What I need from you:** confirm that unmatched products may arrive in Asan as new items under
-group `101`, rather than being held back until they are matched by hand.
+`journal_lines.account_kind` still allows `clearing`, so AfraKala can produce such a line even
+though Asan has nowhere to put it. **No Asan code is mapped to `clearing` and no
+`clearing`-coded line is ever emitted.** M4 records here whether the existing model can express
+the receipt+payment pair the owner actually uses; see the M4 phase notes in
+`docs/execution/asan-progress.md` for the measured answer.
+
+### The third-party (دوبل) case — money landing in an unknown person's account
+
+The owner's example: money is taken from Khan-Mohammadi and paid to Mokhtar Shahmoradi, but
+deposited into the account of **Sahar Shahmoradi**, of whom AfraKala holds only a name and an
+account number. `external_parties` is the right shape for that intermediary (minimal identity,
+name + account). What must be checked, and is recorded in the M4 notes, is whether the model can
+state **"the money owed to A landed in B's account"** as a relationship rather than as free
+text.
+
+---
+
+## RESOLVED — do not re-open these
+
+Kept only so a future session does not resurrect a settled question. None of these blocks
+anything.
+
+| was | resolved to | where |
+|---|---|---|
+| currency unit Asan expects | **Rial.** AfraKala stores Toman, so every exported amount is multiplied by 10 in integer arithmetic, and the unit is stated visibly in the export UI | owner answers, "CURRENCY UNIT" |
+| Bank Mellat `accounting_code` | **`8`** — not the researched candidate `3064`. Applied by migration 288 | owner answers, "BANK MELLAT ASAN CODE" |
+| column K on the `فروش` tab | **nothing — intentionally blank** | owner answers, "SALES-TAB COLUMN K" |
+| which sales-quote status means finalized | **accountant-finalized AND stock-deducted**, established from the data rather than assumed from `status='accepted'` | owner answers, "FINALIZED SALES-QUOTE STATUS" |
+| what to do with the 352 products having no Asan code | export proceeds with column D empty; Asan mints a code under group `101`. A missing product code never blocks a sales/purchase export | owner answers, "PRODUCT CODE STRATEGY" |

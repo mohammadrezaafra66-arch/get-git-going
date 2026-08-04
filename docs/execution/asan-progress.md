@@ -1,14 +1,21 @@
 # ASAN Program Progress
 
 ## Status
-Current mission: **M3 (build foundation)** — all five phases built; gate items 1-4 and 6 passed
-Current phase: M3.0–3.4 **complete** → next: confirm the full e2e, then M4
-Last commit: `da6a6f60`
+Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
+three owner-override phases O1–O3
+Current phase: M4.1 next
+Last commit: `004477bd`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
-Last full e2e: **202 green / 5 red / 4 skip** at the M1 gate. The M3-gate run was still in
-flight when this file was last written — **read its result before starting M4**; the suite
-should now total 219 tests (211 + 13 added this session) and any red beyond the 5 documented
-ones is a regression from this session.
+Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
+documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
+`purchase/c5-permissions` E2E-9). The flaky `business-flows/215` passed this time. **Zero new
+reds**, so migration 287 is confirmed to have closed the 285 merge regression.
+
+**Owner overrides in force:** `docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md` supersedes
+conflicting instructions in the mission files and in `docs/asan/UNVERIFIED-LAYOUTS.md`. It
+raises the execution pace (mission control section 1 is relaxed: still one complete, tested,
+committed phase at a time, but no longer deliberately slow), reinstates the product importer as
+a human-operated staging tool, and resolves the currency unit as **Rial** (AfraKala Toman ×10).
 
 ## Environment verified at bootstrap
 - Branch `feature/navigation-modernization`, HEAD `1b9f63ff` at start.
@@ -50,6 +57,15 @@ ones is a regression from this session.
 - [x] M3.4 staged Asan product import — migration 286 — commit `da6a6f60` — parser, staging,
       classify/commit RPCs, guard trigger, products tab on the same route;
       spec **8/8 green** on the real 7 256-row export. No product created, asserted at the table.
+- [x] **M3 MISSION GATE PASSED** — the confirming full-suite run came back **231 green / 5 red /
+      4 skip**, all five reds documented, **zero new**. Migration 287's fix for the 285 merge
+      regression is confirmed on the wire, not merely on the two specs that caught it.
+- [x] O1 Bank Mellat Asan code — migration 288 — commit `abdb2c6a` — `TEMP-CHANGE-ME` → `8`.
+- [x] O2 Asan product code on the product forms — migration 289 — commit `004477bd` — create
+      form, edit form, detail view, audit diff, duplicate-code message; normalisation moved
+      into a trigger; spec **5/5 green** through the real browser form.
+- [x] O3 `docs/asan/UNVERIFIED-LAYOUTS.md` refreshed — five of seven questions resolved by the
+      owner and moved to a RESOLVED table; three genuinely open items remain, plus MODEL GAPS.
 
 ## M1.1 detail
 
@@ -682,14 +698,80 @@ comparison**: the inserted line is pure ASCII, so the `?` count must not move.
 **Verified:** `e2e/persons` back to **36 passed / 1 failed** — exactly the documented
 `persons-credit-uses-person` — and `person_fk_drift_report()` returns 0 rows.
 
+## OWNER OVERRIDE PHASES — O1, O2, O3
+
+`docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md` arrived after M3 closed. Three of its
+instructions are M3-shaped rather than M4-shaped, so they were executed first, one phase each.
+
+### O1 — the Bank Mellat Asan code is `8` (migration 288)
+
+The owner's number, **not** the researched candidate. `docs/asan/UNVERIFIED-LAYOUTS.md` had
+proposed `3064` — the `اشخاص.xlsx` row whose `نام حساب` is exactly `ملت`, with no mobile and no
+address, the shape of a ledger account rather than a person, and with no competing row. It is a
+good inference and it is **wrong**: the owner says `8`. The migration records that explicitly so
+a later session does not "correct" 8 back to the guess.
+
+Scoped by **both** id and current value, so a code already changed by hand is never silently
+overwritten, and guarded so no bank account is left carrying `TEMP-CHANGE-ME`. Verified by
+reading the row back: `accounting_code = '8'`, length 1.
+
+### O2 — the Asan product code becomes a real field (migration 289)
+
+Owner requirement: the create form exposes it, the edit form updates it, it is optional, and it
+survives a round trip. The column and its partial unique index already existed from migration
+283 — this is the project's recurring pattern from mission control section 3, *the capability was
+built and never wired up*. So no new column was created; the wiring was.
+
+**Where the interesting decision was.** The obvious implementation is to trim and fold the value
+in the form. That would have been wrong in a way that looks fine: 283's unique index is on the
+**raw** column, so `۷۰۰۹` and `7009` are two rows claiming one Asan code and the index accepts
+both, and a direct PostgREST `PATCH` never sees a form rule at all (rule 2.5). Migration 289 puts
+normalisation in a `BEFORE INSERT OR UPDATE OF accounting_code` trigger and **reuses
+`asan_normalize_code` from migration 286** rather than writing a second normaliser — a
+hand-typed code and an imported code now normalise identically by construction, not by
+coincidence. `asan_normalize_code` deliberately does not strip punctuation, so a future
+non-numeric code such as `AFK-12` survives, and it returns NULL for a whitespace-only value,
+which is what turns a cleared form field into a real NULL rather than a row claiming the
+empty-string code.
+
+The migration asserts that **no already-stored code would be rewritten** by the normaliser. If
+that assertion had failed it would have meant the next ordinary UPDATE of any product silently
+changed its Asan identity.
+
+Also wired: the detail view shows the code, `FIELD_LABELS` names it so the product history logs
+it like any other field, and a duplicate code now raises its own Persian message instead of the
+generic "SKU already exists" one, which would have been actively misleading.
+
+**Verification — `e2e/asan/product-asan-code.spec.ts` 5/5 green.** The first three cases drive
+the **real browser form**, because the claim is not "the column accepts a value" but "a human
+typing into the page ends up with that value in the database"; the database is the oracle, the
+toast is not. A code typed with Persian digits and surrounding spaces lands as `9991234`. A
+product created with the field left empty saves with `accounting_code IS NULL` — not `''`. An
+existing product gets its code set through the edit form and reads back after a reload, which is
+the owner's "inline edit" manual path proved rather than asserted. The last two cases are
+API-level on purpose: a direct PATCH is normalised by the trigger, and a second product claiming
+an existing code gets `409 products_accounting_code_unique`. Test data removed and the catalogue
+re-counted: **355 products, 3 linked codes** — exactly the pre-test state.
+
+### O3 — `docs/asan/UNVERIFIED-LAYOUTS.md` refreshed
+
+Five of the seven open questions are resolved by the owner's answers (currency, Mellat code,
+sales column K, the finalized-quote definition, product-code strategy). They moved to a
+**RESOLVED — do not re-open** table rather than being deleted, so a future session does not
+resurrect a settled question. What remains genuinely open: the `invoice_ar` code, the `other`
+account, and per-party Asan codes for external parties. A `## MODEL GAPS` section now records
+the two things the owner described that the data model may not be able to state — `clearing`
+having no Asan counterpart, and the دوبل case where money owed to A lands in B's account.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
-forward fix for the regression the gate's full suite found in phase 3.3's migration. Tree is
-clean at `8b48c4b2`, the deployed build matches HEAD on all three signals, PostgREST has been
-restarted, and the LAN database is in the state the commits describe.
+forward fix for the regression the gate's full suite found in phase 3.3's migration, plus the
+three owner-override phases O1–O3 (migrations **288** and **289**). Tree is clean at
+`004477bd`, the deployed build matches HEAD on all three signals, PostgREST has been restarted,
+and the LAN database is in the state the commits describe.
 
-**M3 mission gate — items 1-4 and 6 confirmed; item 5 re-run in flight at the handoff.**
+**M3 mission gate — PASSED, all six items.**
 
 | gate item | result |
 |---|---|
@@ -697,7 +779,7 @@ restarted, and the LAN database is in the state the commits describe.
 | 2. every new module seeded for every role, *proved by query* | `asan-import` **7 rows / 7 roles**, `can_view` = `accountant,admin` exactly; **0** tables in `public` without RLS |
 | 3. everything committed, tree clean | clean at `8b48c4b2` |
 | 4. build + deploy, three signals match | all three `8b48c4b2`; `docker restart afrakala-lan-rest` done |
-| 5. full e2e | first run **228/8/4** → found 2 real reds from migration 285, fixed by **287**; `e2e/persons` re-verified at **36/1** (documented red only); the confirming full re-run was still in flight |
+| 5. full e2e | first run **228/8/4** → found 2 real reds from migration 285, fixed by **287**; the confirming re-run came back **231 passed / 5 failed / 4 skipped** — the five documented baseline reds and **nothing else**. `business-flows/215`, documented as flaky, passed this time, which is what flaky means |
 | 6. three `e2e/asan/*.spec.ts` registered | `playwright.config.ts` matches `/asan\/.*\.spec\.ts/` — covers all three |
 
 **Finding for the owner, pre-existing and out of scope for this mission.** The same query that
@@ -707,21 +789,29 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action, in order:
-1. **Read the confirming full-suite result.** The suite totals **240** tests — the M1-gate
-   figure of 211 predates the M3.2/M3.3 specs; 211 + 9 (`phone-normalization`) + 7
-   (`import-persons` API) + 5 (M3.3 UI + tripwire) + 8 (M3.4) = 240. ✔ Expect **6 reds**:
-   `212`, `213`, `214-whatsapp`, `persons-credit-uses-person`, `purchase/c5-permissions` E2E-9,
-   and the documented flaky `business-flows/215` (it passed at the M1 gate and failed here —
-   that is what "flaky" means, not a regression). **Anything beyond those six is mine.**
-2. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
-   (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing with
-   `docs/execution/asan-final-report.md`.
+Next action: **M4.1** (`docs/execution/M4_BUILD_EXPORT.md`) — stable Asan document numbering —
+then 4.2 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`),
+finishing with `docs/execution/asan-final-report.md`.
 
-Blocked on: nothing technical. **Seven owner questions remain open** in
-`docs/asan/UNVERIFIED-LAYOUTS.md`; four affect financial correctness (currency unit, Bank
-Mellat's real code, the three control-account codes, sales column K) and M4 must surface them
-in the UI and refuse to guess.
+The suite now totals **245** tests: 240 at the M3 gate + 5 for O2.
+
+**M4 must carry these owner decisions, none of which may be re-derived or guessed:**
+- **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
+  and the export UI must say so visibly. The strict per-quote assertion (`T` Toman → cell
+  `T*10`) is the single most important test in M4.
+- bank Mellat's code is `8` (already in the database).
+- sales column **K stays empty**.
+- export only quotes that are **accountant-finalized AND stock-deducted** — establish the real
+  signal from the data and record the evidence; do not assume `status='accepted'`.
+- a product with no Asan code **still exports**, with column D empty. A person, account or
+  external party with no code **blocks the whole document**. These two rules are deliberately
+  different and must not be merged.
+- `invoice_ar` and `other` lines block their document and name the reason; `clearing` is never
+  emitted.
+
+Blocked on: nothing technical. Three owner questions remain open in
+`docs/asan/UNVERIFIED-LAYOUTS.md` (the `invoice_ar` code, the `other` account, external-party
+codes); M4 must surface them in the UI and refuse to guess.
 
 Files in flight: none.
 
