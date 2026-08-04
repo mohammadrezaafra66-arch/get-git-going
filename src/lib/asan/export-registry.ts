@@ -15,34 +15,19 @@ import {
 } from "@/lib/asan/export-types";
 import { SALES_EXPORT } from "@/lib/asan/export-sales";
 import { PURCHASE_EXPORT } from "@/lib/asan/export-purchase";
+import {
+  PAYMENTS_EXPORT,
+  RECEIPTS_EXPORT,
+  THIRD_PARTY_EXPORT,
+} from "@/lib/asan/export-journal";
 
 export const ASAN_EXPORTS: Record<AsanExportKey, AsanExportDefinition> = {
   sales: SALES_EXPORT, // M4.3
   purchase: PURCHASE_EXPORT, // M4.4
-  receipts: notBuiltYet(
-    "receipts",
-    "دریافت‌ها و واریزها",
-    "ورود اطلاعات تولید یا سند از فایل Excel",
-    "journal",
-    "accounting_document",
-    true,
-  ),
-  payments: notBuiltYet(
-    "payments",
-    "پرداخت‌ها و برداشت‌ها",
-    "ورود اطلاعات تولید یا سند از فایل Excel",
-    "journal",
-    "accounting_document",
-    true,
-  ),
-  third_party: notBuiltYet(
-    "third_party",
-    "اسناد شخص ثالث (دوبل)",
-    "ورود اطلاعات تولید یا سند از فایل Excel",
-    "journal",
-    "accounting_document",
-    true,
-  ),
+  // M4.6 — three filters over one builder, not three exports.
+  receipts: RECEIPTS_EXPORT,
+  payments: PAYMENTS_EXPORT,
+  third_party: THIRD_PARTY_EXPORT,
   bank_deposits: notBuiltYet(
     "bank_deposits",
     "واریزیهای بانکی (مسیر جایگزین)",
