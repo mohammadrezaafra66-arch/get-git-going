@@ -64,6 +64,9 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] O2 Asan product code on the product forms — migration 289 — commit `004477bd` — create
       form, edit form, detail view, audit diff, duplicate-code message; normalisation moved
       into a trigger; spec **5/5 green** through the real browser form.
+- [x] M4.1 stable Asan document numbering — migration 290 — `asan_export_numbers`, idempotent
+      SECURITY DEFINER assignment under an advisory lock, three burn triggers;
+      spec **8/8 green**.
 - [x] O3 `docs/asan/UNVERIFIED-LAYOUTS.md` refreshed — five of seven questions resolved by the
       owner and moved to a RESOLVED table; three genuinely open items remain, plus MODEL GAPS.
 
@@ -762,6 +765,53 @@ resurrect a settled question. What remains genuinely open: the `invoice_ar` code
 account, and per-party Asan codes for external parties. A `## MODEL GAPS` section now records
 the two things the owner described that the data model may not be able to state — `clearing`
 having no Asan counterpart, and the دوبل case where money owed to A lands in B's account.
+
+## M4.1 — stable Asan document numbering (migration 290)
+
+**The rejected design matters more than the chosen one.** A `SEQUENCE` per document type is the
+obvious implementation and it is wrong here: a sequence burns its value on *any* rolled-back
+transaction, so a failed export attempt would silently create a gap the owner cannot explain.
+`max+1` under a per-type advisory transaction lock leaves no trace when it rolls back, so
+**every gap in this table is a deliberate, recorded burn** rather than an accident.
+
+Assignment is a SECURITY DEFINER function and the table has **no INSERT/UPDATE/DELETE policy at
+all**. That is stronger than "the API is not supposed to write here": a direct PostgREST call
+cannot mint, edit or delete a number, which the spec proves by trying all three. It reads the
+existing mapping *before* taking the lock (the common re-export path costs nothing) and again
+*after* acquiring it, because a concurrent transaction may have inserted the same document while
+this one waited.
+
+**No foreign key to the source documents, on purpose.** A number must survive the deletion of
+the document that consumed it — that is what "burned, not recycled" means. `ON DELETE CASCADE`
+would erase the evidence and `RESTRICT` would block ordinary deletions, so three narrow triggers
+record the disappearance instead: cancel-or-delete on `sales_quotes`, delete on `purchases`, and
+delete on `journal_entries`. The quote trigger carries the migration-278 guard — writing a
+status over itself is not a transition.
+
+**Two traps this phase walked into, both worth recording.**
+
+1. **A `RAISE NOTICE` probe proves nothing here.** The duplicate-number test first reported its
+   verdict with `RAISE NOTICE`; psql writes notices to **stderr**, which `dbExecE2e` does not
+   capture, so the test failed while the constraint was working perfectly. The verdict now goes
+   into a temp table and is `SELECT`ed back. A probe whose success signal cannot reach the
+   assertion is not a probe.
+2. **A failing test made two healthy tests fail.** Playwright discards the worker after a
+   failure and starts a new one, which runs `afterAll` — the cleanup — *mid-file*, and then
+   `beforeAll` again. So one real failure wiped the fixture and two later tests failed against
+   an empty table for reasons that had nothing to do with them. The later tests no longer assume
+   numbers minted by earlier ones: they assign idempotently and compute expectations from the
+   live high-water mark. **Worth remembering for every future spec in this program.**
+
+Also caught by the cleanup assertion: the burn test deletes its own quote, so its mapping row
+can no longer be reached *through* `sales_quotes` — the very survival the test asserts. Cleaning
+by the captured id was needed to leave zero rows behind.
+
+**Verified:** `e2e/asan/export-numbering.spec.ts` **8/8 green** — 1/2/3 in order, re-export
+returns the same number and creates no second row, purchase starts again at 1 while sales has
+reached 3, two simultaneous assignments get consecutive-but-distinct numbers, a duplicate is
+rejected inside the database, PostgREST cannot mint/edit/delete, a salesperson gets a Persian
+403, and a cancelled document's number is burned rather than handed to the next document.
+Table left with **0 rows**.
 
 ## HANDOFF STATE
 
