@@ -631,22 +631,73 @@ it recurs was left in the spec. **It is recorded as unexplained rather than clai
 products **355**, linked codes **3**, batches **0**, staged rows **0**, persons **70**.
 Typecheck exactly **70**.
 
+## M3 MISSION GATE — the full suite found a real regression from phase 3.3
+
+The gate's full-suite run came back **228 passed / 8 failed / 4 skipped**. Six of those eight
+are the documented reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
+`purchase/c5-permissions` E2E-9, plus the documented flaky `business-flows/215`). **Two were
+new, and they were mine.**
+
+### What broke, and why it was invisible
+
+`e2e/persons/merge-ui.spec.ts` and `merge-ui-guard.spec.ts` both failed with
+«ادغام متوقف شد: ستون «asan_import_person_rows…»». **Migration 285 added
+`asan_import_person_rows.matched_person_id` — a new foreign key to `persons` — without
+registering it**, and `person_merge` deliberately reads its work list from `pg_constraint` and
+**halts on any key it does not recognise**. So from `aab2c158` onward, *every merge in the
+system aborted*.
+
+That is the protector doing its job rather than something breaking: the alternative is a merge
+that silently leaves a staged import row pointing at a person that no longer exists. It is
+**the same failure mode migration 271 fixed for `profiles.person_id`** during P1+D8 phase 4 —
+the same trap, in the same costume, two missions later.
+
+It was invisible because **phase 3.3 ran only `e2e/asan/`**. Nothing about the Asan suite
+touches merging, so a green phase gate coexisted with a broken merge for two commits. The
+lesson is already written into mission control section 2.9 (full suite at the end of every
+*mission*) and it is exactly what caught this.
+
+### Migration 287 — the fix, and a false positive in its own guard
+
+Registered as **`generic`**, not `identity_root`: the column is not unique (many staged rows
+may point at one person) and carries no financial state, so a plain repoint is right.
+
+The migration **patches the live definition rather than rewriting it** (rule 2.3). The live
+`person_merge` is ~15 KB and carries nine Persian message literals; retyping it to change one
+line is precisely how a previous session nearly destroyed a function. So 287 reads
+`pg_get_functiondef`, asserts its anchor matches **exactly once**, inserts one ASCII line, and
+re-executes. Snapshot in `docs/verification/pre-287/person_merge.live.sql`.
+
+**Its dry run caught a bug in its own corruption check**, which is the reason dry runs are
+mandatory. The check began as "the rewritten definition must contain no `?`" — the 2026-07-11
+corruption signature. It fired immediately, and it was wrong: `person_merge` legitimately
+contains `IF NOT (_registry ? _key)`, where `?` is the **jsonb key-existence operator** and is
+the very mechanism the registry is read with. Had that check been written to pass instead of
+to fail, it would have silently never protected anything. It is now a **before/after count
+comparison**: the inserted line is pure ASCII, so the `?` count must not move.
+
+287 also adds **the assertion 285 should have carried**: every foreign key pointing at
+`persons` must appear in the registry, so the next new column cannot repeat this silently.
+
+**Verified:** `e2e/persons` back to **36 passed / 1 failed** — exactly the documented
+`persons-credit-uses-person` — and `person_fk_drift_report()` returns 0 rows.
+
 ## HANDOFF STATE
 
-All five M3 phases (3.0–3.4) are built, tested and committed. Tree is clean at `da6a6f60`,
-the deployed build matches HEAD on all three signals (`APP_GIT_SHA=da6a6f60`,
-`APP_BUILD_TIME=2026-08-04T13:15:20`), PostgREST has been restarted, and the LAN database is
-in the state the commits describe.
+All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
+forward fix for the regression the gate's full suite found in phase 3.3's migration. Tree is
+clean at `8b48c4b2`, the deployed build matches HEAD on all three signals, PostgREST has been
+restarted, and the LAN database is in the state the commits describe.
 
-**M3 mission gate — items 1-4, 6 confirmed; item 5 (full e2e) was in flight at the handoff.**
+**M3 mission gate — items 1-4 and 6 confirmed; item 5 re-run in flight at the handoff.**
 
 | gate item | result |
 |---|---|
 | 1. typecheck exactly 70 | **70** |
 | 2. every new module seeded for every role, *proved by query* | `asan-import` **7 rows / 7 roles**, `can_view` = `accountant,admin` exactly; **0** tables in `public` without RLS |
-| 3. everything committed, tree clean | clean at `da6a6f60` |
-| 4. build + deploy, three signals match | all three `da6a6f60`; `docker restart afrakala-lan-rest` done |
-| 5. full e2e vs baseline 202/5/4 | see the line at the top of this file |
+| 3. everything committed, tree clean | clean at `8b48c4b2` |
+| 4. build + deploy, three signals match | all three `8b48c4b2`; `docker restart afrakala-lan-rest` done |
+| 5. full e2e | first run **228/8/4** → found 2 real reds from migration 285, fixed by **287**; `e2e/persons` re-verified at **36/1** (documented red only); the confirming full re-run was still in flight |
 | 6. three `e2e/asan/*.spec.ts` registered | `playwright.config.ts` matches `/asan\/.*\.spec\.ts/` — covers all three |
 
 **Finding for the owner, pre-existing and out of scope for this mission.** The same query that
@@ -657,10 +708,12 @@ narrowing an existing module's access is a permission change, not a gate item, a
 in its own reviewed phase.
 
 Next action, in order:
-1. **Confirm the full e2e result** against baseline 202/5/4 (5 documented reds: `212`, `213`,
-   `214-whatsapp`, `persons-credit-uses-person`, `purchase/c5-permissions` E2E-9). The suite
-   should now total **219** tests: 211 before this session, +4 M3.3 UI browser cases, +1 M3.3
-   source tripwire, +8 M3.4. **Any new red is mine.**
+1. **Read the confirming full-suite result.** The suite totals **240** tests — the M1-gate
+   figure of 211 predates the M3.2/M3.3 specs; 211 + 9 (`phone-normalization`) + 7
+   (`import-persons` API) + 5 (M3.3 UI + tripwire) + 8 (M3.4) = 240. ✔ Expect **6 reds**:
+   `212`, `213`, `214-whatsapp`, `persons-credit-uses-person`, `purchase/c5-permissions` E2E-9,
+   and the documented flaky `business-flows/215` (it passed at the M1 gate and failed here —
+   that is what "flaky" means, not a regression). **Anything beyond those six is mine.**
 2. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
    (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing with
    `docs/execution/asan-final-report.md`.
