@@ -5958,6 +5958,39 @@ export type Database = {
           },
         ]
       }
+      phone_collisions: {
+        Row: {
+          detected_at: string
+          entity_refs: Json
+          id: string
+          normalized_phone: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          detected_at?: string
+          entity_refs: Json
+          id?: string
+          normalized_phone: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          detected_at?: string
+          entity_refs?: Json
+          id?: string
+          normalized_phone?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       price_calculation_snapshots: {
         Row: {
           calculated_at: string
@@ -9890,6 +9923,10 @@ export type Database = {
       add_messenger_group_member: {
         Args: { p_group_id: string; p_role?: string; p_user_id: string }
         Returns: string
+      }
+      detect_phone_collisions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       set_messenger_group_member_role: {
         Args: { p_group_id: string; p_user_id: string; p_role: string }

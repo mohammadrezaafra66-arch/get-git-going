@@ -142,6 +142,7 @@ import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_ap
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purchase'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPhoneCollisionsRouteImport } from './routes/_app.admin.phone-collisions'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingTaskTemplatesRouteImport } from './routes/_app.admin.marketing-task-templates'
@@ -900,6 +901,11 @@ const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   path: '/admin/profile-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPhoneCollisionsRoute = AppAdminPhoneCollisionsRouteImport.update({
+  id: '/admin/phone-collisions',
+  path: '/admin/phone-collisions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
   id: '/admin/penalties',
   path: '/admin/penalties',
@@ -1386,6 +1392,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -1591,6 +1598,7 @@ export interface FileRoutesByTo {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -1799,6 +1807,7 @@ export interface FileRoutesById {
   '/_app/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/_app/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/purchase': typeof AppAdminPurchaseRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -2008,6 +2017,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/phone-collisions'
     | '/admin/profile-fields'
     | '/admin/purchase'
     | '/admin/receipt-fields'
@@ -2213,6 +2223,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/phone-collisions'
     | '/admin/profile-fields'
     | '/admin/purchase'
     | '/admin/receipt-fields'
@@ -2420,6 +2431,7 @@ export interface FileRouteTypes {
     | '/_app/admin/marketing-task-templates'
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
+    | '/_app/admin/phone-collisions'
     | '/_app/admin/profile-fields'
     | '/_app/admin/purchase'
     | '/_app/admin/receipt-fields'
@@ -3523,6 +3535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/phone-collisions': {
+      id: '/_app/admin/phone-collisions'
+      path: '/admin/phone-collisions'
+      fullPath: '/admin/phone-collisions'
+      preLoaderRoute: typeof AppAdminPhoneCollisionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/penalties': {
       id: '/_app/admin/penalties'
       path: '/admin/penalties'
@@ -4289,6 +4308,7 @@ interface AppRouteChildren {
   AppAdminMarketingTaskTemplatesRoute: typeof AppAdminMarketingTaskTemplatesRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
+  AppAdminPhoneCollisionsRoute: typeof AppAdminPhoneCollisionsRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminPurchaseRoute: typeof AppAdminPurchaseRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
@@ -4432,6 +4452,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminMarketingTaskTemplatesRoute: AppAdminMarketingTaskTemplatesRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
+  AppAdminPhoneCollisionsRoute: AppAdminPhoneCollisionsRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminPurchaseRoute: AppAdminPurchaseRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
@@ -4591,13 +4612,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

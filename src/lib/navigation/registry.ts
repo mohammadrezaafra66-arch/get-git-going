@@ -54,6 +54,7 @@
   Warehouse,
   ArrowLeftRight,
   ScrollText as ScrollTextIcon,
+  PhoneOff,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -707,6 +708,17 @@ const NAVIGATION_SEEDS = [
     module: "roles",
     group: "admin",
     subgroup: "adm-settings",
+    adminOnly: true,
+  },
+  {
+    // ASAN M3.2 — the phone collision review queue. Admin tools, not settings:
+    // it is a worklist, not a configuration screen.
+    to: "/admin/phone-collisions",
+    label: "تداخل شماره تلفن",
+    icon: PhoneOff,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
     adminOnly: true,
   },
   {
