@@ -12,10 +12,10 @@ import { ADMIN_USER_ID, mintJwt, rest, userWithRole } from "../helpers/pgrest";
 import { SALES_HEADERS } from "../../src/lib/asan/layouts";
 import { buildAsanWorkbook } from "../../src/lib/asan/write-xlsx";
 import {
-  buildSalesRows,
-  groupSalesRows,
-  type SalesExportRow,
-} from "../../src/lib/asan/export-sales-rows";
+  buildInvoiceRows,
+  groupInvoiceRows,
+  type InvoiceExportRow,
+} from "../../src/lib/asan/export-invoice-rows";
 import type { AsanCell } from "../../src/lib/asan/export-types";
 
 /**
@@ -31,10 +31,11 @@ import type { AsanCell } from "../../src/lib/asan/export-types";
  *     that fails either half is **listed and blocked with the reason**, never silently missing.
  *   * The same selection exported twice is byte-identical.
  *
- * The mapping functions imported above are the ones the application ships — `export-sales-rows`
+ * The mapping functions imported above are the ones the application ships — `export-invoice-rows`
  * is deliberately free of the Supabase import so this spec can exercise the real code rather
  * than a retyped copy. Retyping a mapping is how a wrong status label reached a file in P1+D8
- * phase 11.
+ * phase 11. That module is shared with the purchase export; `export-purchase.spec.ts` asserts
+ * the sharing is real rather than coincidental.
  *
  * The produced workbook is verified with **openpyxl**, an independent reader, because verifying
  * a file with the same library that wrote it proves only that the library round-trips.
@@ -49,13 +50,13 @@ let salesJwt: string | null = null;
 const numbered = new Set<string>();
 
 async function listExport(jwt: string, from: string, to: string) {
-  return rest<SalesExportRow[]>(jwt, "/rpc/asan_list_sales_export", {
+  return rest<InvoiceExportRow[]>(jwt, "/rpc/asan_list_sales_export", {
     method: "POST",
     body: JSON.stringify({ _from: from, _to: to }),
   });
 }
 
-async function listOk(from = FULL_RANGE.from, to = FULL_RANGE.to): Promise<SalesExportRow[]> {
+async function listOk(from = FULL_RANGE.from, to = FULL_RANGE.to): Promise<InvoiceExportRow[]> {
   const res = await listExport(adminJwt, from, to);
   expect(res.status, res.text).toBeLessThan(300);
   return res.body ?? [];
@@ -91,11 +92,11 @@ function readWithOpenpyxl(bytes: ArrayBuffer): (string | number | null)[][] {
   }
 }
 
-async function buildFile(docsRows: SalesExportRow[], numbers: Map<string, number>) {
-  const docs = groupSalesRows(docsRows, numbers);
+async function buildFile(docsRows: InvoiceExportRow[], numbers: Map<string, number>) {
+  const docs = groupInvoiceRows(docsRows, numbers);
   const rows: AsanCell[][] = [];
   for (const d of docs.filter((x) => !x.blockedReason)) {
-    rows.push(...buildSalesRows(d.payload as never, d.asanNumber));
+    rows.push(...buildInvoiceRows(d.payload as never, d.asanNumber));
   }
   const bytes = await buildAsanWorkbook({ headers: SALES_HEADERS, rows, sheetName: "Asan" });
   return { docs, rows, bytes };
@@ -170,7 +171,7 @@ test.afterAll(() => {
 test.describe("the exportable set", () => {
   test("only accepted quotes are candidates, and every one of them is listed", async () => {
     const rows = await listOk();
-    const listedIds = new Set(rows.map((r) => r.quote_id));
+    const listedIds = new Set(rows.map((r) => r.doc_id));
     const accepted = dbRows(
       "select id::text from sales_quotes where status = 'accepted' and (created_at at time zone 'Asia/Tehran')::date between '2026-01-01' and '2026-12-31'",
     );
@@ -191,7 +192,7 @@ test.describe("the exportable set", () => {
 
   test("both halves of the rule are required, and each failure names itself", async () => {
     const rows = await listOk();
-    const head = new Map(rows.map((r) => [r.quote_id, r]));
+    const head = new Map(rows.map((r) => [r.doc_id, r]));
 
     for (const [id, r] of head) {
       const finalized =
@@ -208,7 +209,7 @@ test.describe("the exportable set", () => {
       const exportable = finalized && stockOut && hasCode;
       expect(
         r.blocked_reason === null,
-        `${r.quote_number}: finalized=${finalized} stockOut=${stockOut} code=${hasCode}`,
+        `${r.doc_number}: finalized=${finalized} stockOut=${stockOut} code=${hasCode}`,
       ).toBe(exportable);
 
       if (!hasCode) expect(r.blocked_reason).toContain("کد آسان");
@@ -251,7 +252,7 @@ test.describe("the exportable set", () => {
     const narrow = await listOk("2026-07-28", "2026-07-28");
     expect(narrow.length).toBeGreaterThan(0);
     expect(narrow.length).toBeLessThan(all.length);
-    for (const r of narrow) expect(r.quote_date).toBe("2026-07-28");
+    for (const r of narrow) expect(r.doc_date).toBe("2026-07-28");
   });
 });
 
@@ -277,7 +278,7 @@ test.describe("the file", () => {
     expect(exportable.length).toBeGreaterThan(0);
 
     for (const d of exportable) {
-      const built = buildSalesRows(d.payload as never, 7);
+      const built = buildInvoiceRows(d.payload as never, 7);
       const lineCount = Number(
         dbScalar(`select count(*) from sales_quote_items where quote_id = '${d.sourceId}'`),
       );
@@ -290,7 +291,7 @@ test.describe("the file", () => {
 
   test("⛔ T Toman becomes exactly T × 10 — the assertion this whole mission turns on", async () => {
     const rows = await listOk();
-    const docs = groupSalesRows(rows, new Map());
+    const docs = groupInvoiceRows(rows, new Map());
     const exportable = docs.filter((d) => !d.blockedReason);
     expect(exportable.length, "there must be at least one exportable invoice").toBeGreaterThan(0);
 
@@ -301,7 +302,7 @@ test.describe("the file", () => {
       );
       expect(Number.isFinite(finalToman)).toBe(true);
 
-      const built = buildSalesRows(d.payload as never, 1);
+      const built = buildInvoiceRows(d.payload as never, 1);
       const sumH = built.reduce((s, r) => s + (typeof r[7] === "number" ? r[7] : 0), 0);
 
       // Strict, not approximate: sum of column H in Rial is exactly ten times the AfraKala total.
@@ -379,7 +380,7 @@ test.describe("the file", () => {
     // and the invoice exports anyway with column D empty. Asan mints a code under group 101.
     const exported = docs.filter((d) => !d.blockedReason);
     const withoutProductCode = exported.flatMap((d) =>
-      (d.payload as { lines: SalesExportRow[] }).lines.filter((l) => !l.product_code),
+      (d.payload as { lines: InvoiceExportRow[] }).lines.filter((l) => !l.product_code),
     );
     expect(withoutProductCode.length, "this database has no product Asan codes on these lines").toBeGreaterThan(
       0,
@@ -420,12 +421,12 @@ test.describe("cash and bank", () => {
     for (const r of withBank) {
       const allocated = Number(
         dbScalar(
-          `select coalesce(sum(l.amount), 0) from payment_receipt_links l join payment_receipts p on p.id = l.receipt_id where l.quote_id = '${r.quote_id}' and p.status = 'approved' and p.destination_bank_account_id is not null`,
+          `select coalesce(sum(l.amount), 0) from payment_receipt_links l join payment_receipts p on p.id = l.receipt_id where l.quote_id = '${r.doc_id}' and p.status = 'approved' and p.destination_bank_account_id is not null`,
         ),
       );
       const receiptTotal = Number(
         dbScalar(
-          `select coalesce(sum(p.amount), 0) from payment_receipt_links l join payment_receipts p on p.id = l.receipt_id where l.quote_id = '${r.quote_id}' and p.status = 'approved' and p.destination_bank_account_id is not null`,
+          `select coalesce(sum(p.amount), 0) from payment_receipt_links l join payment_receipts p on p.id = l.receipt_id where l.quote_id = '${r.doc_id}' and p.status = 'approved' and p.destination_bank_account_id is not null`,
         ),
       );
       expect(Number(r.bank_amount)).toBe(allocated);
@@ -453,7 +454,7 @@ test.describe("cash and bank", () => {
     );
     expect(pendingOnly.length).toBeGreaterThan(0);
     for (const id of pendingOnly) {
-      for (const r of rows.filter((x) => x.quote_id === id)) {
+      for (const r of rows.filter((x) => x.doc_id === id)) {
         expect(r.cash_amount).toBeNull();
         expect(r.bank_amount).toBeNull();
       }
@@ -465,7 +466,7 @@ test.describe("cash and bank", () => {
 
 test("an exported invoice keeps its number, and the preview shows it", async () => {
   const rows = await listOk();
-  const exportable = groupSalesRows(rows, new Map()).filter((d) => !d.blockedReason);
+  const exportable = groupInvoiceRows(rows, new Map()).filter((d) => !d.blockedReason);
   expect(exportable.length).toBeGreaterThan(0);
   const target = exportable[0];
 
@@ -486,14 +487,14 @@ test("an exported invoice keeps its number, and the preview shows it", async () 
   expect(n).toBeGreaterThan(0);
 
   // Column A carries it, and a re-export carries the same one.
-  const built = buildSalesRows(target.payload as never, n);
+  const built = buildInvoiceRows(target.payload as never, n);
   expect(built.every((r) => r[0] === n)).toBe(true);
 
   const second = await assign();
   expect(second.body![0].asan_number).toBe(n);
 
   // And the listing now reports it, which is what the accountant cross-checks against.
-  const relisted = groupSalesRows(await listOk(), new Map([[target.sourceId, n]]));
+  const relisted = groupInvoiceRows(await listOk(), new Map([[target.sourceId, n]]));
   expect(relisted.find((d) => d.sourceId === target.sourceId)!.asanNumber).toBe(n);
 });
 
@@ -511,7 +512,7 @@ test("a quote whose customer has no Asan code is blocked, not dropped", async ()
   // migration 283 backfilled it from — the restore is asserted here rather than hoped for, and
   // `afterAll` re-runs the same backfill unconditionally so a crash mid-test still heals it.
   const rows = await listOk();
-  const exportable = groupSalesRows(rows, new Map()).filter((d) => !d.blockedReason);
+  const exportable = groupInvoiceRows(rows, new Map()).filter((d) => !d.blockedReason);
   expect(exportable.length).toBeGreaterThan(0);
   const target = exportable[0];
 
@@ -537,7 +538,7 @@ test("a quote whose customer has no Asan code is blocked, not dropped", async ()
     );
 
     const after = await listOk();
-    const row = after.find((r) => r.quote_id === target.sourceId);
+    const row = after.find((r) => r.doc_id === target.sourceId);
     expect(row, "still listed — blocked means visible, not absent").toBeTruthy();
     expect(row!.blocked_reason).toContain("کد آسان");
     expect(row!.person_code).toBeNull();
@@ -560,7 +561,7 @@ test("a quote whose customer has no Asan code is blocked, not dropped", async ()
   ).toBe(before);
 
   const restored = await listOk();
-  const row = restored.find((r) => r.quote_id === target.sourceId);
+  const row = restored.find((r) => r.doc_id === target.sourceId);
   expect(row!.person_code).toBe(code);
   expect(row!.blocked_reason).toBeNull();
 });

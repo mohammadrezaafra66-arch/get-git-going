@@ -10161,16 +10161,16 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: Json
       }
-      asan_list_sales_export: {
+      asan_list_purchase_export: {
         Args: { _from: string; _to: string }
         Returns: {
-          quote_id: string
-          quote_number: string | null
-          quote_date: string | null
-          customer_name: string | null
-          customer_phone: string | null
+          doc_id: string
+          doc_number: string | null
+          doc_date: string | null
+          party_name: string | null
+          party_phone: string | null
           person_code: string | null
-          final_amount: number | null
+          doc_total: number | null
           blocked_reason: string | null
           line_no: number | null
           product_code: string | null
@@ -10182,6 +10182,31 @@ export type Database = {
           line_total: number | null
           cash_amount: number | null
           bank_amount: number | null
+          cheque_amount: number | null
+        }[]
+      }
+      asan_list_sales_export: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          doc_id: string
+          doc_number: string | null
+          doc_date: string | null
+          party_name: string | null
+          party_phone: string | null
+          person_code: string | null
+          doc_total: number | null
+          blocked_reason: string | null
+          line_no: number | null
+          product_code: string | null
+          product_name: string | null
+          product_barcode: string | null
+          quantity: number | null
+          unit_price: number | null
+          line_discount: number | null
+          line_total: number | null
+          cash_amount: number | null
+          bank_amount: number | null
+          cheque_amount: number | null
         }[]
       }
       detect_phone_collisions: {

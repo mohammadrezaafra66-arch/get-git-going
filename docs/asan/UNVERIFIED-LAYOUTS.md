@@ -141,6 +141,31 @@ Column **Q `بارکد کالا`** is mapped for real, and is empty in practice 
 
 ---
 
+## 7. How a purchase was paid — not recorded anywhere (M4.4)
+
+**Status:** the data does not exist · **Impact:** columns I, J and K of every purchase row
+
+The purchase tab has `پرداخت نقد`, `پرداخت از بانک` and `پرداخت چک` where sales has its receipt
+columns. **AfraKala records none of them.** Measured on the live database:
+
+- `payment_receipt_links` has `quote_id` and `invoice_id` but **no purchase column**, so no
+  receipt can be attached to a purchase at all.
+- `purchase_receipts` is uploaded **images** for purchase requests, not payments.
+- `purchases.paid_at` is **NULL on all 289 rows**, and even when set it would say only *that*
+  something was paid, never *how*.
+
+All three columns are therefore written empty. Filling `پرداخت نقد` from `paid_at` was rejected:
+it asserts a payment method nobody recorded, and a plausible wrong value in a financial column is
+worse than a blank one.
+
+`تخفیف` (L) is empty on purchases for the same kind of reason — `purchase_items` has no discount
+column.
+
+**What I need from you:** whether purchase payments should be captured at all. If they should,
+that is a new field or a link table, not an export change, and it belongs in its own phase.
+
+---
+
 ## MODEL GAPS
 
 Recorded per the owner's instruction: where the current data model cannot represent something

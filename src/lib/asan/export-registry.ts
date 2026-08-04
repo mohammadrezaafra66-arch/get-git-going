@@ -14,16 +14,11 @@ import {
   type AsanExportKey,
 } from "@/lib/asan/export-types";
 import { SALES_EXPORT } from "@/lib/asan/export-sales";
+import { PURCHASE_EXPORT } from "@/lib/asan/export-purchase";
 
 export const ASAN_EXPORTS: Record<AsanExportKey, AsanExportDefinition> = {
   sales: SALES_EXPORT, // M4.3
-  purchase: notBuiltYet(
-    "purchase",
-    "فاکتورهای خرید",
-    "ارسال یا دریافت اطلاعات توسط Excel ← تب «خرید»",
-    "purchase",
-    "purchase_invoice",
-  ),
+  purchase: PURCHASE_EXPORT, // M4.4
   receipts: notBuiltYet(
     "receipts",
     "دریافت‌ها و واریزها",
