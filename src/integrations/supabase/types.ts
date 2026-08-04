@@ -7115,6 +7115,7 @@ export type Database = {
       }
       products: {
         Row: {
+          accounting_code: string | null
           barcode: string | null
           base_currency: string
           brand_id: string | null
@@ -7143,6 +7144,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          accounting_code?: string | null
           barcode?: string | null
           base_currency?: string
           brand_id?: string | null
@@ -7171,6 +7173,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          accounting_code?: string | null
           barcode?: string | null
           base_currency?: string
           brand_id?: string | null

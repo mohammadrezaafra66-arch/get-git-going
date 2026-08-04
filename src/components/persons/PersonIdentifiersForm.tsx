@@ -45,6 +45,7 @@ const KIND_LABEL: Record<IdentifierKind, string> = {
   email: "ایمیل",
   iban: "شبا",
   custom: "سفارشی",
+  asan_person_code: "کد حساب آسان",
 };
 
 const STATUS_LABEL: Record<PersonIdentifierDTO["status"], string> = {

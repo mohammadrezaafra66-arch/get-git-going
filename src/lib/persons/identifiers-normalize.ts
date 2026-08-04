@@ -10,7 +10,7 @@
  *
  * Supported kinds match the CHECK constraint created in S06:
  *   mobile_e164 | landline | national_id_ir | tax_id_ir |
- *   company_reg_id_ir | email | iban | custom
+ *   company_reg_id_ir | email | iban | custom | asan_person_code
  */
 
 export type IdentifierKind =
@@ -21,7 +21,8 @@ export type IdentifierKind =
   | "company_reg_id_ir"
   | "email"
   | "iban"
-  | "custom";
+  | "custom"
+  | "asan_person_code";
 
 export const IDENTIFIER_KINDS: readonly IdentifierKind[] = [
   "mobile_e164",
@@ -32,6 +33,7 @@ export const IDENTIFIER_KINDS: readonly IdentifierKind[] = [
   "email",
   "iban",
   "custom",
+  "asan_person_code",
 ] as const;
 
 export type NormalizeOk = { ok: true; value_normalized: string };
@@ -168,6 +170,26 @@ export function normalizeIdentifier(kind: IdentifierKind, raw: string): Normaliz
         return err("invalid_checksum", "چک‌سام شماره شبا معتبر نیست");
       }
       return { ok: true, value_normalized: v };
+    }
+    case "asan_person_code": {
+      // Asan person code (کد حساب). Migration 283. Every one of the 488 codes in
+      // docs/asan/reference/اشخاص.xlsx is numeric, 3–7 digits, range 127–1739003 (research
+      // R5.3). `trimmed` has already had Persian/Arabic-Indic digits folded to ASCII, so a
+      // paste straight out of the Asan UI normalises correctly.
+      const v = trimmed.replace(/\s+/g, "");
+      if (!/^\d+$/.test(v)) {
+        return err("invalid_format", "کد حساب آسان باید فقط رقم باشد");
+      }
+      // Leading zeros are stripped so '0102012' and '102012' cannot become two codes for two
+      // different people. An all-zero value would empty the string, hence the guard.
+      const stripped = v.replace(/^0+/, "");
+      if (stripped.length === 0) {
+        return err("invalid_format", "کد حساب آسان نامعتبر است");
+      }
+      if (stripped.length > 20) {
+        return err("invalid_format", "طول کد حساب آسان بیش از حد مجاز است");
+      }
+      return { ok: true, value_normalized: stripped };
     }
     case "custom": {
       // Trim + collapse internal whitespace; reject blank.
