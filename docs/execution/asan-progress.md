@@ -2,8 +2,8 @@
 
 ## Status
 Current mission: **M3 (build foundation)**
-Current phase: M3.0-3.3 complete (3.3 UI outstanding) → next: finish 3.3 UI, then 3.4
-Last commit: `aab2c158`
+Current phase: M3.0–3.3 **complete** → next: 3.4 (products), then the M3 gate
+Last commit: `41225d80`
 Baseline typecheck: 70 (verified at the M1 gate)
 Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
 reds 6 → 5, no new red
@@ -43,7 +43,8 @@ reds 6 → 5, no new red
       9 triggers, 3 collisions queued exactly as predicted, spec 9/9 green.
 - [x] M3.3 staged Asan person import — migration 285 — commit `aab2c158` — parser, staging,
       classify/commit RPCs, conflict guard; spec 7/7 green on the real 488-row export.
-      **UI route still outstanding.**
+- [x] M3.3 UI — commit `41225d80` — `/admin/asan-import`, no migration; `e2e/asan/` **21/21 green**
+      on the deployed build (`APP_GIT_SHA=41225d80`).
 
 ## M1.1 detail
 
@@ -466,13 +467,53 @@ real 488-account export.
 Postgres, and the commit RPC did not record which person a `new` row created — leaving nothing
 to trace or clean up.
 
-### ⚠️ What phase 3.3 still owes
-**The admin UI route `/admin/asan-import` is not built.** The brief asks for an admin route
-following the navigation-registry pattern (upload → preview → confirm). Everything it needs
-exists and is tested: parser, staging tables, both RPCs, and the `asan-import` module already
-seeded in `role_permissions` for every role. Build it the way
-`src/routes/_app.admin.phone-collisions.tsx` (written in 3.2) is built, and register it in
-`src/lib/navigation/registry.ts` with `module: "asan-import"`, admin + accountant.
+### M3.3 UI — `/admin/asan-import` (commit `41225d80`, no migration)
+
+Upload → preview → stage → classify → confirm, in `src/routes/_app.admin.asan-import.tsx`.
+Nothing reaches `persons` until the final button. The page deliberately **does not
+re-implement** the two rules that matter — they stay in migration 285 where a direct
+PostgREST call also hits them — it only makes them visible and never offers a control the
+backend would refuse: there is no "accept" button on a `conflict` row at all, and each
+matched row states which side of the never-overwrite rule it falls on ("آدرس پر است —
+دست‌نخورده می‌ماند" vs "آدرس خالی است — از آسان پر می‌شود").
+
+**The obvious flag was the wrong one.** `adminOnly` in the navigation registry does not mean
+"admins only" — `selectors.ts:35` reads it as *admin or manager*. Using it would have hidden
+the page from the **accountant** it is mainly built for while showing it to a **manager** the
+backend refuses. The entry therefore carries no `adminOnly` and gets
+`ROLE_ALLOWLIST_BY_ROUTE["/admin/asan-import"] = ["admin","accountant"]`, matching both the
+route guard and the seed.
+
+**Static/dynamic permission agreement.** `asan-import` was added to `ModuleKey` and to the
+static `PERMISSIONS` matrix with exactly the roles migration 285 seeded into
+`role_permissions`. That matrix is only the fallback for when the dynamic cache has not
+loaded, but a fallback that disagrees with the table is how a menu ends up offering something
+the backend refuses — the same failure the `purchases` comment in `roles.ts` records.
+
+**Types were edited surgically**, never with `prettier --write`: `asan_import_batches`,
+`asan_import_person_rows` and both RPCs were added to `src/integrations/supabase/types.ts` by
+hand (a write reflows all ~11 500 lines).
+
+Other decisions worth keeping:
+- **A staged batch is adopted on mount.** Staging 488 rows and then losing the batch id on a
+  refresh would strand them with no way back to the preview.
+- **Rows are paged server-side** (50/page, `count: 'exact'`, filter by classification) rather
+  than pulling 488 rows into the browser — and the matched-person lookup for the field diff is
+  one `in (…)` per page, not one query per row.
+- **Per-row accept/skip, not per-field.** The brief asks for per-field or per-row; the commit
+  RPC's rule is stricter than either — a non-empty AfraKala value is never overwritten — so the
+  only field a per-field control could govern is one that is currently blank. Per-row is the
+  honest surface for what the database will actually do.
+- `raw: false` on the sheet read, so an account code never loses a leading zero to numeric
+  coercion.
+
+**Verification.** `e2e/asan/` **21/21 green** against the deployed build: the 8 API-level cases
+from `aab2c158`, 4 new browser cases (admin reaches it and merely opening it writes nothing —
+person *and* batch counts asserted; accountant reaches it; salesperson and anonymous never see
+it, asserted on page content rather than URL because the shell renders before the guard
+resolves), and 1 source-level tripwire so nobody quietly widens the guard, the allowlist or the
+static matrix later. Typecheck exactly **70**. Test data removed: persons back to **70**,
+0 batches, 0 staged rows.
 
 ### Traps that cost time here, worth knowing before 3.4
 - The classify/commit RPCs are `SECURITY DEFINER` and gate on `has_any_role(auth.uid(), …)`.
@@ -486,22 +527,21 @@ seeded in `role_permissions` for every role. Build it the way
 
 ## HANDOFF STATE
 
-**Stopped cleanly at a context limit, per mission control section 0.** Tree is clean, every
-phase so far is committed, and the LAN database is in the state the commits describe.
+Tree is clean at `41225d80`, every phase so far is committed, the deployed build matches HEAD
+on all three signals, and the LAN database is in the state the commits describe.
 
 Next action, in order:
-1. **Finish M3.3** — build `/admin/asan-import` (see "What phase 3.3 still owes" above).
-2. **M3.4 — import products from Asan.** Same architecture, reusing `asan_import_batches`
+1. **M3.4 — import products from Asan.** Same architecture, reusing `asan_import_batches`
    (`kind='products'`). Note two places where the brief contradicts the measured data and the
    research wins: it calls barcode "the strongest match key" (barcode is **0 %** populated on
    both sides) and says "I have 374 products" (live count is **355**). Match on normalized
    name only; **do not create AfraKala products for unmatched Asan rows** — record them as
    `unmatched` and report the count. 7 256 rows, so batch the insert and report the timing.
-3. **M3 mission gate** — typecheck exactly 70; prove every new module has `role_permissions`
+2. **M3 mission gate** — typecheck exactly 70; prove every new module has `role_permissions`
    rows for every role *with a query*; tree clean; build+deploy and verify all three signals;
    `docker restart afrakala-lan-rest`; full e2e; the three `e2e/asan/*.spec.ts` registered
    (already done in `playwright.config.ts`).
-4. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
+3. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
    (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing with
    `docs/execution/asan-final-report.md`.
 
