@@ -13,15 +13,10 @@ import {
   type AsanExportDefinition,
   type AsanExportKey,
 } from "@/lib/asan/export-types";
+import { SALES_EXPORT } from "@/lib/asan/export-sales";
 
 export const ASAN_EXPORTS: Record<AsanExportKey, AsanExportDefinition> = {
-  sales: notBuiltYet(
-    "sales",
-    "فاکتورهای فروش",
-    "ارسال یا دریافت اطلاعات توسط Excel ← تب «فروش»",
-    "sales",
-    "sales_invoice",
-  ),
+  sales: SALES_EXPORT, // M4.3
   purchase: notBuiltYet(
     "purchase",
     "فاکتورهای خرید",

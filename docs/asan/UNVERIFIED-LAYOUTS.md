@@ -112,6 +112,35 @@ ordinary missing-person-code reason, like any other party without a code.
 
 ---
 
+## 6. Sales-tab columns AfraKala has no field for (M4.3)
+
+**Status:** mapped as **deliberately empty** · **Impact:** three optional columns on every sales
+and purchase row
+
+The sales layout is VERIFIED and reproduced in full, but three of its optional columns have no
+counterpart anywhere in AfraKala's schema. They are written as **empty cells**, and the export
+page says so before download rather than leaving the accountant to notice:
+
+| Col | Header | Why it is empty |
+|---|---|---|
+| M | `عوارض` | AfraKala records no duty or tax on a pre-invoice. There is no field to map. |
+| O | `گروه حساب/کد۲` | AfraKala has no Asan account-group concept. |
+| P | `سریال کد کالا` | AfraKala products carry no serial number. |
+
+**P is the one worth a second look.** The tempting mapping is AfraKala's own SKU
+(`AFK-2026-00033`), which is right there in `sku_snapshot`. It was **not** used: that would put
+an AfraKala identifier into a field Asan means for a manufacturer's serial, and a plausible
+wrong value is worse than a blank one. If the owner confirms Asan treats `سریال کد کالا` as a
+free reference field, mapping the SKU there is a one-line change.
+
+Column **Q `بارکد کالا`** is mapped for real, and is empty in practice only because barcode is
+0 % populated on both sides (R1.5). If barcodes are ever entered, they flow with no code change.
+
+**What I need from you:** confirmation of what Asan expects in `سریال کد کالا`, and whether
+`عوارض` will ever be needed (it would require a new field on the pre-invoice first).
+
+---
+
 ## MODEL GAPS
 
 Recorded per the owner's instruction: where the current data model cannot represent something
@@ -150,5 +179,5 @@ anything.
 | currency unit Asan expects | **Rial.** AfraKala stores Toman, so every exported amount is multiplied by 10 in integer arithmetic, and the unit is stated visibly in the export UI | owner answers, "CURRENCY UNIT" |
 | Bank Mellat `accounting_code` | **`8`** — not the researched candidate `3064`. Applied by migration 288 | owner answers, "BANK MELLAT ASAN CODE" |
 | column K on the `فروش` tab | **nothing — intentionally blank** | owner answers, "SALES-TAB COLUMN K" |
-| which sales-quote status means finalized | **accountant-finalized AND stock-deducted**, established from the data rather than assumed from `status='accepted'` | owner answers, "FINALIZED SALES-QUOTE STATUS" |
+| which sales-quote status means finalized | **accountant-finalized AND stock-deducted**, established from the data rather than assumed from `status='accepted'`. Settled in M4.3 and implemented in migration 292: candidates are `status='accepted'` (the only status that deducts stock), finalization is `accounting_registered_at`, and the material evidence of deduction is a `stock_movements` row with `ref_type='sale_quote_confirm'`. **`accounting_registered_at` alone means nothing** — 32 `draft` quotes carry it | owner answers, "FINALIZED SALES-QUOTE STATUS"; migration 292 |
 | what to do with the 352 products having no Asan code | export proceeds with column D empty; Asan mints a code under group `101`. A missing product code never blocks a sales/purchase export | owner answers, "PRODUCT CODE STRATEGY" |

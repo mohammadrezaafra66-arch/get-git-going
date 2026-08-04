@@ -10161,6 +10161,29 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: Json
       }
+      asan_list_sales_export: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          quote_id: string
+          quote_number: string | null
+          quote_date: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          person_code: string | null
+          final_amount: number | null
+          blocked_reason: string | null
+          line_no: number | null
+          product_code: string | null
+          product_name: string | null
+          product_barcode: string | null
+          quantity: number | null
+          unit_price: number | null
+          line_discount: number | null
+          line_total: number | null
+          cash_amount: number | null
+          bank_amount: number | null
+        }[]
+      }
       detect_phone_collisions: {
         Args: Record<PropertyKey, never>
         Returns: number
