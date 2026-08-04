@@ -6,10 +6,24 @@ may be emitted with a value until the owner resolves it.
 The verified specification is `docs/asan/asan-layouts.md`. This file is a strict subset of the
 open questions — it contains **no layout marked VERIFIED**.
 
-Kept current through M4. Last refreshed against
-`docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md`, which resolved five of the seven questions
-that used to be listed here. The resolved ones are recorded at the bottom so nobody re-opens
-a settled question, but they are no longer blocking anything.
+Kept current through **the M4 gate**, with all five exports and both secondary paths built. Last
+refreshed against `docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md`, which resolved five of the
+seven questions that used to be listed here. The resolved ones are recorded at the bottom so
+nobody re-opens a settled question, but they are no longer blocking anything.
+
+**What is still needed from the owner, in one place.** Every item below is *surfaced in the
+export UI and blocks its own document* rather than being guessed:
+
+| # | still needed | what it blocks today |
+|---|---|---|
+| 1 | the Asan `کد حساب` for `invoice_ar` | any accounting document containing such a line |
+| 2 | the definition and code for `other` | any accounting document containing such a line |
+| 3 | Asan codes for real external parties | that دوبل document, with the party **named** |
+| 6 | what Asan expects in `سریال کد کالا` (and whether `عوارض` is ever needed) | nothing — three optional columns stay empty |
+| 7 | whether purchase payments should be captured at all | nothing — three optional columns stay empty |
+
+Items 4 and 5 need nothing from the owner: the uncaptured radio options are confirmed out of
+scope, and the account called "12" is his to resolve when he chooses.
 
 ---
 

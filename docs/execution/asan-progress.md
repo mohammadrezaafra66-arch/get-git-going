@@ -3,13 +3,13 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: M4.7 next (4.1-4.6 done)
-Last commit: `626e68c3`
+Current phase: **M4 COMPLETE, gate passed.** M5.1 next
+Last commit: `ff0b942d`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
-Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
-documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
-`purchase/c5-permissions` E2E-9). The flaky `business-flows/215` passed this time. **Zero new
-reds**, so migration 287 is confirmed to have closed the 285 merge regression.
+Last full e2e: **343 green / 6 red / 4 skip** — the M4 gate run. All six reds are documented
+baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
+`purchase/c5-permissions` E2E-9, plus the documented flaky `business-flows/215`, which passed at
+the M3 gate and failed here — which is what flaky means). **Zero new reds.**
 
 **Owner overrides in force:** `docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md` supersedes
 conflicting instructions in the mission files and in `docs/asan/UNVERIFIED-LAYOUTS.md`. It
@@ -84,6 +84,12 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M4.6 exports 3, 4 and 5 (receipts, payments, دوبل) — no migration — commit `626e68c3` —
       three filters over the one builder, proved shared structurally and behaviourally;
       spec **9/9 green** on the deployed build (`APP_GIT_SHA=626e68c3`).
+- [x] M4.7 secondary bank-deposit export — migration 295 — commit `5d02a328` —
+      `asan_list_bank_deposit_export`, Latin Layout-4 headers, approved bank receipts only;
+      spec **8/8 green** on the deployed build (`APP_GIT_SHA=5d02a328`).
+- [x] M4.8 single pre-invoice export from the quote detail page — no migration — commit
+      `ff0b942d` — reuses the sales source and row builder, byte-identical to a range export;
+      spec **6/6 green** on the deployed build (`APP_GIT_SHA=ff0b942d`).
 
 ## M1.1 detail
 
@@ -1210,6 +1216,121 @@ account number.
 payment and دوبل documents removed, entry and line counts back to baseline, the temporary
 external-party code cleared.
 
+## M4.7 — the secondary bank-deposit export (migration 295)
+
+An **alternative** path for deposits, targeting Asan's `واریزیهای بانکی` screen. The accounting
+document from 4.5/4.6 remains the default, and the page says so in the export's own note, because
+an accountant choosing between two deposit exports needs to know which dialog each feeds.
+
+Layout 4's Latin transliterations are reproduced **exactly** as the Asan screen writes them. The
+spec asserts the header row equals `["Date","Code_M","Name_Moshtari","Shomare_Peygiri","Mablagh",
+"Bank_cod"]` and contains no Persian character at all — a translated header would import into
+nothing.
+
+**The source is narrower than "all receipts", and both narrowings are deliberate:**
+
+- only `status = 'approved'` — a receipt awaiting review is not money received. On this database
+  that is **1 of 6** rows. The spec asserts all five unapproved ones really are excluded, so the
+  exclusion cannot quietly become vacuous if the data changes.
+- only receipts carrying a `destination_bank_account_id` — this layout **is** the bank list, so a
+  cash receipt belongs on the accounting document rather than here with a blank `Bank_cod`.
+
+**`payment_receipts.payer_accounting_code` is deliberately not used as the party identity.** It is
+free text captured at receipt time — `journal_entries` carries values like `002` and `cust-123` —
+not the identity store M3.1 established. Two sources of truth for a person's Asan code is how they
+drift. Both the migration's gate and the spec assert the function body never mentions it.
+
+`docType` is **null**: Layout 4 has no document-number column, so this path consumes no Asan
+number. The same receipt through the accounting-document path *does* take one, from its own
+register — they are different Asan documents, and that is correct.
+
+**The assertion that matters is the brief's own cross-check:** the same receipt exported through
+**both** paths shows the same amount and the same payer. That is the only thing proving the
+alternative path agrees with the default rather than merely working on its own terms. It passes:
+the accounting document's debit total equals the deposit's `Mablagh`, and the deposit's `Code_M`
+is one of the account codes on the accounting document.
+
+**Verified:** `e2e/asan/export-bank-deposits.spec.ts` **8/8 green** on the deployed build. This
+phase writes **no test data at all** — the live fixture is already exactly what was needed — and
+the `afterAll` asserts that rather than assuming it.
+
+## M4.8 — exporting one pre-invoice from its detail page (no migration)
+
+Per the owner this file is **for importing into Asan**, so it follows the sales layout from 4.3
+rather than any customer-facing format.
+
+The brief asks for one thing: **byte-identical output** between a single-quote export and that
+quote's rows inside a range export covering the same quote. That is guaranteed **structurally
+rather than by care** — the single-quote path calls the *same* RPC with the quote's own date at
+both ends of the range and hands the result to the *same* `buildInvoiceRows`. There is nothing in
+`export-single-quote.ts` that maps anything, so there is nothing that could disagree.
+
+The spec asserts both halves, because either alone is weak:
+
+1. the **sha256** of the two files matches, and the row arrays are deep-equal;
+2. `export-single-quote.ts` **owns no mapping** — no second header list, no second amount
+   conversion, no column literals, and the same numbering register. Byte-identity alone could be
+   satisfied today by a careful copy and broken tomorrow by an edit to one side; this is the
+   assertion that survives that edit.
+
+**The button uses `admin || accountant`, deliberately not the page's existing `isManagerial`.**
+That flag means "admin **or manager**", and migration 292's guard refuses a manager — offering a
+control the backend rejects teaches the user to distrust the page. It is the same trap M3.3 hit
+with `adminOnly` in the navigation registry, in a different costume. The Tehran calendar day is
+derived with `Intl` rather than a fixed offset, because that is exactly what
+`asan_list_sales_export` filters on, and an off-by-one day would silently find nothing.
+
+A quote outside the exportable set raises the **same Persian reason the range preview would
+show**, rather than producing a partial file.
+
+**Verified:** `e2e/asan/export-preinvoice.spec.ts` **6/6 green** on the deployed build
+(`APP_GIT_SHA=ff0b942d`), including a salesperson session that never sees the button — asserted on
+the button's absence rather than on the URL, because a salesperson may legitimately open their own
+quote's page.
+
+## M4 MISSION GATE — PASSED, all eight items
+
+| # | gate item | result |
+|---|---|---|
+| 1 | `npm run typecheck` exactly 70 | **70** |
+| 2 | `docs/asan/UNVERIFIED-LAYOUTS.md` complete and current | refreshed; 7 sections, with a single still-needed table at the top and a RESOLVED table at the bottom |
+| 3 | every export module has explicit `role_permissions` rows, **proved by query** | `asan-export` **7 rows / 7 roles**, `can_view` and `can_export` both exactly `accountant,admin`; **0** tables in `public` without RLS |
+| 4 | everything committed, tree clean | clean at `ff0b942d` |
+| 5 | build + deploy, three signals match; PostgREST restarted | `APP_GIT_SHA=ff0b942d`, `APP_BUILD_TIME=2026-08-04T15:57:20`, `git HEAD=ff0b942d`; `docker restart afrakala-lan-rest` done |
+| 6 | full e2e against baseline | **343 passed / 6 failed / 4 skipped**, **zero new reds** |
+| 7 | the seven new specs registered in `playwright.config.ts` | all seven present, plus `export-bank-deposits.spec.ts`; matched by `/asan\/.*\.spec\.ts/` |
+| 8 | `docs/execution/asan-progress.md` updated | this file |
+
+### Test arithmetic — why 353, and why 6 reds is not a regression
+
+At the M3 gate the suite totalled **245** (240 + 5 for O2). M4 added **108** tests: 8 (4.1) +
+30 (4.2) + 20 (4.3) + 14 (4.4) + 13 (4.5) + 9 (4.6) + 8 (4.7) + 6 (4.8). 245 + 108 = **353**, and
+343 + 6 + 4 = **353**. ✔
+
+Reds went 5 → 6, and the extra one is `business-flows/215`, **documented as flaky**: it passed at
+the M3 gate and failed here. Nothing else moved. The other five are the same named reds this
+program inherited and is explicitly told not to fix.
+
+### What M4 actually delivers
+
+All five exports the owner asked for, plus the secondary bank-deposit path and the single
+pre-invoice export, on **one shell**, **two row builders** (18-column invoice, 6-column
+accounting document) and **one conversion point** for money.
+
+| export | layout | source | today |
+|---|---|---|---|
+| 1 sales invoices | فروش, 18 col | accepted + accountant-finalized + stock-deducted quotes | **1 exportable**, 3 blocked and named |
+| 2 purchase invoices | خرید, 18 col | received purchases | 0 exportable, **289 blocked** — no supplier has an Asan code yet |
+| 3 receipts / واریز | accounting doc, 6 col | posted journal entries, bank net debited | **1 exportable** |
+| 4 payments / برداشت | accounting doc, 6 col | posted journal entries, bank net credited | 0 today |
+| 5 دوبل | accounting doc, 6 col | entries with an `external_party` line | 0 today — proven working with a code supplied |
+| secondary: واریزیهای بانکی | Layout 4, Latin | approved bank-received receipts | **1 exportable** |
+| single pre-invoice | فروش, 18 col | one quote from its detail page | byte-identical to the range export |
+
+**Every "0 exportable" above is an answer, not a failure**, and each blocked document says in
+Persian exactly what is missing. The largest single unblocking action available to the owner is
+**supplier Asan codes**: that alone would move 289 purchase documents from blocked to exportable.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -1236,12 +1357,12 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M4.7** (`docs/execution/M4_BUILD_EXPORT.md`) — the secondary bank-deposit export —
-then 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
+Next action: **M5.1** (`docs/execution/M5_VIDEO_AND_FINAL.md`) — the product video chain — then
+5.2 full-program verification and 5.3 the final report, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
 with `docs/execution/asan-final-report.md`.
 
-The suite now totals **339** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
-20 for M4.3 + 14 for M4.4 + 13 for M4.5 + 9 for M4.6.
+The suite now totals **353** tests: 245 at the M3 gate (incl. O2) + 108 across M4.1-M4.8.
+Measured, not projected: the gate run reported 343 + 6 + 4 = 353.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
