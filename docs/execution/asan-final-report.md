@@ -7,8 +7,13 @@ For Mohammad Reza Afra. Written at the end of the five-mission program
 want, and download an Excel file that Asan imports directly. Five exports exist, plus two
 secondary paths. Every amount is written in **Rial** (AfraKala Toman × 10) and the page says so
 on screen. Every document that *cannot* be exported is **shown with the reason in Persian**
-rather than silently dropped — and today most purchase documents are in that state, for one
-reason you can fix in an afternoon: **no supplier has an Asan code yet**.
+rather than silently dropped.
+
+**The one number that matters most.** Almost every purchase document is blocked, and when I looked
+at *why*, the answer was not what I expected and is worth your attention: **281 of your 289 real
+purchases have no supplier recorded at all.** Only 8 have one. So giving your 15 suppliers Asan
+codes unblocks **8** documents, not 289 — the rest need a supplier assigned first, which is a data
+problem in AfraKala rather than an Asan one. Section 7 has the breakdown.
 
 ---
 
@@ -73,6 +78,7 @@ recorded in section 3 below.
 |---|---|---|---|
 | 5.1 | the product video chain (296) | `c84bfd9b` | spec **13/13** |
 | 5.2 | the full-program verification pass, as standing assertions | `f328dea3` | spec **12/12**; four sample files committed |
+| — | marketing-spec isolation fix + the two missing down scripts | `d157d471` | 8/8 green; see section 8 |
 | 5.3 | this report | — | — |
 
 ---
@@ -367,10 +373,164 @@ not make unilaterally.
 
 ## 7. COVERAGE — HOW MUCH MANUAL TYPING THIS ACTUALLY REMOVES
 
-*(numbers measured after the final regression run; see section 8)*
+All measured on the live database after the final regression run, not projected.
+
+### Who and what has an Asan code
+
+| thing | total | has an Asan code | gap |
+|---|---:|---:|---|
+| persons | 70 | **11** | the 11 are your customers; the rest are staff and others who never appear on an Asan document |
+| customers | 14 | **11** | 3 customers have no code |
+| **suppliers** | **15** | **0** | ← nothing can be exported for any of them |
+| products | 355 | **3** | and this **does not block anything** — Asan mints a code under group 101 |
+| bank accounts | 1 | **1** | Mellat = `8` |
+| external parties | 1 | **0** | blocks only the دوبل documents that use it |
+| control accounts | — | `invoice_ar` = `989` | `other` still undefined |
+
+### What is exportable today, and what is blocking the rest
+
+| export | documents in range | exportable | blocked |
+|---|---:|---:|---:|
+| 1 — sales invoices | 4 | **1** | 3 |
+| 2 — purchase invoices | 331 | **0** | 331 |
+| 3/4/5 — accounting documents | 1 | **1** | 0 |
+| secondary — bank deposits | 1 | **1** | 0 |
+
+**Why the 3 sales invoices are blocked** — exactly two reasons, both explainable:
+
+- **2** were accepted before the stock-deduction trigger existed (2026-07-21 and 07-23, trigger
+  created 07-26), so no stock movement was ever written for them and none ever will be.
+- **1** has not been ticked «ثبت شد در حسابداری» by the accountant.
+
+**Why the purchase invoices are blocked** — and this is the finding worth acting on:
+
+| reason | documents |
+|---|---:|
+| **the purchase has no supplier at all** («؟») | **323** |
+| supplier «صباح روشناس» has no Asan code | 4 |
+| supplier «مختارشاهمرادی» has no Asan code | 2 |
+| supplier «احسان بختیاری» has no Asan code | 1 |
+| supplier «محمدرضا افرا» has no Asan code | 1 |
+
+**So giving your suppliers Asan codes unblocks 8 documents, not 331.** The other 323 have no
+supplier recorded, and no Asan code can help a document that does not say who it was bought from.
+That is a data-entry gap inside AfraKala, and it is the single largest thing standing between you
+and an automated purchase register.
+
+⚠️ **A caveat on the 331.** Your real purchase count is **289**; the extra **84** were created
+today by the pre-existing purchase e2e suite across two full-suite runs, and all 84 carry a test
+marker in `notes`. I did **not** delete them: removing purchases would cascade into stock
+movements and inventory, they are not this program's fixtures, and that clean-up is a decision for
+you rather than a side effect of my report. Of your **289 real** purchases, **8** have a supplier
+and **281** do not.
+
+### The honest bottom line on manual typing removed
+
+Today the exports would save your accountant re-typing **3 documents** (1 sales invoice, 1
+accounting document, 1 bank deposit) — because that is genuinely all your data currently supports.
+The machinery is built and proven for all five types; what limits it is missing identity data, and
+every missing piece is named on screen in Persian. The order of value:
+
+1. **assign suppliers to purchases** → unlocks up to 281 documents
+2. **give the 15 suppliers Asan codes** → unlocks 8 immediately, and all 281 once step 1 is done
+3. tick «ثبت شد در حسابداری» on finalized quotes → unlocks sales invoices as they are finalized
+4. give the 3 remaining customers Asan codes
+5. products need nothing — a missing product code never blocks an export
+
+### Still waiting on you
+
+| item | count |
+|---|---:|
+| phone collisions to resolve | **3** |
+| staged import batches awaiting confirmation | 0 |
+| Asan document numbers minted so far | **0** — nothing has been exported for real yet |
+| product-video chains open | 0 |
 
 ---
 
 ## 8. BASELINE STATE
 
-*(filled in from the final gate run)*
+| measure | at program start | now | delta |
+|---|---|---|---|
+| `npm run typecheck` | 70 errors | **70 errors** | **0** — the baseline was never raised |
+| full e2e | 155 green / 6 red / 4 skip | **369 green / 6 red / 4 skip** | **+214 green**, reds unchanged |
+| total tests | 165 | **379** | **+214** |
+| migrations | up to 278 | up to **297** | **+19**, all with down scripts |
+
+### Every red in the final run, classified
+
+| spec | classification |
+|---|---|
+| `business-flows/212-quote-credit-guard` | **documented baseline** |
+| `business-flows/213-dynamic-customer-credit-scoring` | **documented baseline** |
+| `business-flows/214-whatsapp-market-purchase-advisor` | **documented baseline** |
+| `business-flows/215-quote-inventory-finalization` | **documented flaky** — it passed at the M3 and M5 interim runs and failed here |
+| `persons/credit-uses-person` | **documented baseline** |
+| `purchase/c5-permissions` E2E-9 | **documented baseline** — investigated in M1 and shown to fail for a reason that predates this program |
+
+**Zero new reds.** Test arithmetic: 353 at the M4 gate, **+1** (O4 split the journal blocking test
+in two and added the `989` assertion), **+13** (M5.1), **+12** (M5.2) = **379**, and
+369 + 6 + 4 = 379. ✔
+
+### ⛔ The one moment the gate did not pass, and what it was
+
+The first M5 gate run came back **364 / 11 / 4** — six new reds, all in
+`e2e/marketing/recurring-tasks.spec.ts`. I chased it rather than re-running until it was green.
+
+The spec asserted **absolute** values on two **global** counters (`generated === 1`,
+`skipped_existing === 1`). The generation job runs for *every* active template, so those absolutes
+were only ever true because `marketing_task_templates` held zero rows when the spec was written.
+**You configured a real template today at 12:52 UTC and changed its assignee a minute later** — and
+from that moment the job legitimately accounted for two templates. Everything after the first
+assertion failed as collateral, because Playwright re-runs `beforeAll` after a failure and this
+spec's `beforeAll` deletes its own fixture.
+
+What made it conclusive rather than a guess: the leftover tasks reference **your** template, not
+the spec's; the two same-day tasks have **different assignees**, which is exactly what editing the
+template produces and which the `(reference_id, due_date, assigned_to)` unique index correctly
+permits; and **no `product_video` task exists at all**, so migration 296's trigger is not involved.
+
+The fix is test-only — assert the spec's own template exactly, require the global counter merely to
+be consistent. **I did not delete your template or its tasks.** They are live configuration and a
+real person's assigned work.
+
+### Deployment
+
+| signal | value |
+|---|---|
+| `APP_GIT_SHA` | matches `HEAD` |
+| `APP_BUILD_TIME` | stamped at the final build |
+| working tree | clean |
+| PostgREST | restarted after every migration |
+
+---
+
+## 9. WHAT ONLY A HUMAN CAN DO — REMAINING MANUAL STEPS
+
+Listed explicitly rather than quietly omitted.
+
+1. **Open the four sample files against your live Asan import dialog** —
+   `docs/verification/m5-export-samples/`. Every layout is reproduced from your screenshots and
+   verified character for character against `docs/asan/asan-layouts.md`, but I have never seen
+   Asan accept one. Do this before the first real import.
+2. **Record a video on a phone and watch it arrive.** M5.1's spec proves the RPC that records an
+   upload, and migration 296 asserts the bucket accepts video at 100 MB — but **no automated test
+   pushes real video bytes through `uploadWithProgress`**. The browser upload path is unproven by
+   test. Path: sell a TV → `/sales/product-videos` → «ضبط ویدئو».
+3. **Run one real export end to end** from `/admin/asan-export`: pick a range, untick something,
+   download, and confirm the file matches what the preview showed.
+4. **Resolve the 3 phone collisions** at `/admin/phone-collisions`. Each needs a human decision;
+   the page deliberately has no merge button — `/persons/merge` remains the only merge path.
+5. **Fill in Asan codes by hand**, which is what unblocks the most: supplier codes first (see
+   section 7), then products via the product form's Asan-code field or the staged importer at
+   `/admin/asan-import`.
+
+### A side effect of the test suite you should know about
+
+The full regression suite calls the marketing-task generation endpoint. That job runs for **every
+active template**, so running the suite now also generates real daily tasks for **your** template
+(«یک استوری در روز»), and one test runs the job for a past date, which expires yesterday's. Three
+such rows exist today. I did **not** delete them — they are a real person's assigned work, and
+removing them to tidy a test would be the wrong trade. If you would rather the suite never touched
+live templates, the job endpoint would need a test-only flag; that is a change to the job, not to
+the tests, and I did not make it unilaterally.

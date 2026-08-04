@@ -3,13 +3,13 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: **M5.3 — the final report.** M4 gate passed; O4, M5.1 and M5.2 complete
-Last commit: `f328dea3`
+Current phase: **PROGRAM COMPLETE.** M5 gate passed; `docs/execution/asan-final-report.md` written
+Last commit: `d157d471` (+ the final report commit)
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
-Last full e2e: **343 green / 6 red / 4 skip** — the M4 gate run. All six reds are documented
+Last full e2e: **369 green / 6 red / 4 skip** — the M5 gate run. All six reds are documented
 baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
-`purchase/c5-permissions` E2E-9, plus the documented flaky `business-flows/215`, which passed at
-the M3 gate and failed here — which is what flaky means). **Zero new reds.**
+`purchase/c5-permissions` E2E-9, plus the documented flaky `business-flows/215`).
+**Zero new reds.**
 
 **Owner overrides in force:** `docs/execution/OWNER_ANSWERS_AND_OVERRIDES.md` supersedes
 conflicting instructions in the mission files and in `docs/asan/UNVERIFIED-LAYOUTS.md`. It
@@ -100,6 +100,10 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M5.2 full-program verification — no migration — commit `f328dea3` — items 3, 4, 5, 7 and 8
       written as standing assertions; four sample export files committed;
       spec **12/12 green**.
+- [x] marketing-spec isolation fix + the two missing down scripts — commit `d157d471` —
+      the six new reds in the first M5 gate run traced to owner data, not to code; **8/8 green**.
+- [x] **M5 MISSION GATE PASSED** — typecheck 70, e2e **369/6/4**, zero new red.
+- [x] M5.3 final report — `docs/execution/asan-final-report.md`.
 
 ## M1.1 detail
 
@@ -1470,6 +1474,75 @@ merge.
 
 **Verified:** **12/12 green**; typecheck exactly **70**.
 
+## M5 MISSION GATE — PASSED, and the one run that did not
+
+| gate item | result |
+|---|---|
+| 1. all of phase 5.2 passes | **12/12**, and items 1/2/6 below |
+| 2. `docs/execution/asan-final-report.md` written | yes |
+| 3. everything committed, tree clean, deployed, three signals match | yes |
+| 4. `asan-progress.md` shows every phase complete | this file |
+| 5. stop and show the owner | done — the one point in the program where control goes back |
+
+Supporting measurements: typecheck exactly **70**; full e2e **369 green / 6 red / 4 skip** with
+**zero new reds**; all three modules seeded for all 7 roles; 0 tables in `public` without RLS;
+zero test fixtures surviving; 19 migrations, all with down scripts.
+
+**Test arithmetic:** 353 at the M4 gate, **+1** (O4 split the journal blocking test in two and
+added the `989` assertion), **+13** (M5.1), **+12** (M5.2) = **379**; and 369 + 6 + 4 = 379. ✔
+From the program's starting baseline of 165 tests (155/6/4), that is **+214 green** with the red
+count unchanged.
+
+### ⛔ The first M5 gate run came back 364 / 11 / 4 — six new reds
+
+All six were in `e2e/marketing/recurring-tasks.spec.ts`, and they were chased rather than re-run
+until green.
+
+**Cause:** the spec asserted **absolute** values on two **global** counters (`generated === 1`,
+`skipped_existing === 1`). The generation job runs for *every* active template, so those absolutes
+were only ever true because `marketing_task_templates` held zero rows when the spec was written
+(phase 10 cleaned up to 0). **The owner configured a real template at 12:52 UTC today and changed
+its assignee at 12:53.** From then on the job legitimately accounted for two templates.
+
+Tests 4–8 failed as **collateral**: Playwright re-runs `beforeAll` after a failure, and this
+spec's `beforeAll` calls `cleanup()`, which deletes the fixture out from under everything that
+follows — the same trap M4.1 recorded.
+
+**What made it conclusive rather than a guess:**
+- the leftover tasks reference the **owner's** template (`e7f11f5a` «یک استوری در روز»), not the
+  spec's `TPL_ID`;
+- the two same-day tasks have **different `assigned_to`**, which is exactly what editing the
+  template between runs produces, and which the `(reference_id, due_date, assigned_to)` partial
+  unique index correctly permits;
+- **no `product_video` task exists at all**, so migration 296's accept-trigger is not involved.
+
+**Fix:** test-only. Assert this spec's own template exactly; require the global counter merely to
+be consistent with it. `generated === 0` on the second run — the assertion that carries the actual
+meaning — is unchanged. **The owner's template and its tasks were not deleted**: they are live
+configuration and a real person's assigned work, and removing them to tidy a test would be the
+kind of damage these rules exist to prevent.
+
+**Recorded as a side effect for the owner:** running the full suite calls the marketing generation
+endpoint, which generates real daily tasks for *his* template, and one test runs the job for a past
+date, expiring yesterday's. Making the suite leave live templates alone would mean a test-only flag
+on the job endpoint — a change to the job, not the tests, and not made unilaterally.
+
+### A second piece of residue, reported rather than cleaned
+
+`purchases` grew from **289** to **331** across two full-suite runs. All 84 of today's rows carry a
+test marker in `notes` and come from the **pre-existing** purchase e2e suite, which does not clean
+up after itself. They were **not** deleted: removing purchases cascades into stock movements and
+inventory, they are not this program's fixtures, and that is the owner's call. Stated in the final
+report so the purchase coverage number is not read as real business volume.
+
+### The finding the coverage numbers produced
+
+Measuring coverage for the report turned up something more useful than the number itself:
+**281 of the owner's 289 real purchases have no supplier recorded at all.** Only 8 do. So supplier
+Asan codes — the obvious next step — unblock **8** documents, not 289. The rest need a supplier
+assigned first, which is a data gap inside AfraKala rather than an Asan mapping problem. That
+correction is in the final report's opening, because the earlier draft had the optimistic version.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -1496,9 +1569,9 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M5.3** — write `docs/execution/asan-final-report.md`, then stop and hand control
-back to the owner. That is the only point in the whole program where that happens
-(mission control §7).
+Next action: **none — the program is complete.** `docs/execution/asan-final-report.md` is written
+and control is back with the owner (mission control §7). What remains is his: the manual steps in
+section 9 of the report, and the two still-blocking answers (`other`, external-party codes).
 
 The suite grew to **353** tests at the M4 gate (245 + 108 across M4.1–M4.8), then **+13** for
 M5.1 and **+12** for M5.2. Final totals are recorded in the M5 gate section below, measured
