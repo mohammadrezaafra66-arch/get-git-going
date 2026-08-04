@@ -2,7 +2,7 @@
 
 ## Status
 Current mission: **M3 (build foundation)**
-Current phase: M2 complete, gate passed → starting phase 3.0
+Current phase: M3 phase 3.0 complete → next 3.1
 Last commit: `0dcf78e9`
 Baseline typecheck: 70 (verified at the M1 gate)
 Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
@@ -354,9 +354,34 @@ seven-question summary for the owner.
   Jalali formatter in the app calls `loadPersian({usePersianDigits:true})` on the shared moment
   instance, so M4 needs its own Latin-digit formatter and must not rely on import order.
 
+## M3.0 — Asan layout specification
+
+`docs/asan/asan-layouts.md` — all four layouts VERIFIED, every column with its header text,
+mandatory flag, type and source; shared conventions for dates, digits, timezone, currency and
+the account-code namespace; and the `account_kind` → `کد حساب` mapping showing what is and is
+not resolvable today.
+
+`docs/asan/UNVERIFIED-LAYOUTS.md` — 8 open items, each stating exactly what the owner must
+supply: sales column K, the six uncaptured radio options (deliberately unbuilt), the currency
+unit, the `TEMP-CHANGE-ME` bank code, the three control-account codes, the account called "12",
+which quote status means finalized, and the product-code strategy for 352 unmatched products.
+
+Phase test: both files exist; every layout carries a status; the unverified file contains no
+layout marked VERIFIED (0 matches).
+
+### Where the M3 brief and the research disagree — the research wins
+
+Phase 3.1 says to backfill products "by exact barcode" and phase 3.4 calls barcode "the
+strongest match key per R1". **R1.5 measured barcode as 0 % populated on both sides**
+(`products.barcode` 0/355, `کالا.xlsx` `بارکدکـالا` 0/7 256). Product backfill will therefore
+match **3 rows by normalized name**, not by barcode, and the phase report will say so rather
+than quietly reporting a zero as if the strategy had been tried and found nothing.
+
+Phase 3.4 also states "I have 374 products"; the live count is **355**.
+
 ## HANDOFF STATE
-Next action: M3 — `docs/execution/M3_BUILD_FOUNDATION.md`, starting with phase 3.0
-(formalise the four verified Asan layouts into `docs/asan/asan-layouts.md`).
+Next action: M3 phase 3.1 — Asan code fields for person, product, bank account and external
+party.
 Blocked on: nothing — but seven owner questions are recorded at the end of the research
 document, four of which (currency unit, Bank Mellat code, control-account codes, sales column K)
 affect financial correctness and must be surfaced in the UI rather than guessed.
