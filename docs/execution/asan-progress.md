@@ -1,12 +1,14 @@
 # ASAN Program Progress
 
 ## Status
-Current mission: **M3 (build foundation)**
-Current phase: M3.0–3.3 **complete** → next: 3.4 (products), then the M3 gate
-Last commit: `41225d80`
-Baseline typecheck: 70 (verified at the M1 gate)
-Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
-reds 6 → 5, no new red
+Current mission: **M3 (build foundation)** — all five phases built; gate items 1-4 and 6 passed
+Current phase: M3.0–3.4 **complete** → next: confirm the full e2e, then M4
+Last commit: `da6a6f60`
+Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
+Last full e2e: **202 green / 5 red / 4 skip** at the M1 gate. The M3-gate run was still in
+flight when this file was last written — **read its result before starting M4**; the suite
+should now total 219 tests (211 + 13 added this session) and any red beyond the 5 documented
+ones is a regression from this session.
 
 ## Environment verified at bootstrap
 - Branch `feature/navigation-modernization`, HEAD `1b9f63ff` at start.
@@ -45,6 +47,9 @@ reds 6 → 5, no new red
       classify/commit RPCs, conflict guard; spec 7/7 green on the real 488-row export.
 - [x] M3.3 UI — commit `41225d80` — `/admin/asan-import`, no migration; `e2e/asan/` **21/21 green**
       on the deployed build (`APP_GIT_SHA=41225d80`).
+- [x] M3.4 staged Asan product import — migration 286 — commit `da6a6f60` — parser, staging,
+      classify/commit RPCs, guard trigger, products tab on the same route;
+      spec **8/8 green** on the real 7 256-row export. No product created, asserted at the table.
 
 ## M1.1 detail
 
@@ -525,23 +530,138 @@ static matrix later. Typecheck exactly **70**. Test data removed: persons back t
 - A failed test run left 3 persons behind; they were found by `created_at` and removed, and
   `persons` is back to **70**. Always re-check the baseline count after a red run.
 
+## M3.4 — staged Asan product import (migration 286)
+
+Same staging-then-approve machinery as 285, reusing `asan_import_batches` with
+`kind='products'` rather than building a second batch system. **One rule is inverted, and it
+is the one the brief cares about: no product is ever created.** Asan carries 7 256 items and
+AfraKala stocks 355. An Asan row with no AfraKala counterpart is `unmatched` and stays in
+staging. There is deliberately **no `new` classification at all** — the value simply does not
+exist in the CHECK constraint, so the state a person import treats as normal is not
+representable here.
+
+`asan_commit_product_batch` does not merely omit an INSERT. It counts `products` before and
+after and **raises if the number moved**, rolling the whole commit back. The guarantee
+therefore survives a future edit to the function body, which "we just didn't write an INSERT"
+would not.
+
+### The normalizer was measured before it was trusted
+
+The whole matching design rests on one function reproducing what R1.5 measured. That was
+verified **at full scale in a rolled-back transaction, before the migration was applied**: the
+7 256 Asan descriptions were loaded into a temp table and matched against all 355 products.
+
+| R1.5 measured | this normalizer |
+|---|---|
+| normalized-name matches: 3 | **3** |
+| the three pairs | **AFK-2026-00039⇄7009, AFK-2026-00178⇄7243, AFK-2026-00179⇄7272** — identical |
+| exact-name matches: 0 | **0** |
+| Asan descriptions duplicated within Asan: 60, covering 122 rows | **60 / 122** |
+| `کد کالا` distinct | **7 256 / 7 256** |
+
+**Its character tables are ASCII `U&'\uXXXX'` escapes on purpose.** A fold table is exactly the
+kind of literal where a corrupted byte would *not* raise — it would quietly stop folding one
+letter and silently change which products match. Escapes cannot be corrupted by an encoding
+accident. Persian is used only in the human-facing `RAISE` messages, and the applied
+definitions were read back and confirmed to contain zero `?`.
+
+**One thing the research did not report:** two AfraKala product names normalize to a key
+shared with another AfraKala product. Those can never be resolved by name alone, and the
+classifier already handles it — `hits > 1` is a `conflict`, not a guess.
+
+### Matching, and where the brief is wrong
+
+The brief calls barcode "the strongest match key per R1" and says to link on it. **R1.5
+measured barcode as 0 % populated on both sides** (`products.barcode` 0/355, `بارکدکـالا`
+0/7 256), so it is not a strategy that can be tried and found wanting — there is nothing to
+try. Order is therefore **Asan code → normalized name → unmatched**, and the spec asserts the
+barcode column is still empty so that "0 barcode matches" can never be misread later.
+
+The brief also says "I have 374 products"; the live count is **355**.
+
+### What a first import of the real file actually does — and why the spec constructs its case
+
+Against this database the real workbook produces **3 `unchanged` and 7 253 `unmatched`, with
+zero `update` rows** — because migration 283 already backfilled those three codes from exactly
+these three name matches. So the real file exercises the link path not at all. Rather than
+report a green suite that never ran the code under test, the spec **unlinks one real product**,
+re-classifies (it becomes `update`), accepts, commits — and the commit writes the same code
+back, so the fixture is restored *by the operation under test*. An `afterAll` restores it
+unconditionally in case that test ever fails part-way.
+
+### Timing (the brief asks for it)
+
+7 256 rows staged in **484 ms** (15 requests of 500; one request per row would be 7 256), and
+classified in **3.2 s**. Classification is five set-based statements, not a PL/pgSQL row loop.
+
+### ⛔ The bug testing found that design did not
+
+The guard trigger's `applied_at IS NULL` clause is load-bearing. Without it the guard refuses
+**the commit function's own bookkeeping write**: after linking, the commit stamps `applied_at`
+and moves the row to `unchanged` while `decision` is still `accept`, which the naive rule reads
+as "accepting a non-update row" and rejects. Every commit failed with a Persian error that
+looked like the guard working correctly. It does not open a hole — the commit only ever touches
+rows with `applied_at IS NULL`, so a forged `applied_at` buys an attacker having their row
+ignored.
+
+**Migration 286 was edited and re-applied rather than fixed by a 287.** Rule 2.6 forbids editing
+an existing migration because another environment may already have applied it; 286 had never
+been committed or shared and existed only in the working tree and on this test server, and the
+file is idempotent (`CREATE OR REPLACE`, `CREATE TABLE IF NOT EXISTS`, `DROP`/`CREATE TRIGGER`),
+so re-applying leaves the database exactly as if 286 had always been correct. Shipping a broken
+286 plus a 287 would make every future fresh install apply a bug and then repair it. Recorded
+here because it is a deliberate departure.
+
+### A second trap, in the harness rather than the code
+
+`e2e/helpers/db.ts` refuses any statement containing the word `update` **anywhere, including
+inside a string literal**, so `where classification='update'` is rejected as a write. The guard
+is right to be blunt; the counts are read through a `GROUP BY` instead.
+
+### One anomaly, reported rather than explained away
+
+In the run where the two bugs above were failing, the final normalizer assertion also returned
+0 instead of 3. It is not reproducible: after fixing the two real failures it returns 3 on every
+run, including with both batches staged (14 512 rows). The diagnostic that would identify it if
+it recurs was left in the spec. **It is recorded as unexplained rather than claimed as fixed.**
+
+### Verification
+
+`e2e/asan/import-products.spec.ts` **8/8 green** against the deployed build. Test data removed:
+products **355**, linked codes **3**, batches **0**, staged rows **0**, persons **70**.
+Typecheck exactly **70**.
+
 ## HANDOFF STATE
 
-Tree is clean at `41225d80`, every phase so far is committed, the deployed build matches HEAD
-on all three signals, and the LAN database is in the state the commits describe.
+All five M3 phases (3.0–3.4) are built, tested and committed. Tree is clean at `da6a6f60`,
+the deployed build matches HEAD on all three signals (`APP_GIT_SHA=da6a6f60`,
+`APP_BUILD_TIME=2026-08-04T13:15:20`), PostgREST has been restarted, and the LAN database is
+in the state the commits describe.
+
+**M3 mission gate — items 1-4, 6 confirmed; item 5 (full e2e) was in flight at the handoff.**
+
+| gate item | result |
+|---|---|
+| 1. typecheck exactly 70 | **70** |
+| 2. every new module seeded for every role, *proved by query* | `asan-import` **7 rows / 7 roles**, `can_view` = `accountant,admin` exactly; **0** tables in `public` without RLS |
+| 3. everything committed, tree clean | clean at `da6a6f60` |
+| 4. build + deploy, three signals match | all three `da6a6f60`; `docker restart afrakala-lan-rest` done |
+| 5. full e2e vs baseline 202/5/4 | see the line at the top of this file |
+| 6. three `e2e/asan/*.spec.ts` registered | `playwright.config.ts` matches `/asan\/.*\.spec\.ts/` — covers all three |
+
+**Finding for the owner, pre-existing and out of scope for this mission.** The same query that
+proved gate item 2 shows two *older* modules are **not** seeded for every role, which is the
+`has_dynamic_permission` fallback risk rule 2.5 describes: `persons` is missing
+`purchase_specialist` and `site`; `warehouse` is missing `site`. Not fixed here — widening or
+narrowing an existing module's access is a permission change, not a gate item, and it belongs
+in its own reviewed phase.
 
 Next action, in order:
-1. **M3.4 — import products from Asan.** Same architecture, reusing `asan_import_batches`
-   (`kind='products'`). Note two places where the brief contradicts the measured data and the
-   research wins: it calls barcode "the strongest match key" (barcode is **0 %** populated on
-   both sides) and says "I have 374 products" (live count is **355**). Match on normalized
-   name only; **do not create AfraKala products for unmatched Asan rows** — record them as
-   `unmatched` and report the count. 7 256 rows, so batch the insert and report the timing.
-2. **M3 mission gate** — typecheck exactly 70; prove every new module has `role_permissions`
-   rows for every role *with a query*; tree clean; build+deploy and verify all three signals;
-   `docker restart afrakala-lan-rest`; full e2e; the three `e2e/asan/*.spec.ts` registered
-   (already done in `playwright.config.ts`).
-3. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
+1. **Confirm the full e2e result** against baseline 202/5/4 (5 documented reds: `212`, `213`,
+   `214-whatsapp`, `persons-credit-uses-person`, `purchase/c5-permissions` E2E-9). The suite
+   should now total **219** tests: 211 before this session, +4 M3.3 UI browser cases, +1 M3.3
+   source tripwire, +8 M3.4. **Any new red is mine.**
+2. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
    (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing with
    `docs/execution/asan-final-report.md`.
 
