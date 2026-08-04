@@ -605,6 +605,75 @@ export type Database = {
           },
         ]
       }
+      asan_import_product_rows: {
+        Row: {
+          apply_note: string | null
+          applied_at: string | null
+          asan_code: string | null
+          barcode_raw: string | null
+          batch_id: string
+          classification: string
+          conflict_reason: string | null
+          decision: string
+          id: string
+          match_reason: string | null
+          matched_product_id: string | null
+          name: string | null
+          row_number: number
+          serial_raw: string | null
+          unit_raw: string | null
+        }
+        Insert: {
+          apply_note?: string | null
+          applied_at?: string | null
+          asan_code?: string | null
+          barcode_raw?: string | null
+          batch_id: string
+          classification?: string
+          conflict_reason?: string | null
+          decision?: string
+          id?: string
+          match_reason?: string | null
+          matched_product_id?: string | null
+          name?: string | null
+          row_number: number
+          serial_raw?: string | null
+          unit_raw?: string | null
+        }
+        Update: {
+          apply_note?: string | null
+          applied_at?: string | null
+          asan_code?: string | null
+          barcode_raw?: string | null
+          batch_id?: string
+          classification?: string
+          conflict_reason?: string | null
+          decision?: string
+          id?: string
+          match_reason?: string | null
+          matched_product_id?: string | null
+          name?: string | null
+          row_number?: number
+          serial_raw?: string | null
+          unit_raw?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asan_import_product_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "asan_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asan_import_product_rows_matched_product_id_fkey"
+            columns: ["matched_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -10039,7 +10108,15 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: Json
       }
+      asan_classify_product_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
       asan_commit_person_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
+      asan_commit_product_batch: {
         Args: { p_batch_id: string }
         Returns: Json
       }

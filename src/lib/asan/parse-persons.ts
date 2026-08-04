@@ -8,7 +8,14 @@
  *
  * Pure and client-safe: no Supabase, no filesystem. It takes an already-read worksheet matrix
  * so it can be unit-tested and reused by the products importer in 3.4.
+ *
+ * M3.4 moved the header-mapping machinery to `parse-workbook.ts` so the products parser
+ * shares it rather than copying it. Behaviour here is unchanged — the two parser cases in
+ * `e2e/asan/import-persons.spec.ts` (488 rows, and an identical parse from a reversed
+ * column order) are what proves that.
  */
+
+import { buildHeaderIndex, cell, isBlankRow } from "./parse-workbook";
 
 /** Canonical Asan headers for the person export, as measured in R2. */
 export const ASAN_PERSON_HEADERS = {
@@ -43,27 +50,10 @@ export type ParseResult = {
   warnings: string[];
 };
 
-/** Collapse whitespace and fold the Arabic/Persian letter variants a header may use. */
-function normalizeHeader(value: unknown): string {
-  return String(value ?? "")
-    .replace(/ي/g, "ی") // ARABIC YEH -> FARSI YEH
-    .replace(/ك/g, "ک") // ARABIC KAF -> KEHEH
-    .replace(/‌/g, "") // ZWNJ
-    .replace(/[\s‎‏]+/g, "")
-    .trim();
-}
-
-function cell(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  const s = String(value).trim();
-  return s.length === 0 ? null : s;
-}
-
 /**
  * @param matrix rows of raw cell values; `matrix[0]` must be the header row.
  */
 export function parseAsanPersons(matrix: unknown[][]): ParseResult {
-  const warnings: string[] = [];
   if (!Array.isArray(matrix) || matrix.length === 0) {
     return {
       rows: [],
@@ -81,34 +71,14 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
   }
 
   const header = matrix[0] ?? [];
-  const byNormalized = new Map<string, number>();
-  header.forEach((h, i) => {
-    const key = normalizeHeader(h);
-    // First occurrence wins: `کالا.xlsx` really does repeat a header (three `مقدار/واحد`
-    // columns), so a later duplicate must not silently steal the mapping.
-    if (key && !byNormalized.has(key)) byNormalized.set(key, i);
-  });
-
-  const mapping = {} as Record<AsanPersonField, string | null>;
-  const index = {} as Record<AsanPersonField, number | null>;
-  for (const [field, headerText] of Object.entries(ASAN_PERSON_HEADERS) as [
-    AsanPersonField,
-    string,
-  ][]) {
-    const i = byNormalized.get(normalizeHeader(headerText));
-    index[field] = i ?? null;
-    mapping[field] = i === undefined ? null : String(header[i] ?? headerText);
-    if (i === undefined) warnings.push(`ستون «${headerText}» در فایل پیدا نشد`);
-  }
+  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex(
+    header,
+    ASAN_PERSON_HEADERS,
+  );
 
   if (index.asan_code === null) {
     warnings.push("بدون ستون «کد حساب» امکان تطبیق مطمئن وجود ندارد");
   }
-
-  const used = new Set(Object.values(index).filter((i): i is number => i !== null));
-  const ignoredHeaders = header
-    .map((h, i) => (used.has(i) ? null : String(h ?? "").trim()))
-    .filter((h): h is string => !!h && h.length > 0);
 
   const at = (row: unknown[], field: AsanPersonField): string | null => {
     const i = index[field];
@@ -118,7 +88,7 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
   const rows: ParsedPersonRow[] = [];
   for (let r = 1; r < matrix.length; r++) {
     const row = matrix[r] ?? [];
-    if (row.every((v) => v === null || v === undefined || String(v).trim() === "")) continue;
+    if (isBlankRow(row)) continue;
     rows.push({
       row_number: r + 1,
       asan_code: at(row, "asan_code"),

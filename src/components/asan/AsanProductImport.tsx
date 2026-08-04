@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -11,10 +10,8 @@ import {
   Upload,
 } from "lucide-react";
 
-import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,139 +26,87 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toFaDigits } from "@/lib/i18n/formatters";
-import { ASAN_PERSON_HEADERS, parseAsanPersons, type ParseResult } from "@/lib/asan/parse-persons";
-import { AsanProductImport } from "@/components/asan/AsanProductImport";
+import {
+  ASAN_PRODUCT_HEADERS,
+  parseAsanProducts,
+  type ProductParseResult,
+} from "@/lib/asan/parse-products";
 
 /**
- * ASAN M3.3 — the staged Asan person import workbench.
+ * ASAN M3.4 — the Asan **product** import panel.
  *
- * The pipeline is upload → preview → stage → classify → confirm, and **every rule
- * that matters lives in the database, not here**:
+ * Same pipeline as the person importer next to it, with one rule inverted and it is
+ * the one that matters: **no product is ever created**. Asan carries 7 256 items and
+ * AfraKala stocks 355; an Asan row with no AfraKala counterpart is recorded as
+ * `unmatched` and stays in staging forever. There is deliberately no control anywhere
+ * on this panel that could create a product, and `asan_commit_product_batch` measures
+ * the catalogue size before and after and rolls back if it moved — so the guarantee
+ * does not depend on this file being careful.
  *
- *   * a `conflict` row can never be applied — enforced by a trigger on
- *     `asan_import_person_rows`, so a direct PostgREST PATCH is refused too;
- *   * an update never overwrites a non-empty AfraKala value — enforced inside
- *     `asan_commit_person_batch`.
- *
- * This page therefore does not re-implement those rules; it only makes them
- * visible and refuses to offer the buttons that the database would reject anyway.
- * That ordering is deliberate: a control that looks available but is refused by
- * the backend teaches the user to distrust the form.
- *
- * The parse is client-side (`parseAsanPersons`, by header text) because the file
- * lives on the user's machine and this codebase already reads xlsx in the browser
- * with SheetJS (`PersonImportForm`, `CustomerImportForm`). Nothing is written
- * until the user presses "ثبت در جدول موقت".
+ * What a commit actually writes: the Asan code onto a product that already exists and
+ * does not yet carry one. Nothing else — not the name, not the unit.
  */
 
 const PAGE_SIZE = 50;
-const CHUNK = 200;
+/** 7 256 rows go up in chunks; one request per row would be 7 256 round trips. */
+const CHUNK = 500;
 
-type Classification = "new" | "update" | "conflict" | "unchanged";
+type Classification = "update" | "conflict" | "unchanged" | "unmatched";
 type Decision = "pending" | "accept" | "skip";
 
 type Batch = {
   id: string;
-  kind: string;
   file_name: string | null;
   row_count: number;
   status: string;
   stats: Record<string, number> | null;
-  created_at: string;
 };
 
 type StagedRow = {
   id: string;
   row_number: number;
   asan_code: string | null;
-  display_name: string | null;
-  mobile_raw: string | null;
-  landline_raw: string | null;
-  national_id_raw: string | null;
-  address: string | null;
+  name: string | null;
+  barcode_raw: string | null;
+  unit_raw: string | null;
   classification: Classification;
-  matched_person_id: string | null;
+  matched_product_id: string | null;
   match_reason: string | null;
   conflict_reason: string | null;
   decision: Decision;
   applied_at: string | null;
 };
 
-type MatchedPerson = { id: string; display_name: string | null; notes: string | null };
+type MatchedProduct = { id: string; name: string; sku: string | null };
 
 const CLASS_LABEL: Record<Classification, string> = {
-  new: "شخص تازه",
-  update: "به‌روزرسانی",
+  update: "قابل اتصال",
   conflict: "تعارض",
-  unchanged: "بدون تغییر",
+  unchanged: "از قبل متصل",
+  unmatched: "در افراکالا نیست",
 };
 
 const CLASS_HINT: Record<Classification, string> = {
-  new: "در افراکالا پیدا نشد؛ با تأیید شما یک شخص تازه ساخته می‌شود.",
-  update: "شخص موجود پیدا شد؛ فقط فیلدهای خالی افراکالا پر می‌شوند.",
+  update: "کالای افراکالا پیدا شد و کد آسان ندارد؛ با تأیید شما کد به آن داده می‌شود.",
   conflict: "نیاز به داوری انسان دارد و قابل تأیید نیست.",
-  unchanged: "چیزی برای تغییر ندارد.",
-};
-
-const MATCH_REASON_LABEL: Record<string, string> = {
-  asan_code: "کد حساب آسان",
-  mobile: "موبایل",
-  name: "نام",
+  unchanged: "این کالا از قبل همین کد آسان را دارد.",
+  unmatched: "هیچ کالای افراکالایی با این شرح پیدا نشد. هیچ کالای تازه‌ای ساخته نمی‌شود.",
 };
 
 const FILTERS: { key: Classification | "all"; label: string }[] = [
   { key: "all", label: "همه" },
-  { key: "new", label: CLASS_LABEL.new },
   { key: "update", label: CLASS_LABEL.update },
   { key: "conflict", label: CLASS_LABEL.conflict },
   { key: "unchanged", label: CLASS_LABEL.unchanged },
+  { key: "unmatched", label: CLASS_LABEL.unmatched },
 ];
 
-export const Route = createFileRoute("/_app/admin/asan-import")({
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "accountant"]);
-  },
-  component: AsanImportPage,
-});
-
-function AsanImportPage() {
-  const { roles } = useAuth();
-  const allowed = roles.includes("admin") || roles.includes("accountant");
-
-  if (!allowed) {
-    return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
-  }
-
-  return (
-    <div className="space-y-6 p-4 md:p-6" dir="rtl">
-      <PageHeader
-        title="ورود اطلاعات از آسان"
-        description="فایل آسان را بخوانید، پیش‌نمایش بگیرید و فقط پس از تأیید صریح ثبت کنید"
-      />
-
-      <Tabs defaultValue="persons">
-        <TabsList>
-          <TabsTrigger value="persons">اشخاص</TabsTrigger>
-          <TabsTrigger value="products">کالاها</TabsTrigger>
-        </TabsList>
-        <TabsContent value="persons" className="mt-4">
-          <AsanPersonImportPanel />
-        </TabsContent>
-        <TabsContent value="products" className="mt-4">
-          <AsanProductImport />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-function AsanPersonImportPanel() {
+export function AsanProductImport() {
   const { user } = useAuth();
 
   const [file, setFile] = useState<File | null>(null);
-  const [parsed, setParsed] = useState<ParseResult | null>(null);
+  const [parsed, setParsed] = useState<ProductParseResult | null>(null);
   const [parsing, setParsing] = useState(false);
 
   const [batch, setBatch] = useState<Batch | null>(null);
@@ -171,24 +116,19 @@ function AsanPersonImportPanel() {
   const [committing, setCommitting] = useState(false);
 
   const [rows, setRows] = useState<StagedRow[]>([]);
-  const [people, setPeople] = useState<Record<string, MatchedPerson>>({});
+  const [products, setProducts] = useState<Record<string, MatchedProduct>>({});
   const [rowsLoading, setRowsLoading] = useState(false);
-  const [filter, setFilter] = useState<Classification | "all">("all");
+  const [filter, setFilter] = useState<Classification | "all">("update");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [busyRow, setBusyRow] = useState<string | null>(null);
 
-  /** Reload the batch header so `stats` and `status` reflect the last RPC. */
   const reloadBatch = useCallback(async (id: string) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("asan_import_batches")
-      .select("id, kind, file_name, row_count, status, stats, created_at")
+      .select("id, file_name, row_count, status, stats")
       .eq("id", id)
       .maybeSingle();
-    if (error) {
-      toast.error(`خواندن دسته ناموفق بود: ${error.message}`);
-      return;
-    }
     if (data) setBatch(data as unknown as Batch);
   }, []);
 
@@ -196,9 +136,9 @@ function AsanPersonImportPanel() {
     if (!batch) return;
     setRowsLoading(true);
     let q = supabase
-      .from("asan_import_person_rows")
+      .from("asan_import_product_rows")
       .select(
-        "id, row_number, asan_code, display_name, mobile_raw, landline_raw, national_id_raw, address, classification, matched_person_id, match_reason, conflict_reason, decision, applied_at",
+        "id, row_number, asan_code, name, barcode_raw, unit_raw, classification, matched_product_id, match_reason, conflict_reason, decision, applied_at",
         { count: "exact" },
       )
       .eq("batch_id", batch.id);
@@ -217,21 +157,16 @@ function AsanPersonImportPanel() {
     setRows(list);
     setTotal(count ?? 0);
 
-    // Field-level diff needs the AfraKala side of each matched row. Only the ids on
-    // this page are fetched — 488 rows must not become 488 lookups.
     const ids = Array.from(
-      new Set(list.map((r) => r.matched_person_id).filter((v): v is string => !!v)),
+      new Set(list.map((r) => r.matched_product_id).filter((v): v is string => !!v)),
     );
     if (ids.length > 0) {
-      const { data: persons } = await supabase
-        .from("persons")
-        .select("id, display_name, notes")
-        .in("id", ids);
-      const map: Record<string, MatchedPerson> = {};
-      for (const p of (persons ?? []) as unknown as MatchedPerson[]) map[p.id] = p;
-      setPeople(map);
+      const { data: prods } = await supabase.from("products").select("id, name, sku").in("id", ids);
+      const map: Record<string, MatchedProduct> = {};
+      for (const p of (prods ?? []) as unknown as MatchedProduct[]) map[p.id] = p;
+      setProducts(map);
     } else {
-      setPeople({});
+      setProducts({});
     }
     setRowsLoading(false);
   }, [batch, filter, page]);
@@ -240,16 +175,13 @@ function AsanPersonImportPanel() {
     if (batch) void loadRows();
   }, [batch, loadRows]);
 
-  /**
-   * Staging 488 rows and then losing the id would strand them, so an existing
-   * staged batch is adopted on mount rather than starting a second one.
-   */
+  /** Staging 7 256 rows and then losing the id on a refresh would strand them. */
   useEffect(() => {
     void (async () => {
       const { data } = await supabase
         .from("asan_import_batches")
-        .select("id, kind, file_name, row_count, status, stats, created_at")
-        .eq("kind", "persons")
+        .select("id, file_name, row_count, status, stats")
+        .eq("kind", "products")
         .eq("status", "staged")
         .order("created_at", { ascending: false })
         .limit(1);
@@ -270,14 +202,14 @@ function AsanPersonImportPanel() {
       const wb = XLSX.read(buf, { type: "array" });
       const sheetName = wb.SheetNames[0];
       if (!sheetName) throw new Error("فایل اکسل خالی است");
-      // `raw: false` keeps codes as the text Asan wrote them; a numeric coercion
-      // would silently drop a leading zero from an account code.
+      // `raw: false` keeps a product code as the text Asan wrote it; numeric coercion
+      // would silently drop a leading zero.
       const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], {
         header: 1,
         raw: false,
         defval: null,
       });
-      const result = parseAsanPersons(matrix);
+      const result = parseAsanProducts(matrix);
       if (result.rows.length === 0) throw new Error("هیچ ردیف داده‌ای در فایل پیدا نشد");
       setParsed(result);
     } catch (err) {
@@ -293,23 +225,24 @@ function AsanPersonImportPanel() {
     if (!parsed || parsed.rows.length === 0) return;
     setStaging(true);
     setStagingPct(0);
+    const startedAt = Date.now();
     try {
       const { data, error } = await supabase
         .from("asan_import_batches")
         .insert({
-          kind: "persons",
+          kind: "products",
           file_name: file?.name ?? null,
           row_count: parsed.rows.length,
           created_by: user?.id ?? null,
         })
-        .select("id, kind, file_name, row_count, status, stats, created_at")
+        .select("id, file_name, row_count, status, stats")
         .single();
       if (error || !data) throw new Error(error?.message ?? "ساخت دسته ناموفق بود");
       const created = data as unknown as Batch;
 
       for (let i = 0; i < parsed.rows.length; i += CHUNK) {
         const chunk = parsed.rows.slice(i, i + CHUNK).map((r) => ({ ...r, batch_id: created.id }));
-        const res = await supabase.from("asan_import_person_rows").insert(chunk);
+        const res = await supabase.from("asan_import_product_rows").insert(chunk);
         if (res.error) throw new Error(res.error.message);
         setStagingPct(
           Math.round((Math.min(i + CHUNK, parsed.rows.length) / parsed.rows.length) * 100),
@@ -318,8 +251,10 @@ function AsanPersonImportPanel() {
 
       setBatch(created);
       setPage(0);
-      setFilter("all");
-      toast.success(`${toFaDigits(parsed.rows.length)} ردیف در جدول موقت ثبت شد`);
+      const secs = Math.round((Date.now() - startedAt) / 100) / 10;
+      toast.success(
+        `${toFaDigits(parsed.rows.length)} ردیف در ${toFaDigits(secs)} ثانیه ثبت موقت شد`,
+      );
       await classify(created.id);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "ثبت در جدول موقت ناموفق بود");
@@ -330,7 +265,7 @@ function AsanPersonImportPanel() {
 
   async function classify(id: string) {
     setClassifying(true);
-    const { error } = await supabase.rpc("asan_classify_person_batch", { p_batch_id: id });
+    const { error } = await supabase.rpc("asan_classify_product_batch", { p_batch_id: id });
     setClassifying(false);
     if (error) {
       toast.error(`طبقه‌بندی ناموفق بود: ${error.message}`);
@@ -344,7 +279,7 @@ function AsanPersonImportPanel() {
   async function setDecision(row: StagedRow, decision: Decision) {
     setBusyRow(row.id);
     const { error } = await supabase
-      .from("asan_import_person_rows")
+      .from("asan_import_product_rows")
       .update({ decision })
       .eq("id", row.id);
     setBusyRow(null);
@@ -355,26 +290,26 @@ function AsanPersonImportPanel() {
     setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, decision } : r)));
   }
 
-  /** Bulk decision, scoped to one classification. `conflict` is never offered. */
-  async function setDecisionForClass(cls: "new" | "update", decision: Decision) {
+  /** Bulk decision. Only ever offered for `update` — the trigger refuses anything else. */
+  async function acceptAllLinkable() {
     if (!batch) return;
     const { error } = await supabase
-      .from("asan_import_person_rows")
-      .update({ decision })
+      .from("asan_import_product_rows")
+      .update({ decision: "accept" })
       .eq("batch_id", batch.id)
-      .eq("classification", cls);
+      .eq("classification", "update");
     if (error) {
       toast.error(`ثبت گروهی ناموفق بود: ${error.message}`);
       return;
     }
-    toast.success("تصمیم گروهی ثبت شد");
+    toast.success("همهٔ ردیف‌های قابل اتصال تأیید شدند");
     await loadRows();
   }
 
   async function commit() {
     if (!batch) return;
     setCommitting(true);
-    const { data, error } = await supabase.rpc("asan_commit_person_batch", {
+    const { data, error } = await supabase.rpc("asan_commit_product_batch", {
       p_batch_id: batch.id,
     });
     setCommitting(false);
@@ -382,9 +317,9 @@ function AsanPersonImportPanel() {
       toast.error(`ثبت نهایی ناموفق بود: ${error.message}`);
       return;
     }
-    const r = (data ?? {}) as { created?: number; updated?: number; skipped?: number };
+    const r = (data ?? {}) as { linked?: number; products_after?: number };
     toast.success(
-      `ثبت شد — ساخته‌شده: ${toFaDigits(r.created ?? 0)}، به‌روزشده: ${toFaDigits(r.updated ?? 0)}`,
+      `${toFaDigits(r.linked ?? 0)} کالا به کد آسان وصل شد. تعداد کالاها: ${toFaDigits(r.products_after ?? 0)} (بدون تغییر)`,
     );
     await reloadBatch(batch.id);
     await loadRows();
@@ -400,7 +335,7 @@ function AsanPersonImportPanel() {
       toast.error(`کنارگذاشتن دسته ناموفق بود: ${error.message}`);
       return;
     }
-    toast.success("دسته کنار گذاشته شد. هیچ‌چیز در افراکالا تغییر نکرد.");
+    toast.success("دسته کنار گذاشته شد. هیچ کالایی تغییر نکرد.");
     setBatch(null);
     setRows([]);
     setParsed(null);
@@ -408,32 +343,30 @@ function AsanPersonImportPanel() {
   }
 
   const stats = batch?.stats ?? {};
-  const acceptedCount = useMemo(() => rows.filter((r) => r.decision === "accept").length, [rows]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const isCommitted = batch?.status === "committed";
 
   return (
     <div className="space-y-4">
       <div className="rounded-md border bg-muted/30 p-3 text-sm">
-        هیچ چیزی تا لحظهٔ «ثبت نهایی» در افراکالا نوشته نمی‌شود. ردیف‌های دارای تعارض قابل تأیید
-        نیستند و در به‌روزرسانی، مقدار پرشدهٔ افراکالا هرگز با مقدار آسان بازنویسی نمی‌شود؛ فقط
-        فیلدهای خالی پر می‌شوند.
+        این صفحه <strong>هرگز کالای تازه نمی‌سازد</strong>. آسان هزاران قلم کالا دارد که شما
+        نمی‌فروشید؛ ردیفی که در افراکالا نظیر نداشته باشد فقط در جدول موقت ثبت می‌شود. تنها چیزی که
+        ثبت نهایی می‌نویسد، «کد آسان» روی کالایی است که از قبل وجود دارد و هنوز کد ندارد.
       </div>
 
-      {/* ---------------------------------------------------------- step 1 --- */}
       {!batch && (
         <Card>
           <CardContent className="space-y-4 p-4">
             <div className="flex items-center gap-2 font-medium">
               <FileSpreadsheet className="h-5 w-5 text-primary" />
-              مرحله ۱: انتخاب فایل اشخاص آسان
+              مرحله ۱: انتخاب فایل کالای آسان
             </div>
             <div className="space-y-1">
-              <Label htmlFor="asan-persons-file" className="text-xs">
-                فایل xlsx خروجی «اشخاص» از آسان
+              <Label htmlFor="asan-products-file" className="text-xs">
+                فایل xlsx خروجی «کالا» از آسان
               </Label>
               <Input
-                id="asan-persons-file"
+                id="asan-products-file"
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleFile}
@@ -453,19 +386,14 @@ function AsanPersonImportPanel() {
                   {file && <Badge variant="outline">{file.name}</Badge>}
                 </div>
 
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">
-                    ستون‌ها بر اساس «متن سرستون» شناسایی می‌شوند، نه جای ستون:
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.keys(ASAN_PERSON_HEADERS) as (keyof typeof ASAN_PERSON_HEADERS)[]).map(
-                      (f) => (
-                        <Badge key={f} variant={parsed.mapping[f] ? "outline" : "destructive"}>
-                          {ASAN_PERSON_HEADERS[f]}: {parsed.mapping[f] ? "پیدا شد" : "پیدا نشد"}
-                        </Badge>
-                      ),
-                    )}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(ASAN_PRODUCT_HEADERS) as (keyof typeof ASAN_PRODUCT_HEADERS)[]).map(
+                    (f) => (
+                      <Badge key={f} variant={parsed.mapping[f] ? "outline" : "destructive"}>
+                        {ASAN_PRODUCT_HEADERS[f]}: {parsed.mapping[f] ? "پیدا شد" : "پیدا نشد"}
+                      </Badge>
+                    ),
+                  )}
                 </div>
 
                 {parsed.warnings.length > 0 && (
@@ -487,10 +415,9 @@ function AsanPersonImportPanel() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>ردیف</TableHead>
-                        <TableHead>کد حساب</TableHead>
-                        <TableHead>نام حساب</TableHead>
-                        <TableHead>موبایل</TableHead>
-                        <TableHead>تلفن</TableHead>
+                        <TableHead>کد کالا</TableHead>
+                        <TableHead>شرح کالا</TableHead>
+                        <TableHead>واحد</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -498,9 +425,8 @@ function AsanPersonImportPanel() {
                         <TableRow key={r.row_number}>
                           <TableCell>{toFaDigits(r.row_number)}</TableCell>
                           <TableCell className="font-mono">{r.asan_code ?? "—"}</TableCell>
-                          <TableCell>{r.display_name ?? "—"}</TableCell>
-                          <TableCell className="font-mono">{r.mobile_raw ?? "—"}</TableCell>
-                          <TableCell className="font-mono">{r.landline_raw ?? "—"}</TableCell>
+                          <TableCell>{r.name ?? "—"}</TableCell>
+                          <TableCell>{r.unit_raw ?? "—"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -509,7 +435,7 @@ function AsanPersonImportPanel() {
 
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground">
-                    پیش‌نمایش ۵ ردیف اول. ثبت در جدول موقت هیچ تغییری در اشخاص افراکالا نمی‌دهد.
+                    پیش‌نمایش ۵ ردیف اول. ثبت موقت هیچ تغییری در کالاهای افراکالا نمی‌دهد.
                   </span>
                   <Button onClick={stageAndClassify} disabled={staging || classifying}>
                     {(staging || classifying) && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
@@ -532,7 +458,6 @@ function AsanPersonImportPanel() {
         </Card>
       )}
 
-      {/* ---------------------------------------------------------- step 2 --- */}
       {batch && (
         <Card>
           <CardContent className="space-y-4 p-4">
@@ -569,7 +494,7 @@ function AsanPersonImportPanel() {
 
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">مجموع: {toFaDigits(batch.row_count)}</Badge>
-              {(["new", "update", "conflict", "unchanged"] as Classification[]).map((c) =>
+              {(["update", "conflict", "unchanged", "unmatched"] as Classification[]).map((c) =>
                 stats[c] ? (
                   <Badge key={c} variant={c === "conflict" ? "destructive" : "secondary"}>
                     {CLASS_LABEL[c]}: {toFaDigits(stats[c])}
@@ -578,8 +503,11 @@ function AsanPersonImportPanel() {
               )}
               {isCommitted && (
                 <>
-                  <Badge>ساخته‌شده: {toFaDigits(stats.created ?? 0)}</Badge>
-                  <Badge>به‌روزشده: {toFaDigits(stats.updated ?? 0)}</Badge>
+                  <Badge>متصل‌شده: {toFaDigits(stats.linked ?? 0)}</Badge>
+                  <Badge variant="outline">
+                    کالاها: {toFaDigits(stats.products_before ?? 0)} →{" "}
+                    {toFaDigits(stats.products_after ?? 0)}
+                  </Badge>
                 </>
               )}
             </div>
@@ -587,27 +515,12 @@ function AsanPersonImportPanel() {
             {!isCommitted && (
               <div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
                 <span className="text-xs text-muted-foreground">تصمیم گروهی:</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDecisionForClass("new", "accept")}
-                >
-                  تأیید همهٔ «شخص تازه»
+                <Button size="sm" variant="outline" onClick={acceptAllLinkable}>
+                  تأیید همهٔ «قابل اتصال»
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDecisionForClass("update", "accept")}
-                >
-                  تأیید همهٔ «به‌روزرسانی»
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDecisionForClass("new", "skip")}
-                >
-                  رد همهٔ «شخص تازه»
-                </Button>
+                <span className="text-xs text-muted-foreground">
+                  ردیف‌های «در افراکالا نیست» و «تعارض» اصلاً قابل تأیید نیستند.
+                </span>
               </div>
             )}
 
@@ -632,10 +545,10 @@ function AsanPersonImportPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ردیف</TableHead>
-                    <TableHead>کد حساب</TableHead>
-                    <TableHead>نام (آسان)</TableHead>
+                    <TableHead>کد کالا</TableHead>
+                    <TableHead>شرح (آسان)</TableHead>
                     <TableHead>وضعیت</TableHead>
-                    <TableHead>در افراکالا</TableHead>
+                    <TableHead>کالای افراکالا</TableHead>
                     <TableHead>تصمیم</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -654,19 +567,16 @@ function AsanPersonImportPanel() {
                     </TableRow>
                   ) : (
                     rows.map((r) => {
-                      const matched = r.matched_person_id ? people[r.matched_person_id] : undefined;
+                      const matched = r.matched_product_id
+                        ? products[r.matched_product_id]
+                        : undefined;
                       return (
                         <TableRow key={r.id}>
                           <TableCell>{toFaDigits(r.row_number)}</TableCell>
                           <TableCell className="font-mono whitespace-nowrap">
                             {r.asan_code ?? "—"}
                           </TableCell>
-                          <TableCell>
-                            <div>{r.display_name ?? "—"}</div>
-                            <div className="font-mono text-xs text-muted-foreground">
-                              {r.mobile_raw ?? ""}
-                            </div>
-                          </TableCell>
+                          <TableCell className="max-w-[20rem]">{r.name ?? "—"}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -676,25 +586,16 @@ function AsanPersonImportPanel() {
                               {CLASS_LABEL[r.classification]}
                             </Badge>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              {r.conflict_reason ??
-                                (r.match_reason
-                                  ? `تطبیق بر اساس ${MATCH_REASON_LABEL[r.match_reason] ?? r.match_reason}`
-                                  : CLASS_HINT[r.classification])}
+                              {r.conflict_reason ?? CLASS_HINT[r.classification]}
                             </div>
                           </TableCell>
                           <TableCell className="min-w-[12rem]">
                             {matched ? (
                               <div className="text-xs">
-                                <div>{matched.display_name ?? "—"}</div>
-                                {r.classification === "update" && (
-                                  <div className="mt-1 text-muted-foreground">
-                                    {matched.notes && matched.notes.trim() !== ""
-                                      ? "آدرس/توضیحات پر است — دست‌نخورده می‌ماند"
-                                      : r.address
-                                        ? "آدرس خالی است — از آسان پر می‌شود"
-                                        : "چیزی برای پرکردن نیست"}
-                                  </div>
-                                )}
+                                <div>{matched.name}</div>
+                                <div className="font-mono text-muted-foreground">
+                                  {matched.sku ?? ""}
+                                </div>
                               </div>
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>
@@ -703,7 +604,7 @@ function AsanPersonImportPanel() {
                           <TableCell className="min-w-[10rem]">
                             {r.applied_at ? (
                               <Badge variant="outline">ثبت شد</Badge>
-                            ) : r.classification === "conflict" ? (
+                            ) : r.classification !== "update" ? (
                               <span className="text-xs text-muted-foreground">قابل تأیید نیست</span>
                             ) : isCommitted ? (
                               <span className="text-xs text-muted-foreground">—</span>
@@ -712,7 +613,7 @@ function AsanPersonImportPanel() {
                                 <Button
                                   size="sm"
                                   variant={r.decision === "accept" ? "default" : "outline"}
-                                  disabled={busyRow === r.id || r.classification === "unchanged"}
+                                  disabled={busyRow === r.id}
                                   onClick={() => setDecision(r, "accept")}
                                 >
                                   تأیید
@@ -758,15 +659,10 @@ function AsanPersonImportPanel() {
               </div>
 
               {!isCommitted && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">
-                    در این صفحه {toFaDigits(acceptedCount)} ردیف تأییدشده
-                  </span>
-                  <Button onClick={commit} disabled={committing}>
-                    {committing && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                    ثبت نهایی در افراکالا
-                  </Button>
-                </div>
+                <Button onClick={commit} disabled={committing}>
+                  {committing && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                  ثبت نهایی کدهای آسان
+                </Button>
               )}
             </div>
           </CardContent>
