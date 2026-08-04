@@ -1,8 +1,8 @@
 # ASAN Program Progress
 
 ## Status
-Current mission: **M2 (research, read-only)**
-Current phase: M1 complete, gate passed → starting R1
+Current mission: **M3 (build foundation)**
+Current phase: M2 complete, gate passed → starting phase 3.0
 Last commit: `0dcf78e9`
 Baseline typecheck: 70 (verified at the M1 gate)
 Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
@@ -34,6 +34,8 @@ reds 6 → 5, no new red
       `test.admin@afrakala.local`, `page.pause()` trap retired; spec 4/4 green.
 - [x] **M1 MISSION GATE PASSED** — typecheck 70, tree clean, three deploy signals match HEAD,
       e2e 202/5/4 with no new red.
+- [x] **M2 research complete, gate passed** — docs/asan/research-asan-bridge.md, 1067 lines,
+      R1-R8 with evidence; 8 blocking issues and 7 owner questions recorded.
 
 ## M1.1 detail
 
@@ -308,13 +310,57 @@ is ownerless" — which is no longer true of this server.
 prove this was not one of the six. The one-line correction is ready if the owner wants it:
 compare `assigned_to` to the current user instead of to the empty string.
 
+## M2 MISSION GATE — PASSED
+
+`docs/asan/research-asan-bridge.md`, 1 067 lines, **R1–R8 all written**, each with the required
+Findings / UNKNOWN / Implications-for-build subsections, plus a blocking-issues section and a
+seven-question summary for the owner.
+
+| gate item | result |
+|---|---|
+| 1. covers R1 through R8 | 8 sections, 8× Findings, 8× UNKNOWN, 8× Implications |
+| 2. no migration, no app code, nothing applied to the DB | `git status` shows only `docs/` — verified |
+| 3. typecheck still exactly 70 | **70** |
+
+### What the research changed about the build
+
+- **R1 — product matching is effectively impossible from current data.** Barcode 0 % populated
+  on *both* sides; exact name 0/355; normalized name **3/355**. Fuzzy matching is unsafe:
+  0.90-similarity pairs are demonstrably *different* products (گلد vs لند, QH-2800 vs 2200,
+  NA230 vs NA350). `products.easy_code` **does not exist** anywhere — nothing to extend.
+  Softened later by R7: Asan mints codes for unknown items under group `101`.
+- **R2 — person matching is tractable.** `customers.accounting_code` confirmed as the Asan code,
+  cross-validated by code *and* by independent mobile match. Every phone in the database is
+  already `09XXXXXXXXX`. The Asan code belongs in `person_identifiers` as a new `kind`.
+- **R3/R4 — most of the machinery already exists.** SheetJS is a dependency; two importers and
+  two exporters already work client-side. The five Asan adapters already exist in
+  `export-modes.ts`, deliberately inert because no verified layout existed — **the appendix now
+  supplies them**. What does *not* exist is a staging-then-approve queue, which is M3's largest
+  new piece.
+- **R5 — the double case needs no schema work.** `payment_receipts` already carries payer,
+  receiver *and* `beneficiary_accounting_code`. `external_parties.accounting_code` exists too.
+  Asan models banks as persons in one namespace — `ملت` is Asan code `3064`, the strong
+  candidate for `TEMP-CHANGE-ME`, recorded but **not assumed**.
+- **R6 — the brief names a table that does not exist.** Migration 276 created
+  `product_service_types`, `category_required_services`, `sales_quote_item_services`, not
+  `mandatory_category_services`. And `tasks.proof_requirement` **already allows
+  `product_video`** while `tasks` holds 0 rows — mission control section 3's "built but never
+  wired" pattern, in the exact table section 3 cites.
+- **R7 — numbers must be assigned explicitly and stored.** Nothing today maps a document to an
+  external number. First batch is small: 4 accepted quotes, 1 approved receipt, 1 journal entry,
+  261 purchases.
+- **R8 — the ×10 risk is real and unresolved.** AfraKala is provably Toman; Asan's unit is
+  inferred from balance magnitudes only (median 6 000 000) and is **UNKNOWN**. Also: every
+  Jalali formatter in the app calls `loadPersian({usePersianDigits:true})` on the shared moment
+  instance, so M4 needs its own Latin-digit formatter and must not rely on import order.
+
 ## HANDOFF STATE
-Next action: M2 — read-only research into `docs/asan/research-asan-bridge.md`, sections R1→R8
-in order, writing each before starting the next. Write no migration, change no application
-code, apply nothing to the database.
-Blocked on: nothing
-Files in flight: `docs/verification/asan/reference-extract.json` (M2 working artefact,
-extracted from the two reference workbooks)
+Next action: M3 — `docs/execution/M3_BUILD_FOUNDATION.md`, starting with phase 3.0
+(formalise the four verified Asan layouts into `docs/asan/asan-layouts.md`).
+Blocked on: nothing — but seven owner questions are recorded at the end of the research
+document, four of which (currency unit, Bank Mellat code, control-account codes, sales column K)
+affect financial correctness and must be surfaced in the UI rather than guessed.
+Files in flight: none — M2 artefacts are committed under `docs/verification/asan/`.
 
 ### M2 groundwork already done (inert, file-only)
 Both reference workbooks were read and their headers verified against the brief's mapping —
