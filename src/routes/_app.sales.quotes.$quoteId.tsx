@@ -10,6 +10,7 @@ import {
   XCircle,
   Ban,
   FileDown,
+  FileSpreadsheet,
   MessageCircle,
   Eye,
   UserRound,
@@ -39,6 +40,7 @@ import {
   type SalesQuoteItemSource,
 } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+import { downloadSingleQuoteExport } from "@/lib/asan/export-single-quote";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
@@ -107,6 +109,10 @@ function QuoteDetailPage() {
   const { user, roles } = useAuth();
   const isManagerial = roles.includes("admin") || roles.includes("manager");
   const isAccountant = roles.includes("accountant");
+  // ASAN M4.8 — the Asan export set is admin + accountant, deliberately NOT `isManagerial`:
+  // that means "admin or manager", and the backend refuses a manager (migration 291/292).
+  // Offering a control the backend rejects teaches the user to distrust the page.
+  const canAsanExport = roles.includes("admin") || roles.includes("accountant");
 
   const quoteQuery = useQuery({
     queryKey: ["sales-quote-detail", quoteId],
@@ -220,6 +226,7 @@ function QuoteDetailPage() {
               isManagerial={isManagerial}
               isAccountant={isAccountant}
               isOwner={isOwner}
+              canAsanExport={canAsanExport}
             />
           </div>
         }
@@ -463,6 +470,7 @@ function QuoteDetailPage() {
           isManagerial={isManagerial}
           isAccountant={isAccountant}
           isOwner={isOwner}
+          canAsanExport={canAsanExport}
         />
       </div>
     </div>
@@ -483,11 +491,13 @@ function QuoteActionButtons({
   isManagerial,
   isAccountant,
   isOwner,
+  canAsanExport,
 }: {
   quote: QuoteDetail;
   isManagerial: boolean;
   isAccountant: boolean;
   isOwner: boolean;
+  canAsanExport: boolean;
 }) {
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<null | {
@@ -497,6 +507,7 @@ function QuoteActionButtons({
   }>(null);
   const [reason, setReason] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [asanLoading, setAsanLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // Items 175/179 — at confirm time the operator may switch warehouse, and sees
   // the availability check for whichever warehouse is selected.
@@ -593,6 +604,34 @@ function QuoteActionButtons({
     }
   };
 
+  /**
+   * ASAN M4.8 — the same quote, in the sales layout, from this page.
+   *
+   * The date is the quote's Tehran calendar day, because that is what
+   * `asan_list_sales_export` filters on. Building it with `Intl` rather than a fixed offset
+   * keeps it correct across DST and matches how the rest of the app derives a Tehran day.
+   *
+   * A quote that is not exportable raises with the same Persian reason the range preview would
+   * show, rather than producing a partial file.
+   */
+  const handleAsanExport = async () => {
+    setAsanLoading(true);
+    try {
+      const dateIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tehran",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(quote.created_at));
+      const rows = await downloadSingleQuoteExport(quote.id, quote.quote_number, dateIso);
+      toast.success(`فایل آسان ساخته شد: ${rows} سطر (مبلغ‌ها به ریال)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ساخت خروجی آسان");
+    } finally {
+      setAsanLoading(false);
+    }
+  };
+
   return (
     <>
       {canSend && (
@@ -638,6 +677,16 @@ function QuoteActionButtons({
           disabled={mutation.isPending}
         >
           <Ban className="ml-1 h-3.5 w-3.5" /> لغو
+        </Button>
+      )}
+      {canAsanExport && (
+        <Button size="sm" variant="outline" onClick={handleAsanExport} disabled={asanLoading}>
+          {asanLoading ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="ml-1 h-3.5 w-3.5" />
+          )}
+          خروجی اکسل آسان
         </Button>
       )}
       <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading}>
