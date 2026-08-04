@@ -277,6 +277,34 @@ test.describe("M3.3 — Asan person import", () => {
     }
   });
 
+  test("the route and the registry are wired to the same two roles", () => {
+    // Source-level tripwires, in the style of `emergency-admin-dormant.spec.ts`: the
+    // browser cases below prove the guard *works*, these prove nobody quietly widened
+    // it later. `adminOnly` is called out because it is the obvious-looking flag and
+    // the wrong one — it means "admin or manager", which would hide the page from the
+    // accountant it is built for and show it to a manager the backend refuses.
+    const route = fs.readFileSync("src/routes/_app.admin.asan-import.tsx", "utf8");
+    expect(route, "the route guard no longer names admin+accountant").toContain(
+      'requireAnyRole(["admin", "accountant"])',
+    );
+
+    const registry = fs.readFileSync("src/lib/navigation/registry.ts", "utf8");
+    expect(registry, "the navigation entry lost its role allowlist").toContain(
+      '"/admin/asan-import": ["admin", "accountant"]',
+    );
+    expect(registry, "the navigation entry is not keyed on the asan-import module").toContain(
+      'module: "asan-import"',
+    );
+
+    // The static PERMISSIONS matrix is only the fallback for when the dynamic cache
+    // has not loaded, but a fallback that disagrees with `role_permissions` is how a
+    // menu ends up offering something the backend refuses.
+    const roles = fs.readFileSync("src/lib/rbac/roles.ts", "utf8");
+    expect(roles, "asan-import is missing from the static permission matrix").toMatch(
+      /"asan-import":\s*\{\s*view:\s*\["admin",\s*"accountant"\]/,
+    );
+  });
+
   test("every role has an explicit asan-import permission row", async () => {
     // rule 2.5: a module with no row is open to everyone via the fallback
     const roles = Number(dbScalar("select count(distinct role_name) from public.role_permissions"));
@@ -290,5 +318,69 @@ test.describe("M3.3 — Asan person import", () => {
          where module = 'asan-import' and can_view order by role_name
       `),
     ).toEqual(["accountant", "admin"]);
+  });
+});
+
+/**
+ * The admin route itself, in a real browser.
+ *
+ * These four cases are the only part of this suite that needs the deployed build,
+ * because the page is the thing under test. They assert what the *page* does; the
+ * rules it depends on are asserted above at the layer that enforces them.
+ */
+const PAGE_TITLE = "ورود اطلاعات از آسان";
+const ROUTE = "/admin/asan-import";
+
+test.describe("M3.3 — the /admin/asan-import route", () => {
+  test("an admin reaches the page, and merely opening it writes nothing", async ({ page }) => {
+    const before = Number(dbScalar("select count(*) from public.persons"));
+    const batchesBefore = Number(dbScalar("select count(*) from public.asan_import_batches"));
+
+    await page.goto(ROUTE);
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByRole("heading", { name: PAGE_TITLE })).toBeVisible();
+    // The promise the page makes to the user, asserted rather than assumed.
+    await expect(page.getByText("هیچ چیزی تا لحظهٔ «ثبت نهایی»")).toBeVisible();
+    await expect(page.getByLabel("فایل xlsx خروجی «اشخاص» از آسان")).toBeVisible();
+
+    // Opening a page that can create persons must not create any.
+    expect(Number(dbScalar("select count(*) from public.persons"))).toBe(before);
+    expect(Number(dbScalar("select count(*) from public.asan_import_batches"))).toBe(batchesBefore);
+  });
+
+  test.describe("accountant", () => {
+    test.use({ storageState: "e2e/auth/accountant.storage.json" });
+
+    test("an accountant reaches it too — this page is built for that role", async ({ page }) => {
+      await page.goto(ROUTE);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("heading", { name: PAGE_TITLE })).toBeVisible();
+    });
+  });
+
+  test.describe("sales", () => {
+    test.use({ storageState: "e2e/auth/salesperson-a.storage.json" });
+
+    test("a salesperson never sees the page", async ({ page }) => {
+      await page.goto(ROUTE);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
+      // The shell can render before the guard resolves, so the assertion is on the
+      // page's own content, never on the URL.
+      await expect(page.getByRole("heading", { name: PAGE_TITLE })).toHaveCount(0);
+      await expect(page.getByLabel("فایل xlsx خروجی «اشخاص» از آسان")).toHaveCount(0);
+    });
+  });
+
+  test.describe("anonymous", () => {
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test("an anonymous visitor never sees the page", async ({ page }) => {
+      await page.goto(ROUTE);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(2000);
+      await expect(page.getByRole("heading", { name: PAGE_TITLE })).toHaveCount(0);
+    });
   });
 });

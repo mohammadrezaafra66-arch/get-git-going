@@ -722,6 +722,22 @@ const NAVIGATION_SEEDS = [
     adminOnly: true,
   },
   {
+    // ASAN M3.3 — the Asan person/product import workbench. Admin tools, not
+    // settings: it is a job you run, not a configuration you set.
+    //
+    // Deliberately NOT `adminOnly`. That flag reads "admin or manager", which is
+    // the wrong set here: the brief and migration 285's seed both say admin and
+    // accountant. `adminOnly` would have hidden the page from the accountant it
+    // is mainly built for while showing it to a manager the backend refuses.
+    // The allowlist below is in ROLE_ALLOWLIST_BY_ROUTE.
+    to: "/admin/asan-import",
+    label: "ورود اطلاعات از آسان",
+    icon: Upload,
+    module: "asan-import",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  {
     to: "/admin/purchase",
     label: "مدیریت خرید",
     icon: ShoppingCart,
@@ -1122,6 +1138,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/users",
     "/users/pending",
     "/roles",
+    "/admin/asan-import",
     "/admin/roles",
     "/admin/profile-fields",
     "/admin/settings",
@@ -1201,6 +1218,7 @@ const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["act
 
 const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/accounting/dynamic-capital": ["admin", "accountant"],
+  "/admin/asan-import": ["admin", "accountant"],
   "/admin/audit": ["admin", "manager"],
   "/admin/automation": ["admin", "manager"],
   "/admin/delivery-receipts": ["admin", "manager"],

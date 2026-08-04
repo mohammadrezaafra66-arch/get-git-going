@@ -152,6 +152,7 @@ import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.docum
 import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAdminAuditRouteImport } from './routes/_app.admin.audit'
+import { Route as AppAdminAsanImportRouteImport } from './routes/_app.admin.asan-import'
 import { Route as AppAdminAiProvidersRouteImport } from './routes/_app.admin.ai-providers'
 import { Route as AppAccountingTreasuryRouteImport } from './routes/_app.accounting.treasury'
 import { Route as AppAccountingSalespersonScoringRouteImport } from './routes/_app.accounting.salesperson-scoring'
@@ -954,6 +955,11 @@ const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
   path: '/admin/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminAsanImportRoute = AppAdminAsanImportRouteImport.update({
+  id: '/admin/asan-import',
+  path: '/admin/asan-import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminAiProvidersRoute = AppAdminAiProvidersRouteImport.update({
   id: '/admin/ai-providers',
   path: '/admin/ai-providers',
@@ -1383,6 +1389,7 @@ export interface FileRoutesByFullPath {
   '/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
   '/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/admin/ai-providers': typeof AppAdminAiProvidersRoute
+  '/admin/asan-import': typeof AppAdminAsanImportRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -1589,6 +1596,7 @@ export interface FileRoutesByTo {
   '/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
   '/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/admin/ai-providers': typeof AppAdminAiProvidersRoute
+  '/admin/asan-import': typeof AppAdminAsanImportRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -1798,6 +1806,7 @@ export interface FileRoutesById {
   '/_app/accounting/salesperson-scoring': typeof AppAccountingSalespersonScoringRoute
   '/_app/accounting/treasury': typeof AppAccountingTreasuryRoute
   '/_app/admin/ai-providers': typeof AppAdminAiProvidersRoute
+  '/_app/admin/asan-import': typeof AppAdminAsanImportRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
   '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
@@ -2008,6 +2017,7 @@ export interface FileRouteTypes {
     | '/accounting/salesperson-scoring'
     | '/accounting/treasury'
     | '/admin/ai-providers'
+    | '/admin/asan-import'
     | '/admin/audit'
     | '/admin/automation'
     | '/admin/delivery-receipts'
@@ -2214,6 +2224,7 @@ export interface FileRouteTypes {
     | '/accounting/salesperson-scoring'
     | '/accounting/treasury'
     | '/admin/ai-providers'
+    | '/admin/asan-import'
     | '/admin/audit'
     | '/admin/automation'
     | '/admin/delivery-receipts'
@@ -2422,6 +2433,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/salesperson-scoring'
     | '/_app/accounting/treasury'
     | '/_app/admin/ai-providers'
+    | '/_app/admin/asan-import'
     | '/_app/admin/audit'
     | '/_app/admin/automation'
     | '/_app/admin/delivery-receipts'
@@ -3605,6 +3617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/asan-import': {
+      id: '/_app/admin/asan-import'
+      path: '/admin/asan-import'
+      fullPath: '/admin/asan-import'
+      preLoaderRoute: typeof AppAdminAsanImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/ai-providers': {
       id: '/_app/admin/ai-providers'
       path: '/admin/ai-providers'
@@ -4299,6 +4318,7 @@ interface AppRouteChildren {
   AppAccountingSalespersonScoringRoute: typeof AppAccountingSalespersonScoringRoute
   AppAccountingTreasuryRoute: typeof AppAccountingTreasuryRoute
   AppAdminAiProvidersRoute: typeof AppAdminAiProvidersRoute
+  AppAdminAsanImportRoute: typeof AppAdminAsanImportRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
   AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
@@ -4443,6 +4463,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingSalespersonScoringRoute: AppAccountingSalespersonScoringRoute,
   AppAccountingTreasuryRoute: AppAccountingTreasuryRoute,
   AppAdminAiProvidersRoute: AppAdminAiProvidersRoute,
+  AppAdminAsanImportRoute: AppAdminAsanImportRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,
   AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,

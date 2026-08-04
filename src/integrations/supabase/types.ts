@@ -494,6 +494,117 @@ export type Database = {
           },
         ]
       }
+      asan_import_batches: {
+        Row: {
+          committed_at: string | null
+          committed_by: string | null
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          kind: string
+          row_count: number
+          stats: Json
+          status: string
+        }
+        Insert: {
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          kind: string
+          row_count?: number
+          stats?: Json
+          status?: string
+        }
+        Update: {
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          kind?: string
+          row_count?: number
+          stats?: Json
+          status?: string
+        }
+        Relationships: []
+      }
+      asan_import_person_rows: {
+        Row: {
+          address: string | null
+          apply_note: string | null
+          applied_at: string | null
+          asan_code: string | null
+          batch_id: string
+          classification: string
+          conflict_reason: string | null
+          decision: string
+          display_name: string | null
+          id: string
+          landline_raw: string | null
+          match_reason: string | null
+          matched_person_id: string | null
+          mobile_raw: string | null
+          national_id_raw: string | null
+          row_number: number
+        }
+        Insert: {
+          address?: string | null
+          apply_note?: string | null
+          applied_at?: string | null
+          asan_code?: string | null
+          batch_id: string
+          classification?: string
+          conflict_reason?: string | null
+          decision?: string
+          display_name?: string | null
+          id?: string
+          landline_raw?: string | null
+          match_reason?: string | null
+          matched_person_id?: string | null
+          mobile_raw?: string | null
+          national_id_raw?: string | null
+          row_number: number
+        }
+        Update: {
+          address?: string | null
+          apply_note?: string | null
+          applied_at?: string | null
+          asan_code?: string | null
+          batch_id?: string
+          classification?: string
+          conflict_reason?: string | null
+          decision?: string
+          display_name?: string | null
+          id?: string
+          landline_raw?: string | null
+          match_reason?: string | null
+          matched_person_id?: string | null
+          mobile_raw?: string | null
+          national_id_raw?: string | null
+          row_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asan_import_person_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "asan_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asan_import_person_rows_matched_person_id_fkey"
+            columns: ["matched_person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -9923,6 +10034,14 @@ export type Database = {
       add_messenger_group_member: {
         Args: { p_group_id: string; p_role?: string; p_user_id: string }
         Returns: string
+      }
+      asan_classify_person_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
+      asan_commit_person_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
       }
       detect_phone_collisions: {
         Args: Record<PropertyKey, never>

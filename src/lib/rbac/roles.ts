@@ -85,7 +85,8 @@ export type ModuleKey =
   | "hr"
   | "market-rates"
   | "persons"
-  | "warehouse";
+  | "warehouse"
+  | "asan-import";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -229,6 +230,17 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     view: ["admin", "manager", "accountant"],
     create: ["admin", "manager", "accountant"],
     update: ["admin", "manager", "accountant"],
+    delete: ["admin"],
+  },
+  // ASAN M3.3 — the Asan→AfraKala import workbench. This static matrix is only the
+  // fallback for when the dynamic cache has not loaded; migration 285 seeds
+  // `role_permissions` for every role and that is what decides at runtime. The two
+  // must agree, so this mirrors the seed exactly: admin and accountant only, and
+  // notably NOT manager — the seed grants can_view to those two roles alone.
+  "asan-import": {
+    view: ["admin", "accountant"],
+    create: ["admin", "accountant"],
+    update: ["admin", "accountant"],
     delete: ["admin"],
   },
 };
