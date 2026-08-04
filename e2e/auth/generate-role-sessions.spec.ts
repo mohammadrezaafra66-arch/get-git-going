@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 import { BASE_URL } from "../helpers/app";
 
 type RoleTarget = {
-  key: "accountant" | "salesperson-a" | "salesperson-b";
+  key: "admin" | "accountant" | "salesperson-a" | "salesperson-b";
   emailEnv: string;
   passwordEnv: string;
   defaultEmail: string;
@@ -37,6 +37,22 @@ const ROLE_TIMEOUT_MS = 20_000;
 const LOGIN_TIMEOUT_MS = 30_000;
 
 const TARGETS: RoleTarget[] = [
+  {
+    // M1.3/M1.6: the admin session used to belong to afra-admin@local.test, the break-glass
+    // account, and was produced by save-admin-session.spec.ts — which calls page.pause().
+    // Headless does not block on pause, so that spec silently wrote an EMPTY storageState and
+    // turned the whole regression red. Generating it here instead keeps it non-interactive
+    // and keeps all four sessions in one place.
+    key: "admin",
+    emailEnv: "E2E_ADMIN_EMAIL",
+    passwordEnv: "E2E_ADMIN_PASSWORD",
+    defaultEmail: "test.admin@afrakala.local",
+    expectedRole: "مدیر کل",
+    expectedDbRole: "admin",
+    storageFile: "e2e/auth/admin.storage.json",
+    probeRoute: "/users",
+    probeText: /کاربران|مدیریت کاربران/,
+  },
   {
     key: "accountant",
     emailEnv: "E2E_ACCOUNTANT_EMAIL",
@@ -312,7 +328,7 @@ function randomPassword(): string {
   return `${crypto.randomBytes(18).toString("base64url")}Aa1!`;
 }
 
-test("generate accountant and salesperson storageState files", async ({ browser }) => {
+test("generate admin, accountant and salesperson storageState files", async ({ browser }) => {
   assertLanOnly();
   fs.mkdirSync("e2e/auth", { recursive: true });
 

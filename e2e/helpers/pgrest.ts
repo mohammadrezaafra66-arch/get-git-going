@@ -113,5 +113,11 @@ export async function userWithRole(adminJwt: string, role: string): Promise<stri
   return r.body?.[0]?.user_id ?? null;
 }
 
-/** The seeded emergency admin on the LAN test server. */
-export const ADMIN_USER_ID = "48f7c9d5-096e-437e-af9b-9cb0be5deb8c";
+/**
+ * The harness's admin on the LAN test server: `test.admin@afrakala.local`.
+ *
+ * This used to be `afra-admin@local.test`, the break-glass emergency account. That account was
+ * activated for an earlier harness and left active; migration 282 put it back to
+ * status='inactive'. A test suite should not be the reason an emergency account stays usable.
+ */
+export const ADMIN_USER_ID = "05098088-2849-43f4-8eb5-7c473c3832ec";
