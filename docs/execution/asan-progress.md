@@ -3,8 +3,8 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: M4.1 next
-Last commit: `004477bd`
+Current phase: M4.3 next (4.1 and 4.2 done)
+Last commit: `960abd2f`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
 Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
 documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
@@ -69,6 +69,9 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
       spec **8/8 green**.
 - [x] O3 `docs/asan/UNVERIFIED-LAYOUTS.md` refreshed — five of seven questions resolved by the
       owner and moved to a RESOLVED table; three genuinely open items remain, plus MODEL GAPS.
+- [x] M4.2 shared export shell — migration 291 — commit `960abd2f` — `/admin/asan-export`,
+      the four layouts, the selection model, the Rial conversion, and a batch numbering RPC;
+      spec **30/30 green** on the deployed build (`APP_GIT_SHA=960abd2f`).
 
 ## M1.1 detail
 
@@ -813,6 +816,113 @@ rejected inside the database, PostgREST cannot mint/edit/delete, a salesperson g
 403, and a cancelled document's number is burned rather than handed to the next document.
 Table left with **0 rows**.
 
+## M4.2 — the shared export shell (migration 291)
+
+One page for every Asan export. `src/routes/_app.admin.asan-export.tsx` knows nothing about any
+particular layout: it takes a definition out of `ASAN_EXPORTS`, lists what that definition finds
+in the chosen date range, lets the accountant untick what she does not want, and writes what the
+definition builds. Phases 4.3–4.7 flip entries from `notBuiltYet` to real definitions; none of
+them touches the page.
+
+**A previous session had built this and left it applied-but-uncommitted.** Migration 291 was
+already on the LAN database while nine source files sat untracked in the working tree — exactly
+what rule 2.4 forbids, because `docker-compose` builds from the working tree and `APP_GIT_SHA`
+would have lied. The phase had **no test at all**. It was finished rather than redone: the code
+was reviewed, one inaccuracy corrected, the phase test written, and the whole thing committed as
+one phase.
+
+### The three decisions worth keeping
+
+1. **The selection model stores what was *excluded*, not what was included.** "Everything is
+   ticked" is then the zero state, and a row the accountant has never scrolled to is selected by
+   construction. The obvious alternative — a set of selected ids — has to *add* a row the moment
+   it becomes visible, and any bug there silently drops documents from an export. The test walks
+   the same 30 rows at four different page sizes and asserts the one unticked row stays unticked
+   at every size.
+2. **"این صفحه" and "همهٔ N ردیف" are separate controls**, as the brief insists. Unticking one
+   page of thirty leaves twenty selected; unticking all leaves zero. If those were one control
+   the accountant could not tell the difference until the file was already inside Asan.
+3. **A blocked document is shown, not hidden.** It appears with its Persian reason and is
+   excluded from the file — not silently dropped (she would believe it exported) and not fatal
+   to the export (she could not export the other forty-nine). `splitForExport` is the single
+   place that decides, and it returns three lists: `exportable`, `blocked`, `skipped`. Blocked
+   and skipped are different states and the preview says which is which.
+
+**An export that is not built yet is visible and honest.** It appears in the selector marked
+«هنوز ساخته نشده» and `buildRows` throws rather than emitting a half-guessed layout — the same
+stance `src/lib/export/export-modes.ts` already took for the unconfigured Asan adapters.
+
+### Why the phase test is mostly not a browser test
+
+The selection semantics are the thing this phase promises, and they were deliberately factored
+into pure functions so they could be asserted directly. That is not a shortcut around the
+browser: the two select-all controls are exactly where a browser test proves the *widget* works
+while the *rule* underneath is wrong. The page's guards **are** asserted in a real browser, and
+a source-level tripwire ties the page to the functions under test (`splitForExport`,
+`split.exportable`, `disabled={!!d.blockedReason}`, `AMOUNT_UNIT_LABEL_FA`, and the assertion
+that `asan_assign_document_numbers` appears only inside the download path) so the two cannot
+drift apart later.
+
+Because no export is `available` yet, the file pipeline is exercised through a definition
+constructed inside the spec. **The strongest case there is the blank column K**: the sales
+layout's eleventh header is deliberately empty, and an unnamed column collapsing would shift
+L..R one place left and post تخفیف into the نام حساب field. The test writes eighteen sentinels
+into a real workbook, reads it back with `xlsx`, and asserts every cell is still where it was
+written. That is also why `aoa_to_sheet` is used rather than `json_to_sheet` — a JSON row keyed
+by header text cannot express an unnamed column.
+
+### The currency conversion
+
+`src/lib/asan/amounts.ts` carries the owner's decision: Asan is Rial, AfraKala is Toman, so
+every amount is ×10 in integer arithmetic. Three properties are asserted: `null` in → `null`
+out (an inapplicable amount must stay an **empty** cell, because Asan's `بدون مبلغ حذف شود`
+drops zero-amount rows, so writing 0 changes what Asan imports); a **fractional** Toman value
+throws rather than rounding; and amounts reach the sheet as numeric cells (`ws["E2"].t === "n"`),
+never as separator-formatted strings. The refusal to round is only safe because the live data
+supports it, so the spec **also queries the live database** and asserts zero `sales_quotes` rows
+carry a fractional `final_amount`. The strict per-quote `T → T*10` assertion belongs to 4.3,
+where a real quote exists to assert it against.
+
+The unit is stated on screen, not assumed — the owner asked for that explicitly.
+
+### Migration 291
+
+Two things, both for the shell rather than for any one export:
+
+- **`role_permissions` for `asan-export`, one row for every role.** Rule 2.5: a module with no
+  row at all is granted to *all* roles by `has_dynamic_permission`, so an unseeded module is an
+  open door. Only `admin` and `accountant` get `can_view`/`can_export`; the other five roles get
+  an explicit all-false row. The migration's own gate refuses to apply if the row count does not
+  equal the role count.
+- **A batch form of 290's assignment.** One HTTP round trip per document does not scale to a
+  purchase register, and a client-side loop would leave a half-numbered export if the browser
+  were closed midway. `asan_assign_document_numbers` runs in one transaction: either every
+  selected document has a number or none does. **It is a loop over the single-document function,
+  never a second implementation** — idempotency, the advisory lock and the permission check stay
+  in one place. The spec asserts that by reading the function body back and requiring it to
+  contain no second `MAX(asan_number)` and no second `INSERT INTO`.
+
+Ordering is by id, not by whatever order the client happened to send, so a batch of new
+documents is numbered predictably.
+
+### One inaccuracy corrected during review
+
+`src/lib/rbac/roles.ts` claimed its `asan-export` entry "mirrors migration 291's seed exactly".
+It does not: 291 seeds `can_create` and `can_update` **false for every role including admin**,
+while the matrix lists `["admin"]`. Nothing behaves wrongly — `hasPermission` short-circuits to
+true for admin whatever the matrix says, and every non-admin role does agree — but a comment
+that overstates an agreement is how the next session stops checking. The comment now says what
+is actually true, and the spec compares the matrix against the seeded rows **for every
+non-admin role** so the claim is enforced rather than asserted in prose.
+
+### Verification
+
+`e2e/asan/export-shell.spec.ts` — **30/30 green** against the deployed build
+(`APP_GIT_SHA=960abd2f`, `APP_BUILD_TIME=2026-08-04T14:41:17`, all three signals equal to HEAD;
+PostgREST restarted). Typecheck exactly **70**. Test data removed: the batch RPC really does
+mint numbers, so the phase really does give them back — `asan_export_numbers` holds **0** rows
+from this phase.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -839,11 +949,11 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M4.1** (`docs/execution/M4_BUILD_EXPORT.md`) — stable Asan document numbering —
-then 4.2 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`),
-finishing with `docs/execution/asan-final-report.md`.
+Next action: **M4.3** (`docs/execution/M4_BUILD_EXPORT.md`) — export 1, sales invoices — then
+4.4 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
+with `docs/execution/asan-final-report.md`.
 
-The suite now totals **245** tests: 240 at the M3 gate + 5 for O2.
+The suite now totals **283** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
