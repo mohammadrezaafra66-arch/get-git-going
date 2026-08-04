@@ -10161,6 +10161,26 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: Json
       }
+      asan_list_journal_export: {
+        Args: { _from: string; _to: string; _filter: string }
+        Returns: {
+          doc_id: string
+          doc_label: string | null
+          doc_date: string | null
+          doc_kind: string | null
+          party_name: string | null
+          blocked_reason: string | null
+          line_no: number | null
+          account_code: string | null
+          product_code: string | null
+          line_description: string | null
+          quantity: number | null
+          debit: number | null
+          credit: number | null
+          doc_debit: number | null
+          doc_credit: number | null
+        }[]
+      }
       asan_list_purchase_export: {
         Args: { _from: string; _to: string }
         Returns: {
