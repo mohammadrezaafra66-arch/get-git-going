@@ -2,8 +2,8 @@
 
 ## Status
 Current mission: **M3 (build foundation)**
-Current phase: M3 phases 3.0-3.2 complete → next 3.3
-Last commit: `5c4c0a12`
+Current phase: M3.0-3.3 complete (3.3 UI outstanding) → next: finish 3.3 UI, then 3.4
+Last commit: `aab2c158`
 Baseline typecheck: 70 (verified at the M1 gate)
 Last e2e: **202 green / 5 red / 4 skip** — baseline was 155/6/4; +46 tests added by M1,
 reds 6 → 5, no new red
@@ -41,6 +41,9 @@ reds 6 → 5, no new red
       person_identifiers kind asan_person_code, bank_accounts uniqueness; 11 + 3 backfilled.
 - [x] M3.2 phone normalization + collision queue — migration 284 — commit `5c4c0a12` —
       9 triggers, 3 collisions queued exactly as predicted, spec 9/9 green.
+- [x] M3.3 staged Asan person import — migration 285 — commit `aab2c158` — parser, staging,
+      classify/commit RPCs, conflict guard; spec 7/7 green on the real 488-row export.
+      **UI route still outstanding.**
 
 ## M1.1 detail
 
@@ -441,8 +444,76 @@ data and is now a property of the schema.
 - The route tree is regenerated with
   `node -e "import('@tanstack/router-generator').then(async m => { const c = await m.getConfig({}, process.cwd()); await new m.Generator({config:c, root:process.cwd()}).run(); })"`.
 
+## M3.3 — staged Asan person import (migration 285) — DB + parser + tests DONE, UI NOT BUILT
+
+**Built and verified.** `asan_import_batches` + `asan_import_person_rows`,
+`asan_classify_person_batch()`, `asan_commit_person_batch()`, guard trigger,
+`src/lib/asan/parse-persons.ts`, `e2e/asan/import-persons.spec.ts` **7/7 green** against the
+real 488-account export.
+
+- Matching order: **Asan code → mobile → name**. A name-only hit is **always** a `conflict`,
+  never a silent update, because R2.6 measured name as the weakest signal.
+- A `conflict` row can never be accepted — enforced by a **trigger**, so a direct PostgREST
+  `PATCH` is refused too. The spec constructs a conflict rather than hoping the data provides
+  one.
+- An update **never overwrites a non-empty AfraKala value**; only a blank field is filled.
+- **Idempotent**: staging the same file twice and committing produces `created: 0, updated: 0`.
+- Parser reads **by header text**; the spec reverses every row of the real workbook and
+  asserts an identical parse.
+- `role_permissions` seeded for all **7** roles; only `admin` and `accountant` can view.
+
+**Two real bugs found by testing**, both fixed before commit: `min(uuid)` does not exist in
+Postgres, and the commit RPC did not record which person a `new` row created — leaving nothing
+to trace or clean up.
+
+### ⚠️ What phase 3.3 still owes
+**The admin UI route `/admin/asan-import` is not built.** The brief asks for an admin route
+following the navigation-registry pattern (upload → preview → confirm). Everything it needs
+exists and is tested: parser, staging tables, both RPCs, and the `asan-import` module already
+seeded in `role_permissions` for every role. Build it the way
+`src/routes/_app.admin.phone-collisions.tsx` (written in 3.2) is built, and register it in
+`src/lib/navigation/registry.ts` with `module: "asan-import"`, admin + accountant.
+
+### Traps that cost time here, worth knowing before 3.4
+- The classify/commit RPCs are `SECURITY DEFINER` and gate on `has_any_role(auth.uid(), …)`.
+  **Calling them through `psql` fails with `forbidden`** — there is no JWT. Call them through
+  PostgREST `/rpc/…`.
+- **`persons` has no DELETE policy.** An API delete returns 204 and removes nothing (rule 2.5).
+  Teardown must go through `e2e/helpers/db-write.ts` → `dbExecE2e()`, which is the only
+  sanctioned write path and refuses SQL without an `E2E_AUDIT_20260729_` marker.
+- A failed test run left 3 persons behind; they were found by `created_at` and removed, and
+  `persons` is back to **70**. Always re-check the baseline count after a red run.
+
 ## HANDOFF STATE
-Next action: **M3 phase 3.3 — import persons from Asan.** Parse
+
+**Stopped cleanly at a context limit, per mission control section 0.** Tree is clean, every
+phase so far is committed, and the LAN database is in the state the commits describe.
+
+Next action, in order:
+1. **Finish M3.3** — build `/admin/asan-import` (see "What phase 3.3 still owes" above).
+2. **M3.4 — import products from Asan.** Same architecture, reusing `asan_import_batches`
+   (`kind='products'`). Note two places where the brief contradicts the measured data and the
+   research wins: it calls barcode "the strongest match key" (barcode is **0 %** populated on
+   both sides) and says "I have 374 products" (live count is **355**). Match on normalized
+   name only; **do not create AfraKala products for unmatched Asan rows** — record them as
+   `unmatched` and report the count. 7 256 rows, so batch the insert and report the timing.
+3. **M3 mission gate** — typecheck exactly 70; prove every new module has `role_permissions`
+   rows for every role *with a query*; tree clean; build+deploy and verify all three signals;
+   `docker restart afrakala-lan-rest`; full e2e; the three `e2e/asan/*.spec.ts` registered
+   (already done in `playwright.config.ts`).
+4. **M4** (`docs/execution/M4_BUILD_EXPORT.md`) then **M5**
+   (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing with
+   `docs/execution/asan-final-report.md`.
+
+Blocked on: nothing technical. **Seven owner questions remain open** in
+`docs/asan/UNVERIFIED-LAYOUTS.md`; four affect financial correctness (currency unit, Bank
+Mellat's real code, the three control-account codes, sales column K) and M4 must surface them
+in the UI and refuse to guess.
+
+Files in flight: none.
+
+### Original phase-3.3 brief, kept for reference
+Parse
 `docs/asan/reference/اشخاص.xlsx` (488 accounts) **by header text**, never by column index.
 Required behaviour: staging table first, preview, commit only on explicit confirmation;
 classify each row `new` / `update` / `conflict`; conflicts never auto-resolved; updates never
