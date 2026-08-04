@@ -86,7 +86,8 @@ export type ModuleKey =
   | "market-rates"
   | "persons"
   | "warehouse"
-  | "asan-import";
+  | "asan-import"
+  | "asan-export";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -241,6 +242,18 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     view: ["admin", "accountant"],
     create: ["admin", "accountant"],
     update: ["admin", "accountant"],
+    delete: ["admin"],
+  },
+  // ASAN M4.2 — the export workbench. Fallback for when the dynamic cache has not loaded;
+  // migration 291 seeds `role_permissions` for every role and that is what decides at runtime.
+  // The two agree for every role this matrix can actually govern: accountant gets view only,
+  // exactly as the seed does, because an export creates and updates no business data. The
+  // admin entries are nominal — `hasPermission` short-circuits to true for admin whatever is
+  // written here — so they are not a claim that 291 seeded admin `can_create`; it seeds false.
+  "asan-export": {
+    view: ["admin", "accountant"],
+    create: ["admin"],
+    update: ["admin"],
     delete: ["admin"],
   },
 };

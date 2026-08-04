@@ -50,6 +50,7 @@
   ClipboardList,
   Plug,
   Upload,
+  Download,
   XCircle,
   Warehouse,
   ArrowLeftRight,
@@ -738,6 +739,17 @@ const NAVIGATION_SEEDS = [
     subgroup: "adm-tools",
   },
   {
+    // ASAN M4.2 — the export side of the same bridge. Same access set as the import
+    // workbench (admin + accountant) and the same reason for NOT using `adminOnly`:
+    // that flag means "admin or manager", which is the wrong set here.
+    to: "/admin/asan-export",
+    label: "خروجی برای آسان",
+    icon: Download,
+    module: "asan-export",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  {
     to: "/admin/purchase",
     label: "مدیریت خرید",
     icon: ShoppingCart,
@@ -1139,6 +1151,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/users/pending",
     "/roles",
     "/admin/asan-import",
+    "/admin/asan-export",
     "/admin/roles",
     "/admin/profile-fields",
     "/admin/settings",
@@ -1218,6 +1231,7 @@ const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["act
 
 const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/accounting/dynamic-capital": ["admin", "accountant"],
+  "/admin/asan-export": ["admin", "accountant"],
   "/admin/asan-import": ["admin", "accountant"],
   "/admin/audit": ["admin", "manager"],
   "/admin/automation": ["admin", "manager"],

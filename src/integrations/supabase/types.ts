@@ -494,6 +494,39 @@ export type Database = {
           },
         ]
       }
+      asan_export_numbers: {
+        Row: {
+          asan_number: number
+          assigned_at: string
+          assigned_by: string | null
+          burned_at: string | null
+          burned_reason: string | null
+          doc_type: string
+          id: string
+          source_id: string
+        }
+        Insert: {
+          asan_number: number
+          assigned_at?: string
+          assigned_by?: string | null
+          burned_at?: string | null
+          burned_reason?: string | null
+          doc_type: string
+          id?: string
+          source_id: string
+        }
+        Update: {
+          asan_number?: number
+          assigned_at?: string
+          assigned_by?: string | null
+          burned_at?: string | null
+          burned_reason?: string | null
+          doc_type?: string
+          id?: string
+          source_id?: string
+        }
+        Relationships: []
+      }
       asan_import_batches: {
         Row: {
           committed_at: string | null
@@ -10103,6 +10136,14 @@ export type Database = {
       add_messenger_group_member: {
         Args: { p_group_id: string; p_role?: string; p_user_id: string }
         Returns: string
+      }
+      asan_assign_document_number: {
+        Args: { _doc_type: string; _source_id: string }
+        Returns: number
+      }
+      asan_assign_document_numbers: {
+        Args: { _doc_type: string; _ids: string[] }
+        Returns: { source_id: string; asan_number: number }[]
       }
       asan_classify_person_batch: {
         Args: { p_batch_id: string }
