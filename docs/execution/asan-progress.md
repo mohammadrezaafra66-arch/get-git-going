@@ -3,8 +3,8 @@
 ## Status
 Current mission: **M4 (build export)** — M3 complete and its gate **fully passed**, plus the
 three owner-override phases O1–O3
-Current phase: M4.5 next (4.1-4.4 done)
-Last commit: `5d8849d3`
+Current phase: M4.7 next (4.1-4.6 done)
+Last commit: `626e68c3`
 Baseline typecheck: 70 (verified at the M1 gate; still exactly 70)
 Last full e2e: **231 green / 5 red / 4 skip** — the M3 gate's confirming run. All five reds are
 documented baseline reds (`212`, `213`, `214-whatsapp`, `persons-credit-uses-person`,
@@ -78,6 +78,12 @@ a human-operated staging tool, and resolves the currency unit as **Rial** (AfraK
 - [x] M4.4 export 2, purchase invoices — migration 293 — commit `5d8849d3` —
       `asan_list_purchase_export`, one shared row builder for both invoice tabs, fractional-amount
       block; spec **14/14 green**, sales still **20/20** after the refactor (`APP_GIT_SHA=5d8849d3`).
+- [x] M4.5 shared accounting-document row builder — migration 294 — commit `a7c5a983` —
+      `asan_list_journal_export`, account-code resolution per kind, balance invariant as a hard
+      block; spec **13/13 green**.
+- [x] M4.6 exports 3, 4 and 5 (receipts, payments, دوبل) — no migration — commit `626e68c3` —
+      three filters over the one builder, proved shared structurally and behaviourally;
+      spec **9/9 green** on the deployed build (`APP_GIT_SHA=626e68c3`).
 
 ## M1.1 detail
 
@@ -1115,6 +1121,95 @@ fail for a reason that is not about registers being independent.
 Test data removed: the constructed supplier code is gone and `asan_person_code` is back to its
 baseline; `asan_export_numbers` is back to its baseline count.
 
+## M4.5 — the shared accounting-document row builder (migration 294)
+
+The engine exports 3, 4 and 5 all run on. They are the **same six columns** and differ only in
+which documents they select, so there is one source function with a `doc_kind` filter and one row
+builder.
+
+### Account-code resolution, and the three kinds that deliberately cannot resolve
+
+| `account_kind` | resolves to |
+|---|---|
+| `customer_credit` | `customers.person_id` → `person_identifiers(kind='asan_person_code')` |
+| `bank` | `bank_accounts.accounting_code` — Mellat is `8`, from migration 288 |
+| `external_party` | `external_parties.accounting_code` |
+| `invoice_ar` | **blocks.** The owner confirmed what it means but still owes the code |
+| `clearing` | **blocks, and is never emitted.** "There is no clearing account in Asan" |
+| `other` | **blocks.** To be defined later |
+
+`customers.accounting_code` holds the same value as the person identifier and is deliberately
+**not** read as a second source: two sources of truth for an account code is how they drift.
+
+**One unresolvable line blocks the whole document**, never just that line — a partial accounting
+document would enter Asan unbalanced. The balance invariant is a hard block that names the
+imbalance amount, not a warning.
+
+Asan's dialog checks `بدون مبلغ حذف شود` by default, so it drops zero-amount rows on import. That
+cannot unbalance anything here, and it is not a hope: `journal_lines_one_side` already CHECKs
+exactly one non-zero side per line, so no zero-amount line can exist. **294's gate asserts that
+constraint still exists**, because the safety argument depends on it.
+
+### ⛔ The migration's own corruption guard caught two real ASCII `?`
+
+The first draft of the function body contained `COALESCE(l.aname, '?')` and a comment quoting
+`'?'`. Both would have been indistinguishable from the 2026-07-11 corruption signature to a later
+reader. The body now deliberately contains **no** ASCII question mark — the Persian «؟» is
+U+061F — which is what makes the check meaningful rather than a formality. Contrast migration
+287, where the identical naive check was **wrong**, because `person_merge` legitimately uses the
+jsonb `?` operator; the difference is whether the body has a legitimate reason to contain one.
+
+### Column C uses the line's description, not the entry's
+
+The single posted entry on this database is the **bucket-C row migration 279 deliberately left
+corrupted**. Using the entry text would write that corruption straight into Asan. The line
+descriptions are intact Persian, so they are preferred and the entry text is only a fallback. The
+spec asserts the entry really is corrupted (so the test is not vacuous) and that column C is not.
+
+**Verified:** `e2e/asan/export-journal.spec.ts` **13/13 green**. The blocked cases are all
+constructed — unbalanced, `invoice_ar`, `clearing`, `other`, an `external_party` with and without
+a code, and a posted entry with no lines at all — and every one is removed in the same phase with
+entry and line counts asserted before and after.
+
+## M4.6 — exports 3, 4 and 5 (no migration)
+
+Three thin layers over the 4.5 builder: `RECEIPTS_EXPORT`, `PAYMENTS_EXPORT`,
+`THIRD_PARTY_EXPORT`, all produced by one `makeJournalExport` factory.
+
+**The brief asks above all for proof they share a builder, with a test that would fail if someone
+later forked it.** It is proved two ways, because either alone can be satisfied by a copy:
+
+1. **structurally** — exactly one `buildJournalRows` call site, exactly one
+   `oneDocumentPerFile: true` declaration, and all three registry entries pointing at the
+   factory's output rather than at `notBuiltYet`;
+2. **behaviourally** — the same document routed through each definition produces identical rows.
+
+**Classification is measured at the source, not trusted from the label.** A receipt is an entry
+whose `bank` lines are net **debited**; a payment is one whose bank lines are net **credited**;
+دوبل wins over both when an `external_party` line is present, so no document is counted twice.
+The spec re-derives each verdict from `journal_lines` rather than believing `doc_kind`.
+
+**The assertion worth keeping is that the three filters partition the whole set.** A document
+matching none of them would be exportable through no export at all and would silently never
+reach Asan. The test fails and names the offending `doc_kind` if that ever happens — today it
+passes, with `unclassified` empty.
+
+**All three are one document per file.** Asan takes `شماره سند` on its screen rather than in a
+column, so two documents in one file would be silently merged under a single voucher number. The
+shell enforces it; the spec asserts both the flag and the shell's refusal message.
+
+**The دوبل case works end to end**, which was the owner's concrete Khan-Mohammadi / Shahmoradi
+example: an entry crediting an `external_party` blocks while the intermediary has no Asan code —
+**naming the party**, so the owner knows whose code to supply — and becomes exportable with that
+code in column A as soon as one exists. `external_parties` holds exactly one row and it has no
+code, which is precisely the state the owner described: an intermediary known only by name and
+account number.
+
+**Verified:** `e2e/asan/export-receipts-payments.spec.ts` **9/9 green** on the deployed build
+(`APP_GIT_SHA=626e68c3`, all three signals equal to HEAD; PostgREST restarted). Constructed
+payment and دوبل documents removed, entry and line counts back to baseline, the temporary
+external-party code cleared.
+
 ## HANDOFF STATE
 
 All five M3 phases (3.0–3.4) are built, tested and committed, plus migration **287**, the
@@ -1141,12 +1236,12 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
-Next action: **M4.5** (`docs/execution/M4_BUILD_EXPORT.md`) — the shared accounting-document row
-builder — then 4.6 through 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
+Next action: **M4.7** (`docs/execution/M4_BUILD_EXPORT.md`) — the secondary bank-deposit export —
+then 4.8, the M4 gate, then **M5** (`docs/execution/M5_VIDEO_AND_FINAL.md`), finishing
 with `docs/execution/asan-final-report.md`.
 
-The suite now totals **317** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
-20 for M4.3 + 14 for M4.4.
+The suite now totals **339** tests: 240 at the M3 gate + 5 for O2 + 8 for M4.1 + 30 for M4.2 +
+20 for M4.3 + 14 for M4.4 + 13 for M4.5 + 9 for M4.6.
 
 **M4 must carry these owner decisions, none of which may be re-derived or guessed:**
 - **every exported amount is Toman × 10**, in integer arithmetic, because Asan expects Rial —
