@@ -25,7 +25,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
-| 2026-08-05 | Cursor | **محصولات — لینک ترب اختیاری + خروجی اکسل کاتالوگ.** مهاجرت **۳۰۱** `products.torob_url` (nullable، CHECK http/s). فیلد در فرم/جزئیات. دکمهٔ «خروجی اکسل» روی `/products` با فیلترهای جاری (سقف ۵۰۰۰). typecheck **۷۰**. | *(پس از commit)* |
+| 2026-08-05 | Cursor | **محصولات — لینک ترب اختیاری + خروجی اکسل کاتالوگ.** مهاجرت **۳۰۱** `products.torob_url` (nullable، CHECK http/s). فیلد در فرم/جزئیات. دکمهٔ «خروجی اکسل» روی `/products` با فیلترهای جاری (سقف ۵۰۰۰). typecheck **۷۰**. | `ef0c64ad` |
 | 2026-08-05 | Cursor | **Persons Phase 6 — تست سخت‌سازی.** Phone-collisions browser e2e، mobile/RTL overflow gate (۳۲۰/۳۷۵/۳۹۰/۴۳۰)، permission matrix (UI+JWT)، رگرسیون فاز ۱–۵. گارد کلاینت import/merge/edit + wrap overflow. بدون مهاجرت. Phase6 **۴۶ سبز / ۱ skip**؛ `e2e/persons`+RLS **۱۴۵ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۳ skip**؛ typecheck **۷۰**؛ drift **۰**؛ leftover **۰**. | `1d294f1e` |
 | 2026-08-05 | Cursor | **Persons Phase 5 P2 — گسترش پرونده هویت.** Deep links (customer/supplier/staff/accounting)، merge/collision panels، audit summary با redaction، metadata Jalali. بدون مهاجرت. JWT **۱۱/۱۱**؛ UI dossier **۶/۶**؛ `e2e/persons` **۹۴ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۲ skip**. typecheck **۷۰**. | `cb8e0edf` |
 | 2026-08-05 | Cursor | **Persons Phase 4 P1 — UI مدیریت نام‌های دیگر.** مهاجرت **۳۰۰** (سخت‌کردن INSERT به admin/manager + `can_read_person`؛ audit DELETE). `PersonAliasesManager` روی پروفایل/ویرایش. typecheck **۷۰**. `e2e/persons` **۷۷ سبز / ۱ قرمز مستند / ۲ skip**. | `54526f49` |
