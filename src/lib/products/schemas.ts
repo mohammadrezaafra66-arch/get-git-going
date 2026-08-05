@@ -30,6 +30,14 @@ export const productSchema = z.object({
     .refine((v) => v === "" || !/\s/.test(v), "کد آسان نباید فاصله داشته باشد")
     .optional()
     .or(z.literal("")),
+  // لینک صفحهٔ محصول در ترب — اختیاری (مهاجرت ۳۰۱).
+  torob_url: z
+    .string()
+    .trim()
+    .max(500, "حداکثر ۵۰۰ کاراکتر")
+    .refine((v) => v === "" || /^https?:\/\//i.test(v), "لینک باید با http:// یا https:// شروع شود")
+    .optional()
+    .or(z.literal("")),
   // Item 166 — standalone promotion weight. 1 = neutral; mirrors
   // products_promotion_weight_chk (migration 207).
   promotion_weight: z.coerce

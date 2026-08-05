@@ -34,6 +34,7 @@ export const FIELD_LABELS: Record<string, string> = {
   description: "توضیحات",
   technical_notes: "یادداشت فنی",
   accounting_code: "کد کالا در آسان",
+  torob_url: "لینک ترب",
 };
 
 function fmt(field: string, val: unknown): string | null {

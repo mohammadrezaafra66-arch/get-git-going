@@ -12,7 +12,10 @@ import {
   Tag,
   History,
   ImageIcon,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -45,13 +48,16 @@ import {
   PRODUCT_STATUS_VARIANTS,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products/constants";
-import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { fetchSettlementTypes, fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
 import { ProductTimelineDialog } from "@/components/products/ProductTimelineDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
+import { exportProductCatalogToExcel } from "@/lib/export/product-catalog-excel";
+
+const EXPORT_ROW_CAP = 5000;
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => {
@@ -118,6 +124,7 @@ function ProductsPage() {
   );
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
   const [timelineTarget, setTimelineTarget] = useState<{ id: string; name: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
@@ -376,20 +383,141 @@ function ProductsPage() {
     setPage(0);
   };
 
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      let textIds: string[] | null = null;
+      let textFallback = false;
+      if (stableFilters.q.trim()) {
+        const term = stableFilters.q.trim().replace(/[%_]/g, "");
+        const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+          p_term: term,
+          p_limit: 500,
+        });
+        if (idsErr) {
+          textFallback = true;
+        } else {
+          textIds = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (textIds.length === 0) {
+            toast.error("محصولی برای خروجی گرفتن وجود ندارد.");
+            return;
+          }
+        }
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let qb: any = supabase
+        .from("products")
+        .select(
+          `sku, name, barcode, accounting_code, torob_url, color, capacity, model, unit,
+           product_type, stock_status, status,
+           brand:brands(name), category:categories(name),
+           product_label_links(label_id)`,
+        )
+        .order("updated_at", { ascending: false })
+        .limit(EXPORT_ROW_CAP);
+
+      if (textIds) qb = qb.in("id", textIds);
+      else if (textFallback && stableFilters.q.trim()) {
+        const term = stableFilters.q.trim().replace(/[%_]/g, "");
+        qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+      }
+      if (stableFilters.brand_id) qb = qb.eq("brand_id", stableFilters.brand_id);
+      if (stableFilters.category_id) qb = qb.eq("category_id", stableFilters.category_id);
+      if (stableFilters.product_type) qb = qb.eq("product_type", stableFilters.product_type);
+      if (stableFilters.base_currency) qb = qb.eq("base_currency", stableFilters.base_currency);
+      if (stableFilters.stock_status) qb = qb.eq("stock_status", stableFilters.stock_status);
+      if (stableFilters.status) qb = qb.eq("status", stableFilters.status);
+      if (stableFilters.color) qb = qb.eq("color", stableFilters.color);
+      if (stableFilters.capacity) qb = qb.eq("capacity", stableFilters.capacity);
+      if (stableFilters.model) qb = qb.eq("model", stableFilters.model);
+
+      const { data: rows, error } = await qb;
+      if (error) throw error;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let list = (rows ?? []) as any[];
+      if (stableFilters.label_ids.length > 0) {
+        list = list.filter((r) => {
+          const ids = new Set(
+            (r.product_label_links ?? []).map((x: { label_id: string }) => x.label_id),
+          );
+          return stableFilters.label_ids.every((id) => ids.has(id));
+        });
+      }
+
+      if (list.length === 0) {
+        toast.error("محصولی برای خروجی گرفتن وجود ندارد.");
+        return;
+      }
+
+      const result = await exportProductCatalogToExcel(
+        list.map((r) => ({
+          sku: r.sku ?? null,
+          name: r.name,
+          brand: r.brand?.name ?? null,
+          category: r.category?.name ?? null,
+          productType:
+            PRODUCT_TYPE_LABELS[r.product_type as keyof typeof PRODUCT_TYPE_LABELS] ??
+            r.product_type,
+          stockStatus:
+            STOCK_STATUS_LABELS[r.stock_status as keyof typeof STOCK_STATUS_LABELS] ??
+            r.stock_status,
+          status: PRODUCT_STATUS_LABELS[r.status as keyof typeof PRODUCT_STATUS_LABELS] ?? r.status,
+          barcode: r.barcode ?? null,
+          accountingCode: r.accounting_code ?? null,
+          torobUrl: r.torob_url ?? null,
+          color: r.color ?? null,
+          capacity: r.capacity ?? null,
+          model: r.model ?? null,
+          unit: r.unit ?? null,
+        })),
+      );
+
+      const capped = list.length >= EXPORT_ROW_CAP;
+      toast.success(
+        capped
+          ? `خروجی اکسل آماده شد (${toFaDigits(String(result.rowCount))} ردیف — سقف ${toFaDigits(String(EXPORT_ROW_CAP))})`
+          : `خروجی اکسل آماده شد (${toFaDigits(String(result.rowCount))} ردیف)`,
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "خطا در ساخت خروجی اکسل.";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="محصولات"
         description="مدیریت محصولات افراکالا، دسته‌ها، برندها و برچسب‌ها"
         actions={
-          canCreate ? (
-            <Button asChild size="sm">
-              <Link to="/products/new">
-                <Plus className="ms-1 h-4 w-4" />
-                محصول جدید
-              </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exporting}
+              onClick={() => void handleExportExcel()}
+            >
+              {exporting ? (
+                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="ms-1 h-4 w-4" />
+              )}
+              خروجی اکسل
             </Button>
-          ) : null
+            {canCreate ? (
+              <Button asChild size="sm">
+                <Link to="/products/new">
+                  <Plus className="ms-1 h-4 w-4" />
+                  محصول جدید
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 

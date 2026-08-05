@@ -7427,6 +7427,7 @@ export type Database = {
           status: Database["public"]["Enums"]["product_status"]
           stock_status: Database["public"]["Enums"]["stock_status"]
           technical_notes: string | null
+          torob_url: string | null
           unit: string | null
           updated_at: string
           updated_by: string | null
@@ -7456,6 +7457,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["product_status"]
           stock_status?: Database["public"]["Enums"]["stock_status"]
           technical_notes?: string | null
+          torob_url?: string | null
           unit?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -7485,6 +7487,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["product_status"]
           stock_status?: Database["public"]["Enums"]["stock_status"]
           technical_notes?: string | null
+          torob_url?: string | null
           unit?: string | null
           updated_at?: string
           updated_by?: string | null

@@ -122,7 +122,7 @@ function ProductDetailPage() {
         .select(
           `
           id, name, sku, description, technical_notes, unit, color, capacity, model, primary_spec,
-          product_type, base_currency, stock_status, status, barcode, accounting_code, promotion_weight,
+          product_type, base_currency, stock_status, status, barcode, accounting_code, torob_url, promotion_weight,
           created_at, updated_at,
           brand:brands(id,name), category:categories(id,name,primary_spec_label),
           product_label_links(label:product_labels(id,title,color))
@@ -259,6 +259,7 @@ function ProductDetailPage() {
           // کد کالای آسان — پاک‌کردن فیلد یعنی NULL، نه رشتهٔ خالی (تریگر ۲۸۹ هم همین را
           // تضمین می‌کند تا PATCH مستقیم PostgREST از قاعده جا نماند).
           accounting_code: v.accounting_code?.trim() ? v.accounting_code.trim() : null,
+          torob_url: v.torob_url?.trim() ? v.torob_url.trim() : null,
           // Item 166 — standalone promotion weight (1 = neutral).
           promotion_weight: v.promotion_weight ?? 1,
         })
@@ -309,6 +310,7 @@ function ProductDetailPage() {
             description: p.description ?? null,
             technical_notes: p.technical_notes ?? null,
             accounting_code: p.accounting_code ?? null,
+            torob_url: p.torob_url ?? null,
           };
           const nextValues = {
             name: v.name,
@@ -326,6 +328,7 @@ function ProductDetailPage() {
             description: v.description || null,
             technical_notes: v.technical_notes || null,
             accounting_code: v.accounting_code?.trim() || null,
+            torob_url: v.torob_url?.trim() || null,
           };
           // brand/category name lookup
           const brandIds = [prevValues.brand_id, nextValues.brand_id].filter(Boolean) as string[];
@@ -409,6 +412,8 @@ function ProductDetailPage() {
         toast.error("محصول تکراری است: ترکیب «برند + دسته + مدل + رنگ + ظرفیت» قبلاً ثبت شده است.");
       } else if (code === "23505" && /products_accounting_code_unique/i.test(msg)) {
         toast.error("این «کد کالا در آسان» قبلاً برای محصول دیگری ثبت شده است.");
+      } else if (code === "23514" && /products_torob_url_http_chk/i.test(msg)) {
+        toast.error("لینک ترب نامعتبر است؛ باید با http:// یا https:// شروع شود.");
       } else if (code === "23505" || /duplicate key|sku/i.test(msg)) {
         toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
       } else {
@@ -438,6 +443,7 @@ function ProductDetailPage() {
     technical_notes: p.technical_notes ?? "",
     barcode: p.barcode ?? "",
     accounting_code: p.accounting_code ?? "",
+    torob_url: p.torob_url ?? "",
     promotion_weight: Number((p as { promotion_weight?: number | null }).promotion_weight ?? 1),
     label_ids: editDataQ.data?.labelIds ?? labels.map((l: any) => l.id),
   };
@@ -524,6 +530,21 @@ function ProductDetailPage() {
               <Info label="دسته" value={p.category?.name ?? "—"} />
               <Info label="SKU" value={p.sku ?? "—"} />
               <Info label="کد کالا در آسان" value={p.accounting_code ?? "—"} />
+              <Info label="لینک ترب">
+                {p.torob_url ? (
+                  <a
+                    href={p.torob_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all text-primary underline-offset-2 hover:underline"
+                    dir="ltr"
+                  >
+                    {p.torob_url}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </Info>
               <Info label="رنگ" value={p.color ?? "—"} />
               <Info label="ظرفیت" value={p.capacity ?? "—"} />
               <Info label="مدل" value={p.model ?? "—"} />

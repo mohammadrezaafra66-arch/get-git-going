@@ -80,6 +80,7 @@ const DEFAULTS: ProductFormValues = {
   technical_notes: "",
   barcode: "",
   accounting_code: "",
+  torob_url: "",
   promotion_weight: 1,
   label_ids: [],
 };
@@ -648,6 +649,20 @@ export function ProductForm({
             <p className="text-xs text-muted-foreground">
               کلید مشترک این کالا با نرم‌افزار آسان. اختیاری است؛ کالای بدون کد هم ذخیره می‌شود و در
               خروجی فروش/خرید ستون «کد کالا» خالی می‌ماند تا آسان خودش کد بسازد.
+            </p>
+          </Field>
+          <Field label="لینک ترب" error={errors.torob_url}>
+            <Input
+              value={values.torob_url ?? ""}
+              onChange={(e) => set("torob_url", e.target.value)}
+              dir="ltr"
+              placeholder="https://torob.com/p/… (اختیاری)"
+              maxLength={500}
+              inputMode="url"
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">
+              آدرس صفحهٔ همین کالا در ترب. اختیاری است؛ خالی بگذارید اگر هنوز لینک ندارید.
             </p>
           </Field>
 
