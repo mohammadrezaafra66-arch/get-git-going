@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { toast } from "sonner";
 import { clientBuildId, fetchServerBuildId, isDifferentBuild } from "./build-version";
 
@@ -57,7 +58,24 @@ function promptForUpdate(onAccept: () => void) {
   promptShown = true;
 
   toast("نسخهٔ جدید در دسترس است", {
-    description: "برای استفاده از آخرین نسخه، صفحه یک‌بار بارگذاری می‌شود.",
+    description: createElement(
+      "div",
+      { className: "space-y-1" },
+      createElement("p", null, "برای استفاده از آخرین نسخه، صفحه یک‌بار بارگذاری می‌شود."),
+      createElement(
+        "button",
+        {
+          type: "button",
+          className: "underline text-sm font-medium",
+          onClick: () => {
+            // Keep the update toast available after visiting the changelog.
+            promptShown = false;
+            window.location.assign("/updates");
+          },
+        },
+        "مشاهده تغییرات",
+      ),
+    ),
     duration: Infinity,
     action: {
       label: "به‌روزرسانی",

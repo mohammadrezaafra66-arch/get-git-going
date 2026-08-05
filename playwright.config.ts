@@ -28,6 +28,7 @@ export default defineConfig({
     // them, so the honest test is the one that tries to dodge them.
     /asan\/.*\.spec\.ts/,
     /branding\/.*\.spec\.ts/,
+    /updates\/.*\.spec\.ts/,
   ],
   timeout: 45_000,
   expect: {

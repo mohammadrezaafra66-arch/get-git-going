@@ -22,6 +22,7 @@ import { Route as ApiVersionRouteImport } from './routes/api.version'
 import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
 import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
+import { Route as AppUpdatesRouteImport } from './routes/_app.updates'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
@@ -144,6 +145,7 @@ import { Route as AppAdminRecentPurchaseSettingsRouteImport } from './routes/_ap
 import { Route as AppAdminReceiptFieldsRouteImport } from './routes/_app.admin.receipt-fields'
 import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purchase'
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
+import { Route as AppAdminPlatformReleasesRouteImport } from './routes/_app.admin.platform-releases'
 import { Route as AppAdminPhoneCollisionsRouteImport } from './routes/_app.admin.phone-collisions'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
@@ -283,6 +285,11 @@ const AppWarehousesRoute = AppWarehousesRouteImport.update({
 const AppUsersRoute = AppUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUpdatesRoute = AppUpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
@@ -915,6 +922,12 @@ const AppAdminProfileFieldsRoute = AppAdminProfileFieldsRouteImport.update({
   path: '/admin/profile-fields',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPlatformReleasesRoute =
+  AppAdminPlatformReleasesRouteImport.update({
+    id: '/admin/platform-releases',
+    path: '/admin/platform-releases',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminPhoneCollisionsRoute = AppAdminPhoneCollisionsRouteImport.update({
   id: '/admin/phone-collisions',
   path: '/admin/phone-collisions',
@@ -1385,6 +1398,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
+  '/updates': typeof AppUpdatesRoute
   '/users': typeof AppUsersRouteWithChildren
   '/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -1419,6 +1433,7 @@ export interface FileRoutesByFullPath {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
+  '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -1595,6 +1610,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/updates': typeof AppUpdatesRoute
   '/users': typeof AppUsersRouteWithChildren
   '/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -1629,6 +1645,7 @@ export interface FileRoutesByTo {
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
+  '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/admin/purchase': typeof AppAdminPurchaseRoute
   '/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -1808,6 +1825,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
+  '/_app/updates': typeof AppUpdatesRoute
   '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/warehouses': typeof AppWarehousesRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -1842,6 +1860,7 @@ export interface FileRoutesById {
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
   '/_app/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
+  '/_app/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
   '/_app/admin/purchase': typeof AppAdminPurchaseRoute
   '/_app/admin/receipt-fields': typeof AppAdminReceiptFieldsRoute
@@ -2022,6 +2041,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/suppliers'
+    | '/updates'
     | '/users'
     | '/warehouses'
     | '/api/healthz'
@@ -2056,6 +2076,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/phone-collisions'
+    | '/admin/platform-releases'
     | '/admin/profile-fields'
     | '/admin/purchase'
     | '/admin/receipt-fields'
@@ -2232,6 +2253,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/suppliers'
+    | '/updates'
     | '/users'
     | '/warehouses'
     | '/api/healthz'
@@ -2266,6 +2288,7 @@ export interface FileRouteTypes {
     | '/admin/payment-terms'
     | '/admin/penalties'
     | '/admin/phone-collisions'
+    | '/admin/platform-releases'
     | '/admin/profile-fields'
     | '/admin/purchase'
     | '/admin/receipt-fields'
@@ -2444,6 +2467,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/suppliers'
+    | '/_app/updates'
     | '/_app/users'
     | '/_app/warehouses'
     | '/api/healthz'
@@ -2478,6 +2502,7 @@ export interface FileRouteTypes {
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
     | '/_app/admin/phone-collisions'
+    | '/_app/admin/platform-releases'
     | '/_app/admin/profile-fields'
     | '/_app/admin/purchase'
     | '/_app/admin/receipt-fields'
@@ -2741,6 +2766,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/updates': {
+      id: '/_app/updates'
+      path: '/updates'
+      fullPath: '/updates'
+      preLoaderRoute: typeof AppUpdatesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
@@ -3597,6 +3629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminProfileFieldsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/platform-releases': {
+      id: '/_app/admin/platform-releases'
+      path: '/admin/platform-releases'
+      fullPath: '/admin/platform-releases'
+      preLoaderRoute: typeof AppAdminPlatformReleasesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/phone-collisions': {
       id: '/_app/admin/phone-collisions'
       path: '/admin/phone-collisions'
@@ -4359,6 +4398,7 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
+  AppUpdatesRoute: typeof AppUpdatesRoute
   AppUsersRoute: typeof AppUsersRouteWithChildren
   AppWarehousesRoute: typeof AppWarehousesRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
@@ -4389,6 +4429,7 @@ interface AppRouteChildren {
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
   AppAdminPhoneCollisionsRoute: typeof AppAdminPhoneCollisionsRoute
+  AppAdminPlatformReleasesRoute: typeof AppAdminPlatformReleasesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
   AppAdminPurchaseRoute: typeof AppAdminPurchaseRoute
   AppAdminReceiptFieldsRoute: typeof AppAdminReceiptFieldsRoute
@@ -4504,6 +4545,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
+  AppUpdatesRoute: AppUpdatesRoute,
   AppUsersRoute: AppUsersRouteWithChildren,
   AppWarehousesRoute: AppWarehousesRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
@@ -4536,6 +4578,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
   AppAdminPhoneCollisionsRoute: AppAdminPhoneCollisionsRoute,
+  AppAdminPlatformReleasesRoute: AppAdminPlatformReleasesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
   AppAdminPurchaseRoute: AppAdminPurchaseRoute,
   AppAdminReceiptFieldsRoute: AppAdminReceiptFieldsRoute,
@@ -4696,3 +4739,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

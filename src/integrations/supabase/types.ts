@@ -6429,6 +6429,63 @@ export type Database = {
           },
         ]
       }
+      platform_releases: {
+        Row: {
+          build_time: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          details_fa: string | null
+          git_sha: string | null
+          id: string
+          items: Json
+          published_at: string | null
+          release_number: number | null
+          status: string
+          summary_fa: string
+          title_fa: string
+          updated_at: string
+          updated_by: string | null
+          version: string | null
+        }
+        Insert: {
+          build_time?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          details_fa?: string | null
+          git_sha?: string | null
+          id?: string
+          items?: Json
+          published_at?: string | null
+          release_number?: number | null
+          status?: string
+          summary_fa: string
+          title_fa: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string | null
+        }
+        Update: {
+          build_time?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          details_fa?: string | null
+          git_sha?: string | null
+          id?: string
+          items?: Json
+          published_at?: string | null
+          release_number?: number | null
+          status?: string
+          summary_fa?: string
+          title_fa?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       price_lists: {
         Row: {
           created_at: string
@@ -10182,6 +10239,10 @@ export type Database = {
         Args: { p_group_id: string; p_role?: string; p_user_id: string }
         Returns: string
       }
+      archive_platform_release: {
+        Args: { p_id: string }
+        Returns: Database["public"]["Tables"]["platform_releases"]["Row"]
+      }
       asan_assign_document_number: {
         Args: { _doc_type: string; _source_id: string }
         Returns: number
@@ -12142,6 +12203,10 @@ export type Database = {
           out_values: Json
           total_count: number
         }[]
+      }
+      publish_platform_release: {
+        Args: { p_id: string }
+        Returns: Database["public"]["Tables"]["platform_releases"]["Row"]
       }
       quick_approve_user: {
         Args: { _role?: string; _user_id: string }

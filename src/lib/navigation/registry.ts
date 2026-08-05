@@ -52,6 +52,7 @@
   Upload,
   Download,
   Video,
+  History,
   XCircle,
   Warehouse,
   ArrowLeftRight,
@@ -631,6 +632,13 @@ const NAVIGATION_SEEDS = [
     module: "academy",
     group: "knowledge-comms",
   },
+  {
+    to: "/updates",
+    label: "تغییرات و به‌روزرسانی‌ها",
+    icon: History,
+    module: "platform-releases",
+    group: "knowledge-comms",
+  },
   // Phase 9.3 — /messages already existed with requirePermission("messages",
   // "view") and was already listed in PRIMARY_MODULES.paths for the assistant
   // module, but had no navigation seed, so itemsForModule looked it up and
@@ -703,6 +711,15 @@ const NAVIGATION_SEEDS = [
     group: "admin",
     subgroup: "adm-settings",
     adminOnly: true,
+  },
+  {
+    to: "/admin/platform-releases",
+    label: "مدیریت به‌روزرسانی‌ها",
+    icon: History,
+    module: "platform-releases",
+    group: "admin",
+    subgroup: "adm-settings",
+    allowedRoles: ["admin"],
   },
   {
     to: "/admin/penalties",
@@ -1101,6 +1118,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/messages",
     "/knowledge",
     "/academy",
+    "/updates",
   ],
   catalog: [
     "/products",
@@ -1166,6 +1184,7 @@ const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
     "/admin/roles",
     "/admin/profile-fields",
     "/admin/settings",
+    "/admin/platform-releases",
     "/admin/marketing-channels",
     "/admin/marketing-task-templates",
     "/admin/payment-terms",
@@ -1227,6 +1246,7 @@ const KEYWORDS_BY_ROUTE: Record<string, string[]> = {
   "/users": ["users", "accounts", "karbar", "access"],
   "/users/pending": ["approval", "pending", "taeed", "entezar"],
   "/knowledge": ["knowledge", "docs", "danesh", "document"],
+  "/updates": ["updates", "changelog", "release", "بروزرسانی", "تغییرات"],
 };
 
 const BADGE_SOURCE_BY_ROUTE: Record<string, NavigationEntry["badgeSource"]> = {
@@ -1256,6 +1276,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/admin/roles": ["admin"],
   "/admin/sales-reminders": ["admin", "manager"],
   "/admin/settings": ["admin"],
+  "/admin/platform-releases": ["admin"],
   "/admin/ai-providers": ["admin"],
   "/admin/validation-rules": ["admin"],
   "/admin/workflow-settings": ["admin", "manager"],

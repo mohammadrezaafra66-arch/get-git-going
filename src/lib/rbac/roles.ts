@@ -88,7 +88,8 @@ export type ModuleKey =
   | "warehouse"
   | "asan-import"
   | "asan-export"
-  | "product-videos";
+  | "product-videos"
+  | "platform-releases";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
@@ -264,6 +265,13 @@ export const PERMISSIONS: Record<ModuleKey, Record<Action, AppRole[]>> = {
     view: ["admin", "manager", "sales", "accountant"],
     create: ["admin"],
     update: ["admin", "manager", "sales"],
+    delete: ["admin"],
+  },
+  // Platform release notes — all roles read published; only admin manages drafts/publish.
+  "platform-releases": {
+    view: ALL_ROLES,
+    create: ["admin"],
+    update: ["admin"],
     delete: ["admin"],
   },
 };
