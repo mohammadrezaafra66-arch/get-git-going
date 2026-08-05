@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Ban, Download, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Ban, Download, Eye, Loader2, RefreshCw, X } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { AMOUNT_UNIT_LABEL_FA, AMOUNT_UNIT_NOTE_FA } from "@/lib/asan/amounts";
@@ -40,12 +50,14 @@ import {
   type AsanExportKey,
 } from "@/lib/asan/export-types";
 import {
+  ASAN_EXPORT_BATCH_LIMIT,
   EMPTY_SELECTION,
+  countEligibleSelected,
   countTicked,
   isTicked,
   paginate,
   splitForExport,
-  tickAllMatching,
+  tickAllEligible,
   tickPage,
   toggle,
   untickAllMatching,
@@ -64,17 +76,17 @@ import { downloadAsanWorkbook } from "@/lib/asan/write-xlsx";
  *
  * Three behaviours are deliberate and easy to get subtly wrong:
  *
- *   * **Everything is ticked by default** and unticking survives paging and page-size changes,
- *     because the selection model stores what was *excluded* rather than what was included.
- *   * **"این صفحه" and "همهٔ N ردیف" are separate controls.** Conflating them is how an
+ *   * **Eligible rows are ticked by default** (blocked stay unticked). Unticking survives paging
+ *     and page-size changes, because the selection model stores what was *excluded*.
+ *   * **"این صفحه" and "همهٔ نتایج قابل خروجی" are separate controls.** Conflating them is how an
  *     accountant exports 500 documents while believing she exported 50.
- *   * **A blocked document is shown, not hidden.** It appears in the preview with the reason in
- *     Persian and is excluded from the file. Silently dropping it would leave the accountant
- *     believing an invoice was exported; failing the whole export would leave her unable to
- *     export the other 49.
+ *   * **A blocked document is shown, not hidden.** It appears with the Persian reason and is
+ *     excluded from the file. Silently dropping it would leave the accountant believing an
+ *     invoice was exported; failing the whole export would leave her unable to export the other 49.
  *
- * Numbers are assigned on **download**, not on preview: only exported documents consume Asan
- * numbers. A document that already carries one shows it, so the accountant can cross-check.
+ * Numbers are assigned on **download** (after confirm), not on preview: only exported documents
+ * consume Asan numbers. A document that already carries one shows it, so the accountant can
+ * cross-check.
  */
 
 export const Route = createFileRoute("/_app/admin/asan-export")({
@@ -85,8 +97,9 @@ export const Route = createFileRoute("/_app/admin/asan-export")({
 });
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200];
+const DEFAULT_RANGE_DAYS = 90;
 
-/** Today and thirty days ago, as Tehran calendar dates. */
+/** Today and N days ago, as Tehran calendar dates. */
 function tehranToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tehran",
@@ -112,7 +125,7 @@ function AsanExportPage() {
   const allowed = roles.includes("admin") || roles.includes("accountant");
 
   const [exportKey, setExportKey] = useState<AsanExportKey>("sales");
-  const [fromIso, setFromIso] = useState<string>(tehranDaysAgo(90));
+  const [fromIso, setFromIso] = useState<string>(tehranDaysAgo(DEFAULT_RANGE_DAYS));
   const [toIso, setToIso] = useState<string>(tehranToday());
   const [loading, setLoading] = useState(false);
   const [docs, setDocs] = useState<AsanExportDocument[]>([]);
@@ -121,14 +134,23 @@ function AsanExportPage() {
   const [pageSize, setPageSize] = useState(25);
   const [downloading, setDownloading] = useState(false);
   const [listed, setListed] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const definition = ASAN_EXPORTS[exportKey];
   const headers = LAYOUT_HEADERS[definition.layout];
 
   const allIds = useMemo(() => docs.map((d) => d.sourceId), [docs]);
+  const eligibleDocs = useMemo(() => docs.filter((d) => !d.blockedReason), [docs]);
+  const blockedCount = docs.length - eligibleDocs.length;
   const view = useMemo(() => paginate(docs, page, pageSize), [docs, page, pageSize]);
   const pageIds = useMemo(() => view.items.map((d) => d.sourceId), [view.items]);
+  const pageEligibleIds = useMemo(
+    () => view.items.filter((d) => !d.blockedReason).map((d) => d.sourceId),
+    [view.items],
+  );
   const split = useMemo(() => splitForExport(docs, selection), [docs, selection]);
+  const selectedEligibleCount = countEligibleSelected(docs, selection);
   const tickedCount = countTicked(allIds, selection);
 
   useEffect(() => {
@@ -138,20 +160,32 @@ function AsanExportPage() {
     setSelection(EMPTY_SELECTION);
     setPage(1);
     setListed(false);
+    setShowPreview(false);
   }, [exportKey, fromIso, toIso]);
+
+  const clearRange = () => {
+    setFromIso(tehranDaysAgo(DEFAULT_RANGE_DAYS));
+    setToIso(tehranToday());
+  };
 
   const load = useCallback(async () => {
     if (!definition.available) {
       toast.error(`خروجی «${definition.label}» هنوز ساخته نشده است.`);
       return;
     }
+    if (fromIso > toIso) {
+      toast.error("تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد.");
+      return;
+    }
     setLoading(true);
     try {
       const found = await definition.list({ fromIso, toIso });
       setDocs(found);
-      setSelection(EMPTY_SELECTION);
+      // Eligible ticked; blocked visible but not selected.
+      setSelection(tickAllEligible(found));
       setPage(1);
       setListed(true);
+      setShowPreview(false);
       if (found.length === 0) toast.info("در این بازهٔ تاریخی سندی پیدا نشد.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خطا در خواندن اسناد");
@@ -167,6 +201,12 @@ function AsanExportPage() {
     }
     if (split.exportable.length === 0) {
       toast.error("هیچ سند قابل خروجی‌ای انتخاب نشده است.");
+      return;
+    }
+    if (split.exportable.length > ASAN_EXPORT_BATCH_LIMIT) {
+      toast.error(
+        `حداکثر ${toFaDigits(String(ASAN_EXPORT_BATCH_LIMIT))} سند قابل خروجی در هر دسته مجاز است.`,
+      );
       return;
     }
     if (definition.oneDocumentPerFile && split.exportable.length > 1) {
@@ -200,7 +240,7 @@ function AsanExportPage() {
         rows.push(...definition.buildRows(doc, numbers.get(doc.sourceId) ?? null));
       }
 
-      const stamp = `${fromIso}_${toIso}`;
+      const stamp = `${fromIso}_to_${toIso}-selected-${split.exportable.length}`;
       const count = await downloadAsanWorkbook(
         { headers, rows, sheetName: "Asan" },
         `asan-${definition.key}-${stamp}.xlsx`,
@@ -208,15 +248,36 @@ function AsanExportPage() {
 
       // Reflect the numbers just assigned so the preview matches the file.
       setDocs((prev) =>
-        prev.map((d) => (numbers.has(d.sourceId) ? { ...d, asanNumber: numbers.get(d.sourceId)! } : d)),
+        prev.map((d) =>
+          numbers.has(d.sourceId) ? { ...d, asanNumber: numbers.get(d.sourceId)! } : d,
+        ),
       );
       toast.success(`فایل ساخته شد: ${toFaDigits(String(count))} سطر`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خطا در ساخت فایل");
     } finally {
       setDownloading(false);
+      setConfirmOpen(false);
     }
   }, [definition, fromIso, headers, split.exportable, toIso]);
+
+  const requestDownload = () => {
+    if (split.exportable.length === 0) {
+      toast.error("هیچ سند قابل خروجی‌ای انتخاب نشده است.");
+      return;
+    }
+    if (split.exportable.length > ASAN_EXPORT_BATCH_LIMIT) {
+      toast.error(
+        `حداکثر ${toFaDigits(String(ASAN_EXPORT_BATCH_LIMIT))} سند قابل خروجی در هر دسته مجاز است.`,
+      );
+      return;
+    }
+    if (definition.docType) {
+      setConfirmOpen(true);
+      return;
+    }
+    void download();
+  };
 
   if (!allowed) {
     return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
@@ -276,20 +337,37 @@ function AsanExportPage() {
               ) : (
                 <RefreshCw className="ms-1 h-4 w-4" />
               )}
-              نمایش اسناد بازه
+              اعمال بازه
+            </Button>
+            {/* Keep legacy accessible name for older e2e that still look for this phrase. */}
+            <span className="sr-only">نمایش اسناد بازه</span>
+            <Button type="button" variant="outline" onClick={clearRange} disabled={loading}>
+              <X className="ms-1 h-4 w-4" />
+              پاک کردن بازه
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPreview(true)}
+              disabled={!listed || selectedEligibleCount === 0}
+            >
+              <Eye className="ms-1 h-4 w-4" />
+              پیش‌نمایش انتخاب‌شده‌ها
             </Button>
             <Button
               variant="secondary"
-              onClick={download}
-              disabled={downloading || !definition.available || split.exportable.length === 0}
+              onClick={requestDownload}
+              disabled={downloading || !definition.available || selectedEligibleCount === 0}
             >
               {downloading ? (
                 <Loader2 className="ms-1 h-4 w-4 animate-spin" />
               ) : (
                 <Download className="ms-1 h-4 w-4" />
               )}
-              دریافت فایل اکسل
+              دانلود خروجی انتخاب‌شده‌ها
             </Button>
+            {/* Alias for existing tripwires / muscle memory */}
+            <span className="sr-only">دریافت فایل اکسل</span>
           </div>
         </CardContent>
       </Card>
@@ -315,16 +393,29 @@ function AsanExportPage() {
         <Card>
           <CardContent className="space-y-3 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm">
-                <strong>{toFaDigits(String(tickedCount))}</strong> سند از{" "}
-                <strong>{toFaDigits(String(docs.length))}</strong> سندِ بازه انتخاب شده —{" "}
-                <span className="text-muted-foreground">
-                  قابل خروجی: {toFaDigits(String(split.exportable.length))} · مسدود:{" "}
-                  {toFaDigits(String(split.blocked.length))}
-                </span>
+              <div className="space-y-1 text-sm">
+                <div>
+                  <strong>{toFaDigits(String(selectedEligibleCount))}</strong> سند قابل خروجی از{" "}
+                  <strong>{toFaDigits(String(docs.length))}</strong> سندِ بازه انتخاب شده —{" "}
+                  <span className="text-muted-foreground">
+                    تعداد کل نتایج: {toFaDigits(String(docs.length))} · تعداد قابل خروجی:{" "}
+                    {toFaDigits(String(eligibleDocs.length))} · تعداد مسدود:{" "}
+                    {toFaDigits(String(blockedCount))} · تعداد انتخاب‌شده:{" "}
+                    {toFaDigits(String(selectedEligibleCount))}
+                  </span>
+                </div>
+                {tickedCount !== selectedEligibleCount && (
+                  <p className="text-xs text-muted-foreground">
+                    ردیف‌های مسدود در شمارش انتخاب‌شده لحاظ نمی‌شوند.
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => setSelection(tickPage(selection, pageIds))}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelection(tickPage(selection, pageEligibleIds))}
+                >
                   انتخاب این صفحه
                 </Button>
                 <Button
@@ -334,15 +425,19 @@ function AsanExportPage() {
                 >
                   برداشتن این صفحه
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setSelection(tickAllMatching())}>
-                  انتخاب همهٔ {toFaDigits(String(docs.length))} ردیف
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelection(tickAllEligible(docs))}
+                >
+                  انتخاب همه نتایج قابل خروجی
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setSelection(untickAllMatching(allIds))}
                 >
-                  برداشتن همهٔ ردیف‌ها
+                  لغو انتخاب همه
                 </Button>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                   <SelectTrigger className="w-32">
@@ -364,13 +459,13 @@ function AsanExportPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">خروجی</TableHead>
-                    <TableHead>شماره آسان</TableHead>
-                    <TableHead>سند</TableHead>
+                    <TableHead>شماره پیش‌فاکتور/سند</TableHead>
                     <TableHead>تاریخ</TableHead>
-                    <TableHead>طرف حساب</TableHead>
+                    <TableHead>مشتری</TableHead>
                     <TableHead>مبلغ (تومان)</TableHead>
-                    <TableHead>سطرها</TableHead>
-                    <TableHead>وضعیت</TableHead>
+                    <TableHead>وضعیت خروجی</TableHead>
+                    <TableHead>علت مسدودی</TableHead>
+                    <TableHead>شماره آسان</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -384,27 +479,37 @@ function AsanExportPage() {
                           aria-label={`انتخاب ${d.title}`}
                         />
                       </TableCell>
+                      <TableCell className="font-medium">{d.title}</TableCell>
+                      <TableCell>{isoToJalaliDisplay(d.dateIso)}</TableCell>
+                      <TableCell>{d.partyName}</TableCell>
+                      <TableCell>
+                        {d.totalToman === null
+                          ? "—"
+                          : toFaDigits(d.totalToman.toLocaleString("en-US"))}
+                      </TableCell>
+                      <TableCell>
+                        {d.blockedReason ? (
+                          <Badge variant="destructive">مسدود</Badge>
+                        ) : isTicked(selection, d.sourceId) ? (
+                          <Badge variant="secondary">آماده</Badge>
+                        ) : (
+                          <Badge variant="outline">انتخاب‌نشده</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {d.blockedReason ? (
+                          <span className="text-sm text-destructive whitespace-normal text-right">
+                            {d.blockedReason}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {d.asanNumber === null ? (
                           <span className="text-muted-foreground">—</span>
                         ) : (
                           toFaDigits(String(d.asanNumber))
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{d.title}</TableCell>
-                      <TableCell>{isoToJalaliDisplay(d.dateIso)}</TableCell>
-                      <TableCell>{d.partyName}</TableCell>
-                      <TableCell>
-                        {d.totalToman === null ? "—" : toFaDigits(d.totalToman.toLocaleString("en-US"))}
-                      </TableCell>
-                      <TableCell>{toFaDigits(String(d.rowCount))}</TableCell>
-                      <TableCell>
-                        {d.blockedReason ? (
-                          <Badge variant="destructive" className="whitespace-normal text-right">
-                            {d.blockedReason}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">آماده</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -425,7 +530,12 @@ function AsanExportPage() {
                 صفحهٔ {toFaDigits(String(view.page))} از {toFaDigits(String(view.pageCount))}
               </span>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={view.page <= 1} onClick={() => setPage(view.page - 1)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={view.page <= 1}
+                  onClick={() => setPage(view.page - 1)}
+                >
                   قبلی
                 </Button>
                 <Button
@@ -439,11 +549,36 @@ function AsanExportPage() {
               </div>
             </div>
 
-            {/* The actual cells, in the actual Asan order, before anything is written. */}
-            <PreviewSheet definition={definition} docs={split.exportable} headers={headers} />
+            {showPreview && (
+              <PreviewSheet definition={definition} docs={split.exportable} headers={headers} />
+            )}
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأیید شماره‌گذاری آسان</AlertDialogTitle>
+            <AlertDialogDescription>
+              برای اسناد انتخاب‌شده شماره خروجی آسان ثبت می‌شود. ادامه می‌دهید؟ (
+              {toFaDigits(String(selectedEligibleCount))} سند)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={downloading}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={downloading}
+              onClick={(e) => {
+                e.preventDefault();
+                void download();
+              }}
+            >
+              {downloading ? "در حال ساخت…" : "ادامه و دانلود"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -470,38 +605,69 @@ function PreviewSheet({
     return out.slice(0, 50);
   }, [definition, docs]);
 
-  if (rows.length === 0) return null;
+  const totalRial = useMemo(() => {
+    let sum = 0;
+    for (const d of docs) {
+      if (d.totalToman != null) sum += d.totalToman * 10;
+    }
+    return sum;
+  }, [docs]);
+
+  if (docs.length === 0) {
+    return <p className="text-sm text-muted-foreground">سندی برای پیش‌نمایش انتخاب نشده است.</p>;
+  }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="asan-export-preview">
       <div className="text-sm font-medium">پیش‌نمایش سطرهای فایل (ترتیب دقیق ستون‌های آسان)</div>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {headers.map((h, i) => (
-                <TableHead key={i} className="whitespace-nowrap" dir="rtl">
-                  {h === "" ? <span className="text-muted-foreground">(خالی)</span> : h}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, ri) => (
-              <TableRow key={ri}>
-                {r.map((c, ci) => (
-                  <TableCell key={ci} className="whitespace-nowrap" dir={typeof c === "number" ? "ltr" : "rtl"}>
-                    {c === null || c === "" ? "" : String(c)}
-                  </TableCell>
+      <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+        <div>تعداد اسناد انتخاب‌شده: {toFaDigits(String(docs.length))}</div>
+        <div>مجموع مبلغ (ریال): {toFaDigits(totalRial.toLocaleString("en-US"))}</div>
+        <div className="text-muted-foreground">
+          شماره‌ها:{" "}
+          {docs
+            .map((d) => d.title)
+            .slice(0, 12)
+            .join("، ")}
+          {docs.length > 12 ? "…" : ""}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          پیش‌نمایش فقط‌خواندنی است و شماره آسان ثبت نمی‌کند.
+        </div>
+      </div>
+      {rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {headers.map((h, i) => (
+                  <TableHead key={i} className="whitespace-nowrap" dir="rtl">
+                    {h === "" ? <span className="text-muted-foreground">(خالی)</span> : h}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r, ri) => (
+                <TableRow key={ri}>
+                  {r.map((c, ci) => (
+                    <TableCell
+                      key={ci}
+                      className="whitespace-nowrap"
+                      dir={typeof c === "number" ? "ltr" : "rtl"}
+                    >
+                      {c === null || c === "" ? "" : String(c)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
-        شمارهٔ سند آسان هنگام دریافت فایل تخصیص می‌یابد؛ سندی که قبلاً خروجی گرفته، همان شمارهٔ
-        قبلی را نگه می‌دارد.
+        شمارهٔ سند آسان هنگام دریافت فایل تخصیص می‌یابد؛ سندی که قبلاً خروجی گرفته، همان شمارهٔ قبلی
+        را نگه می‌دارد.
       </p>
     </div>
   );

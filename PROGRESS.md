@@ -14,7 +14,7 @@
 - **برنچ کاری:** `feature/navigation-modernization`
 - **محیط کار:** فقط `192.168.170.8` (تست). تولید `192.168.170.10` هرگز لمس نشود.
 - **دیتابیس:** `afrakala` در کانتینر `afrakala-lan-db`
-- **آخرین rebuild موفق:** products torob_url + Excel export (مهاجرت ۳۰۱) — پس از commit/deploy
+- **آخرین rebuild موفق:** Asan selected batch sales export UI (پس از commit/deploy)
 - **⚠️ نکتهٔ استقرار:** `docker compose up -d --force-recreate` و حتی `docker rm -f` + `up -d` روی این سیستم گاهی کانتینر را از **image قدیمی** می‌سازند؛ `APP_GIT_SHA` درست ولی کد قدیمی. مسیر مطمئن: `$env:GIT_SHA`/`$env:BUILD_TIME` را ست کن و `docker compose ... up -d --build web` را در یک فرمان اجرا کن، سپس با `APP_BUILD_TIME` + grep نماد تأیید کن.
 - **دانش سازمانی:** ۱۳۹ chunk نمایه‌سازی شده
 - **⚠️ نکتهٔ هارنس تست (۲۰۲۶-۰۸-۰۴):** `npx playwright test --config=playwright.auth.config.ts` را **کامل اجرا نکن**. `e2e/auth/save-admin-session.spec.ts` روی `page.pause()` تکیه دارد؛ در اجرای headless این تابع بلاک نمی‌کند و spec یک storageState **خالی** روی `e2e/auth/admin.storage.json` می‌نویسد — و کل رگرسیون از همان فایل به‌عنوان نشست پیش‌فرض استفاده می‌کند. اگر پیش آمد، نشست را دوباره بساز (رمز موقت روی یک حساب **آزمایشی** از Auth Admin API، سپس گرفتن توکن). فقط specهای غیرتعاملی را نام‌به‌نام اجرا کن.
@@ -25,6 +25,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-05 | Cursor | **آسان — تکمیل خروجی دسته‌ای فروش با بازه تاریخ و انتخاب.** قابلیت هسته از قبل بود؛ UX: اعمال/پاک‌کردن بازه، انتخاب فقط قابل‌خروجی، تأیید شماره‌گذاری، سقف ۱۰۰۰، پیش‌نمایش صریح. بدون مهاجرت. typecheck **۷۰**. | *(پس از commit)* |
 | 2026-08-05 | Cursor | **محصولات — لینک ترب اختیاری + خروجی اکسل کاتالوگ.** مهاجرت **۳۰۱** `products.torob_url` (nullable، CHECK http/s). فیلد در فرم/جزئیات. دکمهٔ «خروجی اکسل» روی `/products` با فیلترهای جاری (سقف ۵۰۰۰). typecheck **۷۰**. | `ef0c64ad` |
 | 2026-08-05 | Cursor | **Persons Phase 6 — تست سخت‌سازی.** Phone-collisions browser e2e، mobile/RTL overflow gate (۳۲۰/۳۷۵/۳۹۰/۴۳۰)، permission matrix (UI+JWT)، رگرسیون فاز ۱–۵. گارد کلاینت import/merge/edit + wrap overflow. بدون مهاجرت. Phase6 **۴۶ سبز / ۱ skip**؛ `e2e/persons`+RLS **۱۴۵ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۳ skip**؛ typecheck **۷۰**؛ drift **۰**؛ leftover **۰**. | `1d294f1e` |
 | 2026-08-05 | Cursor | **Persons Phase 5 P2 — گسترش پرونده هویت.** Deep links (customer/supplier/staff/accounting)، merge/collision panels، audit summary با redaction، metadata Jalali. بدون مهاجرت. JWT **۱۱/۱۱**؛ UI dossier **۶/۶**؛ `e2e/persons` **۹۴ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۲ skip**. typecheck **۷۰**. | `cb8e0edf` |

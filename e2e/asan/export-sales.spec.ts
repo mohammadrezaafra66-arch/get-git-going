@@ -575,7 +575,7 @@ test("the export page lists the sales invoices in a real browser", async ({ page
 
   // The default range is the last 90 days, which does not reach these July quotes, so the test
   // drives the button and asserts against whatever the page itself found.
-  await page.getByRole("button", { name: "نمایش اسناد بازه" }).click();
+  await page.getByRole("button", { name: "اعمال بازه" }).click();
   await page.waitForTimeout(1500);
 
   // Whatever it found, it must never claim more selected rows than it listed, and the unit must

@@ -52,6 +52,18 @@ export function tickAllMatching(): ExportSelection {
   return { excluded: new Set<string>() };
 }
 
+/**
+ * Tick every **eligible** row in the filtered result (all pages).
+ * Blocked rows stay unticked so «انتخاب همه» never implies they will export.
+ */
+export function tickAllEligible(
+  docs: ReadonlyArray<{ sourceId: string; blockedReason: string | null }>,
+): ExportSelection {
+  return {
+    excluded: new Set(docs.filter((d) => d.blockedReason).map((d) => d.sourceId)),
+  };
+}
+
 /** Untick all N matching rows, including the ones on other pages. */
 export function untickAllMatching(allIds: string[]): ExportSelection {
   return { excluded: new Set(allIds) };
@@ -60,6 +72,20 @@ export function untickAllMatching(allIds: string[]): ExportSelection {
 export function countTicked(allIds: string[], selection: ExportSelection): number {
   return allIds.reduce((n, id) => (isTicked(selection, id) ? n + 1 : n), 0);
 }
+
+/** Selected *and* eligible — what download/preview actually use. */
+export function countEligibleSelected(
+  docs: ReadonlyArray<{ sourceId: string; blockedReason: string | null }>,
+  selection: ExportSelection,
+): number {
+  return docs.reduce(
+    (n, d) => (d.blockedReason || !isTicked(selection, d.sourceId) ? n : n + 1),
+    0,
+  );
+}
+
+/** Soft batch ceiling for one download (UI + client guard). No established DB limit existed. */
+export const ASAN_EXPORT_BATCH_LIMIT = 1000;
 
 export interface PageView<T> {
   items: T[];

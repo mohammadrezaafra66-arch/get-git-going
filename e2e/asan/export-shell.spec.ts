@@ -7,11 +7,14 @@ import { E2E_PREFIX } from "../helpers/app";
 import { ADMIN_USER_ID, mintJwt, rest, userWithRole } from "../helpers/pgrest";
 
 import {
+  ASAN_EXPORT_BATCH_LIMIT,
   EMPTY_SELECTION,
+  countEligibleSelected,
   countTicked,
   isTicked,
   paginate,
   splitForExport,
+  tickAllEligible,
   tickAllMatching,
   tickPage,
   toggle,
@@ -210,6 +213,19 @@ test.describe("what the accountant has ticked", () => {
     expect(withSkip.exportable.map((d) => d.sourceId)).toEqual(["a"]);
     expect(withSkip.skipped.map((d) => d.sourceId)).toEqual(["c"]);
     expect(withSkip.blocked.map((d) => d.sourceId)).toEqual(["b"]);
+  });
+
+  test("«انتخاب همه نتایج قابل خروجی» ticks eligible rows only", () => {
+    const docs = [doc("a"), doc("b", "کد آسان مشتری ثبت نشده است"), doc("c")];
+    const sel = tickAllEligible(docs);
+    expect(isTicked(sel, "a")).toBe(true);
+    expect(isTicked(sel, "b")).toBe(false);
+    expect(isTicked(sel, "c")).toBe(true);
+    expect(countEligibleSelected(docs, sel)).toBe(2);
+    expect(countTicked(["a", "b", "c"], sel)).toBe(2);
+    expect(ASAN_EXPORT_BATCH_LIMIT).toBe(1000);
+    // split must match the eligible-selected set
+    expect(splitForExport(docs, sel).exportable.map((d) => d.sourceId)).toEqual(["a", "c"]);
   });
 });
 
@@ -580,6 +596,9 @@ test.describe("who may export", () => {
     // The download path must go through the split tested above, not its own filter.
     expect(route).toContain("splitForExport");
     expect(route).toContain("split.exportable");
+    expect(route).toContain("tickAllEligible");
+    expect(route).toContain("ASAN_EXPORT_BATCH_LIMIT");
+    expect(route).toContain("برای اسناد انتخاب‌شده شماره خروجی آسان ثبت می‌شود");
     // A blocked row's checkbox is disabled rather than merely ignored on download.
     expect(route).toContain("disabled={!!d.blockedReason}");
     // The unit is stated on screen — the owner asked for it explicitly, "do not make it silent".
