@@ -12022,6 +12022,26 @@ export type Database = {
         Args: { p_candidate_id: string; p_reason?: string | null }
         Returns: Json
       }
+      search_visible_persons: {
+        Args: {
+          p_query?: string | null
+          p_limit?: number
+          p_offset?: number
+          p_kind?: string | null
+        }
+        Returns: {
+          id: string
+          kind: string
+          display_name: string
+          legal_name: string | null
+          visibility_scope: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          matched_by: string | null
+          total_count: number
+        }[]
+      }
       post_receipt_accounting: {
         Args: { p_receipt_id: string; p_user_id: string }
         Returns: Json

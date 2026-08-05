@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
-import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +53,7 @@ interface PersonRow {
   visibility_scope: PersonVisibilityScope;
   is_active: boolean;
   created_at: string;
+  total_count?: number | string;
 }
 
 const KIND_LABEL: Record<PersonKind, string> = {
@@ -74,27 +74,24 @@ function PersonsListPage() {
   const [kind, setKind] = useState<"all" | PersonKind>("all");
   const [page, setPage] = useState(0);
   const debouncedRaw = useDebounce(search, 350);
-  const debounced = normalizeSearchText(debouncedRaw);
-  const term = debounced.length >= 2 ? debounced : "";
+  // Pass the trimmed raw query to the RPC — DB owns digit/phone/fa normalization.
+  // Do not strip spaces here (normalizeSearchText would); phones with spaces still work
+  // because normalize_identifier digits-only, and names use normalize_fa_text.
+  const term = debouncedRaw.trim();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["persons", { q: term, kind, page }],
     queryFn: async () => {
-      let q = supabase
-        .from("persons")
-        .select("id, kind, display_name, legal_name, visibility_scope, is_active, created_at", {
-          count: "exact",
-        })
-        .order("created_at", { ascending: false })
-        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
-      if (kind !== "all") q = q.eq("kind", kind);
-      if (term.trim()) {
-        const t = `%${term.trim()}%`;
-        q = q.or(`display_name.ilike.${t},legal_name.ilike.${t}`);
-      }
-      const { data, error, count } = await q;
+      const { data, error } = await supabase.rpc("search_visible_persons", {
+        p_query: term,
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+        p_kind: kind === "all" ? null : kind,
+      });
       if (error) throw error;
-      return { rows: (data ?? []) as PersonRow[], count: count ?? 0 };
+      const rows = (data ?? []) as PersonRow[];
+      const count = rows.length > 0 ? Number(rows[0].total_count ?? rows.length) : 0;
+      return { rows, count };
     },
   });
 
@@ -131,7 +128,7 @@ function PersonsListPage() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="جستجو در نام نمایشی یا نام رسمی..."
+                placeholder="جستجو با نام، نام دیگر، موبایل، کد ملی یا کد آسان"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -139,6 +136,20 @@ function PersonsListPage() {
                 }}
                 className="pr-10"
               />
+              {search.trim() ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute left-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(0);
+                  }}
+                >
+                  پاک کردن
+                </Button>
+              ) : null}
             </div>
             <Select
               value={kind}

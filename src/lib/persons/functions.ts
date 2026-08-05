@@ -459,19 +459,14 @@ function sanitizeSearchTerm(raw: string): string {
 }
 
 /**
- * Read-only person picker search.
+ * Read-only person picker search — Phase 2.
  *
- * - Auth: `requireSupabaseAuth` (same chain + `surfaceAuthError` as the rest
- *   of this module). No service role, no SECURITY DEFINER.
- * - RLS: relies on the user-scoped Supabase client from middleware context.
- *   Restricted persons are filtered automatically by
- *   `persons_select_by_visibility_scope`.
- * - Columns: narrow DTO only — id, display_name, legal_name, kind, is_active.
- *   No notes, no identifiers, no field_values, no visibility_scope.
- * - Search: ilike on `display_name` OR `legal_name`. Identifier search is
- *   deliberately NOT included in this step (existence-leak risk for
- *   restricted persons).
- * - If trimmed query length < 2 → returns [] without hitting the DB.
+ * Delegates to `public.search_visible_persons` (migration 298, SECURITY INVOKER).
+ * Identifier/alias matching is enforced inside the RPC under RLS; this serverFn
+ * never queries person_identifiers directly and never uses a service role.
+ *
+ * Narrow DTO only — id, display_name, legal_name, kind, is_active.
+ * If trimmed query length < 2 → returns [] without hitting the DB (picker UX).
  */
 export const searchPersons = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
@@ -483,22 +478,31 @@ export const searchPersons = createServerFn({ method: "POST" })
       if (term.length < 2) return [];
 
       const { supabase } = context;
-      const pattern = `%${term}%`;
-
-      let q = supabase
-        .from("persons")
-        .select("id, display_name, legal_name, kind, is_active")
-        .or(`display_name.ilike.${pattern},legal_name.ilike.${pattern}`)
-        .order("display_name", { ascending: true })
-        .limit(input.limit);
-
-      if (!input.include_inactive) q = q.eq("is_active", true);
-      if (input.kind !== "all") q = q.eq("kind", input.kind);
-
-      const { data: rows, error } = await q;
+      const { data: rows, error } = await supabase.rpc("search_visible_persons", {
+        p_query: term,
+        p_limit: input.limit,
+        p_offset: 0,
+        p_kind: input.kind === "all" ? null : input.kind,
+      });
       if (error) throw mapPgError(error.code, error.message);
 
-      return (rows as SearchPersonResultDTO[] | null) ?? [];
+      const mapped = ((rows as Array<{
+        id: string;
+        display_name: string;
+        legal_name: string | null;
+        kind: PersonKind;
+        is_active: boolean;
+      }> | null) ?? [])
+        .filter((r) => (input.include_inactive ? true : r.is_active))
+        .map((r) => ({
+          id: r.id,
+          display_name: r.display_name,
+          legal_name: r.legal_name,
+          kind: r.kind,
+          is_active: r.is_active,
+        }));
+
+      return mapped;
     } catch (e) {
       throw toServerError(e);
     }
