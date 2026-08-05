@@ -166,6 +166,13 @@ function AsanExportPage() {
   const clearRange = () => {
     setFromIso(tehranDaysAgo(DEFAULT_RANGE_DAYS));
     setToIso(tehranToday());
+    // Date values may already equal the default, so the range-effect would not re-run —
+    // always drop the listed result so selection cannot silently survive «پاک کردن بازه».
+    setDocs([]);
+    setSelection(EMPTY_SELECTION);
+    setPage(1);
+    setListed(false);
+    setShowPreview(false);
   };
 
   const load = useCallback(async () => {
