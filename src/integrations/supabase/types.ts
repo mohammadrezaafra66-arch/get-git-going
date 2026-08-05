@@ -5747,6 +5747,48 @@ export type Database = {
           },
         ]
       }
+      person_aliases: {
+        Row: {
+          alias: string
+          alias_kind: string
+          alias_normalized: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          person_id: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          alias: string
+          alias_kind?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alias?: string
+          alias_kind?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_aliases_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_context_links: {
         Row: {
           context_kind: string

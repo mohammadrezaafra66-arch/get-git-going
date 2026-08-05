@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/button";
 import { PersonForm, type PersonFormValues } from "@/components/persons/PersonForm";
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
 import { PersonContextLinksForm } from "@/components/persons/PersonContextLinksForm";
+import { PersonAliasesManager } from "@/components/persons/PersonAliasesManager";
 import { getPerson, updatePerson } from "@/lib/persons/functions";
 import { toError } from "@/lib/server-fn-error";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/persons_/$personId_/edit")({
@@ -30,7 +31,7 @@ function PersonEditPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { roles } = useAuth();
-  const canManage = hasAnyRole(roles, ["admin", "manager"]);
+  const canManage = hasPermissionEx(roles, "persons", "update");
 
   const getFn = useServerFn(getPerson);
   const updateFn = useServerFn(updatePerson);
@@ -204,6 +205,12 @@ function PersonEditPage() {
               canManage={canManage}
             />
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <PersonAliasesManager personId={personId} canManage={canManage} />
         </CardContent>
       </Card>
 

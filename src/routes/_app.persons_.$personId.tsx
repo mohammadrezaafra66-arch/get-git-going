@@ -10,20 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
 import { PersonContextLinksForm } from "@/components/persons/PersonContextLinksForm";
+import { PersonAliasesManager } from "@/components/persons/PersonAliasesManager";
 import { getPerson } from "@/lib/persons/functions";
 import { toError } from "@/lib/server-fn-error";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 import type { PersonKind, PersonVisibilityScope } from "@/lib/persons/schemas";
 
 /**
- * Phase 1 P0 — read-only person profile.
+ * Phase 1 P0 — read-only person profile (+ Phase 4 alias manager).
  *
- * Requires persons.view (not update). Never mutates. Edit / merge CTAs are
- * conditional on the same role gates the write routes already use.
+ * Requires persons.view (not update). Alias edits gated by persons.update.
  */
 export const Route = createFileRoute("/_app/persons_/$personId")({
   beforeLoad: async () => {
@@ -42,12 +42,6 @@ const SCOPE_LABEL: Record<PersonVisibilityScope, string> = {
   restricted_finance: "محدود-مالی",
   restricted_executive: "محدود-مدیریتی",
 };
-
-interface PersonAliasRow {
-  id: string;
-  alias: string;
-  alias_kind: string;
-}
 
 interface MergeCandidateRow {
   id: string;
@@ -75,8 +69,7 @@ function e164ToLocalMobile(value: string): string | null {
 function PersonProfilePage() {
   const { personId } = Route.useParams();
   const { roles } = useAuth();
-  // Mirrors /persons/$id/edit and /persons/merge — not a new permission model.
-  const canUpdate = hasAnyRole(roles, ["admin", "manager"]);
+  const canUpdate = hasPermissionEx(roles, "persons", "update");
   const canMerge = hasAnyRole(roles, ["admin", "manager"]);
 
   const getFn = useServerFn(getPerson);
@@ -104,21 +97,6 @@ function PersonProfilePage() {
     },
   });
 
-  // person_aliases exists since migration 228; generated Database types omit it.
-  const aliasesQuery = useQuery({
-    queryKey: ["person", personId, "aliases"],
-    queryFn: async (): Promise<PersonAliasRow[]> => {
-      const { data, error } = await supabase
-        .from("person_aliases" as never)
-        .select("id, alias, alias_kind")
-        .eq("person_id", personId)
-        .order("alias", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as PersonAliasRow[];
-    },
-  });
-
-  // Pending merge suspicion — RLS already limits this to admin/manager.
   const mergeCandidateQuery = useQuery({
     queryKey: ["person", personId, "merge-candidate"],
     enabled: canMerge,
@@ -203,7 +181,6 @@ function PersonProfilePage() {
     );
   }
 
-  const aliases = aliasesQuery.data ?? [];
   const pendingMerge = mergeCandidateQuery.data;
   const collision = phoneCollisionQuery.data;
 
@@ -259,9 +236,7 @@ function PersonProfilePage() {
           {collision ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
               <PhoneOff className="h-4 w-4 text-destructive" />
-              <span>
-                تداخل شماره تلفن برای {collision.normalized_phone} ثبت شده است.
-              </span>
+              <span>تداخل شماره تلفن برای {collision.normalized_phone} ثبت شده است.</span>
               <Button asChild variant="link" className="h-auto p-0">
                 <Link to="/admin/phone-collisions">مشاهدهٔ صف تداخل</Link>
               </Button>
@@ -346,37 +321,11 @@ function PersonProfilePage() {
         </CardContent>
       </Card>
 
-      {(aliasesQuery.isLoading || aliases.length > 0 || aliasesQuery.error) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>نام‌های مستعار</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {aliasesQuery.isLoading ? (
-              <div className="flex items-center justify-center py-6 text-muted-foreground">
-                <Loader2 className="ml-2 h-5 w-5 animate-spin" /> در حال بارگذاری...
-              </div>
-            ) : aliasesQuery.error ? (
-              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                بارگذاری نام‌های مستعار با خطا مواجه شد.
-              </div>
-            ) : aliases.length === 0 ? (
-              <p className="text-sm text-muted-foreground">نام مستعاری ثبت نشده است.</p>
-            ) : (
-              <ul className="list-inside list-disc space-y-1 text-sm">
-                {aliases.map((a) => (
-                  <li key={a.id}>
-                    {a.alias}
-                    {a.alias_kind ? (
-                      <span className="mr-2 text-muted-foreground">({a.alias_kind})</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardContent className="pt-6">
+          <PersonAliasesManager personId={personId} canManage={canUpdate} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
