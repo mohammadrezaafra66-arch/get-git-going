@@ -5,10 +5,13 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { PersonImportForm } from "@/components/persons/PersonImportForm";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
 
 // Item 170 — bulk person import from Excel, mirroring CustomerImportForm.
 // Writing persons + identifiers is admin/manager only at the RLS layer, so the
 // route guard matches rather than relying on the permission fallback.
+// Client-side gate mirrors phone-collisions: beforeLoad may defer while roles load.
 export const Route = createFileRoute("/_app/persons_/import")({
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager"]);
@@ -17,6 +20,16 @@ export const Route = createFileRoute("/_app/persons_/import")({
 });
 
 function PersonImportPage() {
+  const { roles, rolesLoading } = useAuth();
+  const allowed = hasAnyRole(roles, ["admin", "manager"]);
+
+  if (rolesLoading) {
+    return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
+  }
+  if (!allowed) {
+    return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
+  }
+
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex flex-wrap gap-2">

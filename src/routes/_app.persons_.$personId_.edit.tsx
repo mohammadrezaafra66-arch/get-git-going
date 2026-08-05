@@ -30,8 +30,12 @@ function PersonEditPage() {
   const { personId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { roles } = useAuth();
+  const { roles, rolesLoading } = useAuth();
   const canManage = hasPermissionEx(roles, "persons", "update");
+
+  if (!rolesLoading && !canManage) {
+    return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
+  }
 
   const getFn = useServerFn(getPerson);
   const updateFn = useServerFn(updatePerson);
@@ -149,7 +153,7 @@ function PersonEditPage() {
   }
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="min-w-0 space-y-4 overflow-x-hidden" dir="rtl">
       <PageHeader
         title={canManage ? "ویرایش شخص" : "مشاهده شخص"}
         description={person.display_name}

@@ -294,7 +294,7 @@ export function PersonIdentifiersForm({
               identifiers.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>{KIND_LABEL[r.kind]}</TableCell>
-                  <TableCell dir="ltr" className="font-mono text-sm">
+                  <TableCell dir="ltr" className="break-all font-mono text-sm">
                     {r.value_normalized}
                   </TableCell>
                   <TableCell>{statusBadge(r.status)}</TableCell>

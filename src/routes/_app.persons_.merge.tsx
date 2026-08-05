@@ -6,6 +6,8 @@ import { ArrowRight, Loader2, Merge, ShieldAlert, UserX } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,15 +103,25 @@ function rpcMessage(error: unknown, fallback: string): string {
 
 function PersonMergePage() {
   const queryClient = useQueryClient();
+  const { roles, rolesLoading } = useAuth();
+  const allowed = hasAnyRole(roles, ["admin", "manager"]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["person-merge-candidates"],
+    enabled: allowed,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("person_merge_candidates_overview");
       if (error) throw error;
       return (data ?? []) as unknown as Candidate[];
     },
   });
+
+  if (rolesLoading) {
+    return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
+  }
+  if (!allowed) {
+    return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
+  }
 
   const candidates = data ?? [];
 
