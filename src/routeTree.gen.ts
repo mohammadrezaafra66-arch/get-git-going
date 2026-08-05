@@ -108,6 +108,7 @@ import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pri
 import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merge'
 import { Route as AppPersonsImportRouteImport } from './routes/_app.persons_.import'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
+import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$personId'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
@@ -189,7 +190,7 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
-import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId.edit'
+import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId_.edit'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
@@ -727,6 +728,11 @@ const AppPersonsCreateRoute = AppPersonsCreateRouteImport.update({
   path: '/persons/create',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPersonsPersonIdRoute = AppPersonsPersonIdRouteImport.update({
+  id: '/persons_/$personId',
+  path: '/persons/$personId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   id: '/operations/tasks',
   path: '/operations/tasks',
@@ -1162,7 +1168,7 @@ const AppPricingSaleListsListIdRoute =
     getParentRoute: () => AppRoute,
   } as any)
 const AppPersonsPersonIdEditRoute = AppPersonsPersonIdEditRouteImport.update({
-  id: '/persons_/$personId/edit',
+  id: '/persons_/$personId_/edit',
   path: '/persons/$personId/edit',
   getParentRoute: () => AppRoute,
 } as any)
@@ -1448,6 +1454,7 @@ export interface FileRoutesByFullPath {
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/import': typeof AppPersonsImportRoute
   '/persons/merge': typeof AppPersonsMergeRoute
@@ -1657,6 +1664,7 @@ export interface FileRoutesByTo {
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/import': typeof AppPersonsImportRoute
   '/persons/merge': typeof AppPersonsMergeRoute
@@ -1869,6 +1877,7 @@ export interface FileRoutesById {
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
+  '/_app/persons_/$personId': typeof AppPersonsPersonIdRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/persons_/import': typeof AppPersonsImportRoute
   '/_app/persons_/merge': typeof AppPersonsMergeRoute
@@ -1940,7 +1949,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
-  '/_app/persons_/$personId/edit': typeof AppPersonsPersonIdEditRoute
+  '/_app/persons_/$personId_/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
@@ -2082,6 +2091,7 @@ export interface FileRouteTypes {
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
+    | '/persons/$personId'
     | '/persons/create'
     | '/persons/import'
     | '/persons/merge'
@@ -2291,6 +2301,7 @@ export interface FileRouteTypes {
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
+    | '/persons/$personId'
     | '/persons/create'
     | '/persons/import'
     | '/persons/merge'
@@ -2502,6 +2513,7 @@ export interface FileRouteTypes {
     | '/_app/operations/purchase-advisor'
     | '/_app/operations/receipts'
     | '/_app/operations/tasks'
+    | '/_app/persons_/$personId'
     | '/_app/persons_/create'
     | '/_app/persons_/import'
     | '/_app/persons_/merge'
@@ -2573,7 +2585,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
-    | '/_app/persons_/$personId/edit'
+    | '/_app/persons_/$personId_/edit'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
     | '/_app/sales/customers_/import'
@@ -3333,6 +3345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPersonsCreateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/persons_/$personId': {
+      id: '/_app/persons_/$personId'
+      path: '/persons/$personId'
+      fullPath: '/persons/$personId'
+      preLoaderRoute: typeof AppPersonsPersonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/tasks': {
       id: '/_app/operations/tasks'
       path: '/operations/tasks'
@@ -3900,8 +3919,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPricingSaleListsListIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/persons_/$personId/edit': {
-      id: '/_app/persons_/$personId/edit'
+    '/_app/persons_/$personId_/edit': {
+      id: '/_app/persons_/$personId_/edit'
       path: '/persons/$personId/edit'
       fullPath: '/persons/$personId/edit'
       preLoaderRoute: typeof AppPersonsPersonIdEditRouteImport
@@ -4399,6 +4418,7 @@ interface AppRouteChildren {
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
   AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
+  AppPersonsPersonIdRoute: typeof AppPersonsPersonIdRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPersonsImportRoute: typeof AppPersonsImportRoute
   AppPersonsMergeRoute: typeof AppPersonsMergeRoute
@@ -4545,6 +4565,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
   AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
+  AppPersonsPersonIdRoute: AppPersonsPersonIdRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPersonsImportRoute: AppPersonsImportRoute,
   AppPersonsMergeRoute: AppPersonsMergeRoute,

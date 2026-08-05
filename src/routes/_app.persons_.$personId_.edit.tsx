@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
-export const Route = createFileRoute("/_app/persons_/$personId/edit")({
+export const Route = createFileRoute("/_app/persons_/$personId_/edit")({
   beforeLoad: async () => {
     await requirePermission("persons", "update");
   },

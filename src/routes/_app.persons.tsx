@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Loader2, Pencil, Upload } from "lucide-react";
+import { Plus, Search, Loader2, Pencil, Eye, Upload } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -205,11 +205,20 @@ function PersonsListPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to="/persons/$personId/edit" params={{ personId: r.id }}>
-                            <Pencil className="ml-1 h-3 w-3" /> {canManage ? "ویرایش" : "مشاهده"}
-                          </Link>
-                        </Button>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/persons/$personId" params={{ personId: r.id }}>
+                              <Eye className="ml-1 h-3 w-3" /> مشاهده
+                            </Link>
+                          </Button>
+                          {canManage ? (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to="/persons/$personId/edit" params={{ personId: r.id }}>
+                                <Pencil className="ml-1 h-3 w-3" /> ویرایش
+                              </Link>
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
