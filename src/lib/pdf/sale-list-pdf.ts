@@ -22,6 +22,7 @@ import {
   type StockStatus,
   type ProductType,
 } from "@/lib/products/constants";
+import { BRANDING } from "@/config/branding";
 
 export type SaleListPdfColumn =
   | "name"
@@ -588,7 +589,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   </div>
   <div class="header">
     <div>
-      <div class="brand">افراکالا</div>
+      <div class="brand">${BRANDING.displayNameFa}</div>
       <div class="meta">
         <div>${escapeHtml(input.listName)} — نسخه ${escapeHtml(formatNumber(input.versionNumber))}</div>
       </div>

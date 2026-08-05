@@ -22,13 +22,14 @@
  *     "not applicable" changes what Asan imports.
  */
 
+import { BRANDING } from "@/config/branding";
+
 /** Asan's unit is Rial; AfraKala's is Toman. */
 export const RIAL_PER_TOMAN = 10;
 
 /** Shown in the export UI so the accountant can see the conversion happened. */
 export const AMOUNT_UNIT_LABEL_FA = "ریال";
-export const AMOUNT_UNIT_NOTE_FA =
-  "مبلغ‌ها در فایل خروجی به «ریال» نوشته می‌شوند (مقدار افراکالا به تومان است و ×۱۰ می‌شود).";
+export const AMOUNT_UNIT_NOTE_FA = `مبلغ‌ها در فایل خروجی به «ریال» نوشته می‌شوند (مقدار ${BRANDING.platformName} به تومان است و ×۱۰ می‌شود).`;
 
 export class AmountConversionError extends Error {
   constructor(value: number) {

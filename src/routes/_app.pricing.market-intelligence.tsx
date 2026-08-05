@@ -25,11 +25,13 @@ import { HotBrandsCategoriesCard } from "@/components/management/market-intellig
 import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
 import { WhatsappTopProductsCard } from "@/components/management/market-intelligence/WhatsappTopProductsCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/pricing/market-intelligence")({
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "accountant"]);
   },
+  head: () => ({ meta: [{ title: getPageTitle("هوش بازار") }] }),
   component: MarketIntelligencePage,
 });
 
@@ -56,7 +58,7 @@ function MarketIntelligencePage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="داشبورد هوشمند بازار افراکالا"
+        title={`داشبورد هوشمند بازار ${BRANDING.platformName}`}
         description="تحلیل محصولات داغ، روند قیمت، فرصت‌های سود و ریسک‌های بازار"
         actions={
           <Button variant="outline" size="sm" onClick={refresh}>

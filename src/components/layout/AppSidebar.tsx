@@ -27,6 +27,7 @@ import type { NavigationEntry } from "@/lib/navigation/types";
 import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorites";
 import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
 import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
+import { BRANDING } from "@/config/branding";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -310,10 +311,10 @@ export function AppSidebar() {
             </div>
             <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
               <span className="truncate text-[13px] font-bold leading-tight text-sidebar-foreground">
-                افراکالا
+                {BRANDING.displayNameFa}
               </span>
               <span className="truncate text-[10.5px] text-sidebar-foreground/65">
-                دستیار هوشمند کسب‌وکار
+                {BRANDING.taglineFa}
               </span>
             </div>
             {primaryAction && (

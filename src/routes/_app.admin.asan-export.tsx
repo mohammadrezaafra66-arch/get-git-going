@@ -65,6 +65,7 @@ import {
   type ExportSelection,
 } from "@/lib/asan/export-selection";
 import { downloadAsanWorkbook } from "@/lib/asan/write-xlsx";
+import { getPageTitle } from "@/config/branding";
 
 /**
  * ASAN M4.2 — the shared export shell.
@@ -93,6 +94,7 @@ export const Route = createFileRoute("/_app/admin/asan-export")({
   beforeLoad: async () => {
     await requireAnyRole(["admin", "accountant"]);
   },
+  head: () => ({ meta: [{ title: getPageTitle("خروجی برای آسان") }] }),
   component: AsanExportPage,
 });
 

@@ -27,6 +27,7 @@ export default defineConfig({
     // rules they assert live in triggers and RLS precisely so no client can dodge
     // them, so the honest test is the one that tries to dodge them.
     /asan\/.*\.spec\.ts/,
+    /branding\/.*\.spec\.ts/,
   ],
   timeout: 45_000,
   expect: {

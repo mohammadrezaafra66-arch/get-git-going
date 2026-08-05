@@ -15,6 +15,7 @@ import {
   type DynamicValues,
 } from "@/components/profile/DynamicProfileFields";
 import { fetchActiveProfileFields, saveProfileFieldValues } from "@/lib/profile-fields/queries";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/register")({
   beforeLoad: async () => {
@@ -30,27 +31,24 @@ export const Route = createFileRoute("/register")({
   component: RegisterPage,
   head: () => ({
     meta: [
-      { title: "ثبت‌نام در افراکالا" },
+      { title: getPageTitle("ثبت‌نام") },
       {
         name: "description",
-        content:
-          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+        content: `ایجاد حساب کاربری در ${BRANDING.platformName}؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.`,
       },
-      { property: "og:title", content: "ثبت‌نام در افراکالا" },
+      { property: "og:title", content: getPageTitle("ثبت‌نام") },
       {
         property: "og:description",
-        content:
-          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+        content: `ایجاد حساب کاربری در ${BRANDING.platformName}؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.`,
       },
-      { property: "og:url", content: "https://get-git-going.lovable.app/register" },
-      { name: "twitter:title", content: "ثبت‌نام در افراکالا" },
+      { property: "og:url", content: `${BRANDING.publicOrigin}/register` },
+      { name: "twitter:title", content: getPageTitle("ثبت‌نام") },
       {
         name: "twitter:description",
-        content:
-          "ایجاد حساب کاربری در دستیار هوشمند افراکالا؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.",
+        content: `ایجاد حساب کاربری در ${BRANDING.platformName}؛ دسترسی به ابزارهای مدیریت محصول، قیمت و فروش.`,
       },
     ],
-    links: [{ rel: "canonical", href: "https://get-git-going.lovable.app/register" }],
+    links: [{ rel: "canonical", href: `${BRANDING.publicOrigin}/register` }],
   }),
 });
 

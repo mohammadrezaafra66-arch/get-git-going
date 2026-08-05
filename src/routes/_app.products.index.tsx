@@ -56,6 +56,7 @@ import { ProductTimelineDialog } from "@/components/products/ProductTimelineDial
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { exportProductCatalogToExcel } from "@/lib/export/product-catalog-excel";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 const EXPORT_ROW_CAP = 5000;
 
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => {
     await requirePermission("products", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle("محصولات") }] }),
   component: ProductsPage,
 });
 
@@ -492,7 +494,7 @@ function ProductsPage() {
     <div className="space-y-5">
       <PageHeader
         title="محصولات"
-        description="مدیریت محصولات افراکالا، دسته‌ها، برندها و برچسب‌ها"
+        description={`مدیریت محصولات ${BRANDING.platformName}، دسته‌ها، برندها و برچسب‌ها`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

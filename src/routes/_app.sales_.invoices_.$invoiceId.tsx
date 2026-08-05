@@ -20,6 +20,7 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
+import { BRANDING } from "@/config/branding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -557,7 +558,7 @@ function InvoiceDetailPage() {
           }}
         >
           <div>
-            <div style={{ fontSize: 20, fontWeight: 900 }}>دستیار هوشمند افراکالا</div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>{BRANDING.displayNameFa}</div>
             <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>سیستم مدیریت فروش</div>
           </div>
           <div style={{ textAlign: "left" }}>
@@ -775,7 +776,7 @@ function InvoiceDetailPage() {
             color: "#999",
           }}
         >
-          این سند توسط سیستم دستیار هوشمند افراکالا صادر شده است —{" "}
+          این سند توسط سیستم {BRANDING.displayNameFa} صادر شده است —{" "}
           {new Date().toLocaleDateString("fa-IR")}
         </div>
       </div>

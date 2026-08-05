@@ -20,6 +20,7 @@ import {
 } from "@/hooks/messenger/useAiConversation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { BRANDING } from "@/config/branding";
 
 export function AiAssistantDrawer({
   open,
@@ -165,7 +166,7 @@ export function AiAssistantDrawer({
         <SheetHeader className="border-b p-4">
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            دستیار هوشمند AfraKala
+            دستیار هوشمند {BRANDING.displayNameFa}
           </SheetTitle>
           <SheetDescription className="text-xs">
             گفتگو با ارائه‌دهنده هوش مصنوعی تنظیم‌شده در پنل مدیریت.

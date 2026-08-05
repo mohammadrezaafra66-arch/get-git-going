@@ -11,11 +11,13 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/academy")({
   beforeLoad: async () => {
     await requirePermission("academy", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle(`آکادمی ${BRANDING.platformName}`) }] }),
   component: AcademyListPage,
 });
 
@@ -77,7 +79,7 @@ function AcademyListPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="آکادمی افراکالا"
+        title={`آکادمی ${BRANDING.platformName}`}
         description="دوره‌های آموزشی داخلی و آزمون‌ها"
         actions={
           canManage ? (

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { BRANDING } from "@/config/branding";
 
 export const Route = createFileRoute("/api/version")({
   server: {
@@ -7,7 +8,7 @@ export const Route = createFileRoute("/api/version")({
         const commit = process.env.APP_GIT_SHA || "unknown";
         const body = {
           ok: true,
-          app: "AfraKala",
+          app: BRANDING.platformName,
           environment:
             process.env.APP_ENV || process.env.NODE_ENV || "unknown",
           commit,

@@ -3,6 +3,7 @@ import type {
   PriceListRow,
   PriceListShopInfo,
 } from "./canonical";
+import { BRANDING } from "@/config/branding";
 
 // ---------- Inputs ----------
 
@@ -134,7 +135,7 @@ export function buildFromSaleList(opts: {
     generatedAt: new Date(),
     rows,
     currency: "تومان",
-    companyName: shop?.shop_name ?? "افراکالا",
+    companyName: shop?.shop_name ?? BRANDING.platformName,
     companyPhone: shop?.shop_phone ?? undefined,
     selectedColumns: list.selected_columns ?? undefined,
     brandOrder: list.pdf_brand_order ?? undefined,
@@ -161,7 +162,7 @@ export function buildFromLiveBoard(opts: {
     generatedAt: new Date(),
     rows: rows.map((r) => ({ ...r })),
     currency: "تومان",
-    companyName: shop?.shop_name ?? "افراکالا",
+    companyName: shop?.shop_name ?? BRANDING.platformName,
     companyPhone: shop?.shop_phone ?? undefined,
     shopInfo: toShopInfo(shop),
   };

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BRANDING } from "@/config/branding";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -1139,7 +1140,7 @@ function PriceListShareSection({ rows }: { rows: PriceListRow[] }) {
     generatedAt: new Date(),
     rows,
     currency: "تومان",
-    companyName: "افراکالا",
+    companyName: BRANDING.platformName,
   });
 
   const copy = async (text: string, label: string) => {

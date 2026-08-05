@@ -16,6 +16,7 @@ import { initCacheBuster, forceHardReload } from "@/lib/cache-buster";
 import { registerServiceWorker } from "@/lib/pwa/register-sw";
 
 import appCss from "../styles.css?url";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 function NotFoundComponent() {
   return (
@@ -153,23 +154,23 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "دستیار هوشمند افراکالا" },
+      { title: getPageTitle() },
       {
         name: "description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
-      { property: "og:title", content: "دستیار هوشمند افراکالا" },
+      { property: "og:title", content: BRANDING.defaultTitle },
       {
         property: "og:description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "افراکالا" },
+      { property: "og:site_name", content: BRANDING.platformName },
       { property: "og:locale", content: "fa_IR" },
-      { name: "twitter:title", content: "دستیار هوشمند افراکالا" },
+      { name: "twitter:title", content: BRANDING.defaultTitle },
       {
         name: "twitter:description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
       {
         property: "og:image",
@@ -185,9 +186,9 @@ export const Route = createRootRoute({
       // PWA (Phase 8.1). theme-color paints the Android status bar and the
       // standalone title bar; it matches --primary in src/styles.css.
       { name: "theme-color", content: "#007d7e" },
-      { name: "application-name", content: "افراکالا" },
+      { name: "application-name", content: BRANDING.applicationName },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "افراکالا" },
+      { name: "apple-mobile-web-app-title", content: BRANDING.applicationName },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "mobile-web-app-capable", content: "yes" },
     ],
@@ -241,9 +242,9 @@ export const Route = createRootRoute({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "افراکالا",
-          url: "https://get-git-going.lovable.app",
-          description: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+          name: BRANDING.platformName,
+          url: BRANDING.publicOrigin,
+          description: BRANDING.metaDescriptionFa,
         }),
       },
       {
@@ -251,8 +252,8 @@ export const Route = createRootRoute({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "افراکالا",
-          url: "https://get-git-going.lovable.app",
+          name: BRANDING.platformName,
+          url: BRANDING.publicOrigin,
           inLanguage: "fa-IR",
         }),
       },
@@ -324,7 +325,7 @@ function EnvironmentSafetyBanner() {
 
   const bannerText = suspiciousProductionRuntime
     ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
-    : configuredBannerText || "«محیط تست افراکالا — اطلاعات این بخش واقعی نیست»";
+    : configuredBannerText || `«محیط تست ${BRANDING.platformName} — اطلاعات این بخش واقعی نیست»`;
 
   const className = suspiciousProductionRuntime
     ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"

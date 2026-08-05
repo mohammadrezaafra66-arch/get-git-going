@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "دستیار هوشمند افراکالا",
-  "short_name": "افراکالا",
-  "description": "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+  "name": "myafrakala.ir",
+  "short_name": "myafrakala.ir",
+  "description": "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور myafrakala.ir.",
   "lang": "fa-IR",
   "dir": "rtl",
   "start_url": "/",

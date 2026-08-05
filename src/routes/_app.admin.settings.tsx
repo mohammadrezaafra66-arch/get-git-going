@@ -20,6 +20,7 @@ import {
   type ShopSettingKey,
   type ShopSettingsMap,
 } from "@/lib/shop/settings";
+import { BRANDING } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/admin/settings")({
   beforeLoad: async () => {
@@ -35,7 +36,7 @@ const TEXTAREA_KEYS: ShopSettingKey[] = [
 ];
 
 const PLACEHOLDERS: Record<ShopSettingKey, string> = {
-  shop_name: "مثلاً فروشگاه افراکالا",
+  shop_name: `مثلاً فروشگاه ${BRANDING.platformName}`,
   shop_address: "آدرس کامل فروشگاه",
   shop_phone: "مثلاً ۰۲۱-۱۲۳۴۵۶۷۸",
   shop_website: "https://example.com",

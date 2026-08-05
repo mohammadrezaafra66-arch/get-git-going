@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { recordProviderHealth, resolveProviderForCapability } from "@/lib/ai/client.server";
+import { BRANDING } from "@/config/branding";
 
 const bodySchema = z.object({
   group_id: z.string().uuid().nullable().optional(),
@@ -14,7 +15,7 @@ type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 const CHAT_TIMEOUT_MS = 120_000;
 const SYSTEM_PROMPT = [
-  "تو دستیار هوشمند AfraKala هستی.",
+  `تو دستیار هوشمند ${BRANDING.platformName} هستی.`,
   "فقط به فارسی پاسخ بده و پاسخ‌هایت دقیق، مختصر، حرفه‌ای و مفید برای کسب‌وکار باشد.",
   "قالب پاسخ همیشه راست‌نویس باشد: جمله‌ها فارسی، روان و مناسب نمایش RTL باشند.",
   "از Markdown سنگین استفاده نکن؛ از جدول، تیترهای بزرگ، علامت ** برای بولد، و لیست‌های پیچیده پرهیز کن.",

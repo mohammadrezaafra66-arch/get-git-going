@@ -37,11 +37,13 @@ import {
   useTodayDocumentStats,
 } from "@/hooks/dashboard/useDashboardStats";
 import { formatTomanFa } from "@/lib/dashboard/utils";
+import { getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/dashboard")({
   beforeLoad: async () => {
     await requirePermission("dashboard", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle("داشبورد") }] }),
   component: DashboardPage,
 });
 

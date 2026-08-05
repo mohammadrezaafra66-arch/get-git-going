@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BRANDING } from "@/config/branding";
 
 // The @supabase/supabase-js `oauth` namespace is currently in beta and not
 // present in the generated types; wrap the three methods we need in a small
@@ -108,8 +109,8 @@ function ConsentPage() {
         <CardHeader>
           <CardTitle>اتصال {clientName} به حساب شما</CardTitle>
           <CardDescription>
-            {clientName} می‌خواهد به‌عنوان شما به افراکالا دسترسی داشته باشد و از
-            ابزارهای این حساب استفاده کند.
+            {clientName} می‌خواهد به‌عنوان شما به {BRANDING.platformName} دسترسی داشته باشد و
+            از ابزارهای این حساب استفاده کند.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

@@ -1,4 +1,5 @@
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { BRANDING } from "@/config/branding";
 
 interface Props {
   name: string;
@@ -19,7 +20,9 @@ export function SaleListHeader({
     <header className="border-b border-border bg-card">
       <div className="mx-auto max-w-5xl px-4 py-5 sm:py-6">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-base font-bold text-foreground sm:text-lg">افراکالا</div>
+          <div className="text-base font-bold text-foreground sm:text-lg">
+            {BRANDING.displayNameFa}
+          </div>
           <div className="text-xs text-muted-foreground sm:text-sm">لیست فروش</div>
         </div>
         <h1 className="mt-3 text-xl font-bold text-foreground sm:text-2xl">{name}</h1>

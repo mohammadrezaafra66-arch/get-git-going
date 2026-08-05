@@ -23,12 +23,14 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { BRANDING, getPageTitle } from "@/config/branding";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/")({
   beforeLoad: async () => {
     await requirePermission("pricing", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle("قیمت‌گذاری") }] }),
   component: PricingHubPage,
 });
 
@@ -179,7 +181,7 @@ function PricingHubPage() {
       to: "/pricing/market-intelligence",
       label: "داشبورد هوشمند بازار",
       icon: BarChart3,
-      desc: "محصولات داغ، تغییرات قیمت و شاخص بازار افراکالا",
+      desc: `محصولات داغ، تغییرات قیمت و شاخص بازار ${BRANDING.platformName}`,
       enabled: true,
     },
     {
@@ -229,7 +231,7 @@ function PricingHubPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="موتور قیمت‌گذاری افراکالا"
+        title={`موتور قیمت‌گذاری ${BRANDING.platformName}`}
         description="مدیریت نرخ ارز، قیمت خرید، قوانین قیمت‌گذاری و محاسبه قیمت فروش"
       />
 

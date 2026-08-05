@@ -8,6 +8,7 @@ import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
+import { getPageTitle } from "@/config/branding";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +136,7 @@ export const Route = createFileRoute("/_app/persons")({
   beforeLoad: async () => {
     await requirePermission("persons", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle("اشخاص") }] }),
   component: PersonsListPage,
 });
 
