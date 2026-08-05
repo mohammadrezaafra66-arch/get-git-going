@@ -1,16 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Loader2, Merge, Pencil, PhoneOff } from "lucide-react";
+import { ArrowRight, Loader2, Merge, Pencil } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
-import { PersonContextLinksForm } from "@/components/persons/PersonContextLinksForm";
 import { PersonAliasesManager } from "@/components/persons/PersonAliasesManager";
+import { PersonDeepLinks } from "@/components/persons/PersonDeepLinks";
+import { PersonMergePanel } from "@/components/persons/PersonMergePanel";
+import { PersonCollisionPanel } from "@/components/persons/PersonCollisionPanel";
+import { PersonAuditSummary } from "@/components/persons/PersonAuditSummary";
 import { getPerson } from "@/lib/persons/functions";
 import { toError } from "@/lib/server-fn-error";
 import type { PersonIdentifierDTO } from "@/lib/persons/identifiers.functions";
@@ -21,9 +31,10 @@ import { formatDateTimeFa } from "@/lib/i18n/formatters";
 import type { PersonKind, PersonVisibilityScope } from "@/lib/persons/schemas";
 
 /**
- * Phase 1 P0 — read-only person profile (+ Phase 4 alias manager).
+ * Phase 5 — person identity dossier (read-only profile expansion).
  *
- * Requires persons.view (not update). Alias edits gated by persons.update.
+ * Requires persons.view. Writes gated by persons.update.
+ * Merge/collision/audit sections follow existing RLS + route permissions.
  */
 export const Route = createFileRoute("/_app/persons_/$personId")({
   beforeLoad: async () => {
@@ -43,13 +54,6 @@ const SCOPE_LABEL: Record<PersonVisibilityScope, string> = {
   restricted_executive: "محدود-مدیریتی",
 };
 
-interface MergeCandidateRow {
-  id: string;
-  reason: string;
-  detail: string | null;
-  status: string;
-}
-
 async function authHeaders(): Promise<{ Authorization: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
@@ -59,11 +63,24 @@ async function authHeaders(): Promise<{ Authorization: string }> {
   return { Authorization: `Bearer ${token}` };
 }
 
-function e164ToLocalMobile(value: string): string | null {
-  const v = value.trim();
-  if (/^\+98\d{10}$/.test(v)) return `0${v.slice(3)}`;
-  if (/^09\d{9}$/.test(v)) return v;
-  return null;
+function TimestampWithTooltip({ iso, label }: { iso: string; label: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help border-b border-dotted border-muted-foreground/50">
+              {formatDateTimeFa(iso)}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="font-mono text-xs" dir="ltr">
+            {iso}
+          </TooltipContent>
+        </Tooltip>
+      </dd>
+    </div>
+  );
 }
 
 function PersonProfilePage() {
@@ -71,6 +88,11 @@ function PersonProfilePage() {
   const { roles } = useAuth();
   const canUpdate = hasPermissionEx(roles, "persons", "update");
   const canMerge = hasAnyRole(roles, ["admin", "manager"]);
+  const canSeeCollisions = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+  const canOpenStaff = hasAnyRole(roles, ["admin"]);
+  const canOpenAccounting = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+  const canViewAudit = hasPermissionEx(roles, "audit-logs", "view");
+  const isViewerOnly = hasAnyRole(roles, ["viewer"]) && !canUpdate;
 
   const getFn = useServerFn(getPerson);
 
@@ -97,47 +119,26 @@ function PersonProfilePage() {
     },
   });
 
-  const mergeCandidateQuery = useQuery({
-    queryKey: ["person", personId, "merge-candidate"],
-    enabled: canMerge,
-    queryFn: async (): Promise<MergeCandidateRow | null> => {
-      const { data, error } = await supabase
-        .from("person_merge_candidates" as never)
-        .select("id, reason, detail, status")
-        .eq("status", "pending")
-        .or(`person_id_a.eq.${personId},person_id_b.eq.${personId}`)
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as MergeCandidateRow | null) ?? null;
-    },
-  });
-
-  const phoneCollisionQuery = useQuery({
-    queryKey: ["person", personId, "phone-collision", identifiersQuery.data],
-    enabled: canMerge && !!identifiersQuery.data,
-    queryFn: async (): Promise<{ id: string; normalized_phone: string } | null> => {
-      const locals = (identifiersQuery.data ?? [])
-        .filter((i) => i.kind === "mobile_e164" && i.status !== "revoked")
-        .map((i) => e164ToLocalMobile(i.value_normalized))
-        .filter((v): v is string => !!v);
-      if (locals.length === 0) return null;
-      const { data, error } = await supabase
-        .from("phone_collisions")
-        .select("id, normalized_phone")
-        .eq("status", "pending")
-        .in("normalized_phone", locals)
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+  const createdByQuery = useQuery({
+    queryKey: ["person", personId, "created-by", personQuery.data?.created_by],
+    enabled: !!personQuery.data?.created_by,
+    queryFn: async (): Promise<string | null> => {
+      const id = personQuery.data!.created_by!;
+      const { data } = await supabase.from("profiles").select("full_name").eq("id", id).maybeSingle();
+      return data?.full_name?.trim() || null;
     },
   });
 
   if (personQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground" dir="rtl">
-        <Loader2 className="ml-2 h-5 w-5 animate-spin" /> در حال بارگذاری...
+      <div className="space-y-4" dir="rtl">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+        <div className="flex items-center justify-center py-4 text-muted-foreground">
+          <Loader2 className="ml-2 h-5 w-5 animate-spin" /> در حال بارگذاری...
+        </div>
       </div>
     );
   }
@@ -181,160 +182,218 @@ function PersonProfilePage() {
     );
   }
 
-  const pendingMerge = mergeCandidateQuery.data;
-  const collision = phoneCollisionQuery.data;
+  const identifiers = identifiersQuery.data ?? [];
+  const identifiersHiddenForViewer =
+    isViewerOnly && !identifiersQuery.isLoading && !identifiersQuery.error && identifiers.length === 0;
 
   return (
-    <div className="space-y-4" dir="rtl">
-      <nav className="text-sm text-muted-foreground" aria-label="مسیر صفحه">
-        <Link to="/persons" className="hover:text-foreground hover:underline">
-          اشخاص
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">{person.display_name}</span>
-      </nav>
+    <TooltipProvider>
+      <div className="min-w-0 space-y-4 overflow-x-hidden" dir="rtl">
+        <nav className="text-sm text-muted-foreground" aria-label="مسیر صفحه">
+          <Link to="/persons" className="hover:text-foreground hover:underline">
+            اشخاص
+          </Link>
+          <span className="mx-2">/</span>
+          <span className="break-words text-foreground">{person.display_name}</span>
+        </nav>
 
-      <PageHeader
-        title={person.display_name}
-        description="پروندهٔ فقط‌خواندنی شخص"
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link to="/persons">
-                <ArrowRight className="ml-2 h-4 w-4" /> بازگشت به فهرست
-              </Link>
-            </Button>
-            {canUpdate ? (
-              <Button asChild>
-                <Link to="/persons/$personId/edit" params={{ personId }}>
-                  <Pencil className="ml-2 h-4 w-4" /> ویرایش
-                </Link>
-              </Button>
-            ) : null}
-            {canMerge ? (
+        <PageHeader
+          title={person.display_name}
+          description="پروندهٔ فقط‌خواندنی شخص"
+          actions={
+            <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline">
-                <Link to="/persons/merge">
-                  <Merge className="ml-2 h-4 w-4" /> اشخاص تکراری
+                <Link to="/persons">
+                  <ArrowRight className="ml-2 h-4 w-4" /> بازگشت به فهرست
                 </Link>
               </Button>
-            ) : null}
-          </div>
-        }
-      />
+              {canUpdate ? (
+                <Button asChild>
+                  <Link to="/persons/$personId/edit" params={{ personId }}>
+                    <Pencil className="ml-2 h-4 w-4" /> ویرایش
+                  </Link>
+                </Button>
+              ) : null}
+              {canMerge ? (
+                <Button asChild variant="outline">
+                  <Link to="/persons/merge">
+                    <Merge className="ml-2 h-4 w-4" /> اشخاص تکراری
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
 
-      {(pendingMerge || collision) && (
-        <div className="flex flex-col gap-2">
-          {pendingMerge ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <Badge className="bg-amber-500 text-white hover:bg-amber-500">نامزد ادغام</Badge>
-              <span className="text-muted-foreground">
-                این شخص در صف بررسی اشخاص تکراری است
-                {pendingMerge.detail ? ` — ${pendingMerge.detail}` : ""}.
-              </span>
-            </div>
-          ) : null}
-          {collision ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-              <PhoneOff className="h-4 w-4 text-destructive" />
-              <span>تداخل شماره تلفن برای {collision.normalized_phone} ثبت شده است.</span>
-              <Button asChild variant="link" className="h-auto p-0">
-                <Link to="/admin/phone-collisions">مشاهدهٔ صف تداخل</Link>
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      )}
+        {/* 1. Identity summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle>خلاصه هویت</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted-foreground">نام نمایشی</dt>
+                <dd className="break-words font-medium">{person.display_name}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">نام حقوقی</dt>
+                <dd className="break-words">{person.legal_name?.trim() ? person.legal_name : "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">نوع شخص</dt>
+                <dd>{KIND_LABEL[person.kind as PersonKind] ?? person.kind}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">وضعیت</dt>
+                <dd>
+                  {person.is_active ? (
+                    <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">فعال</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">
+                      غیرفعال
+                    </Badge>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">سطح دسترسی</dt>
+                <dd>
+                  {SCOPE_LABEL[person.visibility_scope as PersonVisibilityScope] ??
+                    person.visibility_scope}
+                </dd>
+              </div>
+              <TimestampWithTooltip iso={person.created_at} label="تاریخ ایجاد" />
+              <TimestampWithTooltip iso={person.updated_at} label="آخرین تغییر" />
+              {person.created_by ? (
+                <div>
+                  <dt className="text-xs text-muted-foreground">ایجادکننده</dt>
+                  <dd>{createdByQuery.data ?? "—"}</dd>
+                </div>
+              ) : null}
+              {person.notes?.trim() ? (
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <dt className="text-xs text-muted-foreground">یادداشت</dt>
+                  <dd className="whitespace-pre-wrap">{person.notes}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>اطلاعات اصلی</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">نام نمایشی</dt>
-              <dd className="font-medium">{person.display_name}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">نام رسمی / قانونی</dt>
-              <dd>{person.legal_name?.trim() ? person.legal_name : "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">نوع</dt>
-              <dd>{KIND_LABEL[person.kind as PersonKind] ?? person.kind}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">سطح دسترسی</dt>
-              <dd>
-                {SCOPE_LABEL[person.visibility_scope as PersonVisibilityScope] ??
-                  person.visibility_scope}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">وضعیت</dt>
-              <dd>
-                {person.is_active ? (
-                  <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">فعال</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    غیرفعال
-                  </Badge>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">یادداشت</dt>
-              <dd className="whitespace-pre-wrap">{person.notes?.trim() ? person.notes : "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">ایجاد</dt>
-              <dd>{formatDateTimeFa(person.created_at)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">آخرین به‌روزرسانی</dt>
-              <dd>{formatDateTimeFa(person.updated_at)}</dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>شناسه‌ها</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {identifiersQuery.isLoading ? (
-            <div className="flex items-center justify-center py-6 text-muted-foreground">
-              <Loader2 className="ml-2 h-5 w-5 animate-spin" /> در حال بارگذاری شناسه‌ها...
-            </div>
-          ) : identifiersQuery.error ? (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-              بارگذاری شناسه‌ها با خطا مواجه شد.
-            </div>
-          ) : (
-            <PersonIdentifiersForm
+        {/* 2. Roles / deep links */}
+        <Card>
+          <CardHeader>
+            <CardTitle>نقش‌ها و پرونده‌های مرتبط</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PersonDeepLinks
               personId={personId}
-              identifiers={identifiersQuery.data ?? []}
-              canManage={false}
+              canOpenStaff={canOpenStaff}
+              canOpenAccounting={canOpenAccounting}
             />
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardContent className="pt-6">
-          <PersonAliasesManager personId={personId} canManage={canUpdate} />
-        </CardContent>
-      </Card>
+        {/* 3. Identifiers */}
+        <Card>
+          <CardHeader>
+            <CardTitle>شناسه‌ها</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {identifiersQuery.isLoading ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="ml-2 h-5 w-5 animate-spin" /> در حال بارگذاری شناسه‌ها...
+              </div>
+            ) : identifiersQuery.error ? (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                بارگذاری شناسه‌ها با خطا مواجه شد.
+              </div>
+            ) : identifiersHiddenForViewer ? (
+              <p className="text-sm text-muted-foreground">
+                اطلاعات شناسه برای این نقش قابل نمایش نیست
+              </p>
+            ) : (
+              <PersonIdentifiersForm
+                personId={personId}
+                identifiers={identifiers}
+                canManage={false}
+              />
+            )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>ارتباط‌های شخص</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PersonContextLinksForm personId={personId} canManage={false} />
-        </CardContent>
-      </Card>
-    </div>
+        {/* 4. Aliases */}
+        <Card>
+          <CardContent className="pt-6">
+            <PersonAliasesManager personId={personId} canManage={canUpdate} />
+          </CardContent>
+        </Card>
+
+        {/* 5–6. Alerts: merge + collision */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>وضعیت ادغام</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PersonMergePanel personId={personId} canReview={canMerge} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>تداخل شماره تلفن</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PersonCollisionPanel
+                personId={personId}
+                identifiers={identifiersQuery.data}
+                canSee={canSeeCollisions}
+                canReviewQueue={canMerge}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 7. Recent audit */}
+        {canViewAudit ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>فعالیت اخیر</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PersonAuditSummary personId={personId} canView={canViewAudit} />
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* 8. Metadata */}
+        <Card>
+          <CardHeader>
+            <CardTitle>فراداده</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-muted-foreground">شناسه شخص</dt>
+                <dd className="break-all font-mono text-xs" dir="ltr">
+                  {person.id}
+                </dd>
+              </div>
+              <TimestampWithTooltip iso={person.created_at} label="تاریخ ایجاد" />
+              <TimestampWithTooltip iso={person.updated_at} label="آخرین تغییر" />
+              {person.created_by ? (
+                <div>
+                  <dt className="text-xs text-muted-foreground">شناسه ایجادکننده</dt>
+                  <dd className="break-all font-mono text-xs" dir="ltr">
+                    {person.created_by}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+    </TooltipProvider>
   );
 }

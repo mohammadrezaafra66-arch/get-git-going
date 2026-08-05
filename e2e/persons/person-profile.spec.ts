@@ -40,7 +40,7 @@ test.describe("person profile — admin", () => {
     await expect(page.getByRole("link", { name: "ویرایش" })).toBeVisible();
     await expect(page.getByRole("link", { name: "اشخاص تکراری" })).toBeVisible();
     await expect(page.getByText("شناسه‌ها").first()).toBeVisible();
-    await expect(page.getByText("ارتباط‌های شخص").first()).toBeVisible();
+    await expect(page.getByText("نقش‌ها و پرونده‌های مرتبط").first()).toBeVisible();
   });
 
   test("admin edit CTA opens the existing edit route", async ({ page }) => {
