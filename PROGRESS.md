@@ -25,7 +25,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
-| 2026-08-06 | Cursor | **برندینگ — نام پلتفرم متمرکز `myafrakala.ir`.** `src/config/branding.ts` + جایگزینی کروم UI/SEO/PWA/PDF. بدون مهاجرت. typecheck **۷۰**. | *(پس از commit)* |
+| 2026-08-06 | Cursor | **برندینگ — نام پلتفرم متمرکز `myafrakala.ir`.** `src/config/branding.ts` + جایگزینی کروم UI/SEO/PWA/PDF. بدون مهاجرت. typecheck **۷۰**. | `dda3c4c7` |
 | 2026-08-05 | Cursor | **آسان — تکمیل خروجی دسته‌ای فروش با بازه تاریخ و انتخاب.** قابلیت هسته از قبل بود؛ UX: اعمال/پاک‌کردن بازه، انتخاب فقط قابل‌خروجی، تأیید شماره‌گذاری، سقف ۱۰۰۰، پیش‌نمایش صریح. بدون مهاجرت. typecheck **۷۰**. | `1f9425e6` |
 | 2026-08-05 | Cursor | **محصولات — لینک ترب اختیاری + خروجی اکسل کاتالوگ.** مهاجرت **۳۰۱** `products.torob_url` (nullable، CHECK http/s). فیلد در فرم/جزئیات. دکمهٔ «خروجی اکسل» روی `/products` با فیلترهای جاری (سقف ۵۰۰۰). typecheck **۷۰**. | `ef0c64ad` |
 | 2026-08-05 | Cursor | **Persons Phase 6 — تست سخت‌سازی.** Phone-collisions browser e2e، mobile/RTL overflow gate (۳۲۰/۳۷۵/۳۹۰/۴۳۰)، permission matrix (UI+JWT)، رگرسیون فاز ۱–۵. گارد کلاینت import/merge/edit + wrap overflow. بدون مهاجرت. Phase6 **۴۶ سبز / ۱ skip**؛ `e2e/persons`+RLS **۱۴۵ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۳ skip**؛ typecheck **۷۰**؛ drift **۰**؛ leftover **۰**. | `1d294f1e` |
