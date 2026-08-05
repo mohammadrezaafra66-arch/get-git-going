@@ -25,6 +25,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-05 | Cursor | **Persons Phase 4 P1 — UI مدیریت نام‌های دیگر.** مهاجرت **۳۰۰** (سخت‌کردن INSERT به admin/manager + `can_read_person`؛ audit DELETE). `PersonAliasesManager` روی پروفایل/ویرایش. typecheck **۷۰**. `e2e/persons` **۷۷ سبز / ۱ قرمز مستند / ۲ skip**. | `54526f49` |
 | 2026-08-05 | Cursor | **Persons Phase 3 P1 — فیلترهای امن فهرست.** مهاجرت **۲۹۹** گسترش `search_visible_persons` (context OR / active / missing AND؛ viewer-only missing را نادیده می‌گیرد). URL state روی `/persons`. بدون اندیس تازه. JWT **۱۳/۱۳**؛ filters-ui **۴/۴**؛ `e2e/persons` **۷۰ سبز / ۱ قرمز مستند / ۱ skip**. typecheck **۷۰**. | `845195d3` |
 | 2026-08-05 | Cursor | **Persons Phase 2 P1 — جستجوی امن شناسه/نام.** مهاجرت **۲۹۸** `search_visible_persons` (SECURITY INVOKER؛ تقویت SELECT aliases به `can_read_person`). فهرست + `searchPersons` از RPC. بدون اندیس تازه. JWT **۱۰/۱۰**؛ UI search سبز؛ `e2e/persons` **۵۴ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۱ skip**. typecheck **۷۰**. drift **۰**. | `16f95fb5` |
 | 2026-08-05 | Cursor | **Persons Phase 1 P0 — پروندهٔ فقط‌خواندنی `/persons/$personId`.** گارد `persons.view` (نه update). فهرست: «مشاهده» → پروفایل، «ویرایش» فقط برای admin/manager. بدون SQL/مهاجرت/RLS. `e2e/persons` **۴۲ سبز / ۱ قرمز مستند / ۱ skip**. typecheck **۷۰**. | `d6a1edbe` |
