@@ -14,7 +14,7 @@
 - **برنچ کاری:** `feature/navigation-modernization`
 - **محیط کار:** فقط `192.168.170.8` (تست). تولید `192.168.170.10` هرگز لمس نشود.
 - **دیتابیس:** `afrakala` در کانتینر `afrakala-lan-db`
-- **آخرین rebuild موفق:** Phase 5 dossier — `APP_GIT_SHA=b9be7bb7-dirty` سپس commit پیاده‌سازی
+- **آخرین rebuild موفق:** Phase 6 Persons test-hardening (پس از commit؛ `APP_GIT_SHA` باید برابر HEAD باشد)
 - **⚠️ نکتهٔ استقرار:** `docker compose up -d --force-recreate` و حتی `docker rm -f` + `up -d` روی این سیستم گاهی کانتینر را از **image قدیمی** می‌سازند؛ `APP_GIT_SHA` درست ولی کد قدیمی. مسیر مطمئن: `$env:GIT_SHA`/`$env:BUILD_TIME` را ست کن و `docker compose ... up -d --build web` را در یک فرمان اجرا کن، سپس با `APP_BUILD_TIME` + grep نماد تأیید کن.
 - **دانش سازمانی:** ۱۳۹ chunk نمایه‌سازی شده
 - **⚠️ نکتهٔ هارنس تست (۲۰۲۶-۰۸-۰۴):** `npx playwright test --config=playwright.auth.config.ts` را **کامل اجرا نکن**. `e2e/auth/save-admin-session.spec.ts` روی `page.pause()` تکیه دارد؛ در اجرای headless این تابع بلاک نمی‌کند و spec یک storageState **خالی** روی `e2e/auth/admin.storage.json` می‌نویسد — و کل رگرسیون از همان فایل به‌عنوان نشست پیش‌فرض استفاده می‌کند. اگر پیش آمد، نشست را دوباره بساز (رمز موقت روی یک حساب **آزمایشی** از Auth Admin API، سپس گرفتن توکن). فقط specهای غیرتعاملی را نام‌به‌نام اجرا کن.
@@ -25,6 +25,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-05 | Cursor | **Persons Phase 6 — تست سخت‌سازی.** Phone-collisions browser e2e، mobile/RTL overflow gate (۳۲۰/۳۷۵/۳۹۰/۴۳۰)، permission matrix (UI+JWT)، رگرسیون فاز ۱–۵. گارد کلاینت import/merge/edit + wrap overflow. بدون مهاجرت. Phase6 **۴۶ سبز / ۱ skip**؛ `e2e/persons`+RLS **۱۴۵ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۳ skip**؛ typecheck **۷۰**؛ drift **۰**؛ leftover **۰**. | `1d294f1e` |
 | 2026-08-05 | Cursor | **Persons Phase 5 P2 — گسترش پرونده هویت.** Deep links (customer/supplier/staff/accounting)، merge/collision panels، audit summary با redaction، metadata Jalali. بدون مهاجرت. JWT **۱۱/۱۱**؛ UI dossier **۶/۶**؛ `e2e/persons` **۹۴ سبز / ۱ قرمز مستند (`credit-uses-person`) / ۲ skip**. typecheck **۷۰**. | `cb8e0edf` |
 | 2026-08-05 | Cursor | **Persons Phase 4 P1 — UI مدیریت نام‌های دیگر.** مهاجرت **۳۰۰** (سخت‌کردن INSERT به admin/manager + `can_read_person`؛ audit DELETE). `PersonAliasesManager` روی پروفایل/ویرایش. typecheck **۷۰**. `e2e/persons` **۷۷ سبز / ۱ قرمز مستند / ۲ skip**. | `54526f49` |
 | 2026-08-05 | Cursor | **Persons Phase 3 P1 — فیلترهای امن فهرست.** مهاجرت **۲۹۹** گسترش `search_visible_persons` (context OR / active / missing AND؛ viewer-only missing را نادیده می‌گیرد). URL state روی `/persons`. بدون اندیس تازه. JWT **۱۳/۱۳**؛ filters-ui **۴/۴**؛ `e2e/persons` **۷۰ سبز / ۱ قرمز مستند / ۱ skip**. typecheck **۷۰**. | `845195d3` |
