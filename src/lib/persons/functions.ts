@@ -461,9 +461,10 @@ function sanitizeSearchTerm(raw: string): string {
 /**
  * Read-only person picker search — Phase 2.
  *
- * Delegates to `public.search_visible_persons` (migration 298, SECURITY INVOKER).
+ * Delegates to `public.search_visible_persons` (migration 299, SECURITY INVOKER).
  * Identifier/alias matching is enforced inside the RPC under RLS; this serverFn
  * never queries person_identifiers directly and never uses a service role.
+ * Directory filters are omitted here — picker UX stays query-only.
  *
  * Narrow DTO only — id, display_name, legal_name, kind, is_active.
  * If trimmed query length < 2 → returns [] without hitting the DB (picker UX).

@@ -12028,6 +12028,9 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_kind?: string | null
+          p_context_kinds?: string[] | null
+          p_active_status?: string | null
+          p_missing_identifier_kinds?: string[] | null
         }
         Returns: {
           id: string

@@ -67,7 +67,7 @@ test("clear restores the directory and مشاهده opens the profile", async ({
   const box = page.getByPlaceholder("جستجو با نام، نام دیگر، موبایل، کد ملی یا کد آسان");
   await box.fill(NAME);
   await expect(page.getByText(NAME).first()).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("button", { name: "پاک کردن" }).click();
+  await page.getByRole("button", { name: "پاک کردن", exact: true }).click();
   await expect(box).toHaveValue("");
   await expect(page.getByRole("link", { name: "مشاهده" }).first()).toBeVisible();
 
