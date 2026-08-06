@@ -155,6 +155,35 @@ movements belong to the residue and would have been silently orphaned by a naive
 Removing them lowers computed stock for the affected products — the intended correction,
 since the e2e runs inflated it, but a visible change rather than a no-op.
 
+### P0.5 — the file to purge is not in git history. No rewrite, no force-push.
+
+P0.5 exists to purge `payment-receipts-lines-2026-08-04.xlsx` from history, citing leaked
+customer PII, and authorises a force-push for it. Live check:
+
+```
+git log --all --full-history -- "*payment-receipts-lines-2026-08-04.xlsx"   ->  0 commits
+```
+
+**That filename has never existed in this repository.** There is nothing to rewrite, so the
+history rewrite and the force-push are both unnecessary and were not performed. The riskiest
+operation in P0 turns out not to be needed — good news, but it means P0.5's premise is the
+third in this mission to fail against reality.
+
+**If the underlying PII concern is real, these are the actual candidates** — all currently
+tracked in `HEAD`, none matching the named file:
+
+| path | why it might matter |
+|---|---|
+| `docs/asan/reference/اشخاص.xlsx` | "persons" — most likely to hold real customer records |
+| `docs/verification/m5-export-samples/4-bank-deposits.xlsx` | bank deposit export sample |
+| `docs/verification/m5-export-samples/{1-sales,2-purchase,3-accounting-document}.xlsx` | export samples |
+| `docs/qa/AfraKala-UAT-14050428.xlsx` | UAT workbook |
+
+`.gitignore:118` says the `docs/verification/` Asan samples are **deliberately** tracked, so
+removing them is a decision, not a cleanup. **Not touched.** Owner should say whether any of
+these actually contain real customer data; if so, that is a new, correctly-scoped purge task
+against real filenames.
+
 ### Knock-on: supplier count is 13, not 15
 
 Migration 303 removes two supplier rows, so `suppliers` goes 15 → 13. **P2.3 is written
@@ -204,13 +233,19 @@ the session with `--dangerously-skip-permissions` and authorised the apply direc
 migration went in cleanly on the first attempt; there was never a DB-side or credential
 problem.
 
-**Next action:** **P0.5** — purge the PII xlsx from git history. Investigation and mirror
-backup may proceed; **the force-push must not.** The owner's autonomy grant covers
-destructive *database* operations; rewriting shared git history and force-pushing to GitHub
-is neither, so it needs its own authorisation.
+**Next action:** the two pre-P1 items the owner queued —
+1. Fix `detect_phone_collisions()` per `docs/asan/collision-detection-defect.md`. Must not
+   carry into P1.
+2. Replace P2.3's hard-coded "15 supplier codes" with a live count from `suppliers`
+   (currently **13**).
 
-**P0.1 closed** (303 applied; `api` kept by owner decision, its migration discarded).
-**P0.3 closed** (304 applied). **P0.2 held** — see Findings; owner decision needed.
+**P0 status:** 0.1 closed (303 applied; `api` kept by owner decision). 0.3 closed (304
+applied). 0.4 done. 0.6 done. **0.2 held** — premise contradicted, owner decision needed.
+**0.5 not needed** — target file absent from history; no rewrite, no force-push performed.
+
+**Three of P0's six phases had premises that did not survive the live database** (0.1's "9
+garbage persons", 0.2's four pairs, 0.3's 84/93 + journal entanglement, 0.5's missing file).
+Treat P1–P5 mission numbers as claims to verify, not facts.
 
 **Two gates this program cannot self-certify:**
 1. P0.3's test says *"Purchase e2e suite still passes."* **It has not been run.** There is no
