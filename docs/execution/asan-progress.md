@@ -1579,6 +1579,18 @@ settled invoice all exist in `payment_receipts`, which the export never joins) a
 دوبل model gap. **No code, migration, row or config was changed.** Ten owner decisions are listed in
 the report and block any fix.
 
+**2026-08-06 — round-2 diagnostic added.** `docs/asan/deeper-diagnostic-round-2.md` answers five
+owner questions, read-only. Headlines: a /suppliers-created supplier is a **full person** (the gap
+runs the other way, and `suppliers.trust_level` has no persons equivalent); «سانشور» exists nowhere
+in the database, the orphan is «روشناس» with zero context links, and the «ارتباط ناقص» badge that
+would warn about it never fires for that shape; the sidebar has **118 items / 9 groups, 0 dead links,
+19 orphan routes**, and module `accounting` — behind **11 finance items** — has **no
+`role_permissions` rows at all**, which rule 2.5 says opens it to every role; unifying on persons
+touches **10 files, 21 DB functions, 4 FKs (283 rows), 4 derive-person triggers, 12 e2e specs**, and
+7 supplier columns have no home in `persons`; and all seven Iranian document types are representable,
+but `payment_vouchers` **posts no journal entry**, so export 4 (پرداخت·برداشت) is **structurally
+unreachable**, not merely empty. **Nothing was changed.**
+
 Next action: **none — the program is complete.** `docs/execution/asan-final-report.md` is written
 and control is back with the owner (mission control §7). What remains is his: the manual steps in
 section 9 of the report, and the two still-blocking answers (`other`, external-party codes).
