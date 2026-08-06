@@ -115,8 +115,10 @@ screenshots/
 *.sql.gz
 
 # Ad-hoc data exports downloaded into the repo (rule 4: no data dumps in git).
-# The verified Asan layout samples under docs/verification/ are deliberately NOT covered.
-docs/execution/*.xlsx
+# Owner instruction 2026-08-07: "my repo should contain zero xlsx files ever."
+# Supersedes the earlier carve-out that deliberately tracked the Asan layout
+# samples under docs/verification/.
+*.xlsx
 
 # Phase cleanup backups (rule 4). P0_CLEANUP.md phase 0.3 tells the agent to write
 # a pg_dump into docs/verification/, but that dump carries live business rows -
