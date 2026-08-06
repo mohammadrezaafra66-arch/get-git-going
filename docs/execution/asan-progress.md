@@ -1591,6 +1591,20 @@ touches **10 files, 21 DB functions, 4 FKs (283 rows), 4 derive-person triggers,
 but `payment_vouchers` **posts no journal entry**, so export 4 (پرداخت·برداشت) is **structurally
 unreachable**, not merely empty. **Nothing was changed.**
 
+**2026-08-06 — final architecture plan added.** `docs/asan/final-architecture-plan.md`, read-only.
+The target model is **~80% already built**: `customers`/`suppliers` already carry
+`UNIQUE (person_id)` so dual roles are already expressible; phone is already globally unique by
+partial index; and **`person_find_by_identifiers` already exists** and is used by both import paths
+— `person_create_inline` simply never calls it (mission control §3, fourth occurrence). Duplicates
+are **6 groups / 14 rows / 8 redundant**, all classified **Safe** (no group has transactions on both
+sides); **0 persons hold both roles today**, so the owner's 50+ dual-role people are not represented
+at all yet. Two real gaps: nothing enforces **one Asan code per person** (the existing index enforces
+one person per code), and **mutual settlement cannot be expressed** — there is no payable
+`account_kind` and payables live in `vw_supplier_payables`, derived from `purchases`, outside
+double-entry. Plan is 9 steps / ~14–16 U, of which the first five are **5 U** for most of the
+benefit. ⚠️ `docs/asan/dual-role-person-analysis.md` was named as an input but **does not exist**
+on disk or in history. **Nothing was changed.**
+
 Next action: **none — the program is complete.** `docs/execution/asan-final-report.md` is written
 and control is back with the owner (mission control §7). What remains is his: the manual steps in
 section 9 of the report, and the two still-blocking answers (`other`, external-party codes).
