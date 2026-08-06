@@ -1569,6 +1569,16 @@ proved gate item 2 shows two *older* modules are **not** seeded for every role, 
 narrowing an existing module's access is a permission change, not a gate item, and it belongs
 in its own reviewed phase.
 
+**2026-08-06 — read-only diagnostic added.** `docs/asan/supplier-and-journal-diagnostic.md`
+investigates three employee-reported defects: no Asan-code field on `/suppliers`, suppliers created
+via `/persons` missing from the purchase dropdown, and a thin `شرح` column on the accounting-document
+export. Root cause of the first two is one structural fact — `/suppliers` writes the `suppliers`
+mirror row via `person_create_inline` while `/persons` does not, and no trigger bridges them; every
+consumer reads the mirror. The third splits into an export mapping gap (payer, tracking number and
+settled invoice all exist in `payment_receipts`, which the export never joins) and the already-recorded
+دوبل model gap. **No code, migration, row or config was changed.** Ten owner decisions are listed in
+the report and block any fix.
+
 Next action: **none — the program is complete.** `docs/execution/asan-final-report.md` is written
 and control is back with the owner (mission control §7). What remains is his: the manual steps in
 section 9 of the report, and the two still-blocking answers (`other`, external-party codes).
