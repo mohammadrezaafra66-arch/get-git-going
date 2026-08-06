@@ -77,6 +77,12 @@ minutes apart, already a known test-marker person. **Verdict: test residue. Reco
 deletion via a new migration 304** (303 is applied and must not be edited).
 Full report: `docs/asan/api-person-investigation.md`.
 
+**Owner decision 2026-08-07: KEEP.** Migration 304 was written and dry-run green
+(77→76 persons, 13→12 suppliers, harness + fixture intact); the owner declined to apply it
+and both 304 files were discarded. Database untouched, `api` remains. Because it is
+`is_active=true`, it stays selectable in the purchase supplier picker — the side defect
+below now has a live instance. **P0.1 is closed; there is no outstanding `api` action.**
+
 ### Side defect surfaced by that investigation — recorded, not fixed
 
 Referral suppliers are created `status='pending'` (deliberately — "unvetted by definition")
@@ -134,8 +140,14 @@ the session with `--dangerously-skip-permissions` and authorised the apply direc
 migration went in cleanly on the first attempt; there was never a DB-side or credential
 problem.
 
-**Next action:** owner decision on migration **304** to delete `6cd30201` `api`
-(investigated, recommended for deletion — see above). Then P0.2, P0.3, P0.5.
+**Next action:** P0.2, P0.3, P0.5. **P0.1 is closed** — 303 applied; the `api` question was
+decided (keep) and migration 304 discarded unapplied.
+
+**Open question with the owner:** an instruction was received to route `api` through a
+"supplier-tag flow" preserving "29 product_suggestion links". Blocked and not acted on —
+`public.product_suggestions` does not exist (`to_regclass` null), no `%tag%` table exists,
+and `product_suppliers` is 0 both for supplier `b9eb6f37` and for product `AFK-2026-00033`.
+Awaiting clarification. Do not implement this from the description alone.
 
 **Carry into P1 — two live hazards:**
 1. `detect_phone_collisions()` will mark **every dual-role person P1 creates** as a false

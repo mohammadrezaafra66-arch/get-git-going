@@ -71,7 +71,25 @@ same modal, against the same product, with junk names (`api`, `12`) and no conta
 They are two attempts at the same manual test of the supplier-referral feature. One
 happened to grow a transaction afterwards; this one did not.
 
-## Recommendation
+## Owner decision (2026-08-07): KEEP — recommendation declined
+
+Migration `304` was written, its down script generated, and the dry run inside
+`BEGIN … ROLLBACK` passed cleanly (persons 77→76, suppliers 13→12, harness and E2E264
+fixture intact). **The owner chose not to apply it.** Both files were discarded and the
+database is untouched; `api` remains. The analysis below stands as the record of *why*
+deletion was proposed — it is not a pending action.
+
+**Consequence of keeping it:** `api` is `status='pending'` but `is_active=true`, so it stays
+selectable in the purchase supplier picker (`PurchaseForm.tsx:176`). The side defect below
+therefore has a live instance rather than a theoretical one.
+
+> A follow-up instruction proposed instead routing `api` through a "supplier-tag flow",
+> preserving "29 product_suggestion links". **Neither object exists in this database:**
+> `to_regclass('public.product_suggestions')` is null, no table matches `%tag%`, and
+> `product_suppliers` is 0 for this supplier and 0 for product `AFK-2026-00033`. Not acted
+> on; raised with the owner for clarification.
+
+## Recommendation (superseded by the decision above)
 
 **Delete `api`** as part of P0. It meets the same bar as the two rows already removed:
 test-marker name, owner-created during feature testing, zero contact data, zero
