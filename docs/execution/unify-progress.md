@@ -233,11 +233,24 @@ the session with `--dangerously-skip-permissions` and authorised the apply direc
 migration went in cleanly on the first attempt; there was never a DB-side or credential
 problem.
 
-**Next action:** the two pre-P1 items the owner queued —
-1. Fix `detect_phone_collisions()` per `docs/asan/collision-detection-defect.md`. Must not
-   carry into P1.
-2. Replace P2.3's hard-coded "15 supplier codes" with a live count from `suppliers`
-   (currently **13**).
+**Both pre-P1 items are done.**
+
+- [x] **`detect_phone_collisions()` fixed** — migration **305** applied 2026-08-07.
+      Resolves every member row to a person before grouping and raises only on
+      `count(DISTINCT party) > 1`; adds `person_identifiers` as a source; re-keys the insert
+      guard on a new `phone_collisions.member_key` so a resolved group re-raises when its
+      membership changes. Verified live: the naive union finds **28** groups of which **27**
+      are one person mirrored into their own role tables; the fixed logic raises only
+      `09122270261`, the single genuine multi-party collision. Re-running the function is a
+      **no-op (0 raised)**. Defect 5 (landlines) deliberately left as-is and documented —
+      it is latent (zero stored phones fail the filter) and the correct rule is an owner
+      decision, not a guess.
+- [x] **P2.3's hard-coded 15 removed** — `docs/execution/P2_ASAN_CODE.md` now derives every
+      count from `SELECT count(*) FROM public.suppliers` and states explicitly that no
+      literal may be written into the checklist, banner or test. Live count is 13 today.
+
+**Next action:** complete the P0 mission gate (build + deploy, verify three signals against
+HEAD), then start P1.
 
 **P0 status:** 0.1 closed (303 applied; `api` kept by owner decision). 0.3 closed (304
 applied). 0.4 done. 0.6 done. **0.2 held** — premise contradicted, owner decision needed.

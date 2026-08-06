@@ -60,25 +60,37 @@ Commit.
 
 ---
 
-## Phase 2.3 — Enter the 15 real supplier Asan codes (owner will do this by hand)
+## Phase 2.3 — Enter the real supplier Asan codes (owner will do this by hand)
+
+> **Corrected 2026-08-07.** This phase was written around "the 15 real supplier Asan codes".
+> **The literal 15 is wrong and must not be hard-coded anywhere.** Migration 303 (P0.1)
+> deleted two test suppliers, so the live count is **13** as of 2026-08-07 — and it moves
+> again every time a supplier is added or removed. Derive every count from a live query:
+>
+> ```sql
+> SELECT count(*) FROM public.suppliers;                          -- total
+> SELECT count(*) FROM public.suppliers WHERE asan_code IS NULL;  -- still missing a code
+> ```
+>
+> Do not write 15, 13, or any other literal into the checklist, the banner, or the test.
 
 The owner supplies these values. This phase is preparation — the actual entering is manual.
 
-1. Query all 15 suppliers. Produce a checklist file
+1. Query **all** suppliers — live count, never a literal. Produce a checklist file
    `docs/asan/supplier-asan-codes-to-fill.md` with one row per supplier: id, name, phone,
    current code (blank), and space for the owner to write it in.
 2. Add a Persian banner to the `/suppliers` list page: "N تأمین‌کننده هنوز کد آسان ندارند"
    linking to the same list filtered by "بدون کد". Query dynamically so it goes to 0 as
    the owner fills them in.
 
-**Test:**
-- With 15 empty codes, banner reads 15.
-- Enter one code manually via the UI. Reload. Banner reads 14.
-- Clean up (revert the manual entry).
+**Test:** (counts read live — take `N` from the query above at the moment you run the test)
+- With every code empty, the banner reads `N`, the live count of suppliers lacking a code.
+- Enter one code manually via the UI. Reload. Banner reads `N - 1`.
+- Clean up (revert the manual entry). Banner returns to `N`.
 
 Commit.
 
-**The owner will fill in the 15 codes himself after this phase lands. Do not attempt to
+**The owner will fill in the codes himself after this phase lands. Do not attempt to
 fill them.**
 
 ---
