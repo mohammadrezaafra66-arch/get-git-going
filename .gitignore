@@ -117,3 +117,9 @@ screenshots/
 # Ad-hoc data exports downloaded into the repo (rule 4: no data dumps in git).
 # The verified Asan layout samples under docs/verification/ are deliberately NOT covered.
 docs/execution/*.xlsx
+
+# Phase cleanup backups (rule 4). P0_CLEANUP.md phase 0.3 tells the agent to write
+# a pg_dump into docs/verification/, but that dump carries live business rows -
+# it is a restore artefact, not documentation. Kept on disk, never committed.
+# P0.5 exists precisely because a data export reached git history once already.
+docs/verification/P0.*-*-backup.sql

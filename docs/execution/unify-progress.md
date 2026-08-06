@@ -29,9 +29,22 @@ DB backup: `D:\backups\test-server-2026-08-07.dump` — 15,963,822 bytes, 5004 r
       `docs/asan/api-person-investigation.md`. Verdict: **test residue, recommend delete.**
       See "Findings" below.
 
+- [x] **P0.3** Delete the e2e purchase residue. Migration
+      `20260807030000_304_p0_3_delete_e2e_purchase_residue.sql` **applied 2026-08-07**,
+      exit 0. **322** e2e purchases + 322 `purchase_items` + 320 `purchase_idempotency`
+      + 158 `purchase_request_fulfillments` + **322 `stock_movements`** deleted.
+      Verified live: purchases 334→**12**, e2e remaining **0**, stock_movements 335→**13**,
+      and `journal_entries` (1), `payment_receipts` (6), `sales_quotes` (50) **untouched**.
+      Backup `docs/verification/P0.3-purchase-cleanup-backup.sql` (598,438 bytes);
+      down script `docs/verification/304-down.sql`.
+      **The mission's numbers were wrong — see Findings.**
+
+- [!] **P0.2** Delete the 4 duplicate persons — **HELD, nothing deleted.** The phase's own
+      step 3 stop condition is met. See Findings.
+
 ## Not started
 
-P0.2, P0.3, P0.5 · P1 · P2 · P3 · P4 · P5
+P0.5 · P1 · P2 · P3 · P4 · P5 · (P0.2 held pending owner decision)
 
 ---
 
@@ -91,6 +104,57 @@ but `is_active` defaults to **true**, and supplier pickers gate on two different
 So a pending referral is selectable in the purchase form. This is how the twin row `12`
 acquired the real purchase that saved it from P0.1. Out of P0 scope; triage in P1/P2.
 
+### P0.2 — the source report does not exist, and 3 of the 4 pairs do not exist either
+
+P0.2 says *"Identify each pair's exact person_ids from the report's evidence. Do not
+re-derive."* **`dual-role-person-analysis.md` is not in the repository** — not under
+`docs/`, not under any name. The instruction is unfollowable as written, so the four named
+pairs were checked live instead:
+
+| P0.2 claims | live `persons` |
+|---|---|
+| 2× «مصلحی» same phone | **does not exist** |
+| 2× «ملیکا مصلحی» same phone | **does not exist** |
+| 2× «ارسلان تاجیک» same phone | **does not exist** |
+| 2× «مختار شاهمرادی» exact duplicate | exists — but **not an exact duplicate** |
+
+The one real pair is not a duplicate at all:
+
+| id | kind | suppliers | product links | purchases | purchase_prices |
+|---|---|--:|--:|--:|--:|
+| `23b44c71` | **organization** | 1 | 4 | **2** | **77** |
+| `135ac0e1` | **individual** | 0 | 0 | 0 | 0 |
+
+One organization row and one individual row with the same name is not garbage — it is
+precisely the dual-role shape `P1_DUAL_ROLE.md` exists to model. Deleting "both sides of
+each pair" as P0.2 instructs would destroy a live supplier carrying **2 purchases and 77
+purchase-price records**, which is exactly the financial stop condition P0.2 step 3 defines.
+
+**Held. Nothing deleted.** The actual duplicate-name groups in the database are a different
+set entirely: «محمدرضا افرا» ×3, «محمدزین الدین» ×3, «۱» ×2, «زینب احمدی» ×2,
+«مختارشاهمرادی» ×2, «ولی غلامی» ×2 — none of which the mission names. Owner decision needed
+on which, if any, are actually garbage.
+
+### P0.3 — both mission numbers were wrong, and the blocker does not exist
+
+The mission says 84 residue purchases; a follow-up described them "sharing journal entries
+with 93 real ones". Live:
+
+- `purchases` total **334** → `notes LIKE 'E2E%'` = **322**, real = **12** (not 93)
+- `journal_entries` holds **exactly one row** in the whole database, `source_type =
+  'payment_receipt'`. Journal entries sourced from **any** purchase = **0**.
+
+**There was no journal entanglement to split**, so the "hold P0.3 if they cannot be
+separated" branch never applied. The financial carve-out was checked and not triggered:
+`payment_vouchers` referencing the targets = 0, `journal_entries` = 0.
+
+The real risk the mission does *not* mention: **`stock_movements` links to purchases through
+a polymorphic `ref_type`/`ref_id` pair with no foreign key.** 322 of the 332 purchase-sourced
+movements belong to the residue and would have been silently orphaned by a naive
+`DELETE FROM purchases`. Migration 304 deletes them explicitly and asserts zero orphans.
+Removing them lowers computed stock for the affected products — the intended correction,
+since the e2e runs inflated it, but a visible change rather than a no-op.
+
 ### Knock-on: supplier count is 13, not 15
 
 Migration 303 removes two supplier rows, so `suppliers` goes 15 → 13. **P2.3 is written
@@ -140,14 +204,46 @@ the session with `--dangerously-skip-permissions` and authorised the apply direc
 migration went in cleanly on the first attempt; there was never a DB-side or credential
 problem.
 
-**Next action:** P0.2, P0.3, P0.5. **P0.1 is closed** — 303 applied; the `api` question was
-decided (keep) and migration 304 discarded unapplied.
+**Next action:** **P0.5** — purge the PII xlsx from git history. Investigation and mirror
+backup may proceed; **the force-push must not.** The owner's autonomy grant covers
+destructive *database* operations; rewriting shared git history and force-pushing to GitHub
+is neither, so it needs its own authorisation.
 
-**Open question with the owner:** an instruction was received to route `api` through a
-"supplier-tag flow" preserving "29 product_suggestion links". Blocked and not acted on —
-`public.product_suggestions` does not exist (`to_regclass` null), no `%tag%` table exists,
-and `product_suppliers` is 0 both for supplier `b9eb6f37` and for product `AFK-2026-00033`.
-Awaiting clarification. Do not implement this from the description alone.
+**P0.1 closed** (303 applied; `api` kept by owner decision, its migration discarded).
+**P0.3 closed** (304 applied). **P0.2 held** — see Findings; owner decision needed.
+
+**Two gates this program cannot self-certify:**
+1. P0.3's test says *"Purchase e2e suite still passes."* **It has not been run.** There is no
+   `test` script in this project, and `PROGRESS.md` documents that
+   `playwright.auth.config.ts` must not be run wholesale because
+   `save-admin-session.spec.ts` overwrites `admin.storage.json` with an empty session under
+   headless. Running the purchase suite is a **manual step for the owner.**
+2. The 322 deleted purchases were e2e fixtures. Specs that assert on purchase counts may now
+   behave differently on their next run; specs that recreate their own fixtures will not.
+
+**Resolved — the "supplier-tag / product_suggestions" search.** Asked to find the mechanism
+under another name. What actually exists:
+
+| looked for | what exists | verdict |
+|---|---|---|
+| `product_suggestions` table | **nothing** — `to_regclass` null | absent |
+| "29 product_suggestion links" | `product_suppliers.auto_added` — the auto-created-from-suggestion marker. **22 true / 9 false, 31 total.** None belong to `api` (0). | closest analog; count is not 29 |
+| supplier tagging | **none.** No `%tag%` table. Supplier gating is only the `status` and `is_active` columns. | absent |
+| product tagging | `product_labels` (12) + `product_label_links` (694) — a real tag system, but it tags **products, not suppliers**. One label is literally «پیشنهاد». | exists, wrong subject |
+
+So there is no way to "hide `api` via a tag" without building supplier tagging from scratch —
+a new schema feature, not a P0-sized change. `api` remains as decided.
+
+**Carry into P0.2:** «مختارشاهمرادی» — named in P0.2's duplicate list — holds **4
+`product_suppliers` rows** (`auto_added=true`). P0.2 deletions will hit dependents; the phase
+cannot assume the pairs are dependency-free.
+
+### Backlog — after UNIFY P5
+
+If product-suggestion sourcing is ever modelled, it should be a **source-info field on the
+suggestion record**, not a `suppliers` row. Creating a supplier row to carry "who suggested
+this product" is what put `api` and `12` in the supplier table with junk names and no
+contact data. Not scheduled before P5.
 
 **Carry into P1 — two live hazards:**
 1. `detect_phone_collisions()` will mark **every dual-role person P1 creates** as a false
