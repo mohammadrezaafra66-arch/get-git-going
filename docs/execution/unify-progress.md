@@ -1,12 +1,23 @@
 # UNIFY Program Progress
 
-## Status
-Current mission: P0
-Current phase: 0.1 **applied and verified**
-Last commit: see history below
-Baseline typecheck: **70** (confirmed 2026-08-07, 6 files — matches documented baseline)
-Last e2e: not yet run this program
-DB backup: `D:\backups\test-server-2026-08-07.dump` — 15,963,822 bytes, 5004 restorable objects
+> **این فایل بعد از هر فاز به‌روز می‌شود.** اگر بخش Status با تاریخچهٔ گیت نمی‌خواند،
+> گیت درست است و این فایل کهنه — همان اشتباهی که تا ۲۰۲۶-۰۸-۰۷ باعث سردرگمی شد.
+
+## Status — ۲۰۲۶-۰۸-۰۷
+
+| | |
+|---|---|
+| برنچ کاری | `feature/navigation-modernization` — **تنها برنچ**؛ `feat/phase-5-evolution-adapter` که تصادفی ساخته شده بود حذف شد |
+| HEAD | `7ee0c081` |
+| مأموریت جاری | **P2** (کد آسان تأمین‌کننده) |
+| فاز جاری | **۲.۱ کامل** · ۲.۲ و ۲.۳ و gate باقی |
+| مهاجرت‌های اعمال‌شده در این برنامه | ۳۰۳، ۳۰۴، ۳۰۵، ۳۰۶، ۳۰۷، ۳۰۸ |
+| typecheck | **۷۰** (خط پایه) |
+| آخرین e2e کامل | ۲۰۲۶-۰۸-۰۷ — ولی روی build غیرقابل‌ردیابی؛ **مبنای معتبر نیست** |
+| پشتیبان دیتابیس | `D:\backups\test-server-2026-08-07.dump` — ۱۵٬۹۶۳٬۸۲۲ بایت |
+
+**طرح مرجع:** `docs/execution/unify-plan-corrected.md` — فایل‌های اصلی `P1_*` تا `P5_*`
+خطاهای واقعی دارند و نباید بدون آن سند خوانده شوند.
 
 ## Completed
 
@@ -42,9 +53,39 @@ DB backup: `D:\backups\test-server-2026-08-07.dump` — 15,963,822 bytes, 5004 r
 - [!] **P0.2** Delete the 4 duplicate persons — **HELD, nothing deleted.** The phase's own
       step 3 stop condition is met. See Findings.
 
+- [x] **P0.5** — **not needed.** The file it targets is in zero commits. No history rewrite
+      and no force-push were performed.
+
+- [x] **اصلاح `detect_phone_collisions`** — مهاجرت **۳۰۵**. اتحاد ساده ۲۸ گروه می‌سازد که
+      ۲۷ تای آن یک شخص در جدول‌های نقش خودش است؛ منطق اصلاح‌شده فقط `09122270261` را
+      می‌دهد. اجرای دوباره بی‌اثر است.
+
+- [x] **P0.3b** — مهاجرت **۳۰۶**. ۳۰۴ نیمه‌کاره بود: fulfillment‌ها را حذف کرد ولی
+      `purchase_requests` والد را نگه داشت، پس **۱۲۱ درخواست** وضعیتی ادعا می‌کردند که هیچ
+      پشتوانه‌ای نداشت. هر ۱۲۱ نشان `E2E%` داشتند. اکنون صفر.
+
+- [x] **`/updates` خودکار** — مهاجرت **۳۰۷** (`auto_publish_release`، فقط `service_role`،
+      idempotent روی `git_sha`) + مولد یادداشت از تاریخچهٔ گیت + انتشار در `up.ps1`.
+      نسخهٔ ۱۴ در آزمون واقعی منتشر شد. قانون تریلر `Release-note-fa:` در `AGENTS.md`.
+
+- [x] **طرح تصحیح‌شده** — `docs/execution/unify-plan-corrected.md`. نُه خطای واقعی در
+      فایل‌های P1–P5 پیدا شد؛ سه‌تا بنیادی.
+
+- [x] **P2.1** Add `suppliers.accounting_code`. Migration **۳۰۸** applied 2026-08-07.
+      ستون nullable + CHECK `^[A-Za-z0-9_-]{1,30}$` + ایندکس یکتای جزئی، همه آینهٔ
+      `customers`. تریگر تکثیر از `person_identifiers` ساخته شد (وجود نداشت — فایل مأموریت
+      اشتباه فرض کرده بود P1.5 آن را ساخته). آینه **`value_raw`** می‌گیرد نه
+      `value_normalized`، چون نرمال‌ساز عمداً صفر ابتدایی را حذف می‌کند و `002` به `2`
+      تبدیل می‌شد. backfill صفر ردیف، طبق پیش‌بینی. پنج آزمون رفتاری سبز.
+      Down: `docs/verification/308-down.sql`.
+
 ## Not started
 
-P0.5 · P1 · P2 · P3 · P4 · P5 · (P0.2 held pending owner decision)
+**P2.2** (فیلد کد آسان در `SupplierForm`) · **P2.3** (چک‌لیست + بنر) · **P2 gate**
+سپس: P1 · P3 · P4 · P5
+
+**معلق در انتظار تصمیم مالک:** P0.2 · دو فایل xlsx مرجع آسان · شش تصمیم فهرست‌شده در
+`unify-plan-corrected.md`
 
 ---
 
@@ -226,154 +267,56 @@ Full analysis in `docs/asan/collision-detection-defect.md`.
 
 ## HANDOFF STATE
 
-**Previously blocked, now cleared.** P0.1's apply had been denied three times by the harness
-permission classifier (twice via Bash, once via PowerShell, despite an existing allowlist
-entry — it was gating on the destructive-DML *action*, not the tool). The owner relaunched
-the session with `--dangerously-skip-permissions` and authorised the apply directly. The
-migration went in cleanly on the first attempt; there was never a DB-side or credential
-problem.
+_آخرین به‌روزرسانی: ۲۰۲۶-۰۸-۰۷ پس از P2.1_
 
-**Both pre-P1 items are done.**
+**اکنون کجاییم:** مأموریت **P2**، فاز **۲.۱ کامل**. HEAD = `7ee0c081` روی
+`feature/navigation-modernization`. درخت تمیز، هم‌تراز با origin.
 
-- [x] **`detect_phone_collisions()` fixed** — migration **305** applied 2026-08-07.
-      Resolves every member row to a person before grouping and raises only on
-      `count(DISTINCT party) > 1`; adds `person_identifiers` as a source; re-keys the insert
-      guard on a new `phone_collisions.member_key` so a resolved group re-raises when its
-      membership changes. Verified live: the naive union finds **28** groups of which **27**
-      are one person mirrored into their own role tables; the fixed logic raises only
-      `09122270261`, the single genuine multi-party collision. Re-running the function is a
-      **no-op (0 raised)**. Defect 5 (landlines) deliberately left as-is and documented —
-      it is latent (zero stored phones fail the filter) and the correct rule is an owner
-      decision, not a guess.
-- [x] **P2.3's hard-coded 15 removed** — `docs/execution/P2_ASAN_CODE.md` now derives every
-      count from `SELECT count(*) FROM public.suppliers` and states explicitly that no
-      literal may be written into the checklist, banner or test. Live count is 13 today.
+**اقدام بعدی:** P2.2 — افزودن فیلد «کد آسان» به `src/shared/components/SupplierForm.tsx`،
+آینهٔ `CustomerForm.tsx:42`. منبع حقیقت `person_identifiers` است، نه ستون آینه.
 
-**Build/deploy gate: DONE 2026-08-07.** Three signals verified — `APP_GIT_SHA=b248f957`
-(= HEAD), `APP_BUILD_TIME=2026-08-07T00:03:34Z` (the value set for the build), and image
-`dc7df508…` replacing `67c561c1…`, so the container is not a recycled image.
+**سپس:** P2.3 (چک‌لیست + بنر با شمارش زنده) → P2 gate (typecheck ۷۰، e2e کامل،
+استقرار با تطابق سه سیگنال) → **توقف** برای تصمیم‌های مالک.
 
-### ⚠️ The deployed app was untraceable before this rebuild
+---
 
-Before the rebuild the running container reported **`APP_GIT_SHA=84d263b2`, built
-2026-08-05T23:39Z**. That commit **does not exist in this repository** — `git cat-file`
-returns *"Not a valid object name"*, and it is not an ancestor of HEAD or on any branch.
+### نکاتی که فاز بعدی باید بداند
 
-**Consequence: the full e2e run of 2026-08-07 (482 passed / 24 failed / 7 skipped / 7 did not
-run, 34.8 min) did not measure HEAD.** It measured an unknown build. Those numbers must not
-be treated as a HEAD baseline.
+**۱ — آینه `value_raw` می‌گیرد، نه `value_normalized`.** نرمال‌ساز عمداً صفر ابتدایی را
+حذف می‌کند (`ltrim(_v,'0')`) تا `0102012` و `102012` دو کد برای دو نفر نشوند. پس
+`value_normalized` فرم یکتایی است و `value_raw` آنچه کاربر زده. شخص `190eeb0b` کد خام
+`002` دارد که نرمال‌شده‌اش `2` است. P2.2 هم باید `value_raw` را نشان دهد و ذخیره کند.
 
-What survives from that run, because it was proven against the database rather than through
-the browser:
-- `create_purchase` works correctly with the exact values the failing form showed
-  (product `AFK-2026-00014`, `نقدی`, 5000, toman, qty 2, warehouse `ایران ری`), verified
-  twice inside `BEGIN … ROLLBACK`: purchases 12→13, stock_movements 10→11.
-  **Migration 304 is cleared of causing the purchase failures.**
-- The 3 `asan` failures are leftover-fixture hygiene assertions (`asan_export_numbers`,
-  minted numbers, `delivery_receipts`) on tables no migration touched.
-- The 2 viewer failures are account state, not code: `test.viewer` and `test.manager` are
-  `profiles.status='rejected'`, so the app bounces them to `/login`.
-- `credit-uses-person` is the documented pre-existing red.
+**۲ — باطل‌کردن یک شناسه نیاز به برداشتن `is_primary` دارد.**
+`validate_person_identifier()` اجازه نمی‌دهد ردیف `is_primary` باطل شود. در dry-run P2.1
+پیدا شد. هر جریان UI که کد را حذف می‌کند باید این ترتیب را رعایت کند.
 
-**Unknown until the re-run completes:** whether the 15 `purchase` failures exist at HEAD.
+**۳ — هیچ تریگر تکثیری قبل از ۳۰۸ وجود نداشت.** `customers.accounting_code` را خودِ
+`CustomerForm` می‌نویسد. حالا تریگر هر دو آینه را می‌نویسد، پس P2.2 نباید مستقیم روی
+`suppliers.accounting_code` بنویسد — فقط `person_identifiers` را بنویسد و بگذارد تریگر
+کارش را بکند.
 
-### Session harness note
+**۴ — هیچ عددی ثابت نوشته نشود.** نه ۱۵، نه ۱۳. شمارش زنده:
+`SELECT count(*) FROM public.suppliers WHERE accounting_code IS NULL;`
 
-The stored e2e session had expired (token dead since 2026-08-04). Rebuilt via the Auth Admin
-API. `test.admin@afrakala.local` was temporarily given a random password and has been
-**restored to the shared LAN convention `AfraTest!1404`** that other specs rely on. Tokens
-last 1 hour — expect to refresh before any suite run.
+**۵ — e2e پایه معتبر نداریم.** اجرای ۲۰۲۶-۰۸-۰۷ (۴۸۲ سبز / ۲۴ قرمز) روی buildی بود که
+`APP_GIT_SHA=84d263b2` می‌داد و آن commit **در این مخزن وجود ندارد**. بعد از rebuild،
+`e2e/purchase` به ۶۷ سبز / ۲ قرمز رسید و آن دو هم با ۳۰۶ و اصلاح spec سبز شدند. gate این
+مأموریت باید مبنای تازه بسازد.
 
-### 🔴 REGRESSION INTRODUCED BY MIGRATION 304 — P0.3 must be reverted or repaired
+**۶ — نشست e2e یک ساعت اعتبار دارد.** توکن ذخیره‌شده منقضی می‌شود؛ قبل از هر اجرا با
+Auth Admin API تازه‌اش کنید. رمز مشترک حساب‌های LAN: در `e2e/persons/*` به‌صورت ثابت هست.
 
-The `e2e/purchase` re-run against the verified HEAD build went **67 passed / 2 failed /
-1 skipped** (down from 15 failures against the untraceable build). The two survivors are
-**caused by migration 304**, and the specs are right.
+**۷ — دو حساب نقش `rejected` هستند.** `test.viewer` و `test.manager` وضعیت `rejected`
+دارند، پس اپ آن‌ها را به `/login` می‌فرستد و اسپک‌های مربوط قرمز می‌شوند — بدون ارتباط با کد.
 
-`c5-permissions.spec.ts:277 E2E-8` asserts that no `purchase_requests` row claims a derived
-status with no supply behind it. It expected `0` and got **`121`**:
+---
 
-| status | orphaned | total | share |
-|---|--:|--:|--:|
-| `purchased` | **98** | 104 | 94% |
-| `partially_purchased` | **23** | 24 | 96% |
+### معلق در انتظار تصمیم مالک
 
-**Cause.** 304 deleted 158 `purchase_request_fulfillments` rows. Those rows were the *supply
-evidence* behind each request's derived status. `purchase_request_fulfillments` is now down
-to **8 rows**, so 121 requests assert `purchased`/`partially_purchased` with nothing backing
-them. `c5 E2E-9` ("a purchased request can still be delivered") fails from the same cause.
-
-**Why the migration's own guards missed it.** 304 asserted there were no orphaned *child*
-rows — every dependent pointed at a surviving parent. It never asked the inverse question:
-whether deleting children invalidates a **parent's derived state**. Referential integrity
-held; semantic integrity did not.
-
-**This is the fourth P0 premise to fail.** `P0_CLEANUP.md` calls these rows "garbage", but
-`e2e/purchase/c2-central-rpc.spec.ts:9-14` documents the opposite as a deliberate decision:
-*"They are NOT deleted: deleting a purchase would orphan its stock movement … which would
-corrupt inventory far worse than leaving a test row behind."* The suite was designed around
-never deleting this data.
-
-**Remediation options (owner decision — this is business workflow data):**
-- **(a) Revert P0.3** via `docs/verification/304-down.sql` + the 598 KB backup, restoring the
-  322 purchases, 322 items, 320 idempotency rows, 158 fulfillments and 322 stock movements.
-  Returns the database to a consistent state and matches the suite's documented intent.
-  **Recommended.**
-- **(b) Fix forward** by resetting the 121 requests to a status consistent with zero supply.
-  Rejected as the default: their prior status is not recorded anywhere, so this guesses at
-  business workflow state and is lossy.
-
-**Next action:** owner decides (a) or (b). Do not start P1 until the database is consistent —
-P1 builds on the identity model and must not inherit a broken purchase-request state.
-
-**P0 status:** 0.1 closed (303 applied; `api` kept by owner decision). 0.3 closed (304
-applied). 0.4 done. 0.6 done. **0.2 held** — premise contradicted, owner decision needed.
-**0.5 not needed** — target file absent from history; no rewrite, no force-push performed.
-
-**Three of P0's six phases had premises that did not survive the live database** (0.1's "9
-garbage persons", 0.2's four pairs, 0.3's 84/93 + journal entanglement, 0.5's missing file).
-Treat P1–P5 mission numbers as claims to verify, not facts.
-
-**Two gates this program cannot self-certify:**
-1. P0.3's test says *"Purchase e2e suite still passes."* **It has not been run.** There is no
-   `test` script in this project, and `PROGRESS.md` documents that
-   `playwright.auth.config.ts` must not be run wholesale because
-   `save-admin-session.spec.ts` overwrites `admin.storage.json` with an empty session under
-   headless. Running the purchase suite is a **manual step for the owner.**
-2. The 322 deleted purchases were e2e fixtures. Specs that assert on purchase counts may now
-   behave differently on their next run; specs that recreate their own fixtures will not.
-
-**Resolved — the "supplier-tag / product_suggestions" search.** Asked to find the mechanism
-under another name. What actually exists:
-
-| looked for | what exists | verdict |
-|---|---|---|
-| `product_suggestions` table | **nothing** — `to_regclass` null | absent |
-| "29 product_suggestion links" | `product_suppliers.auto_added` — the auto-created-from-suggestion marker. **22 true / 9 false, 31 total.** None belong to `api` (0). | closest analog; count is not 29 |
-| supplier tagging | **none.** No `%tag%` table. Supplier gating is only the `status` and `is_active` columns. | absent |
-| product tagging | `product_labels` (12) + `product_label_links` (694) — a real tag system, but it tags **products, not suppliers**. One label is literally «پیشنهاد». | exists, wrong subject |
-
-So there is no way to "hide `api` via a tag" without building supplier tagging from scratch —
-a new schema feature, not a P0-sized change. `api` remains as decided.
-
-**Carry into P0.2:** «مختارشاهمرادی» — named in P0.2's duplicate list — holds **4
-`product_suppliers` rows** (`auto_added=true`). P0.2 deletions will hit dependents; the phase
-cannot assume the pairs are dependency-free.
-
-### Backlog — after UNIFY P5
-
-If product-suggestion sourcing is ever modelled, it should be a **source-info field on the
-suggestion record**, not a `suppliers` row. Creating a supplier row to carry "who suggested
-this product" is what put `api` and `12` in the supplier table with junk names and no
-contact data. Not scheduled before P5.
-
-**Carry into P1 — two live hazards:**
-1. `detect_phone_collisions()` will mark **every dual-role person P1 creates** as a false
-   collision (`docs/asan/collision-detection-defect.md`). Fix before P1 lands, or P1's
-   output is unusable.
-2. **P2.3 is written around "the 15 real supplier Asan codes". The live count is now 13**
-   after 303. Generate the banner and checklist from a live count, never the literal.
-
-**Files in flight:** none. 303 is applied; nothing is written-but-unapplied.
-
-**Not yet done in P0:** 0.2, 0.3, 0.5 (+ the `api` decision).
+- **P0.2** — ۹ ردیف از ۱۴ پشت حساب‌های واقعی‌اند (از جمله حساب مالک)؛
+  `profiles.person_id` روی `NO ACTION` است پس حذف خطا می‌دهد نه cascade.
+- **دو فایل xlsx مرجع آسان** — ورودی تست e2e
+  (`import-persons.spec.ts:23`, `import-products.spec.ts:28`).
+- **شش تصمیم طرح تصحیح‌شده** — مهم‌ترینش مدل حسابداری P5:
+  `mutual_settlement` و `supplier_payable` در `journal_lines.account_kind` **وجود ندارند**.
