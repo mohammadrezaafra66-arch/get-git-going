@@ -249,8 +249,44 @@ problem.
       count from `SELECT count(*) FROM public.suppliers` and states explicitly that no
       literal may be written into the checklist, banner or test. Live count is 13 today.
 
-**Next action:** complete the P0 mission gate (build + deploy, verify three signals against
-HEAD), then start P1.
+**Build/deploy gate: DONE 2026-08-07.** Three signals verified — `APP_GIT_SHA=b248f957`
+(= HEAD), `APP_BUILD_TIME=2026-08-07T00:03:34Z` (the value set for the build), and image
+`dc7df508…` replacing `67c561c1…`, so the container is not a recycled image.
+
+### ⚠️ The deployed app was untraceable before this rebuild
+
+Before the rebuild the running container reported **`APP_GIT_SHA=84d263b2`, built
+2026-08-05T23:39Z**. That commit **does not exist in this repository** — `git cat-file`
+returns *"Not a valid object name"*, and it is not an ancestor of HEAD or on any branch.
+
+**Consequence: the full e2e run of 2026-08-07 (482 passed / 24 failed / 7 skipped / 7 did not
+run, 34.8 min) did not measure HEAD.** It measured an unknown build. Those numbers must not
+be treated as a HEAD baseline.
+
+What survives from that run, because it was proven against the database rather than through
+the browser:
+- `create_purchase` works correctly with the exact values the failing form showed
+  (product `AFK-2026-00014`, `نقدی`, 5000, toman, qty 2, warehouse `ایران ری`), verified
+  twice inside `BEGIN … ROLLBACK`: purchases 12→13, stock_movements 10→11.
+  **Migration 304 is cleared of causing the purchase failures.**
+- The 3 `asan` failures are leftover-fixture hygiene assertions (`asan_export_numbers`,
+  minted numbers, `delivery_receipts`) on tables no migration touched.
+- The 2 viewer failures are account state, not code: `test.viewer` and `test.manager` are
+  `profiles.status='rejected'`, so the app bounces them to `/login`.
+- `credit-uses-person` is the documented pre-existing red.
+
+**Unknown until the re-run completes:** whether the 15 `purchase` failures exist at HEAD.
+
+### Session harness note
+
+The stored e2e session had expired (token dead since 2026-08-04). Rebuilt via the Auth Admin
+API. `test.admin@afrakala.local` was temporarily given a random password and has been
+**restored to the shared LAN convention `AfraTest!1404`** that other specs rely on. Tokens
+last 1 hour — expect to refresh before any suite run.
+
+**Next action:** read the `e2e/purchase` re-run against HEAD. If green, P0's gate is fully
+met and P1.1 starts. If still red, that is a genuine application defect — stop and report,
+do not touch the specs.
 
 **P0 status:** 0.1 closed (303 applied; `api` kept by owner decision). 0.3 closed (304
 applied). 0.4 done. 0.6 done. **0.2 held** — premise contradicted, owner decision needed.
