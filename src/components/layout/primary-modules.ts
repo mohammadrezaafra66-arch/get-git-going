@@ -56,6 +56,14 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/messages",
       "/knowledge",
       "/academy",
+      // Kept in step with PRIMARY_MODULE_PATHS.assistant in
+      // src/lib/navigation/registry.ts:1110-1122. Those two lists are separate
+      // copies of the same data and had already drifted: /updates was added to
+      // the registry copy but not here, and since itemsForModule() below reads
+      // ONLY this list, the entry never rendered in the sidebar even though its
+      // registry seed, its group, its module key and all seven role_permissions
+      // rows were correct. Whichever list you edit, edit both.
+      "/updates",
     ],
   },
   {
