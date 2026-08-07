@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { dbScalar } from "../helpers/db";
+import { ADMIN_USER_ID } from "../helpers/pgrest";
 
 /**
  * Issue 219 / C5 — the permission layers agree, and the bypasses are closed.
@@ -346,12 +347,25 @@ test("E2E-9 a purchased request can still be delivered", async ({ page }) => {
   await page.reload();
   await page.waitForLoadState("networkidle");
   const card = page.locator(`[data-request-id="${id}"]`);
-  // The receipt button is deliberately assignee-only (C3), and with no default
-  // assignee configured and no purchase_specialist on this database the request
-  // is ownerless — so it is correctly absent here. Its permission rule is
-  // covered where it can be asserted honestly: the database suite.
+  // The receipt button is deliberately assignee-only (C3): it renders for the
+  // user the request is assigned TO, not merely whenever an assignee exists.
+  //
+  // This previously read `coalesce(assigned_to,'')` and treated any non-empty
+  // value as "the button must be here". That conflated "assigned to someone"
+  // with "assigned to me", and held only while the request happened to be
+  // ownerless — the original comment said as much. It broke the moment a
+  // default assignee existed who was not this session's admin: the request was
+  // assigned to another account, so the button was correctly absent while the
+  // expectation demanded it be present.
+  //
+  // Comparing against ADMIN_USER_ID asserts the actual rule and is strictly
+  // stronger: the button must appear when this user owns the request, and must
+  // be absent when they do not — both directions, whatever the assignment is.
   await expect(card.getByRole("button", { name: "آپلود رسید" })).toHaveCount(
-    dbScalar(`select coalesce(assigned_to::text,'') from public.purchase_requests where id='${id}'`)
+    dbScalar(
+      `select count(*) from public.purchase_requests
+        where id='${id}' and assigned_to='${ADMIN_USER_ID}'`,
+    ) === "1"
       ? 1
       : 0,
   );
