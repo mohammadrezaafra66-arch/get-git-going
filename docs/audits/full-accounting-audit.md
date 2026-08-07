@@ -538,11 +538,150 @@ src/components/purchase/PurchaseForRequestDrawer.tsx:63   <PurchaseForm ... />
 سروکار داشت — بک‌اند از هر سه جهت (RPC، PostgREST، UPDATE مستقیم) وضعیت دستی
 «خریداری‌شده» را رد می‌کند.
 
-### بندهای باقی‌ماندهٔ چک‌لیست برای C
+### بقیهٔ چک‌لیست هشت‌بندی — C
 
-اسکیمای کامل `purchases`/`purchase_requests`/`purchase_items`، محدودیت‌ها، RLS، و پوشش
-`role_permissions` هنوز اجرا نشده‌اند. فقط پرسش مسیرهای ثبت خرید (بخش سوم دستور مالک)
-در این دور کامل شد.
+**۱ — مسیرها و ناوبری.** `_app.purchases_.create.tsx` (فرم مستقل)،
+`_app.purchases.tsx` (۳۳ خط، پوستهٔ فهرست)، `_app.purchase.tsx` (۱۲۷ خط، پنل)،
+`_app.admin.purchase.tsx` (۲۷۹ خط، خط لولهٔ تأیید). ماژول ناوبری `purchases`.
+
+**۲ — اسکیما و اندازهٔ واقعی.** شمارش زنده — **اعداد گزارش فرانت‌اند کهنه‌اند**:
+
+| جدول | گزارش فرانت‌اند | زنده امروز |
+|---|---|---|
+| `purchase_requests` pending | ۳۳۹ | **۳۵۹** |
+| approved | ۱۳۰ | **۱۳۷** |
+| purchased | ۱۲ | **۱۶** |
+| `purchases` | — | **۵۹** |
+| `purchase_items` | — | **۵۹** |
+| `purchase_request_fulfillments` | — | **۲۵** |
+
+(اعداد به‌خاطر اجراهای e2e و مهاجرت ۳۰۶ که ۱۲۱ درخواست یتیم را حذف کرد جابه‌جا شده‌اند.)
+
+**۳ — تریگرها.** یازده عدد روی چهار جدول:
+`purchases` → audit_insert, updated_at, `trg_asan_burn_purchase_number`,
+`trg_award_accountant_payment_score`, `trg_award_buyer_purchase_score`,
+`trg_guard_accountant_purchase_update`, `trg_purchases_derive_person` ·
+`purchase_items` → `trg_purchase_items_stock_in` (مسیر موجودی) ·
+`purchase_requests` → `trg_purchase_request_status_derived` (همان تریگر وضعیت مشتق
+که مهاجرت ۳۰۶ با آن سروکار داشت), updated_at ·
+`purchase_request_fulfillments` → `trg_prf_validate_allocation`.
+
+**۴ — محدودیت‌ها.** `quantity >= 1` · ارز فقط `toman/usd/aed` (هم برای `currency` هم
+`cash_price_currency`) · `purchases_supplier_person_requires_supplier_chk`
+(شخص تأمین‌کننده بدون ردیف تأمین‌کننده ممنوع) · `number` یکتا ·
+`purchase_requests.status` محدود به شش مقدار.
+
+**۵ — ساخته‌شده ولی بی‌مصرف.** `purchase_receipts` = **۰ ردیف**. جدول و FK دارد
+(`purchase_receipts.request_id` با CASCADE) ولی هرگز استفاده نشده — نامزد جدی
+«ساخته شد، وصل نشد».
+
+**۶ — تکرار.** در این دور موردی پیدا نشد. برخلاف تصور اولیهٔ گزارش فرانت‌اند، دو «جریان
+خرید» در واقع یک پیاده‌سازی‌اند (بالا).
+
+**۷ — نقص/شکاف: مجوز ثبت خرید در سه لایه یکسان نیست.**
+
+| لایه | چه کسی می‌تواند خرید ثبت کند |
+|---|---|
+| `role_permissions` ماژول `purchases` | فقط `admin` و `manager` (`create=true`) |
+| RLS روی `purchases` | فقط `admin` و `manager` («manager admin write purchases») |
+| RPC `create_purchase` | admin/manager **به‌علاوهٔ مسئولِ اختصاص‌یافتهٔ درخواست** |
+
+خودِ کد این را می‌داند و علامت‌گذاری کرده است:
+
+> *⚠️ This is the one place where the RPC is broader than the RLS policy on purchases
+> (admin/manager). It has to be: the whole feature is that the assigned buyer registers
+> the purchase. In practice nothing changes today — create_purchase_request assigns every
+> request to the first active manager, so every assignee already holds manager. Aligning
+> RLS and role_permissions with this rule is the separate permission-unification phase.*
+
+**ادعای «هر مسئول، مدیر است» زنده بررسی شد و درست است:**
+
+```
+assigned_requests = 238 | assignees_who_are_admin_or_manager = 238
+                        | assignees_who_are_NOT = 0
+```
+
+پس شکاف **امروز خفته است**، نه فعال. ولی اگر روزی درخواستی به کسی غیر از admin/manager
+اختصاص یابد، آن شخص می‌تواند خرید ثبت کند در حالی که هر دو لایهٔ دیگر می‌گویند نمی‌تواند.
+این یک نقص نیست — یک تصمیم مستند با بدهی فنی اعلام‌شده است.
+
+**نکتهٔ فرعی:** `purchase_specialist` — نقشی که نامش برای خرید است — در
+`role_permissions` روی ماژول `purchases` فقط `view=true` دارد. با قاعدهٔ بالا، این نقش
+فقط از راه درخواستِ اختصاص‌یافته می‌تواند خرید ثبت کند، هرگز مستقل.
+
+**۸ — پوشش `role_permissions`.** ✅ کامل برای ماژول `purchases` — هر هفت نقش ردیف صریح
+دارند.
+
+---
+
+## F — پرداخت ✅ کامل
+
+### حکم کوتاه
+
+**جدول به‌طرز چشمگیری کامل است؛ RPC و فرم تقریباً هیچ‌کدام از آن را در دسترس نمی‌گذارند.
+و هیچ پرداختی هرگز وارد دفتر روزنامه نمی‌شود.**
+
+**۱ — مسیرها و ناوبری.** `_app.accounting.purchase-payments.tsx` (۵۷۹ خط).
+در registry ثبت است (`registry.ts:463-467`، ماژول `accounting`، گروه `finance`).
+گارد مسیر: `requireAnyRole(["admin","manager","accountant"])` — **فهرست نقش ثابت، نه
+`requirePermission`**.
+
+**۲ — اسکیما.** ۲۲ ستون، شامل هرچه برای ثبت شخص ثالث لازم است:
+`payee_type, payee_party_id, payee_supplier_id, payee_customer_id, payee_person_id,
+payee_name, tracking_number, cheque_number, cheque_due_date, source_bank_account_id`.
+
+**۳ — منطق کسب‌وکار.** `pay_purchase_with_voucher` تنها نویسنده است. امضایش:
+```
+_purchase_id, _source_bank_account_id, _payment_date, _document_channel,
+_amount, _tracking_number, _cheque_number, _cheque_due_date, _description
+```
+سه تریگر: `trg_payment_vouchers_updated_at`, `trg_payment_vouchers_number`
+(شماره‌گذاری), `trg_payment_vouchers_derive_person`.
+
+**۴ — محدودیت‌ها. این بهترین بخش این دامنه است.**
+`payment_vouchers_payee_matches_type_chk` یک XOR کامل چهارطرفه است: برای هر
+`payee_type` دقیقاً یک FK باید پر باشد و بقیه NULL؛ و برای `other` نام غیرخالی الزامی است.
+همچنین فیلدهای چک فقط وقتی مجازند که `document_channel='cheque'` باشد، و در آن حالت
+شمارهٔ چک الزامی است. کانال‌های مجاز: `card_to_card, paya, pol, satna, cash, cheque, other`.
+
+**یعنی مدل دادهٔ سمت پرداخت برای ثبت شخص ثالث از سمت دریافت هم کامل‌تر است** — چهار نوع
+گیرندهٔ صریح با CHECK سخت‌گیرانه، در برابر XOR دوحالتهٔ سمت دریافت.
+
+**۵ — ساخته‌شده ولی بی‌مصرف. این کل دامنه است.**
+`payment_vouchers` = **۰ ردیف**. هیچ پرداختی تا امروز ثبت نشده. تمام آن مدل‌سازی دقیق
+بالا هرگز به کار نرفته.
+
+**۶ — تکرار.** موردی پیدا نشد.
+
+**۷ — نقص‌ها. سه مورد، به ترتیب اهمیت:**
+
+**(الف) پرداخت‌ها هیچ سند حسابداری تولید نمی‌کنند.** بررسی زنده: تنها تابعی که در
+`journal_entries` درج می‌کند `post_receipt_accounting` است. `pay_purchase_with_voucher`
+هیچ سطری نمی‌زند. یعنی **خروج پول از خزانه در دفتر دوطرفه نامرئی است**. امروز بی‌اثر
+(۰ ردیف) ولی اولین پرداخت واقعی این شکاف را فعال می‌کند.
+
+**(ب) RPC هویت گیرنده را نمی‌پذیرد.** جدول `payee_party_id` با FK به `external_parties`
+دارد، ولی امضای RPC هیچ پارامتری برایش ندارد — نه `payee_party_id`، نه `payee_name`، نه
+`payee_type`. **پاسخ صریح به پرسش مالک: تغییر امضای RPC کافی نیست.** چون
+`payment_vouchers_payee_matches_type_chk` الزام می‌کند `payee_type` و دقیقاً یکی از FKها
+با هم ست شوند، RPC باید **هر دو** را بگیرد و هم‌زمان بنویسد. یعنی: امضا + بدنهٔ درج +
+فرم. سه لایه، نه یکی.
+
+**(ج) ماژول `accounting` هیچ ردیفی در `role_permissions` ندارد.** فهرست ۲۴ ماژول دارای
+ردیف، `accounting` را شامل نمی‌شود. مسیر پرداخت با فهرست نقش ثابت محافظت می‌شود، پس
+عملاً باز نیست؛ ولی هر جزئی که به‌صورت پویا مجوز `accounting` را بپرسد از این شکاف
+آسیب می‌بیند. این همان هشدار بند ۸ چک‌لیست است.
+
+**۸ — پوشش `role_permissions`.** ❌ **صفر ردیف برای ماژول `accounting`.**
+
+### `external_party` در دفتر — بازتأیید
+
+```
+journal_lines_total = 2   |   external_party_lines = 0
+```
+هنوز صفر. مسیر ثبت شخص ثالث در سمت پرداخت نه در فرم هست، نه در RPC، و نه در دفتر.
+
+---
 
 ---
 
