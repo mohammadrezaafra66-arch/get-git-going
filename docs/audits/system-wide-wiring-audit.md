@@ -20,7 +20,7 @@
 |---|---|---|---|
 | ۱ | **کامنتِ «هر دو را با هم ویرایش کن» دروغ است** — کپی داخل `registry.ts` هیچ اثری بر سایدبار ندارد و در عمل مرده است | 🔴 | `registry.ts:1109` |
 | ۲ | همان دو فهرست **در ۷ مسیر دیگر هم واگرا شده‌اند**، نه فقط `/updates` | 🔴 | `registry.ts:1109` ↔ `primary-modules.ts:36` |
-| ۳ | **۲۴ صفحه‌ی seedشده در هیچ ماژول سایدبار نیستند** — فقط با جستجو پیدا می‌شوند، با کلیک هرگز | 🟠 | `primary-modules.ts:203` |
+| ۳ | **۳۸ صفحه‌ی seedشده در هیچ ماژول سایدبار نیستند** — فقط با جستجو پیدا می‌شوند، با کلیک هرگز | 🔴 | `primary-modules.ts:203` |
 | ۴ | **سه پیاده‌سازی موازی «حاکمیت کلید API»**؛ دو تای آن‌ها غیرقابل‌دسترس و مستقیم روی جدول می‌نویسند (نه از راه RPCهای امن) | 🟠 | `_app.api-keys.tsx` · `_app.operations.api-keys.tsx` |
 | ۵ | **۸ صفحه‌ی واقعی (~۲۸۲۰ خط) از هیچ کجای برنامه قابل دسترسی نیستند** | 🟠 | فهرست کامل در گام ۱-د |
 | ۶ | `nav-items.ts` **هیچ واردکننده‌ای ندارد** — آداپتور مرده‌ای که مستندات هنوز «منبع حقیقت» صدایش می‌زند | 🟠 | `nav-items.ts:22` |
@@ -56,7 +56,7 @@
 
 `NavigationCommandPalette.tsx:43` و جستجوی سایدبار (`AppSidebar.tsx:131`) هر دو روی
 `getVisibleNavigationEntries(roles)` کار می‌کنند، یعنی **کل رجیستری** — نه فهرست ماژول‌ها.
-به همین دلیل ۲۴ موردِ بند ۱-ج «پیدا می‌شوند ولی دیده نمی‌شوند».
+به همین دلیل ۳۸ موردِ بند ۱-د «پیدا می‌شوند ولی دیده نمی‌شوند».
 
 ### ۱-ج) واگرایی دو فهرست — فراتر از `/updates`
 
@@ -72,25 +72,47 @@
 
 جهت معکوس (فقط در `primary-modules.ts`): **صفر مورد**.
 
-### ۱-د) صفحاتی که هرگز در سایدبار ظاهر نمی‌شوند
+### ۱-د) صفحاتی که هرگز در سایدبار ظاهر نمی‌شوند — ۳۸ مورد
 
-۲۴ seedِ منو-پذیر با هیچ مسیری در `PRIMARY_MODULES[].paths` تطبیق نمی‌خورند، پس
-`itemsForModule()` هیچ‌وقت برنمی‌گرداندشان:
+`itemsForModule()` (`primary-modules.ts:209-214`) تطبیق را با **جست‌وجوی دقیق** انجام
+می‌دهد، نه پیشوندی:
 
-```
-/popup-center                    /accounting/treasury            /admin/purchase
-/collaboration                   /accounting/payment-vouchers    /admin/documents
-/purchase                        /accounting/salesperson-scoring /admin/delivery-receipts
-/warehouses                      /admin/platform-releases        /admin/workflow-settings
-/warehouses/transfers            /admin/penalties                /admin/sales-reminders
-/warehouses/kardex               /admin/audit                    /admin/visitors
-/my-rejected-quotes              /admin/phone-collisions         /admin/automation
-                                 /admin/asan-import              /integrations/didar
-                                 /admin/asan-export
+```ts
+const byPath = new Map(visibleItems.map((i) => [i.route, i] as const));
+for (const p of m.paths) { const it = byPath.get(p); if (it) out.push(it); }
 ```
 
-⚠️ `/warehouses` (انبار) و `/purchase` (فضای کاری خرید) در این فهرست‌اند — یعنی دو حوزه‌ی
-اصلی کسب‌وکار از مرور کلیکی سایدبار غایب‌اند.
+پس یک seed فقط وقتی رندر می‌شود که **رشته‌ی مسیرش عیناً** در `PRIMARY_MODULES[].paths`
+باشد. بودنِ والدش کافی نیست. با این معیار، **۳۸ عدد از ۱۲۱ seed منو-پذیر هرگز رندر
+نمی‌شوند**:
+
+```
+/popup-center                /accounting/treasury               /admin/documents
+/collaboration               /accounting/payment-vouchers       /admin/delivery-receipts
+/pricing/attention           /accounting/salesperson-scoring    /admin/workflow-settings
+/pricing/live-price-list     /gamification/settings             /admin/sales-reminders
+/purchase                    /admin/platform-releases           /admin/visitors
+/warehouses                  /admin/penalties                   /admin/automation
+/warehouses/transfers        /admin/audit                       /integrations/didar
+/warehouses/kardex           /admin/phone-collisions            /gamification/admin/kpi-rules
+/my-rejected-quotes          /admin/asan-import                 /gamification/admin/achievements
+/sales/product-videos        /admin/asan-export                 /gamification/admin/missions
+/persons/import              /admin/purchase                    /gamification/admin/leagues
+/persons/merge                                                  /gamification/admin/rewards
+                                                                /gamification/admin/purchase-settings
+                                                                /gamification/admin/manual-metrics
+                                                                /gamification/admin/manual-metrics/guide
+```
+
+⚠️ برجسته‌ترین‌ها: `/warehouses` (کل انبار)، `/purchase` (فضای کاری خرید)،
+`/persons/merge` و `/persons/import` (ادغام و ورود اشخاص)، ورود/خروج آسان، و **کل نُه
+صفحه‌ی مدیریت گیمیفیکیشن**.
+
+> **تصحیح روش (مهم):** نسخه‌ی اول همین گزارش عدد ۲۴ را نوشته بود. آن عدد با تطبیق
+> **پیشوندی** به‌دست آمده بود، که منطق `resolveActiveModule()` است نه `itemsForModule()`.
+> با معیار درست (تطبیق دقیق) عدد **۳۸** است. تمام ۹ صفحه‌ی `/gamification/admin/*` و
+> `/persons/merge` و `/persons/import` در شمارش قبلی به‌غلط «پوشش‌داده‌شده» حساب شده بودند،
+> چون والدشان (`/gamification`، `/persons`) در فهرست هست.
 
 **چرا اتفاق افتاد:** `docs/lovable-change-reports/2026-05-23-0845-...md:99` نوشته بود
 آیتم‌های map‌نشده «از ماژول «بیشتر» یا جستجو» در دسترس‌اند. بعداً ماژول «بیشتر» حذف شد
@@ -282,6 +304,49 @@ registry.» این جمله امروز **دوبار غلط** است: فایل م
 
 ---
 
+## تطبیق با اجرای موازی همین مأموریت (commit `c6ea8f5e`)
+
+⚠️ **این مأموریت هم‌زمان دو بار اجرا شد.** یک عامل دیگر در همین working tree، رأس ساعت
+۲۲:۵۵ همین روز، commit `c6ea8f5e` را با همین دو فایل خروجی ثبت کرد — چهار دقیقه پیش از
+commit این نشست. چون هر دو نشست روی یک working tree کار می‌کنند، نوشتن این نشست فایل‌های
+آن نشست را روی دیسک بازنویسی کرد. **محتوای آن‌ها از دست نرفته** (در `c6ea8f5e` محفوظ است)
+و یافته‌های یکتای آن در همین بخش ادغام شده است.
+
+| ادعا | آن نشست | این نشست | حکم |
+|---|---|---|---|
+| seedهایی که هرگز رندر نمی‌شوند | **۳۸** | ۲۴ → **۳۸** | ✅ **آن نشست درست بود.** خطای این نشست تصحیح شد (بند ۱-د) |
+| تعداد منابع ناوبری | ۵ | **۸** | ✅ این نشست کامل‌تر: `nav-items.ts`، `MOBILE_PRIORITIES` و جدول‌های کلید-مسیر جا افتاده بودند |
+| اندازه‌ی `PRIMARY_MODULE_PATHS` | ۱۱۴ | **۹۲** | ✅ این نشست: شمارش دقیق روی بلوک `registry.ts:1109` |
+| اندازه‌ی `PRIMARY_MODULES[].paths` | ۸۶ | **۸۵** | ✅ این نشست |
+| لینک شکسته `/pending` | «۱ لینک شکسته» | **صفر** | ❌ **رد شد** — زیر |
+| `PRIMARY_MODULE_PATHS` زنده است | فرض شده زنده | **مرده** | ✅ این نشست: زنجیره‌ی مصرف تا `NavigationBreadcrumbs` دنبال شد (الف-۱) |
+| `MobileBottomNav` از رجیستری نمی‌خواند | ✅ | ✅ | هر دو موافق (الف-۵، الف-۸) |
+
+### رد ادعای «لینک شکسته `/pending`»
+
+آن گزارش نوشت `/pending` در رجیستری هست ولی فایل ندارد. **تنها رخداد رشته‌ی `"/pending"`
+در کل `registry.ts` این است:**
+
+```
+registry.ts:1354   recentEligible: !seed.to.includes("/pending") && !seed.to.includes("/admin/audit"),
+```
+
+این یک **گزاره‌ی فیلتر** است (زیررشته‌ای که مسیرهای `…/pending` را از «آخرین
+استفاده‌ها» کنار می‌گذارد)، نه یک مقصد ناوبری. تطبیق دقیق روی هر ۹۲ ورودی
+`PRIMARY_MODULE_PATHS` مقدار `false` می‌دهد. مسیر واقعی `/users/pending` است که هم seed
+دارد و هم فایل. **بنابراین لینک شکسته همچنان صفر است.**
+
+### یافته‌ی یکتای آن نشست که اینجا حفظ می‌شود
+
+آن نشست یک **تصحیح روی ادعای پیشین خودش** ثبت کرده بود که ارزش نگه‌داشتن دارد:
+در `docs/execution/unify-plan-corrected.md` پیش‌تر نوشته شده بود چهار صفحه‌ای که
+`P3_SIDEBAR.md` «یتیم» خوانده بود در واقع یتیم نیستند «چون در رجیستری ثبت‌اند».
+آن تصحیح **نادرست بود**: ثبت در `NAVIGATION_SEEDS` به‌تنهایی چیزی را در سایدبار نشان
+نمی‌دهد؛ حضور دقیق در `PRIMARY_MODULES[].paths` لازم است. پس ادعای اصلی `P3_SIDEBAR.md`
+در عمل درست بوده. این دقیقاً همان سازوکاری است که بند ۱-د می‌سنجد.
+
+---
+
 ## روش و شواهد
 
 - مسیرهای واقعی از `src/routeTree.gen.ts` (بلوک `FileRoutesByFullPath`) استخراج شد، نه از
@@ -291,3 +356,6 @@ registry.» این جمله امروز **دوبار غلط** است: فایل م
 - اسلش انتهاییِ روت‌های `index` یکسان‌سازی شد؛ بدون آن `/products` هم‌زمان «شکسته» و
   «یتیم» گزارش می‌شد که هر دو غلط بود.
 - ادعای «صفر مصرف‌کننده» برای هر نماد با grep روی کل مخزن (بدون `node_modules`) تأیید شد.
+- تطبیق seed با ماژول **دقیق** انجام شد نه پیشوندی، چون `itemsForModule()` از
+  `Map.get(route)` استفاده می‌کند. تطبیق پیشوندی منطقِ `resolveActiveModule()` است و
+  اگر اشتباهی اینجا به کار رود، ۱۴ صفحه را به‌غلط «قابل‌مشاهده» نشان می‌دهد.
