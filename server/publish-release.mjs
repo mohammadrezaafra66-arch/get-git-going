@@ -180,14 +180,33 @@ export async function publishReleaseOnBoot({ searchDirs }) {
       return;
     }
 
-    // What is already on the page? Any status counts — an archived release still
-    // means its commits shipped.
-    const existing = await restCall(
+    // Find the newest release whose commit is ACTUALLY IN THIS BUILD, rather
+    // than simply the newest row.
+    //
+    // Taking the newest row was wrong and produced a duplicate release in
+    // production: an archived test row carrying a foreign sha became newest, its
+    // sha was not in this build's commit list, entriesSinceLastRelease hit its
+    // "unknown sha" branch and republished every entry in range. One stray row
+    // is enough to poison it, and the failure is silent and user-visible.
+    //
+    // Matching against the commit list skips archived tests, foreign shas and
+    // rewritten history alike. If none match it is genuinely a first deploy, and
+    // publishing everything is then correct.
+    const known = new Set((payload.commits ?? []).map((c) => c.trim().toLowerCase()));
+    const recent = await restCall(
       url,
       key,
-      "platform_releases?select=git_sha,release_number&order=release_number.desc&limit=1",
+      "platform_releases?select=git_sha,release_number&order=release_number.desc&limit=50",
     );
-    const lastSha = existing?.[0]?.git_sha ?? null;
+    const lastSha =
+      (recent ?? []).find((r) => {
+        const sha = (r.git_sha ?? "").trim().toLowerCase();
+        if (!sha) return false;
+        for (const c of known) {
+          if (c.startsWith(sha) || sha.startsWith(c)) return true;
+        }
+        return false;
+      })?.git_sha ?? null;
 
     const fresh = entriesSinceLastRelease(payload, lastSha);
     if (fresh.length === 0) {
