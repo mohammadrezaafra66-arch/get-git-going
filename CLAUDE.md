@@ -228,6 +228,36 @@ Non-obvious gotchas (these will silently break the stack if missed):
   values (<id>, 'admin')` via SQL. `app_role` enum = admin/manager/sales/
   accountant/viewer.
 
+## Release notes: every user-facing commit carries a Persian trailer
+
+The `/updates` page is generated automatically from git history at build time
+(`scripts/generate-release-notes.mjs`). There is **no manual approval step** —
+whatever is generated is published to end users on the next deploy.
+
+That only works if the Persian text exists at commit time. So:
+
+**If a commit changes anything a user can see, its message must end with a
+`Release-note-fa:` trailer** written for that user — not for a developer.
+
+```
+feat(products): add Torob URL field
+
+Release-note-fa: امکان ثبت لینک ترب برای هر محصول اضافه شد.
+```
+
+Rules:
+- One trailer per commit. Plain Persian, one or two sentences, no jargon, no
+  file names, no migration numbers, no commit SHAs.
+- Describe what the user can now do, not how it was built.
+- **Commits with no trailer are not published.** That is the correct outcome for
+  internal work — migrations, refactors, docs, tests, tooling. Do not add a
+  trailer to make internal work visible.
+- Never write the trailer in English. The page and its audience are Persian.
+
+The generator is strict on purpose: without a trailer it publishes nothing,
+rather than gluing a Persian label onto an English subject. `--allow-fallback`
+exists only to preview what history would produce; never ship its output.
+
 ## Auto-push after every commit (all AI agents)
 After every `git commit`, immediately run `git push origin HEAD`.
 This applies to every AI agent working in this repo — Claude Code, Codex, Cursor, or any other.

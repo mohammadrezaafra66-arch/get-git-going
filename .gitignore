@@ -120,6 +120,12 @@ screenshots/
 # samples under docs/verification/.
 *.xlsx
 
+# Build artefact: release notes generated from git history by
+# scripts/generate-release-notes.mjs, baked into the image at build time.
+# Must stay ignored — deploy/lan/build.ps1 refuses to build a dirty tree, and a
+# tracked generated file would break every build that regenerates it.
+public/release-notes.json
+
 # Phase cleanup backups (rule 4). P0_CLEANUP.md phase 0.3 tells the agent to write
 # a pg_dump into docs/verification/, but that dump carries live business rows -
 # it is a restore artefact, not documentation. Kept on disk, never committed.
