@@ -5,6 +5,7 @@ import { Readable } from "node:stream";
 import { existsSync, createReadStream, readdirSync, statSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve as pathResolve, sep as pathSep, extname } from "node:path";
+import { publishReleaseOnBoot } from "./publish-release.mjs";
 
 // vite build (with cloudflare plugin disabled via SELF_HOST_NODE=1) emits the
 // SSR bundle as dist/server/server.js. Older builds wrote dist/server/index.js.
@@ -245,6 +246,14 @@ const httpServer = createServer(async (req, res) => {
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[afrakala] SSR listening on http://${HOST}:${PORT}`);
+
+  // Publish this build's release notes, once per process. Deliberately started
+  // AFTER listen and never awaited: the app must serve traffic whether or not
+  // the update page gets its new entry. publishReleaseOnBoot swallows its own
+  // errors, and .catch() here is belt-and-braces against an unexpected throw.
+  publishReleaseOnBoot({ searchDirs: [clientDir, pathResolve(__dirname, "../public")] }).catch(
+    (err) => console.error("[release-publish] unexpected:", err),
+  );
 });
 
 const shutdown = (signal) => {

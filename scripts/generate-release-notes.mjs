@@ -187,6 +187,13 @@ function main() {
   const payload = {
     generatedAt: new Date().toISOString(),
     headSha,
+    // Every commit sha in range, newest first, INCLUDING the ones filtered out
+    // of `entries`. The deploy hook needs this to work out what is genuinely
+    // new: it looks up the last published release's sha here and takes only the
+    // entries that sit above it. Without the full ordering it cannot tell
+    // "already shipped" from "new", because the previous deploy's HEAD is
+    // usually an internal commit that never became an entry.
+    commits: commits.map((c) => c.sha),
     entries,
   };
 
