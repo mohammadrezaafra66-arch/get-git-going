@@ -113,6 +113,25 @@ Write-Host "  GIT_SHA    = $sha" -ForegroundColor Cyan
 Write-Host "  BUILD_TIME = $buildTime" -ForegroundColor Cyan
 Write-Host "(these override the values in .env.lan for this build)" -ForegroundColor DarkGray
 
+# --- generate the release notes that get baked into the image -----------------
+# .git is in .dockerignore, so the container cannot read git history. The notes
+# have to be produced here, on the host, and copied in as public/release-notes.json
+# (which vite copies to dist/client/). server/publish-release.mjs reads that file
+# at boot and publishes it.
+#
+# The output is gitignored on purpose: this script refuses to build a dirty tree,
+# and a tracked generated file would make every rebuild fail its own guard.
+#
+# A failure here must NOT fail the build. Missing notes mean /updates gains no
+# entry for this deploy - annoying, recoverable. A blocked deploy is worse.
+Write-Host ""
+Write-Host "Generating release notes..." -ForegroundColor Cyan
+& node (Join-Path $repoRoot "scripts\generate-release-notes.mjs")
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Release notes generation failed; continuing without them." -ForegroundColor Yellow
+    Write-Host "/updates will gain no entry for this build." -ForegroundColor Yellow
+}
+
 # Shell variables win over --env-file during Compose interpolation, which is how
 # the stale GIT_SHA in .env.lan gets overridden. Restore whatever was there.
 $prevSha  = $env:GIT_SHA
