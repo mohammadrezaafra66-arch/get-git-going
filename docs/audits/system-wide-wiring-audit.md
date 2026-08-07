@@ -206,10 +206,20 @@ PRIMARY_MODULE_PATHS → primaryModuleForRoute() → entry.primaryModule
 هم‌پوشان نیستند بلکه واگرا هستند — `/api-keys` ساخت/کپی/حذف کلید دارد و
 `/operations/api-keys` فعال/غیرفعال‌کردن با ثبت دلیل.
 
-⚠️ **نکته‌ی امنیتی برای بررسی در گام ۲:** دو نسخه‌ی مرده مستقیم روی جدول می‌نویسند و
-RPCهای امن را دور می‌زنند. اگر RLS این نوشتن را اجازه بدهد، یک مسیر دور زدن حاکمیت
-کلید است که فقط به این دلیل بی‌خطر مانده که هیچ لینکی به آن نیست. **این با SQL زنده در
-گام ۲ تأیید می‌شود.**
+✅ **نگرانی امنیتی بررسی و رد شد (SQL زنده).** روی `bot_api_keys` مقدار
+`relrowsecurity = true` است ولی **هیچ policyیی تعریف نشده** (صفر ردیف در `pg_policy`
+برای این جدول). در PostgreSQL «RLS فعال + بدون policy» یعنی **منع کامل** برای هر نقشی
+که مالک/superuser/BYPASSRLS نیست — از جمله `authenticated`.
+
+```sql
+SELECT relrowsecurity FROM pg_class WHERE relname='bot_api_keys';        --> t
+SELECT count(*) FROM pg_policy WHERE polrelid='public.bot_api_keys'::regclass;  --> 0
+```
+
+پس دو صفحه‌ی مرده **دوبار مرده‌اند**: هم لینکی به آن‌ها نیست، هم اگر کسی آدرس را مستقیم
+تایپ کند `.from("bot_api_keys")` با خطای RLS برمی‌گردد. صفحه‌ی واقعی `/bot-api-keys` فقط
+به این دلیل کار می‌کند که از RPCهای `SECURITY DEFINER` عبور می‌کند. **مسیر دور زدن حاکمیت
+وجود ندارد.**
 
 **جهت رفع:** دو صفحه‌ی مرده حذف شوند؛ اگر «غیرفعال‌کردن با دلیل» قابلیت مطلوبی است، به
 `/bot-api-keys` روی `set_bot_api_key_active` اضافه شود.
