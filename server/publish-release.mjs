@@ -92,14 +92,41 @@ function entriesSinceLastRelease(payload, lastSha) {
   return entries.filter((e) => newer.has(e.sha));
 }
 
-/** Compose one release row out of N commit notes. */
+const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
+/** The page and its audience are Persian; Latin digits look wrong there. */
+function toFaDigits(n) {
+  return String(n).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]);
+}
+
+// Item field limits, mirrored from src/lib/platform-releases/constants.ts.
+// Kept as literals because this file is plain .mjs run by the deploy script and
+// cannot import from the TS source tree.
+const MAX_ITEM_TITLE = 160;
+const MAX_ITEM_DESC = 500;
+
+/**
+ * Compose one release row out of N commit notes.
+ *
+ * ITEM SHAPE IS A CONTRACT, NOT A FREE CHOICE.
+ * PlatformReleaseCard.tsx:76-79 renders `item.title_fa` and
+ * `item.description_fa`, keyed on `item.item_number`, and the type is declared
+ * in src/lib/platform-releases/types.ts:3-10. An earlier version of this
+ * function emitted `{ text, sha }` instead — none of the three fields the card
+ * reads — so every auto-published release rendered as blank bullets while the
+ * Persian text sat in the row, unreachable. Diagnosed in
+ * docs/audits/release-notes-description-gap.md.
+ *
+ * The two fields carry genuinely different content rather than a duplicate:
+ * title_fa takes the Persian category (short, renders as the bold line),
+ * description_fa takes the commit's Release-note-fa sentence.
+ */
 function composeRelease(entries) {
   const titles = entries.map((e) => e.title_fa).filter(Boolean);
-  const title = titles.length === 1 ? titles[0] : `${titles.length} به‌روزرسانی جدید`;
+  const title = titles.length === 1 ? titles[0] : `${toFaDigits(titles.length)} به‌روزرسانی جدید`;
   const summary =
     titles.length === 1
       ? titles[0]
-      : `در این نسخه ${titles.length} تغییر اعمال شده است.`;
+      : `در این نسخه ${toFaDigits(titles.length)} تغییر اعمال شده است.`;
   // Mixed types get the neutral category; a uniform batch keeps its own.
   const cats = [...new Set(entries.map((e) => e.category))];
   const category = cats.length === 1 ? cats[0] : "بهبود";
@@ -107,7 +134,14 @@ function composeRelease(entries) {
     title: title.slice(0, 200),
     summary: summary.slice(0, 1000),
     category,
-    items: entries.map((e) => ({ text: e.title_fa, sha: e.shortSha })),
+    items: entries.map((e, i) => ({
+      item_number: i + 1,
+      title_fa: (e.category || "بهبود").slice(0, MAX_ITEM_TITLE),
+      description_fa: (e.title_fa || "").slice(0, MAX_ITEM_DESC),
+      change_type: e.type || null,
+      module_key: null,
+      route_path: null,
+    })),
   };
 }
 
@@ -200,16 +234,11 @@ export async function publishReleaseOnBoot({ searchDirs }) {
 // --- CLI entry, used by deploy/lan/up.ps1 -----------------------------------
 // Exits 0 even on failure: a deploy must not be marked broken because the
 // update page did not gain a row. The message says what happened.
-const isDirectRun =
-  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectRun) {
   const here = dirname(fileURLToPath(import.meta.url));
   await publishReleaseOnBoot({
-    searchDirs: [
-      resolve(here, "../public"),
-      resolve(here, "../dist/client"),
-      process.cwd(),
-    ],
+    searchDirs: [resolve(here, "../public"), resolve(here, "../dist/client"), process.cwd()],
   });
 }
