@@ -59,13 +59,22 @@ const INTERNAL_TYPES = new Set([
   "style",
 ]);
 
-/** platform_releases.category values this maps onto. */
+/**
+ * platform_releases.category is CHECK-constrained to this exact Persian set:
+ *   قابلیت جدید · بهبود · رفع اشکال · امنیت · حسابداری · فروش · انبار ·
+ *   اشخاص · یکپارچه‌سازی · زیرساخت
+ * Emitting an English value here would fail platform_releases_category_chk at
+ * insert time, i.e. break the deploy rather than the page.
+ */
 const TYPE_CATEGORY = {
-  feat: "feature",
-  fix: "fix",
-  perf: "improvement",
-  revert: "fix",
+  feat: "قابلیت جدید",
+  fix: "رفع اشکال",
+  perf: "بهبود",
+  revert: "رفع اشکال",
 };
+
+/** The default when a commit's type maps to nothing more specific. */
+const CATEGORY_FALLBACK = "بهبود";
 
 function git(args) {
   return execFileSync("git", ["-C", repoRoot, ...args], {
@@ -143,7 +152,7 @@ function buildEntries(commits, { allowFallback }) {
       sha: c.sha,
       shortSha: c.sha.slice(0, 8),
       type: type ?? "other",
-      category: TYPE_CATEGORY[type] ?? "improvement",
+      category: TYPE_CATEGORY[type] ?? CATEGORY_FALLBACK,
       // The trailer is the whole title when present. Otherwise the Persian
       // label carries the meaning and the English subject is the detail.
       title_fa: fa ?? `${label}: ${rest}`,
