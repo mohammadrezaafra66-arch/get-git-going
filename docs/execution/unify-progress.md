@@ -284,9 +284,47 @@ API. `test.admin@afrakala.local` was temporarily given a random password and has
 **restored to the shared LAN convention `AfraTest!1404`** that other specs rely on. Tokens
 last 1 hour — expect to refresh before any suite run.
 
-**Next action:** read the `e2e/purchase` re-run against HEAD. If green, P0's gate is fully
-met and P1.1 starts. If still red, that is a genuine application defect — stop and report,
-do not touch the specs.
+### 🔴 REGRESSION INTRODUCED BY MIGRATION 304 — P0.3 must be reverted or repaired
+
+The `e2e/purchase` re-run against the verified HEAD build went **67 passed / 2 failed /
+1 skipped** (down from 15 failures against the untraceable build). The two survivors are
+**caused by migration 304**, and the specs are right.
+
+`c5-permissions.spec.ts:277 E2E-8` asserts that no `purchase_requests` row claims a derived
+status with no supply behind it. It expected `0` and got **`121`**:
+
+| status | orphaned | total | share |
+|---|--:|--:|--:|
+| `purchased` | **98** | 104 | 94% |
+| `partially_purchased` | **23** | 24 | 96% |
+
+**Cause.** 304 deleted 158 `purchase_request_fulfillments` rows. Those rows were the *supply
+evidence* behind each request's derived status. `purchase_request_fulfillments` is now down
+to **8 rows**, so 121 requests assert `purchased`/`partially_purchased` with nothing backing
+them. `c5 E2E-9` ("a purchased request can still be delivered") fails from the same cause.
+
+**Why the migration's own guards missed it.** 304 asserted there were no orphaned *child*
+rows — every dependent pointed at a surviving parent. It never asked the inverse question:
+whether deleting children invalidates a **parent's derived state**. Referential integrity
+held; semantic integrity did not.
+
+**This is the fourth P0 premise to fail.** `P0_CLEANUP.md` calls these rows "garbage", but
+`e2e/purchase/c2-central-rpc.spec.ts:9-14` documents the opposite as a deliberate decision:
+*"They are NOT deleted: deleting a purchase would orphan its stock movement … which would
+corrupt inventory far worse than leaving a test row behind."* The suite was designed around
+never deleting this data.
+
+**Remediation options (owner decision — this is business workflow data):**
+- **(a) Revert P0.3** via `docs/verification/304-down.sql` + the 598 KB backup, restoring the
+  322 purchases, 322 items, 320 idempotency rows, 158 fulfillments and 322 stock movements.
+  Returns the database to a consistent state and matches the suite's documented intent.
+  **Recommended.**
+- **(b) Fix forward** by resetting the 121 requests to a status consistent with zero supply.
+  Rejected as the default: their prior status is not recorded anywhere, so this guesses at
+  business workflow state and is lossy.
+
+**Next action:** owner decides (a) or (b). Do not start P1 until the database is consistent —
+P1 builds on the identity model and must not inherit a broken purchase-request state.
 
 **P0 status:** 0.1 closed (303 applied; `api` kept by owner decision). 0.3 closed (304
 applied). 0.4 done. 0.6 done. **0.2 held** — premise contradicted, owner decision needed.
