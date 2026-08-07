@@ -8,7 +8,7 @@
 > این ممیزی مستقل از دو ممیزی حسابداری هم‌زمان (Claude Code روی C/F و Codex روی
 > B/D/H/I/J) اجرا می‌شود و فقط در همین دو فایل می‌نویسد.
 
-**وضعیت گام‌ها:** گام ۱ ✅ کامل · گام ۲ ⏳ · گام ۳ ⏳ · گام ۴ ⏳
+**وضعیت گام‌ها:** گام ۱ ✅ کامل · گام ۲ ✅ کامل · گام ۳ ⏳ · گام ۴ ⏳
 
 ---
 
@@ -18,6 +18,7 @@
 
 | # | یافته | شدت | جای اصلی |
 |---|---|---|---|
+| ۰ | **دکمه‌ی «تغییر نقش عضو گروه» تابعی را صدا می‌زند که در دیتابیس نیست** — همیشه خطا می‌دهد | 🔴 | `GroupMembersDialog.tsx:166` |
 | ۱ | **کامنتِ «هر دو را با هم ویرایش کن» دروغ است** — کپی داخل `registry.ts` هیچ اثری بر سایدبار ندارد و در عمل مرده است | 🔴 | `registry.ts:1109` |
 | ۲ | همان دو فهرست **در ۷ مسیر دیگر هم واگرا شده‌اند**، نه فقط `/updates` | 🔴 | `registry.ts:1109` ↔ `primary-modules.ts:36` |
 | ۳ | **۳۸ صفحه‌ی seedشده در هیچ ماژول سایدبار نیستند** — فقط با جستجو پیدا می‌شوند، با کلیک هرگز | 🔴 | `primary-modules.ts:203` |
@@ -27,6 +28,9 @@
 | ۷ | **۶ از ۸ selector ناوبری صفر مصرف‌کننده دارند**؛ `MOBILE_PRIORITIES` و `badgeSource` کاملاً مرده‌اند | 🟡 | `selectors.ts` |
 | ۸ | `badgeSource` اعلانی وجود دارد ولی سایدبار **همان دو badge را دستی hardcode کرده** | 🟡 | `registry.ts:1252` ↔ `AppSidebar.tsx:222` |
 | ۹ | دو فهرست میان‌بُر (`QUICK_ACCESS_BY_ROLE`, `SHORTCUTS_BY_ROLE`) هر مسیر نامعتبر را **بی‌صدا دور می‌ریزند** | 🟡 | `AppSidebar.tsx:34` · `MobileBottomNav.tsx:12` |
+| ۱۰ | **تعادل سند دوطرفه توسط هیچ‌چیز اجباری نیست** — `validate_journal_entry_balance` هست ولی به هیچ constraint/تریگر/کدی وصل نیست | 🟠 | ج-۲ |
+| ۱۱ | **۳۱ تابعِ در دسترسِ کلاینت با صفر فراخوان** — خوشه‌های کاملِ بک‌اند بدون فرانت (تخصیص سرمایه، لیگ، استعلام، …) | 🟠 | ج-۱ |
+| ۱۲ | **دو مسیر اعطای نقش**؛ مسیر دیالوگ `assigned_by` را گم می‌کند (۲۱ از ۳۶ ردیف بدون آن) | 🟠 | الف-۱۰ |
 
 **نکته‌ی مثبت:** لینک شکسته **صفر** است — هیچ منبع ناوبری به مسیری اشاره نمی‌کند که فایل روت نداشته باشد.
 
@@ -287,20 +291,150 @@ registry.» این جمله امروز **دوبار غلط** است: فایل م
 
 ---
 
+### الف-۱۰ 🟠 دو مسیر جداگانه برای دادن نقش به کاربر — یکی اسناد را گم می‌کند
+
+| مسیر | چطور می‌نویسد | `assigned_by` |
+|---|---|---|
+| صفحه‌ی `/roles` | `supabase.rpc("assign_user_role_txt")` (`_app.roles.tsx:58`) | ✅ `auth.uid()` ثبت می‌شود |
+| دیالوگ مدیریت نقش در `/users` | `.from("user_roles").insert({ user_id, role })` (`RoleManagerDialog.tsx:76-78`) | ❌ ستون اصلاً پر نمی‌شود |
+
+تابع `assign_user_role_txt` (مهاجرت `20260626082534`) عمداً `assigned_by` را با
+`auth.uid()` پر می‌کند. `INSERT` خام دیالوگ آن ستون را نمی‌فرستد، پس `NULL` می‌ماند.
+
+**شاهد زنده روی `afrakala`:**
+
+```
+SELECT count(*) FILTER (WHERE assigned_by IS NULL), count(*) FROM public.user_roles;
+--> 21 از 36 ردیف بدون assigned_by
+```
+
+⚠️ همه‌ی آن ۲۱ ردیف لزوماً از این دیالوگ نیامده‌اند (bootstrapِ اولین ادمین هم مستقیم
+`INSERT` می‌زند). ادعای دقیق این است: **مسیر دیالوگ نمی‌تواند این ستون را پر کند**، و
+امروز ۵۸٪ اعطای نقش‌ها بدون نشانِ «چه کسی داد» است.
+
+**جهت رفع:** دیالوگ هم همان RPC را صدا بزند. حذف نقش هم همین‌طور (`removeMut` مستقیم
+`DELETE` می‌زند در حالی که `revoke_user_role_txt` وجود دارد).
+
+### الف-۱۱ 🟡 دو امضای تکراری برای همان کار
+
+`assign_user_role(uuid, app_role)` و `revoke_user_role(uuid, app_role)` بدنه‌شان فقط
+`PERFORM public.assign_user_role_txt(...)` است. برنامه **فقط نسخه‌ی `_txt` را صدا می‌زند**
+(`_app.roles.tsx:58,64`)، پس دو نسخه‌ی enum‌دار صفر فراخوان دارند و صرفاً سطح API را
+دوبرابر می‌کنند.
+
+---
+
 ## ب) فرانت بدون بک‌اند (Frontend without backend)
 
-⏳ گام‌های ۲ و ۴ هنوز اجرا نشده‌اند. یافته‌های این بخش پس از آن‌ها نوشته می‌شود.
+### ب-۱ 🔴 دکمه‌ی «تغییر نقش عضو گروه» تابعی را صدا می‌زند که وجود ندارد
 
-موارد باز که از گام ۱ به اینجا منتقل شد:
+`src/components/messenger/GroupMembersDialog.tsx:166`:
 
-- `/operations/receipts` (۳۹۲ خط، جدول `ocr_receipts`) — صفحه‌ای کامل که هیچ‌کس نمی‌بیند؛
-  باید بررسی شود آیا `ocr_receipts` اصلاً پر می‌شود یا کل قابلیت OCR نصفه‌کاره است.
-- `/presence` (۲۹۴ خط، `presence_logs`) — همان سؤال.
+```ts
+const { error } = await supabase.rpc("set_messenger_group_member_role", {
+  p_group_id: groupId, p_user_id: vars.userId, p_role: vars.role,
+});
+```
+
+**شاهد زنده — تابع در هیچ schemaیی وجود ندارد:**
+
+```sql
+SELECT n.nspname, p.proname FROM pg_proc p
+JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE p.proname = 'set_messenger_group_member_role';
+--> (0 rows)
+```
+
+توابع موجودِ گروه پیام‌رسان فقط این چهارتا هستند: `add_messenger_group_member`،
+`create_messenger_group`، `deactivate_messenger_group`، `is_messenger_group_member`.
+یعنی **افزودن و حذف عضو کار می‌کند ولی تغییر نقش عضو همیشه شکست می‌خورد** و کاربر پیام
+`خطا در تغییر نقش` می‌گیرد (`GroupMembersDialog.tsx:177`).
+
+این تنها فراخوانِ RPC در کل مخزن است که مقصدش در دیتابیس نیست (۱ از ۱۹۸ نام یکتا).
+
+**جهت رفع:** یا تابع ساخته شود، یا مثل `removeMut` مستقیم روی
+`messenger_group_members` به‌روزرسانی شود.
+
+### ب-۲ ⏳ منتقل به گام ۴
+
+`/operations/receipts` (`ocr_receipts`) و `/presence` (`presence_logs`) صفحاتی کامل‌اند
+که هیچ کاربری نمی‌بیند (بند ۱-هـ). اینکه جدول پشتشان اصلاً پر می‌شود یا نه، در گام ۴
+بررسی می‌شود.
+
+---
 
 ## ج) بک‌اند بدون فرانت (Backend without frontend)
 
-⏳ گام ۲ (فهرست RPCها و جدول‌ها از `pg_proc`/`information_schema` روی دیتابیس زنده)
-هنوز اجرا نشده است.
+### روش (گام ۲)
+
+- ۶۳۹ تابع فراخوان‌پذیر در schema `public` (با `prokind='f'`، بدون توابع تریگر).
+- **۳۰۹ تای آن‌ها متعلق به افزونه‌ها بودند** (`pgvector`، `pg_trgm`، `btree_gist`) و با
+  `pg_depend.deptype='e'` کنار گذاشته شدند → **۳۳۰ تابع واقعیِ برنامه**.
+- ۳۲۵ تا EXECUTE برای `authenticated`/`anon` دارند، یعنی برای فراخوانی از سمت کلاینت
+  طراحی شده‌اند.
+- سه لایه فیلتر پیش از هر ادعای «مرده»: (۱) ارجاع در بدنه‌ی تابع دیگر، (۲) ارجاع در
+  RLS/CHECK/view/index/trigger/default، (۳) ارجاع در کد برنامه یا e2e.
+- `pg_cron` نصب نیست، پس هیچ زمان‌بندی سمت دیتابیس وجود ندارد.
+
+### ج-۱ 🟠 ۳۱ تابعِ در دسترسِ کلاینت با صفر فراخوان — بیشترشان خوشه‌ای‌اند
+
+اینها اتفاقی پراکنده نیستند؛ **قابلیت‌های کاملی هستند که بک‌اندشان ساخته شده و
+فرانتشان هرگز نیامده**. جدول پشت هرکدام هم خالی است، که تأیید دوم است:
+
+| خوشه | توابع بدون فراخوان | جدول‌های مرتبط (ردیف زنده) |
+|---|---|---|
+| **چرخه‌ی تخصیص سرمایه** | `consume_capital_allocation` · `release_capital_allocation` · `refund_capital_allocation` | `capital_allocation_ledger` = **۰** |
+| **سرمایه‌ی روزانه** | `save_daily_capital_snapshot` · `upsert_daily_capital_input` | `daily_capital_snapshots` = **۰** · `daily_capital_inputs` = **۰** |
+| **لیگ گیمیفیکیشن** | `start_league_season` · `settle_league_season` | `employee_leagues` = **۰** · `employee_level_up_events` = **۰** |
+| **استعلام‌ها** | `tick_inquiries` · `update_inquiry_status` | `inquiry_status_history` · `inquiry_transfers` · `inquiry_price_cache` همه **۰** |
+| **نامزدی ارتقا** | `cancel_promotion_nomination` | `promotion_nominations` = **۰** · `promotion_nomination_policy` = **۰** |
+| **بازمحاسبه‌ی امتیاز** | `recompute_all_employee_scores` · `recompute_customer_credit_scores` · `capture_score_snapshots` | `credit_score_snapshots` = **۰** |
+| **API جدول پویا برای بات** | `api_dynamic_table_query_rows` · `api_dynamic_table_update_cell` | `dynamic_table_rows`/`_cells` = **۰** |
+
+⚠️ **درباره‌ی خوشه‌ی «سرمایه‌ی روزانه»:** این یکی احتمالاً **عمدی** است — مسیر
+`/accounting/daily-capital` طبق «مورد ۱۴۱» به `/accounting/dynamic-capital` منتقل شده
+(`_app.accounting.daily-capital.tsx:12-14`). پس اینجا بک‌اندِ نسخه‌ی بازنشسته باقی مانده،
+نه قابلیت نیمه‌کاره. **همین احتمال باید برای بقیه‌ی خوشه‌ها هم توسط مالک تأیید شود.**
+
+بقیه‌ی موارد تک‌افتاده: `calculate_salesperson_collected_sales` · `cleanup_stale_auto_suppliers` ·
+`create_dynamic_scoring_parameter` · `get_workflow_setting` (توجه: مفرد — برنامه فقط
+جمعِ `get_workflow_settings` را صدا می‌زند، `useWorkflowSettings.ts:35`) ·
+`is_valid_audit_entity_type` · `manual_daily_metrics_totals` · `mi_get_seller_favorite_products` ·
+`person_backfill_existing` · `person_fk_drift_report` · `refresh_all_sale_list_prices` ·
+`search_tokens_match` · `set_market_rate_tick_status` · `sync_product_price_observatory_rows` ·
+`validate_journal_entry_balance`.
+
+### ج-۲ 🟠 `validate_journal_entry_balance` وجود دارد ولی هیچ‌چیز آن را اجرا نمی‌کند
+
+تابع دقیقاً همان چیزی را می‌سنجد که یک دفتر دوطرفه باید تضمین کند
+(`SUM(debit) = SUM(credit) AND SUM(debit) > 0` روی `journal_lines`) — ولی **نه از کد
+صدا زده می‌شود، نه در هیچ CHECK constraint یا تریگری بسته شده است** (هر سه لایه‌ی
+فیلتر: صفر).
+
+یعنی تعادل سند دوطرفه امروز **توسط هیچ سازوکاری اجباری نیست**؛ فقط ابزارِ سنجشش موجود است.
+
+> این یافته با ممیزی موازی حسابداری هم‌پوشانی دارد (دامنه‌ی G، که گزارش کرده بود
+> `journal_entries`=۱ و `journal_lines`=۲). آنجا نتیجه‌گیری «نوشته نمی‌شود» بود؛ اینجا
+> اضافه می‌شود که **گاردش هم وصل نیست**. رفعش باید یکجا تصمیم‌گیری شود.
+
+### ج-۳ 🟡 ۱۱ جدول دارای داده که هیچ فایل فرانتی به آن‌ها ارجاع نمی‌دهد
+
+| ردیف | جدول | حکم |
+|---:|---|---|
+| ۶۶۷ | `purchase_request_status_history` | تاریخچه‌ی وضعیت درخواست خرید — **هیچ صفحه‌ای نمایشش نمی‌دهد** |
+| ۵۹ | `purchase_items` | از راه RPC خرید نوشته/خوانده می‌شود — ✅ طبیعی |
+| ۴۷ | `purchase_idempotency` | داخلی — ✅ طبیعی |
+| ۲۴ | `purchase_request_fulfillments` | تأمین درخواست — نمایش داده نمی‌شود |
+| ۴ | `score_level_thresholds` | از راه RPC خوانده می‌شود — ✅ طبیعی |
+| ۲ | `product_service_types` | — |
+| ۱ | `delivery_receipt_status_history` · `product_sku_counters` · `asan_control_accounts` · `person_merge_log` · `sales_quote_counters` | شمارنده/لاگ داخلی — بیشترشان طبیعی |
+
+⚠️ «بدون `.from()` در فرانت» **مساوی مرده نیست**: جدول‌هایی که فقط از راه RPC لمس
+می‌شوند درست کار می‌کنند. تنها دو مورد واقعاً «داده‌ای که کاربر هرگز نمی‌بیند» هستند:
+`purchase_request_status_history` (۶۶۷ ردیف) و `purchase_request_fulfillments` (۲۴ ردیف).
+
+**جهت رفع:** اگر تاریخچه‌ی وضعیت ارزش دارد، در صفحه‌ی درخواست خرید نمایش داده شود؛
+وگرنه نوشتنش متوقف شود.
 
 ---
 
