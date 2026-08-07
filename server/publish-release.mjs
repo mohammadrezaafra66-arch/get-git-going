@@ -1,14 +1,21 @@
 /**
- * انتشار خودکار نسخه هنگام بالا آمدن سرور.
+ * انتشار خودکار نسخه پس از استقرار.
  *
- * Step 3 of making /updates fill itself. Runs once per process, right after the
- * HTTP server starts listening, and calls public.auto_publish_release().
+ * Calls public.auto_publish_release() with the notes baked into this build.
  *
- * WHY HERE AND NOT IN A ROUTE
- *   A route would have to be reachable to be triggered, which means either
- *   exposing a publish endpoint or bolting a side effect onto an unrelated one.
- *   Boot is the honest place: it happens exactly once per deploy, needs no
- *   secret of its own, and cannot be poked from outside.
+ * TWO CALLERS, AND THE PRODUCTION ONE IS THE CLI
+ *   1. deploy/lan/up.ps1 runs this file directly, after the stack is up. THIS is
+ *      the path that matters. The runner image contains only .output,
+ *      package.json and node_modules — `server/` is not copied into it, and the
+ *      container's CMD is `node .output/server/index.mjs`, nitro's own server.
+ *      So nothing inside the container can execute this module.
+ *   2. server/node-entry.mjs also calls it on listen(). That entry point is used
+ *      by `npm run preview` for local self-host checks, never in the container.
+ *      Kept because it is genuinely useful there and is idempotent anyway.
+ *
+ *   An earlier version of this file assumed the container ran node-entry.mjs.
+ *   It does not, and the hook would silently never have fired. The CLI path
+ *   exists because of that.
  *
  * FAILURE POLICY
  *   Nothing here may prevent the app from serving. Every failure is caught and
@@ -23,7 +30,8 @@
  */
 
 import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const NOTES_FILENAME = "release-notes.json";
 
@@ -65,8 +73,21 @@ async function restCall(baseUrl, key, path, init = {}) {
 function entriesSinceLastRelease(payload, lastSha) {
   const { commits = [], entries = [] } = payload;
   if (!lastSha) return entries;
-  const idx = commits.indexOf(lastSha);
+
+  // Prefix match, NOT equality. platform_releases.git_sha holds whatever
+  // APP_GIT_SHA carried — deploy/lan/build.ps1 stamps `git rev-parse --short`,
+  // i.e. 8 characters — while the generator emits full 40-character shas.
+  // A strict indexOf therefore never matched, silently fell through to "return
+  // everything", and would have republished every entry in range on the next
+  // deploy. Only the database-level git_sha key stopped it, and that guards the
+  // ROW, not the CONTENT.
+  const short = lastSha.trim().toLowerCase();
+  const idx = commits.findIndex((c) => {
+    const full = c.trim().toLowerCase();
+    return full.startsWith(short) || short.startsWith(full);
+  });
   if (idx === -1) return entries;
+
   const newer = new Set(commits.slice(0, idx));
   return entries.filter((e) => newer.has(e.sha));
 }
@@ -140,6 +161,20 @@ export async function publishReleaseOnBoot({ searchDirs }) {
       return;
     }
 
+    // auto_publish_release returns the existing row untouched when this commit
+    // was already published, so the RPC alone cannot tell us whether anything
+    // was created. Ask first, so the deploy log says what actually happened
+    // instead of claiming "published" on every restart.
+    const already = await restCall(
+      url,
+      key,
+      `platform_releases?select=release_number&git_sha=eq.${encodeURIComponent(gitSha)}&limit=1`,
+    );
+    if (already?.length) {
+      log(`already published as #${already[0].release_number} for ${gitSha.slice(0, 8)}`);
+      return;
+    }
+
     const { title, summary, category, items } = composeRelease(fresh);
     const row = await restCall(url, key, "rpc/auto_publish_release", {
       method: "POST",
@@ -160,4 +195,21 @@ export async function publishReleaseOnBoot({ searchDirs }) {
     // Deliberately swallowed. See FAILURE POLICY above.
     log(`failed (the app is unaffected): ${err.message}`);
   }
+}
+
+// --- CLI entry, used by deploy/lan/up.ps1 -----------------------------------
+// Exits 0 even on failure: a deploy must not be marked broken because the
+// update page did not gain a row. The message says what happened.
+const isDirectRun =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectRun) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  await publishReleaseOnBoot({
+    searchDirs: [
+      resolve(here, "../public"),
+      resolve(here, "../dist/client"),
+      process.cwd(),
+    ],
+  });
 }

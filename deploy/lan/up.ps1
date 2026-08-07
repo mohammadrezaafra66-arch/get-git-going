@@ -83,6 +83,52 @@ if ($code -ne 0) {
     exit $code
 }
 
+# --- publish this build's release notes to /updates ---------------------------
+# WHY HERE AND NOT INSIDE THE CONTAINER
+#   The runner image contains only .output, package.json and node_modules, and
+#   its CMD is `node .output/server/index.mjs` (nitro's own server). server/ is
+#   never copied in, so nothing in the container can run the publisher. The host
+#   can: it has node, the repo, the generated notes, and reachability to the API.
+#
+#   APP_GIT_SHA is read back OUT of the running container rather than from git,
+#   so what gets published always describes what is actually deployed - even if
+#   the working tree has moved on, or `up` started an older image.
+#
+#   Failure here never fails the deploy. A missing row on /updates is
+#   recoverable; a deploy reported as broken is not.
+$deployedSha  = (docker inspect afrakala-lan-web --format '{{range .Config.Env}}{{println .}}{{end}}' 2>$null | Select-String '^APP_GIT_SHA=' | ForEach-Object { ($_ -split '=',2)[1] })
+$deployedTime = (docker inspect afrakala-lan-web --format '{{range .Config.Env}}{{println .}}{{end}}' 2>$null | Select-String '^APP_BUILD_TIME=' | ForEach-Object { ($_ -split '=',2)[1] })
+
+if ($deployedSha) {
+    Write-Host ""
+    Write-Host "Publishing release notes for $deployedSha ..." -ForegroundColor Cyan
+    $prev = @{
+        url  = $env:SUPABASE_URL
+        key  = $env:SUPABASE_SERVICE_ROLE_KEY
+        sha  = $env:APP_GIT_SHA
+        time = $env:APP_BUILD_TIME
+    }
+    try {
+        # Read the API URL and service key straight from the env file rather than
+        # the container: the host must reach the published Kong port, not the
+        # compose-internal hostname the container uses.
+        $env:SUPABASE_URL = ((Select-String -Path $envFile -Pattern '^API_EXTERNAL_URL=' | Select-Object -First 1).Line -replace '^API_EXTERNAL_URL=','').Trim()
+        $env:SUPABASE_SERVICE_ROLE_KEY = ((Select-String -Path $envFile -Pattern '^SERVICE_ROLE_KEY=' | Select-Object -First 1).Line -replace '^SERVICE_ROLE_KEY=','').Trim()
+        $env:APP_GIT_SHA = $deployedSha.Trim()
+        $env:APP_BUILD_TIME = if ($deployedTime) { $deployedTime.Trim() } else { $null }
+        & node (Join-Path $repoRoot "server\publish-release.mjs")
+    }
+    catch {
+        Write-Host "Release-note publish failed (deploy is unaffected): $_" -ForegroundColor Yellow
+    }
+    finally {
+        $env:SUPABASE_URL = $prev.url
+        $env:SUPABASE_SERVICE_ROLE_KEY = $prev.key
+        $env:APP_GIT_SHA = $prev.sha
+        $env:APP_BUILD_TIME = $prev.time
+    }
+}
+
 Write-Host ""
 Write-Host "Done. Current state:" -ForegroundColor Green
 docker ps -a --filter "name=afrakala-lan" --format "{{.Names}}`t{{.Status}}`t{{.Ports}}"
