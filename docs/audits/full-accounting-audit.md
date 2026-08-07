@@ -2,8 +2,10 @@
 
 **تاریخ:** ۲۰۲۶-۰۸-۰۷ · **مبنا:** `HEAD = 738aad69` · **دیتابیس:** `afrakala` روی `afrakala-lan-db`
 **نوع:** فقط‌خواندنی. هیچ کد، مهاجرت یا داده‌ای تغییر نکرد.
-**وضعیت:** موارد زمینه‌ای ۱–۵ **کامل**. دامنه‌های A–J **هنوز کامل نشده‌اند** —
-`docs/audits/accounting-audit-progress.md` نقطهٔ دقیق ازسرگیری را دارد.
+**وضعیت:** موارد زمینه‌ای ۱–۵ **کامل**. دامنه‌های A–J **هر ده‌تا کامل‌اند** —
+A · C · E · F · G در همین فایل؛ B · D · H · I · J در
+`docs/audits/full-accounting-audit-part2-codex.md` (Codex).
+`docs/audits/accounting-audit-progress.md` وضعیت مشترک را نگه می‌دارد.
 
 > هر ادعا در این سند یا `file:line` دارد یا کوئری SQL با نتیجهٔ زنده. هیچ ادعایی از حافظه نیست.
 
@@ -134,6 +136,13 @@ select count(*) from public.journal_lines where account_kind='external_party';
 
 `account_kind='external_party'` یکی از شش مقدار مجاز است ولی **صفر بار** استفاده شده.
 
+> **تصحیح از دامنهٔ G (همین فایل، پایین‌تر):** «صفر بار استفاده‌شده» درست است، ولی
+> نتیجه‌گیریِ ضمنیِ «پس در دفتر بیان‌شدنی نیست» **نادرست است**. سمت بدهکارِ
+> `post_receipt_accounting` شاخه دارد و برای فیشِ دارای طرف خارجی دقیقاً
+> `account_kind='external_party'` می‌نویسد. آمار صفر است چون تنها فیش ثبت‌شده از شاخهٔ
+> بانک آمده و هر ۴ فیشِ دارای طرف خارجی هنوز `pending_review`اند. مسیر **اجرانشده** است،
+> نه **ناموجود**. آنچه واقعاً بیان‌شدنی نیست، سمت بستانکارِ ثابت است.
+
 و مسیر پرداخت اصلاً سند نمی‌زند:
 ```
 pay_purchase_with_voucher -> NO journal entry
@@ -152,6 +161,12 @@ pay_purchase_with_voucher -> NO journal entry
 دو حالت صریح با الزام XOR، ارجاع واقعی به یک رکورد سبک بدون پرونده، تفکیک عمدی
 «دریافت‌کننده» از «ذی‌نفع حسابداری»، و CRUD کامل برای مدیریت طرف‌ها.
 **این نیاز عملاً برآورده شده است و ساختن دوباره‌اش اشتباه خواهد بود.**
+
+> **قید مهم از دامنهٔ E (بند ۷-الف):** «ثبت» بله، ولی «رساندن به سند» نه.
+> `beneficiary_accounting_code` تنها ستونی است که در `post_receipt_accounting` **اصلاً
+> خوانده نمی‌شود**؛ تنها مصرف‌کننده‌اش شرط نگهبانِ تریگر خنثی‌شدهٔ `trg_post_receipt_on_approve`
+> است. پس تفکیک عمدی «دریافت‌کننده» از «ذی‌نفع حسابداری» در لحظهٔ ثبت سند از بین می‌رود.
+> داده ذخیره و قابل جست‌وجو می‌ماند — ولی به دفتر نمی‌رسد.
 
 **نیمهٔ حل‌نشده — بیان حسابداری.** سناریوی مالک یک سند متوازن می‌خواهد که بدهکاری یک
 شخص را با بستانکاری شخص دیگر تسویه کند. آن هنوز غیرممکن است: `supplier_payable` وجود
@@ -683,11 +698,335 @@ journal_lines_total = 2   |   external_party_lines = 0
 
 ---
 
+## E — دریافت ✅ کامل
+
+### حکم کوتاه
+
+**بهترین‌ساخته‌شدهٔ دامنه‌های مالی — و تنها دامنه‌ای که هر سه لایهٔ مجوزش با هم می‌خوانند.**
+ولی «تأیید» فیش آن را وارد دفتر **نمی‌کند**، و فیلد «کد ذی‌نفع حسابداری» که بخش صفر آن را
+دقیقاً پاسخ سناریوی مالک دانست **هرگز به سند نمی‌رسد**.
+
+**۱ — مسیرها و ناوبری.** چهار مسیر، همه ماژول `accounting` گروه `finance`:
+
+| فایل | خطوط | گارد |
+|---|---|---|
+| `_app.accounting.receipts.tsx` (فهرست) | ۵۶۶ | `requireAnyRole(["admin","manager","accountant"])` |
+| `_app.accounting.receipts.$receiptId.tsx` (جزئیات) | — | همان سه نقش |
+| `_app.accounting.receipts.create.tsx` | — | `requireAnyRole(["admin","accountant"])` |
+| `_app.accounting.receipts_.training.tsx` | ۱۲ | همان سه نقش (پوستهٔ `PaymentReceiptGuide`) |
+
+ثبت در registry: `registry.ts:435` (فیش‌های واریزی) و `:442` (آموزش)؛ وزن جست‌وجو `:1221`،
+نقش پیشنهادی `:1231` = `["accountant"]`، مترادف‌ها `:1237`.
+
+**و این اولین دامنه‌ای است که گارد مسیر با RLS دقیقاً می‌خواند** — برخلاف دامنهٔ A:
+
+| عمل | گارد مسیر | سیاست RLS |
+|---|---|---|
+| دیدن | admin, manager, accountant | `pr_select_privileged` → همان سه |
+| ساختن | admin, accountant | `pr_insert_admin_accountant` → همان دو |
+
+**۲ — اسکیما.** `payment_receipts` = **۴۲ ستون**، **۶ ردیف**. سرشماری استفادهٔ زنده:
+
+| ستون | پرشده از ۶ |
+|---|---|
+| `payer_name` · `tracking_number` · `receiver_name` | ۶ |
+| `payer_accounting_code` · `receiver_accounting_code` | ۶ |
+| `payer_phone` | ۵ |
+| `receiver_party_id` · `beneficiary_accounting_code` · `receiver_party_person_id` | ۴ |
+| `destination_bank_account_id` | ۲ |
+| `source_bank_account_id` · `cheque_number` · `cheque_due_date` · `receipt_image_url` · `custom_data` | **۰** |
+
+توزیع وضعیت: ۵ `pending_review` + ۱ `approved`. توزیع `posting_status`: ۵ `unposted` + ۱ `posted`
+— و **همان ردیف تأییدشده همان ردیف ثبت‌شده است** (`fd8194a5`)، پس امروز رانشی وجود ندارد.
+
+**۳ — منطق کسب‌وکار. شش تریگر، و یکی‌شان عمداً بی‌اثر است:**
+
+```
+trg_normalize_phone                                → tg_normalize_phone_columns(payer_phone, receiver_phone)
+trg_payment_receipts_derive_person                 → tg_payment_receipts_derive_person
+trg_payment_receipts_enforce_allocation_on_approve → enforce_receipt_approval_allocation_limits
+trg_payment_receipts_post_journal                  → trg_post_receipt_on_approve   ← بی‌اثر
+trg_payment_receipts_recompute_employee_score      → recompute_employee_scores_on_receipt
+trg_payment_receipts_updated_at                    → set_updated_at_now
+```
+
+**زنجیرهٔ چهارمی به بن‌بست می‌رسد.** `trg_post_receipt_on_approve` در نهایت
+`post_receipt_journal` را صدا می‌زند، و بدنهٔ آن تابع امروز این است:
+
+```sql
+-- NEUTRALIZED (migration 149). Model B (post_receipt_accounting) is the
+-- authoritative ledger path. ... it now does nothing, so the approve UPDATE
+-- succeeds and only Path B posts.
+RETURN NULL;
+```
+
+**پس تأییدکردن یک فیش هیچ سندی نمی‌زند.** ثبت واقعی فقط با فراخوانی صریح RPC
+`post_receipt_accounting` از صفحهٔ جزئیات انجام می‌شود
+(`_app.accounting.receipts.$receiptId.tsx:335`). فیش می‌تواند برای همیشه
+`status='approved'` و `posting_status='unposted'` بماند.
+
+**۴ — محدودیت‌ها. XOR در سه لایه، و پایگاه‌داده شل‌ترینِ آنهاست:**
+
+```sql
+payment_receipts_receiver_exclusive_chk CHECK (
+     (destination_bank_account_id IS NOT NULL AND receiver_party_id IS NULL)
+  OR (destination_bank_account_id IS NULL AND receiver_party_id IS NOT NULL)
+  OR (status = 'pending_review' AND destination_bank_account_id IS NULL
+      AND receiver_party_id IS NULL))
+```
+
+شاخهٔ سوم یعنی **در حالت پیش‌نویس هر دو می‌توانند NULL باشند** — در حالی که فرم
+(`PaymentReceiptForm.tsx:251`) XOR سخت‌گیرانه می‌خواهد و `post_receipt_accounting` هنگام
+ثبت دوباره XOR سخت‌گیرانه را الزام می‌کند. **این نقص نیست، طراحی سه‌مرحله‌ای است:** فرم
+سخت، پایگاه‌داده برای پیش‌نویس شل، ثبت دوباره سخت.
+
+بقیه: `amount > 0` · `payment_receipts_cheque_fields_chk` (فیلدهای چک فقط با
+`document_channel='cheque'`) · `receipt_time` با regex `^\d{2}:\d{2}$` ·
+`receiver_party_person_id` بدون `receiver_party_id` ممنوع · فهرست‌های بستهٔ `status`
+(۳ مقدار)، `receipt_type` (۴ مقدار)، `posting_status` (۲ مقدار)، `document_channel` (۷ مقدار).
+پنج کلید خارجی واقعی، از جمله `receiver_party_id → external_parties(id)`.
+
+**۵ — ساخته‌شده ولی بی‌مصرف. یک صفحهٔ کامل روی جدولی که وجود ندارد:**
+
+`_app.operations.receipts.tsx` — **۳۹۱ خط** رابط کامل بازبینی «فیش‌های OCR» با تب‌های
+در‌انتظار/تأییدشده/ردشده و دیالوگ بازبینی. جدولش `ocr_receipts` است و:
+
+```sql
+select table_schema, table_name from information_schema.tables where table_name ilike '%ocr%';
+-- (0 rows)   ← در هیچ اسکیمایی وجود ندارد
+```
+
+مسیر **در registry ثبت نشده** (جست‌وجو در `registry.ts` و `primary-modules.ts` بی‌نتیجه)،
+پس فقط با URL مستقیم قابل دسترسی است. خودِ کد می‌داند جدول نیست و با ظرافت تسلیم می‌شود
+(`_app.operations.receipts.tsx:86` — کدهای `42P01` و `PGRST205` را می‌گیرد و
+`tableMissing: true` برمی‌گرداند). یعنی **رابط بازبینی برای خط‌لولهٔ OCR ساخته شد، خط‌لوله
+هرگز نیامد، و صفحه برای همان روز مقاوم‌سازی شد.**
+
+به‌علاوه پنج ستون با صفر استفاده در جدول اصلی (بند ۲) — به‌ویژه `cheque_number` و
+`cheque_due_date` که با CHECK کامل محافظت می‌شوند ولی هرگز نوشته نشده‌اند.
+
+**۶ — تکرار.** در لایهٔ رابط **هیچ**: `PaymentReceiptForm` تنها یک مصرف‌کننده دارد
+(`receipts.create.tsx:31`). ولی در لایهٔ پایگاه‌داده **دو مسیر ثبت** وجود دارد:
+
+| مسیر | تابع | وضعیت |
+|---|---|---|
+| A | `post_receipt_journal` | خنثی‌شده (مهاجرت ۱۴۹)، ولی **تریگرش هنوز وصل است** |
+| B | `post_receipt_accounting` | مرجع؛ تنها نویسندهٔ واقعی دفتر |
+
+تریگر مسیر A روی هر INSERT و هر تغییر `status` شلیک می‌شود و به تابعی می‌رسد که
+`RETURN NULL` است. تصمیم مستند و عمدی است، ولی وزن مرده‌ای است که هنوز اجرا می‌شود.
+
+**۷ — نقص‌ها. سه مورد، به ترتیب اهمیت:**
+
+**(الف) «کد ذی‌نفع حسابداری» هرگز به سند نمی‌رسد.** بخش صفر نشان داد این ستون دقیقاً
+سناریوی مالک را ممکن می‌کند و ۴ فیش از ۶ آن را پر کرده‌اند. ولی بررسی زنده:
+
+```
+post_receipt_accounting      mentions beneficiary_accounting_code = false
+post_receipt_journal         mentions beneficiary_accounting_code = false
+trg_post_receipt_on_approve  mentions beneficiary_accounting_code = TRUE
+```
+
+تنها جایی که این ستون خوانده می‌شود **شرط نگهبان تریگر خنثی‌شده** است. زنجیرهٔ واقعی
+تعیین کد گیرنده در `post_receipt_accounting` این است و `beneficiary_accounting_code` در آن
+اصلاً نیست:
+
+```
+receiver_accounting_code  →  external_parties.accounting_code  →  bank_accounts.accounting_code
+```
+
+**یعنی نیمهٔ «حل‌شده»ای که بخش صفر اعلام کرد، در لحظهٔ ثبت سند دور ریخته می‌شود.**
+هر ۴ فیشی که کد ذی‌نفع دارند هنوز `unposted`اند، پس این شکاف تا امروز **خفته** است — ولی
+اولین ثبت یکی از آنها کد ذی‌نفع را از دست می‌دهد و به‌جایش کد خودِ طرف خارجی را می‌نویسد.
+
+**(ب) تخصیص هنگام ثبت فقط فاکتور را می‌شناسد، نه پیش‌فاکتور.** حلقهٔ تخصیص در
+`post_receipt_accounting` چنین است:
+
+```sql
+FROM public.payment_receipt_links prl
+JOIN public.invoices i ON i.id = prl.invoice_id
+```
+
+ولی هر سه پیوند زندهٔ موجود به پیش‌فاکتور اشاره می‌کنند، نه فاکتور:
+
+```
+payment_receipt_links: to_invoice = 0 | to_quote = 3
+```
+
+و خودِ جدول هر دو را مجاز می‌داند (`payment_receipt_links_one_target`:
+`(invoice_id IS NOT NULL) <> (quote_id IS NOT NULL)`). **عدم‌تقارن:** تریگر تأیید
+(`enforce_receipt_approval_allocation_limits`) **هر دو شاخه** را کامل پیاده کرده — سقف
+پرداخت را هم برای `sales_quotes.final_amount` و هم برای `invoices.total_amount - deposit_amount`
+بررسی می‌کند — ولی تابع ثبت فقط شاخهٔ فاکتور را دارد. پس فیشِ متصل به پیش‌فاکتور موقع تأیید
+کنترل سقف می‌شود ولی موقع ثبت **هیچ سندی را به‌روز نمی‌کند**؛ حلقه روی صفر ردیف می‌چرخد.
+
+**(ج) ماژول `accounting` هیچ ردیفی در `role_permissions` ندارد.** همان یافتهٔ دامنهٔ F،
+اینجا هم صادق است — هر چهار مسیر این دامنه ماژول `accounting` دارند.
+
+**۸ — پوشش `role_permissions`.** ❌ **صفر ردیف برای ماژول `accounting`.** فهرست زندهٔ
+۲۴ ماژول دارای ردیف، `accounting` را ندارد. محافظت عملی این دامنه کاملاً بر دوش
+`requireAnyRole` و RLS است — که خوشبختانه (بند ۱) با هم می‌خوانند.
+
+---
+
+## G — سند دوبل / دفتر روزنامه ✅ کامل
+
+### حکم کوتاه
+
+**دفتر روزنامه یک جدول است، نه یک سامانه.** هیچ صفحه‌ای ندارد، هیچ الزام توازنی ندارد،
+و کل محتوایش یک سند دوخطی است که محصول جانبی تنها فیش ثبت‌شدهٔ تاریخ سیستم است.
+
+**۱ — مسیرها و ناوبری. هیچ.**
+
+جست‌وجوی زنده در `src/routes/` و `registry.ts` برای `journal|ledger`: **هیچ مسیری وجود ندارد.**
+دفتر دقیقاً از دو نقطه قابل خواندن است:
+
+| نقطه | دامنهٔ دید |
+|---|---|
+| `_app.accounting.receipts.$receiptId.tsx:279,296` | فقط سند **همان فیش** (`journal_entries` سپس `journal_lines`) |
+| `src/lib/asan/export-journal.ts:34` → `asan_list_journal_export(_from, _to, _filter)` | خروجی آسان، فقط‌خواندنی |
+
+**نه فهرست اسناد، نه جست‌وجو، نه تراز آزمایشی، نه دفتر معین بر حسب حساب.** برای دیدن یک
+سند باید از راه فیشِ سازنده‌اش وارد شوید.
+
+**۲ — اسکیما.** `journal_entries` ۱۱ ستون / **۱ ردیف** · `journal_lines` ۹ ستون / **۲ ردیف**.
+
+سرآیند سند `payer_accounting_code` و `receiver_accounting_code` را هم نگه می‌دارد
+(عکس‌برداری از فیش در لحظهٔ ثبت). ایندکس‌ها سالم‌اند: `entry_date`، `(source_type, source_id)`،
+و روی خطوط `(account_kind, account_ref_id)` و `journal_entry_id`.
+
+کل محتوای زندهٔ دفتر:
+
+```
+source_type=payment_receipt  entry_date=2026-07-25  status=posted
+  line 1  bank             10,100,000,000  بدهکار
+  line 2  customer_credit  10,100,000,000  بستانکار
+```
+
+**۳ — منطق کسب‌وکار. یک نویسنده، و یک تصحیح مهم نسبت به بخش صفر.**
+
+بررسی زنده روی همهٔ توابع: تنها `post_receipt_accounting` در `journal_entries` و
+`journal_lines` درج می‌کند. ثبتش idempotent است — هم `journal_entries_source_unique`
+روی `(source_type, source_id)` و هم بررسی صریح وجود سند پیش از درج.
+
+**ولی برخلاف آنچه در بخش صفر و مورد ۴ نوشته شد، هر دو خط ثابت نیستند.** بدنهٔ واقعی:
+
+```sql
+IF v_receipt.destination_bank_account_id IS NOT NULL THEN
+  v_debit_kind := 'bank';            v_debit_ref := v_receipt.destination_bank_account_id;
+ELSE
+  v_debit_kind := 'external_party';  v_debit_ref := v_receipt.receiver_party_id;
+END IF;
+```
+
+**سمت بدهکار شاخه دارد و `external_party` را می‌نویسد.** یعنی این ادعا که «طرف خارجی در
+دفتر بیان‌شدنی نیست» **نادرست است** — مسیرش ساخته و وصل شده است. علت صفر بودن آمار چیز
+دیگری است: تنها فیش ثبت‌شده (`fd8194a5`) از شاخهٔ بانک آمده، و **هر ۴ فیش دارای طرف خارجی
+هنوز `pending_review`اند**. پس مسیر **اجرانشده** است، نه **ناموجود**.
+
+آنچه واقعاً ثابت است سمت بستانکار است: همیشه `customer_credit` با
+`account_ref_id = v_receipt.customer_id`. سناریوی مالک (تسویهٔ بدهی یک شخص با بستانکاری
+شخص دیگر) همچنان بیان‌شدنی نیست — ولی به‌خاطر **سمت بستانکار و دوخطی‌بودن ثابت**، نه به‌خاطر
+نبودن `external_party`.
+
+**۴ — محدودیت‌ها. مهم‌ترین یافتهٔ این دامنه: توازن دوطرفه هیچ‌جا الزام نشده است.**
+
+کل محدودیت‌های `journal_lines`:
+
+```
+journal_lines_account_kind_chk  CHECK (account_kind IN (customer_credit, bank,
+                                       external_party, invoice_ar, clearing, other))
+journal_lines_debit_nonneg      CHECK (debit  >= 0)
+journal_lines_credit_nonneg     CHECK (credit >= 0)
+journal_lines_one_side          CHECK (NOT(debit>0 AND credit>0) AND NOT(debit=0 AND credit=0))
+journal_lines_journal_entry_id_fkey  FK → journal_entries(id) ON DELETE CASCADE
+```
+
+**هیچ‌کدام مجموع بدهکار و بستانکار را مقایسه نمی‌کنند** — و چنین کاری از CHECK سطری هم
+برنمی‌آید. پس باید تریگر باشد؛ نیست:
+
+```
+triggers on journal_lines   → صفر
+triggers on journal_entries → یکی: trg_asan_burn_journal_entry_number (AFTER DELETE، سوزاندن شمارهٔ آسان)
+```
+
+**توازن امروز فقط به این دلیل برقرار است که تنها نویسنده، هر دو خط را از یک متغیر
+(`v_receipt.amount`) می‌سازد.** ولی RLS به `admin` و `accountant` اجازهٔ INSERT مستقیم روی
+هر دو جدول را می‌دهد (`journal_entries_insert_admin_accountant`،
+`journal_lines_insert_admin_accountant`) و این جدول‌ها از PostgREST در دسترس‌اند. یعنی
+**یک سند نامتوازن امروز قابل درج است و هیچ لایه‌ای آن را رد نمی‌کند.**
+
+دو ضعف ساختاری دیگر:
+- **`account_ref_id` هیچ کلید خارجی ندارد.** چندریخت است و بسته به `account_kind` به
+  `bank_accounts` یا `external_parties` یا `customers` اشاره می‌کند — بدون هیچ اعتبارسنجی.
+  (همان الگویی که Codex برای `stock_movements` در دامنهٔ I یافت.)
+- **`(journal_entry_id, line_no)` یکتا نیست.** فهرست ایندکس‌ها فقط PK و دو ایندکس غیریکتا
+  دارد؛ دو خط با `line_no = 1` در یک سند مجاز است.
+
+**۵ — ساخته‌شده ولی بی‌مصرف. نگهبان توازن نوشته شده و هرگز نصب نشده است.**
+
+```sql
+CREATE OR REPLACE FUNCTION public.validate_journal_entry_balance(p_journal_entry_id uuid)
+ RETURNS TABLE(total_debit numeric, total_credit numeric, is_balanced boolean)
+ LANGUAGE sql STABLE SECURITY DEFINER
+AS $$ SELECT COALESCE(SUM(debit),0), COALESCE(SUM(credit),0),
+             COALESCE(SUM(debit),0) = COALESCE(SUM(credit),0)
+               AND COALESCE(SUM(debit),0) > 0
+     FROM public.journal_lines WHERE journal_entry_id = p_journal_entry_id; $$
+```
+
+پیاده‌سازی‌اش درست است (حتی سند صفر-به-صفر را نامتوازن می‌شمارد). و بررسی سه‌طرفهٔ زنده:
+
+| آیا جایی وصل است؟ | نتیجه |
+|---|---|
+| به تریگری وصل است؟ | **۰ تریگر** |
+| از داخل تابع دیگری صدا زده می‌شود؟ | **۰ تابع** |
+| از فرانت‌اند فراخوانی می‌شود؟ | **۰ مورد** — تنها ارجاع در `types.ts:12839` است که فایل تولیدشده است |
+
+**دقیقاً همان بررسی‌ای که بند ۴ نبودش را نقص اصلی این دامنه دانست، نوشته شده و بلااستفاده
+مانده است.** ارزان‌ترین اصلاح کل این ممیزی همین است.
+
+موارد دیگر این بند:
+- `journal_entries_status_chk` مقادیر `draft` و `void` را مجاز می‌کند ولی **فقط `posted`
+  تا امروز نوشته شده**، و جست‌وجوی زنده **هیچ تابع ابطال یا برگشت سند** پیدا نکرد.
+- تریگر `trg_asan_burn_journal_entry_number` روی AFTER DELETE است، در حالی که **هیچ سیاست
+  DELETE روی این جدول‌ها وجود ندارد** — حذفی پیش‌بینی شده که RLS اجازه‌اش را نمی‌دهد.
+
+**۶ — تکرار.** دو مورد، هر دو مستند و عمدی:
+- **مسیر A/B ثبت فیش** — `post_receipt_journal` خنثی در برابر `post_receipt_accounting`
+  مرجع (جزئیات در بند ۶ دامنهٔ E).
+- **کدهای حسابداری روی سرآیند سند** تکرار همان ستون‌ها روی `payment_receipts`اند. این
+  عکس‌برداری عمدی و از نظر حسابداری درست است (سند نباید با ویرایش بعدی فیش تغییر کند)،
+  ولی نسخهٔ دوم داده است و باید آگاهانه نگه داشته شود.
+
+**۷ — نقص‌ها:**
+
+**(الف) بدون الزام توازن** (بند ۴) — جدی‌ترین. سامانه‌ای که خودش را «دفتر دوطرفه»
+می‌نامد، تنها ویژگی تعریف‌کنندهٔ دوطرفه‌بودن را الزام نمی‌کند.
+
+**(ب) نگهبانِ آماده و وصل‌نشده** (بند ۵).
+
+**(ج) بدون هیچ رابط کاربری** (بند ۱). حسابدار نمی‌تواند دفتر را ببیند، فقط می‌تواند
+صادرش کند.
+
+**(د) `account_ref_id` بدون FK و `line_no` بدون یکتایی** (بند ۴).
+
+**(ه) مقیاس.** یک سند، در برابر ۶ فیش، ۵۹ خرید، ۵۰ پیش‌فاکتور و ۰ سند پرداخت. دفتر
+سرریزِ یک عملیات است، نه ثبت سامانمند رویدادهای مالی. (پرداخت‌ها اصلاً سند نمی‌زنند —
+دامنهٔ F بند ۷-الف.)
+
+**۸ — پوشش `role_permissions`.** ❌ **دفتر ماژول مجوز ندارد.** نه `accounting` ردیفی دارد
+و نه ماژولی به نام `journal` وجود دارد. تنها دروازهٔ واقعی RLS است
+(`*_select_finance` = admin/manager/accountant · `*_insert|update_admin_accountant` = admin/accountant
+· `viewer_restricted`). تنها دسترسی مجوزدارِ واقعی به دفتر از راه ماژول `asan-export`
+است که هر ۷ نقش ردیف دارد — یعنی **صادرکردن دفتر مجوز دارد، دیدنش ندارد.**
+
 ---
 
 ### B, D, H, I, J
 
-شروع نشده. جزئیات در فایل HANDOFF.
+سهم Codex. گزارش کامل با همین چک‌لیست هشت‌بندی در
+`docs/audits/full-accounting-audit-part2-codex.md`. خلاصهٔ حکم هر دامنه در فایل HANDOFF.
 
 ---
 
@@ -709,12 +1048,25 @@ journal_lines_total = 2   |   external_party_lines = 0
 
 ۵. **گروه‌بندی اشخاص صفر است.** هیچ جدولی، هیچ ستونی. کاملاً از صفر.
 
-۶. **`external_party` دقیقاً برای نیاز شماست ولی مرده است** — ۱ ردیف، صفر استفاده در دفتر.
+۶. **`external_party` دقیقاً برای نیاز شماست و — برخلاف برداشت اولیه — مرده نیست، فقط
+   اجرا نشده.** ۱ ردیف و صفر خط در دفتر، ولی مسیر نوشتنش در `post_receipt_accounting`
+   ساخته و وصل است؛ هر ۴ فیشِ دارای طرف خارجی هنوز ثبت نشده‌اند (دامنهٔ G، بند ۳).
 
 ۷. **بازخورد کارکنان وصل نشده** — `converted_task_id` را هیچ تابعی نمی‌نویسد.
 
 ۸. **`journal_lines.account_ref_id` هیچ FK ندارد** — مرجع چندریختی بدون گارد، همان
    الگویی که در `stock_movements` به مهاجرت ۳۰۴ آسیب زد.
+
+۹. **دفتر «دوطرفه» توازن را الزام نمی‌کند.** هیچ CHECK، هیچ تریگر، هیچ لایه‌ای مجموع
+   بدهکار و بستانکار را مقایسه نمی‌کند؛ و RLS به admin/accountant اجازهٔ درج مستقیم
+   می‌دهد. توازن امروز فقط محصول جانبیِ تک‌نویسنده‌بودن است (دامنهٔ G، بند ۴).
+
+۱۰. **نگهبان توازن نوشته شده و نصب نشده.** `validate_journal_entry_balance` وجود دارد،
+    درست است، و به صفر تریگر / صفر تابع / صفر فراخوانی فرانت‌اند وصل است.
+    **ارزان‌ترین اصلاح کل این ممیزی** (دامنهٔ G، بند ۵).
+
+۱۱. **«کد ذی‌نفع حسابداری» به سند نمی‌رسد.** ستونی که بخش صفر آن را پاسخ سناریوی شما
+    دانست، در تابع ثبت اصلاً خوانده نمی‌شود (دامنهٔ E، بند ۷-الف).
 
 ---
 
