@@ -208,19 +208,72 @@ NO FUNCTION WRITES IT
 > **این بخش هنوز کامل نشده.** آنچه در جریان بررسی موارد زمینه‌ای ثابت شد اینجا ثبت است
 > تا دوباره کشف نشود. چک‌لیست هشت‌بندی برای هیچ دامنه‌ای هنوز کامل اجرا نشده.
 
-### A — تأمین‌کنندگان (شواهد جزئی)
+## A — تأمین‌کنندگان ✅ کامل
 
-```sql
-select pg_get_constraintdef(oid) from pg_constraint
- where conrelid='public.dynamic_entity_scores'::regclass and contype='c';
-```
+**۱ — مسیرها و ناوبری.** `_app.suppliers.tsx` (فهرست) و `_app.suppliers_.$supplierId.tsx`
+(جزئیات/ساخت). در registry ثبت است — `registry.ts:257-260`، برچسب «تأمین‌کنندگان»،
+ماژول `suppliers`. یتیم نیست. گارد مسیر: `_app.suppliers.tsx:51`
+`requirePermission("suppliers","view")`.
+
+**۲ — اسکیما.** ۱۶ ستون. نکتهٔ مهم: `person_id` هم `NOT NULL` است و هم
+`uq_suppliers_person_id` روی آن UNIQUE است — پس **هر تأمین‌کننده دقیقاً یک شخص دارد و هر
+شخص حداکثر یک ردیف تأمین‌کننده**. این توضیح می‌دهد چرا شمارش «تأمین‌کنندهٔ بی‌شخص» صفر است.
+
+**۳ — تریگرها.** شش عدد:
+`suppliers_audit_insert`, `suppliers_audit_update`, `suppliers_set_updated_at`,
+`suppliers_updated_at`, `trg_normalize_phone`, `trg_suppliers_pull_asan_code`.
+
+**۴ — محدودیت‌ها.** `status IN (pending,active,rejected)` ·
+`trust_level IN (low,medium,high)` · `accounting_code ~ '^[A-Za-z0-9_-]{1,30}$'` ·
+FK به `persons` و `profiles` · UNIQUE روی `person_id`.
+
+**۵ — ساخته‌شده ولی بی‌مصرف.** `trust_level` (پایین‌تر). `dynamic_entity_scores` هم
+تأمین‌کنندگان را حذف می‌کند:
 ```
 CHECK (entity_type = ANY (ARRAY['customer','salesperson']))
 ```
+**یافتهٔ تحقیق قبلی پس از مهاجرت‌های ۳۰۳–۳۱۰ بازتأیید شد.**
 
-**تأمین‌کنندگان همچنان از امتیازدهی پویا حذف‌اند** — یافتهٔ تحقیق قبلی پس از مهاجرت‌های
-۳۰۳ تا ۳۱۰ بازتأیید شد. اینکه `trust_level` چیزی را واقعاً هدایت می‌کند یا تزئینی است،
-هنوز بررسی نشده.
+**۶ — تکرار. دو مورد واقعی:**
+- **دو تریگر `updated_at` روی یک جدول** — `suppliers_set_updated_at` و
+  `suppliers_updated_at`. یکی کافی است؛ هر دو روی هر نوشتن اجرا می‌شوند.
+- **دو سیاست SELECT** — `suppliers_select_dynamic` و `suppliers_select_role_scoped`.
+  در RLS سیاست‌های SELECT با OR ترکیب می‌شوند، پس سیاست بازتر عملاً حاکم است و وجود
+  دومی می‌تواند این توهم را بسازد که محدودیت سخت‌گیرانه‌تری برقرار است.
+
+**۷ — نقص واقعی: رابط از مجوزها سخت‌گیرتر است.**
+
+| نقش | `role_permissions` می‌گوید | رابط اجازه می‌دهد |
+|---|---|---|
+| `sales` | `can_create=t`, `can_update=t` | ❌ خیر |
+| `purchase_specialist` | `can_create=t`, `can_update=t` | ❌ خیر |
+
+`SupplierForm.tsx:133` و `_app.suppliers.tsx:93` هر دو
+`hasAnyRole(roles, ["admin","accountant"])` را می‌گیرند. پس دو نقشی که پایگاه‌داده
+اجازهٔ ساخت و ویرایش می‌دهد، در رابط دکمه‌ای نمی‌بینند.
+
+این «خطر امنیتی» نیست (رابط بسته‌تر است، نه بازتر) ولی یعنی جدول مجوزها **دروغ می‌گوید** —
+اگر مالک نقشی را روی این ماژول تنظیم کند، اثری نخواهد داشت. یکی از این دو باید اصلاح شود؛
+کدام‌یک، تصمیم مالک است.
+
+**نکتهٔ جانبی:** `sales` روی تأمین‌کنندگان `can_approve=t` دارد. اینکه فروش بتواند
+تأمین‌کننده را تأیید کند، احتمالاً عمدی نیست.
+
+**۸ — پوشش `role_permissions`.** ✅ کامل. هر هفت نقش موجود
+(`accountant, admin, manager, purchase_specialist, sales, site, viewer`) ردیف صریح دارند.
+هیچ شکافی نیست — پس `has_dynamic_permission` بی‌صدا این ماژول را باز نمی‌کند.
+
+### آیا `trust_level` چیزی را هدایت می‌کند؟ **خیر — کاملاً تزئینی**
+
+۲۲ ارجاع در `src/`، همه از این سه دسته:
+- تعریف نوع در `types.ts` (تولیدشده)
+- رندر نشان: `trustBadge()` در `_app.suppliers.tsx` و
+  `ProductSupplierManager.tsx:189,234`
+- مقدار پیش‌فرض `'medium'` در `SupplierReferralModal.tsx:77`
+
+**هیچ‌جا در `WHERE`، `ORDER BY`، فیلتر، امتیازدهی یا هر منطق تصمیمی ظاهر نمی‌شود.**
+توزیع فعلی: ۱۱ `medium`، ۲ `high`، صفر `low` — یعنی عملاً همه روی پیش‌فرض مانده‌اند،
+که خودش نشانهٔ بی‌استفاده بودن است.
 
 ### E — دریافت (شواهد جزئی)
 
