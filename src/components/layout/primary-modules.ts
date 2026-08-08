@@ -119,8 +119,6 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/persons/merge",
       "/sales/quotes",
       "/my-rejected-quotes",
-      "/sales/invoices",
-      "/invoices",
       "/sales/product-videos",
       "/sales/stock-alerts",
       "/sales/promotion-nominations",
@@ -146,6 +144,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/accounting/treasury",
       "/accounting/external-parties",
       "/accounting/salesperson-scoring",
+      "/accounting/mutual-settlement",
       // Item 141 — legacy capital paths dropped; dynamic-capital is official.
       "/accounting/dynamic-capital",
     ],

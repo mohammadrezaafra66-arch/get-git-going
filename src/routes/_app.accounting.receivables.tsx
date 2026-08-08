@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Search, X, Eye, FileText } from "lucide-react";
+import { CalendarIcon, Loader2, Search, X, Eye } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -497,14 +497,10 @@ function ReceivablesPage() {
                             >
                               <Eye className="h-4 w-4 ml-1" /> جزئیات
                             </Button>
-                            <Button asChild size="sm" variant="ghost">
-                              <Link
-                                to="/sales/invoices/$invoiceId"
-                                params={{ invoiceId: r.invoice_id }}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            {/* 2026-08-08: the "open the invoice page" icon link was removed
+                                with the invoice routes (migration 323). The «جزئیات» button
+                                beside it opens the same receivable in a dialog, so nothing
+                                a user could reach is lost. */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -562,11 +558,8 @@ function ReceivablesPage() {
                       >
                         <Eye className="h-4 w-4 ml-1" /> جزئیات
                       </Button>
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: r.invoice_id }}>
-                          <FileText className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                      {/* 2026-08-08: mobile twin of the removed invoice icon link — see the
+                          note in the table view above. */}
                     </div>
                   </div>
                 ))}

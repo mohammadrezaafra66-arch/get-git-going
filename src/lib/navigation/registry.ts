@@ -320,28 +320,14 @@ const NAVIGATION_SEEDS = [
     group: "sales-customers",
     subgroup: "sc-sales",
   },
-  // `invoices` / `invoice_items` are a dead parallel design: both tables hold 0
-  // rows and the live pre-invoice workflow is `sales_quotes` (/sales/quotes).
-  // Hidden from the menus only — routes, guards and breadcrumbs are unchanged,
-  // so /sales/invoices/$invoiceId/waybill stays reachable by direct URL.
-  {
-    to: "/sales/invoices",
-    label: "فاکتورهای فروش",
-    icon: Receipt,
-    module: "invoices",
-    group: "sales-customers",
-    subgroup: "sc-sales",
-    hiddenFromMenu: true,
-  },
-  {
-    to: "/invoices",
-    label: "فاکتورها",
-    icon: FileText,
-    module: "invoices",
-    group: "sales-customers",
-    subgroup: "sc-sales",
-    hiddenFromMenu: true,
-  },
+  // The /sales/invoices and /invoices seeds were removed 2026-08-08 together with their
+  // routes, forms and the invoice_items/waybills/waybill_items tables (migration 323).
+  // They were a dead parallel design: every one of those tables held 0 rows and the live
+  // pre-invoice workflow is `sales_quotes` (/sales/quotes, 50 rows). /invoices was never
+  // more than a "coming soon" placeholder. Both had already been hidden from the menus,
+  // so this removes no link a user could see.
+  // NOTE: the `invoices` TABLE itself is deliberately still in the database — see
+  // docs/execution/nav-invoices-cleanup-mission-STATUS.md, phase 4, for the follow-up.
   // Item 152 — the salesperson's own list of refused pre-invoice attempts.
   {
     to: "/my-rejected-quotes",
@@ -523,6 +509,19 @@ const NAVIGATION_SEEDS = [
     to: "/accounting/salesperson-scoring",
     label: "امتیازدهی کارشناسان فروش",
     icon: Coins,
+    module: "accounting",
+    group: "finance",
+  },
+  // Formal handover from the ledger-mutual-settlement agent, recorded in
+  // docs/execution/ledger-mutual-settlement-mission-COMPLETE.md: it built this page but
+  // could not register it, because registry.ts / primary-modules.ts belong to this
+  // mission this round. Without a seed it was reachable only by typing the URL — the
+  // exact orphan-page defect phase 2 of this mission exists to remove.
+  // Guard is requireAnyRole(["admin","accountant"]); ROLE_ALLOWLIST_BY_ROUTE mirrors it.
+  {
+    to: "/accounting/mutual-settlement",
+    label: "تسویهٔ متقابل",
+    icon: ArrowLeftRight,
     module: "accounting",
     group: "finance",
   },
@@ -1220,6 +1219,9 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // _app.accounting.salesperson-scoring.tsx — requireAnyRole(admin, accountant):
   // narrower than accounting:view, so manager must not see the link.
   "/accounting/salesperson-scoring": ["admin", "accountant"],
+  // _app.accounting.mutual-settlement.tsx — requireAnyRole(admin, accountant), same
+  // reasoning: narrower than the accounting module permission.
+  "/accounting/mutual-settlement": ["admin", "accountant"],
   "/sales/product-videos": ["admin", "manager", "sales", "accountant"],
   // _app.gamification.settings.tsx — requireAnyRole(admin). The seed's adminOnly
   // flag alone means admin OR manager (selectors.ts:35), which is wider than the guard.

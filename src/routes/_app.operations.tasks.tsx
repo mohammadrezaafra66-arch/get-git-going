@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
@@ -113,11 +113,10 @@ function proofLabel(p: string | null) {
   }
 }
 
-function isInvoiceLinkTask(t: Task) {
-  return (
-    (t.reference_type === "invoice" || t.reference_type === "invoice_workflow") && !!t.reference_id
-  );
-}
+// isInvoiceLinkTask() was removed 2026-08-08 with its only caller, the
+// "مشاهده پیش‌فاکتور" link. It gated on reference_type in ('invoice','invoice_workflow').
+// Those task rows can still exist; they simply no longer render a link to a route that
+// no longer exists.
 
 function asNumber(value: NumericValue) {
   if (value === null || value === undefined || value === "") return null;
@@ -418,16 +417,10 @@ function TasksBoardPage() {
                         {t.description}
                       </p>
                     )}
-                    {isInvoiceLinkTask(t) && (
-                      <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                        <Link
-                          to="/sales/invoices/$invoiceId"
-                          params={{ invoiceId: t.reference_id! }}
-                        >
-                          <ExternalLink className="ml-1 h-3 w-3" /> مشاهده پیش‌فاکتور
-                        </Link>
-                      </Button>
-                    )}
+                    {/* 2026-08-08: the "مشاهده پیش‌فاکتور" link pointed at /sales/invoices/$invoiceId,
+                        removed with the invoice routes (migration 323). The invoices table held 0
+                        rows, so this link could never resolve to a real document. The task itself,
+                        its description and its tick action are unchanged. */}
                   </div>
                   {canTick && t.status !== "done" && t.status !== "canceled" && (
                     <div className="flex flex-col gap-2">
