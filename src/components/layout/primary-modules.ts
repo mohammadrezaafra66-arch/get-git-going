@@ -182,7 +182,6 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/marketing-task-templates",
       "/admin/payment-terms",
       "/admin/visitors",
-      "/admin/waybill-fields",
       "/admin/receipt-fields",
       "/admin/recent-purchase-settings",
       "/admin/workflow-stages",

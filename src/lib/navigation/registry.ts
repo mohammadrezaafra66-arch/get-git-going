@@ -884,15 +884,13 @@ const NAVIGATION_SEEDS = [
     subgroup: "adm-settings",
     adminOnly: true,
   },
-  {
-    to: "/admin/waybill-fields",
-    label: "فیلدهای بیجک",
-    icon: Settings,
-    module: "roles",
-    group: "admin",
-    subgroup: "adm-settings",
-    adminOnly: true,
-  },
+  // /admin/waybill-fields removed 2026-08-08 with migration 333. It configured custom
+  // fields for waybills — a feature that no longer exists: waybills and waybill_items
+  // were dropped by 323 and the invoices table they hung off by 332. Its table
+  // waybill_custom_fields held 0 rows and nothing else read it.
+  // NOTE: the component WaybillCustomFieldsInput SURVIVES and must not be deleted — despite
+  // the name it is generic, and the live PaymentReceiptForm renders it against
+  // payment_receipt_custom_fields.
   {
     to: "/admin/receipt-fields",
     label: "فیلدهای فیش واریزی",
