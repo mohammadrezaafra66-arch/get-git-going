@@ -36,7 +36,9 @@ test("the customer on that detail page links to their person record", async ({ p
   await page.locator('a[href^="/sales/quotes/"]:not([href$="/new"])').first().click();
   await page.waitForLoadState("networkidle");
 
-  const personLink = page.locator('a[href*="/persons/"]').first();
+  // Scoped to <main>: unscoped, .first() picked up the sidebar's /persons/import link
+  // (wired into the nav on 2026-08-08) instead of the customer's person link.
+  const personLink = page.getByRole("main").locator('a[href*="/persons/"]').first();
   await expect(personLink).toBeVisible({ timeout: 15_000 });
   const href = await personLink.getAttribute("href");
   expect(href).toMatch(/\/persons\/[0-9a-f-]{36}/);

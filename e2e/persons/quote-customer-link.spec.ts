@@ -59,5 +59,10 @@ test("a quote with no customer shows a plain name, not a broken link", async ({ 
 
   await page.goto(`/sales/quotes/${quoteId}`);
   await page.waitForLoadState("networkidle");
-  await expect(page.locator('a[href*="/persons/"]')).toHaveCount(0);
+  // Scoped to <main>. The claim is "this quote shows no person link", not "the whole
+  // document contains none" — the sidebar carries /persons/import and /persons/merge on
+  // every page since they were wired into the nav on 2026-08-08. Deliberately NOT written
+  // as a live-derived count: that would bake today's sidebar size into the assertion and
+  // break the next time anyone adds a nav item. Zero is the right number, in main.
+  await expect(page.getByRole("main").locator('a[href*="/persons/"]')).toHaveCount(0);
 });

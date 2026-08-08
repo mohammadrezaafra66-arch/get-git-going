@@ -38,7 +38,10 @@ test.describe("person profile — admin", () => {
     await expect(page.getByText("پروندهٔ فقط‌خواندنی شخص")).toBeVisible();
     await expect(page.getByRole("button", { name: "ذخیره تغییرات" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "ویرایش" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "اشخاص تکراری" })).toBeVisible();
+    // Scoped to <main>: /persons/merge is now a sidebar entry too (it was wired into the
+    // nav on 2026-08-08), so an unscoped locator matches the chrome as well as this
+    // page's own deep link and trips strict mode. The assertion is about THIS page.
+    await expect(page.getByRole("main").getByRole("link", { name: "اشخاص تکراری" })).toBeVisible();
     await expect(page.getByText("شناسه‌ها").first()).toBeVisible();
     await expect(page.getByText("نقش‌ها و پرونده‌های مرتبط").first()).toBeVisible();
   });

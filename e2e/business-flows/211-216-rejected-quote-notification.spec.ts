@@ -377,7 +377,10 @@ async function rejectQuoteAsAccountant(page: Page, quoteId: string, reason: stri
     )
     .toBe(`rejected|${reason}`);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByText(/ردشده|رد شده/)).toBeVisible();
+  // Scoped to <main>: the regex also matches the sidebar link «درخواست‌های رد شدهٔ من»,
+  // which has been on every page since /my-rejected-quotes was wired into the nav on
+  // 2026-08-08. The badge this asserts on lives in the page body.
+  await expect(page.getByRole("main").getByText(/ردشده|رد شده/)).toBeVisible();
 }
 
 async function expectNoUnexpectedFailedResponses(page: Page, testInfo: TestInfo, label: string) {
