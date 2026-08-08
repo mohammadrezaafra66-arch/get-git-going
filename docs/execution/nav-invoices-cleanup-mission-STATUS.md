@@ -137,6 +137,90 @@ eslint فایل‌های لمس‌شده: `_app.operations.didar.tsx` **۱۰ خ�
    JWT هر نقش، کلیک روی هرکدام، و باز شدن `/integrations/didar` که باید به `/operations/didar`
    برود. build/deploy روی LAN هم اجرا نشد چون فاز ۴ نیمه‌کاره متوقف شد.
 
+---
+
+# فاز ۴ — بررسی نجات منطق (کامل، پیش از هر حذفی)
+
+طبق دستور خودِ فایل مأموریت، این بررسی **قبل از** هرگونه حذف انجام و ثبت شد.
+هیچ‌چیز حذف نشده است. همهٔ دسترسی‌های دیتابیس `SELECT` روی کاتالوگ و شمارش ردیف بود.
+
+## ۴-الف) چهار منطقی که Codex هشدار داده بود
+
+| منطق | در invoice چیست | آیا `sales_quotes` معادلش را دارد؟ | حکم |
+|---|---|---|---|
+| **نگه‌داشتن اعتبار** (`hold_credit`/`release_credit`، کلیدخوردهٔ `p_invoice_id`) | **رزرو** واقعی: `available_credit` کم و `held_credit` زیاد می‌شود | **نه.** `create_sales_quote_with_items` اعتبار را فقط **بررسی** می‌کند (`get_customer_dynamic_credit` + گیت معوقه/تخصیص/کسری + `credit_check_snapshot`) ولی چیزی **رزرو نمی‌کند** | 🟠 **منحصربه‌فرد** — گیتِ پیش‌فاکتور سخت‌گیرتر است، ولی «رزرو» فقط اینجاست |
+| **نگه‌داشتن سرمایه** (`hold_capital_allocation` + `consume_/release_/refund_capital_allocation`) | پیش‌بررسی `can_use_customer_capital_allocation` سپس hold | **نه** | 🟡 منحصربه‌فرد ولی **نیمه‌کاره**: `release_`/`consume_`/`refund_capital_allocation` در کل فرانت‌اند **صفر فراخوان** دارند ⇒ سرمایه hold می‌شود و هیچ مسیری آزادش نمی‌کند |
+| **وظایف گردش‌کار** (`invoice_workflow_stages`، `create_preinvoice_workflow_tasks`، `complete_invoice_task`) | ۵ ردیف پیکربندی زنده؛ صفحهٔ `/admin/workflow-stages` مدیریتش می‌کند | **نه** | 🔴 **منحصربه‌فرد و زنده‌متصل** — `complete_invoice_task` از `/operations/tasks` صدا زده می‌شود که صفحه‌ای **در سایدبار** است |
+| **بارنامه** (`waybills`، `waybill_items`، `create_waybill_for_invoice`، `create_waybills_batch`) | زنجیرهٔ کامل بارنامه + صفحهٔ `/admin/waybill-fields` که **در سایدبار است** | **نه** | 🔴 **منحصربه‌فرد** — قابلیت کسب‌وکاری واقعی (مستندات حمل) که با حذف از بین می‌رود |
+
+## ۴-ب) شواهد زنده (دیتابیس `afrakala`)
+
+```
+invoices 0 · invoice_items 0 · waybills 0 · waybill_items 0     ⇒ فرض «صفر ردیف» درست است
+payment_receipt_links 3 ردیف — با invoice_id: 0
+delivery_receipts      1 ردیف — با invoice_id: 0
+customer_credit_balance 9 ردیف — مجموع held_credit: 0.00        ⇒ هیچ رزرو زنده‌ای وجود ندارد
+invoice_workflow_stages 5 · sales_quotes 50
+```
+
+کلیدهای خارجی که به `invoices` اشاره می‌کنند (از `pg_constraint` زنده، نه از export):
+
+```
+invoice_items         → CASCADE
+payment_receipt_links → RESTRICT
+waybills              → RESTRICT
+delivery_receipts     → NO ACTION
+```
+
+## ۴-ج) ⛔ یافتهٔ تعیین‌کننده — دامنهٔ انفجار بسیار بزرگ‌تر از فرض مأموریت است
+
+مأموریت سه تابع نام می‌برد (`cancel_invoice`, `send_invoice_to_accountant`,
+`validate_invoice_item_price`). شمارش زنده روی `pg_proc` **۲۵ تابع** می‌دهد که در بدنه‌شان
+به `invoices` ارجاع دارند — و بیشترشان اصلاً مختص invoice نیستند، بلکه هستهٔ زندهٔ مالی و
+هویت‌اند:
+
+```
+post_receipt_accounting          enforce_payment_receipt_link_limits
+get_receivable_detail            enforce_receipt_approval_allocation_limits
+calculate_credit_score           update_customer_overdue_status
+person_merge                     person_fk_drift_report
+recompute_employee_scores_on_receipt(_link)   recalculate_settlement_score
+calculate_salesperson_collected_sales         asan_list_sales_export
+get_product_timeline             create_delivery_receipt   … و ۱۱ تای دیگر
+```
+
+سه پیامد که حذف را از «۴ جدول خالی، بی‌ریسک» به یک تغییر پرخطر تبدیل می‌کند:
+
+1. **حذف `invoices` بدون دست‌زدن به جدول‌های ممنوعه ممکن نیست.** PostgreSQL اجازه نمی‌دهد
+   جدولی که به آن ارجاع هست drop شود، پس باید `payment_receipt_links_invoice_id_fkey` (یک
+   شیء `payment_*`) و `delivery_receipts_invoice_id_fkey` حذف شوند. فایل مأموریت صریحاً
+   «هر migration مالی (`journal_*`, `payment_*`, `treasury/*`)» را در فهرست **لمس‌نکردنی**
+   گذاشته است.
+2. **این دقیقاً همان چیزی است که عامل ۵ همین حالا دارد بازنویسی می‌کند.**
+   `post_receipt_accounting` و دو تابع `enforce_*` قلب زنجیرهٔ فیش/حسابداری‌اند و
+   `ledger-mutual-settlement` در همین ساعت روی `treasury/queries.ts` و
+   `_app.accounting.purchase-payments.tsx` کار می‌کند. تابعی که در بدنه‌اش به جدول
+   حذف‌شده ارجاع دارد، **هنگام اجرا** می‌افتد، نه هنگام drop.
+3. **`person_merge` همان تله‌ای است که PROGRESS دو بار ثبت کرده.** این تابع فهرست کارش را در
+   زمان اجرا از `pg_constraint` می‌خواند و روی هر کلید خارجیِ ناشناخته **کل ادغام را متوقف
+   می‌کند** (مهاجرت‌های ۲۷۱ و ۲۸۷ هر دو با همین شکستند و هر دو بار «رگرسیون کل سامانه» شد).
+   حذف `invoices` گراف کلیدهای خارجی را تغییر می‌دهد.
+
+## ۴-د) حکم
+
+**داده‌ای در خطر نیست** (هر چهار جدول صفر ردیف، هیچ ارجاع زنده‌ای، `held_credit = 0`).
+مسئله داده نیست، **کوپلینگ کد** است.
+
+از چهار منطق، **هیچ‌کدام معادلی در `sales_quotes` ندارند**؛ دو تای اول عملاً مرده‌اند
+(رزرو صفر، آزادسازی بدون فراخوان) ولی **وظایف گردش‌کار و بارنامه هر دو زنده و از سایدبار
+قابل‌دسترس‌اند**. حذف کامل، این دو را از بین می‌برد.
+
+اجرای فاز ۴ به‌صورت نوشته‌شده بدون یکی از این دو ممکن نیست: (الف) تغییر اشیای صریحاً
+ممنوع (`payment_receipt_links` و توابع حسابداری)، یا (ب) جا گذاشتن ۱۰+ تابع زنده که به
+جدول حذف‌شده ارجاع می‌دهند و هنگام اجرا می‌افتند. این همان مرز توقفی است که خودِ بند
+«بررسی نجات منطق» فاز ۴ پیش‌بینی کرده بود: **«اگر واقعاً مهم به‌نظر رسید، متوقف شو و از
+مالک بپرس قبل از حذف نهایی.»**
+
 ## Self-Host Acceptance Check
 
 بدون CDN، بدون فونت آنلاین، بدون API خارجی تازه، بدون سرویس ابری. هیچ secret اضافه نشد،
