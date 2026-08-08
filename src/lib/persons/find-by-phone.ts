@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { readPersonMirrors } from "./dual-role";
 import type { PersonContextKind } from "./context-links.schemas";
 
 /**
@@ -121,7 +122,7 @@ export async function findPersonByPhone(phone: string): Promise<ExistingPersonMa
     ),
   );
 
-  const mirrors = await readMirrors(personId);
+  const mirrors = await readPersonMirrors(personId);
 
   return {
     person_id: person.id,
@@ -130,38 +131,9 @@ export async function findPersonByPhone(phone: string): Promise<ExistingPersonMa
     is_active: person.is_active,
     updated_at: person.updated_at,
     roles,
-    ...mirrors,
-  };
-}
-
-/**
- * City and the mirror ids live on the suppliers/customers rows, not on
- * `persons`. Either read may be blocked by RLS for this user, which is fine —
- * these are recognition and navigation aids, never a guard.
- */
-async function readMirrors(
-  personId: string,
-): Promise<{ city: string | null; supplier_id: string | null; customer_id: string | null }> {
-  const [{ data: customerRow }, { data: supplierRow }] = await Promise.all([
-    supabase.from("customers").select("id, city").eq("person_id", personId).maybeSingle(),
-    supabase
-      .from("suppliers")
-      .select("id, city")
-      // `suppliers.person_id` is NOT NULL in the live database but absent from
-      // the generated types, which also predate migration 308's
-      // accounting_code. Regenerating types.ts is a separate, far larger
-      // change; this cast is the narrow fix.
-      .eq("person_id" as never, personId)
-      .maybeSingle(),
-  ]);
-
-  const customer = customerRow as unknown as { id: string; city: string | null } | null;
-  const supplier = supplierRow as unknown as { id: string; city: string | null } | null;
-
-  return {
-    city: customer?.city ?? supplier?.city ?? null,
-    customer_id: customer?.id ?? null,
-    supplier_id: supplier?.id ?? null,
+    city: mirrors.city,
+    supplier_id: mirrors.supplier_id,
+    customer_id: mirrors.customer_id,
   };
 }
 

@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SupplierForm } from "@/shared/components/SupplierForm";
+import { PersonRoleCrossLinks } from "@/components/persons/PersonRoleCrossLinks";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/suppliers_/$supplierId")({
@@ -220,6 +221,10 @@ function SupplierDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* P1.3 — the same person can be a customer too; without this the two
+          sides of one human are invisible to each other. */}
+      <PersonRoleCrossLinks personId={data.person_id} currentSide="supplier" />
 
       <Card>
         <CardContent className="pt-6">
