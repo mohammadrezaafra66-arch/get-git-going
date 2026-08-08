@@ -21,10 +21,18 @@
 - **⚠️ حساب نشست تست:** حساب ادمین نشست باید `profiles.status='active'` باشد وگرنه اپ به `/pending-approval` می‌فرستد و **هر spec رابطی قرمز می‌شود** بدون اینکه ربطی به کد داشته باشد. `test.admin@afrakala.local` (`rejected`) و `afra-admin@local.test` (`inactive`) هر دو از این در می‌افتند. در ۲۰۲۶-۰۸-۰۴ `afra-admin@local.test` عمداً `active` شد تا هارنس کار کند (مقدار پیشین: `status='inactive'`, `is_active=false` — برای برگرداندن ثبت شده).
 - **ارائه‌دهندگان AI:** `gpt-messenger` (اولویت ۱، فعال) · `ollama` (اولویت ۱۰، فعال)
 
+## مأموریت‌های در جریان (هر عامل فقط ردیف‌های خودش را دست بزند)
+
+- [x] ledger-mutual-settlement / فاز ۱ — supplier_payable — **انجام شد** (مهاجرت ۳۱۲ اعمال شد؛ dry-run ۵/۵؛ down تست شد)
+- [ ] ledger-mutual-settlement / فاز ۲ — پرداخت شخص ثالث — در انتظار
+- [ ] ledger-mutual-settlement / فاز ۳ — صفحهٔ تسویه — در انتظار
+- [ ] ledger-mutual-settlement / فاز ۴ — غنی‌سازی شرح — در انتظار
+
 ## تاریخچه (جدیدترین بالا)
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-08 | Cursor | **messenger-rpc-fix فاز ۱ — تشخیص.** فرانت در `GroupMembersDialog.tsx:166` با پارامترهای `p_group_id`/`p_user_id`/`p_role` صدا می‌زند. روی دیتابیس زنده فقط `add_messenger_group_member` و `is_messenger_group_member` هستند؛ `set_messenger_group_member_role` در `pg_proc` نیست. مهاجرت قدیمی ۲۲۵ در گیت هست ولی روی LAN اعمال نشده. جدول `messenger_group_members` سیاست UPDATE ندارد ⇒ مسیر مستقیم UPDATE هم بی‌فایده است. | — |
 | 2026-08-07 | Claude Code | **`/updates` خودکار شد.** یادداشت انتشار از تاریخچهٔ گیت هنگام build تولید و در استقرار خودکار منتشر می‌شود؛ **هیچ تأیید دستی لازم نیست**. مهاجرت **۳۰۷** `auto_publish_release` (فقط `service_role`، idempotent روی `git_sha`، audit با `actor_id=NULL`). قانون تازه در `AGENTS.md`/`CLAUDE.md`: هر کامیت کاربرپسند باید تریلر `Release-note-fa:` داشته باشد — بدون آن چیزی منتشر نمی‌شود (عمداً، تا متن انگلیسی فنی به کاربر نرسد). دو نقص حین آزمون واقعی پیدا و رفع شد: قلاب boot در کانتینر **هرگز اجرا نمی‌شد** (کانتینر `.output/server/index.mjs` را اجرا می‌کند نه `server/node-entry.mjs`)، و برش «فقط موارد تازه» به‌خاطر اختلاف طول sha (۸ در برابر ۴۰) بی‌صدا باز می‌شد. آزمون سرتاسری: نسخهٔ **۱۴** منتشر شد، اجرای دوباره چیزی نساخت. typecheck **۷۰**. | `8b455da8` |
 | 2026-08-07 | Claude Code | **UNIFY P0 — پایان مأموریت.** ۰.۳ اعمال شد (مهاجرت ۳۰۴): ۳۲۲ خرید e2e + ۳۲۲ آیتم + ۳۲۰ idempotency + ۱۵۸ fulfillment + **۳۲۲ stock_movement** حذف؛ خریدها ۳۳۴→**۱۲**؛ `journal_entries`/`payment_receipts`/`sales_quotes` **دست‌نخورده**. **۰.۲ متوقف شد** (گزارش منبع `dual-role-person-analysis.md` وجود ندارد؛ ۳ جفت از ۴ جفت اصلاً نیستند؛ تنها جفت واقعی «مختارشاهمرادی» دوتایی organization/individual است با ۲ خرید و ۷۷ رکورد قیمت ← شرط توقف مالی خودِ فاز). **۰.۵ لازم نبود** (فایل xlsx هدف در **صفر** کامیت تاریخچه است؛ هیچ rewrite/force-push انجام نشد). دامپ P0.3 عمداً کامیت نشد (قاعدهٔ ۴) و به `.gitignore` اضافه شد. بدون تغییر سورس. | `15c5920d` |
 | 2026-08-07 | Claude Code | **UNIFY P0.1 اعمال شد + بررسی «api».** مهاجرت **۳۰۳** روی دیتابیس تست اجرا شد (`--single-transaction`, exit 0): persons ۷۹→۷۷، suppliers ۱۵→۱۳، ۶ حساب هارنس e2e و fixture E2E264 سالم. `afrakala-lan-rest` ری‌استارت شد. بررسی `6cd30201` «api»: نوشتهٔ محصول فقط متنِ پیش‌پرشده است نه رابطه (`product_suppliers`=۰ در هر دو سو) — **باقی‌ماندهٔ تست، پیشنهاد حذف با مهاجرت ۳۰۴**. نقص جانبی ثبت شد: تأمین‌کنندهٔ معرفی‌شده `status='pending'` ولی `is_active=true` و پیکرها روی دو ستون متفاوت فیلتر می‌کنند. typecheck **۷۰**. | `8f256649` |
