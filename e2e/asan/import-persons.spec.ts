@@ -20,7 +20,31 @@ import { ADMIN_USER_ID, mintJwt, rest } from "../helpers/pgrest";
  * parser reads a file I wrote; the real file proves it reads the owner's.
  */
 
+/**
+ * ⛔ THIS FILE NO LONGER EXISTS.
+ *
+ * `docs/asan/reference/اشخاص.xlsx` — the owner's real 488-account export — was removed from the
+ * repository by owner decision on 2026-08-08. The path is kept here rather than deleted so that
+ * restoring a fixture is a one-line change instead of an archaeology exercise.
+ *
+ * Five tests below are consequently skipped, and this is a KNOWN AND ACCEPTED LOSS OF COVERAGE,
+ * not a hidden regression: nothing now proves that the parser reads the owner's real workbook,
+ * that header-driven mapping survives a shuffled column order, or that the stage → classify →
+ * commit chain works end to end on real data. The database-side guards those tests exercised are
+ * still enforced by the triggers and RPCs in migration 285; what is gone is the proof that they
+ * hold against the real file.
+ *
+ * The tests that do NOT need the workbook are deliberately left running: RLS on the staging
+ * tables, the role wiring, the permission rows, and the whole /admin/asan-import route suite.
+ *
+ * To restore coverage: put a persons export back at this path and delete the `test.skip` lines.
+ */
 const WORKBOOK = "docs/asan/reference/اشخاص.xlsx";
+
+/** Shown in the Playwright report for every test skipped by the removal above. */
+const FIXTURE_REMOVED =
+  "needs docs/asan/reference/اشخاص.xlsx, removed by owner decision 2026-08-08 — coverage gap is accepted, see the note at the top of this file";
+
 let adminJwt: string;
 let batchId: string | null = null;
 
@@ -87,6 +111,7 @@ test.afterAll(async () => {
 
 test.describe("M3.3 — Asan person import", () => {
   test("the workbook parses by header text into 488 rows", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     const parsed = parseAsanPersons(readMatrix(WORKBOOK));
     expect(parsed.rows.length, "the owner's export has 488 accounts").toBe(488);
     // every mapping resolved by NAME, so column order is irrelevant
@@ -101,6 +126,7 @@ test.describe("M3.3 — Asan person import", () => {
   });
 
   test("a shuffled column order parses identically — proving header-driven mapping", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     const matrix = readMatrix(WORKBOOK);
     const straight = parseAsanPersons(matrix);
     // reverse every row, header included: positions change, names do not
@@ -112,6 +138,7 @@ test.describe("M3.3 — Asan person import", () => {
   });
 
   test("staging then classifying matches what the research measured", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     const { id } = await stage("QA-M33-first");
     batchId = id;
 
@@ -148,6 +175,9 @@ test.describe("M3.3 — Asan person import", () => {
   });
 
   test("a conflict row cannot be accepted, even by a direct PostgREST PATCH", async () => {
+    // Skipped only because it needs a staged batch, which needs the removed workbook. The guard
+    // itself is a trigger from migration 285 and is still enforced in the database.
+    test.skip(true, FIXTURE_REMOVED);
     expect(batchId, "the staging test must run first").toBeTruthy();
 
     // The conflict is constructed rather than looked up. Whether the real workbook happens to
@@ -187,6 +217,7 @@ test.describe("M3.3 — Asan person import", () => {
   });
 
   test("committing applies only accepted rows, and re-importing changes nothing", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     expect(batchId, "the staging test must run first").toBeTruthy();
 
     const personsBefore = Number(dbScalar("select count(*) from public.persons"));

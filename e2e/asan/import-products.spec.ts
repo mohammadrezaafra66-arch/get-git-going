@@ -25,7 +25,34 @@ import { ADMIN_USER_ID, mintJwt, rest } from "../helpers/pgrest";
  *   update path is constructed below rather than hoped for.
  */
 
+/**
+ * ⛔ THIS FILE NO LONGER EXISTS.
+ *
+ * `docs/asan/reference/کالا.xlsx` — the owner's real 7 256-item export — was removed from the
+ * repository by owner decision on 2026-08-08. The path is kept here rather than deleted so that
+ * restoring a fixture is a one-line change instead of an archaeology exercise.
+ *
+ * Six tests below are consequently skipped, plus the staged-data half of the normalizer test,
+ * and this is a KNOWN AND ACCEPTED LOSS OF COVERAGE, not a hidden regression. What is no longer
+ * proven: that the parser reads the owner's real workbook into 7 256 rows, that header-driven
+ * mapping survives a shuffled column order, that stage → classify → link → commit works on real
+ * data, that committing never creates a product, that re-importing is inert, and that
+ * normalized-name matching still finds exactly R1.5's three products.
+ *
+ * The rules those tests exercised still live in the database — migration 286 counts products
+ * before and after a commit and rolls back if the number moves — so the guards are intact; what
+ * is gone is the proof that they hold against the real file.
+ *
+ * Left running on purpose: RLS on the staging table, and the normalizer's folding rules, which
+ * are asserted on constructed input and never needed the workbook.
+ *
+ * To restore coverage: put a products export back at this path and delete the `test.skip` lines.
+ */
 const WORKBOOK = "docs/asan/reference/کالا.xlsx";
+
+/** Shown in the Playwright report for every test skipped by the removal above. */
+const FIXTURE_REMOVED =
+  "needs docs/asan/reference/کالا.xlsx, removed by owner decision 2026-08-08 — coverage gap is accepted, see the note at the top of this file";
 const EXPECTED_ROWS = 7256;
 /** The three pairs R1.5 named, re-measured in this phase's dry run. */
 const LINKED_SKU = "AFK-2026-00039";
@@ -104,6 +131,7 @@ test.afterAll(async () => {
 
 test.describe("M3.4 — Asan product import", () => {
   test("the workbook parses by header text into 7 256 rows", () => {
+    test.skip(true, FIXTURE_REMOVED);
     const parsed = parseAsanProducts(readMatrix(WORKBOOK));
     expect(parsed.rows.length, "the owner's export has 7 256 products").toBe(EXPECTED_ROWS);
     expect(parsed.mapping.asan_code, "کد کالا was not resolved by header text").toBeTruthy();
@@ -131,6 +159,7 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("a shuffled column order parses identically — proving header-driven mapping", () => {
+    test.skip(true, FIXTURE_REMOVED);
     const matrix = readMatrix(WORKBOOK);
     const straight = parseAsanProducts(matrix);
     const shuffled = parseAsanProducts(matrix.map((row) => [...row].reverse()));
@@ -141,6 +170,7 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("staging and classifying reproduces what the research measured", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     const { id, ms } = await stage("QA-M34-first");
     batchId = id;
     console.log(`M34 staging ${EXPECTED_ROWS} rows took ${ms} ms`);
@@ -174,6 +204,9 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("an unmatched row cannot be accepted, even by a direct PostgREST PATCH", async () => {
+    // Skipped only because it needs a staged batch. The guard itself is a trigger from migration
+    // 286 and is still enforced in the database.
+    test.skip(true, FIXTURE_REMOVED);
     expect(batchId, "the staging test must run first").toBeTruthy();
 
     const row = dbRows(`
@@ -196,6 +229,7 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("the link path works, and committing never creates a product", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     expect(batchId, "the staging test must run first").toBeTruthy();
 
     const before = Number(dbScalar("select count(*) from public.products"));
@@ -258,6 +292,7 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("re-importing the same file changes nothing", async () => {
+    test.skip(true, FIXTURE_REMOVED);
     const before = Number(dbScalar("select count(*) from public.products"));
     const codesBefore = dbScalar(
       "select count(*) from public.products where accounting_code is not null",
@@ -310,6 +345,7 @@ test.describe("M3.4 — Asan product import", () => {
   });
 
   test("the normalizer reproduces R1.5's measurement, not just some measurement", () => {
+    test.skip(true, FIXTURE_REMOVED);
     // The whole matching design rests on this number. If the normalizer drifts, every count
     // above still passes while meaning something different.
     console.log(
@@ -341,8 +377,18 @@ test.describe("M3.4 — Asan product import", () => {
       `),
       "normalized-name matching no longer finds R1.5's three products",
     ).toBe("3");
+  });
 
-    // Folding rules, asserted on constructed input rather than live data.
+  /**
+   * Split out of the test above when the workbook was removed. These two assertions run on
+   * constructed input and never needed a staged batch, so the folding rules keep their coverage
+   * even though the measurement against R1.5's three products cannot run.
+   *
+   * That matters more than it looks: a silent change to the folding table does not raise an
+   * error, it silently changes which products match — which is exactly why migration 286 wrote
+   * the table with ASCII escapes in the first place.
+   */
+  test("the normalizer's folding rules still hold, on constructed input", () => {
     expect(dbScalar(`select public.asan_normalize_name('  Yakh-Chal  (A) ')`)).toBe("yakhchala");
     expect(dbScalar(`select public.asan_normalize_code('AFK-12')`)).toBe("AFK-12");
   });
