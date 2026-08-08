@@ -217,7 +217,34 @@ export async function createPaymentVoucher(
   return (data as { id: string }).id;
 }
 
-/** ۹.۲ — ساخت سند پرداخت برای یک خرید (اتمیک، سمت DB). */
+export type ExternalPartyOption = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  accounting_code: string | null;
+};
+
+/**
+ * طرف حساب‌های خارجی فعال — همان منبعی که `PaymentReceiptForm` برای «گیرنده»
+ * می‌خواند، تا سمت پرداخت و سمت دریافت از یک فهرست استفاده کنند.
+ */
+export async function fetchActiveExternalParties(): Promise<ExternalPartyOption[]> {
+  const { data, error } = await supabase
+    .from("external_parties")
+    .select("id, full_name, phone, accounting_code")
+    .eq("is_active", true)
+    .order("full_name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ExternalPartyOption[];
+}
+
+/**
+ * ۹.۲ — ساخت سند پرداخت برای یک خرید (اتمیک، سمت DB).
+ *
+ * مهاجرت ۳۱۳: هویت گیرنده و سند دفتر اضافه شد. `payeePartyId` اگر پر باشد یعنی
+ * پرداخت به یک «طرف حساب خارجی» انجام شده، وگرنه گیرنده تأمین‌کنندهٔ خودِ خرید
+ * است — دقیقاً همان XOR که CHECK جدول `payment_vouchers` تحمیل می‌کند.
+ */
 export async function payPurchaseWithVoucher(input: {
   purchaseId: string;
   sourceBankAccountId: string;
@@ -228,6 +255,10 @@ export async function payPurchaseWithVoucher(input: {
   chequeNumber?: string | null;
   chequeDueDate?: string | null;
   description?: string | null;
+  /** شناسهٔ طرف حساب خارجی؛ خالی یعنی گیرنده تأمین‌کنندهٔ خرید است. */
+  payeePartyId?: string | null;
+  /** کد آسان ذینفع — اگر پر شود بر کد مشتق‌شده اولویت دارد. */
+  payeeAccountingCode?: string | null;
 }): Promise<string> {
   const { data, error } = await rpc("pay_purchase_with_voucher", {
     _purchase_id: input.purchaseId,
@@ -239,6 +270,8 @@ export async function payPurchaseWithVoucher(input: {
     _cheque_number: input.chequeNumber ?? null,
     _cheque_due_date: input.chequeDueDate ?? null,
     _description: input.description ?? null,
+    _payee_party_id: input.payeePartyId ?? null,
+    _payee_accounting_code: input.payeeAccountingCode ?? null,
   });
   if (error) throw new Error(error.message);
   return String(data ?? "");

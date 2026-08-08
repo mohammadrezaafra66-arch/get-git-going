@@ -41,6 +41,7 @@ import {
   ACCOUNT_TYPE_FA,
   VOUCHER_CHANNELS,
   fetchAccountBalances,
+  fetchActiveExternalParties,
   payPurchaseWithVoucher,
 } from "@/lib/treasury/queries";
 
@@ -56,6 +57,8 @@ import {
 
 /** Sentinel: Radix Select cannot hold an empty string value. */
 const NO_ACCOUNT = "__no_account__";
+/** Same reason, for the third-party payee select (empty = pay the supplier). */
+const NO_PARTY = "__no_party__";
 
 export const Route = createFileRoute("/_app/accounting/purchase-payments")({
   beforeLoad: async () => {
@@ -106,10 +109,23 @@ function PurchasePaymentsPage() {
   const [voucherChannel, setVoucherChannel] = useState<string>("cash");
   const [chequeNumber, setChequeNumber] = useState("");
   const [chequeDueDate, setChequeDueDate] = useState("");
+  // Migration 313 — payee identity. Empty payeePartyId means the payee is the
+  // purchase's own supplier; a value means we paid a third party on the
+  // supplier's behalf. Exactly one of the two, mirroring the receipt side and
+  // the payment_vouchers_payee_matches_type_chk CHECK.
+  const [payeePartyId, setPayeePartyId] = useState<string>("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [payeeAccountingCode, setPayeeAccountingCode] = useState("");
 
   const accountsQ = useQuery({
     queryKey: ["account-balances", "purchase-payment"],
     queryFn: () => fetchAccountBalances({ includeInactive: false }),
+    staleTime: 60_000,
+  });
+
+  const partiesQ = useQuery({
+    queryKey: ["external-parties", "purchase-payment"],
+    queryFn: fetchActiveExternalParties,
     staleTime: 60_000,
   });
   const [search, setSearch] = useState("");
@@ -158,6 +174,11 @@ function PurchasePaymentsPage() {
           chequeNumber: voucherChannel === "cheque" ? chequeNumber : null,
           chequeDueDate: voucherChannel === "cheque" ? chequeDueDate || null : null,
           description: "پرداخت خرید",
+          // Migration 313 — payee identity + tracking number reach the RPC,
+          // which records them on the voucher and posts the journal entry.
+          payeePartyId: payeePartyId || null,
+          trackingNumber: trackingNumber.trim() || null,
+          payeeAccountingCode: payeeAccountingCode.trim() || null,
         });
         return;
       }
@@ -172,7 +193,7 @@ function PurchasePaymentsPage() {
     onSuccess: () => {
       toast.success(
         sourceAccountId
-          ? "پرداخت ثبت شد، سند پرداخت ساخته شد و از ماندهٔ حساب کسر گردید."
+          ? "پرداخت ثبت شد، سند پرداخت و سند حسابداری ساخته شد و از ماندهٔ حساب کسر گردید."
           : "پرداخت ثبت شد و امتیاز محاسبه گردید",
       );
       setTarget(null);
@@ -180,6 +201,9 @@ function PurchasePaymentsPage() {
       setVoucherChannel("cash");
       setChequeNumber("");
       setChequeDueDate("");
+      setPayeePartyId("");
+      setTrackingNumber("");
+      setPayeeAccountingCode("");
       qc.invalidateQueries({ queryKey: ["purchase-payments"] });
       qc.invalidateQueries({ queryKey: ["account-balances"] });
       qc.invalidateQueries({ queryKey: ["payment-vouchers"] });
@@ -402,6 +426,11 @@ function PurchasePaymentsPage() {
                                   onClick={() => {
                                     setTarget(r);
                                     setPaidAt(new Date());
+                                    // Never carry a previous row's payee into
+                                    // the next payment.
+                                    setPayeePartyId("");
+                                    setTrackingNumber("");
+                                    setPayeeAccountingCode("");
                                   }}
                                 >
                                   <Wallet className="ml-1 h-4 w-4" />
@@ -552,6 +581,66 @@ function PurchasePaymentsPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* مهاجرت ۳۱۳ — هویت گیرندهٔ پرداخت. دقیقاً یکی: یا
+                      تأمین‌کنندهٔ خودِ خرید، یا یک طرف حساب خارجی. همان الگوی
+                      «حالت ۱ / حالت ۲» فرم فیش دریافت. */}
+                  <div className="space-y-2 border-t pt-3">
+                    <Label>گیرندهٔ پرداخت</Label>
+                    <Select
+                      value={payeePartyId || NO_PARTY}
+                      onValueChange={(v) => setPayeePartyId(v === NO_PARTY ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_PARTY}>
+                          حالت ۱: تأمین‌کنندهٔ همین خرید
+                          {target?.supplier?.name ? ` — ${target.supplier.name}` : ""}
+                        </SelectItem>
+                        {(partiesQ.data ?? []).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            حالت ۲: {p.full_name}
+                            {p.accounting_code ? ` (کد ${toFaDigits(p.accounting_code)})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      اگر پول به‌جای تأمین‌کننده به شخص دیگری پرداخت شده، او را اینجا انتخاب کنید.
+                      بدهی تأمین‌کننده در هر دو حالت کم می‌شود؛ فقط گیرندهٔ واقعی در سند ثبت
+                      می‌گردد.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label>شمارهٔ پیگیری</Label>
+                      <Input
+                        dir="ltr"
+                        className="text-left font-mono"
+                        placeholder="شمارهٔ پیگیری تراکنش"
+                        value={trackingNumber}
+                        onChange={(e) => setTrackingNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>کد آسان ذینفع (اختیاری)</Label>
+                      <Input
+                        dir="ltr"
+                        className="text-left font-mono"
+                        placeholder="کد حسابداری گیرنده"
+                        value={payeeAccountingCode}
+                        onChange={(e) => setPayeeAccountingCode(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    با ثبت این پرداخت یک سند حسابداری متوازن ساخته می‌شود: بدهکار «بدهی به
+                    تأمین‌کننده» و بستانکار «حساب بانکی».
+                  </p>
                 </div>
               )}
             </div>
