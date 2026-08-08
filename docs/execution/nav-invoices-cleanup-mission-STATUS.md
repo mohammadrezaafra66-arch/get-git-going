@@ -266,6 +266,91 @@ get_product_timeline             create_delivery_receipt   … و ۱۱ تای د
 پس از اعمال روی دیتابیس زنده: `get_product_timeline` اجرا می‌شود،
 `v_promotion_suggestions` **۱۹٬۸۸۰ ردیف** برمی‌گرداند، `post_receipt_accounting` سالم است.
 
+---
+
+# شرط ۱ برطرف شد — مهاجرت ۳۲۷ (`post_receipt_accounting` از `invoices` جدا شد)
+
+**تاریخ:** ۱۷ مرداد ۱۴۰۵ · مهاجرت `20260808170000_327_...` اعمال شد، `afrakala-lan-rest` ری‌استارت شد.
+
+## چه چیزی عوض شد — و چه چیزی عمداً عوض نشد
+
+تنها تغییر: حلقهٔ `-- Allocate to invoices` (۲۸ خط) و چهار متغیر محلی که فقط همان حلقه
+استفاده می‌کرد (`v_link`, `v_paid`, `v_total`, `v_new_status`). `diff` مقابل تعریف زنده
+اثبات می‌کند **هیچ چیز دیگری** تغییر نکرده: گارد نقش، `posting_status='posted'`،
+`increase_credit()`، سند دفتر idempotent و هر دو خط سند بایت‌به‌بایت دست‌نخورده‌اند.
+
+**کلید `invoice_updates` در خروجی باقی ماند** (همیشه `[]`) چون رابط حسابدار
+(`_app.accounting.receipts.$receiptId.tsx`) آن را می‌خواند و در `audit_logs` می‌نویسد.
+
+**تغییر رفتاری نیست و انتقال قابلیت هم نیست:** هیچ معادل «پیش‌فاکتور را پرداخت‌شده علامت بزن»
+جایش گذاشته نشد. اینکه تسویهٔ فیش باید ردیف `sales_quotes` را جابه‌جا کند یا نه یک **تصمیم
+محصولی** است و عمداً داخل یک مهاجرتِ جداسازی قاچاق نشد.
+
+## چرا حذف حلقه امن بود — اثبات، نه نمونه‌گیری
+
+حلقه روی `payment_receipt_links JOIN public.invoices` می‌چرخید. اندازه‌گیری زنده پیش از تغییر:
+`payment_receipt_links` سه ردیف داشت و **صفر** تای آن‌ها `invoice_id` غیرتهی داشت، و
+`invoices` **صفر ردیف** دارد. پس JOIN در هر فراخوان صفر ردیف می‌داد و بدنهٔ حلقه **هرگز اجرا
+نمی‌شد** — این استدلال است، نه نمونهٔ تصادفی.
+
+## گیت برابری old-vs-new روی دیتابیس زنده (هر دو سمت rollback شد)
+
+فیش واقعی `123456` (۱۲٬۰۰۰٬۰۰۰) با JWT ادمین واقعی، یک‌بار با تعریف قدیم و یک‌بار با ۳۲۷
+اعمال‌شده داخل تراکنش — **خروجی بایت‌به‌بایت یکسان**:
+
+```
+{"posted": true, "customer_credit": {...available_credit: 12000000.00...}, "invoice_updates": []}
+line 1 | bank            | 32a4c282… | 12000000.00 |           0 | واریز به حساب بانکی شرکت
+line 2 | customer_credit | 4a42034a… |           0 | 12000000.00 | افزایش اعتبار/کاهش بدهی مشتری
+entry  | 2026-07-30 | سند فیش واریزی شماره 123456 | posted | payer 5550 | receiver cust-123
+posting_status → posted
+```
+
+`invoice_updates` **در سمت قدیم هم `[]` بود** — یعنی همان اثباتِ بالا را تجربی هم تأیید کرد.
+هر دو تراکنش ROLLBACK شدند؛ هیچ داده‌ای نوشته نشد (`posted` همچنان ۱ ردیف).
+
+## ⚠️ تصحیح — عددهای «۲۵» و «۲۱» تابع، بیش‌برآورد بودند
+
+آن دو شمارش با الگوی کلمه‌ای `\minvoices\M` روی `pg_get_functiondef` گرفته شده بودند و
+`pg_get_functiondef` **کامنت‌ها را هم برمی‌گرداند**. مثال زنده: همین تابع بعد از ۳۲۷ هنوز
+word-match می‌دهد، ولی تنها خط منطبقش یک **مسیر مستند در کامنت** است:
+
+```
+-- posting later. See docs/execution/nav-invoices-cleanup-mission-STATUS.md, phase 4.
+                                       ^^^^^^^^ «nav-invoices-cleanup»
+```
+
+عدد درست باید روی شکل کد (`public\.invoices`) گرفته شود:
+
+| سنجه | پیش از ۳۲۷ | پس از ۳۲۷ |
+|---|---|---|
+| ارجاع **کد** (`public.invoices`) | ۱۸ | **۱۷** |
+| word-match (بیش‌برآورد، شامل کامنت و نام فایل) | ۲۱ | ۲۱ |
+
+`post_receipt_accounting` حالا `code_match = false` است. ضمناً معلوم شد `person_merge`،
+`calculate_credit_score` و `asan_list_sales_export` اصلاً ارجاع **کدی** نداشتند و از همان
+بیش‌برآورد آمده بودند — این شرط ۲ را تغییر نمی‌دهد (آن دربارهٔ خواندن `pg_constraint` است،
+نه دربارهٔ نام جدول در بدنه).
+
+**۱۷ تابع باقی‌مانده با ارجاع کدی واقعی:**
+`calculate_salesperson_collected_sales` · `cancel_invoice` · `complete_invoice_task` ·
+`create_delivery_receipt` · `create_preinvoice_workflow_tasks` ·
+`enforce_payment_receipt_link_limits` · `enforce_receipt_approval_allocation_limits` ·
+`get_receivable_detail` · `invoices_log_type_changes` · `person_fk_drift_report` ·
+`recalculate_settlement_score` · `recompute_all_employee_scores` ·
+`recompute_employee_scores_on_receipt(_link)` · `send_invoice_to_accountant` ·
+`set_invoice_accounting_marker` · `update_customer_overdue_status`
+
+## وضعیت سه شرط پس از ۳۲۷
+
+| # | شرط | وضعیت |
+|---|---|---|
+| ۱ | `post_receipt_accounting` از `invoices` جدا شود | ✅ **برطرف شد (۳۲۷)** |
+| ۲ | ثبت تغییر FK در سامانه‌ای که `pg_constraint` را برای `person_merge` می‌خواند | 🔴 باز |
+| ۳ | حذف ۲ کلید خارجی + بازبینی ۱۷ تابع باقی‌مانده | 🔴 باز |
+
+---
+
 ## 🔴 پیگیری معوق — جدول `invoices` هنوز باید حذف شود
 
 > **invoices table itself still needs dropping, blocked on ledger-mutual-settlement agent
