@@ -1125,3 +1125,188 @@ enum، تغییرش اتمیک و برگشت‌پذیر است.
 
 **این تصمیم مدل مالی است، نه تغییر فنی** — و در حوزهٔ دادهٔ مالی قرار می‌گیرد، پس
 نیازمند تأیید صریح شماست.
+
+---
+
+# چک‌لیست رسمی هشت‌بندی — دامنه‌های E و G (Agent 7 · ۲۰۲۶-۰۸-۰۸)
+
+> **هدف این بخش:** همان فرمت هشت‌بندی رسمی که دامنه‌های A–D / F / H–J گرفتند، اینجا
+> به‌صورت صریح برای E (دریافت) و G (سند دوبل/دفتر) بسته شود.
+>
+> **روش:** محتوای تفصیلی از قبل در بخش‌های «E — دریافت» و «G — سند دوبل» همین فایل
+> (حدود خطوط ۷۰۱–۱۰۲۲) با شواهد زنده نوشته شده بود. این بخش **دوباره‌کاری نمی‌کند** —
+> هر بند را با ارجاع به همان متن جمع می‌بندد، و فقط یافته‌هایی که در بازبینی زندهٔ
+> ۲۰۲۶-۰۸-۰۸ نسبت به آن متن تغییر کرده‌اند را تازه علامت می‌زند.
+
+## بازبینی زنده (۲۰۲۶-۰۸-۰۸) — دلتا نسبت به متن اصلی
+
+| ادعا در متن اصلی | وضعیت زندهٔ امروز | حکم |
+|---|---|---|
+| `payment_receipts` = ۶ · لینک‌ها = ۳ (همه به quote) · `journal_entries`=۱ · `journal_lines`=۲ | همان اعداد | بدون تغییر |
+| ۵ `pending_review/unposted` + ۱ `approved/posted` | همان توزیع | بدون تغییر |
+| `beneficiary_accounting_code` پرشده در ۴ فیش | ۴ | بدون تغییر |
+| `ocr_receipts` در هیچ اسکیمایی نیست | ۰ جدول `%ocr%` | بدون تغییر |
+| `validate_journal_entry_balance` صفر caller (تابع/تریگر/`pg_depend`) | ۰ | بدون تغییر |
+| `journal_lines_account_kind_chk` شش مقدار | **هفت مقدار** — `supplier_payable` اضافه شده | **دلتا** (مهاجرت ledger / ۳۱۲) |
+| ماژول `accounting` صفر ردیف در `role_permissions` | **۷ ردیف** (هر نقش یک ردیف؛ `created_at=2026-08-08 00:51:44+00`) | **دلتا** |
+
+جزئیات بندبه‌بند زیر، بر پایهٔ متن اصلی + این دلتاهاست.
+
+---
+
+## E — دریافت (Payment Receipts) — چک‌لیست رسمی
+
+### 1. Routes/pages
+
+| Route | File · guard | Nav |
+|---|---|---|
+| `/accounting/receipts` | `_app.accounting.receipts.tsx:73` · `requireAnyRole(["admin","manager","accountant"])` | ✅ `registry.ts:436` · `primary-modules.ts` finance |
+| `/accounting/receipts/$receiptId` | `_app.accounting.receipts.$receiptId.tsx:59` · همان سه نقش | از فهرست |
+| `/accounting/receipts/create` | `_app.accounting.receipts.create.tsx:11` · `requireAnyRole(["admin","accountant"])` | دکمهٔ فهرست؛ seed سطح‌بالا ندارد |
+| `/accounting/receipts/training` | `_app.accounting.receipts_.training.tsx:9` · سه نقش | ✅ `registry.ts:443` |
+| `/operations/receipts` | `_app.operations.receipts.tsx:32` · صفحهٔ OCR | ❌ **نه در registry نه در primary-modules** |
+
+گارد مسیر با RLS هم‌خوان است (ادعا و جدول تطبیق در بخش E بند ۱، خطوط ۷۲۱–۷۲۶).
+
+### 2. Schema
+
+زنده‌بازبینی‌شده: `payment_receipts` **۴۲ ستون / ۶ ردیف** · `payment_receipt_links` **۳ ردیف**
+(`to_invoice=0`, `to_quote=3`) · `external_parties` **۱ ردیف**. سرشماری پرشدگی ستون‌ها و
+توزیع وضعیت/ثبت در بخش E بند ۲ (خطوط ۷۲۸–۷۴۰).
+
+### 3. Business logic
+
+شش تریگر روی `payment_receipts` زنده تأیید شد (۲۰۲۶-۰۸-۰۸)، از جمله
+`trg_payment_receipts_post_journal → trg_post_receipt_on_approve` که به
+`post_receipt_journal` خنثی‌شده می‌رسد. نویسندهٔ واقعی دفتر فقط
+`post_receipt_accounting` است؛ فراخوانی UI در
+`_app.accounting.receipts.$receiptId.tsx:335`. نقل‌قول بدنه و خنثی‌سازی مهاجرت ۱۴۹ در
+بخش E بند ۳ (خطوط ۷۴۲–۷۶۶) — از حافظه بازنویسی نشد.
+
+### 4. Constraints
+
+XOR گیرنده در سه لایه (CHECK شل برای پیش‌نویس + فرم سخت + RPC ثبت سخت)،
+`amount > 0`، محدودیت فیلدهای چک، regex ساعت، FK به `external_parties` — جزئیات و تعریف
+CHECK در بخش E بند ۴ (خطوط ۷۶۸–۷۸۷).
+
+### 5. Built-but-unwired
+
+- `/operations/receipts` (۳۹۱ خط) روی `ocr_receipts` که **وجود ندارد**؛ مقاوم به `42P01` /
+  `PGRST205` (`_app.operations.receipts.tsx:86`). بدون ورودی ناوبری.
+- ستون‌های چک با صفر استفادهٔ زنده + تریگر مسیر A که هنوز شلیک می‌شود ولی `RETURN NULL`
+  است. جزئیات: بخش E بند ۵ (خطوط ۷۸۹–۸۰۶).
+
+### 6. Duplication
+
+یک فرم (`PaymentReceiptForm`)؛ دو مسیر ثبت دفتر A/B (`post_receipt_journal` خنثی در برابر
+`post_receipt_accounting` مرجع). بخش E بند ۶ (خطوط ۸۰۸–۸۱۷).
+
+### 7. Bugs/gaps
+
+| # | شدت | خلاصه | شاهد |
+|---|---|---|---|
+| الف | 🔴 | `beneficiary_accounting_code` به سند نمی‌رسد — فقط شرط تریگر خنثی آن را می‌خواند | بخش E بند ۷-الف؛ ۴ فیش پرشده هنوز unposted |
+| ب | 🟠 | حلقهٔ تخصیص در ثبت فقط `invoices` را JOIN می‌کند؛ هر ۳ پیوند زنده به quote است | بخش E بند ۷-ب |
+| ج | 🟡→✅ | پوشش `role_permissions` برای `accounting` | **قبلاً صفر بود؛ امروز ۷ ردیف** (دلتا پایین) |
+
+### 8. role_permissions coverage
+
+**دلتا ۲۰۲۶-۰۸-۰۸:** ماژول `accounting` دیگر صفر نیست. هفت ردیف زنده:
+
+| role_name | view | create | update | delete | approve | export | view_sensitive |
+|---|---|---|---|---|---|---|---|
+| admin | t | t | t | t | t | t | t |
+| manager | t | t | t | f | t | t | t |
+| accountant | t | t | t | f | f | t | t |
+| sales / viewer / purchase_specialist / site | f | f | f | f | f | f | f |
+
+گارد مسیر دریافت (`admin`/`manager`/`accountant` برای دیدن؛ `admin`/`accountant` برای
+ساختن) با ردیف‌های دارای `can_view`/`can_create` هم‌راستاست. متن قدیمی بخش E بند ۸ که
+«صفر ردیف» می‌گفت **منسوخ** است — این جدول جایگزین آن ادعاست.
+
+---
+
+## G — سند دوبل / دفتر روزنامه — چک‌لیست رسمی
+
+### 1. Routes/pages
+
+**هیچ route مستقلی برای دفتر نیست** (جست‌وجوی `journal|ledger` در `src/routes/` و
+`registry.ts`). نقاط خواندن:
+
+| نقطه | دامنه |
+|---|---|
+| `_app.accounting.receipts.$receiptId.tsx:279,296` | فقط سند همان فیش |
+| `src/lib/asan/export-journal.ts:34` → `asan_list_journal_export` | خروجی آسان |
+
+بدون فهرست اسناد / تراز آزمایشی / دفتر معین. بخش G بند ۱ (خطوط ۸۷۹–۸۹۰).
+
+### 2. Schema
+
+زنده‌بازبینی‌شده: `journal_entries` **۱۱ ستون / ۱ ردیف** · `journal_lines` **۹ ستون / ۲ ردیف**.
+محتوای زنده همان سند `payment_receipt` با دو خط `bank` / `customer_credit` است
+(بخش G بند ۲، خطوط ۸۹۲–۹۰۴).
+
+### 3. Business logic
+
+تنها نویسندهٔ درج: `post_receipt_accounting` (idempotent با
+`journal_entries_source_unique`). سمت بدهکار شاخه دارد و `external_party` را می‌نویسد —
+مسیر **اجرانشده** است نه ناموجود (۴ فیش طرف‌خارجی هنوز pending). سمت بستانکار همچنان
+همیشه `customer_credit`. نقل‌قول SQL در بخش G بند ۳ (خطوط ۹۰۶–۹۳۰).
+
+### 4. Constraints
+
+زنده‌بازبینی‌شدهٔ `journal_lines` CHECKها:
+
+```
+account_kind IN (customer_credit, bank, external_party, invoice_ar, clearing, other,
+                 supplier_payable)   -- دلتا: supplier_payable نسبت به متن اصلی اضافه شده
+debit >= 0 · credit >= 0
+one_side (نه هر دو مثبت، نه هر دو صفر)
+FK journal_entry_id → journal_entries ON DELETE CASCADE
+```
+
+**هیچ CHECK/تریگری مجموع بدهکار=بستانکار را الزام نمی‌کند.** تریگر روی `journal_lines`:
+صفر. روی `journal_entries`: فقط `trg_asan_burn_journal_entry_number` (AFTER DELETE).
+`(journal_entry_id, line_no)` یکتا نیست؛ `account_ref_id` بدون FK. جزئیات: بخش G بند ۴
+(خطوط ۹۳۲–۹۶۴) + دلتای `supplier_payable`.
+
+### 5. Built-but-unwired
+
+`validate_journal_entry_balance(p_journal_entry_id)` موجود و درست است؛ بازبینی
+`pg_depend` امروز **۰ caller**. هیچ تریگر/تابع/فراخوان فرانت (جز `types.ts` تولیدی).
+همچنین `draft`/`void` در CHECK وضعیت مجازند ولی فقط `posted` نوشته شده و تابع ابطال
+یافت نشد. بخش G بند ۵ (خطوط ۹۶۶–۹۹۳).
+
+### 6. Duplication
+
+مسیر A/B ثبت فیش (همان دامنهٔ E) · کدهای حسابداری تکراری روی سرآیند سند به‌عنوان
+عکس‌برداری عمدی. بخش G بند ۶ (خطوط ۹۹۵–۱۰۰۰).
+
+### 7. Bugs/gaps
+
+| # | شدت | خلاصه |
+|---|---|---|
+| الف | 🔴 | بدون الزام توازن دوطرفه با وجود INSERT مستقیم RLS برای admin/accountant |
+| ب | 🟠 | نگهبان توازن نوشته‌شده و وصل‌نشده |
+| ج | 🟠 | بدون UI دفتر |
+| د | 🟡 | `account_ref_id` بدون FK · `line_no` بدون یکتایی |
+| ه | 🟡 | مقیاس: ۱ سند در برابر ده‌ها رویداد مالی دیگر که اصلاً سند نمی‌زنند |
+
+### 8. role_permissions coverage
+
+ماژول مستقلی به نام `journal` وجود ندارد. دسترسی عملی از طریق ماژول `accounting` است که
+اکنون ۷ ردیف دارد (جدول بالا). RLS همچنان دروازهٔ جدول است
+(`*_select_finance` / `*_insert|update_admin_accountant`). خروجی آسان از مسیر
+`asan-export` می‌گذرد. ادعای قدیم «دفتر ماژول مجوز ندارد» از نظر نبودن ماژول
+`journal` درست می‌ماند؛ از نظر صفر بودن `accounting` **منسوخ** است.
+
+---
+
+## جمع‌بندی Agent 7
+
+- چک‌لیست رسمی هشت‌بندی برای E و G **اکنون صریحاً بسته است** (این بخش + متن تفصیلی قبلی).
+- دو دلتای واقعی نسبت به گزارش اصلی: (۱) `supplier_payable` وارد CHECK شده،
+  (۲) `role_permissions.accounting` از صفر به هفت ردیف رسیده.
+- نقص‌های ساختاری E/G (beneficiary به سند نمی‌رسد، تخصیص quote در ثبت، نبود الزام توازن،
+  UI دفتر، `validate_journal_entry_balance` بی‌سیم) **همچنان برقرارند** و با شواهد زنده
+  تأیید شدند.

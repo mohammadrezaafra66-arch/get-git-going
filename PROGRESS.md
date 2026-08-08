@@ -41,11 +41,13 @@
 - [x] new-clusters-frontend / نامزدی ارتقا — **انجام شد** (`/sales/promotion-nominations` + cancel RPC؛ JWT سبز)
 - [x] new-clusters-frontend / استعلام‌ها — **انجام شد** (`/messages/inquiries` + update_inquiry_status؛ tick best-effort — توقف 42P10)
 - [x] new-clusters-frontend / لیگ گیمیفیکیشن — **انجام شد با توقف schema** (صفحهٔ لیگ + تب RPC؛ start/settle با title_fa بلاک)
+- [x] eg-checklist — **انجام شد** (چک‌لیست رسمی هشت‌بندی E و G + دلتای زنده)
 
 ## تاریخچه (جدیدترین بالا)
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-08 | Cursor | **eg-checklist — چک‌لیست رسمی هشت‌بندی E/G.** فقط‌خواندنی. بخش رسمی به `full-accounting-audit.md` افزوده شد؛ خلاصه در `eg-formal-checklist-COMPLETE.md`. دلتای زنده: `role_permissions.accounting`=۷ (مهاجرت ۳۱۵)؛ `supplier_payable` در CHECK (۳۱۲). نقص‌های ساختاری E/G همچنان باز. | (پس از commit) |
 | 2026-08-08 | Cursor | **messenger-rpc-fix — پایان مأموریت (گزینهٔ ب).** مهاجرت **۳۱۶** `set_messenger_group_member_role` (SECURITY DEFINER، الگوی زندهٔ `add_messenger_group_member`). مهاجرت ۲۲۵ گیت اعمال نشد تا `add_*` عوض نشود. dry-run ۶/۶، down در ROLLBACK، E2E با JWT واقعی: ساخت گروه ← افزودن ← تغییر نقش به purchaser/viewer (تأیید ردیف DB) ← حذف عضو ← cleanup. فرانت از قبل درست بود. PostgREST ری‌استارت شد. | — |
 | 2026-08-08 | Cursor | **new-clusters-frontend — فرانت سه خوشه.** صفحات `/sales/promotion-nominations`، `/messages/inquiries`، `/gamification/league` + تب موتور فصل در admin leagues؛ ناوبری در PRIMARY_MODULES. JWT `e2e/clusters` **۵/۵**. **توقف schema:** `start_league_season`/`settle` با تریگر `validate_league_season` (title_fa)؛ `tick_inquiries` با 42P10 داخل `expire_pending_documents`. بدون مهاجرت. جزئیات: `docs/execution/new-clusters-frontend-mission-COMPLETE.md`. ⚠️ محتوای این کار داخل `75f56867` نشست (پیام commit مربوط به مأموریت دیگری است — محتوای tree همان فرانت خوشه‌هاست). | `75f56867` |
 | 2026-08-08 | Cursor | **messenger-rpc-fix فاز ۱ — تشخیص.** فرانت در `GroupMembersDialog.tsx:166` با پارامترهای `p_group_id`/`p_user_id`/`p_role` صدا می‌زند. روی دیتابیس زنده فقط `add_messenger_group_member` و `is_messenger_group_member` هستند؛ `set_messenger_group_member_role` در `pg_proc` نیست. مهاجرت قدیمی ۲۲۵ در گیت هست ولی روی LAN اعمال نشده. جدول `messenger_group_members` سیاست UPDATE ندارد ⇒ مسیر مستقیم UPDATE هم بی‌فایده است. | — |
