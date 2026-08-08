@@ -264,3 +264,65 @@ This applies to every AI agent working in this repo — Claude Code, Codex, Curs
 The goal: GitHub must always mirror the local project's committed state.
 Push only after a commit (which happens at the end of a completed, tested phase), never mid-phase.
 If the push fails (e.g. non-fast-forward), stop and report it — do not force-push.
+
+## When several agents run at once, they share ONE working tree
+
+Parallel missions do **not** get separate clones. Every agent edits the same
+files in `D:\AfraKalaTest\app` and shares the same git index. All of the
+following were observed on 2026-08-08 with six agents running:
+
+**1. Stage and commit in a single shell invocation.** The index is shared
+process-wide, so this is racy:
+
+```powershell
+git add -- path/to/file.sql      # another agent runs `git reset` here…
+git commit -m "..."              # …and your message lands on THEIR staged work
+```
+
+That is not hypothetical: it put one agent's ~1850 lines under another agent's
+commit message, and the result was pushed. Do both in one command, with the
+pathspec repeated on the commit:
+
+```powershell
+git add -- $paths; git commit -q -m $msg -- $paths
+```
+
+The pathspec on `commit` restricts the commit to exactly those paths no matter
+what else is staged. The `git add` is still required — `git commit -- <paths>`
+alone fails for a new file with *"did not match any file(s) known to git"*.
+
+**2. Never `git add -A` or `git add .`.** It sweeps up whatever other missions
+have in flight.
+
+**3. If your commit captures someone else's work anyway: do not fix it.** Do
+not force-push, revert, or reset. Their content is intact on the remote and
+rewriting shared history destroys real work. Report the wrong commit message
+and move on.
+
+**4. `git pull --rebase` will usually refuse**, with *"cannot pull with rebase:
+You have unstaged changes"* — caused by other missions' files, not yours. **Do
+not `git stash`**: that yanks another agent's in-flight work out from under
+them. Check divergence without touching the tree instead:
+
+```powershell
+git fetch origin feature/navigation-modernization
+git rev-list --count HEAD..FETCH_HEAD    # 0 ⇒ a rebase would be a no-op
+```
+
+If it is non-zero, stop and report rather than improvising.
+
+**5. Uncommitted work gets destroyed.** Edits were wiped twice by other agents'
+git operations. Commit each phase the moment it is verified; do not hold a
+finished phase in the working tree.
+
+**6. Take the migration number at the moment you write the file, from disk AND
+from the remote.** Other agents' migration files sit in the tree **untracked**,
+so `git ls-tree` alone under-counts and `ls supabase/migrations` alone can show
+numbers that were never pushed. Check both, and re-check before applying — 313
+was claimed twice on the same day, and one agent had to renumber 313 → 316
+mid-flight.
+
+**7. The live database is shared too.** Business data moves under your tests
+while they run: a customer's `accounting_code` was cleared by another mission
+and turned five unrelated specs red. Before blaming your own change for a red
+test, check whether the data it depends on still exists.
