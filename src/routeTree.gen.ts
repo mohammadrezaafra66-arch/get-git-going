@@ -170,6 +170,7 @@ import { Route as AppAccountingReceiptsRouteImport } from './routes/_app.account
 import { Route as AppAccountingPurchasePaymentsRouteImport } from './routes/_app.accounting.purchase-payments'
 import { Route as AppAccountingPaymentVouchersRouteImport } from './routes/_app.accounting.payment-vouchers'
 import { Route as AppAccountingPayablesRouteImport } from './routes/_app.accounting.payables'
+import { Route as AppAccountingMutualSettlementRouteImport } from './routes/_app.accounting.mutual-settlement'
 import { Route as AppAccountingExternalPartiesRouteImport } from './routes/_app.accounting.external-parties'
 import { Route as AppAccountingDynamicCapitalRouteImport } from './routes/_app.accounting.dynamic-capital'
 import { Route as AppAccountingDailyCapitalRouteImport } from './routes/_app.accounting.daily-capital'
@@ -1060,6 +1061,12 @@ const AppAccountingPayablesRoute = AppAccountingPayablesRouteImport.update({
   path: '/accounting/payables',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountingMutualSettlementRoute =
+  AppAccountingMutualSettlementRouteImport.update({
+    id: '/accounting/mutual-settlement',
+    path: '/accounting/mutual-settlement',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAccountingExternalPartiesRoute =
   AppAccountingExternalPartiesRouteImport.update({
     id: '/accounting/external-parties',
@@ -1431,6 +1438,7 @@ export interface FileRoutesByFullPath {
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/accounting/mutual-settlement': typeof AppAccountingMutualSettlementRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -1646,6 +1654,7 @@ export interface FileRoutesByTo {
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/accounting/mutual-settlement': typeof AppAccountingMutualSettlementRoute
   '/accounting/payables': typeof AppAccountingPayablesRoute
   '/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -1864,6 +1873,7 @@ export interface FileRoutesById {
   '/_app/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
   '/_app/accounting/dynamic-capital': typeof AppAccountingDynamicCapitalRoute
   '/_app/accounting/external-parties': typeof AppAccountingExternalPartiesRoute
+  '/_app/accounting/mutual-settlement': typeof AppAccountingMutualSettlementRoute
   '/_app/accounting/payables': typeof AppAccountingPayablesRoute
   '/_app/accounting/payment-vouchers': typeof AppAccountingPaymentVouchersRoute
   '/_app/accounting/purchase-payments': typeof AppAccountingPurchasePaymentsRoute
@@ -2083,6 +2093,7 @@ export interface FileRouteTypes {
     | '/accounting/daily-capital'
     | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
+    | '/accounting/mutual-settlement'
     | '/accounting/payables'
     | '/accounting/payment-vouchers'
     | '/accounting/purchase-payments'
@@ -2298,6 +2309,7 @@ export interface FileRouteTypes {
     | '/accounting/daily-capital'
     | '/accounting/dynamic-capital'
     | '/accounting/external-parties'
+    | '/accounting/mutual-settlement'
     | '/accounting/payables'
     | '/accounting/payment-vouchers'
     | '/accounting/purchase-payments'
@@ -2515,6 +2527,7 @@ export interface FileRouteTypes {
     | '/_app/accounting/daily-capital'
     | '/_app/accounting/dynamic-capital'
     | '/_app/accounting/external-parties'
+    | '/_app/accounting/mutual-settlement'
     | '/_app/accounting/payables'
     | '/_app/accounting/payment-vouchers'
     | '/_app/accounting/purchase-payments'
@@ -3841,6 +3854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingPayablesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/mutual-settlement': {
+      id: '/_app/accounting/mutual-settlement'
+      path: '/accounting/mutual-settlement'
+      fullPath: '/accounting/mutual-settlement'
+      preLoaderRoute: typeof AppAccountingMutualSettlementRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounting/external-parties': {
       id: '/_app/accounting/external-parties'
       path: '/accounting/external-parties'
@@ -4482,6 +4502,7 @@ interface AppRouteChildren {
   AppAccountingDailyCapitalRoute: typeof AppAccountingDailyCapitalRoute
   AppAccountingDynamicCapitalRoute: typeof AppAccountingDynamicCapitalRoute
   AppAccountingExternalPartiesRoute: typeof AppAccountingExternalPartiesRoute
+  AppAccountingMutualSettlementRoute: typeof AppAccountingMutualSettlementRoute
   AppAccountingPayablesRoute: typeof AppAccountingPayablesRoute
   AppAccountingPaymentVouchersRoute: typeof AppAccountingPaymentVouchersRoute
   AppAccountingPurchasePaymentsRoute: typeof AppAccountingPurchasePaymentsRoute
@@ -4630,6 +4651,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountingDailyCapitalRoute: AppAccountingDailyCapitalRoute,
   AppAccountingDynamicCapitalRoute: AppAccountingDynamicCapitalRoute,
   AppAccountingExternalPartiesRoute: AppAccountingExternalPartiesRoute,
+  AppAccountingMutualSettlementRoute: AppAccountingMutualSettlementRoute,
   AppAccountingPayablesRoute: AppAccountingPayablesRoute,
   AppAccountingPaymentVouchersRoute: AppAccountingPaymentVouchersRoute,
   AppAccountingPurchasePaymentsRoute: AppAccountingPurchasePaymentsRoute,
@@ -4813,3 +4835,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
