@@ -268,18 +268,20 @@ function TasksBoardPage() {
 
   const completeTask = async (t: Task) => {
     setActing(t.id);
+    // 2026-08-08: the reference_type === "invoice" branch called complete_invoice_task,
+    // which also moved the linked invoice's status. Both that RPC and the invoices table
+    // were removed by migration 332 (the subsystem held 0 rows and its UI was deleted in
+    // 323). No task row uses that reference_type — measured 0 before removal, against 5
+    // marketing_recurring_task rows — so every task now completes through the generic
+    // update below, which is the path they already took.
     let error;
-    if (t.reference_type === "invoice") {
-      ({ error } = await supabase.rpc("complete_invoice_task", { p_task_id: t.id }));
-    } else {
-      ({ error } = await tasksTable()
-        .update({
-          status: "done",
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", t.id));
-    }
+    ({ error } = await tasksTable()
+      .update({
+        status: "done",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", t.id));
     setActing(null);
     if (error) {
       toast.error(error.message);
