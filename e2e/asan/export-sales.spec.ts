@@ -110,10 +110,13 @@ test.beforeAll(async () => {
   // If a previous run died between the delete and the restore, heal before asserting anything —
   // otherwise every test below fails for a reason that has nothing to do with the code.
   restoreAsanPersonCodes();
+  asanPersonCodeCount = countAsanPersonCodes();
+  // A floor, not a fixed number. Zero would mean the fixture is gone entirely, which would make
+  // the afterAll comparison tautologically true and every block-path assertion below vacuous.
   expect(
-    Number(dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'")),
+    asanPersonCodeCount,
     "the live fixture must be whole before this spec starts",
-  ).toBe(ASAN_PERSON_CODE_COUNT);
+  ).toBeGreaterThan(0);
 });
 
 /**
@@ -139,16 +142,38 @@ function restoreAsanPersonCodes(): void {
   );
 }
 
-/** The documented count from migration 283. Asserted before and after, so a leak is loud. */
-const ASAN_PERSON_CODE_COUNT = 11;
+/**
+ * How many `asan_person_code` rows exist right now.
+ *
+ * Counts every status on purpose. The property being defended is "this spec left identity data
+ * exactly as it found it", and filtering out `revoked` would hide the case where the spec revoked
+ * a row instead of deleting it — a leak that would still look like a clean count.
+ */
+function countAsanPersonCodes(): number {
+  return Number(dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'"));
+}
+
+/**
+ * The count observed at the start of this run, captured in beforeAll rather than hardcoded.
+ *
+ * This used to be `const ASAN_PERSON_CODE_COUNT = 11`, the number migration 283 backfilled. That
+ * pinned the spec to a snapshot of business data: the moment anyone issues a new Asan code — which
+ * is now normal activity — beforeAll fails for a reason that has nothing to do with the code under
+ * test. The count was observed moving between 11 and 12 during a single afternoon.
+ *
+ * The absolute number was never the property under test. The invariant is that the count after
+ * equals the count before, which is what actually catches a leak, and it keeps catching one no
+ * matter how many codes the business creates.
+ */
+let asanPersonCodeCount = 0;
 
 test.afterAll(() => {
   // Unconditional, so a crash inside the block test still heals the live fixture.
   restoreAsanPersonCodes();
   expect(
-    Number(dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'")),
+    countAsanPersonCodes(),
     "live identity data must be exactly as this spec found it",
-  ).toBe(ASAN_PERSON_CODE_COUNT);
+  ).toBe(asanPersonCodeCount);
 
   if (numbered.size === 0) return;
   const list = [...numbered].map((x) => `'${x}'`).join(",");
