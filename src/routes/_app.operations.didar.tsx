@@ -51,6 +51,38 @@ export const Route = createFileRoute("/_app/operations/didar")({
 const KEY_URL = "didar_api_url";
 const KEY_API = "didar_api_key";
 
+// Ported 2026-08-08 from /integrations/didar, which was retired the same day (it was a
+// second "یکپارچه‌سازی دیدار CRM" page whose sync buttons only fired a "coming soon"
+// toast). These were the two things it did that this page did not: import stats for all
+// three entity types rather than contacts only, and the import-history table below.
+type DidarEntityType = "contact" | "activity" | "preinvoice";
+
+const ENTITY_LABELS: Record<DidarEntityType, string> = {
+  contact: "مخاطبین",
+  activity: "فعالیت‌ها",
+  preinvoice: "پیش‌فاکتورها",
+};
+
+const ENTITY_ROW_LABELS: Record<DidarEntityType, string> = {
+  contact: "مخاطب",
+  activity: "فعالیت",
+  preinvoice: "پیش‌فاکتور",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  created: "ایجاد",
+  updated: "بروزرسانی",
+  skipped: "رد شد",
+  error: "خطا",
+};
+
+const ACTION_VARIANTS: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  created: "default",
+  updated: "secondary",
+  skipped: "outline",
+  error: "destructive",
+};
+
 type DidarContact = { Id?: string; id?: string; [k: string]: unknown };
 
 function toDidarId(c: DidarContact): string | null {
@@ -153,21 +185,29 @@ function OperationsDidarPage() {
     onError: (e: unknown) => toast.error(`ذخیره ناموفق: ${(e as Error).message}`),
   });
 
+  // Widened 2026-08-08 from contact-only to all three entity types (ported from the
+  // retired /integrations/didar). The import writes activity and preinvoice rows too, so
+  // the old card was reporting a third of the picture.
   const statsQuery = useQuery({
-    queryKey: ["didar", "contact-stats"],
+    queryKey: ["didar", "import-stats"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("didar_import_log")
-        .select("id", { count: "exact", head: true })
-        .eq("entity_type", "contact");
-      const { data: latest } = await supabase
-        .from("didar_import_log")
-        .select("imported_at")
-        .eq("entity_type", "contact")
-        .order("imported_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return { count: count ?? 0, lastAt: latest?.imported_at ?? null };
+      const entities: DidarEntityType[] = ["contact", "activity", "preinvoice"];
+      return Promise.all(
+        entities.map(async (entity) => {
+          const { count } = await supabase
+            .from("didar_import_log")
+            .select("id", { count: "exact", head: true })
+            .eq("entity_type", entity);
+          const { data: latest } = await supabase
+            .from("didar_import_log")
+            .select("imported_at")
+            .eq("entity_type", entity)
+            .order("imported_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return { entity, count: count ?? 0, lastAt: latest?.imported_at ?? null };
+        }),
+      );
     },
   });
 
@@ -374,31 +414,121 @@ function OperationsDidarPage() {
         <CardHeader>
           <CardTitle className="text-base">آمار</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted-foreground">تعداد کل مخاطبین import‌شده</p>
-            <p className="mt-1 text-2xl font-bold">
-              {statsQuery.isLoading
-                ? "…"
-                : (statsQuery.data?.count ?? 0).toLocaleString("fa-IR")}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">آخرین import</p>
-            <p className="mt-1 text-sm">
-              {statsQuery.isLoading
-                ? "…"
-                : statsQuery.data?.lastAt
-                  ? formatJalaliDateTime(statsQuery.data.lastAt)
-                  : "—"}
-            </p>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>موجودیت</TableHead>
+                  <TableHead>تعداد رکوردهای واردشده</TableHead>
+                  <TableHead>آخرین واردسازی</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {statsQuery.isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center">
+                      <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (statsQuery.data ?? []).map((row) => (
+                    <TableRow key={row.entity}>
+                      <TableCell className="font-medium">{ENTITY_LABELS[row.entity]}</TableCell>
+                      <TableCell>{row.count.toLocaleString("fa-IR")}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {row.lastAt ? formatJalaliDateTime(row.lastAt) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
+      <ImportHistorySection />
       <ContactLinkSection />
       <GamificationEnrichmentSection />
     </div>
+  );
+}
+
+/**
+ * Last 100 rows of didar_import_log. Ported 2026-08-08 from the retired
+ * /integrations/didar page — it was the only place this log was ever shown.
+ */
+function ImportHistorySection() {
+  const historyQuery = useQuery({
+    queryKey: ["didar", "import-history"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("didar_import_log")
+        .select("id, entity_type, didar_id, action, imported_at, error_message")
+        .order("imported_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">آخرین ۱۰۰ رکورد واردسازی</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>موجودیت</TableHead>
+                <TableHead>شناسه دیدار</TableHead>
+                <TableHead>عملیات</TableHead>
+                <TableHead>زمان</TableHead>
+                <TableHead>پیام خطا</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {historyQuery.isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : (historyQuery.data ?? []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                    هنوز رکوردی واردسازی نشده است.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                (historyQuery.data ?? []).map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      {ENTITY_ROW_LABELS[row.entity_type as DidarEntityType] ?? row.entity_type}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{row.didar_id}</TableCell>
+                    <TableCell>
+                      <Badge variant={(row.action && ACTION_VARIANTS[row.action]) || "outline"}>
+                        {(row.action && ACTION_LABELS[row.action]) || row.action || "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatJalaliDateTime(row.imported_at)}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-xs text-destructive">
+                      {row.error_message ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
