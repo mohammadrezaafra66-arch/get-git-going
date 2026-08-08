@@ -47,7 +47,9 @@ export async function fetchSettlementCandidates(): Promise<SettlementCandidate[]
 }
 
 /** وضعیت تسویهٔ یک شخص مشخص. */
-export async function fetchSettlementPosition(personId: string): Promise<SettlementPosition | null> {
+export async function fetchSettlementPosition(
+  personId: string,
+): Promise<SettlementPosition | null> {
   const { data, error } = await rpc("person_settlement_position", { _person_id: personId });
   if (error) throw new Error(error.message);
   const rows = (data as SettlementPosition[] | null) ?? [];

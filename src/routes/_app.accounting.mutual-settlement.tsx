@@ -245,8 +245,8 @@ function MutualSettlementPage() {
           <DialogHeader>
             <DialogTitle>ثبت تسویهٔ متقابل</DialogTitle>
             <DialogDescription>
-              «تهاتر» طلب و بدهی را هم‌زمان کم می‌کند و هیچ پولی جابه‌جا نمی‌شود. «نقدی» فقط
-              تفاوتِ باقیمانده است.
+              «تهاتر» طلب و بدهی را هم‌زمان کم می‌کند و هیچ پولی جابه‌جا نمی‌شود. «نقدی» فقط تفاوتِ
+              باقیمانده است.
             </DialogDescription>
           </DialogHeader>
 
@@ -349,8 +349,8 @@ function MutualSettlementPage() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                سند حسابداری متوازن به‌صورت خودکار ثبت می‌شود و پس از آن، طلب و بدهی این شخص
-                به‌روز می‌گردد.
+                سند حسابداری متوازن به‌صورت خودکار ثبت می‌شود و پس از آن، طلب و بدهی این شخص به‌روز
+                می‌گردد.
               </p>
             </div>
           ) : null}
