@@ -22,6 +22,7 @@ export default defineConfig({
     /capital\/.*\.spec\.ts/,
     /warehouse\/.*\.spec\.ts/,
     /marketing\/.*\.spec\.ts/,
+    /clusters\/.*\.spec\.ts/,
     /products\/.*\.spec\.ts/,
     // ASAN bridge (M3-M5). API-level for the same reason as the suites above: the
     // rules they assert live in triggers and RLS precisely so no client can dodge

@@ -61,7 +61,8 @@
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
-import type { NavigationEntry, NavigationEntrySeed, NavigationPrimaryModule } from "./types";
+import type { NavigationEntry, NavigationEntrySeed } from "./types";
+import { resolveActiveModule } from "@/components/layout/primary-modules";
 
 const NAVIGATION_SEEDS = [
   // ۱) داشبورد
@@ -369,6 +370,15 @@ const NAVIGATION_SEEDS = [
     subgroup: "sc-sales",
   },
   {
+    // new-clusters-frontend — promotion nomination list + cancel RPC
+    to: "/sales/promotion-nominations",
+    label: "نامزدی تبلیغ",
+    icon: Megaphone,
+    module: "sales",
+    group: "sales-customers",
+    subgroup: "sc-sales",
+  },
+  {
     to: "/sales/customers",
     label: "مشتریان",
     icon: UserSquare2,
@@ -562,6 +572,14 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    // new-clusters-frontend — employee league view (get_current_league / leaderboard)
+    to: "/gamification/league",
+    label: "لیگ",
+    icon: Trophy,
+    module: "dashboard",
+    group: "operations",
+  },
+  {
     // Item 162 — KPI weighting page. Was reachable only from the hub; register it
     // in nav and keep it admin-only (matches the route's requireAnyRole(["admin"]) guard).
     to: "/gamification/settings",
@@ -616,7 +634,6 @@ const NAVIGATION_SEEDS = [
     module: "reports",
     group: "reports",
   },
-
   // ۸) دانش، آکادمی و ارتباطات
   {
     to: "/knowledge",
@@ -648,6 +665,14 @@ const NAVIGATION_SEEDS = [
     to: "/messages",
     label: "پیام‌رسان",
     icon: MessageSquare,
+    module: "messages",
+    group: "knowledge-comms",
+  },
+  {
+    // new-clusters-frontend — standalone inquiries + update_inquiry_status / tick_inquiries
+    to: "/messages/inquiries",
+    label: "استعلام‌ها",
+    icon: ClipboardList,
     module: "messages",
     group: "knowledge-comms",
   },
@@ -1004,13 +1029,20 @@ const NAVIGATION_SEEDS = [
     adminOnly: true,
   },
   {
-    to: "/integrations/didar",
+    // Was /integrations/didar until 2026-08-08. That page is now a redirect shim (see
+    // the header of _app.integrations.didar.tsx); the seed points at the surviving
+    // implementation so searching "دیدار" returns one result that works, not two of
+    // which one bounces. `module` stays "bot-api-keys" for continuity with the old seed
+    // — the guard is requireAdmin(), and admin short-circuits hasPermissionEx(), so the
+    // module key does not gate this route; allowedRoles below is what makes the menu
+    // entry match the guard exactly (adminOnly alone would also admit manager).
+    to: "/operations/didar",
     label: "یکپارچه‌سازی دیدار",
     icon: Plug,
     module: "bot-api-keys",
     group: "admin",
     subgroup: "adm-tools",
-    adminOnly: true,
+    allowedRoles: ["admin"],
   },
   {
     to: "/market-matches",
@@ -1082,7 +1114,10 @@ const NAVIGATION_SEEDS = [
     module: "roles",
     group: "admin",
     subgroup: "adm-gamification",
-    adminOnly: true,
+    // No adminOnly: the route guard is requireAnyRole(admin, manager, accountant) and
+    // adminOnly is AND-ed with allowedRoles (selectors.ts:35-36), so keeping it here
+    // hid the page from the accountant the guard admits. Removed 2026-08-08;
+    // ROLE_ALLOWLIST_BY_ROUTE already carries the exact guard.
   },
   // Item 132.1 — manual daily performance entry (admin/manager/accountant).
   {
@@ -1092,7 +1127,7 @@ const NAVIGATION_SEEDS = [
     module: "roles",
     group: "admin",
     subgroup: "adm-gamification",
-    adminOnly: true,
+    // adminOnly removed 2026-08-08 — see /gamification/admin/purchase-settings above.
   },
   // Item 143 — in-page guide for the manual-metrics form.
   {
@@ -1102,113 +1137,21 @@ const NAVIGATION_SEEDS = [
     module: "roles",
     group: "admin",
     subgroup: "adm-gamification",
-    adminOnly: true,
+    // adminOnly removed 2026-08-08 — see /gamification/admin/purchase-settings above.
   },
 ] satisfies NavigationEntrySeed[];
 
-const PRIMARY_MODULE_PATHS: Record<NavigationPrimaryModule, string[]> = {
-  dashboard: ["/dashboard", "/notifications", "/operations/tasks", "/operations/daily-mood"],
-  assistant: [
-    "/pricing/market-intelligence",
-    "/pricing/product-recommendations",
-    "/pricing/price-alerts",
-    "/marketing/suggestions",
-    "/marketing/suggestions-history",
-    "/marketing/my-tasks",
-    "/messages",
-    "/knowledge",
-    "/academy",
-    "/updates",
-  ],
-  catalog: [
-    "/products",
-    "/products/new",
-    "/products/categories",
-    "/products/brands",
-    "/products/attributes",
-    "/products/labels",
-    "/pricing/purchase-prices",
-    "/pricing/quick-price",
-    "/pricing/calculator",
-    "/pricing/my-workbench",
-    "/pricing/sale-lists",
-    "/price-lists",
-    "/pricing/amin-hozoor-board",
-    "/pricing/rules",
-    "/pricing/sale-price-types",
-    "/pricing/recompute-prices",
-    "/suppliers",
-    "/purchases",
-  ],
-  sales: [
-    "/sales",
-    "/sales/customers",
-    "/persons",
-    "/sales/quotes",
-    "/my-rejected-quotes",
-    "/sales/invoices",
-    "/invoices",
-    "/sales/stock-alerts",
-    "/sales/credit-customers",
-    "/sales/credit-rules",
-    "/sales/customers/credit-training",
-    "/sales/send-queue",
-  ],
-  finance: [
-    "/accounting/receipts",
-    "/accounting/receipts/training",
-    "/accounting/receivables",
-    "/accounting/payables",
-    "/accounting/purchase-payments",
-    "/accounting/bank-accounts",
-    "/accounting/treasury",
-    "/accounting/payment-vouchers",
-    "/accounting/external-parties",
-    "/accounting/dynamic-capital",
-  ],
-  analytics: [
-    "/reports",
-    "/sales/quote-share-logs",
-    "/gamification",
-    "/gamification/leaderboard",
-    "/gamification/admin/analytics",
-    "/audit-logs",
-    "/data-tables",
-  ],
-  admin: [
-    "/users",
-    "/users/pending",
-    "/roles",
-    "/admin/asan-import",
-    "/admin/asan-export",
-    "/admin/roles",
-    "/admin/profile-fields",
-    "/admin/settings",
-    "/admin/platform-releases",
-    "/admin/marketing-channels",
-    "/admin/marketing-task-templates",
-    "/admin/payment-terms",
-    "/admin/visitors",
-    "/admin/waybill-fields",
-    "/admin/receipt-fields",
-    "/admin/recent-purchase-settings",
-    "/admin/workflow-stages",
-    "/admin/validation-rules",
-    "/admin/ai-providers",
-    "/pricing/currencies",
-    "/pricing/currency-sources",
-    "/pricing/currency-rates",
-    "/pricing/market-rates-workshop",
-    "/pricing/settlement-types",
-    "/pricing/shipping-rules",
-    "/pricing/change-reasons",
-    "/pricing",
-    "/bot-api-keys",
-    "/market-matches",
-    "/operations/daily-mood/admin",
-    "/feedback",
-  ],
-};
+// PRIMARY_MODULE_PATHS removed 2026-08-08. It was a 103-line second copy of the
+// route->module mapping held in PRIMARY_MODULES (src/components/layout/primary-modules.ts)
+// but was never actually consumed by the sidebar renderer: the sidebar reads only
+// PRIMARY_MODULES (itemsForModule() -> primary-modules.ts). The dead copy fed
+// entry.primaryModule, whose only two readers are getNavigationEntriesByModule()
+// (zero call sites) and resolveNavigationMetadata().module (NavigationBreadcrumbs
+// reads only .breadcrumbs) -- so editing it changed nothing on screen, and it had
+// already silently drifted on eight routes. Traced in
+// docs/audits/system-wide-wiring-audit.md (section الف-۱). entry.primaryModule is now
+// derived from PRIMARY_MODULES via resolveActiveModule(), so there is exactly one
+// list to edit. For the last revision that still contained it, see commit 4cdee087.
 
 const MOBILE_PRIORITIES: Record<string, number> = {
   "/dashboard": 1,
@@ -1260,9 +1203,33 @@ const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["act
   "/pricing/recompute-prices": "update",
 };
 
+// Every entry here must mirror the route's real beforeLoad guard. A menu link that
+// is wider than its guard sends the user to /unauthorized; one that is narrower
+// hides a page the user is allowed to open. The seven entries added 2026-08-08 were
+// all of the second kind or worse — they were verified one by one against the
+// `requireAnyRole(...)` / `requirePermission(...)` call in each route file while
+// wiring the 38 unreachable pages into PRIMARY_MODULES.
 const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/accounting/dynamic-capital": ["admin", "accountant"],
+  // _app.accounting.treasury.tsx / .payment-vouchers.tsx — requireAnyRole(admin,
+  // manager, accountant). Pinned explicitly rather than left to the `accounting`
+  // module permission, which today has zero role_permissions rows and so resolves
+  // through the static fallback.
+  "/accounting/payment-vouchers": ["admin", "manager", "accountant"],
+  "/accounting/treasury": ["admin", "manager", "accountant"],
+  // _app.accounting.salesperson-scoring.tsx — requireAnyRole(admin, accountant):
+  // narrower than accounting:view, so manager must not see the link.
+  "/accounting/salesperson-scoring": ["admin", "accountant"],
   "/sales/product-videos": ["admin", "manager", "sales", "accountant"],
+  // _app.gamification.settings.tsx — requireAnyRole(admin). The seed's adminOnly
+  // flag alone means admin OR manager (selectors.ts:35), which is wider than the guard.
+  "/gamification/settings": ["admin"],
+  // Warehouse pages: warehouse:view is granted to five roles, but the routes guard
+  // themselves far more tightly. Without these three the whole warehouse section
+  // would appear for sales/accountant and then bounce them.
+  "/warehouses": ["admin", "manager"],
+  "/warehouses/kardex": ["admin", "manager", "accountant", "purchase_specialist"],
+  "/warehouses/transfers": ["admin", "manager"],
   "/admin/asan-export": ["admin", "accountant"],
   "/admin/asan-import": ["admin", "accountant"],
   "/admin/audit": ["admin", "manager"],
@@ -1296,6 +1263,16 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/pricing/product-recommendations": ["admin", "manager"],
   "/roles": ["admin"],
   "/sales/credit-rules": ["admin", "accountant"],
+  "/sales/promotion-nominations": ["sales", "admin", "manager"],
+  "/messages/inquiries": [
+    "admin",
+    "manager",
+    "sales",
+    "accountant",
+    "viewer",
+    "purchase_specialist",
+  ],
+  "/gamification/league": ["admin", "manager", "sales", "accountant", "viewer"],
   "/users": ["admin"],
 };
 
@@ -1306,21 +1283,6 @@ function idFromRoute(route: string): string {
       .replace(/[^a-zA-Z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "dashboard"
   );
-}
-
-function primaryModuleForRoute(route: string): NavigationPrimaryModule {
-  let best: { module: NavigationPrimaryModule; length: number } | null = null;
-  for (const [module, paths] of Object.entries(PRIMARY_MODULE_PATHS) as [
-    NavigationPrimaryModule,
-    string[],
-  ][]) {
-    for (const path of paths) {
-      if (route === path || route.startsWith(path + "/")) {
-        if (!best || path.length > best.length) best = { module, length: path.length };
-      }
-    }
-  }
-  return best?.module ?? "dashboard";
 }
 
 function routeKeywords(seed: NavigationEntrySeed): string[] {
@@ -1335,7 +1297,7 @@ function toNavigationEntry(seed: NavigationEntrySeed): NavigationEntry {
     title: seed.label,
     route: seed.to,
     module: seed.module,
-    primaryModule: primaryModuleForRoute(seed.to),
+    primaryModule: resolveActiveModule(seed.to),
     group: seed.group,
     subgroup: seed.subgroup,
     description: "Open " + seed.label,

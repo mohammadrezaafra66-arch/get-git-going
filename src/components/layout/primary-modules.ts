@@ -32,6 +32,13 @@ export interface PrimaryModule {
  * Exactly 7 primary modules. No fallback module is permitted. Every
  * user-facing route in NAV_ITEMS must be mapped intentionally into one of
  * these 7. RBAC filtering happens downstream against NAV_ITEMS.
+ *
+ * THIS IS THE ONLY ROUTE->MODULE LIST. Until 2026-08-08 a second copy lived in
+ * src/lib/navigation/registry.ts as PRIMARY_MODULE_PATHS; it rendered nothing and
+ * had drifted on eight routes, so it was deleted and registry.ts now derives
+ * entry.primaryModule from this list via resolveActiveModule(). A route that is not
+ * listed here is reachable only through search -- it will never appear in the sidebar,
+ * because itemsForModule() below matches paths exactly, not by prefix.
  */
 export const PRIMARY_MODULES: PrimaryModule[] = [
   {
@@ -39,7 +46,14 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
     label: "داشبورد",
     icon: LayoutDashboard,
     defaultTo: "/dashboard",
-    paths: ["/dashboard", "/notifications", "/operations/tasks", "/operations/daily-mood"],
+    paths: [
+      "/dashboard",
+      "/notifications",
+      "/popup-center",
+      "/collaboration",
+      "/operations/tasks",
+      "/operations/daily-mood",
+    ],
   },
   {
     key: "assistant",
@@ -54,15 +68,9 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/marketing/suggestions-history",
       "/marketing/my-tasks",
       "/messages",
+      "/messages/inquiries",
       "/knowledge",
       "/academy",
-      // Kept in step with PRIMARY_MODULE_PATHS.assistant in
-      // src/lib/navigation/registry.ts:1110-1122. Those two lists are separate
-      // copies of the same data and had already drifted: /updates was added to
-      // the registry copy but not here, and since itemsForModule() below reads
-      // ONLY this list, the entry never rendered in the sidebar even though its
-      // registry seed, its group, its module key and all seven role_permissions
-      // rows were correct. Whichever list you edit, edit both.
       "/updates",
     ],
   },
@@ -82,14 +90,20 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/quick-price",
       "/pricing/calculator",
       "/pricing/my-workbench",
+      "/pricing/attention",
       "/pricing/sale-lists",
+      "/pricing/live-price-list",
       "/price-lists",
       "/pricing/amin-hozoor-board",
       "/pricing/rules",
       "/pricing/sale-price-types",
       "/pricing/recompute-prices",
       "/suppliers",
+      "/purchase",
       "/purchases",
+      "/warehouses",
+      "/warehouses/transfers",
+      "/warehouses/kardex",
     ],
   },
   {
@@ -101,10 +115,15 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales",
       "/sales/customers",
       "/persons",
+      "/persons/import",
+      "/persons/merge",
       "/sales/quotes",
+      "/my-rejected-quotes",
       "/sales/invoices",
       "/invoices",
+      "/sales/product-videos",
       "/sales/stock-alerts",
+      "/sales/promotion-nominations",
       "/sales/credit-customers",
       "/sales/credit-rules",
       "/sales/customers/credit-training",
@@ -122,8 +141,11 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/accounting/receivables",
       "/accounting/payables",
       "/accounting/purchase-payments",
+      "/accounting/payment-vouchers",
       "/accounting/bank-accounts",
+      "/accounting/treasury",
       "/accounting/external-parties",
+      "/accounting/salesperson-scoring",
       // Item 141 — legacy capital paths dropped; dynamic-capital is official.
       "/accounting/dynamic-capital",
     ],
@@ -138,6 +160,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales/quote-share-logs",
       "/gamification",
       "/gamification/leaderboard",
+      "/gamification/league",
       "/gamification/admin/analytics",
       "/audit-logs",
       "/data-tables",
@@ -155,15 +178,37 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/roles",
       "/admin/profile-fields",
       "/admin/settings",
+      "/admin/platform-releases",
       "/admin/marketing-channels",
       "/admin/marketing-task-templates",
       "/admin/payment-terms",
+      "/admin/visitors",
       "/admin/waybill-fields",
       "/admin/receipt-fields",
       "/admin/recent-purchase-settings",
       "/admin/workflow-stages",
+      "/admin/workflow-settings",
       "/admin/validation-rules",
+      "/admin/sales-reminders",
+      "/admin/penalties",
+      "/admin/audit",
       "/admin/ai-providers",
+      "/admin/asan-import",
+      "/admin/asan-export",
+      "/admin/purchase",
+      "/admin/documents",
+      "/admin/delivery-receipts",
+      "/admin/automation",
+      "/admin/phone-collisions",
+      "/gamification/settings",
+      "/gamification/admin/kpi-rules",
+      "/gamification/admin/achievements",
+      "/gamification/admin/missions",
+      "/gamification/admin/leagues",
+      "/gamification/admin/rewards",
+      "/gamification/admin/purchase-settings",
+      "/gamification/admin/manual-metrics",
+      "/gamification/admin/manual-metrics/guide",
       "/pricing/currencies",
       "/pricing/currency-sources",
       "/pricing/currency-rates",
@@ -173,6 +218,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/change-reasons",
       "/pricing",
       "/bot-api-keys",
+      "/operations/didar",
       "/market-matches",
       "/operations/daily-mood/admin",
       "/feedback",

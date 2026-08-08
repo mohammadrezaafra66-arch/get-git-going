@@ -73,6 +73,7 @@ import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-
 import { Route as AppSalesSearchRouteImport } from './routes/_app.sales.search'
 import { Route as AppSalesQuotesRouteImport } from './routes/_app.sales.quotes'
 import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.quote-share-logs'
+import { Route as AppSalesPromotionNominationsRouteImport } from './routes/_app.sales.promotion-nominations'
 import { Route as AppSalesProductVideosRouteImport } from './routes/_app.sales.product-videos'
 import { Route as AppSalesCreditRulesRouteImport } from './routes/_app.sales.credit-rules'
 import { Route as AppSalesCreditCustomersRouteImport } from './routes/_app.sales.credit-customers'
@@ -117,6 +118,7 @@ import { Route as AppOperationsGamificationRouteImport } from './routes/_app.ope
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
 import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
+import { Route as AppMessagesInquiriesRouteImport } from './routes/_app.messages.inquiries'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
 import { Route as AppMarketingMyTasksRouteImport } from './routes/_app.marketing.my-tasks'
@@ -124,6 +126,7 @@ import { Route as AppKnowledgeManageRouteImport } from './routes/_app.knowledge_
 import { Route as AppKnowledgeDocumentIdRouteImport } from './routes/_app.knowledge_.$documentId'
 import { Route as AppIntegrationsDidarRouteImport } from './routes/_app.integrations.didar'
 import { Route as AppGamificationSettingsRouteImport } from './routes/_app.gamification.settings'
+import { Route as AppGamificationLeagueRouteImport } from './routes/_app.gamification.league'
 import { Route as AppGamificationLeaderboardRouteImport } from './routes/_app.gamification.leaderboard'
 import { Route as AppGamificationAchievementsRouteImport } from './routes/_app.gamification.achievements'
 import { Route as AppFeedbackCreateRouteImport } from './routes/_app.feedback_.create'
@@ -544,6 +547,12 @@ const AppSalesQuoteShareLogsRoute = AppSalesQuoteShareLogsRouteImport.update({
   path: '/quote-share-logs',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesPromotionNominationsRoute =
+  AppSalesPromotionNominationsRouteImport.update({
+    id: '/promotion-nominations',
+    path: '/promotion-nominations',
+    getParentRoute: () => AppSalesRoute,
+  } as any)
 const AppSalesProductVideosRoute = AppSalesProductVideosRouteImport.update({
   id: '/product-videos',
   path: '/product-videos',
@@ -777,6 +786,11 @@ const AppOperationsApiKeysRoute = AppOperationsApiKeysRouteImport.update({
   path: '/operations/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMessagesInquiriesRoute = AppMessagesInquiriesRouteImport.update({
+  id: '/inquiries',
+  path: '/inquiries',
+  getParentRoute: () => AppMessagesRoute,
+} as any)
 const AppMarketingSuggestionsHistoryRoute =
   AppMarketingSuggestionsHistoryRouteImport.update({
     id: '/marketing/suggestions-history',
@@ -811,6 +825,11 @@ const AppIntegrationsDidarRoute = AppIntegrationsDidarRouteImport.update({
 const AppGamificationSettingsRoute = AppGamificationSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppGamificationRoute,
+} as any)
+const AppGamificationLeagueRoute = AppGamificationLeagueRouteImport.update({
+  id: '/league',
+  path: '/league',
   getParentRoute: () => AppGamificationRoute,
 } as any)
 const AppGamificationLeaderboardRoute =
@@ -1384,7 +1403,7 @@ export interface FileRoutesByFullPath {
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
-  '/messages': typeof AppMessagesRoute
+  '/messages': typeof AppMessagesRouteWithChildren
   '/my-penalties': typeof AppMyPenaltiesRoute
   '/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/notifications': typeof AppNotificationsRoute
@@ -1455,6 +1474,7 @@ export interface FileRoutesByFullPath {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/league': typeof AppGamificationLeagueRoute
   '/gamification/settings': typeof AppGamificationSettingsRoute
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
@@ -1462,6 +1482,7 @@ export interface FileRoutesByFullPath {
   '/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/messages/inquiries': typeof AppMessagesInquiriesRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
@@ -1506,6 +1527,7 @@ export interface FileRoutesByFullPath {
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/product-videos': typeof AppSalesProductVideosRoute
+  '/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/sales/search': typeof AppSalesSearchRoute
@@ -1597,7 +1619,7 @@ export interface FileRoutesByTo {
   '/invoices': typeof AppInvoicesRoute
   '/knowledge': typeof AppKnowledgeRoute
   '/market-matches': typeof AppMarketMatchesRoute
-  '/messages': typeof AppMessagesRoute
+  '/messages': typeof AppMessagesRouteWithChildren
   '/my-penalties': typeof AppMyPenaltiesRoute
   '/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/notifications': typeof AppNotificationsRoute
@@ -1667,6 +1689,7 @@ export interface FileRoutesByTo {
   '/feedback/create': typeof AppFeedbackCreateRoute
   '/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/gamification/league': typeof AppGamificationLeagueRoute
   '/gamification/settings': typeof AppGamificationSettingsRoute
   '/integrations/didar': typeof AppIntegrationsDidarRoute
   '/knowledge/$documentId': typeof AppKnowledgeDocumentIdRoute
@@ -1674,6 +1697,7 @@ export interface FileRoutesByTo {
   '/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/messages/inquiries': typeof AppMessagesInquiriesRoute
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
@@ -1718,6 +1742,7 @@ export interface FileRoutesByTo {
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/product-videos': typeof AppSalesProductVideosRoute
+  '/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
   '/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/sales/search': typeof AppSalesSearchRoute
   '/sales/send-queue': typeof AppSalesSendQueueRoute
@@ -1811,7 +1836,7 @@ export interface FileRoutesById {
   '/_app/invoices': typeof AppInvoicesRoute
   '/_app/knowledge': typeof AppKnowledgeRoute
   '/_app/market-matches': typeof AppMarketMatchesRoute
-  '/_app/messages': typeof AppMessagesRoute
+  '/_app/messages': typeof AppMessagesRouteWithChildren
   '/_app/my-penalties': typeof AppMyPenaltiesRoute
   '/_app/my-rejected-quotes': typeof AppMyRejectedQuotesRoute
   '/_app/notifications': typeof AppNotificationsRoute
@@ -1882,6 +1907,7 @@ export interface FileRoutesById {
   '/_app/feedback_/create': typeof AppFeedbackCreateRoute
   '/_app/gamification/achievements': typeof AppGamificationAchievementsRoute
   '/_app/gamification/leaderboard': typeof AppGamificationLeaderboardRoute
+  '/_app/gamification/league': typeof AppGamificationLeagueRoute
   '/_app/gamification/settings': typeof AppGamificationSettingsRoute
   '/_app/integrations/didar': typeof AppIntegrationsDidarRoute
   '/_app/knowledge_/$documentId': typeof AppKnowledgeDocumentIdRoute
@@ -1889,6 +1915,7 @@ export interface FileRoutesById {
   '/_app/marketing/my-tasks': typeof AppMarketingMyTasksRoute
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
+  '/_app/messages/inquiries': typeof AppMessagesInquiriesRoute
   '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
@@ -1933,6 +1960,7 @@ export interface FileRoutesById {
   '/_app/sales/credit-customers': typeof AppSalesCreditCustomersRoute
   '/_app/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/_app/sales/product-videos': typeof AppSalesProductVideosRoute
+  '/_app/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
   '/_app/sales/quote-share-logs': typeof AppSalesQuoteShareLogsRoute
   '/_app/sales/quotes': typeof AppSalesQuotesRouteWithChildren
   '/_app/sales/search': typeof AppSalesSearchRoute
@@ -2098,6 +2126,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/league'
     | '/gamification/settings'
     | '/integrations/didar'
     | '/knowledge/$documentId'
@@ -2105,6 +2134,7 @@ export interface FileRouteTypes {
     | '/marketing/my-tasks'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/messages/inquiries'
     | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
@@ -2149,6 +2179,7 @@ export interface FileRouteTypes {
     | '/sales/credit-customers'
     | '/sales/credit-rules'
     | '/sales/product-videos'
+    | '/sales/promotion-nominations'
     | '/sales/quote-share-logs'
     | '/sales/quotes'
     | '/sales/search'
@@ -2310,6 +2341,7 @@ export interface FileRouteTypes {
     | '/feedback/create'
     | '/gamification/achievements'
     | '/gamification/leaderboard'
+    | '/gamification/league'
     | '/gamification/settings'
     | '/integrations/didar'
     | '/knowledge/$documentId'
@@ -2317,6 +2349,7 @@ export interface FileRouteTypes {
     | '/marketing/my-tasks'
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
+    | '/messages/inquiries'
     | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
@@ -2361,6 +2394,7 @@ export interface FileRouteTypes {
     | '/sales/credit-customers'
     | '/sales/credit-rules'
     | '/sales/product-videos'
+    | '/sales/promotion-nominations'
     | '/sales/quote-share-logs'
     | '/sales/search'
     | '/sales/send-queue'
@@ -2524,6 +2558,7 @@ export interface FileRouteTypes {
     | '/_app/feedback_/create'
     | '/_app/gamification/achievements'
     | '/_app/gamification/leaderboard'
+    | '/_app/gamification/league'
     | '/_app/gamification/settings'
     | '/_app/integrations/didar'
     | '/_app/knowledge_/$documentId'
@@ -2531,6 +2566,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/my-tasks'
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
+    | '/_app/messages/inquiries'
     | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
@@ -2575,6 +2611,7 @@ export interface FileRouteTypes {
     | '/_app/sales/credit-customers'
     | '/_app/sales/credit-rules'
     | '/_app/sales/product-videos'
+    | '/_app/sales/promotion-nominations'
     | '/_app/sales/quote-share-logs'
     | '/_app/sales/quotes'
     | '/_app/sales/search'
@@ -3125,6 +3162,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuoteShareLogsRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/promotion-nominations': {
+      id: '/_app/sales/promotion-nominations'
+      path: '/promotion-nominations'
+      fullPath: '/sales/promotion-nominations'
+      preLoaderRoute: typeof AppSalesPromotionNominationsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/sales/product-videos': {
       id: '/_app/sales/product-videos'
       path: '/product-videos'
@@ -3433,6 +3477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/messages/inquiries': {
+      id: '/_app/messages/inquiries'
+      path: '/inquiries'
+      fullPath: '/messages/inquiries'
+      preLoaderRoute: typeof AppMessagesInquiriesRouteImport
+      parentRoute: typeof AppMessagesRoute
+    }
     '/_app/marketing/suggestions-history': {
       id: '/_app/marketing/suggestions-history'
       path: '/marketing/suggestions-history'
@@ -3480,6 +3531,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/gamification/settings'
       preLoaderRoute: typeof AppGamificationSettingsRouteImport
+      parentRoute: typeof AppGamificationRoute
+    }
+    '/_app/gamification/league': {
+      id: '/_app/gamification/league'
+      path: '/league'
+      fullPath: '/gamification/league'
+      preLoaderRoute: typeof AppGamificationLeagueRouteImport
       parentRoute: typeof AppGamificationRoute
     }
     '/_app/gamification/leaderboard': {
@@ -4192,6 +4250,7 @@ const AppBotApiKeysRouteWithChildren = AppBotApiKeysRoute._addFileChildren(
 interface AppGamificationRouteChildren {
   AppGamificationAchievementsRoute: typeof AppGamificationAchievementsRoute
   AppGamificationLeaderboardRoute: typeof AppGamificationLeaderboardRoute
+  AppGamificationLeagueRoute: typeof AppGamificationLeagueRoute
   AppGamificationSettingsRoute: typeof AppGamificationSettingsRoute
   AppGamificationAdminAchievementsRoute: typeof AppGamificationAdminAchievementsRoute
   AppGamificationAdminAnalyticsRoute: typeof AppGamificationAdminAnalyticsRoute
@@ -4207,6 +4266,7 @@ interface AppGamificationRouteChildren {
 const AppGamificationRouteChildren: AppGamificationRouteChildren = {
   AppGamificationAchievementsRoute: AppGamificationAchievementsRoute,
   AppGamificationLeaderboardRoute: AppGamificationLeaderboardRoute,
+  AppGamificationLeagueRoute: AppGamificationLeagueRoute,
   AppGamificationSettingsRoute: AppGamificationSettingsRoute,
   AppGamificationAdminAchievementsRoute: AppGamificationAdminAchievementsRoute,
   AppGamificationAdminAnalyticsRoute: AppGamificationAdminAnalyticsRoute,
@@ -4223,6 +4283,18 @@ const AppGamificationRouteChildren: AppGamificationRouteChildren = {
 
 const AppGamificationRouteWithChildren = AppGamificationRoute._addFileChildren(
   AppGamificationRouteChildren,
+)
+
+interface AppMessagesRouteChildren {
+  AppMessagesInquiriesRoute: typeof AppMessagesInquiriesRoute
+}
+
+const AppMessagesRouteChildren: AppMessagesRouteChildren = {
+  AppMessagesInquiriesRoute: AppMessagesInquiriesRoute,
+}
+
+const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
+  AppMessagesRouteChildren,
 )
 
 interface AppSalesQuotesRouteChildren {
@@ -4245,6 +4317,7 @@ interface AppSalesRouteChildren {
   AppSalesCreditCustomersRoute: typeof AppSalesCreditCustomersRoute
   AppSalesCreditRulesRoute: typeof AppSalesCreditRulesRoute
   AppSalesProductVideosRoute: typeof AppSalesProductVideosRoute
+  AppSalesPromotionNominationsRoute: typeof AppSalesPromotionNominationsRoute
   AppSalesQuoteShareLogsRoute: typeof AppSalesQuoteShareLogsRoute
   AppSalesQuotesRoute: typeof AppSalesQuotesRouteWithChildren
   AppSalesSearchRoute: typeof AppSalesSearchRoute
@@ -4258,6 +4331,7 @@ const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesCreditCustomersRoute: AppSalesCreditCustomersRoute,
   AppSalesCreditRulesRoute: AppSalesCreditRulesRoute,
   AppSalesProductVideosRoute: AppSalesProductVideosRoute,
+  AppSalesPromotionNominationsRoute: AppSalesPromotionNominationsRoute,
   AppSalesQuoteShareLogsRoute: AppSalesQuoteShareLogsRoute,
   AppSalesQuotesRoute: AppSalesQuotesRouteWithChildren,
   AppSalesSearchRoute: AppSalesSearchRoute,
@@ -4384,7 +4458,7 @@ interface AppRouteChildren {
   AppInvoicesRoute: typeof AppInvoicesRoute
   AppKnowledgeRoute: typeof AppKnowledgeRoute
   AppMarketMatchesRoute: typeof AppMarketMatchesRoute
-  AppMessagesRoute: typeof AppMessagesRoute
+  AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppMyPenaltiesRoute: typeof AppMyPenaltiesRoute
   AppMyRejectedQuotesRoute: typeof AppMyRejectedQuotesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
@@ -4531,7 +4605,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInvoicesRoute: AppInvoicesRoute,
   AppKnowledgeRoute: AppKnowledgeRoute,
   AppMarketMatchesRoute: AppMarketMatchesRoute,
-  AppMessagesRoute: AppMessagesRoute,
+  AppMessagesRoute: AppMessagesRouteWithChildren,
   AppMyPenaltiesRoute: AppMyPenaltiesRoute,
   AppMyRejectedQuotesRoute: AppMyRejectedQuotesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
@@ -4739,13 +4813,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

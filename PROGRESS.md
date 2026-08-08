@@ -28,16 +28,25 @@
 - [ ] ledger-mutual-settlement / فاز ۳ — صفحهٔ تسویه — در انتظار
 - [ ] ledger-mutual-settlement / فاز ۴ — غنی‌سازی شرح — در انتظار
 - [ ] messenger-rpc-fix — فاز ۱ تشخیص شد؛ گزینهٔ ب (تابع از صفر، چون روی LAN نیست) — در حال رفع
+- [x] db-hygiene / فاز ۱ — seed role_permissions — **انجام شد** (مهاجرت **۳۱۵**؛ فقط سه ماژول واقعی `accounting`/`hr`/`market-rates`؛ `bank`/`customers`/`cheques` عمداً seed نشدند چون اصلاً کلید ماژول نیستند. dry-run اثبات کرد ۳ کاربر واقعی `sales` روی `accounting.view` از fallback مجوز می‌گرفتند و حالا نمی‌گیرند؛ ۸۴ ادعای پس از اعمال، صفر اختلاف با seed)
+- [ ] db-hygiene / فاز ۲ — یکپارچگی ارجاع — در انتظار
+- [ ] db-hygiene / فاز ۳ — رفع تست export-sales — در انتظار
+- [ ] db-hygiene / فاز ۴ — حذف ۲۷۱d7c44 — در انتظار
+- [ ] db-hygiene / فاز ۵ — حذف xlsx + رفع ۲ spec — در انتظار
 - [x] p1-dual-role / فاز ۱ — trigger context_link — **انجام شد** (مهاجرت ۳۱۴ اعمال شد؛ dry-run ۸/۸؛ down نوشته شد)
 - [ ] p1-dual-role / فاز ۲ — جستجوی شخص با شماره — در انتظار
 - [ ] p1-dual-role / فاز ۳ — نمایش دو نقشی — در انتظار
 - [ ] p1-dual-role / فاز ۴ — یک کد آسان یکتا — در انتظار
 - [ ] p1-dual-role / فاز ۵ — رفع unlink + مجوز ویرایش — در انتظار
+- [x] new-clusters-frontend / نامزدی ارتقا — **انجام شد** (`/sales/promotion-nominations` + cancel RPC؛ JWT سبز)
+- [x] new-clusters-frontend / استعلام‌ها — **انجام شد** (`/messages/inquiries` + update_inquiry_status؛ tick best-effort — توقف 42P10)
+- [x] new-clusters-frontend / لیگ گیمیفیکیشن — **انجام شد با توقف schema** (صفحهٔ لیگ + تب RPC؛ start/settle با title_fa بلاک)
 
 ## تاریخچه (جدیدترین بالا)
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-08-08 | Cursor | **new-clusters-frontend — فرانت سه خوشه.** صفحات `/sales/promotion-nominations`، `/messages/inquiries`، `/gamification/league` + تب موتور فصل در admin leagues؛ ناوبری در PRIMARY_MODULES. JWT `e2e/clusters` **۵/۵**. **توقف schema:** `start_league_season`/`settle` با تریگر `validate_league_season` (title_fa)؛ `tick_inquiries` با 42P10 داخل `expire_pending_documents`. بدون مهاجرت. جزئیات: `docs/execution/new-clusters-frontend-mission-COMPLETE.md`. | (همین commit) |
 | 2026-08-08 | Cursor | **messenger-rpc-fix فاز ۱ — تشخیص.** فرانت در `GroupMembersDialog.tsx:166` با پارامترهای `p_group_id`/`p_user_id`/`p_role` صدا می‌زند. روی دیتابیس زنده فقط `add_messenger_group_member` و `is_messenger_group_member` هستند؛ `set_messenger_group_member_role` در `pg_proc` نیست. مهاجرت قدیمی ۲۲۵ در گیت هست ولی روی LAN اعمال نشده. جدول `messenger_group_members` سیاست UPDATE ندارد ⇒ مسیر مستقیم UPDATE هم بی‌فایده است. | — |
 | 2026-08-07 | Claude Code | **`/updates` خودکار شد.** یادداشت انتشار از تاریخچهٔ گیت هنگام build تولید و در استقرار خودکار منتشر می‌شود؛ **هیچ تأیید دستی لازم نیست**. مهاجرت **۳۰۷** `auto_publish_release` (فقط `service_role`، idempotent روی `git_sha`، audit با `actor_id=NULL`). قانون تازه در `AGENTS.md`/`CLAUDE.md`: هر کامیت کاربرپسند باید تریلر `Release-note-fa:` داشته باشد — بدون آن چیزی منتشر نمی‌شود (عمداً، تا متن انگلیسی فنی به کاربر نرسد). دو نقص حین آزمون واقعی پیدا و رفع شد: قلاب boot در کانتینر **هرگز اجرا نمی‌شد** (کانتینر `.output/server/index.mjs` را اجرا می‌کند نه `server/node-entry.mjs`)، و برش «فقط موارد تازه» به‌خاطر اختلاف طول sha (۸ در برابر ۴۰) بی‌صدا باز می‌شد. آزمون سرتاسری: نسخهٔ **۱۴** منتشر شد، اجرای دوباره چیزی نساخت. typecheck **۷۰**. | `8b455da8` |
 | 2026-08-07 | Claude Code | **UNIFY P0 — پایان مأموریت.** ۰.۳ اعمال شد (مهاجرت ۳۰۴): ۳۲۲ خرید e2e + ۳۲۲ آیتم + ۳۲۰ idempotency + ۱۵۸ fulfillment + **۳۲۲ stock_movement** حذف؛ خریدها ۳۳۴→**۱۲**؛ `journal_entries`/`payment_receipts`/`sales_quotes` **دست‌نخورده**. **۰.۲ متوقف شد** (گزارش منبع `dual-role-person-analysis.md` وجود ندارد؛ ۳ جفت از ۴ جفت اصلاً نیستند؛ تنها جفت واقعی «مختارشاهمرادی» دوتایی organization/individual است با ۲ خرید و ۷۷ رکورد قیمت ← شرط توقف مالی خودِ فاز). **۰.۵ لازم نبود** (فایل xlsx هدف در **صفر** کامیت تاریخچه است؛ هیچ rewrite/force-push انجام نشد). دامپ P0.3 عمداً کامیت نشد (قاعدهٔ ۴) و به `.gitignore` اضافه شد. بدون تغییر سورس. | `15c5920d` |

@@ -224,3 +224,114 @@ export async function previewLeagueSeasonChanges(seasonId: string): Promise<Prev
   });
   return (data ?? []) as unknown as PreviewRow[];
 }
+
+// ---------- Orphaned season RPCs (Phase 3 league engine) ----------
+/** Live RPC — currently blocked by validate_league_season requiring title_fa. */
+export async function startLeagueSeasonRpc(input: {
+  name: string;
+  start: string;
+  end: string;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc(
+    "start_league_season" as never,
+    {
+      _name: input.name,
+      _start: input.start,
+      _end: input.end,
+    } as never,
+  );
+  if (error) throw error;
+  const id = String(data);
+  await logAudit("league_season_started_rpc", "gamification_season", id, {
+    name: input.name,
+    start: input.start,
+    end: input.end,
+  });
+  return id;
+}
+
+/** Live RPC — settle/promote/demote from employee_scores. Same title_fa stop on insert. */
+export async function settleLeagueSeasonRpc(): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.rpc("settle_league_season" as never);
+  if (error) throw error;
+  const result = (data ?? {}) as Record<string, unknown>;
+  await logAudit(
+    "league_season_settled_rpc",
+    "gamification_season",
+    String(result.settled_season_id ?? result.season_id ?? "unknown"),
+    result,
+  );
+  return result;
+}
+
+export interface CurrentLeagueInfo {
+  employee_id?: string;
+  season_id?: string;
+  season_name?: string;
+  league: LeagueTier | null;
+  rank: number | null;
+  score: number;
+  promoted: boolean;
+  demoted: boolean;
+  season?: unknown;
+}
+
+export async function getCurrentLeague(employeeId: string): Promise<CurrentLeagueInfo> {
+  const { data, error } = await supabase.rpc(
+    "get_current_league" as never,
+    {
+      _employee_id: employeeId,
+    } as never,
+  );
+  if (error) throw error;
+  return (data ?? { league: null, season: null }) as CurrentLeagueInfo;
+}
+
+export interface LeagueLeaderboardRow {
+  employee_id: string;
+  full_name: string | null;
+  league: LeagueTier;
+  score: number;
+  rank: number;
+  promoted: boolean;
+  demoted: boolean;
+}
+
+export async function getLeagueLeaderboard(
+  league: LeagueTier,
+  limit = 50,
+  offset = 0,
+): Promise<LeagueLeaderboardRow[]> {
+  const { data, error } = await supabase.rpc(
+    "get_league_leaderboard" as never,
+    {
+      _league: league,
+      _limit: limit,
+      _offset: offset,
+    } as never,
+  );
+  if (error) throw error;
+  return (data ?? []) as unknown as LeagueLeaderboardRow[];
+}
+
+export interface RpcSeasonRow {
+  id: string;
+  season_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  settled_at: string | null;
+  created_at: string;
+  title_fa: string | null;
+  status: SeasonStatus;
+}
+
+export async function listRpcSeasons(): Promise<RpcSeasonRow[]> {
+  const { data, error } = await supabase
+    .from("league_seasons")
+    .select("id,season_name,start_date,end_date,is_active,settled_at,created_at,title_fa,status")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return (data ?? []) as unknown as RpcSeasonRow[];
+}

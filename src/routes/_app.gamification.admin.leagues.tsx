@@ -47,6 +47,9 @@ import {
   activateSeason,
   closeSeason,
   previewLeagueSeasonChanges,
+  startLeagueSeasonRpc,
+  settleLeagueSeasonRpc,
+  listRpcSeasons,
   TIER_FA,
   STATUS_FA,
   SEASON_STATUSES,
@@ -112,12 +115,16 @@ function LeaguesAdminPage() {
         <TabsList>
           <TabsTrigger value="tiers">تنظیمات لیگ‌ها</TabsTrigger>
           <TabsTrigger value="seasons">فصل‌ها</TabsTrigger>
+          <TabsTrigger value="engine">موتور فصل (RPC)</TabsTrigger>
         </TabsList>
         <TabsContent value="tiers">
           <TiersPanel />
         </TabsContent>
         <TabsContent value="seasons">
           <SeasonsPanel />
+        </TabsContent>
+        <TabsContent value="engine">
+          <SeasonEnginePanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -572,6 +579,172 @@ function SeasonDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SeasonEnginePanel() {
+  const qc = useQueryClient();
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
+  const defaultName = monthStart.slice(0, 7);
+
+  const [name, setName] = useState(defaultName);
+  const [start, setStart] = useState(monthStart);
+  const [end, setEnd] = useState(monthEnd);
+  const [lastSettle, setLastSettle] = useState<Record<string, unknown> | null>(null);
+
+  const seasonsQ = useQuery({
+    queryKey: ["league-rpc-seasons"],
+    queryFn: listRpcSeasons,
+  });
+
+  const startMut = useMutation({
+    mutationFn: () => startLeagueSeasonRpc({ name, start, end }),
+    onSuccess: (id) => {
+      toast.success(`فصل با RPC شروع شد (${id.slice(0, 8)}…)`);
+      qc.invalidateQueries({ queryKey: ["league-rpc-seasons"] });
+      qc.invalidateQueries({ queryKey: ["league-seasons-admin"] });
+      qc.invalidateQueries({ queryKey: ["current-league"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const settleMut = useMutation({
+    mutationFn: () => settleLeagueSeasonRpc(),
+    onSuccess: (result) => {
+      setLastSettle(result);
+      if (result.bootstrapped) {
+        toast.success("فصل جاری بوت‌استرپ شد (فصل فعالی نبود)");
+      } else {
+        toast.success(
+          `تسویه شد — فصل بعد: ${String(result.new_season_name ?? "—")}، اعضا: ${String(result.employees_settled ?? 0)}`,
+        );
+      }
+      qc.invalidateQueries({ queryKey: ["league-rpc-seasons"] });
+      qc.invalidateQueries({ queryKey: ["league-seasons-admin"] });
+      qc.invalidateQueries({ queryKey: ["current-league"] });
+      qc.invalidateQueries({ queryKey: ["league-leaderboard"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+        توجه: RPCهای <code>start_league_season</code> / <code>settle_league_season</code> ستون‌های
+        قدیمی را می‌نویسند، در حالی که تریگر <code>validate_league_season</code> فیلدهای{" "}
+        <code>title_fa</code> / <code>starts_at</code> / <code>ends_at</code> را اجباری کرده است. تا
+        رفع با مهاجرت، از تب «فصل‌ها» استفاده کنید یا خطای فارسی RPC را اینجا ببینید.
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">شروع فصل (`start_league_season`)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <Label>نام فصل</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="2026-08" />
+          </div>
+          <div>
+            <Label>شروع</Label>
+            <PersianDatePicker
+              value={start || null}
+              onChange={(v) => setStart(v ?? "")}
+              placeholder="شروع"
+            />
+          </div>
+          <div>
+            <Label>پایان</Label>
+            <PersianDatePicker
+              value={end || null}
+              onChange={(v) => setEnd(v ?? "")}
+              placeholder="پایان"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              className="w-full"
+              onClick={() => startMut.mutate()}
+              disabled={startMut.isPending || !name || !start || !end}
+            >
+              {startMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              شروع فصل فعال
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">تسویه فصل (`settle_league_season`)</CardTitle>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => settleMut.mutate()}
+            disabled={settleMut.isPending}
+          >
+            {settleMut.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            تسویه و باز کردن فصل بعد
+          </Button>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <p>
+            امتیاز ماهانه از <code>employee_scores</code> خوانده می‌شود؛ منطق ارتقا/سقوط فقط در
+            بک‌اند است.
+          </p>
+          {lastSettle && (
+            <pre className="rounded-md border bg-muted/40 p-3 text-xs overflow-x-auto" dir="ltr">
+              {JSON.stringify(lastSettle, null, 2)}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">فصل‌های ثبت‌شده</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {seasonsQ.isLoading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>نام</TableHead>
+                  <TableHead>بازه</TableHead>
+                  <TableHead>فعال؟</TableHead>
+                  <TableHead>وضعیت UI</TableHead>
+                  <TableHead>تسویه</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(seasonsQ.data ?? []).map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>{s.season_name || s.title_fa || "—"}</TableCell>
+                    <TableCell>
+                      {s.start_date || s.end_date
+                        ? `${s.start_date ?? "—"} ← ${s.end_date ?? "—"}`
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{s.is_active ? "بله" : "خیر"}</TableCell>
+                    <TableCell>
+                      <Badge>{STATUS_FA[s.status] ?? s.status}</Badge>
+                    </TableCell>
+                    <TableCell>{s.settled_at ? fmtDate(s.settled_at) : "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

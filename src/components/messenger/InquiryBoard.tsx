@@ -3,17 +3,27 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  ShoppingCart, ArrowRightLeft, Clock, Inbox,
-  Loader2, ChevronDown, ChevronUp,
+  ShoppingCart,
+  ArrowRightLeft,
+  Clock,
+  Inbox,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { transferInquiry } from "@/lib/messenger/inquiries.functions";
 import { useGroupRole, useGroupPurchasers } from "@/hooks/messenger/useGroupRole";
 import { useInquiries, type InquiryRow, type InquiryStatus } from "@/hooks/messenger/useInquiries";
+import { tickInquiries } from "@/lib/messenger/inquiry-status";
 import { InquiryReplyDialog } from "./InquiryReplyDialog";
 
 const PRIORITY: Record<InquiryStatus, number> = {
@@ -84,19 +94,19 @@ const DEADLINE_MINUTES = 10;
 type BucketKey = "critical" | "warning" | "active" | "done" | "closed";
 
 const STATUS_TO_BUCKET: Record<InquiryStatus, BucketKey> = {
-  critical_10min:    "critical",
-  transfer_available:"critical",
-  danger_8min:       "warning",
-  warning_5min:      "warning",
-  pending:           "active",
-  transferred:       "active",
-  draft:             "active",
-  answered:          "done",
+  critical_10min: "critical",
+  transfer_available: "critical",
+  danger_8min: "warning",
+  warning_5min: "warning",
+  pending: "active",
+  transferred: "active",
+  draft: "active",
+  answered: "done",
   completed_on_time: "done",
-  completed_late:    "done",
-  expired:           "closed",
-  cancelled:         "closed",
-  rejected:          "closed",
+  completed_late: "done",
+  expired: "closed",
+  cancelled: "closed",
+  rejected: "closed",
 };
 
 const BUCKET_CONFIG: Array<{
@@ -107,15 +117,50 @@ const BUCKET_CONFIG: Array<{
   lockOpen: boolean;
   headerColor: string;
 }> = [
-  { key: "critical", label: "بحرانی",    emoji: "🔴", defaultOpen: true,  lockOpen: true,  headerColor: "#B42318" },
-  { key: "warning",  label: "هشدار",     emoji: "🟠", defaultOpen: true,  lockOpen: true,  headerColor: "#B54708" },
-  { key: "active",   label: "در انتظار", emoji: "🟡", defaultOpen: true,  lockOpen: false, headerColor: "#0F766E" },
-  { key: "done",     label: "تکمیل‌شده", emoji: "✅", defaultOpen: false, lockOpen: false, headerColor: "#0B6E4F" },
-  { key: "closed",   label: "بسته‌شده",  emoji: "⚫", defaultOpen: false, lockOpen: false, headerColor: "#4B5563" },
+  {
+    key: "critical",
+    label: "بحرانی",
+    emoji: "🔴",
+    defaultOpen: true,
+    lockOpen: true,
+    headerColor: "#B42318",
+  },
+  {
+    key: "warning",
+    label: "هشدار",
+    emoji: "🟠",
+    defaultOpen: true,
+    lockOpen: true,
+    headerColor: "#B54708",
+  },
+  {
+    key: "active",
+    label: "در انتظار",
+    emoji: "🟡",
+    defaultOpen: true,
+    lockOpen: false,
+    headerColor: "#0F766E",
+  },
+  {
+    key: "done",
+    label: "تکمیل‌شده",
+    emoji: "✅",
+    defaultOpen: false,
+    lockOpen: false,
+    headerColor: "#0B6E4F",
+  },
+  {
+    key: "closed",
+    label: "بسته‌شده",
+    emoji: "⚫",
+    defaultOpen: false,
+    lockOpen: false,
+    headerColor: "#4B5563",
+  },
 ];
 
 function toPersianDigits(input: string | number): string {
-  const map = ["۰","۱","۲","۳","۴","۵","۶","۷","۸","۹"];
+  const map = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return String(input).replace(/\d/g, (d) => map[Number(d)]);
 }
 
@@ -150,21 +195,36 @@ export function InquiryBoard({
 
   const [openBuckets, setOpenBuckets] = useState<Record<BucketKey, boolean>>(() => {
     const initial = {} as Record<BucketKey, boolean>;
-    BUCKET_CONFIG.forEach((b) => { initial[b.key] = b.defaultOpen; });
+    BUCKET_CONFIG.forEach((b) => {
+      initial[b.key] = b.defaultOpen;
+    });
     return initial;
   });
 
   useEffect(() => {
     if (!active) return;
-    const id = window.setInterval(() => {
-      qc.invalidateQueries({ queryKey: ["inquiries", groupId] });
-    }, 30_000);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    const run = async () => {
+      try {
+        await tickInquiries();
+      } catch {
+        // Best-effort SLA tick (backend may 42P10 inside expire_pending_documents).
+      }
+      if (!cancelled) qc.invalidateQueries({ queryKey: ["inquiries", groupId] });
+    };
+    void run();
+    const id = window.setInterval(run, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, [active, groupId, qc]);
 
   const grouped = useMemo(() => {
     const map = {} as Record<BucketKey, InquiryRow[]>;
-    BUCKET_CONFIG.forEach((b) => { map[b.key] = []; });
+    BUCKET_CONFIG.forEach((b) => {
+      map[b.key] = [];
+    });
     for (const inq of inquiries ?? []) {
       const bucket = STATUS_TO_BUCKET[inq.status] ?? "closed";
       map[bucket].push(inq);
@@ -227,9 +287,13 @@ export function InquiryBoard({
 }
 
 function InquiryBucketSection({
-  config, items, isOpen, onToggle, currentUserId,
+  config,
+  items,
+  isOpen,
+  onToggle,
+  currentUserId,
 }: {
-  config: typeof BUCKET_CONFIG[number];
+  config: (typeof BUCKET_CONFIG)[number];
   items: InquiryRow[];
   isOpen: boolean;
   onToggle: () => void;
@@ -259,20 +323,17 @@ function InquiryBucketSection({
         >
           {toPersianDigits(items.length)}
         </span>
-        {!config.lockOpen && (
-          isOpen
-            ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-            : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-        )}
+        {!config.lockOpen &&
+          (isOpen ? (
+            <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ))}
       </button>
       {isOpen && (
         <div className="flex flex-col gap-2 border-t p-2">
           {items.map((inq) => (
-            <CompactInquiryCard
-              key={inq.id}
-              inquiry={inq}
-              currentUserId={currentUserId}
-            />
+            <CompactInquiryCard key={inq.id} inquiry={inq} currentUserId={currentUserId} />
           ))}
         </div>
       )}
@@ -281,7 +342,8 @@ function InquiryBucketSection({
 }
 
 function CompactInquiryCard({
-  inquiry, currentUserId,
+  inquiry,
+  currentUserId,
 }: {
   inquiry: InquiryRow;
   currentUserId: string | null;
@@ -311,10 +373,16 @@ function CompactInquiryCard({
 
   const canReply =
     (isAssignee || isPurchaser) &&
-    !["answered","completed_on_time","completed_late","expired","cancelled","rejected"].includes(inquiry.status);
+    ![
+      "answered",
+      "completed_on_time",
+      "completed_late",
+      "expired",
+      "cancelled",
+      "rejected",
+    ].includes(inquiry.status);
 
-  const canTransfer =
-    isMember && ["transfer_available","critical_10min"].includes(inquiry.status);
+  const canTransfer = isMember && ["transfer_available", "critical_10min"].includes(inquiry.status);
 
   const timerBg = remaining?.expired ? "#B42318" : barColor;
 
@@ -328,9 +396,7 @@ function CompactInquiryCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <ShoppingCart className="h-4 w-4 shrink-0 text-primary" />
-            <span className="truncate text-sm font-semibold">
-              {inquiry.product?.name ?? "—"}
-            </span>
+            <span className="truncate text-sm font-semibold">{inquiry.product?.name ?? "—"}</span>
           </div>
           {remaining ? (
             <span
@@ -365,7 +431,12 @@ function CompactInquiryCard({
               </Button>
             )}
             {canTransfer && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setTransferOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => setTransferOpen(true)}
+              >
                 <ArrowRightLeft className="ml-1 h-3 w-3" /> انتقال
               </Button>
             )}
@@ -376,14 +447,20 @@ function CompactInquiryCard({
         <InquiryReplyDialog open={replyOpen} onOpenChange={setReplyOpen} inquiryId={inquiry.id} />
       )}
       {transferOpen && (
-        <CompactTransferDialog open={transferOpen} onOpenChange={setTransferOpen} inquiry={inquiry} />
+        <CompactTransferDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          inquiry={inquiry}
+        />
       )}
     </div>
   );
 }
 
 function CompactTransferDialog({
-  open, onOpenChange, inquiry,
+  open,
+  onOpenChange,
+  inquiry,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -400,8 +477,13 @@ function CompactTransferDialog({
       const res = await transferFn({ data: { inquiry_id: inquiry.id, to_user: toUser } });
       if (!res.ok) throw new Error(res.error || "انتقال ناموفق بود.");
     },
-    onSuccess: () => { toast.success("استعلام منتقل شد."); onOpenChange(false); },
-    onError: (e: unknown) => { toast.error(e instanceof Error ? e.message : "خطا در انتقال."); },
+    onSuccess: () => {
+      toast.success("استعلام منتقل شد.");
+      onOpenChange(false);
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "خطا در انتقال.");
+    },
   });
 
   return (
@@ -421,18 +503,19 @@ function CompactTransferDialog({
               مسئول خرید دیگری در این گروه وجود ندارد.
             </div>
           )}
-          {!isLoading && candidates.map((p) => (
-            <button
-              key={p.user_id}
-              type="button"
-              onClick={() => setToUser(p.user_id)}
-              className={`block w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted ${
-                toUser === p.user_id ? "border-primary bg-primary/10" : ""
-              }`}
-            >
-              {p.full_name || "بدون نام"}
-            </button>
-          ))}
+          {!isLoading &&
+            candidates.map((p) => (
+              <button
+                key={p.user_id}
+                type="button"
+                onClick={() => setToUser(p.user_id)}
+                className={`block w-full rounded-md border px-3 py-2 text-right text-sm hover:bg-muted ${
+                  toUser === p.user_id ? "border-primary bg-primary/10" : ""
+                }`}
+              >
+                {p.full_name || "بدون نام"}
+              </button>
+            ))}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submit.isPending}>
