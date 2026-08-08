@@ -107,6 +107,24 @@ already cost this project real damage.
    (`SET LOCAL "request.jwt.claims" = '{"sub":"<uuid>","role":"authenticated"}'`)
    so nothing is written permanently.
 8. Never print a key, password, or token. Report host/port/name only.
+9. **Adding a foreign key to `persons` is never "just adding a column."** `person_merge`
+   reads its worklist from `pg_constraint` and stops dead on any persons-referencing
+   column with no policy in its internal `_registry` — so an unregistered FK does not
+   degrade one feature, it **disables merging for every person in the system**. This
+   shipped three times (migrations 271, 287, 319), each author having read the previous
+   incident. Migration **328** turned it into a mechanical gate: an event trigger on
+   `CREATE TABLE` / `ALTER TABLE` / `DROP TABLE` aborts the DDL — and therefore the whole
+   migration — the moment the FK set and the registry disagree, in either direction.
+
+   **Order matters, because the gate checks after every statement:**
+   - Adding an FK to `persons` → `CREATE OR REPLACE` `person_merge` **with** the new
+     registry key *first*, then `ALTER TABLE … ADD`.
+   - Dropping a table that owns one → `CREATE OR REPLACE` `person_merge` **without** the
+     key *first*, then `DROP TABLE`.
+
+   To see the current state at any time: `SELECT * FROM public.person_fk_registry_report();`
+   If you are ever tempted to disable the trigger, read `docs/verification/328-down.sql`
+   first — the usual correct fix is to update the extractor, not remove the gate.
 
 ## Coordination — Codex ↔ Claude Code
 
