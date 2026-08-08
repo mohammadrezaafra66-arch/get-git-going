@@ -26,6 +26,12 @@ export interface JournalExportRow {
   account_code: string | null;
   product_code: string | null;
   line_description: string | null;
+  /**
+   * مهاجرت ۳۲۰ — `rich` یعنی شرح از سند مبدأ ساخته شده (نام طرف، شمارهٔ پیگیری،
+   * بابتِ پرداخت)؛ `simple` یعنی سند مبدأ پیدا نشد و همان شرح ذخیره‌شده است.
+   * هیچ ردیف قدیمی بازنویسی نشده — این تفکیک فقط هنگام خواندن ساخته می‌شود.
+   */
+  description_quality: "rich" | "simple" | null;
   quantity: string | number | null;
   debit: string | number | null;
   credit: string | number | null;
@@ -111,6 +117,10 @@ export function groupJournalRows(
       rowCount: real.length,
       asanNumber: numbers.get(docId) ?? null,
       blockedReason: head.blocked_reason,
+      // Migration 320. Flag the document when no line got a source-built
+      // description, so the accountant can tell "this one predates the
+      // enrichment" from "something is wrong with this row".
+      hasSimpleDescription: real.every((r) => r.description_quality !== "rich"),
       payload: { lines } satisfies JournalExportPayload,
     };
   });

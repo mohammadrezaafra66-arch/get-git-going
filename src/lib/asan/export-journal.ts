@@ -25,7 +25,7 @@ import type {
   AsanExportRange,
 } from "@/lib/asan/export-types";
 
-export type JournalFilter = "all" | "receipt" | "payment" | "third_party";
+export type JournalFilter = "all" | "receipt" | "payment" | "third_party" | "settlement";
 
 export async function listJournalDocuments(
   range: AsanExportRange,

@@ -504,6 +504,17 @@ function AsanExportPage() {
                         ) : (
                           <Badge variant="outline">انتخاب‌نشده</Badge>
                         )}
+                        {/* مهاجرت ۳۲۰ — سند کاملاً قابل خروجی است؛ فقط شرحش از
+                            سند مبدأ ساخته نشده. */}
+                        {d.hasSimpleDescription && !d.blockedReason && (
+                          <Badge
+                            variant="outline"
+                            className="mr-1 text-muted-foreground"
+                            title="شرح این سند از سند مبدأ ساخته نشده و همان متن ذخیره‌شده است"
+                          >
+                            شرح ساده
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {d.blockedReason ? (

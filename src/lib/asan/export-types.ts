@@ -49,6 +49,13 @@ export interface AsanExportDocument {
    * Persian reason and excluded from the file — never silently dropped, never a failed export.
    */
   blockedReason: string | null;
+  /**
+   * مهاجرت ۳۲۰ — true یعنی شرح این سند از سند مبدأ ساخته نشد و همان متن
+   * ذخیره‌شده است (معمولاً سندهایی که پیش از این قابلیت ثبت شده‌اند). سند کاملاً
+   * قابل خروجی است؛ فقط شرحش کم‌جزئیات‌تر است، و رابط این را نشان می‌دهد تا
+   * حسابدار تفاوت دو ردیف را ببیند و دنبال باگ نگردد.
+   */
+  hasSimpleDescription?: boolean;
   /** Whatever the definition needs at build time. Opaque to the shell. */
   payload: unknown;
 }
