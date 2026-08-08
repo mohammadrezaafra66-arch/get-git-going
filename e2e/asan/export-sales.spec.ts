@@ -150,7 +150,9 @@ function restoreAsanPersonCodes(): void {
  * a row instead of deleting it — a leak that would still look like a clean count.
  */
 function countAsanPersonCodes(): number {
-  return Number(dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'"));
+  return Number(
+    dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'"),
+  );
 }
 
 /**
@@ -170,10 +172,9 @@ let asanPersonCodeCount = 0;
 test.afterAll(() => {
   // Unconditional, so a crash inside the block test still heals the live fixture.
   restoreAsanPersonCodes();
-  expect(
-    countAsanPersonCodes(),
-    "live identity data must be exactly as this spec found it",
-  ).toBe(asanPersonCodeCount);
+  expect(countAsanPersonCodes(), "live identity data must be exactly as this spec found it").toBe(
+    asanPersonCodeCount,
+  );
 
   if (numbered.size === 0) return;
   const list = [...numbered].map((x) => `'${x}'`).join(",");
